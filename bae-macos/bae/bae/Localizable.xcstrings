@@ -1332,197 +1332,6 @@
         }
       }
     },
-    "Ask Each Time": {
-      "comment": "Settings: switch export location back to prompting each time",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ask Each Time"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Ask Each Time"
-          }
-        }
-      }
-    },
     "Ask each time": {
       "comment": "Settings: export-location value meaning prompt each time",
       "localizations": {
@@ -2096,197 +1905,6 @@
         }
       }
     },
-    "Choose Folder...": {
-      "comment": "Settings: pick a fixed export folder",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose Folder..."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Choose Folder..."
-          }
-        }
-      }
-    },
     "Export": {
       "comment": "Settings: export section header",
       "localizations": {
@@ -2665,197 +2283,6 @@
           "stringUnit": {
             "state": "new",
             "value": "Export Here"
-          }
-        }
-      }
-    },
-    "Export location": {
-      "comment": "Settings: label for the export-destination control",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Export location"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Export location"
           }
         }
       }
@@ -87638,6 +87065,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "This library needs a signed-in provider. Go back and choose the provider it uses."
+          }
+        }
+      }
+    },
+    "Save to a folder": {
+      "comment": "Export settings: radio option to always export releases to one chosen folder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save to a folder"
+          }
+        }
+      }
+    },
+    "Location": {
+      "comment": "Export settings: label for the row showing the chosen export folder path.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location"
+          }
+        }
+      }
+    },
+    "Change": {
+      "comment": "Export settings: button to pick a different export folder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change"
+          }
+        }
+      }
+    },
+    "No folder chosen": {
+      "comment": "Export settings: placeholder shown when no export folder has been chosen yet.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No folder chosen"
           }
         }
       }

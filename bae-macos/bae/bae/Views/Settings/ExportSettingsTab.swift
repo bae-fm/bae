@@ -19,6 +19,14 @@ struct ExportSettingsTab: View {
 
     var body: some View {
         Form {
+            Section("Release exports") {
+                ExportLocationPicker(
+                    configStore: configStore,
+                    setLocation: exports.setExportLocation,
+                    showError: { @MainActor error in uiStore.showError(error) }
+                )
+            }
+
             Section {
                 LabeledContent("Filename format") {
                     HStack(spacing: 8) {
@@ -45,14 +53,6 @@ struct ExportSettingsTab: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            Section("Release exports") {
-                ExportLocationPicker(
-                    configStore: configStore,
-                    setLocation: exports.setExportLocation,
-                    showError: { @MainActor error in uiStore.showError(error) }
-                )
             }
         }
         .formStyle(.grouped)
