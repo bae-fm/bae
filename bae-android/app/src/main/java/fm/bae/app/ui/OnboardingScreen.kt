@@ -99,13 +99,12 @@ private class LinkFlow(
 }
 
 /**
- * One in-progress join attempt: decode the invite code, run OAuth if the
- * library's provider needs it, then join from the code on a background thread.
- * Mirrors [LinkFlow] exactly — the only difference is which bridge code it
- * decodes (an invite code, not a restore code) and that it joins as a new
- * member rather than restoring this device's own library. The blocking
- * `join()` bridge call can't be interrupted by coroutine cancellation, so
- * [cancel] also cancels the operation's own token.
+ * One in-progress join attempt: join from the invite code on a background
+ * thread, using the OAuth token the joiner already obtained when it picked the
+ * provider. Mirrors [LinkFlow], except it joins as a new member rather than
+ * restoring this device's own library. The blocking `join()` bridge call can't
+ * be interrupted by coroutine cancellation, so [cancel] also cancels the
+ * operation's own token.
  */
 private class JoinFlow(
     val job: Job,

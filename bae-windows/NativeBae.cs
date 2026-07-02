@@ -130,6 +130,19 @@ internal static class NativeBae
     internal static string? CloudProviderLabelKey(string? provider) =>
         CopyAndFree(CloudProviderLabelKeyPtr(provider));
 
+    [DllImport(Dll, EntryPoint = "bae_fetch_account_email", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr FetchAccountEmailPtr(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string provider,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string oauthTokenJson);
+
+    /// <summary>
+    /// The joiner's account email for an OAuth provider, fetched from its
+    /// authenticated session, as JSON (<c>{email, error}</c>), or null on error.
+    /// <paramref name="provider"/> is the wire tag ("google_drive"/…). Copies and frees.
+    /// </summary>
+    internal static string? FetchAccountEmail(string provider, string oauthTokenJson) =>
+        CopyAndFree(FetchAccountEmailPtr(provider, oauthTokenJson));
+
     [DllImport(Dll, EntryPoint = "bae_audio_channels_key", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr AudioChannelsKeyPtr(long channels);
 
