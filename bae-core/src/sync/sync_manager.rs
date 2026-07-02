@@ -71,13 +71,28 @@ pub struct JoinRequest {
 
 /// Generate this device's join-request code and the fingerprint of the public
 /// key it carries. Creates this device's keypair if one doesn't exist yet.
-pub fn generate_join_request() -> Result<JoinRequest, crate::keys::KeyError> {
-    let code = coven::generate_join_request(None)?;
+///
+/// `email` is the OAuth account address the joiner authenticated as, baked into
+/// the code so the approver can share the OAuth folder to it; `None` for S3,
+/// which shares no folder to an email.
+pub fn generate_join_request(email: Option<String>) -> Result<JoinRequest, crate::keys::KeyError> {
+    let code = coven::generate_join_request(email)?;
     let pubkey = coven::decode_join_request(&code)
         .expect("a code this device just encoded decodes")
         .public_key;
     let fingerprint = pubkey_fingerprint(&pubkey);
     Ok(JoinRequest { code, fingerprint })
+}
+
+/// Fetch the email of the OAuth account `oauth_tokens` authenticated, so the
+/// joiner can bake it into its join-request. A thin pass-through to coven, which
+/// dispatches per provider and rejects non-OAuth providers.
+#[cfg(feature = "oauth-providers")]
+pub async fn fetch_account_email(
+    provider: crate::config::CloudProvider,
+    oauth_tokens: &coven::OAuthTokens,
+) -> Result<String, coven::oauth::OAuthError> {
+    coven::fetch_account_email(provider, oauth_tokens).await
 }
 
 /// A decoded join-request code: the joining device's public key, its
@@ -133,4 +148,29 @@ pub struct S3ConfigData {
     pub secret_key: String,
     /// Opaque (encrypted, obfuscated) or browsable (plaintext, readable) home.
     pub storage: crate::config::HomeStorage,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The email the joiner authenticated as is baked into the join-request code
+    /// and comes back out when the approver decodes it — the wire that carries an
+    /// OAuth account address across device pairing.
+    #[test]
+    fn join_request_round_trips_the_email() {
+        crate::config::install_test_keyring();
+
+        let with_email = generate_join_request(Some("joiner@example.com".to_string())).unwrap();
+        let decoded = decode_join_request(&with_email.code).unwrap();
+        assert_eq!(decoded.email.as_deref(), Some("joiner@example.com"));
+        assert_eq!(decoded.fingerprint, with_email.fingerprint);
+
+        // S3 carries no email; the code decodes with `None`, not an empty string.
+        let without_email = generate_join_request(None).unwrap();
+        assert_eq!(
+            decode_join_request(&without_email.code).unwrap().email,
+            None
+        );
+    }
 }
