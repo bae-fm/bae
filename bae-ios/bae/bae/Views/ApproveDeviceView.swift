@@ -156,10 +156,6 @@ struct ApproveDeviceView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            TextField("iCloud email", text: $providerAccountEmail)
-                .textFieldStyle(.roundedBorder)
-                .textContentType(.emailAddress)
-                .frame(maxWidth: 260)
             Text(
                 "It will be added to your library and able to sync. You'll get a code to enter on it."
             )
