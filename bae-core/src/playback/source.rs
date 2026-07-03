@@ -154,10 +154,11 @@ impl PlaybackSource {
                 // Capture the finishing track's stats before swapping it out —
                 // the service reports them at the boundary, since a track
                 // advanced via the chain never reaches the completion path.
+                let (finished_fmt, decode_error_count, samples_decoded) = self.completion_event();
                 let crossing = TrackCrossing {
-                    finished_track_id: self.current_fmt.track_id.clone(),
-                    decode_error_count: self.current.decode_error_count(),
-                    samples_decoded: self.current.samples_decoded(),
+                    finished_track_id: finished_fmt.track_id.clone(),
+                    decode_error_count,
+                    samples_decoded,
                     incoming_track_id: next_fmt.track_id.clone(),
                 };
                 self.current = next;
