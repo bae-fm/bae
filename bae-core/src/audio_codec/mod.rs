@@ -15,7 +15,10 @@ mod probe;
 #[cfg(test)]
 mod tests;
 
-use avio::{avio_write_callback, avio_write_seek_callback, WriteAvioContext};
+use avio::{
+    avio_write_callback, avio_write_seek_callback, free_custom_avio_context,
+    free_format_and_custom_avio, WriteAvioContext,
+};
 
 pub use decode::{decode_audio, decode_audio_streaming, decode_audio_to_sink};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -65,11 +68,12 @@ impl std::error::Error for StreamingDecodeError {}
 /// encode loops' failure returns. The cancel path deliberately does NOT use
 /// this — it must skip `av_write_trailer` on a partial stream.
 macro_rules! free_encode_resources {
-    ($packet:expr, $frame:expr, $fmt_ctx:expr, $codec_ctx:expr) => {{
+    ($packet:expr, $frame:expr, $fmt_ctx:expr, $avio:expr, $codec_ctx:expr) => {{
         av_packet_free(&mut ($packet as *mut _));
         av_frame_free(&mut ($frame as *mut _));
         av_write_trailer($fmt_ctx);
         avformat_free_context($fmt_ctx);
+        free_custom_avio_context($avio);
         avcodec_free_context(&mut ($codec_ctx as *mut _));
     }};
 }
@@ -184,14 +188,14 @@ unsafe fn encode_to_flac_avio(
     // Find FLAC encoder
     let codec = avcodec_find_encoder(AVCodecID::AV_CODEC_ID_FLAC);
     if codec.is_null() {
-        avio_context_free(&mut (avio as *mut _));
+        free_custom_avio_context(avio);
         return Err("FLAC encoder not found".to_string());
     }
 
     // Allocate codec context
     let codec_ctx = avcodec_alloc_context3(codec);
     if codec_ctx.is_null() {
-        avio_context_free(&mut (avio as *mut _));
+        free_custom_avio_context(avio);
         return Err("Failed to allocate codec context".to_string());
     }
 
@@ -214,7 +218,7 @@ unsafe fn encode_to_flac_avio(
     let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
     if ret < 0 {
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        avio_context_free(&mut (avio as *mut _));
+        free_custom_avio_context(avio);
         return Err(format!("Failed to open encoder: {}", av_err_str(ret)));
     }
 
@@ -224,7 +228,7 @@ unsafe fn encode_to_flac_avio(
         avformat_alloc_output_context2(&mut fmt_ctx, ptr::null(), c"flac".as_ptr(), ptr::null());
     if ret < 0 || fmt_ctx.is_null() {
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        avio_context_free(&mut (avio as *mut _));
+        free_custom_avio_context(avio);
         return Err("Failed to create output context".to_string());
     }
 
@@ -235,7 +239,7 @@ unsafe fn encode_to_flac_avio(
     // Add audio stream
     let stream = avformat_new_stream(fmt_ctx, ptr::null());
     if stream.is_null() {
-        avformat_free_context(fmt_ctx);
+        free_format_and_custom_avio(fmt_ctx, avio);
         avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err("Failed to create stream".to_string());
     }
@@ -243,7 +247,7 @@ unsafe fn encode_to_flac_avio(
     // Copy codec parameters to stream
     let ret = avcodec_parameters_from_context((*stream).codecpar, codec_ctx);
     if ret < 0 {
-        avformat_free_context(fmt_ctx);
+        free_format_and_custom_avio(fmt_ctx, avio);
         avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err(format!("Failed to copy codec params: {}", av_err_str(ret)));
     }
@@ -251,7 +255,7 @@ unsafe fn encode_to_flac_avio(
     // Write header
     let ret = avformat_write_header(fmt_ctx, ptr::null_mut());
     if ret < 0 {
-        avformat_free_context(fmt_ctx);
+        free_format_and_custom_avio(fmt_ctx, avio);
         avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err(format!("Failed to write header: {}", av_err_str(ret)));
     }
@@ -260,7 +264,7 @@ unsafe fn encode_to_flac_avio(
     let frame = av_frame_alloc();
     if frame.is_null() {
         av_write_trailer(fmt_ctx);
-        avformat_free_context(fmt_ctx);
+        free_format_and_custom_avio(fmt_ctx, avio);
         avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err("Failed to allocate frame".to_string());
     }
@@ -274,7 +278,7 @@ unsafe fn encode_to_flac_avio(
     if packet.is_null() {
         av_frame_free(&mut (frame as *mut _));
         av_write_trailer(fmt_ctx);
-        avformat_free_context(fmt_ctx);
+        free_format_and_custom_avio(fmt_ctx, avio);
         avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err("Failed to allocate packet".to_string());
     }
@@ -294,12 +298,11 @@ unsafe fn encode_to_flac_avio(
         // Skip av_write_trailer on cancel: muxers seek-back-patch trailer
         // data (FLAC STREAMINFO, MP3 Xing) from frame state populated only
         // by completed frames, so invoking it on a partial stream is
-        // unsafe. The output is discarded anyway. avformat_free_context
-        // frees the AVIO since AVFMT_FLAG_CUSTOM_IO is set.
+        // unsafe. The output is discarded anyway.
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {
             av_packet_free(&mut (packet as *mut _));
             av_frame_free(&mut (frame as *mut _));
-            avformat_free_context(fmt_ctx);
+            free_format_and_custom_avio(fmt_ctx, avio);
             avcodec_free_context(&mut (codec_ctx as *mut _));
             return Err("encoding cancelled".to_string());
         }
@@ -313,7 +316,7 @@ unsafe fn encode_to_flac_avio(
         // Allocate frame buffer
         let ret = av_frame_get_buffer(frame, 0);
         if ret < 0 {
-            free_encode_resources!(packet, frame, fmt_ctx, codec_ctx);
+            free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
             return Err(format!(
                 "Failed to allocate frame buffer: {}",
                 av_err_str(ret)
@@ -323,7 +326,7 @@ unsafe fn encode_to_flac_avio(
         // Make frame writable
         let ret = av_frame_make_writable(frame);
         if ret < 0 {
-            free_encode_resources!(packet, frame, fmt_ctx, codec_ctx);
+            free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
             return Err(format!(
                 "Failed to make frame writable: {}",
                 av_err_str(ret)
@@ -354,7 +357,7 @@ unsafe fn encode_to_flac_avio(
         // Send frame to encoder
         let ret = avcodec_send_frame(codec_ctx, frame);
         if ret < 0 {
-            free_encode_resources!(packet, frame, fmt_ctx, codec_ctx);
+            free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
             return Err(format!("Failed to send frame: {}", av_err_str(ret)));
         }
 
@@ -365,14 +368,14 @@ unsafe fn encode_to_flac_avio(
                 break;
             }
             if ret < 0 {
-                free_encode_resources!(packet, frame, fmt_ctx, codec_ctx);
+                free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
                 return Err(format!("Failed to receive packet: {}", av_err_str(ret)));
             }
 
             (*packet).stream_index = 0;
             let ret = av_interleaved_write_frame(fmt_ctx, packet);
             if ret < 0 {
-                free_encode_resources!(packet, frame, fmt_ctx, codec_ctx);
+                free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
                 return Err(format!("Failed to write packet: {}", av_err_str(ret)));
             }
         }
@@ -400,7 +403,7 @@ unsafe fn encode_to_flac_avio(
     // Flush AVIO buffer
     avio_flush(avio);
 
-    // Cleanup (don't free avio - avformat_free_context handles it when CUSTOM_IO is set)
+    // Cleanup
     av_packet_free(&mut (packet as *mut _));
     av_frame_free(&mut (frame as *mut _));
     avcodec_free_context(&mut (codec_ctx as *mut _));
@@ -408,8 +411,7 @@ unsafe fn encode_to_flac_avio(
     // Get the data before freeing format context
     let result = write_ctx.data[..write_ctx.pos].to_vec();
 
-    // Free format context (this also frees avio since we set CUSTOM_IO flag)
-    avformat_free_context(fmt_ctx);
+    free_format_and_custom_avio(fmt_ctx, avio);
 
     debug!("Encoded {} bytes of FLAC data", result.len());
 
@@ -471,14 +473,14 @@ unsafe fn encode_to_mp3_avio(
     // Find MP3 encoder (libmp3lame)
     let codec = avcodec_find_encoder(AVCodecID::AV_CODEC_ID_MP3);
     if codec.is_null() {
-        avio_context_free(&mut (avio as *mut _));
+        free_custom_avio_context(avio);
         return Err("MP3 encoder not found (libmp3lame)".to_string());
     }
 
     // Allocate codec context
     let codec_ctx = avcodec_alloc_context3(codec);
     if codec_ctx.is_null() {
-        avio_context_free(&mut (avio as *mut _));
+        free_custom_avio_context(avio);
         return Err("Failed to allocate codec context".to_string());
     }
 
@@ -503,7 +505,7 @@ unsafe fn encode_to_mp3_avio(
     let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
     if ret < 0 {
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        avio_context_free(&mut (avio as *mut _));
+        free_custom_avio_context(avio);
         return Err(format!("Failed to open MP3 encoder: {}", av_err_str(ret)));
     }
 
@@ -513,7 +515,7 @@ unsafe fn encode_to_mp3_avio(
         avformat_alloc_output_context2(&mut fmt_ctx, ptr::null(), c"mp3".as_ptr(), ptr::null());
     if ret < 0 || fmt_ctx.is_null() {
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        avio_context_free(&mut (avio as *mut _));
+        free_custom_avio_context(avio);
         return Err("Failed to create output context".to_string());
     }
 
@@ -524,7 +526,7 @@ unsafe fn encode_to_mp3_avio(
     // Add audio stream
     let stream = avformat_new_stream(fmt_ctx, ptr::null());
     if stream.is_null() {
-        avformat_free_context(fmt_ctx);
+        free_format_and_custom_avio(fmt_ctx, avio);
         avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err("Failed to create stream".to_string());
     }
@@ -532,7 +534,7 @@ unsafe fn encode_to_mp3_avio(
     // Copy codec parameters to stream
     let ret = avcodec_parameters_from_context((*stream).codecpar, codec_ctx);
     if ret < 0 {
-        avformat_free_context(fmt_ctx);
+        free_format_and_custom_avio(fmt_ctx, avio);
         avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err(format!("Failed to copy codec params: {}", av_err_str(ret)));
     }
@@ -540,7 +542,7 @@ unsafe fn encode_to_mp3_avio(
     // Write header
     let ret = avformat_write_header(fmt_ctx, ptr::null_mut());
     if ret < 0 {
-        avformat_free_context(fmt_ctx);
+        free_format_and_custom_avio(fmt_ctx, avio);
         avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err(format!("Failed to write header: {}", av_err_str(ret)));
     }
@@ -549,7 +551,7 @@ unsafe fn encode_to_mp3_avio(
     let frame = av_frame_alloc();
     if frame.is_null() {
         av_write_trailer(fmt_ctx);
-        avformat_free_context(fmt_ctx);
+        free_format_and_custom_avio(fmt_ctx, avio);
         avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err("Failed to allocate frame".to_string());
     }
@@ -563,7 +565,7 @@ unsafe fn encode_to_mp3_avio(
     if packet.is_null() {
         av_frame_free(&mut (frame as *mut _));
         av_write_trailer(fmt_ctx);
-        avformat_free_context(fmt_ctx);
+        free_format_and_custom_avio(fmt_ctx, avio);
         avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err("Failed to allocate packet".to_string());
     }
@@ -583,12 +585,11 @@ unsafe fn encode_to_mp3_avio(
         // Skip av_write_trailer on cancel: muxers seek-back-patch trailer
         // data (FLAC STREAMINFO, MP3 Xing) from frame state populated only
         // by completed frames, so invoking it on a partial stream is
-        // unsafe. The output is discarded anyway. avformat_free_context
-        // frees the AVIO since AVFMT_FLAG_CUSTOM_IO is set.
+        // unsafe. The output is discarded anyway.
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {
             av_packet_free(&mut (packet as *mut _));
             av_frame_free(&mut (frame as *mut _));
-            avformat_free_context(fmt_ctx);
+            free_format_and_custom_avio(fmt_ctx, avio);
             avcodec_free_context(&mut (codec_ctx as *mut _));
             return Err("encoding cancelled".to_string());
         }
@@ -602,7 +603,7 @@ unsafe fn encode_to_mp3_avio(
         // Allocate frame buffer
         let ret = av_frame_get_buffer(frame, 0);
         if ret < 0 {
-            free_encode_resources!(packet, frame, fmt_ctx, codec_ctx);
+            free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
             return Err(format!(
                 "Failed to allocate frame buffer: {}",
                 av_err_str(ret)
@@ -612,7 +613,7 @@ unsafe fn encode_to_mp3_avio(
         // Make frame writable
         let ret = av_frame_make_writable(frame);
         if ret < 0 {
-            free_encode_resources!(packet, frame, fmt_ctx, codec_ctx);
+            free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
             return Err(format!(
                 "Failed to make frame writable: {}",
                 av_err_str(ret)
@@ -636,7 +637,7 @@ unsafe fn encode_to_mp3_avio(
         // Send frame to encoder
         let ret = avcodec_send_frame(codec_ctx, frame);
         if ret < 0 {
-            free_encode_resources!(packet, frame, fmt_ctx, codec_ctx);
+            free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
             return Err(format!("Failed to send frame: {}", av_err_str(ret)));
         }
 
@@ -647,14 +648,14 @@ unsafe fn encode_to_mp3_avio(
                 break;
             }
             if ret < 0 {
-                free_encode_resources!(packet, frame, fmt_ctx, codec_ctx);
+                free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
                 return Err(format!("Failed to receive packet: {}", av_err_str(ret)));
             }
 
             (*packet).stream_index = 0;
             let ret = av_interleaved_write_frame(fmt_ctx, packet);
             if ret < 0 {
-                free_encode_resources!(packet, frame, fmt_ctx, codec_ctx);
+                free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
                 return Err(format!("Failed to write packet: {}", av_err_str(ret)));
             }
         }
@@ -682,7 +683,7 @@ unsafe fn encode_to_mp3_avio(
     // Flush AVIO buffer
     avio_flush(avio);
 
-    // Cleanup (don't free avio - avformat_free_context handles it when CUSTOM_IO is set)
+    // Cleanup
     av_packet_free(&mut (packet as *mut _));
     av_frame_free(&mut (frame as *mut _));
     avcodec_free_context(&mut (codec_ctx as *mut _));
@@ -690,8 +691,7 @@ unsafe fn encode_to_mp3_avio(
     // Get the data before freeing format context
     let result = write_ctx.data[..write_ctx.pos].to_vec();
 
-    // Free format context (this also frees avio since we set CUSTOM_IO flag)
-    avformat_free_context(fmt_ctx);
+    free_format_and_custom_avio(fmt_ctx, avio);
 
     debug!("Encoded {} bytes of MP3 data", result.len());
 

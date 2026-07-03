@@ -4,7 +4,8 @@
 //! the per-thread FFmpeg fatal-error counter that tracks decode failures.
 
 use super::avio::{
-    avio_read_callback, avio_seek_callback, streaming_avio_read_callback,
+    avio_read_callback, avio_seek_callback, close_input_and_free_custom_avio,
+    free_custom_avio_context, free_format_and_custom_avio, streaming_avio_read_callback,
     streaming_avio_seek_callback, AvioContext, StreamingAvioContext,
 };
 use super::{av_err_str, DecodedAudio, DecodedSink, StreamingDecodeError, AVIO_BUFFER_SIZE};
@@ -186,7 +187,7 @@ unsafe fn decode_audio_avio(
     // Create format context
     let mut fmt_ctx = avformat_alloc_context();
     if fmt_ctx.is_null() {
-        av_free(avio as *mut c_void);
+        free_custom_avio_context(avio);
         return Err("Failed to allocate format context".to_string());
     }
     (*fmt_ctx).pb = avio;
@@ -194,14 +195,14 @@ unsafe fn decode_audio_avio(
     // Open input (NULL filename since we're using custom I/O)
     let ret = avformat_open_input(&mut fmt_ctx, ptr::null(), ptr::null_mut(), ptr::null_mut());
     if ret < 0 {
-        avformat_free_context(fmt_ctx);
+        free_format_and_custom_avio(fmt_ctx, avio);
         return Err(format!("Failed to open input: {}", av_err_str(ret)));
     }
 
     // Find stream info
     let ret = avformat_find_stream_info(fmt_ctx, ptr::null_mut());
     if ret < 0 {
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         return Err(format!("Failed to find stream info: {}", av_err_str(ret)));
     }
 
@@ -219,7 +220,7 @@ unsafe fn decode_audio_avio(
         0,
     );
     if stream_index < 0 {
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         return Err("No audio stream found".to_string());
     }
 
@@ -242,19 +243,19 @@ unsafe fn decode_audio_avio(
                 end_sample,
                 sink,
             );
-            avformat_close_input(&mut fmt_ctx);
+            close_input_and_free_custom_avio(&mut fmt_ctx, avio);
             drop(avio_ctx);
             sink.set_decode_error_count(get_ffmpeg_errors());
             return result;
         }
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         return Err(format!("Decoder not found for {:?}", codec_id));
     }
 
     // Allocate codec context
     let codec_ctx = avcodec_alloc_context3(codec);
     if codec_ctx.is_null() {
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         return Err("Failed to allocate codec context".to_string());
     }
 
@@ -262,14 +263,14 @@ unsafe fn decode_audio_avio(
     let ret = avcodec_parameters_to_context(codec_ctx, codecpar);
     if ret < 0 {
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         return Err(format!("Failed to copy codec params: {}", av_err_str(ret)));
     }
     // Open codec
     let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
     if ret < 0 {
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         return Err(format!("Failed to open codec: {}", av_err_str(ret)));
     }
 
@@ -288,7 +289,7 @@ unsafe fn decode_audio_avio(
         Ok(ctx) => ctx,
         Err(e) => {
             avcodec_free_context(&mut (codec_ctx as *mut _));
-            avformat_close_input(&mut fmt_ctx);
+            close_input_and_free_custom_avio(&mut fmt_ctx, avio);
             return Err(e);
         }
     };
@@ -317,7 +318,7 @@ unsafe fn decode_audio_avio(
         }
         swr_free(&mut swr_ctx);
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         return Err("Failed to allocate frame/packet".to_string());
     }
 
@@ -386,7 +387,7 @@ unsafe fn decode_audio_avio(
                     av_packet_free(&mut (packet as *mut _));
                     swr_free(&mut swr_ctx);
                     avcodec_free_context(&mut (codec_ctx as *mut _));
-                    avformat_close_input(&mut fmt_ctx);
+                    close_input_and_free_custom_avio(&mut fmt_ctx, avio);
                     return Err(e);
                 }
             };
@@ -439,7 +440,7 @@ unsafe fn decode_audio_avio(
                     av_packet_free(&mut (packet as *mut _));
                     swr_free(&mut swr_ctx);
                     avcodec_free_context(&mut (codec_ctx as *mut _));
-                    avformat_close_input(&mut fmt_ctx);
+                    close_input_and_free_custom_avio(&mut fmt_ctx, avio);
                     return Err(e);
                 }
             };
@@ -452,8 +453,7 @@ unsafe fn decode_audio_avio(
     av_packet_free(&mut (packet as *mut _));
     swr_free(&mut swr_ctx);
     avcodec_free_context(&mut (codec_ctx as *mut _));
-    avformat_close_input(&mut fmt_ctx);
-    // Note: avformat_close_input frees the AVIO context and buffer
+    close_input_and_free_custom_avio(&mut fmt_ctx, avio);
 
     // Keep avio_ctx alive until here (prevent drop during FFmpeg operations)
     drop(avio_ctx);
@@ -808,7 +808,7 @@ unsafe fn decode_audio_streaming_impl(
     // Create format context
     let mut fmt_ctx = avformat_alloc_context();
     if fmt_ctx.is_null() {
-        av_free(avio as *mut c_void);
+        free_custom_avio_context(avio);
         let _ = Box::from_raw(avio_ctx_ptr);
         return Err(StreamingDecodeError::decode(
             "Failed to allocate format context",
@@ -828,7 +828,7 @@ unsafe fn decode_audio_streaming_impl(
     // Open input
     let ret = avformat_open_input(&mut fmt_ctx, ptr::null(), ptr::null_mut(), ptr::null_mut());
     if ret < 0 {
-        avformat_free_context(fmt_ctx);
+        free_format_and_custom_avio(fmt_ctx, avio);
         let _ = Box::from_raw(avio_ctx_ptr);
         return Err(StreamingDecodeError::input_error(
             &cancel_status,
@@ -839,7 +839,7 @@ unsafe fn decode_audio_streaming_impl(
     // Find stream info
     let ret = avformat_find_stream_info(fmt_ctx, ptr::null_mut());
     if ret < 0 {
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         let _ = Box::from_raw(avio_ctx_ptr);
         return Err(StreamingDecodeError::input_error(
             &cancel_status,
@@ -857,7 +857,7 @@ unsafe fn decode_audio_streaming_impl(
         0,
     );
     if stream_index < 0 {
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         let _ = Box::from_raw(avio_ctx_ptr);
         return Err(StreamingDecodeError::decode("No audio stream found"));
     }
@@ -869,7 +869,7 @@ unsafe fn decode_audio_streaming_impl(
     let codec_id = (*codecpar).codec_id;
     let codec = find_audio_decoder(codec_id);
     if codec.is_null() {
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         let _ = Box::from_raw(avio_ctx_ptr);
         return Err(StreamingDecodeError::decode(format!(
             "Decoder not found for {:?}",
@@ -880,7 +880,7 @@ unsafe fn decode_audio_streaming_impl(
     // Allocate codec context
     let codec_ctx = avcodec_alloc_context3(codec);
     if codec_ctx.is_null() {
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         let _ = Box::from_raw(avio_ctx_ptr);
         return Err(StreamingDecodeError::decode(
             "Failed to allocate codec context",
@@ -891,7 +891,7 @@ unsafe fn decode_audio_streaming_impl(
     let ret = avcodec_parameters_to_context(codec_ctx, codecpar);
     if ret < 0 {
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         let _ = Box::from_raw(avio_ctx_ptr);
         return Err(StreamingDecodeError::decode(format!(
             "Failed to copy codec params: {}",
@@ -902,7 +902,7 @@ unsafe fn decode_audio_streaming_impl(
     let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
     if ret < 0 {
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         let _ = Box::from_raw(avio_ctx_ptr);
         return Err(StreamingDecodeError::decode(format!(
             "Failed to open codec: {}",
@@ -925,7 +925,7 @@ unsafe fn decode_audio_streaming_impl(
     )
     .map_err(|e| {
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         let _ = Box::from_raw(avio_ctx_ptr);
         StreamingDecodeError::decode(e)
     })?;
@@ -999,7 +999,7 @@ unsafe fn decode_audio_streaming_impl(
         }
         swr_free(&mut swr_ctx);
         avcodec_free_context(&mut (codec_ctx as *mut _));
-        avformat_close_input(&mut fmt_ctx);
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
         let _ = Box::from_raw(avio_ctx_ptr);
         return Err(StreamingDecodeError::decode(
             "Failed to allocate frame/packet",
@@ -1051,7 +1051,7 @@ unsafe fn decode_audio_streaming_impl(
                 av_packet_free(&mut (packet as *mut _));
                 swr_free(&mut swr_ctx);
                 avcodec_free_context(&mut (codec_ctx as *mut _));
-                avformat_close_input(&mut fmt_ctx);
+                close_input_and_free_custom_avio(&mut fmt_ctx, avio);
                 let _ = Box::from_raw(avio_ctx_ptr);
                 return Err(StreamingDecodeError::decode(format!(
                     "Failed to convert decoded frame: {}",
@@ -1162,7 +1162,7 @@ unsafe fn decode_audio_streaming_impl(
                 av_packet_free(&mut (packet as *mut _));
                 swr_free(&mut swr_ctx);
                 avcodec_free_context(&mut (codec_ctx as *mut _));
-                avformat_close_input(&mut fmt_ctx);
+                close_input_and_free_custom_avio(&mut fmt_ctx, avio);
                 let _ = Box::from_raw(avio_ctx_ptr);
                 return Err(StreamingDecodeError::decode(format!(
                     "Failed to convert decoded frame: {}",
@@ -1184,7 +1184,7 @@ unsafe fn decode_audio_streaming_impl(
     av_packet_free(&mut (packet as *mut _));
     swr_free(&mut swr_ctx);
     avcodec_free_context(&mut (codec_ctx as *mut _));
-    avformat_close_input(&mut fmt_ctx);
+    close_input_and_free_custom_avio(&mut fmt_ctx, avio);
     let _ = Box::from_raw(avio_ctx_ptr);
 
     // Record fatal error count (AV_LOG_FATAL and worse)

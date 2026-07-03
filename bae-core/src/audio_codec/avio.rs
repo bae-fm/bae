@@ -12,6 +12,28 @@ use std::sync::Arc;
 
 // --- AVIO custom I/O implementation ---
 
+pub(super) unsafe fn free_custom_avio_context(avio: *mut ffmpeg_sys_next::AVIOContext) {
+    let mut avio = avio;
+    ffmpeg_sys_next::av_freep(&mut (*avio).buffer as *mut *mut u8 as *mut c_void);
+    ffmpeg_sys_next::avio_context_free(&mut avio);
+}
+
+pub(super) unsafe fn close_input_and_free_custom_avio(
+    fmt_ctx: &mut *mut ffmpeg_sys_next::AVFormatContext,
+    avio: *mut ffmpeg_sys_next::AVIOContext,
+) {
+    ffmpeg_sys_next::avformat_close_input(fmt_ctx);
+    free_custom_avio_context(avio);
+}
+
+pub(super) unsafe fn free_format_and_custom_avio(
+    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
+    avio: *mut ffmpeg_sys_next::AVIOContext,
+) {
+    ffmpeg_sys_next::avformat_free_context(fmt_ctx);
+    free_custom_avio_context(avio);
+}
+
 /// Context for AVIO callbacks - holds the buffer and read position
 pub(super) struct AvioContext {
     pub(super) data: *const u8,
