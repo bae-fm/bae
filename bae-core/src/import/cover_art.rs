@@ -52,6 +52,17 @@ fn cover_bytes_cache() -> &'static Mutex<LruCache<String, CoverCacheValue>> {
     })
 }
 
+fn cover_download_client() -> Result<reqwest::Client, String> {
+    static CLIENT: OnceLock<Result<reqwest::Client, String>> = OnceLock::new();
+    CLIENT
+        .get_or_init(|| {
+            crate::util::http::client_builder()
+                .build()
+                .map_err(|e| format!("Failed to create HTTP client: {}", e))
+        })
+        .clone()
+}
+
 /// Cover Art Archive lookup client for release/release-group cover selection.
 #[derive(Clone)]
 pub struct CoverArtArchiveClient {
@@ -139,6 +150,53 @@ impl Default for CoverArtArchiveClient {
 /// Whether an HTTP error is transient and worth retrying.
 fn is_transient_status(status: reqwest::StatusCode) -> bool {
     status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+}
+
+enum ClassifiedAttempt<T> {
+    Done(T),
+    Retry(String),
+    Permanent(String),
+}
+
+async fn retry_classified<T, F, Fut>(operation: &str, mut attempt: F) -> Result<T, String>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = ClassifiedAttempt<T>>,
+{
+    let mut last_error = String::new();
+    for attempt_index in 0..=MAX_RETRIES {
+        if attempt_index > 0 {
+            let delay = RETRY_BASE_DELAY * 2u32.pow(attempt_index - 1);
+
+            warn!(
+                "{} failed (attempt {}/{}): {} — retrying in {:?}",
+                operation,
+                attempt_index,
+                MAX_RETRIES + 1,
+                last_error,
+                delay
+            );
+
+            tokio::time::sleep(delay).await;
+        }
+
+        match attempt().await {
+            ClassifiedAttempt::Done(value) => return Ok(value),
+            ClassifiedAttempt::Permanent(error) => return Err(error),
+            ClassifiedAttempt::Retry(error) => {
+                last_error = error;
+            }
+        }
+    }
+
+    warn!(
+        "{} failed after {} attempts: {}",
+        operation,
+        MAX_RETRIES + 1,
+        last_error
+    );
+
+    Err(last_error)
 }
 
 pub(crate) fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCover) {
@@ -235,35 +293,21 @@ async fn fetch_cover_art_from_url(
 ) -> CaaLookup {
     debug!("Fetching cover art from Cover Art Archive: {}", json_url);
 
-    let mut last_error = String::new();
-    for attempt in 0..=MAX_RETRIES {
-        if attempt > 0 {
-            let delay = RETRY_BASE_DELAY * 2u32.pow(attempt - 1);
-
-            warn!(
-                "Cover Art Archive fetch failed (attempt {}/{}): {} — retrying in {:?}",
-                attempt,
-                MAX_RETRIES + 1,
-                last_error,
-                delay
-            );
-
-            tokio::time::sleep(delay).await;
-        }
-
+    match retry_classified("Cover Art Archive fetch", || async {
         match client.get(&json_url).send().await {
             Ok(response) => {
                 if response.status().is_success() {
-                    return parse_cover_art_response(response, &json_url, &label).await;
+                    ClassifiedAttempt::Done(
+                        parse_cover_art_response(response, &json_url, &label).await,
+                    )
                 } else if response.status() == reqwest::StatusCode::NOT_FOUND {
                     debug!(
                         "No cover art found in Cover Art Archive for {} {}",
                         entity, id
                     );
-                    return Some(None);
+                    ClassifiedAttempt::Done(Some(None))
                 } else if is_transient_status(response.status()) {
-                    last_error = format!("status {}", response.status());
-                    continue;
+                    ClassifiedAttempt::Retry(format!("status {}", response.status()))
                 } else {
                     // Non-transient client error (400, 403, etc.) — don't retry
                     debug!(
@@ -272,23 +316,23 @@ async fn fetch_cover_art_from_url(
                         entity,
                         id
                     );
-                    return None;
+                    ClassifiedAttempt::Done(None)
                 }
             }
-            Err(e) => {
-                last_error = e.to_string();
-                continue;
+            Err(e) if is_permanent_request_error(&e) => {
+                ClassifiedAttempt::Permanent(format!("Cover Art Archive fetch failed: {}", e))
             }
+            Err(e) => ClassifiedAttempt::Retry(e.to_string()),
+        }
+    })
+    .await
+    {
+        Ok(lookup) => lookup,
+        Err(e) => {
+            warn!("Cover Art Archive fetch failed for {}: {}", json_url, e);
+            None
         }
     }
-
-    warn!(
-        "Cover Art Archive fetch failed after {} attempts: {}",
-        MAX_RETRIES + 1,
-        last_error
-    );
-
-    None
 }
 
 /// Parse the Cover Art Archive JSON response, extracting the best image URL.
@@ -404,26 +448,8 @@ pub async fn download_cover_art_bytes(
 
     info!("Downloading cover art from {}", cover_art_url);
 
-    let client = crate::util::http::client_builder()
-        .build()
-        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
-
-    let mut last_error = String::new();
-    for attempt in 0..=MAX_RETRIES {
-        if attempt > 0 {
-            let delay = RETRY_BASE_DELAY * 2u32.pow(attempt - 1);
-
-            warn!(
-                "Cover art download failed (attempt {}/{}): {} — retrying in {:?}",
-                attempt,
-                MAX_RETRIES + 1,
-                last_error,
-                delay
-            );
-
-            tokio::time::sleep(delay).await;
-        }
-
+    let client = cover_download_client()?;
+    let value = retry_classified("Cover art download", || async {
         let response = match client.get(cover_art_url).send().await {
             Ok(r) => r,
             Err(e) if is_permanent_request_error(&e) => {
@@ -431,37 +457,38 @@ pub async fn download_cover_art_bytes(
                 // redirect-loop bottoming out — same failure every
                 // attempt. Don't burn 1+2+4s of backoff on a
                 // deterministic error.
-                return Err(format!("Failed to fetch cover art: {}", e));
+                return ClassifiedAttempt::Permanent(format!("Failed to fetch cover art: {}", e));
             }
             Err(e) => {
-                last_error = format!("Failed to fetch cover art: {}", e);
-                continue;
+                return ClassifiedAttempt::Retry(format!("Failed to fetch cover art: {}", e));
             }
         };
 
         if response.status().is_success() {
-            let value = read_cover_art_response(response, cover_art_url).await?;
-            cover_bytes_cache()
-                .lock()
-                .expect("cover bytes cache mutex poisoned")
-                .put(cover_art_url.to_string(), value.clone());
-            return Ok(value);
+            match read_cover_art_response(response, cover_art_url).await {
+                Ok(value) => ClassifiedAttempt::Done(value),
+                Err(e) => ClassifiedAttempt::Permanent(e),
+            }
         } else if is_transient_status(response.status()) {
-            last_error = format!(
+            ClassifiedAttempt::Retry(format!(
                 "Cover art download failed with status {}",
                 response.status()
-            );
-            continue;
+            ))
         } else {
             // Non-transient error — don't retry
-            return Err(format!(
+            ClassifiedAttempt::Permanent(format!(
                 "Cover art download failed with status {}",
                 response.status()
-            ));
+            ))
         }
-    }
+    })
+    .await?;
 
-    Err(last_error)
+    cover_bytes_cache()
+        .lock()
+        .expect("cover bytes cache mutex poisoned")
+        .put(cover_art_url.to_string(), value.clone());
+    Ok(value)
 }
 
 /// Errors that fail the same way every attempt — retrying just burns
