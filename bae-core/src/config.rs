@@ -78,6 +78,19 @@ fn dev_env_secret(var: &str) -> Option<String> {
     }
 }
 
+fn dev_mode_enabled() -> bool {
+    std::env::var("BAE_DEV_MODE").is_ok() || {
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        {
+            dotenvy::dotenv().is_ok()
+        }
+        #[cfg(any(target_os = "ios", target_os = "android"))]
+        {
+            false
+        }
+    }
+}
+
 /// Bridge bae's dev-mode `BAE_*` env vars into coven's keyring for one library.
 ///
 /// coven's `KeyService` reads secrets from the keyring. In dev mode bae's secrets
@@ -547,17 +560,7 @@ impl std::ops::DerefMut for Config {
 
 impl Config {
     pub fn load(ids: &dyn coven::IdProvider) -> Self {
-        let dev_mode = std::env::var("BAE_DEV_MODE").is_ok() || {
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            {
-                dotenvy::dotenv().is_ok()
-            }
-            #[cfg(any(target_os = "ios", target_os = "android"))]
-            {
-                false
-            }
-        };
-        if dev_mode {
+        if dev_mode_enabled() {
             info!("Dev mode activated — loading config.yaml with .env overrides");
             Self::from_env(ids)
         } else {
@@ -743,7 +746,7 @@ impl Config {
     }
 
     pub fn is_dev_mode() -> bool {
-        std::env::var("BAE_DEV_MODE").is_ok() || std::path::Path::new(".env").exists()
+        dev_mode_enabled()
     }
 
     /// Save the active library UUID to the global pointer file (~/.bae/active-library).
@@ -1013,6 +1016,7 @@ fn read_config_yaml(path: &std::path::Path) -> Result<Option<ConfigYaml>, Config
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use tempfile::TempDir;
 
     fn make_test_config(library_id: &str, library_path: PathBuf) -> Config {
@@ -1153,6 +1157,36 @@ mod tests {
             1_704_164_645_250,
         );
         assert!(rfc3339_to_epoch_millis("not a timestamp").is_err());
+    }
+
+    #[test]
+    #[serial]
+    fn dev_mode_uses_dotenv_search_for_parent_env_file() {
+        let original_cwd = std::env::current_dir().unwrap();
+        let original_dev_mode = std::env::var_os("BAE_DEV_MODE");
+        let original_parent_dotenv = std::env::var_os("BAE_TEST_PARENT_DOTENV");
+
+        let tmp = TempDir::new().unwrap();
+        std::fs::write(tmp.path().join(".env"), "BAE_TEST_PARENT_DOTENV=1\n").unwrap();
+        let child = tmp.path().join("child");
+        std::fs::create_dir(&child).unwrap();
+
+        std::env::remove_var("BAE_DEV_MODE");
+        std::env::remove_var("BAE_TEST_PARENT_DOTENV");
+        std::env::set_current_dir(&child).unwrap();
+        let is_dev_mode = Config::is_dev_mode();
+
+        std::env::set_current_dir(original_cwd).unwrap();
+        match original_dev_mode {
+            Some(value) => std::env::set_var("BAE_DEV_MODE", value),
+            None => std::env::remove_var("BAE_DEV_MODE"),
+        }
+        match original_parent_dotenv {
+            Some(value) => std::env::set_var("BAE_TEST_PARENT_DOTENV", value),
+            None => std::env::remove_var("BAE_TEST_PARENT_DOTENV"),
+        }
+
+        assert!(is_dev_mode);
     }
 
     #[test]
