@@ -1,13 +1,11 @@
 //! Decoded PCM audio for re-encoding and export.
 
-use std::sync::Arc;
-
 /// A fully-decoded PCM buffer. Held in memory; consumers (export, re-encode)
 /// read the samples directly. For sample-by-sample streaming during playback,
 /// use `TrackStream` instead.
 pub struct DecodedPcm {
     /// Interleaved full-range i32 samples.
-    samples: Arc<Vec<i32>>,
+    samples: Vec<i32>,
     /// Number of channels
     channels: u32,
     /// Sample rate in Hz
@@ -18,7 +16,7 @@ impl DecodedPcm {
     /// Create a new decoded PCM buffer.
     pub fn new(samples: Vec<i32>, sample_rate: u32, channels: u32) -> Self {
         Self {
-            samples: Arc::new(samples),
+            samples,
             channels,
             sample_rate,
         }
