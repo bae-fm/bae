@@ -44,7 +44,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.media3.common.C
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import kotlinx.coroutines.launch
@@ -187,22 +186,9 @@ private fun ExpandedTrackInfo(
 @Composable
 private fun ExpandedSeekSection(player: fm.bae.app.playback.BaeCorePlayer) {
     val position by player.position.collectAsState()
-    // While dragging, follow the finger; the progress events would otherwise snap
-    // the thumb back mid-drag. Null means "not dragging". Same pattern as the bar.
-    var dragRatio by remember { mutableStateOf<Float?>(null) }
-    val shownRatio = dragRatio ?: position.progress.toFloat().coerceIn(0f, 1f)
-    Slider(
-        value = shownRatio,
-        onValueChange = { dragRatio = it },
-        onValueChangeFinished = {
-            dragRatio?.let { ratio ->
-                val duration = player.duration
-                if (duration != C.TIME_UNSET && duration > 0L) {
-                    player.seekTo((ratio * duration).toLong())
-                }
-            }
-            dragRatio = null
-        },
+    NowPlayingSeekSlider(
+        position = position,
+        player = player,
         modifier = Modifier.fillMaxWidth(),
     )
     Row(modifier = Modifier.fillMaxWidth()) {

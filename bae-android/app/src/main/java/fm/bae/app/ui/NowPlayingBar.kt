@@ -224,26 +224,15 @@ private fun NowPlayingSeekRow(
     position: fm.bae.app.playback.PlaybackPosition,
     player: fm.bae.app.playback.BaeCorePlayer,
 ) {
-    // While dragging, follow the finger; the progress events would otherwise snap
-    // the thumb back mid-drag. Null means "not dragging".
-    var dragRatio by remember { mutableStateOf<Float?>(null) }
-    val shownRatio = dragRatio ?: position.progress.toFloat().coerceIn(0f, 1f)
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = position.elapsedLabel,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Slider(
-            value = shownRatio,
-            onValueChange = { dragRatio = it },
-            onValueChangeFinished = {
-                dragRatio?.let { ratio ->
-                    val duration = player.duration
-                    if (duration != C.TIME_UNSET && duration > 0L) player.seekTo((ratio * duration).toLong())
-                }
-                dragRatio = null
-            },
+        NowPlayingSeekSlider(
+            position = position,
+            player = player,
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
         )
         Text(
@@ -252,4 +241,29 @@ private fun NowPlayingSeekRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
+fun NowPlayingSeekSlider(
+    position: fm.bae.app.playback.PlaybackPosition,
+    player: fm.bae.app.playback.BaeCorePlayer,
+    modifier: Modifier = Modifier,
+) {
+    // While dragging, follow the finger; the progress events would otherwise snap
+    // the thumb back mid-drag. Null means "not dragging".
+    var dragRatio by remember { mutableStateOf<Float?>(null) }
+    val shownRatio = dragRatio ?: position.progress.toFloat().coerceIn(0f, 1f)
+    Slider(
+        value = shownRatio,
+        onValueChange = { dragRatio = it },
+        onValueChangeFinished = {
+            dragRatio?.let { ratio ->
+                val duration = player.duration
+                if (duration != C.TIME_UNSET && duration > 0L) player.seekTo((ratio * duration).toLong())
+            }
+            dragRatio = null
+        },
+        modifier = modifier,
+    )
 }
