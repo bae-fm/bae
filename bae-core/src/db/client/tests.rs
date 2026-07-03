@@ -234,6 +234,76 @@ mod aggregate_ordering_tests {
             "Track Artist Name First, Track Artist Name Second"
         );
     }
+
+    async fn release_detail_db() -> (Database, tempfile::TempDir) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        db.call(|conn| {
+            conn.execute_batch(
+                "
+                PRAGMA reverse_unordered_selects = ON;
+
+                INSERT INTO artists (id, name, _updated_at, created_at)
+                VALUES
+                    ('artist-primary', 'Artist Name Primary', 'stamp', '2026-01-01T00:00:00Z'),
+                    ('artist-track-first', 'Track Artist Name First', 'stamp', '2026-01-01T00:00:00Z'),
+                    ('artist-track-second', 'Track Artist Name Second', 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
+                VALUES ('album-a', 'Album Title A', 'artist-primary', 2026, 'release-a', 0, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+                VALUES ('release-a', 'album-a', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
+                VALUES
+                    ('track-b', 'release-a', 'Track Title B', 1, 2, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('track-a', 'release-a', 'Track Title A', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO track_artists (id, track_id, artist_id, position, _updated_at, created_at)
+                VALUES
+                    ('track-artist-second', 'track-a', 'artist-track-second', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('track-artist-first', 'track-a', 'artist-track-first', 0, 'stamp', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+        (db, tmp)
+    }
+
+    #[tokio::test]
+    async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() {
+        let (db, _tmp) = release_detail_db().await;
+        let detail = db
+            .find_release_detail("release-a")
+            .await
+            .unwrap()
+            .expect("release detail");
+
+        let track_ids: Vec<&str> = detail
+            .tracks
+            .iter()
+            .map(|track| track.track.id.as_str())
+            .collect();
+        assert_eq!(track_ids, vec!["track-a", "track-b"]);
+
+        let artist_names: Vec<&str> = detail.tracks[0]
+            .artists
+            .iter()
+            .map(|artist| artist.name.as_str())
+            .collect();
+        assert_eq!(
+            artist_names,
+            vec!["Track Artist Name First", "Track Artist Name Second"]
+        );
+        assert!(detail.tracks[1].artists.is_empty());
+    }
 }
 
 #[cfg(test)]

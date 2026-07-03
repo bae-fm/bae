@@ -713,13 +713,9 @@ impl Database {
     /// Shared SQL assembly for `find_album_detail` / `find_release_detail`.
     /// Returns the raw per-release aggregate.
     async fn build_release_detail(&self, release: DbRelease) -> Result<DbReleaseDetail, DbError> {
-        let db_tracks = self.get_tracks_for_release(&release.id).await?;
-        let mut tracks = Vec::with_capacity(db_tracks.len());
-        for track in db_tracks {
-            let artists = self.get_artists_for_track(&track.id).await?;
-            tracks.push(DbTrackWithArtists { track, artists });
-        }
-
+        let tracks = self
+            .get_tracks_with_artists_for_release(&release.id)
+            .await?;
         let files = self.get_files_for_release(&release.id).await?;
         let audio_formats = self.get_audio_formats_for_release(&release.id).await?;
         let identities = self.get_release_identities(&release.id).await?;
@@ -731,6 +727,71 @@ impl Database {
             audio_formats,
             identities,
         })
+    }
+
+    async fn get_tracks_with_artists_for_release(
+        &self,
+        release_id: &str,
+    ) -> Result<Vec<DbTrackWithArtists>, DbError> {
+        let release_id = release_id.to_string();
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT
+                    track.id AS track_id,
+                    track.release_id AS track_release_id,
+                    track.title AS track_title,
+                    track.side AS track_side,
+                    track.track_number AS track_track_number,
+                    track.duration_ms AS track_duration_ms,
+                    track.discogs_position AS track_discogs_position,
+                    track.created_at AS track_created_at,
+                    artist.id AS artist_id,
+                    artist.name AS artist_name,
+                    artist.sort_name AS artist_sort_name,
+                    artist.discogs_artist_id AS artist_discogs_artist_id,
+                    artist.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
+                    artist.created_at AS artist_created_at
+                 FROM tracks track
+                 LEFT JOIN track_artists ta ON ta.track_id = track.id
+                 LEFT JOIN artists artist ON artist.id = ta.artist_id
+                 WHERE track.release_id = ?
+                 ORDER BY track.side, track.track_number, track.id, ta.position",
+            )?;
+            let mut rows = stmt.query(params![release_id])?;
+            let mut tracks = Vec::new();
+            let mut current_track: Option<DbTrackWithArtists> = None;
+            let mut current_track_id: Option<String> = None;
+
+            while let Some(row) = rows.next()? {
+                let track = row_to_aliased_track(row, "track")?;
+                if current_track_id.as_deref() != Some(track.id.as_str()) {
+                    if let Some(track) = current_track.take() {
+                        tracks.push(track);
+                    }
+                    current_track_id = Some(track.id.clone());
+                    current_track = Some(DbTrackWithArtists {
+                        track,
+                        artists: Vec::new(),
+                    });
+                }
+
+                let artist_id: Option<String> = row.get("artist_id")?;
+                if artist_id.is_some() {
+                    current_track
+                        .as_mut()
+                        .expect("joined release row has a current track")
+                        .artists
+                        .push(row_to_aliased_artist(row, "artist")?);
+                }
+            }
+
+            if let Some(track) = current_track {
+                tracks.push(track);
+            }
+
+            Ok(tracks)
+        })
+        .await
     }
 }
 
