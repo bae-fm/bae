@@ -8,8 +8,7 @@
 //!
 //! Uses `rtrb` for lock-free SPSC communication, safe for real-time audio.
 
-use rtrb::chunks::ChunkError;
-use rtrb::{Consumer, CopyToUninit, Producer, RingBuffer};
+use rtrb::{Consumer, Producer, RingBuffer};
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
 use tokio::sync::oneshot;
@@ -148,35 +147,15 @@ impl TrackSink {
             }
 
             let remaining = &samples[offset..];
-            let n = match self.producer.write_chunk_uninit(remaining.len()) {
-                Ok(mut chunk) => {
-                    let n = chunk.len();
-                    let (first, second) = chunk.as_mut_slices();
-                    let mid = first.len();
-                    remaining[..mid].copy_to_uninit(first);
-                    remaining[mid..n].copy_to_uninit(second);
-                    unsafe { chunk.commit_all() };
-                    n
-                }
-                Err(ChunkError::TooFewSlots(0)) => {
-                    // Buffer completely full — park until audio callback drains.
-                    // Timeout as safety net for null audio devices (CI) where
-                    // the callback may not fire reliably.
-                    std::thread::park_timeout(std::time::Duration::from_millis(100));
-                    continue;
-                }
-                Err(ChunkError::TooFewSlots(available)) => {
-                    // Partial write: push what fits
-                    let mut chunk = self.producer.write_chunk_uninit(available).unwrap();
-                    let n = chunk.len();
-                    let (first, second) = chunk.as_mut_slices();
-                    let mid = first.len();
-                    remaining[..mid].copy_to_uninit(first);
-                    remaining[mid..n].copy_to_uninit(second);
-                    unsafe { chunk.commit_all() };
-                    n
-                }
-            };
+            let (pushed, _) = self.producer.push_partial_slice(remaining);
+            let n = pushed.len();
+            if n == 0 {
+                // Buffer completely full — park until audio callback drains.
+                // Timeout as safety net for null audio devices (CI) where
+                // the callback may not fire reliably.
+                std::thread::park_timeout(std::time::Duration::from_millis(100));
+                continue;
+            }
 
             offset += n;
             self.samples_pushed += n;
@@ -232,28 +211,21 @@ impl TrackStream {
     /// Returns the number of samples actually pulled. If the buffer is empty,
     /// returns 0 immediately (non-blocking).
     pub fn pull_samples(&mut self, output: &mut [f32]) -> usize {
-        let available = match self.consumer.read_chunk(output.len()) {
-            Ok(chunk) => chunk,
-            Err(ChunkError::TooFewSlots(0)) => return 0,
-            Err(ChunkError::TooFewSlots(n)) => self.consumer.read_chunk(n).unwrap(),
-        };
-        let pulled = available.len();
-        let (first, second) = available.as_slices();
-        output[..first.len()].copy_from_slice(first);
-        output[first.len()..pulled].copy_from_slice(second);
-        available.commit_all();
-
-        if pulled > 0 {
-            let channels = self.state.channels() as u64;
-            if let Some(frames) = (pulled as u64).checked_div(channels) {
-                self.state
-                    .position_samples
-                    .fetch_add(frames, Ordering::Relaxed);
-            }
-
-            // Wake decoder thread so it can refill
-            self.state.unpark_decoder();
+        let (popped, _) = self.consumer.pop_partial_slice(output);
+        let pulled = popped.len();
+        if pulled == 0 {
+            return 0;
         }
+
+        let channels = self.state.channels() as u64;
+        if let Some(frames) = (pulled as u64).checked_div(channels) {
+            self.state
+                .position_samples
+                .fetch_add(frames, Ordering::Relaxed);
+        }
+
+        // Wake decoder thread so it can refill
+        self.state.unpark_decoder();
 
         pulled
     }
