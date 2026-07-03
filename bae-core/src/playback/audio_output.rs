@@ -111,6 +111,7 @@ pub(crate) struct AudioLockMissLog {
 }
 
 impl AudioLockMissLog {
+    #[cfg(not(target_os = "android"))]
     pub(crate) fn new() -> Self {
         Self {
             started: None,
