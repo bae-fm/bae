@@ -710,77 +710,57 @@ impl Database {
         let reg = self.register_stamp().await?;
         let now = self.inner.clock.now().timestamp();
         self.call(move |conn| {
-            conn.execute_batch("SAVEPOINT fail_import_and_delete_release")
-                .map_err(DbError::from)?;
-
-            let result = (|| {
-                let album_id = conn
-                    .query_row(
-                        "SELECT album_id FROM releases WHERE id = ?",
-                        params![release_id],
-                        |row| row.get::<_, String>(0),
-                    )
-                    .optional()?
-                    .ok_or_else(|| DbError(format!("release not found: {release_id}")))?;
-
-                let remaining_release_count: i64 = conn.query_row(
-                    "SELECT COUNT(*) FROM releases WHERE album_id = ? AND id != ?",
-                    params![album_id, release_id],
-                    |row| row.get(0),
-                )?;
-                let primary_release_id: Option<String> = conn.query_row(
-                    "SELECT primary_release_id FROM albums WHERE id = ?",
-                    params![album_id],
-                    |row| row.get(0),
-                )?;
-
-                conn.execute(
-                    "DELETE FROM local_blob_refs
-                     WHERE namespace = ?
-                       AND blob_id IN (SELECT id FROM release_files WHERE release_id = ?)",
-                    params![crate::sync::RELEASE_FILES_NAMESPACE, release_id],
-                )?;
-                conn.execute(
-                    "UPDATE imports SET release_id = NULL WHERE release_id = ?",
+            let album_id = conn
+                .query_row(
+                    "SELECT album_id FROM releases WHERE id = ?",
                     params![release_id],
-                )?;
+                    |row| row.get::<_, String>(0),
+                )
+                .optional()?
+                .ok_or_else(|| DbError(format!("release not found: {release_id}")))?;
+
+            let remaining_release_count: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM releases WHERE album_id = ? AND id != ?",
+                params![album_id, release_id],
+                |row| row.get(0),
+            )?;
+            let primary_release_id: Option<String> = conn.query_row(
+                "SELECT primary_release_id FROM albums WHERE id = ?",
+                params![album_id],
+                |row| row.get(0),
+            )?;
+
+            conn.execute(
+                "DELETE FROM local_blob_refs
+                 WHERE namespace = ?
+                   AND blob_id IN (SELECT id FROM release_files WHERE release_id = ?)",
+                params![crate::sync::RELEASE_FILES_NAMESPACE, release_id],
+            )?;
+            conn.execute(
+                "UPDATE imports SET release_id = NULL WHERE release_id = ?",
+                params![release_id],
+            )?;
+            conn.execute(
+                "UPDATE imports SET status = ?, error_message = ?, updated_at = ?, release_id = NULL WHERE id = ?",
+                params![
+                    ImportOperationStatus::Failed.as_str(),
+                    error,
+                    now,
+                    import_id,
+                ],
+            )?;
+            conn.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
+
+            if remaining_release_count == 0 {
+                conn.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
+            } else if primary_release_id.as_deref() == Some(&release_id) {
                 conn.execute(
-                    "UPDATE imports SET status = ?, error_message = ?, updated_at = ?, release_id = NULL WHERE id = ?",
-                    params![
-                        ImportOperationStatus::Failed.as_str(),
-                        error,
-                        now,
-                        import_id,
-                    ],
+                    "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
+                    params![reg, album_id],
                 )?;
-                conn.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
-
-                if remaining_release_count == 0 {
-                    conn.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
-                } else if primary_release_id.as_deref() == Some(&release_id) {
-                    conn.execute(
-                        "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
-                        params![reg, album_id],
-                    )?;
-                }
-
-                Ok(())
-            })();
-
-            if let Err(error) = result {
-                if let Err(rollback_error) = conn.execute_batch(
-                    "ROLLBACK TO SAVEPOINT fail_import_and_delete_release;
-                     RELEASE SAVEPOINT fail_import_and_delete_release",
-                ) {
-                    return Err(DbError(format!(
-                        "{error}; rollback of fail_import_and_delete_release failed: {rollback_error}"
-                    )));
-                }
-                return Err(error);
             }
 
-            conn.execute_batch("RELEASE SAVEPOINT fail_import_and_delete_release")
-                .map_err(DbError::from)
+            Ok(())
         })
         .await
     }
