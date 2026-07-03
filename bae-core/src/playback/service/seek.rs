@@ -64,16 +64,11 @@ impl PlaybackService {
             .as_ref()
             .map(|p| p.cancel_token.clone())
             .unwrap_or_else(|| Arc::new(std::sync::atomic::AtomicBool::new(true)));
-        let is_shared = self
-            .current_prepared
-            .as_ref()
-            .is_some_and(|p| p.buffer_shared);
         teardown_decoder_for_seek(
             &mut self.current_playback_source,
             &buffer,
             &cancel_token,
             &mut self.current_decoder_handle,
-            is_shared,
         )
         .await;
 

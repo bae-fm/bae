@@ -498,8 +498,8 @@ impl PlaybackPreparedTrack {
 struct PlaybackPreparedTrack {
     track_info: PlaybackTrackInfo,
     /// Raw audio buffer (may have headers prepended for CUE/FLAC).
-    /// Reused across seeks -- cancel_reads, join decoder, uncancel, new decoder.
-    /// The data reader stays alive across seeks (only reads are cancelled, not the reader).
+    /// Reused across seeks: cancel this decoder's token, join it, then create
+    /// a new decoder with a new token. The data reader stays alive across seeks.
     buffer: SharedSparseBuffer,
     /// If true, the buffer is shared with other tracks (from the cache).
     /// Don't cancel() it during teardown — other decoders may be using it.
@@ -863,16 +863,15 @@ pub(crate) async fn setup_audio_stream(
 
 /// Tear down the decoded-audio pipeline for a seek.
 ///
-/// Cancels reads to unblock the old decoder, but the data reader keeps
-/// filling the buffer. After this, the buffer is ready for a new decoder
-/// to read from position 0. Shared by the main player's seek and the
+/// Cancels this decoder's token to unblock the old decoder while the data
+/// reader keeps filling the buffer. After this, the buffer is ready for a new
+/// decoder to read from position 0. Shared by the main player's seek and the
 /// preview player's seek.
 pub(crate) async fn teardown_decoder_for_seek(
     source: &mut Option<Arc<Mutex<source::PlaybackSource>>>,
     buffer: &SharedSparseBuffer,
     cancel_token: &Arc<std::sync::atomic::AtomicBool>,
     decoder_handle: &mut Option<std::thread::JoinHandle<()>>,
-    buffer_shared: bool,
 ) {
     // Cancel streaming source (cpal callback outputs silence)
     if let Some(src) = source.take() {
@@ -884,13 +883,7 @@ pub(crate) async fn teardown_decoder_for_seek(
     // Cancel this decoder's AVIO reads via its token.
     cancel_token.store(true, std::sync::atomic::Ordering::Release);
 
-    // For non-shared buffers, also cancel buffer reads to unblock the reader.
-    // For shared buffers, only the cancel_token is used — other decoders
-    // (e.g. preloaded next track) must not be disturbed.
-    if !buffer_shared {
-        buffer.cancel_reads();
-    }
-    // Wake up any readers blocked on the condvar so they can check the cancel token
+    // Wake any readers blocked on the condvar so they can check the token.
     buffer.wake_readers();
 
     // Wait for decoder thread to exit. Surface a thread panic as an error
@@ -906,11 +899,6 @@ pub(crate) async fn teardown_decoder_for_seek(
                 warn!("spawn_blocking failed while joining decoder thread: {e}");
             }
         }
-    }
-
-    // Uncancel buffer reads for new decoders (only needed for non-shared)
-    if !buffer_shared {
-        buffer.uncancel();
     }
 }
 

@@ -60,6 +60,8 @@ pub(crate) struct PreviewPlayer {
     buffer: Option<SharedSparseBuffer>,
     /// JoinHandle for the preview decoder thread (needed for seek cancellation).
     decoder_handle: Option<std::thread::JoinHandle<()>>,
+    /// Token for the active preview decoder's AVIO reader.
+    decoder_cancel_token: Option<Arc<std::sync::atomic::AtomicBool>>,
     /// Seek offset for the current preview (added to decoder-relative position).
     seek_offset: Duration,
     sample_rate: u32,
@@ -85,6 +87,7 @@ impl PreviewPlayer {
             listener_handle: None,
             buffer: None,
             decoder_handle: None,
+            decoder_cancel_token: None,
             seek_offset: Duration::ZERO,
             sample_rate: 44100,
             channels: 2,
@@ -208,13 +211,15 @@ impl PreviewPlayer {
         }
 
         // Tear down old decoder, preserve buffer
-        let preview_cancel = Arc::new(std::sync::atomic::AtomicBool::new(true));
+        let preview_cancel = self
+            .decoder_cancel_token
+            .take()
+            .expect("active preview decoder has a cancel token");
         teardown_decoder_for_seek(
             &mut self.playback_source,
             &buffer,
             &preview_cancel,
             &mut self.decoder_handle,
-            false,
         )
         .await;
 
@@ -305,7 +310,10 @@ impl PreviewPlayer {
             }
         }
 
-        // Cancel buffer to unblock decoder, then drop its handle
+        // Cancel the token and buffer so any blocked decoder read exits.
+        if let Some(cancel_token) = self.decoder_cancel_token.take() {
+            cancel_token.store(true, std::sync::atomic::Ordering::Release);
+        }
         if let Some(buf) = &self.buffer {
             buf.cancel();
         }
@@ -359,6 +367,7 @@ impl PreviewPlayer {
 
         let decoder_buffer = buffer.clone();
         let preview_cancel = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let decoder_cancel_token = preview_cancel.clone();
         let seek_to_sample = seek_to.map(|d| (d.as_secs_f64() * sample_rate as f64) as u64);
         let decoder_handle = std::thread::spawn(move || {
             if let Err(e) = crate::audio_codec::decode_audio_streaming(
@@ -376,6 +385,7 @@ impl PreviewPlayer {
         });
 
         self.decoder_handle = Some(decoder_handle);
+        self.decoder_cancel_token = Some(decoder_cancel_token);
 
         // Preview never chains; wrap in a PlaybackSource and drop the boundary
         // receiver so the sender's sends are no-ops. The fmt's values aren't

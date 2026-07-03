@@ -75,10 +75,6 @@ struct SparseInner {
     /// Full cancel: stops both readers (data producers) and decoders (data consumers).
     /// Checked by readers via `is_cancelled()` to know when to stop writing.
     cancelled: bool,
-    /// Read-only cancel: unblocks all readers blocked in `read()` without stopping
-    /// the data writer. Used during seek so the writer keeps filling the buffer while
-    /// old decoders exit.
-    reads_cancelled: bool,
     /// Each live reader's current read position, keyed by reader id. The fill
     /// loop reads this to fetch the window each reader needs next (read-ahead)
     /// and to evict bytes every reader has passed. Per-reader, not a single
@@ -140,7 +136,6 @@ impl SparseStreamingBuffer {
             inner: Mutex::new(SparseInner {
                 ranges: Vec::new(),
                 cancelled: false,
-                reads_cancelled: false,
                 demands: HashMap::new(),
             }),
             total_size,
@@ -199,7 +194,6 @@ impl SparseStreamingBuffer {
             buffer: self.clone(),
             id,
             read_pos: 0,
-            reads_cancelled: false,
             cancel_token,
             wait_started: None,
             last_wait_log: None,
@@ -417,22 +411,10 @@ impl SparseStreamingBuffer {
         self.data_available.notify_all();
     }
 
-    /// Cancel reads only: unblocks all readers blocked in `read()` without
-    /// stopping the data writer.
-    ///
-    /// Used during seek: old decoders need to exit (read returns None),
-    /// but the data writer should keep filling the buffer.
-    pub fn cancel_reads(&self) {
-        let mut inner = self.inner.lock().unwrap();
-        inner.reads_cancelled = true;
-        self.data_available.notify_all();
-    }
-
-    /// Clear both cancelled and reads-cancelled states so the buffer can be reused.
+    /// Clear the full-cancel state so the buffer can be reused.
     pub fn uncancel(&self) {
         let mut inner = self.inner.lock().unwrap();
         inner.cancelled = false;
-        inner.reads_cancelled = false;
     }
 
     /// Wake up all readers blocked in `read()`.
@@ -443,9 +425,6 @@ impl SparseStreamingBuffer {
     }
 
     /// Check if fully cancelled (used by data writers to know when to stop).
-    ///
-    /// Returns `true` only for full cancel, NOT for reads-only cancel.
-    /// This way, writers keep filling the buffer during seeks.
     pub fn is_cancelled(&self) -> bool {
         let inner = self.inner.lock().unwrap();
         inner.cancelled
@@ -502,16 +481,12 @@ pub fn create_sparse_buffer(total_size: u64) -> SharedSparseBuffer {
 ///
 /// Each decoder gets its own reader. Multiple readers can read from the same
 /// buffer concurrently — they share the data but have independent positions
-/// and cancellation state.
+/// and optional decoder cancel tokens.
 pub struct BufferReader {
     buffer: SharedSparseBuffer,
     /// This reader's slot in `SparseInner::demands`. Removed on drop.
     id: u64,
     read_pos: u64,
-    /// Read-only cancel: unblocks this reader's `read()` without stopping
-    /// the data writer. Used during seek so the reader keeps filling the
-    /// buffer while the old decoder exits.
-    reads_cancelled: bool,
     /// Optional external cancel token checked during read().
     /// Allows the playback service to cancel a specific reader without
     /// affecting other readers on the same buffer.
@@ -547,7 +522,7 @@ impl BufferReader {
     /// Blocking read from current position.
     ///
     /// Waits until data is available at current position, then reads.
-    /// Returns `None` if cancelled (full or reads-only), `Some(0)` on EOF.
+    /// Returns `None` if cancelled, `Some(0)` on EOF.
     pub fn read(&mut self, buf: &mut [u8]) -> Option<usize> {
         let mut inner = self.buffer.inner.lock().unwrap();
 
@@ -556,7 +531,7 @@ impl BufferReader {
                 .cancel_token
                 .as_ref()
                 .is_some_and(|t| t.load(std::sync::atomic::Ordering::Relaxed));
-            if inner.cancelled || inner.reads_cancelled || self.reads_cancelled || token_cancelled {
+            if inner.cancelled || token_cancelled {
                 if let Some(started) = self.wait_started.take() {
                     let waited = started.elapsed();
                     if waited >= READ_WAIT_LOG_AFTER {
@@ -566,8 +541,6 @@ impl BufferReader {
                             pos = self.read_pos,
                             waited_ms = waited.as_millis(),
                             buffer_cancelled = inner.cancelled,
-                            buffer_reads_cancelled = inner.reads_cancelled,
-                            reader_cancelled = self.reads_cancelled,
                             token_cancelled,
                             "sparse buffer reader cancelled while waiting for bytes"
                         );
@@ -685,25 +658,6 @@ impl BufferReader {
                 ceiling: Some(ceiling),
             });
         self.buffer.wake_fill();
-    }
-
-    /// Cancel reads only: unblocks this reader's `read()` without
-    /// stopping the data writer.
-    ///
-    /// Used during seek: the old decoder needs to exit (read returns None),
-    /// but the reader should keep filling the buffer so the new decoder
-    /// has data available.
-    pub fn cancel_reads(&mut self) {
-        self.reads_cancelled = true;
-        // Wake up in case we're blocked in read()
-        self.buffer.data_available.notify_all();
-    }
-
-    /// Reset cancelled state so the reader can be reused after a seek.
-    ///
-    /// Clears `reads_cancelled`. Does not affect the buffer's eof or cancel state.
-    pub fn uncancel(&mut self) {
-        self.reads_cancelled = false;
     }
 }
 
@@ -941,23 +895,30 @@ mod tests {
     }
 
     #[test]
-    fn test_cancel_reads_only_affects_one_reader() {
+    fn token_cancel_only_affects_one_reader() {
         let buffer = create_sparse_buffer(100);
-        // Don't add data — readers will block
+        let cancel1 = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let cancel2 = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let mut reader2 = buffer.new_reader_with_cancel(cancel2);
 
-        let buf_clone = buffer.clone();
-        let mut reader1 = buffer.new_reader();
-        let mut reader2 = buf_clone.new_reader();
+        let reader_buffer = buffer.clone();
+        let reader_cancel = cancel1.clone();
+        let handle = thread::spawn(move || {
+            let mut reader1 = reader_buffer.new_reader_with_cancel(reader_cancel);
+            let mut buf = [0u8; 5];
+            reader1.read(&mut buf)
+        });
 
-        // Cancel reader1 only
-        reader1.cancel_reads();
+        thread::sleep(Duration::from_millis(10));
+        cancel1.store(true, std::sync::atomic::Ordering::Release);
+        buffer.wake_readers();
 
+        assert_eq!(join_within(handle, Duration::from_millis(500)), Some(None));
+
+        buffer.append_at(0, b"hello");
         let mut buf = [0u8; 5];
-        assert_eq!(reader1.read(&mut buf), None);
-
-        // reader2 is unaffected (would block if we called read, but cancel_reads didn't touch it)
-        // Just verify it's not cancelled
-        reader2.uncancel(); // no-op, but proves it's independent
+        assert_eq!(reader2.read(&mut buf), Some(5));
+        assert_eq!(&buf, b"hello");
     }
 
     #[test]
