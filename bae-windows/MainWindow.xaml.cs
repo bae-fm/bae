@@ -31,6 +31,7 @@ public sealed partial class MainWindow : Window
 {
     private const uint PositionUpdateIntervalMs = 250;
     private const ulong FirstPageSize = 500;
+    private const ulong BackwardSeekTargetWindowMs = 1000;
 
     // LabelKey is a chrome key resolved to the localized menu label at display
     // time; Field is the locale-free sort identifier the FFI expects (never
@@ -60,6 +61,24 @@ public sealed partial class MainWindow : Window
     private SortOption _composerSort = ComposerSortOptions[0];
     private BrowserMode _browserMode = BrowserMode.Albums;
     private bool _populatingSortBox;
+
+    private sealed record SeekProjection(
+        string? TrackId,
+        ulong OriginPositionMs,
+        ulong TargetPositionMs,
+        ulong DurationMs,
+        double Progress);
+    private sealed record PlaybackPositionSnapshot(
+        ulong DurationMs,
+        ulong PositionMs,
+        double Progress);
+    private sealed record PlaybackPositionState(
+        PlaybackPositionSnapshot Snapshot,
+        SeekProjection? Projection);
+    private sealed record NowPlayingState(
+        string? AlbumId,
+        string? TrackId,
+        PlaybackPositionState? Position);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -138,15 +157,14 @@ public sealed partial class MainWindow : Window
     // fight the drag; set the seek on release.
     private bool _userSeeking;
 
+    // Whatever is currently playing, tracked from playback events so "go to now
+    // playing" (Ctrl+L) can open that album and reveal the track. Null when
+    // nothing is playing.
+    private NowPlayingState? _nowPlaying;
+
     // Suppresses the volume slider's ValueChanged while we set it programmatically
     // (seeding + VolumeChanged events), so it doesn't echo back as a SetVolume.
     private bool _suppressVolume;
-
-    // The album and track of whatever is currently playing, tracked from the
-    // playback events so "go to now playing" (Ctrl+L) can open that album and
-    // reveal the track. Null when nothing is playing.
-    private string? _nowPlayingAlbumId;
-    private string? _nowPlayingTrackId;
 
     public ObservableCollection<Album> Albums { get; } = new();
     public ObservableCollection<ComposerSummary> Composers { get; } = new();
@@ -172,13 +190,18 @@ public sealed partial class MainWindow : Window
         // Seek on release, not on every drag tick. The Slider handles pointer
         // events internally, so register with handledEventsToo.
         NpProgress.AddHandler(UIElement.PointerPressedEvent,
-            new PointerEventHandler((_, _) => _userSeeking = true), true);
+            new PointerEventHandler((_, _) =>
+            {
+                _userSeeking = true;
+                ClearSeekProjection();
+            }), true);
         NpProgress.AddHandler(UIElement.PointerReleasedEvent,
             new PointerEventHandler((_, _) =>
             {
                 _userSeeking = false;
                 if (_handle != IntPtr.Zero)
                 {
+                    ProjectSeekDrop(NpProgress.Value);
                     NativeBae.SeekByRatio(_handle, NpProgress.Value);
                 }
             }), true);
@@ -458,6 +481,8 @@ public sealed partial class MainWindow : Window
         _eventCallback = null;
         _queueManual = new List<QueueItem>();
         _queueContext = null;
+        _userSeeking = false;
+        _nowPlaying = null;
         // Scan candidates are per-library in-memory state; clear them on teardown
         // so the next library doesn't inherit the previous one's candidate list.
         _candidates.Clear();
@@ -1461,6 +1486,133 @@ public sealed partial class MainWindow : Window
         return DateTimeOffset.FromUnixTimeMilliseconds(ms).ToLocalTime().ToString("t");
     }
 
+    private void ProjectSeekDrop(double requestedProgress)
+    {
+        var nowPlaying = _nowPlaying;
+        var state = nowPlaying?.Position;
+        if (nowPlaying is null || state is null || state.Snapshot.DurationMs == 0)
+        {
+            BaeDiagnostics.Logger.Warning(
+                $"Skipping seek projection for progress {requestedProgress} because playback position is unavailable for track {_nowPlaying?.TrackId ?? "<none>"}.");
+            return;
+        }
+
+        var position = state.Snapshot;
+        var progress = Math.Clamp(requestedProgress, NpProgress.Minimum, NpProgress.Maximum);
+        var progressRange = NpProgress.Maximum - NpProgress.Minimum;
+        if (progressRange <= 0)
+        {
+            throw new InvalidOperationException("Seek slider range must be positive.");
+        }
+
+        var ratio = (progress - NpProgress.Minimum) / progressRange;
+        ratio = Math.Clamp(ratio, 0, 1);
+        var targetPositionMs = (ulong)Math.Round(position.DurationMs * ratio);
+        if (targetPositionMs > position.DurationMs)
+        {
+            targetPositionMs = position.DurationMs;
+        }
+
+        var projection = new SeekProjection(
+            nowPlaying.TrackId,
+            position.PositionMs,
+            targetPositionMs,
+            position.DurationMs,
+            progress);
+        _nowPlaying = nowPlaying with { Position = state with { Projection = projection } };
+        RenderSeekPosition(progress, targetPositionMs, position.DurationMs);
+    }
+
+    private void RenderSeekPosition(double progress, ulong positionMs, ulong durationMs)
+    {
+        NpProgress.Value = progress;
+        NpElapsed.Text = DurationLabel(positionMs);
+        NpRemaining.Text = DurationLabel(RemainingDurationMs(positionMs, durationMs));
+    }
+
+    private static ulong RemainingDurationMs(ulong positionMs, ulong durationMs)
+    {
+        if (positionMs > durationMs)
+        {
+            throw new InvalidOperationException(
+                $"Playback position {positionMs} exceeds duration {durationMs}.");
+        }
+
+        return durationMs - positionMs;
+    }
+
+    private static string DurationLabel(ulong milliseconds)
+    {
+        if (milliseconds > long.MaxValue)
+        {
+            throw new InvalidOperationException($"Duration {milliseconds}ms exceeds supported label range.");
+        }
+
+        return Loc.Duration((long)milliseconds);
+    }
+
+    private void ClearSeekProjection()
+    {
+        if (_nowPlaying is { Position: { } state } nowPlaying)
+        {
+            _nowPlaying = nowPlaying with { Position = state with { Projection = null } };
+        }
+    }
+
+    private bool SeekProjectionCaughtUp(BaeEvent evt, SeekProjection projection)
+    {
+        if (projection.TargetPositionMs >= projection.OriginPositionMs)
+        {
+            return evt.PositionMs >= projection.TargetPositionMs;
+        }
+
+        var seekDistanceMs = projection.OriginPositionMs - projection.TargetPositionMs;
+        return evt.PositionMs <= projection.TargetPositionMs
+            || (seekDistanceMs > BackwardSeekTargetWindowMs
+                && evt.PositionMs <= projection.OriginPositionMs
+                && evt.PositionMs - projection.TargetPositionMs <= BackwardSeekTargetWindowMs);
+    }
+
+    private void RenderPlaybackProgress(BaeEvent evt)
+    {
+        var snapshot = new PlaybackPositionSnapshot(
+            evt.DurationMs,
+            evt.PositionMs,
+            evt.Progress);
+        var projection = _nowPlaying?.Position?.Projection;
+        _nowPlaying = _nowPlaying is { } nowPlaying
+            ? nowPlaying with { Position = new PlaybackPositionState(snapshot, projection) }
+            : new NowPlayingState(null, null, new PlaybackPositionState(snapshot, projection));
+
+        if (projection is not null)
+        {
+            if (projection.TrackId != _nowPlaying?.TrackId)
+            {
+                ClearSeekProjection();
+            }
+            else
+            {
+                if (!SeekProjectionCaughtUp(evt, projection))
+                {
+                    RenderSeekPosition(
+                        projection.Progress,
+                        projection.TargetPositionMs,
+                        projection.DurationMs);
+                    return;
+                }
+
+                ClearSeekProjection();
+            }
+        }
+
+        if (!_userSeeking)
+        {
+            NpProgress.Value = evt.Progress;
+        }
+        NpElapsed.Text = DurationLabel(evt.PositionMs);
+        NpRemaining.Text = DurationLabel(RemainingDurationMs(evt.PositionMs, evt.DurationMs));
+    }
+
     private void HandleEvent(string json)
     {
         var evt = JsonSerializer.Deserialize<BaeEvent>(json, JsonOptions);
@@ -1474,8 +1626,10 @@ public sealed partial class MainWindow : Window
             case "PlaybackPlaying":
             case "PlaybackPaused":
                 NowPlayingBar.Visibility = Visibility.Visible;
-                _nowPlayingAlbumId = evt.AlbumId;
-                _nowPlayingTrackId = evt.TrackId;
+                var positionState = _nowPlaying?.TrackId == evt.TrackId
+                    ? _nowPlaying.Position
+                    : null;
+                _nowPlaying = new NowPlayingState(evt.AlbumId, evt.TrackId, positionState);
                 NpTitle.Text = evt.TrackTitle ?? string.Empty;
                 NpArtist.Text = evt.Artist ?? string.Empty;
                 NpPlayPause.Content = evt.Type == "PlaybackPlaying" ? "⏸" : "▶";
@@ -1492,19 +1646,14 @@ public sealed partial class MainWindow : Window
                 break;
             case "PlaybackStopped":
                 NowPlayingBar.Visibility = Visibility.Collapsed;
-                _nowPlayingAlbumId = null;
-                _nowPlayingTrackId = null;
+                _userSeeking = false;
+                _nowPlaying = null;
                 NpLoading.IsActive = false;
                 NpLoading.Visibility = Visibility.Collapsed;
                 NpPlayPause.Visibility = Visibility.Visible;
                 break;
             case "PlaybackProgress":
-                if (!_userSeeking)
-                {
-                    NpProgress.Value = evt.Progress;
-                }
-                NpElapsed.Text = evt.ElapsedLabel;
-                NpRemaining.Text = evt.RemainingLabel;
+                RenderPlaybackProgress(evt);
                 break;
             case "VolumeChanged":
                 _suppressVolume = true;
@@ -1598,6 +1747,12 @@ public sealed partial class MainWindow : Window
                 // seek to a position not yet downloaded). Show the bar with a
                 // spinner over the transport; the prior track's title/cover stay
                 // until PlaybackPlaying lands (on a fresh play they fill then).
+                if (evt.TrackId is not null
+                    && _nowPlaying is { } loadingState
+                    && evt.TrackId != loadingState.TrackId)
+                {
+                    _nowPlaying = loadingState with { Position = null };
+                }
                 NowPlayingBar.Visibility = Visibility.Visible;
                 NpPlayPause.Visibility = Visibility.Collapsed;
                 NpLoading.IsActive = true;
@@ -2992,13 +3147,13 @@ public sealed partial class MainWindow : Window
     private async void OnGoToNowPlaying(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        var albumId = _nowPlayingAlbumId;
+        var albumId = _nowPlaying?.AlbumId;
         if (_handle == IntPtr.Zero || string.IsNullOrEmpty(albumId))
         {
             return;
         }
 
-        await ShowAlbumDetail(albumId, scrollToTrackId: _nowPlayingTrackId);
+        await ShowAlbumDetail(albumId, scrollToTrackId: _nowPlaying?.TrackId);
     }
 
     // Space toggles play/pause from anywhere — except while typing in a text
