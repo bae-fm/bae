@@ -267,9 +267,7 @@ impl LibraryManager {
         release_id: &str,
         target_dir: &Path,
     ) -> Result<(), LibraryError> {
-        ExportService::export_release(release_id, target_dir, self)
-            .await
-            .map_err(LibraryError::Import)
+        self.export_release_to_dir(release_id, target_dir).await
     }
 
     /// Resolve one track's tag data from the database alone — the tag fields, its

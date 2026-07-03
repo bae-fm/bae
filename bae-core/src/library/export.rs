@@ -1,8 +1,6 @@
-use crate::db::{DbAlbum, DbRelease};
 use crate::library::manager::ExportTrackPlan;
-use crate::library::LibraryManager;
 use crate::playback::{DecodedPcm, PlaybackError};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use tracing::{debug, info};
 
@@ -14,25 +12,6 @@ pub enum ExportFormat {
 
 /// Standard bitrate for MP3 track export, in bits per second (320 kbit/s).
 pub const MP3_EXPORT_BITRATE: u32 = 320_000;
-
-/// Build a folder name from release metadata.
-/// Format: "Artist - Title (Year) [Label CatNo]" with optional parts omitted when absent.
-fn synthesize_folder_name(album: &DbAlbum, release: &DbRelease, artist_name: &str) -> String {
-    let mut name = format!("{} - {}", artist_name, album.title);
-
-    if let Some(year) = release.pressing.year.or(album.year) {
-        name.push_str(&format!(" ({})", year));
-    }
-
-    match (&release.pressing.label, &release.pressing.catalog_number) {
-        (Some(label), Some(cat)) => name.push_str(&format!(" [{} {}]", label, cat)),
-        (Some(label), None) => name.push_str(&format!(" [{}]", label)),
-        (None, Some(cat)) => name.push_str(&format!(" [{}]", cat)),
-        (None, None) => {}
-    }
-
-    name
-}
 
 /// Render a single-track export's suggested filename stem (no extension) from a
 /// template and the track's tag data. Supported tokens:
@@ -148,106 +127,10 @@ fn sanitize_filename_stem(input: &str) -> String {
         .to_string()
 }
 
-/// Export service for exporting files and tracks
+/// Export service for exporting individual tracks.
 pub struct ExportService;
 
 impl ExportService {
-    /// Resolve the output directory for a release export.
-    /// Uses `source_folder_name` if stored, otherwise synthesizes from metadata.
-    async fn resolve_release_dir(
-        target_dir: &Path,
-        release: &DbRelease,
-        library_manager: &LibraryManager,
-    ) -> Result<PathBuf, String> {
-        let folder_name = if let Some(ref name) = release.source_folder_name {
-            name.clone()
-        } else {
-            let album = library_manager
-                .get_album_by_id(&release.album_id)
-                .await
-                .map_err(|e| format!("Failed to get album: {}", e))?
-                .ok_or_else(|| "Album not found".to_string())?;
-
-            let primary_artist = library_manager
-                .get_artist_by_id(&album.artist_id)
-                .await
-                .map_err(|e| format!("Failed to get artist: {}", e))?
-                .expect("album FK artist must exist");
-
-            synthesize_folder_name(&album, release, &primary_artist.name)
-        };
-
-        Ok(target_dir.join(folder_name))
-    }
-
-    /// Export all files for a release to a directory
-    ///
-    /// Files are written into a subfolder of target_dir named after the
-    /// source folder (or synthesized from metadata if not available).
-    /// Each file is read from this device's local copy when one exists,
-    /// otherwise downloaded from the cloud home and decrypted with the
-    /// release's item key — cloud-only releases export without pinning.
-    pub async fn export_release(
-        release_id: &str,
-        target_dir: &Path,
-        library_manager: &LibraryManager,
-    ) -> Result<(), String> {
-        info!(
-            "Exporting release {} to {}",
-            release_id,
-            target_dir.display()
-        );
-
-        let release = library_manager
-            .get_release_by_id(release_id)
-            .await
-            .map_err(|e| format!("Failed to get release: {}", e))?
-            .ok_or_else(|| "Release not found".to_string())?;
-
-        let files = library_manager
-            .get_files_for_release(release_id)
-            .await
-            .map_err(|e| format!("Failed to get files: {}", e))?;
-
-        if files.is_empty() {
-            return Err("No files found for release".to_string());
-        }
-
-        let output_dir = Self::resolve_release_dir(target_dir, &release, library_manager).await?;
-
-        for file in &files {
-            let file_data =
-                crate::storage::local::transfer::read_release_file_bytes(file, library_manager)
-                    .await
-                    .map_err(|e| {
-                        format!("Failed to read file {}: {}", file.original_filename, e)
-                    })?;
-
-            // Ensure subdirectories exist for nested filenames
-            let file_path = output_dir.join(&file.original_filename);
-            if let Some(parent) = file_path.parent() {
-                std::fs::create_dir_all(parent)
-                    .map_err(|e| format!("Failed to create directory: {}", e))?;
-            }
-
-            std::fs::write(&file_path, &file_data)
-                .map_err(|e| format!("Failed to write file {}: {}", file.original_filename, e))?;
-
-            debug!(
-                "Exported file {} ({} bytes)",
-                file.original_filename,
-                file_data.len()
-            );
-        }
-
-        info!(
-            "Successfully exported {} files to {}",
-            files.len(),
-            output_dir.display()
-        );
-        Ok(())
-    }
-
     /// Export a single track to the given format.
     ///
     /// For one-file-per-track: decodes and re-encodes to the target format.
