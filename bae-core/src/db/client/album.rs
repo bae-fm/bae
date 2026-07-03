@@ -178,6 +178,7 @@ impl Database {
     ) -> Result<Vec<DbAlbumSummary>, DbError> {
         let (order_by, needs_artist_sort_join) = build_order_by(sort, "a.created_at DESC");
         let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
+        let select = album_summary_select();
 
         let query = format!(
             "{select} \
@@ -185,7 +186,6 @@ impl Database {
             {artist_sort_join} \
             ORDER BY {order_by} \
             LIMIT ? OFFSET ?",
-            select = ALBUM_SUMMARY_SELECT,
         );
 
         self.call(move |conn| {
@@ -255,7 +255,7 @@ impl Database {
         album_id: &str,
     ) -> Result<Option<DbAlbumSummary>, DbError> {
         let album_id = album_id.to_string();
-        let query = format!("{ALBUM_SUMMARY_SELECT} FROM albums a WHERE a.id = ?");
+        let query = format!("{} FROM albums a WHERE a.id = ?", album_summary_select());
         self.call(move |conn| {
             conn.query_row(&query, params![album_id], |row| {
                 Ok(parse_album_summary_row(row))

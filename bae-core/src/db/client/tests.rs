@@ -52,6 +52,191 @@ mod queue_ordering_tests {
 }
 
 #[cfg(test)]
+mod aggregate_ordering_tests {
+    use super::super::*;
+    use crate::playback::QueueEntryId;
+    use coven::SystemClock;
+    use std::sync::Arc;
+
+    async fn aggregate_db() -> (Database, tempfile::TempDir) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        db.call(|conn| {
+            conn.execute_batch(
+                "
+                PRAGMA reverse_unordered_selects = ON;
+
+                INSERT INTO artists (id, name, _updated_at, created_at)
+                VALUES
+                    ('artist-primary', 'Artist Name Primary', 'stamp', '2026-01-01T00:00:00Z'),
+                    ('artist-first', 'Artist Name First', 'stamp', '2026-01-01T00:00:00Z'),
+                    ('artist-second', 'Artist Name Second', 'stamp', '2026-01-01T00:00:00Z'),
+                    ('artist-composer-first', 'Composer Name First', 'stamp', '2026-01-01T00:00:00Z'),
+                    ('artist-composer-second', 'Composer Name Second', 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
+                VALUES ('album-a', 'Album Title A', 'artist-primary', 2026, NULL, 0, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO album_artists (id, album_id, artist_id, position, _updated_at, created_at)
+                VALUES
+                    ('album-artist-second', 'album-a', 'artist-second', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('album-artist-first', 'album-a', 'artist-first', 0, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+                VALUES
+                    ('release-z', 'album-a', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('release-b', 'album-a', 'file_tags', 1, 'stamp', '2026-01-01T00:00:01Z'),
+                    ('release-a', 'album-a', 'file_tags', 1, 'stamp', '2026-01-01T00:00:01Z');
+
+                INSERT INTO works (id, title, work_type, _updated_at, created_at)
+                VALUES ('work-a', 'Work Title A', 'work', 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
+                VALUES
+                    ('work-artist-second', 'work-a', 'artist-composer-second', 1, 'file_tags', 'stamp', '2026-01-01T00:00:00Z'),
+                    ('work-artist-first', 'work-a', 'artist-composer-first', 0, 'file_tags', 'stamp', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+        (db, tmp)
+    }
+
+    #[tokio::test]
+    async fn album_summary_orders_artist_names_and_release_ids_inside_aggregates() {
+        let (db, _tmp) = aggregate_db().await;
+        let summary = db
+            .find_album_summary("album-a")
+            .await
+            .unwrap()
+            .expect("album summary row");
+
+        assert_eq!(
+            summary.artist_names,
+            "Artist Name Primary, Artist Name First, Artist Name Second"
+        );
+        assert_eq!(
+            summary.release_ids,
+            vec!["release-z", "release-a", "release-b"]
+        );
+    }
+
+    #[tokio::test]
+    async fn work_summary_orders_composer_names_inside_the_aggregate() {
+        let (db, _tmp) = aggregate_db().await;
+        let results = db.search_library("Work Title A", 10).await.unwrap();
+        let summary = results.works.first().expect("work summary row");
+
+        assert_eq!(
+            summary.composer_names.as_deref(),
+            Some("Composer Name First, Composer Name Second")
+        );
+    }
+
+    #[tokio::test]
+    async fn release_storage_summary_orders_artist_names_inside_the_aggregate() {
+        let (db, _tmp) = aggregate_db().await;
+        let summary = db
+            .find_release_storage_summary("release-z")
+            .await
+            .unwrap()
+            .expect("release storage summary row");
+
+        assert_eq!(
+            summary.artist_names,
+            "Artist Name Primary, Artist Name First, Artist Name Second"
+        );
+    }
+
+    #[tokio::test]
+    async fn storage_page_orders_album_aggregate_columns_inside_aggregates() {
+        let (db, _tmp) = aggregate_db().await;
+        let sort = StorageSortCriterion {
+            field: StorageSortField::AlbumTitle,
+            direction: SortDirection::Ascending,
+        };
+        let rows = db
+            .get_storage_page(&sort, StorageFilter::All, 0, 10)
+            .await
+            .unwrap();
+        let row = rows.first().expect("storage row");
+
+        assert_eq!(
+            row.album.artist_names,
+            "Artist Name Primary, Artist Name First, Artist Name Second"
+        );
+        assert_eq!(
+            row.album.release_ids,
+            vec!["release-z", "release-a", "release-b"]
+        );
+    }
+
+    async fn queue_db() -> (Database, tempfile::TempDir) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        db.call(|conn| {
+            conn.execute_batch(
+                "
+                PRAGMA reverse_unordered_selects = ON;
+
+                INSERT INTO artists (id, name, _updated_at, created_at)
+                VALUES
+                    ('artist-primary', 'Artist Name Primary', 'stamp', '2026-01-01T00:00:00Z'),
+                    ('artist-track-first', 'Track Artist Name First', 'stamp', '2026-01-01T00:00:00Z'),
+                    ('artist-track-second', 'Track Artist Name Second', 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
+                VALUES ('album-a', 'Album Title A', 'artist-primary', 2026, 'release-a', 0, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+                VALUES ('release-a', 'album-a', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
+                VALUES ('track-a', 'release-a', 'Track Title A', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO track_artists (id, track_id, artist_id, position, _updated_at, created_at)
+                VALUES
+                    ('track-artist-second', 'track-a', 'artist-track-second', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('track-artist-first', 'track-a', 'artist-track-first', 0, 'stamp', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+        (db, tmp)
+    }
+
+    #[tokio::test]
+    async fn queue_items_order_track_artist_names_inside_the_aggregate() {
+        let (db, _tmp) = queue_db().await;
+        let items = db
+            .get_queue_items(&[QueueEntry {
+                id: QueueEntryId("entry-a".to_string()),
+                track_id: "track-a".to_string(),
+            }])
+            .await
+            .unwrap();
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(
+            items[0].artist_names,
+            "Track Artist Name First, Track Artist Name Second"
+        );
+    }
+}
+
+#[cfg(test)]
 mod readable_cloud_path_tests {
     use super::super::*;
 

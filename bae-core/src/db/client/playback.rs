@@ -26,11 +26,10 @@ impl Database {
                         a.primary_release_id, \
                         COALESCE( \
                             NULLIF(( \
-                                SELECT GROUP_CONCAT(art.name, ', ') \
+                                SELECT GROUP_CONCAT(art.name, ', ' ORDER BY ta.position) \
                                 FROM track_artists ta \
                                 JOIN artists art ON art.id = ta.artist_id \
                                 WHERE ta.track_id = t.id \
-                                ORDER BY ta.position \
                             ), ''), \
                             (SELECT art_primary.name FROM artists art_primary WHERE art_primary.id = a.artist_id) \
                         ) AS artist_names \

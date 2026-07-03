@@ -168,11 +168,10 @@ fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
                     LIMIT 1
                 ) AS representative_release_id,
                 (
-                    SELECT GROUP_CONCAT(composer.name, ', ')
+                    SELECT GROUP_CONCAT(composer.name, ', ' ORDER BY wa.position)
                     FROM work_artists wa
                     JOIN artists composer ON composer.id = wa.artist_id
                     WHERE wa.work_id = w.id
-                    ORDER BY wa.position
                 ) AS composer_names,
                 COUNT(DISTINCT tr.release_id) AS linked_release_count
          FROM works w
@@ -482,27 +481,39 @@ fn storage_filter_where(filter: StorageFilter) -> &'static str {
     }
 }
 
+fn album_artist_names_sql() -> &'static str {
+    "(SELECT art_primary.name FROM artists art_primary WHERE art_primary.id = a.artist_id) \
+    || COALESCE(( \
+        SELECT ', ' || GROUP_CONCAT(ar.name, ', ' ORDER BY aa.position) \
+        FROM album_artists aa \
+        JOIN artists ar ON ar.id = aa.artist_id \
+        WHERE aa.album_id = a.id \
+    ), '')"
+}
+
+fn album_release_ids_json_sql() -> &'static str {
+    "COALESCE(( \
+        SELECT json_group_array(album_release.id ORDER BY album_release.created_at, album_release.id) \
+        FROM releases album_release \
+        WHERE album_release.album_id = a.id \
+    ), '[]')"
+}
+
 /// Shared SELECT list for album-summary queries. Emits `artist_names`
 /// (primary artist + album_artists, comma-joined) and `release_ids_json`
 /// (releases in created_at order). Callers append `FROM albums a`, any
 /// `art_sort` join (see `album_summary_artist_join`), and their own
 /// `ORDER BY` / `WHERE` / `LIMIT`.
-const ALBUM_SUMMARY_SELECT: &str = "SELECT \
-    a.id, a.title, a.year, a.is_compilation, a.primary_release_id, \
-    (SELECT art_primary.name FROM artists art_primary WHERE art_primary.id = a.artist_id) \
-    || COALESCE(( \
-        SELECT ', ' || GROUP_CONCAT(ar.name, ', ') \
-        FROM album_artists aa \
-        JOIN artists ar ON ar.id = aa.artist_id \
-        WHERE aa.album_id = a.id \
-        ORDER BY aa.position \
-    ), '') AS artist_names, \
-    COALESCE(( \
-        SELECT json_group_array(r.id) \
-        FROM releases r \
-        WHERE r.album_id = a.id \
-        ORDER BY r.created_at \
-    ), '[]') AS release_ids_json";
+fn album_summary_select() -> String {
+    format!(
+        "SELECT \
+            a.id, a.title, a.year, a.is_compilation, a.primary_release_id, \
+            {artist_names} AS artist_names, \
+            {release_ids} AS release_ids_json",
+        artist_names = album_artist_names_sql(),
+        release_ids = album_release_ids_json_sql()
+    )
+}
 
 /// The `art_sort` join clause for album-summary queries that sort by an
 /// artist-derived column; empty otherwise.

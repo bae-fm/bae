@@ -216,14 +216,7 @@ impl Database {
                 a.primary_release_id, \
                 (SELECT r2.id FROM releases r2 WHERE r2.album_id = a.id ORDER BY r2.created_at LIMIT 1) \
             ) AS primary_release_id, \
-            (SELECT art_primary.name FROM artists art_primary WHERE art_primary.id = a.artist_id) \
-            || COALESCE(( \
-                SELECT ', ' || GROUP_CONCAT(ar.name, ', ') \
-                FROM album_artists aa \
-                JOIN artists ar ON ar.id = aa.artist_id \
-                WHERE aa.album_id = a.id \
-                ORDER BY aa.position \
-            ), '') AS artist_names, \
+            {artist_names} AS artist_names, \
             COALESCE(( \
                 SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id \
             ), 0) AS file_count, \
@@ -232,7 +225,8 @@ impl Database {
             ), 0) AS total_size \
         FROM releases r \
         JOIN albums a ON a.id = r.album_id \
-        {tail}"
+        {tail}",
+            artist_names = album_artist_names_sql()
         )
     }
 
@@ -304,6 +298,35 @@ impl Database {
     /// Paginated storage-page query. Joins releases × albums × (optional)
     /// primary-artist sort table; both halves of the returned row are the
     /// raw aggregates the resolver maps to `ReleaseSummary` / `AlbumSummary`.
+    fn storage_page_query(order_by: &str, artist_sort_join: &str, where_clause: &str) -> String {
+        format!(
+            "SELECT \
+                r.id AS release_id, \
+                r.album_id, \
+                r.format AS release_format, \
+                r.remote, \
+                (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
+                COALESCE(( \
+                    SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id \
+                ), 0) AS file_count, \
+                COALESCE(( \
+                    SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = r.id \
+                ), 0) AS total_size, \
+                a.id AS album_id_out, a.title, a.year, a.is_compilation, \
+                a.primary_release_id, \
+                {artist_names} AS artist_names, \
+                {release_ids} AS release_ids_json \
+            FROM releases r \
+            JOIN albums a ON a.id = r.album_id \
+            {artist_sort_join} \
+            {where_clause} \
+            ORDER BY {order_by} \
+            LIMIT ? OFFSET ?",
+            artist_names = album_artist_names_sql(),
+            release_ids = album_release_ids_json_sql(),
+        )
+    }
+
     pub async fn get_storage_page(
         &self,
         sort: &StorageSortCriterion,
@@ -319,42 +342,7 @@ impl Database {
         };
         let where_clause = storage_filter_where(filter);
 
-        let query = format!(
-            "SELECT \
-                r.id AS release_id, \
-                r.album_id, \
-                r.format AS release_format, \
-                r.remote, \
-                (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
-                COALESCE(( \
-                    SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id \
-                ), 0) AS file_count, \
-                COALESCE(( \
-                    SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = r.id \
-                ), 0) AS total_size, \
-                a.id AS album_id_out, a.title, a.year, a.is_compilation, \
-                a.primary_release_id, \
-                (SELECT art_primary.name FROM artists art_primary WHERE art_primary.id = a.artist_id) \
-                || COALESCE(( \
-                    SELECT ', ' || GROUP_CONCAT(ar.name, ', ') \
-                    FROM album_artists aa \
-                    JOIN artists ar ON ar.id = aa.artist_id \
-                    WHERE aa.album_id = a.id \
-                    ORDER BY aa.position \
-                ), '') AS artist_names, \
-                COALESCE(( \
-                    SELECT json_group_array(r2.id) \
-                    FROM releases r2 \
-                    WHERE r2.album_id = a.id \
-                    ORDER BY r2.created_at \
-                ), '[]') AS release_ids_json \
-            FROM releases r \
-            JOIN albums a ON a.id = r.album_id \
-            {artist_sort_join} \
-            {where_clause} \
-            ORDER BY {order_by} \
-            LIMIT ? OFFSET ?",
-        );
+        let query = Self::storage_page_query(&order_by, artist_sort_join, where_clause);
 
         self.call(move |conn| {
             let mut stmt = conn.prepare(&query)?;
