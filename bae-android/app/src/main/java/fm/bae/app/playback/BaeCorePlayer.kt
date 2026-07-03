@@ -156,6 +156,7 @@ private fun playbackPositionTargetsCurrentTrack(
     return true
 }
 
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 private fun availableCommands(
     hasNext: Boolean,
     hasPrevious: Boolean,
