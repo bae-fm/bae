@@ -73,6 +73,24 @@ fn image_cover_priority_ranks_front_and_cover_first() {
     assert_eq!(ImportService::image_cover_priority("disc1.jpg"), 1);
 }
 
+#[test]
+fn import_trace_line_escapes_json_strings() {
+    let line = import_trace_line(
+        "2024-01-01T00:00:00+00:00".to_string(),
+        "import-1",
+        "Album \\ Title\nA",
+        "Artist \"Name\"",
+        Duration::from_millis(42),
+        &[("resolve_metadata", Duration::from_millis(7))],
+    );
+
+    let parsed: serde_json::Value =
+        serde_json::from_str(&line).expect("trace line must be valid JSON");
+    assert_eq!(parsed["album"], "Album \\ Title\nA");
+    assert_eq!(parsed["artist"], "Artist \"Name\"");
+    assert_eq!(parsed["steps"]["resolve_metadata"], 7);
+}
+
 /// Deterministic clock for the `apply_user_edit_to_seed` tests — the
 /// exact instant is immaterial to what they assert (artist-row
 /// preservation / rebuild), only that the same one feeds every row.

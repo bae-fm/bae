@@ -824,18 +824,13 @@ impl ImportService {
                     warn!("import trace dir {:?}: {}", trace_dir, e);
                 }
                 let trace_path = trace_dir.join("imports.jsonl");
-                let steps: Vec<String> = step_times
-                    .iter()
-                    .map(|(name, dur)| format!("\"{}\":{}", name, dur.as_millis()))
-                    .collect();
-                let line = format!(
-                    "{{\"ts\":\"{}\",\"import_id\":\"{}\",\"album\":\"{}\",\"artist\":\"{}\",\"total_ms\":{},\"steps\":{{{}}}}}\n",
+                let line = import_trace_line(
                     library_manager.clock().now().to_rfc3339(),
-                    import_id,
-                    album_title.replace('\"', "\\\""),
-                    artist_name.replace('\"', "\\\""),
-                    total_duration.as_millis(),
-                    steps.join(","),
+                    &import_id,
+                    &album_title,
+                    &artist_name,
+                    total_duration,
+                    &step_times,
                 );
                 match std::fs::OpenOptions::new()
                     .create(true)
@@ -1173,6 +1168,32 @@ impl ImportService {
         info!("Import complete for release {}", db_release.id);
         Ok(())
     }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn import_trace_line(
+    ts: String,
+    import_id: &str,
+    album_title: &str,
+    artist_name: &str,
+    total_duration: std::time::Duration,
+    step_times: &[(&str, std::time::Duration)],
+) -> String {
+    let steps: serde_json::Map<String, serde_json::Value> = step_times
+        .iter()
+        .map(|(name, dur)| ((*name).to_string(), serde_json::json!(dur.as_millis())))
+        .collect();
+    let mut line = serde_json::json!({
+        "ts": ts,
+        "import_id": import_id,
+        "album": album_title,
+        "artist": artist_name,
+        "total_ms": total_duration.as_millis(),
+        "steps": steps,
+    })
+    .to_string();
+    line.push('\n');
+    line
 }
 
 /// Project the user's identity choice onto the mapper's identity vec.
