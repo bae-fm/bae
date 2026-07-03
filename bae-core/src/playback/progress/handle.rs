@@ -1,20 +1,11 @@
 use super::PlaybackProgress;
-use std::collections::HashMap;
-use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    Arc, Mutex,
-};
+use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
 use tracing::info;
-type SubscriptionId = u64;
-struct Subscription {
-    tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-}
 /// Handle for subscribing to playback progress updates
 #[derive(Clone)]
 pub struct PlaybackProgressHandle {
-    subscriptions: Arc<Mutex<HashMap<SubscriptionId, Subscription>>>,
-    next_id: Arc<AtomicU64>,
+    subscriptions: Arc<Mutex<Vec<tokio_mpsc::UnboundedSender<PlaybackProgress>>>>,
 }
 impl PlaybackProgressHandle {
     /// Create a new progress handle and spawn background task to process progress updates
@@ -22,23 +13,15 @@ impl PlaybackProgressHandle {
         mut progress_rx: tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
         runtime_handle: tokio::runtime::Handle,
     ) -> Self {
-        let subscriptions: Arc<Mutex<HashMap<SubscriptionId, Subscription>>> =
-            Arc::new(Mutex::new(HashMap::new()));
+        let subscriptions: Arc<Mutex<Vec<tokio_mpsc::UnboundedSender<PlaybackProgress>>>> =
+            Arc::new(Mutex::new(Vec::new()));
         let subscriptions_clone = subscriptions.clone();
         runtime_handle.spawn(async move {
             loop {
                 match progress_rx.recv().await {
                     Some(progress) => {
                         let mut subs = subscriptions_clone.lock().unwrap();
-                        let mut to_remove = Vec::new();
-                        for (id, subscription) in subs.iter() {
-                            if subscription.tx.send(progress.clone()).is_err() {
-                                to_remove.push(*id);
-                            }
-                        }
-                        for id in to_remove {
-                            subs.remove(&id);
-                        }
+                        subs.retain(|tx| tx.send(progress.clone()).is_ok());
                     }
                     None => {
                         info!("Playback progress channel closed, exiting");
@@ -47,19 +30,53 @@ impl PlaybackProgressHandle {
                 }
             }
         });
-        Self {
-            subscriptions,
-            next_id: Arc::new(AtomicU64::new(1)),
-        }
+        Self { subscriptions }
     }
     /// Subscribe to all playback progress updates
     /// Returns a receiver that yields all progress updates
     /// Subscription is automatically removed when receiver is dropped
     pub fn subscribe_all(&self) -> tokio_mpsc::UnboundedReceiver<PlaybackProgress> {
         let (tx, rx) = tokio_mpsc::unbounded_channel();
-        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        let subscription = Subscription { tx };
-        self.subscriptions.lock().unwrap().insert(id, subscription);
+        self.subscriptions.lock().unwrap().push(tx);
         rx
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::time::{timeout, Duration};
+
+    #[tokio::test]
+    async fn forwards_to_live_subscribers_and_prunes_dropped_ones() {
+        let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
+        let handle = PlaybackProgressHandle::new(progress_rx, tokio::runtime::Handle::current());
+        let mut live = handle.subscribe_all();
+        let dropped = handle.subscribe_all();
+        drop(dropped);
+
+        progress_tx
+            .send(PlaybackProgress::VolumeChanged { volume: 0.5 })
+            .unwrap();
+
+        match timeout(Duration::from_secs(1), live.recv())
+            .await
+            .expect("live subscriber receives event")
+            .expect("live subscriber channel stays open")
+        {
+            PlaybackProgress::VolumeChanged { volume } => assert_eq!(volume, 0.5),
+            other => panic!("expected volume event, got {other:?}"),
+        }
+
+        timeout(Duration::from_secs(1), async {
+            loop {
+                if handle.subscriptions.lock().unwrap().len() == 1 {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("dropped subscriber is pruned");
     }
 }
