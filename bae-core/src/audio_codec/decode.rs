@@ -227,10 +227,28 @@ unsafe fn decode_audio_avio(
     let codecpar = (*stream).codecpar;
 
     // Find decoder
-    let codec = avcodec_find_decoder((*codecpar).codec_id);
+    let codec_id = (*codecpar).codec_id;
+    let codec = find_audio_decoder(codec_id);
     if codec.is_null() {
+        if codec_id == AVCodecID::AV_CODEC_ID_PCM_S64LE {
+            let result = decode_packed_s64_packets_to_sink(
+                fmt_ctx,
+                stream_index,
+                stream,
+                codecpar,
+                (*codecpar).sample_rate as u32,
+                (*codecpar).ch_layout.nb_channels as u32,
+                start_sample,
+                end_sample,
+                sink,
+            );
+            avformat_close_input(&mut fmt_ctx);
+            drop(avio_ctx);
+            sink.set_decode_error_count(get_ffmpeg_errors());
+            return result;
+        }
         avformat_close_input(&mut fmt_ctx);
-        return Err("Decoder not found".to_string());
+        return Err(format!("Decoder not found for {:?}", codec_id));
     }
 
     // Allocate codec context
@@ -247,7 +265,6 @@ unsafe fn decode_audio_avio(
         avformat_close_input(&mut fmt_ctx);
         return Err(format!("Failed to copy codec params: {}", av_err_str(ret)));
     }
-
     // Open codec
     let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
     if ret < 0 {
@@ -259,18 +276,22 @@ unsafe fn decode_audio_avio(
     let sample_rate = (*codec_ctx).sample_rate as u32;
     let channels = (*codecpar).ch_layout.nb_channels as u32;
 
-    // Determine bits per sample from format (for metadata only, actual extraction uses frame format)
-    let bits_per_sample = match (*codec_ctx).sample_fmt {
-        AVSampleFormat::AV_SAMPLE_FMT_U8 | AVSampleFormat::AV_SAMPLE_FMT_U8P => 8,
-        AVSampleFormat::AV_SAMPLE_FMT_S16 | AVSampleFormat::AV_SAMPLE_FMT_S16P => 16,
-        AVSampleFormat::AV_SAMPLE_FMT_S32 | AVSampleFormat::AV_SAMPLE_FMT_S32P => 32,
-        AVSampleFormat::AV_SAMPLE_FMT_FLT | AVSampleFormat::AV_SAMPLE_FMT_FLTP => 32,
-        AVSampleFormat::AV_SAMPLE_FMT_DBL | AVSampleFormat::AV_SAMPLE_FMT_DBLP => 64,
-        AVSampleFormat::AV_SAMPLE_FMT_S64 | AVSampleFormat::AV_SAMPLE_FMT_S64P => 64,
-        _ => 16,
-    };
+    sink.on_format(sample_rate, channels, 32);
 
-    sink.on_format(sample_rate, channels, bits_per_sample);
+    let in_ch_layout = (*codecpar).ch_layout;
+    let mut swr_ctx = match allocate_swr_context(
+        &in_ch_layout,
+        AVSampleFormat::AV_SAMPLE_FMT_S32,
+        sample_rate,
+        (*codec_ctx).sample_fmt,
+    ) {
+        Ok(ctx) => ctx,
+        Err(e) => {
+            avcodec_free_context(&mut (codec_ctx as *mut _));
+            avformat_close_input(&mut fmt_ctx);
+            return Err(e);
+        }
+    };
 
     let time_base = (*stream).time_base;
 
@@ -294,6 +315,7 @@ unsafe fn decode_audio_avio(
         if !packet.is_null() {
             av_packet_free(&mut (packet as *mut _));
         }
+        swr_free(&mut swr_ctx);
         avcodec_free_context(&mut (codec_ctx as *mut _));
         avformat_close_input(&mut fmt_ctx);
         return Err("Failed to allocate frame/packet".to_string());
@@ -357,7 +379,17 @@ unsafe fn decode_audio_avio(
                 }
             }
 
-            let frame_samples_vec = extract_samples_from_raw_frame(frame, channels as usize);
+            let frame_samples_vec = match convert_frame_to_i32(swr_ctx, frame, channels as usize) {
+                Ok(samples) => samples,
+                Err(e) => {
+                    av_frame_free(&mut (frame as *mut _));
+                    av_packet_free(&mut (packet as *mut _));
+                    swr_free(&mut swr_ctx);
+                    avcodec_free_context(&mut (codec_ctx as *mut _));
+                    avformat_close_input(&mut fmt_ctx);
+                    return Err(e);
+                }
+            };
 
             // Trim start of frame
             let skip_start = if let Some(start) = start_sample {
@@ -400,7 +432,17 @@ unsafe fn decode_audio_avio(
     if !reached_end {
         avcodec_send_packet(codec_ctx, ptr::null());
         while avcodec_receive_frame(codec_ctx, frame) >= 0 {
-            let frame_samples_vec = extract_samples_from_raw_frame(frame, channels as usize);
+            let frame_samples_vec = match convert_frame_to_i32(swr_ctx, frame, channels as usize) {
+                Ok(samples) => samples,
+                Err(e) => {
+                    av_frame_free(&mut (frame as *mut _));
+                    av_packet_free(&mut (packet as *mut _));
+                    swr_free(&mut swr_ctx);
+                    avcodec_free_context(&mut (codec_ctx as *mut _));
+                    avformat_close_input(&mut fmt_ctx);
+                    return Err(e);
+                }
+            };
             sink.on_samples(&frame_samples_vec);
         }
     }
@@ -408,6 +450,7 @@ unsafe fn decode_audio_avio(
     // Cleanup
     av_frame_free(&mut (frame as *mut _));
     av_packet_free(&mut (packet as *mut _));
+    swr_free(&mut swr_ctx);
     avcodec_free_context(&mut (codec_ctx as *mut _));
     avformat_close_input(&mut fmt_ctx);
     // Note: avformat_close_input frees the AVIO context and buffer
@@ -421,106 +464,240 @@ unsafe fn decode_audio_avio(
     Ok(())
 }
 
-/// Extract samples from a raw AVFrame as i32
-unsafe fn extract_samples_from_raw_frame(
-    frame: *const ffmpeg_sys_next::AVFrame,
-    channels: usize,
-) -> Vec<i32> {
-    use ffmpeg_sys_next::{av_get_bytes_per_sample, AVSampleFormat};
+unsafe fn allocate_swr_context(
+    ch_layout: *const ffmpeg_sys_next::AVChannelLayout,
+    out_sample_fmt: ffmpeg_sys_next::AVSampleFormat,
+    sample_rate: u32,
+    in_sample_fmt: ffmpeg_sys_next::AVSampleFormat,
+) -> Result<*mut ffmpeg_sys_next::SwrContext, String> {
+    use ffmpeg_sys_next::*;
 
-    let num_samples = (*frame).nb_samples as usize;
-    let mut samples = Vec::with_capacity(num_samples * channels);
-
-    // Get format info directly from the frame
-    let format: AVSampleFormat = std::mem::transmute((*frame).format);
-    let bytes_per_sample = av_get_bytes_per_sample(format);
-    if bytes_per_sample <= 0 {
-        warn!(
-            "av_get_bytes_per_sample returned {} for format {:?}, skipping frame",
-            bytes_per_sample,
-            (*frame).format
-        );
-        return Vec::new();
-    }
-    let actual_bytes_per_sample = bytes_per_sample as usize;
-
-    let is_float = matches!(
-        format,
-        AVSampleFormat::AV_SAMPLE_FMT_FLT
-            | AVSampleFormat::AV_SAMPLE_FMT_FLTP
-            | AVSampleFormat::AV_SAMPLE_FMT_DBL
-            | AVSampleFormat::AV_SAMPLE_FMT_DBLP
+    let mut swr_ctx: *mut SwrContext = ptr::null_mut();
+    let ret = swr_alloc_set_opts2(
+        &mut swr_ctx,
+        ch_layout,
+        out_sample_fmt,
+        sample_rate as c_int,
+        ch_layout,
+        in_sample_fmt,
+        sample_rate as c_int,
+        0,
+        ptr::null_mut(),
     );
-
-    let is_planar = matches!(
-        format,
-        AVSampleFormat::AV_SAMPLE_FMT_U8P
-            | AVSampleFormat::AV_SAMPLE_FMT_S16P
-            | AVSampleFormat::AV_SAMPLE_FMT_S32P
-            | AVSampleFormat::AV_SAMPLE_FMT_FLTP
-            | AVSampleFormat::AV_SAMPLE_FMT_DBLP
-            | AVSampleFormat::AV_SAMPLE_FMT_S64P
-    );
-
-    if is_planar {
-        // Interleave from separate channel planes
-        for i in 0..num_samples {
-            for ch in 0..channels {
-                let plane = (*frame).data[ch] as *const u8;
-                if plane.is_null() {
-                    samples.push(0);
-                    continue;
-                }
-
-                let sample = read_sample(plane, i, actual_bytes_per_sample, is_float);
-                samples.push(sample);
-            }
-        }
-    } else {
-        // Packed format - all samples interleaved in plane 0
-        let data = (*frame).data[0] as *const u8;
-        if !data.is_null() {
-            for i in 0..(num_samples * channels) {
-                let sample = read_sample(data, i, actual_bytes_per_sample, is_float);
-                samples.push(sample);
-            }
-        }
+    if ret < 0 || swr_ctx.is_null() {
+        return Err(format!(
+            "Failed to allocate SwrContext: {}",
+            av_err_str(ret)
+        ));
     }
 
-    samples
+    let ret = swr_init(swr_ctx);
+    if ret < 0 {
+        swr_free(&mut swr_ctx);
+        return Err(format!("Failed to init SwrContext: {}", av_err_str(ret)));
+    }
+
+    Ok(swr_ctx)
 }
 
-/// Read a single sample from raw bytes and convert to i32
-unsafe fn read_sample(
-    data: *const u8,
-    index: usize,
-    bytes_per_sample: usize,
-    is_float: bool,
-) -> i32 {
-    let offset = index * bytes_per_sample;
-    let ptr = data.add(offset);
+unsafe fn convert_frame_to_i32(
+    swr_ctx: *mut ffmpeg_sys_next::SwrContext,
+    frame: *const ffmpeg_sys_next::AVFrame,
+    channels: usize,
+) -> Result<Vec<i32>, String> {
+    use ffmpeg_sys_next::*;
 
-    if is_float {
-        let f = *(ptr as *const f32);
-        (f * i32::MAX as f32) as i32
-    } else {
-        match bytes_per_sample {
-            1 => (*(ptr as *const i8) as i32) * 256, // Scale 8-bit to 16-bit range
-            2 => *(ptr as *const i16) as i32,        // Keep 16-bit in native range
-            3 => {
-                // 24-bit little-endian, sign-extend to i32
-                let b = std::slice::from_raw_parts(ptr, 3);
-                let val = (b[0] as i32) | ((b[1] as i32) << 8) | ((b[2] as i32) << 16);
-                // Sign extend from 24-bit
-                if val & 0x800000 != 0 {
-                    val | 0xFF000000u32 as i32
-                } else {
-                    val
-                }
-            }
-            4 => *(ptr as *const i32),
-            _ => 0,
+    let input_samples = (*frame).nb_samples;
+    let mut output_buf = vec![0i32; input_samples as usize * channels];
+    let out_ptr = output_buf.as_mut_ptr() as *mut u8;
+    let converted = swr_convert(
+        swr_ctx,
+        &out_ptr,
+        input_samples,
+        (*frame).extended_data as *const *const u8,
+        input_samples,
+    );
+    if converted < 0 {
+        return Err(format!(
+            "Failed to convert decoded frame: {}",
+            av_err_str(converted)
+        ));
+    }
+    output_buf.truncate(converted as usize * channels);
+    Ok(output_buf)
+}
+
+unsafe fn decode_packed_s64_packets_to_sink(
+    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
+    stream_index: c_int,
+    stream: *mut ffmpeg_sys_next::AVStream,
+    codecpar: *const ffmpeg_sys_next::AVCodecParameters,
+    sample_rate: u32,
+    channels: u32,
+    start_sample: Option<u64>,
+    end_sample: Option<u64>,
+    sink: &mut dyn DecodedSink,
+) -> Result<(), String> {
+    use ffmpeg_sys_next::*;
+
+    sink.on_format(sample_rate, channels, 32);
+    let in_ch_layout = (*codecpar).ch_layout;
+    let mut swr_ctx = allocate_swr_context(
+        &in_ch_layout,
+        AVSampleFormat::AV_SAMPLE_FMT_S32,
+        sample_rate,
+        AVSampleFormat::AV_SAMPLE_FMT_S64,
+    )?;
+
+    if let Some(sample_pos) = start_sample {
+        av_seek_frame(
+            fmt_ctx,
+            stream_index,
+            sample_pos as i64,
+            AVSEEK_FLAG_BACKWARD as c_int,
+        );
+    }
+
+    let packet = av_packet_alloc();
+    if packet.is_null() {
+        swr_free(&mut swr_ctx);
+        return Err("Failed to allocate packet".to_string());
+    }
+
+    let time_base = (*stream).time_base;
+    let channels_usize = channels as usize;
+    let bytes_per_frame = channels_usize * std::mem::size_of::<i64>();
+    let mut tracked_sample_pos: i64 = 0;
+    let mut reached_end = false;
+
+    while av_read_frame(fmt_ctx, packet) >= 0 {
+        if (*packet).stream_index != stream_index {
+            av_packet_unref(packet);
+            continue;
         }
+
+        let num_samples = (*packet).size as usize / bytes_per_frame;
+        let pts = (*packet).pts;
+        let frame_start = if pts != AV_NOPTS_VALUE {
+            if time_base.num == 1 && time_base.den == sample_rate as c_int {
+                pts
+            } else {
+                (pts as f64 * time_base.num as f64 / time_base.den as f64 * sample_rate as f64)
+                    as i64
+            }
+        } else {
+            tracked_sample_pos
+        };
+        let frame_end = frame_start + num_samples as i64;
+        tracked_sample_pos = frame_end;
+
+        if let Some(start) = start_sample {
+            let start = start as i64;
+            if frame_end <= start {
+                av_packet_unref(packet);
+                continue;
+            }
+        }
+
+        if let Some(end) = end_sample {
+            let end = end as i64;
+            if frame_start >= end {
+                av_packet_unref(packet);
+                break;
+            }
+        }
+
+        let packet_samples =
+            match convert_packed_s64_to_i32(swr_ctx, (*packet).data, num_samples, channels_usize) {
+                Ok(samples) => samples,
+                Err(e) => {
+                    av_packet_unref(packet);
+                    av_packet_free(&mut (packet as *mut _));
+                    swr_free(&mut swr_ctx);
+                    return Err(e);
+                }
+            };
+
+        let skip_start = if let Some(start) = start_sample {
+            let start = start as i64;
+            if frame_start < start {
+                ((start - frame_start) as usize * channels_usize).min(packet_samples.len())
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
+        let take_end = if let Some(end) = end_sample {
+            let end = end as i64;
+            if frame_end > end {
+                reached_end = true;
+                ((end - frame_start) as usize * channels_usize).min(packet_samples.len())
+            } else {
+                packet_samples.len()
+            }
+        } else {
+            packet_samples.len()
+        };
+
+        if skip_start < take_end {
+            sink.on_samples(&packet_samples[skip_start..take_end]);
+        }
+
+        av_packet_unref(packet);
+        if reached_end {
+            break;
+        }
+    }
+
+    av_packet_free(&mut (packet as *mut _));
+    swr_free(&mut swr_ctx);
+    Ok(())
+}
+
+unsafe fn convert_packed_s64_to_i32(
+    swr_ctx: *mut ffmpeg_sys_next::SwrContext,
+    input: *const u8,
+    input_samples: usize,
+    channels: usize,
+) -> Result<Vec<i32>, String> {
+    use ffmpeg_sys_next::*;
+
+    let mut output_buf = vec![0i32; input_samples * channels];
+    let out_ptr = output_buf.as_mut_ptr() as *mut u8;
+    let in_ptr = input;
+    let converted = swr_convert(
+        swr_ctx,
+        &out_ptr,
+        input_samples as c_int,
+        &in_ptr,
+        input_samples as c_int,
+    );
+    if converted < 0 {
+        return Err(format!(
+            "Failed to convert decoded frame: {}",
+            av_err_str(converted)
+        ));
+    }
+    output_buf.truncate(converted as usize * channels);
+    Ok(output_buf)
+}
+
+unsafe fn find_audio_decoder(
+    codec_id: ffmpeg_sys_next::AVCodecID,
+) -> *const ffmpeg_sys_next::AVCodec {
+    use ffmpeg_sys_next::*;
+
+    let codec = avcodec_find_decoder(codec_id);
+    if !codec.is_null() {
+        return codec;
+    }
+
+    if codec_id == AVCodecID::AV_CODEC_ID_PCM_S64LE {
+        avcodec_find_decoder_by_name(c"pcm_s64le".as_ptr())
+    } else {
+        ptr::null()
     }
 }
 
@@ -689,11 +866,15 @@ unsafe fn decode_audio_streaming_impl(
     let codecpar = (*stream).codecpar;
 
     // Find decoder
-    let codec = avcodec_find_decoder((*codecpar).codec_id);
+    let codec_id = (*codecpar).codec_id;
+    let codec = find_audio_decoder(codec_id);
     if codec.is_null() {
         avformat_close_input(&mut fmt_ctx);
         let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::decode("Decoder not found"));
+        return Err(StreamingDecodeError::decode(format!(
+            "Decoder not found for {:?}",
+            codec_id
+        )));
     }
 
     // Allocate codec context
@@ -717,7 +898,6 @@ unsafe fn decode_audio_streaming_impl(
             av_err_str(ret)
         )));
     }
-
     // Open codec
     let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
     if ret < 0 {
@@ -737,39 +917,18 @@ unsafe fn decode_audio_streaming_impl(
 
     // Set up SwrContext to convert any input format to packed f32
     let in_ch_layout = (*codecpar).ch_layout;
-    let codec_ctx_format = (*codec_ctx).sample_fmt;
-    let mut swr_ctx: *mut SwrContext = std::ptr::null_mut();
-    let ret = swr_alloc_set_opts2(
-        &mut swr_ctx,
+    let mut swr_ctx = allocate_swr_context(
         &in_ch_layout,
         AVSampleFormat::AV_SAMPLE_FMT_FLT,
-        sample_rate as c_int,
-        &in_ch_layout,
-        codec_ctx_format,
-        sample_rate as c_int,
-        0,
-        std::ptr::null_mut(),
-    );
-    if ret < 0 || swr_ctx.is_null() {
+        sample_rate,
+        (*codec_ctx).sample_fmt,
+    )
+    .map_err(|e| {
         avcodec_free_context(&mut (codec_ctx as *mut _));
         avformat_close_input(&mut fmt_ctx);
         let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::decode(format!(
-            "Failed to allocate SwrContext: {}",
-            av_err_str(ret)
-        )));
-    }
-    let ret = swr_init(swr_ctx);
-    if ret < 0 {
-        swr_free(&mut swr_ctx);
-        avcodec_free_context(&mut (codec_ctx as *mut _));
-        avformat_close_input(&mut fmt_ctx);
-        let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::decode(format!(
-            "Failed to init SwrContext: {}",
-            av_err_str(ret)
-        )));
-    }
+        StreamingDecodeError::decode(e)
+    })?;
 
     // Seek to the target sample if requested. A seektable-bearing FLAC (and APE,
     // MP4) seeks in one jump now that AVFMT_FLAG_FAST_SEEK is set. A FLAC with no
@@ -880,13 +1039,26 @@ unsafe fn decode_audio_streaming_impl(
             let num_samples = (*frame).nb_samples as usize;
             let mut output_buf = vec![0.0f32; num_samples * channels as usize];
             let out_ptr = output_buf.as_mut_ptr() as *mut u8;
-            swr_convert(
+            let converted = swr_convert(
                 swr_ctx,
                 &out_ptr,
                 num_samples as c_int,
                 (*frame).extended_data as *const *const u8,
                 (*frame).nb_samples,
             );
+            if converted < 0 {
+                av_frame_free(&mut (frame as *mut _));
+                av_packet_free(&mut (packet as *mut _));
+                swr_free(&mut swr_ctx);
+                avcodec_free_context(&mut (codec_ctx as *mut _));
+                avformat_close_input(&mut fmt_ctx);
+                let _ = Box::from_raw(avio_ctx_ptr);
+                return Err(StreamingDecodeError::decode(format!(
+                    "Failed to convert decoded frame: {}",
+                    av_err_str(converted)
+                )));
+            }
+            output_buf.truncate(converted as usize * channels as usize);
 
             // Determine frame's sample position from PTS (with fallback tracking)
             let time_base = (*stream).time_base;
@@ -978,13 +1150,26 @@ unsafe fn decode_audio_streaming_impl(
             let num_samples = (*frame).nb_samples as usize;
             let mut output_buf = vec![0.0f32; num_samples * channels as usize];
             let out_ptr = output_buf.as_mut_ptr() as *mut u8;
-            swr_convert(
+            let converted = swr_convert(
                 swr_ctx,
                 &out_ptr,
                 num_samples as c_int,
                 (*frame).extended_data as *const *const u8,
                 (*frame).nb_samples,
             );
+            if converted < 0 {
+                av_frame_free(&mut (frame as *mut _));
+                av_packet_free(&mut (packet as *mut _));
+                swr_free(&mut swr_ctx);
+                avcodec_free_context(&mut (codec_ctx as *mut _));
+                avformat_close_input(&mut fmt_ctx);
+                let _ = Box::from_raw(avio_ctx_ptr);
+                return Err(StreamingDecodeError::decode(format!(
+                    "Failed to convert decoded frame: {}",
+                    av_err_str(converted)
+                )));
+            }
+            output_buf.truncate(converted as usize * channels as usize);
 
             samples_output += output_buf.len() as u64;
 

@@ -120,7 +120,8 @@ pub(crate) fn av_err_str(errnum: i32) -> String {
 
 /// Encode PCM samples to FLAC format.
 ///
-/// Takes interleaved i32 samples and returns the encoded FLAC data as bytes.
+/// Takes full-range interleaved i32 samples and returns the encoded FLAC data as
+/// bytes. `bits_per_sample` is the target FLAC bit depth.
 /// Uses FFmpeg library with custom AVIO for in-memory encoding.
 ///
 /// `cancel` is checked between frames. When set, the encoder returns
@@ -145,6 +146,12 @@ unsafe fn encode_to_flac_avio(
     cancel: &std::sync::atomic::AtomicBool,
 ) -> Result<Vec<u8>, String> {
     use ffmpeg_sys_next::*;
+
+    let sample_fmt = match bits_per_sample {
+        1..=16 => AVSampleFormat::AV_SAMPLE_FMT_S16,
+        17..=32 => AVSampleFormat::AV_SAMPLE_FMT_S32,
+        _ => return Err(format!("Unsupported FLAC bit depth: {bits_per_sample}")),
+    };
 
     // Create write context
     let mut write_ctx = Box::new(WriteAvioContext {
@@ -195,13 +202,7 @@ unsafe fn encode_to_flac_avio(
         den: sample_rate as c_int,
     };
 
-    // Set sample format based on bits per sample
-    // 24-bit uses S32 container with bits_per_raw_sample=24
-    (*codec_ctx).sample_fmt = match bits_per_sample {
-        16 => AVSampleFormat::AV_SAMPLE_FMT_S16,
-        24 | 32 => AVSampleFormat::AV_SAMPLE_FMT_S32,
-        _ => AVSampleFormat::AV_SAMPLE_FMT_S16,
-    };
+    (*codec_ctx).sample_fmt = sample_fmt;
     (*codec_ctx).bits_per_raw_sample = bits_per_sample as c_int;
 
     // Set channel layout
@@ -329,35 +330,22 @@ unsafe fn encode_to_flac_avio(
             ));
         }
 
-        // Copy samples to frame (interleaved format)
-        // For 24-bit, left-shift by 8 to fill S32 (matches FFmpeg's internal format)
+        // Copy full-range samples to frame (interleaved format).
         let frame_data = (*frame).data[0];
         match bits_per_sample {
-            16 => {
+            1..=16 => {
                 let dst = frame_data as *mut i16;
                 for i in 0..chunk_samples {
-                    *dst.add(i) = samples[sample_offset + i] as i16;
+                    *dst.add(i) = (samples[sample_offset + i] >> 16) as i16;
                 }
             }
-            24 => {
-                // 24-bit uses S32 container, values left-shifted by 8
-                let dst = frame_data as *mut i32;
-                for i in 0..chunk_samples {
-                    *dst.add(i) = samples[sample_offset + i] << 8;
-                }
-            }
-            32 => {
+            17..=32 => {
                 let dst = frame_data as *mut i32;
                 for i in 0..chunk_samples {
                     *dst.add(i) = samples[sample_offset + i];
                 }
             }
-            _ => {
-                let dst = frame_data as *mut i16;
-                for i in 0..chunk_samples {
-                    *dst.add(i) = samples[sample_offset + i] as i16;
-                }
-            }
+            _ => unreachable!("FLAC bit depth was validated before encoding"),
         }
 
         (*frame).pts = pts;
@@ -430,27 +418,16 @@ unsafe fn encode_to_flac_avio(
 
 /// Encode PCM samples to MP3 format (320kbps CBR via libmp3lame).
 ///
-/// Takes interleaved i32 samples and returns the encoded MP3 data as bytes.
+/// Takes full-range interleaved i32 samples and returns the encoded MP3 data as bytes.
 /// Uses FFmpeg library with custom AVIO for in-memory encoding.
-/// Input samples are treated as 16-bit regardless of bits_per_sample (MP3 is lossy).
 pub fn encode_to_mp3(
     samples: &[i32],
     sample_rate: u32,
     channels: u32,
-    bits_per_sample: u32,
     bitrate: u32,
     cancel: &std::sync::atomic::AtomicBool,
 ) -> Result<Vec<u8>, String> {
-    unsafe {
-        encode_to_mp3_avio(
-            samples,
-            sample_rate,
-            channels,
-            bits_per_sample,
-            bitrate,
-            cancel,
-        )
-    }
+    unsafe { encode_to_mp3_avio(samples, sample_rate, channels, bitrate, cancel) }
 }
 
 /// Internal AVIO-based MP3 encoding implementation
@@ -458,7 +435,6 @@ unsafe fn encode_to_mp3_avio(
     samples: &[i32],
     sample_rate: u32,
     channels: u32,
-    bits_per_sample: u32,
     bitrate: u32,
     cancel: &std::sync::atomic::AtomicBool,
 ) -> Result<Vec<u8>, String> {
@@ -643,21 +619,13 @@ unsafe fn encode_to_mp3_avio(
             ));
         }
 
-        // Copy samples to frame (planar format: deinterleave into per-channel planes)
-        // Samples are i32 at native bit depth — shift down to 16-bit for MP3
-        let shift = match bits_per_sample {
-            16 => 0,
-            24 => 8,
-            32 => 16,
-            _ => (bits_per_sample as i32 - 16).max(0) as u32,
-        };
-
+        // Copy samples to frame (planar format: deinterleave into per-channel planes).
         for ch in 0..channels as usize {
             let dst = (*frame).data[ch] as *mut i16;
             for i in 0..chunk_frames {
                 let src_idx = sample_offset + i * channels as usize + ch;
                 if src_idx < samples.len() {
-                    *dst.add(i) = (samples[src_idx] >> shift) as i16;
+                    *dst.add(i) = (samples[src_idx] >> 16) as i16;
                 }
             }
         }

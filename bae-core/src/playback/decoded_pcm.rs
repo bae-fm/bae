@@ -6,13 +6,13 @@ use std::sync::Arc;
 /// read the samples directly. For sample-by-sample streaming during playback,
 /// use `TrackStream` instead.
 pub struct DecodedPcm {
-    /// Interleaved samples (i32)
+    /// Interleaved full-range i32 samples.
     samples: Arc<Vec<i32>>,
     /// Number of channels
     channels: u32,
     /// Sample rate in Hz
     sample_rate: u32,
-    /// Bits per sample
+    /// Decoded PCM bit depth.
     bits_per_sample: u32,
 }
 
@@ -42,7 +42,7 @@ impl DecodedPcm {
         self.bits_per_sample
     }
 
-    /// Get raw samples (for export/re-encoding)
+    /// Get full-range raw samples (for export/re-encoding)
     pub fn raw_samples(&self) -> &[i32] {
         &self.samples
     }

@@ -49,9 +49,6 @@ struct MeterState {
 /// tick. A failed `add_chunk` is recorded and the meter dropped (later chunks are
 /// ignored); `into_result` surfaces the failure to the caller.
 struct LoudnessProgressSink {
-    /// Authoritative source bit depth (NULL for lossy, where the decoded
-    /// container depth is used instead).
-    source_bits: Option<u32>,
     state: Option<MeterState>,
     error: Option<String>,
     /// This track's total frame count, used to fill its bar segment. `None` when
@@ -133,8 +130,11 @@ impl LoudnessProgressSink {
 
 impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
     fn on_format(&mut self, sample_rate: u32, channels: u32, bits_per_sample: u32) {
-        let sample_bits = self.source_bits.unwrap_or(bits_per_sample);
-        match crate::loudness::LoudnessMeter::new(channels, sample_rate, sample_bits) {
+        if bits_per_sample != 32 {
+            self.error = Some(format!("decoded PCM must be 32-bit, got {bits_per_sample}"));
+            return;
+        }
+        match crate::loudness::LoudnessMeter::new(channels, sample_rate) {
             Ok(meter) => {
                 self.state = Some(MeterState {
                     meter,
@@ -254,12 +254,6 @@ pub(super) async fn measure_loudness(
         };
         let start_sample = audio_formats[idx].start_sample as u64;
         let end_sample = audio_formats[idx].end_sample.map(|s| s as u64);
-        // The source's value range bit depth: the decoder hands the meter i32
-        // samples scaled to the source's bits (16-bit values for 16-bit FLAC,
-        // 24-bit for 24-bit), so the meter must shift them up to full i32. The
-        // stored `bits_per_sample` is the authoritative source depth (NULL for
-        // lossy codecs, where the decoded container depth is used instead).
-        let source_bits = audio_formats[idx].bits_per_sample.map(|b| b as u32);
         // Frames in this track's window, to fill its bar segment as the decode
         // streams: the sample window when known, else the track duration ×
         // sample rate. Absent both, the segment only steps at the post-track
@@ -281,7 +275,6 @@ pub(super) async fn measure_loudness(
         let task_path = path.clone();
         let outcome = tokio::task::spawn_blocking(move || {
             let mut sink = LoudnessProgressSink {
-                source_bits,
                 state: None,
                 error: None,
                 total_frames,
@@ -387,7 +380,6 @@ mod tests {
     fn sink_with(total: Option<u64>, done: u64, errors: u32) -> LoudnessProgressSink {
         let (event_tx, _rx) = broadcast::channel(16);
         LoudnessProgressSink {
-            source_bits: Some(16),
             state: None,
             error: None,
             total_frames: total,

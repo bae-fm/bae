@@ -3,6 +3,128 @@ use super::*;
 use crate::util::content_type::ContentType;
 use std::sync::Arc;
 
+fn wav_with_fmt(
+    format_tag: u16,
+    bits_per_sample: u16,
+    channels: u16,
+    sample_rate: u32,
+    data: &[u8],
+) -> Vec<u8> {
+    let block_align = channels * bits_per_sample / 8;
+    let byte_rate = sample_rate * block_align as u32;
+    let riff_size = 36 + data.len() as u32;
+    let mut wav = Vec::with_capacity(44 + data.len());
+    wav.extend_from_slice(b"RIFF");
+    wav.extend_from_slice(&riff_size.to_le_bytes());
+    wav.extend_from_slice(b"WAVE");
+    wav.extend_from_slice(b"fmt ");
+    wav.extend_from_slice(&16u32.to_le_bytes());
+    wav.extend_from_slice(&format_tag.to_le_bytes());
+    wav.extend_from_slice(&channels.to_le_bytes());
+    wav.extend_from_slice(&sample_rate.to_le_bytes());
+    wav.extend_from_slice(&byte_rate.to_le_bytes());
+    wav.extend_from_slice(&block_align.to_le_bytes());
+    wav.extend_from_slice(&bits_per_sample.to_le_bytes());
+    wav.extend_from_slice(b"data");
+    wav.extend_from_slice(&(data.len() as u32).to_le_bytes());
+    wav.extend_from_slice(data);
+    wav
+}
+
+fn wav_extensible_pcm(
+    bits_per_sample: u16,
+    channels: u16,
+    sample_rate: u32,
+    data: &[u8],
+) -> Vec<u8> {
+    let block_align = channels * bits_per_sample / 8;
+    let byte_rate = sample_rate * block_align as u32;
+    let fmt_size = 40u32;
+    let riff_size = 4 + 8 + fmt_size + 8 + data.len() as u32;
+    let mut wav = Vec::with_capacity((riff_size + 8) as usize);
+    wav.extend_from_slice(b"RIFF");
+    wav.extend_from_slice(&riff_size.to_le_bytes());
+    wav.extend_from_slice(b"WAVE");
+    wav.extend_from_slice(b"fmt ");
+    wav.extend_from_slice(&fmt_size.to_le_bytes());
+    wav.extend_from_slice(&0xFFFEu16.to_le_bytes());
+    wav.extend_from_slice(&channels.to_le_bytes());
+    wav.extend_from_slice(&sample_rate.to_le_bytes());
+    wav.extend_from_slice(&byte_rate.to_le_bytes());
+    wav.extend_from_slice(&block_align.to_le_bytes());
+    wav.extend_from_slice(&bits_per_sample.to_le_bytes());
+    wav.extend_from_slice(&22u16.to_le_bytes());
+    wav.extend_from_slice(&bits_per_sample.to_le_bytes());
+    wav.extend_from_slice(&0u32.to_le_bytes());
+    wav.extend_from_slice(&[
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b,
+        0x71,
+    ]);
+    wav.extend_from_slice(b"data");
+    wav.extend_from_slice(&(data.len() as u32).to_le_bytes());
+    wav.extend_from_slice(data);
+    wav
+}
+
+#[test]
+fn decode_audio_decodes_unsigned_8_bit_wav_as_full_range_pcm() {
+    init();
+    let wav = wav_with_fmt(1, 8, 1, 44_100, &[0, 128, 255]);
+    let decoded = decode_audio(&wav, None, None).unwrap();
+
+    assert_eq!(decoded.bits_per_sample, 32);
+    assert_eq!(decoded.samples.len(), 3);
+    assert!(decoded.samples[0] < -2_000_000_000, "{:?}", decoded.samples);
+    assert!(
+        decoded.samples[1].abs() < 20_000_000,
+        "{:?}",
+        decoded.samples
+    );
+    assert!(decoded.samples[2] > 2_000_000_000, "{:?}", decoded.samples);
+}
+
+#[test]
+fn decode_audio_decodes_64_bit_float_wav_as_full_range_pcm() {
+    init();
+    let mut data = Vec::new();
+    for sample in [-0.5f64, 0.0, 0.5] {
+        data.extend_from_slice(&sample.to_le_bytes());
+    }
+    let wav = wav_with_fmt(3, 64, 1, 44_100, &data);
+    let decoded = decode_audio(&wav, None, None).unwrap();
+
+    assert_eq!(decoded.bits_per_sample, 32);
+    assert_eq!(decoded.samples.len(), 3);
+    assert!(decoded.samples[0] < -1_000_000_000, "{:?}", decoded.samples);
+    assert!(
+        decoded.samples[1].abs() < 20_000_000,
+        "{:?}",
+        decoded.samples
+    );
+    assert!(decoded.samples[2] > 1_000_000_000, "{:?}", decoded.samples);
+}
+
+#[test]
+fn decode_audio_decodes_signed_64_bit_wav_as_full_range_pcm() {
+    init();
+    let mut data = Vec::new();
+    for sample in [i64::MIN / 2, 0, i64::MAX / 2] {
+        data.extend_from_slice(&sample.to_le_bytes());
+    }
+    let wav = wav_extensible_pcm(64, 1, 44_100, &data);
+    let decoded = decode_audio(&wav, None, None).unwrap();
+
+    assert_eq!(decoded.bits_per_sample, 32);
+    assert_eq!(decoded.samples.len(), 3);
+    assert!(decoded.samples[0] < -1_000_000_000, "{:?}", decoded.samples);
+    assert!(
+        decoded.samples[1].abs() < 20_000_000,
+        "{:?}",
+        decoded.samples
+    );
+    assert!(decoded.samples[2] > 1_000_000_000, "{:?}", decoded.samples);
+}
+
 /// `seek_landing_bytes` actually opens the file, seeks (no decode), and
 /// reports ascending byte positions within the file that follow the sample
 /// positions -- what the import-time byte boundary computation relies on.
@@ -13,7 +135,7 @@ fn seek_landing_bytes_track_sample_positions() {
     let seconds = 4usize;
     let total = sample_rate as usize * seconds;
     let samples: Vec<i32> = (0..total)
-        .map(|i| ((i as f64 * 0.02).sin() * 12000.0) as i32)
+        .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
         .collect();
     let cancel = std::sync::atomic::AtomicBool::new(false);
     let flac = encode_to_flac(&samples, sample_rate, 1, 16, &cancel).unwrap();
@@ -181,17 +303,17 @@ fn test_encode_mp3() {
     // Create a 440Hz sine wave - 1 second stereo
     let sample_rate = 44100u32;
     let duration_samples = sample_rate as usize;
-    let amplitude = 30000i32;
+    let amplitude = 0.9 * i32::MAX as f64;
 
     let samples: Vec<i32> = (0..duration_samples * 2)
         .map(|i| {
             let t = (i / 2) as f64 / sample_rate as f64;
-            (amplitude as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
+            (amplitude * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
         })
         .collect();
 
     let cancel = std::sync::atomic::AtomicBool::new(false);
-    let mp3_data = encode_to_mp3(&samples, sample_rate, 2, 16, 320_000, &cancel).unwrap();
+    let mp3_data = encode_to_mp3(&samples, sample_rate, 2, 320_000, &cancel).unwrap();
 
     // MP3 files start with either ID3 tag (0x49 0x44 0x33) or sync word (0xFF 0xFB)
     assert!(
@@ -222,15 +344,15 @@ fn test_encode_mp3() {
 fn test_flac_roundtrip_is_lossless() {
     init();
 
-    // Create a 440Hz sine wave - uses the full 16-bit range
+    // Create a 440Hz sine wave aligned to 16-bit steps across the full i32 range.
     let sample_rate = 44100u32;
     let duration_samples = sample_rate as usize; // 1 second
-    let amplitude = 30000i32; // Near max 16-bit
 
     let original: Vec<i32> = (0..duration_samples)
         .map(|i| {
             let t = i as f64 / sample_rate as f64;
-            (amplitude as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
+            let sample = (i16::MAX as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32;
+            sample << 16
         })
         .collect();
 
@@ -276,7 +398,7 @@ fn test_streaming_decode() {
 
     // Create test FLAC data
     let samples: Vec<i32> = (0..44100)
-        .map(|i| ((i as f64 * 0.01).sin() * 10000.0) as i32)
+        .map(|i| ((i as f64 * 0.01).sin() * 0.5 * i32::MAX as f64) as i32)
         .collect();
     let cancel = std::sync::atomic::AtomicBool::new(false);
     let flac_data = encode_to_flac(&samples, 44100, 1, 16, &cancel).unwrap();
@@ -364,14 +486,11 @@ fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_
 
     let duration_secs = 2;
     let frame_samples = sample_rate as usize * duration_secs;
-    let max_val = (1i32 << (bits_per_sample - 1)) - 1;
-
     let mut original: Vec<i32> = Vec::with_capacity(frame_samples * channels as usize);
     for i in 0..frame_samples {
         let t = i as f64 / sample_rate as f64;
         let freq = 200.0 + (t / duration_secs as f64) * 1800.0;
-        let sample =
-            ((max_val as f64 * 0.8) * (2.0 * std::f64::consts::PI * freq * t).sin()) as i32;
+        let sample = (0.8 * i32::MAX as f64 * (2.0 * std::f64::consts::PI * freq * t).sin()) as i32;
         original.push(sample);
         if channels == 2 {
             original.push(-sample);
@@ -424,11 +543,7 @@ fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_
         seeked_samples.len()
     );
 
-    let scale = if bits_per_sample <= 16 {
-        i16::MAX as f32
-    } else {
-        i32::MAX as f32
-    };
+    let scale = i32::MAX as f32;
 
     // avformat_seek_file lands on a keyframe at or before the target.
     // Find where the seeked output actually starts in the ground truth
@@ -653,7 +768,7 @@ fn byte_seek_to_landing_is_sample_exact() {
     let wrong_landing = landings[1];
 
     let ground = decode_audio(&flac, None, None).expect("ground-truth decode");
-    let scale = i16::MAX as f32; // 16-bit fixture
+    let scale = i32::MAX as f32;
 
     // Decode track 2 with a given by-byte seek target, trimming to `start` and
     // stopping ~0.1s later; return the interleaved output samples.

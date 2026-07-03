@@ -304,7 +304,11 @@ impl ExportService {
                     decoded_pcm.raw_samples(),
                     decoded_pcm.sample_rate(),
                     decoded_pcm.channels(),
-                    decoded_pcm.bits_per_sample(),
+                    plan.audio_meta
+                        .audio_format
+                        .bits_per_sample
+                        .map(|bits| bits as u32)
+                        .unwrap_or_else(|| decoded_pcm.bits_per_sample()),
                     &cancel_for_blocking,
                 )
                 .map_err(|e| format!("Failed to encode FLAC: {e}"))?,
@@ -312,7 +316,6 @@ impl ExportService {
                     decoded_pcm.raw_samples(),
                     decoded_pcm.sample_rate(),
                     decoded_pcm.channels(),
-                    decoded_pcm.bits_per_sample(),
                     bitrate,
                     &cancel_for_blocking,
                 )
@@ -637,7 +640,7 @@ mod tests {
         crate::audio_codec::init();
         let cancel = std::sync::atomic::AtomicBool::new(false);
         let samples: Vec<i32> = (0..4410)
-            .map(|i| ((i as f64 * 0.02).sin() * 8000.0) as i32)
+            .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
             .collect();
         let flac = crate::audio_codec::encode_to_flac(&samples, 44100, 1, 16, &cancel).unwrap();
 

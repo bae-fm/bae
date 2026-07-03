@@ -35,50 +35,24 @@ pub struct TrackLoudness {
 /// instead of buffering the whole track's PCM first.
 pub struct LoudnessMeter {
     meter: EbuR128,
-    shift: u32,
     channels: u32,
 }
 
 impl LoudnessMeter {
-    /// `sample_bits` is the source's value range (16 for 16-bit FLAC, 24 for
-    /// 24-bit, 32 for 32-bit/float) — the chunks fed in are interleaved i32 in
-    /// that range, NOT pre-scaled to full i32. The meter left-shifts them so full
-    /// scale maps to `i32::MAX`, which `ebur128`'s `add_frames_i32` and
-    /// `true_peak` assume. The effective width is floored at 16 bits because
-    /// `read_sample` scales an 8-bit source up into the 16-bit range while still
-    /// probing it as 8-bit; trusting the declared 8 would over-shift by 8 bits and
-    /// saturate every loud sample. Skipping the shift entirely makes a 16-bit
-    /// track read ~96 dB too quiet (every track measures as silent) — the loudness
-    /// equivalent of a unit error.
-    pub fn new(channels: u32, sample_rate: u32, sample_bits: u32) -> Result<Self, String> {
-        let effective_bits = sample_bits.max(16);
-        let shift = 32u32.saturating_sub(effective_bits);
+    /// Chunks are interleaved full-range i32 PCM, matching what
+    /// `ebur128::EbuR128::add_frames_i32` and `true_peak` expect.
+    pub fn new(channels: u32, sample_rate: u32) -> Result<Self, String> {
         let meter = EbuR128::new(channels, sample_rate, Mode::I | Mode::TRUE_PEAK)
             .map_err(|e| format!("ebur128 init failed: {e:?}"))?;
-        Ok(Self {
-            meter,
-            shift,
-            channels,
-        })
+        Ok(Self { meter, channels })
     }
 
     /// Feed one interleaved-i32 chunk (frame-aligned: `len` a multiple of
-    /// `channels`). Scaling to full i32 (which `add_frames_i32` assumes) happens
-    /// here; a full-width source (shift 0) passes through untouched.
+    /// `channels`).
     pub fn add_chunk(&mut self, samples: &[i32]) -> Result<(), String> {
-        if self.shift == 0 {
-            self.meter.add_frames_i32(samples)
-        } else {
-            // Saturating shift: a decoded sample never fills its nominal width to
-            // the sign-bit edge, so this won't overflow in practice, but
-            // `wrapping_shl` would silently corrupt a max-magnitude sample.
-            let scaled: Vec<i32> = samples
-                .iter()
-                .map(|&s| s.saturating_mul(1 << self.shift))
-                .collect();
-            self.meter.add_frames_i32(&scaled)
-        }
-        .map_err(|e| format!("ebur128 add_frames failed: {e:?}"))
+        self.meter
+            .add_frames_i32(samples)
+            .map_err(|e| format!("ebur128 add_frames failed: {e:?}"))
     }
 
     /// Read the track's integrated loudness + true peak, returning the measurement
@@ -108,16 +82,15 @@ impl LoudnessMeter {
 }
 
 /// Measure one track's PCM in a single shot. `samples` is interleaved i32 as
-/// `decode_audio` returns it — see [`LoudnessMeter::new`] for the `sample_bits`
-/// scaling. Returns the measurement alongside the meter the album combine reuses;
-/// the import path streams via [`LoudnessMeter`] directly instead.
+/// `decode_audio` returns it. Returns the measurement alongside the meter the
+/// album combine reuses; the import path streams via [`LoudnessMeter`] directly
+/// instead.
 pub fn measure_track(
     samples: &[i32],
     channels: u32,
     sample_rate: u32,
-    sample_bits: u32,
 ) -> Result<(EbuR128, Option<TrackLoudness>), String> {
-    let mut meter = LoudnessMeter::new(channels, sample_rate, sample_bits)?;
+    let mut meter = LoudnessMeter::new(channels, sample_rate)?;
     meter.add_chunk(samples)?;
     meter.finish()
 }
@@ -187,8 +160,8 @@ mod tests {
     #[test]
     fn louder_signal_measures_higher_lufs() {
         let sr = 48_000;
-        let (_, quiet) = measure_track(&sine(0.1, 1_000.0, sr, 3.0), 2, sr, 32).unwrap();
-        let (_, loud) = measure_track(&sine(0.5, 1_000.0, sr, 3.0), 2, sr, 32).unwrap();
+        let (_, quiet) = measure_track(&sine(0.1, 1_000.0, sr, 3.0), 2, sr).unwrap();
+        let (_, loud) = measure_track(&sine(0.5, 1_000.0, sr, 3.0), 2, sr).unwrap();
         let quiet = quiet.expect("quiet tone has usable loudness");
         let loud = loud.expect("loud tone has usable loudness");
         // A 5x amplitude increase is ~14 dB louder; assert a clear ordering with
@@ -209,10 +182,10 @@ mod tests {
         let sr = 48_000;
         let pcm = sine(0.4, 1_000.0, sr, 5.0);
 
-        let (_, one_shot) = measure_track(&pcm, 2, sr, 16).unwrap();
+        let (_, one_shot) = measure_track(&pcm, 2, sr).unwrap();
         let one_shot = one_shot.expect("tone has usable loudness");
 
-        let mut meter = LoudnessMeter::new(2, sr, 16).unwrap();
+        let mut meter = LoudnessMeter::new(2, sr).unwrap();
         // Uneven, frame-aligned chunks (a multiple of the 2 channels), nothing
         // like the one-shot's single call.
         for chunk in pcm.chunks(7_001 * 2) {
@@ -234,7 +207,7 @@ mod tests {
     #[test]
     fn near_full_scale_peak_is_near_unity() {
         let sr = 48_000;
-        let (_, m) = measure_track(&sine(0.99, 1_000.0, sr, 2.0), 2, sr, 32).unwrap();
+        let (_, m) = measure_track(&sine(0.99, 1_000.0, sr, 2.0), 2, sr).unwrap();
         let m = m.expect("usable loudness");
         // A 0.99-full-scale sine peaks just under 1.0 linear (true-peak
         // interpolation can nudge it slightly past the sample peak).
@@ -249,7 +222,7 @@ mod tests {
     fn silence_has_no_usable_loudness() {
         let sr = 48_000;
         let silent = vec![0i32; sr as usize * 2 * 2];
-        let (_, m) = measure_track(&silent, 2, sr, 32).unwrap();
+        let (_, m) = measure_track(&silent, 2, sr).unwrap();
         assert!(
             m.is_none(),
             "silence must measure as no usable loudness (unity gain at playback)"
@@ -259,13 +232,13 @@ mod tests {
     #[test]
     fn album_loudness_combines_meters_order_independently() {
         let sr = 48_000;
-        let (m1, _) = measure_track(&sine(0.1, 1_000.0, sr, 3.0), 2, sr, 32).unwrap();
-        let (m2, _) = measure_track(&sine(0.5, 1_000.0, sr, 3.0), 2, sr, 32).unwrap();
+        let (m1, _) = measure_track(&sine(0.1, 1_000.0, sr, 3.0), 2, sr).unwrap();
+        let (m2, _) = measure_track(&sine(0.5, 1_000.0, sr, 3.0), 2, sr).unwrap();
 
         let forward = album_loudness(&[m1, m2]).expect("usable album loudness");
 
-        let (m1b, _) = measure_track(&sine(0.1, 1_000.0, sr, 3.0), 2, sr, 32).unwrap();
-        let (m2b, _) = measure_track(&sine(0.5, 1_000.0, sr, 3.0), 2, sr, 32).unwrap();
+        let (m1b, _) = measure_track(&sine(0.1, 1_000.0, sr, 3.0), 2, sr).unwrap();
+        let (m2b, _) = measure_track(&sine(0.5, 1_000.0, sr, 3.0), 2, sr).unwrap();
         let reversed = album_loudness(&[m2b, m1b]).expect("usable album loudness");
 
         assert!(
@@ -280,34 +253,6 @@ mod tests {
         assert_eq!(album_peak(&[0.3, 0.9, 0.5]), Some(0.9));
     }
 
-    #[test]
-    fn declared_8_bit_is_floored_to_16_not_over_shifted() {
-        // `read_sample` upscales an 8-bit source into the 16-bit value range, so
-        // the decoded i32 samples are 16-bit-range even when the probe declares
-        // 8 bits. Measuring at the declared 8 must floor the shift to 16, not
-        // over-shift to 24 and saturate every loud sample — the result must
-        // match measuring the same samples as 16-bit.
-        let sr = 48_000;
-        let n = sr as usize * 3;
-        let sixteen_bit_range: Vec<i32> = (0..n)
-            .flat_map(|i| {
-                let t = i as f64 / sr as f64;
-                let v = ((2.0 * PI * 1_000.0 * t).sin() * 0.5 * i16::MAX as f64) as i32;
-                [v, v]
-            })
-            .collect();
-        let (_, as_eight) = measure_track(&sixteen_bit_range, 2, sr, 8).unwrap();
-        let (_, as_sixteen) = measure_track(&sixteen_bit_range, 2, sr, 16).unwrap();
-        let as_eight = as_eight.expect("declared-8 source measures a usable loudness");
-        let as_sixteen = as_sixteen.expect("16-bit source measures a usable loudness");
-        assert!(
-            (as_eight.loudness_lufs - as_sixteen.loudness_lufs).abs() < 1e-6,
-            "declared-8 loudness {} must equal 16-bit {} (floored, not over-shifted)",
-            as_eight.loudness_lufs,
-            as_sixteen.loudness_lufs
-        );
-    }
-
     /// Measuring a full-length track stays well under a second. ebur128's
     /// pure-Rust true-peak interpolator is ~80x slower unoptimized, so the
     /// `[profile.dev.package.ebur128] opt-level = 3` override in the workspace
@@ -320,13 +265,13 @@ mod tests {
         let samples: Vec<i32> = (0..frames)
             .flat_map(|i| {
                 let t = i as f64 / sr as f64;
-                let v = ((2.0 * PI * 1_000.0 * t).sin() * 0.5 * i16::MAX as f64) as i32;
+                let v = ((2.0 * PI * 1_000.0 * t).sin() * 0.5 * i32::MAX as f64) as i32;
                 [v, v]
             })
             .collect();
 
         let start = std::time::Instant::now();
-        let (_, measured) = measure_track(&samples, 2, sr, 16).unwrap();
+        let (_, measured) = measure_track(&samples, 2, sr).unwrap();
         let elapsed = start.elapsed();
 
         assert!(measured.is_some(), "the 1kHz tone has a usable loudness");
