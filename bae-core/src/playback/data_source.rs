@@ -367,8 +367,23 @@ impl AudioDataReader for CovenBlobReader {
                     // while the playing track has a fetch in flight so it can't
                     // slow the current track's start.
                     let foreground = arbiter.is_foreground(buffer_id);
-                    let data = arbiter.run_gated(foreground, fut).await;
-                    let data = data.map_err(|e| e.to_string())?;
+                    debug!(
+                        "fetch start buffer={buffer_id} {} off={src_off} len={len} {}ms",
+                        if foreground { "playing" } else { "preload" },
+                        started.elapsed().as_millis(),
+                    );
+                    let fetch_started = Instant::now();
+                    let data = match arbiter.run_gated(foreground, fut).await {
+                        Ok(data) => data,
+                        Err(e) => {
+                            debug!(
+                                "fetch failed buffer={buffer_id} {} off={src_off} len={len} waited={}ms error={e}",
+                                if foreground { "playing" } else { "preload" },
+                                fetch_started.elapsed().as_millis(),
+                            );
+                            return Err(e.to_string());
+                        }
+                    };
                     let total =
                         fetched.fetch_add(data.len() as u64, Ordering::Relaxed) + data.len() as u64;
                     debug!(

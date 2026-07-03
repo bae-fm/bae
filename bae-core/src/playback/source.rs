@@ -14,9 +14,12 @@
 
 use crate::playback::track_stream::TrackStream;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::warn;
+use tracing::{debug, warn};
+
+const STARVATION_LOG_AFTER: Duration = Duration::from_millis(250);
+const STARVATION_LOG_EVERY: Duration = Duration::from_secs(1);
 
 /// Per-track context the position/completion listener needs to label its
 /// output (`PositionUpdate`, `TrackCompleted`, `DecodeStats`). Carried with
@@ -70,6 +73,8 @@ pub struct PlaybackSource {
     /// drain via a cancellable async receiver — a blocking receiver would
     /// wedge runtime shutdown, since this sender outlives any single stream.
     boundary_tx: UnboundedSender<TrackCrossing>,
+    starvation_started: Option<Instant>,
+    last_starvation_log: Option<Instant>,
 }
 
 impl PlaybackSource {
@@ -86,6 +91,8 @@ impl PlaybackSource {
             current_fmt: Arc::new(current_fmt),
             next: None,
             boundary_tx,
+            starvation_started: None,
+            last_starvation_log: None,
         }
     }
 
@@ -168,7 +175,55 @@ impl PlaybackSource {
             }
         }
 
+        self.log_starvation_if_needed(filled);
         filled
+    }
+
+    fn log_starvation_if_needed(&mut self, filled: usize) {
+        if filled > 0 {
+            if let Some(started) = self.starvation_started.take() {
+                let starved = started.elapsed();
+                if starved >= STARVATION_LOG_AFTER {
+                    debug!(
+                        track_id = %self.current_fmt.track_id,
+                        starved_ms = starved.as_millis(),
+                        position_ms = self.position().as_millis(),
+                        samples_decoded = self.current.samples_decoded(),
+                        decode_errors = self.current.decode_error_count(),
+                        "playback source resumed after decoded sample starvation"
+                    );
+                }
+                self.last_starvation_log = None;
+            }
+            return;
+        }
+
+        if self.current.is_finished() {
+            self.starvation_started = None;
+            self.last_starvation_log = None;
+            return;
+        }
+
+        let now = Instant::now();
+        let started = *self.starvation_started.get_or_insert(now);
+        let starved = now.duration_since(started);
+        if starved >= STARVATION_LOG_AFTER
+            && self
+                .last_starvation_log
+                .is_none_or(|last| now.duration_since(last) >= STARVATION_LOG_EVERY)
+        {
+            warn!(
+                track_id = %self.current_fmt.track_id,
+                starved_ms = starved.as_millis(),
+                position_ms = self.position().as_millis(),
+                producer_finished = self.current.producer_finished(),
+                samples_decoded = self.current.samples_decoded(),
+                decode_errors = self.current.decode_error_count(),
+                has_next = self.next.is_some(),
+                "playback source has no decoded samples while current track is not finished"
+            );
+            self.last_starvation_log = Some(now);
+        }
     }
 
     /// Whether playback is fully finished: the current track is drained and

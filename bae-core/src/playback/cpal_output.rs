@@ -92,6 +92,8 @@ impl AudioOutput for CpalAudioOutput {
         let position_update_interval =
             std::time::Duration::from_millis(position_update_interval_ms as u64);
         let mut completion_sent = false;
+        let mut lock_miss_started: Option<std::time::Instant> = None;
+        let mut last_lock_miss_log: Option<std::time::Instant> = None;
 
         let stream = device
             .build_output_stream(
@@ -105,8 +107,34 @@ impl AudioOutput for CpalAudioOutput {
                     let vol = volume.load(Ordering::Relaxed) as f32 / 10000.0;
 
                     let mut source_guard = match source.try_lock() {
-                        Ok(guard) => guard,
+                        Ok(guard) => {
+                            if let Some(started) = lock_miss_started.take() {
+                                let missed = started.elapsed();
+                                if missed >= std::time::Duration::from_millis(250) {
+                                    debug!(
+                                        missed_ms = missed.as_millis(),
+                                        "audio callback reacquired playback source lock"
+                                    );
+                                }
+                                last_lock_miss_log = None;
+                            }
+                            guard
+                        }
                         Err(_) => {
+                            let now = std::time::Instant::now();
+                            let started = *lock_miss_started.get_or_insert(now);
+                            let missed = now.duration_since(started);
+                            if missed >= std::time::Duration::from_millis(250)
+                                && last_lock_miss_log.is_none_or(|last| {
+                                    now.duration_since(last) >= std::time::Duration::from_secs(1)
+                                })
+                            {
+                                warn!(
+                                    missed_ms = missed.as_millis(),
+                                    "audio callback could not lock playback source while playing"
+                                );
+                                last_lock_miss_log = Some(now);
+                            }
                             data.fill(0.0);
                             return;
                         }

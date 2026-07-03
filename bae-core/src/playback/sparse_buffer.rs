@@ -12,11 +12,15 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
+use std::time::{Duration, Instant};
 use tokio::sync::Notify;
+use tracing::debug;
 
 /// Hands each buffer a small process-unique id so the fill's per-window fetch
 /// logs and the decoder's first-sample log can be tied to one track's stream.
 static NEXT_BUFFER_ID: AtomicU64 = AtomicU64::new(0);
+const READ_WAIT_LOG_AFTER: Duration = Duration::from_millis(250);
+const READ_WAIT_LOG_EVERY: Duration = Duration::from_secs(1);
 
 /// A contiguous range of buffered data.
 #[derive(Debug, Clone)]
@@ -197,6 +201,8 @@ impl SparseStreamingBuffer {
             read_pos: 0,
             reads_cancelled: false,
             cancel_token,
+            wait_started: None,
+            last_wait_log: None,
         }
     }
 
@@ -510,6 +516,8 @@ pub struct BufferReader {
     /// Allows the playback service to cancel a specific reader without
     /// affecting other readers on the same buffer.
     cancel_token: Option<Arc<std::sync::atomic::AtomicBool>>,
+    wait_started: Option<Instant>,
+    last_wait_log: Option<Instant>,
 }
 
 impl BufferReader {
@@ -549,6 +557,23 @@ impl BufferReader {
                 .as_ref()
                 .is_some_and(|t| t.load(std::sync::atomic::Ordering::Relaxed));
             if inner.cancelled || inner.reads_cancelled || self.reads_cancelled || token_cancelled {
+                if let Some(started) = self.wait_started.take() {
+                    let waited = started.elapsed();
+                    if waited >= READ_WAIT_LOG_AFTER {
+                        debug!(
+                            buffer = self.buffer.id(),
+                            reader = self.id,
+                            pos = self.read_pos,
+                            waited_ms = waited.as_millis(),
+                            buffer_cancelled = inner.cancelled,
+                            buffer_reads_cancelled = inner.reads_cancelled,
+                            reader_cancelled = self.reads_cancelled,
+                            token_cancelled,
+                            "sparse buffer reader cancelled while waiting for bytes"
+                        );
+                    }
+                    self.last_wait_log = None;
+                }
                 return None;
             }
 
@@ -560,6 +585,23 @@ impl BufferReader {
             // Check if current position is buffered
             for range in &inner.ranges {
                 if range.contains(read_pos) {
+                    if let Some(started) = self.wait_started.take() {
+                        let waited = started.elapsed();
+                        if waited >= READ_WAIT_LOG_AFTER {
+                            debug!(
+                                buffer = self.buffer.id(),
+                                reader = self.id,
+                                pos = read_pos,
+                                waited_ms = waited.as_millis(),
+                                read_bytes = buf
+                                    .len()
+                                    .min(range.data.len() - (read_pos - range.start) as usize),
+                                bytes_fetched = self.buffer.bytes_fetched(),
+                                "sparse buffer reader resumed with bytes"
+                            );
+                        }
+                        self.last_wait_log = None;
+                    }
                     let offset_in_range = (read_pos - range.start) as usize;
                     let available = range.data.len() - offset_in_range;
                     let to_read = buf.len().min(available);
@@ -589,6 +631,27 @@ impl BufferReader {
 
             // Nothing buffered here yet: the demand published above tells the
             // fill where this reader is stuck; wake it, then wait for the bytes.
+            let now = Instant::now();
+            let started = *self.wait_started.get_or_insert(now);
+            let waited = now.duration_since(started);
+            if waited >= READ_WAIT_LOG_AFTER
+                && self
+                    .last_wait_log
+                    .is_none_or(|last| now.duration_since(last) >= READ_WAIT_LOG_EVERY)
+            {
+                debug!(
+                    buffer = self.buffer.id(),
+                    reader = self.id,
+                    pos = read_pos,
+                    waited_ms = waited.as_millis(),
+                    ranges = inner.ranges.len(),
+                    demands = inner.demands.len(),
+                    bytes_fetched = self.buffer.bytes_fetched(),
+                    total_size = self.buffer.total_size,
+                    "sparse buffer reader waiting for bytes"
+                );
+                self.last_wait_log = Some(now);
+            }
             self.buffer.wake_fill();
             inner = self.buffer.data_available.wait(inner).unwrap();
         }

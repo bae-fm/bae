@@ -264,7 +264,6 @@ impl TrackStream {
     }
 
     /// Check if the producer signaled finished (may still have buffered data).
-    #[cfg(test)]
     pub fn producer_finished(&self) -> bool {
         self.state.is_finished()
     }
