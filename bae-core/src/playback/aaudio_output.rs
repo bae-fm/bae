@@ -9,7 +9,8 @@
 //! the device instead of a capture buffer.
 
 use super::audio_output::{
-    AudioError, AudioOutput, AudioState, AudioStream, CompletionEvent, PositionEvent,
+    AudioDrain, AudioError, AudioOutput, AudioOutputControls, AudioState, AudioStream,
+    CompletionEvent, DrainStatus, PositionEvent,
 };
 use crate::playback::source::PlaybackSource;
 use ndk::audio::{
@@ -17,7 +18,7 @@ use ndk::audio::{
     AudioStream as NdkAudioStream, AudioStreamBuilder,
 };
 use std::ffi::c_void;
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
 use tracing::{debug, error, info, warn};
@@ -34,15 +35,13 @@ const WRITE_TIMEOUT_NS: i64 = 100_000_000; // 100 ms
 
 /// Audio output writing decoded PCM to an AAudio output stream.
 pub struct AAudioOutput {
-    state: Arc<AtomicU8>,
-    volume: Arc<AtomicU32>,
+    controls: AudioOutputControls,
 }
 
 impl AAudioOutput {
     pub fn new() -> Result<Self, AudioError> {
         Ok(Self {
-            state: Arc::new(AtomicU8::new(AudioState::Stopped as u8)),
-            volume: Arc::new(AtomicU32::new(10000u32)),
+            controls: AudioOutputControls::new(10000),
         })
     }
 }
@@ -169,8 +168,7 @@ impl AudioOutput for AAudioOutput {
         completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        let state = self.state.clone();
-        let volume = self.volume.clone();
+        let controls = self.controls.clone();
         let stop = Arc::new(AtomicBool::new(false));
         let stop_clone = stop.clone();
 
@@ -186,10 +184,13 @@ impl AudioOutput for AAudioOutput {
             };
 
             let mut buf = vec![0.0f32; WRITE_FRAMES * source_channels as usize];
-            let position_update_interval =
-                std::time::Duration::from_millis(position_update_interval_ms as u64);
-            let mut last_position_update = std::time::Instant::now();
-            let mut completion_sent = false;
+            let mut drain = AudioDrain::new(
+                controls.clone(),
+                source,
+                position_tx,
+                completion_tx,
+                position_update_interval_ms,
+            );
             // Tracks whether the device stream is started; pause/stop idles it
             // and the next Playing iteration restarts it.
             let mut stream_started = stream.is_some();
@@ -199,8 +200,7 @@ impl AudioOutput for AAudioOutput {
                     break;
                 }
 
-                let current_state = AudioState::from_u8(state.load(Ordering::Relaxed));
-                if current_state != AudioState::Playing {
+                if controls.get_state() != AudioState::Playing {
                     // Idle the device while paused/stopped so it doesn't drain
                     // the (now silent) buffer and burn power.
                     if stream_started {
@@ -239,54 +239,17 @@ impl AudioOutput for AAudioOutput {
                     stream_started = true;
                 }
 
-                let mut source_guard = match source.try_lock() {
-                    Ok(guard) => guard,
-                    Err(_) => {
+                let read = match drain.drain_iteration(&mut buf, true, false, None) {
+                    DrainStatus::Samples { read } => read,
+                    DrainStatus::Completed => {
+                        info!("AAudio writer: end of stream");
+                        break;
+                    }
+                    DrainStatus::Idle => {
                         std::thread::sleep(std::time::Duration::from_millis(1));
                         continue;
                     }
                 };
-
-                let read = source_guard.pull_samples(&mut buf);
-
-                if read == 0 {
-                    if source_guard.is_finished() && !completion_sent {
-                        info!("AAudio writer: end of stream");
-                        state.store(AudioState::Stopped as u8, Ordering::Relaxed);
-                        if completion_tx.send(source_guard.completion_event()).is_err() {
-                            warn!("Failed to send completion signal");
-                        }
-                        completion_sent = true;
-                    }
-                    drop(source_guard);
-                    if completion_sent {
-                        break;
-                    }
-                    std::thread::sleep(std::time::Duration::from_millis(1));
-                    continue;
-                }
-
-                // Apply volume + this track's replay gain in-place over the
-                // filled region as one combined factor. Mute (`vol == 0`) still
-                // zeroes output. The peak cap was applied when the gain was
-                // derived, so no clamp is needed here.
-                let vol = volume.load(Ordering::Relaxed) as f32 / 10000.0;
-                let combined = source_guard.current_replay_gain_linear() * vol;
-                for sample in &mut buf[..read] {
-                    *sample *= combined;
-                }
-
-                if last_position_update.elapsed() >= position_update_interval {
-                    if position_tx.send(source_guard.position_event()).is_err() {
-                        debug!("Position tick: receiver dropped");
-                    }
-                    last_position_update = std::time::Instant::now();
-                }
-
-                // Release the source lock before the blocking write so the
-                // service can mutate the source (seek/stop) while we're parked
-                // in AAudio.
-                drop(source_guard);
 
                 if let Some(s) = &stream {
                     if let Err(e) = write_all(s, &buf[..read], source_channels, &stop_clone) {
@@ -314,19 +277,18 @@ impl AudioOutput for AAudioOutput {
     }
 
     fn set_state(&self, new_state: AudioState) {
-        self.state.store(new_state as u8, Ordering::Relaxed);
+        self.controls.set_state(new_state);
     }
 
     fn get_state(&self) -> AudioState {
-        AudioState::from_u8(self.state.load(Ordering::Relaxed))
+        self.controls.get_state()
     }
 
     fn set_volume(&self, volume: f32) {
-        self.volume
-            .store((volume.clamp(0.0, 1.0) * 10000.0) as u32, Ordering::Relaxed);
+        self.controls.set_volume(volume);
     }
 
     fn get_volume(&self) -> f32 {
-        self.volume.load(Ordering::Relaxed) as f32 / 10000.0
+        self.controls.get_volume()
     }
 }

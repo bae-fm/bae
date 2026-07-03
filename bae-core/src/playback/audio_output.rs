@@ -8,11 +8,11 @@
 
 use crate::playback::source::{PlaybackSource, TrackFmt};
 use std::fmt::{Display, Formatter, Result as FmtResult};
-#[cfg(feature = "test-utils")]
 use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::sync::mpsc as tokio_mpsc;
+use tracing::{debug, warn};
 
 /// Audio output state - directly controls what the audio callback does.
 ///
@@ -36,6 +36,209 @@ impl AudioState {
             2 => AudioState::Paused,
             _ => AudioState::Stopped,
         }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct AudioOutputControls {
+    state: Arc<AtomicU8>,
+    volume: Arc<AtomicU32>,
+}
+
+impl AudioOutputControls {
+    pub(crate) fn new(initial_volume: u32) -> Self {
+        Self {
+            state: Arc::new(AtomicU8::new(AudioState::Stopped as u8)),
+            volume: Arc::new(AtomicU32::new(initial_volume)),
+        }
+    }
+
+    pub(crate) fn set_state(&self, new_state: AudioState) {
+        self.state.store(new_state as u8, Ordering::Relaxed);
+    }
+
+    pub(crate) fn get_state(&self) -> AudioState {
+        AudioState::from_u8(self.state.load(Ordering::Relaxed))
+    }
+
+    pub(crate) fn set_volume(&self, volume: f32) {
+        self.volume
+            .store((volume.clamp(0.0, 1.0) * 10000.0) as u32, Ordering::Relaxed);
+    }
+
+    pub(crate) fn get_volume(&self) -> f32 {
+        self.volume.load(Ordering::Relaxed) as f32 / 10000.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DrainStatus {
+    Idle,
+    Samples { read: usize },
+    Completed,
+}
+
+#[cfg(feature = "test-utils")]
+pub(crate) fn sleep_realtime_buffer(read: usize, channels: u32, sample_rate: u32) {
+    let frames = (read as u32 / channels) as f64;
+    std::thread::sleep(std::time::Duration::from_secs_f64(
+        frames / sample_rate as f64,
+    ));
+}
+
+pub(crate) struct AudioLockMissLog {
+    started: Option<std::time::Instant>,
+    last_log: Option<std::time::Instant>,
+}
+
+impl AudioLockMissLog {
+    pub(crate) fn new() -> Self {
+        Self {
+            started: None,
+            last_log: None,
+        }
+    }
+
+    fn acquired(&mut self) {
+        if let Some(started) = self.started.take() {
+            let missed = started.elapsed();
+            if missed >= std::time::Duration::from_millis(250) {
+                debug!(
+                    missed_ms = missed.as_millis(),
+                    "audio callback reacquired playback source lock"
+                );
+            }
+            self.last_log = None;
+        }
+    }
+
+    fn missed(&mut self) {
+        let now = std::time::Instant::now();
+        let started = *self.started.get_or_insert(now);
+        let missed = now.duration_since(started);
+        if missed >= std::time::Duration::from_millis(250)
+            && self
+                .last_log
+                .is_none_or(|last| now.duration_since(last) >= std::time::Duration::from_secs(1))
+        {
+            warn!(
+                missed_ms = missed.as_millis(),
+                "audio callback could not lock playback source while playing"
+            );
+            self.last_log = Some(now);
+        }
+    }
+}
+
+pub(crate) struct AudioDrain {
+    controls: AudioOutputControls,
+    source: Arc<Mutex<PlaybackSource>>,
+    position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
+    completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+    position_update_interval: std::time::Duration,
+    last_position_update: std::time::Instant,
+    completion_sent: bool,
+}
+
+impl AudioDrain {
+    pub(crate) fn new(
+        controls: AudioOutputControls,
+        source: Arc<Mutex<PlaybackSource>>,
+        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
+        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+        position_update_interval_ms: u32,
+    ) -> Self {
+        Self {
+            controls,
+            source,
+            position_tx,
+            completion_tx,
+            position_update_interval: std::time::Duration::from_millis(
+                position_update_interval_ms as u64,
+            ),
+            last_position_update: std::time::Instant::now(),
+            completion_sent: false,
+        }
+    }
+
+    pub(crate) fn drain_iteration(
+        &mut self,
+        buf: &mut [f32],
+        apply_gain: bool,
+        zero_unfilled: bool,
+        lock_miss: Option<&mut AudioLockMissLog>,
+    ) -> DrainStatus {
+        if self.controls.get_state() != AudioState::Playing {
+            if zero_unfilled {
+                buf.fill(0.0);
+            }
+            return DrainStatus::Idle;
+        }
+
+        let mut source_guard = match self.source.try_lock() {
+            Ok(guard) => {
+                if let Some(lock_miss) = lock_miss {
+                    lock_miss.acquired();
+                }
+                guard
+            }
+            Err(_) => {
+                if let Some(lock_miss) = lock_miss {
+                    lock_miss.missed();
+                }
+                if zero_unfilled {
+                    buf.fill(0.0);
+                }
+                return DrainStatus::Idle;
+            }
+        };
+
+        let read = source_guard.pull_samples(buf);
+
+        if read == 0 {
+            if source_guard.is_finished() && !self.completion_sent {
+                self.controls.set_state(AudioState::Stopped);
+                if self
+                    .completion_tx
+                    .send(source_guard.completion_event())
+                    .is_err()
+                {
+                    warn!("Failed to send completion signal");
+                }
+                self.completion_sent = true;
+            }
+            if zero_unfilled {
+                buf.fill(0.0);
+            }
+            return if self.completion_sent {
+                DrainStatus::Completed
+            } else {
+                DrainStatus::Idle
+            };
+        }
+
+        if apply_gain {
+            let combined = source_guard.current_replay_gain_linear() * self.controls.get_volume();
+            for sample in &mut buf[..read] {
+                *sample *= combined;
+            }
+        }
+        if zero_unfilled {
+            buf[read..].fill(0.0);
+        }
+
+        if self.last_position_update.elapsed() >= self.position_update_interval {
+            if self
+                .position_tx
+                .send(source_guard.position_event())
+                .is_err()
+            {
+                debug!("Position tick: receiver dropped");
+            }
+            self.last_position_update = std::time::Instant::now();
+        }
+
+        DrainStatus::Samples { read }
     }
 }
 
@@ -106,7 +309,7 @@ pub trait AudioOutput: Send + 'static {
 /// the decoder produced them.
 #[cfg(feature = "test-utils")]
 pub struct CaptureAudioOutput {
-    state: Arc<AtomicU8>,
+    controls: AudioOutputControls,
     notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>,
     /// When true, the drain paces itself to real time (sleeping one buffer's
     /// wall-clock duration after each pull) instead of draining at full speed.
@@ -146,7 +349,7 @@ impl CaptureAudioOutput {
     ) {
         let (notify_tx, notify_rx) = tokio::sync::mpsc::unbounded_channel();
         let output = Self {
-            state: Arc::new(AtomicU8::new(AudioState::Stopped as u8)),
+            controls: AudioOutputControls::new(10000),
             notify_tx,
             realtime,
         };
@@ -217,7 +420,7 @@ impl AudioOutput for CaptureAudioOutput {
         let captured = Arc::new(Mutex::new(Vec::<f32>::new()));
         let _ = self.notify_tx.send(captured.clone());
 
-        let state = self.state.clone();
+        let controls = self.controls.clone();
         let realtime = self.realtime;
         let channels = source_channels.max(1);
         let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -225,71 +428,38 @@ impl AudioOutput for CaptureAudioOutput {
 
         let thread = std::thread::spawn(move || {
             let mut buf = vec![0.0f32; 4096];
-            let position_update_interval =
-                std::time::Duration::from_millis(position_update_interval_ms as u64);
-            let mut last_position_update = std::time::Instant::now();
-            let mut completion_sent = false;
+            let mut drain = AudioDrain::new(
+                controls,
+                source,
+                position_tx,
+                completion_tx,
+                position_update_interval_ms,
+            );
 
             loop {
                 if stop_clone.load(Ordering::Acquire) {
                     break;
                 }
 
-                let current_state = AudioState::from_u8(state.load(Ordering::Relaxed));
-                if current_state != AudioState::Playing {
-                    std::thread::sleep(std::time::Duration::from_millis(1));
-                    continue;
-                }
-
-                let mut source_guard = match source.try_lock() {
-                    Ok(guard) => guard,
-                    Err(_) => {
+                match drain.drain_iteration(&mut buf, false, false, None) {
+                    DrainStatus::Idle => {
                         std::thread::sleep(std::time::Duration::from_millis(1));
                         continue;
                     }
-                };
-
-                let read = source_guard.pull_samples(&mut buf);
-
-                if read == 0 {
-                    if source_guard.is_finished() && !completion_sent {
-                        state.store(AudioState::Stopped as u8, Ordering::Relaxed);
-                        if completion_tx.send(source_guard.completion_event()).is_err() {
-                            tracing::warn!("Failed to send completion signal");
-                        }
-                        completion_sent = true;
-                    }
-                    drop(source_guard);
-                    if completion_sent {
+                    DrainStatus::Completed => {
                         break;
                     }
-                    std::thread::sleep(std::time::Duration::from_millis(1));
-                    continue;
-                }
+                    DrainStatus::Samples { read } => {
+                        if let Ok(mut guard) = captured.lock() {
+                            guard.extend_from_slice(&buf[..read]);
+                        } else {
+                            break;
+                        }
 
-                // Capture raw samples (no volume applied)
-                if let Ok(mut guard) = captured.lock() {
-                    guard.extend_from_slice(&buf[..read]);
-                } else {
-                    break; // Test ended, mutex poisoned
-                }
-
-                if last_position_update.elapsed() >= position_update_interval {
-                    if position_tx.send(source_guard.position_event()).is_err() {
-                        tracing::debug!("Position tick: receiver dropped");
+                        if realtime {
+                            sleep_realtime_buffer(read, channels, source_sample_rate);
+                        }
                     }
-                    last_position_update = std::time::Instant::now();
-                }
-
-                // Real-time mode: release the source, then sleep this buffer's
-                // wall-clock duration so the decoder fills the ring and parks
-                // rather than racing a whole track ahead of the test's commands.
-                if realtime {
-                    let frames = (read as u32 / channels) as f64;
-                    drop(source_guard);
-                    std::thread::sleep(std::time::Duration::from_secs_f64(
-                        frames / source_sample_rate as f64,
-                    ));
                 }
             }
         });
@@ -301,11 +471,11 @@ impl AudioOutput for CaptureAudioOutput {
     }
 
     fn set_state(&self, new_state: AudioState) {
-        self.state.store(new_state as u8, Ordering::Relaxed);
+        self.controls.set_state(new_state);
     }
 
     fn get_state(&self) -> AudioState {
-        AudioState::from_u8(self.state.load(Ordering::Relaxed))
+        self.controls.get_state()
     }
 
     fn set_volume(&self, _volume: f32) {
@@ -332,17 +502,14 @@ impl AudioOutput for CaptureAudioOutput {
 /// measurement runs headless on any platform.
 #[cfg(feature = "test-utils")]
 pub struct RealtimeProbeOutput {
-    state: Arc<AtomicU8>,
-    volume: Arc<AtomicU32>,
+    controls: AudioOutputControls,
 }
 
 #[cfg(feature = "test-utils")]
 impl RealtimeProbeOutput {
     pub fn new() -> Self {
         Self {
-            state: Arc::new(AtomicU8::new(AudioState::Stopped as u8)),
-            // Full volume, like a real playing stream (10000 == 1.0).
-            volume: Arc::new(AtomicU32::new(10000)),
+            controls: AudioOutputControls::new(10000),
         }
     }
 }
@@ -365,8 +532,7 @@ impl AudioOutput for RealtimeProbeOutput {
         completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        let state = self.state.clone();
-        let volume = self.volume.clone();
+        let controls = self.controls.clone();
         let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let stop_clone = stop.clone();
         let channels = source_channels.max(1);
@@ -374,73 +540,31 @@ impl AudioOutput for RealtimeProbeOutput {
         let thread = std::thread::spawn(move || {
             // 1024 frames/buffer — the pacing granularity, not the total work.
             let mut buf = vec![0.0f32; 1024 * channels as usize];
-            let position_update_interval =
-                std::time::Duration::from_millis(position_update_interval_ms as u64);
-            let mut last_position_update = std::time::Instant::now();
-            let mut completion_sent = false;
+            let mut drain = AudioDrain::new(
+                controls,
+                source,
+                position_tx,
+                completion_tx,
+                position_update_interval_ms,
+            );
 
             loop {
                 if stop_clone.load(Ordering::Acquire) {
                     break;
                 }
 
-                if AudioState::from_u8(state.load(Ordering::Relaxed)) != AudioState::Playing {
-                    std::thread::sleep(std::time::Duration::from_millis(1));
-                    continue;
-                }
-
-                let mut source_guard = match source.try_lock() {
-                    Ok(guard) => guard,
-                    Err(_) => {
+                match drain.drain_iteration(&mut buf, true, false, None) {
+                    DrainStatus::Idle => {
                         std::thread::sleep(std::time::Duration::from_millis(1));
                         continue;
                     }
-                };
-
-                let read = source_guard.pull_samples(&mut buf);
-
-                if read == 0 {
-                    if source_guard.is_finished() && !completion_sent {
-                        state.store(AudioState::Stopped as u8, Ordering::Relaxed);
-                        if completion_tx.send(source_guard.completion_event()).is_err() {
-                            tracing::warn!("Failed to send completion signal");
-                        }
-                        completion_sent = true;
-                    }
-                    drop(source_guard);
-                    if completion_sent {
+                    DrainStatus::Completed => {
                         break;
                     }
-                    std::thread::sleep(std::time::Duration::from_millis(1));
-                    continue;
-                }
-
-                // The same in-place gain the cpal sink applies, so the probe's
-                // per-buffer work matches production. Output is discarded.
-                let vol = volume.load(Ordering::Relaxed) as f32 / 10000.0;
-                let combined = source_guard.current_replay_gain_linear() * vol;
-                for sample in &mut buf[..read] {
-                    *sample *= combined;
-                }
-
-                if last_position_update.elapsed() >= position_update_interval {
-                    if position_tx.send(source_guard.position_event()).is_err() {
-                        tracing::debug!("Position tick: receiver dropped");
+                    DrainStatus::Samples { read } => {
+                        sleep_realtime_buffer(read, channels, source_sample_rate);
                     }
-                    last_position_update = std::time::Instant::now();
                 }
-
-                // Release the source before sleeping so the decoder and seek
-                // paths can take the lock, exactly as the cpal callback returns
-                // between invocations.
-                drop(source_guard);
-
-                // Pace to real time: this buffer carried `read / channels`
-                // frames of audio.
-                let frames = (read as u32 / channels) as f64;
-                std::thread::sleep(std::time::Duration::from_secs_f64(
-                    frames / source_sample_rate as f64,
-                ));
             }
         });
 
@@ -451,19 +575,18 @@ impl AudioOutput for RealtimeProbeOutput {
     }
 
     fn set_state(&self, new_state: AudioState) {
-        self.state.store(new_state as u8, Ordering::Relaxed);
+        self.controls.set_state(new_state);
     }
 
     fn get_state(&self) -> AudioState {
-        AudioState::from_u8(self.state.load(Ordering::Relaxed))
+        self.controls.get_state()
     }
 
     fn set_volume(&self, volume: f32) {
-        self.volume
-            .store((volume.clamp(0.0, 1.0) * 10000.0) as u32, Ordering::Relaxed);
+        self.controls.set_volume(volume);
     }
 
     fn get_volume(&self) -> f32 {
-        self.volume.load(Ordering::Relaxed) as f32 / 10000.0
+        self.controls.get_volume()
     }
 }
