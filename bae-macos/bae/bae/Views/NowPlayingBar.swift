@@ -46,7 +46,10 @@ struct NowPlayingBarContainer: View {
             onPlayPause: { playback.togglePlayPause() },
             onNext: { playback.nextTrack() },
             onPrevious: { playback.previousTrack() },
-            onSeek: { playback.seekByRatio($0) },
+            onSeek: { ratio in
+                playbackStore.projectSeek(ratio: ratio)
+                playback.seekByRatio(ratio)
+            },
             onVolumeChange: { playback.setVolume($0) },
             onToggleMute: { playback.toggleMute() },
             onCycleRepeat: { playback.cycleRepeatMode() },

@@ -98,6 +98,9 @@ final class AppService: Observable {
                 appHandle: appHandle
             )
         )
-        mediaControlService.setupRemoteCommands(playback: playback)
+        mediaControlService.setupRemoteCommands(
+            playback: playback,
+            playbackStore: playbackStore
+        )
     }
 }

@@ -51,7 +51,10 @@ final class MediaControlService: @unchecked Sendable {
 
     // MARK: - Remote commands + session
 
-    func setupRemoteCommands(playback: Playback) {
+    func setupRemoteCommands(
+        playback: Playback,
+        playbackStore: PlaybackStore
+    ) {
         self.playback = playback
         registerSessionObservers()
 
@@ -99,6 +102,12 @@ final class MediaControlService: @unchecked Sendable {
                 return .commandFailed
             }
             let ratio = positionEvent.positionTime / (Double(durationMs) / 1000.0)
+            if let snapshot = playbackStore.projectSeek(ratio: ratio) {
+                updatePosition(
+                    positionMs: snapshot.positionMs,
+                    durationMs: snapshot.durationMs
+                )
+            }
             playback.seekByRatio(ratio)
             return .success
         }

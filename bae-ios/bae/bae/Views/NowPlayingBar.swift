@@ -22,7 +22,10 @@ struct NowPlayingBar: View {
                 transport(track: track)
                 ProgressBar(
                     positionSubject: playbackStore.playbackPositionSubject,
-                    onSeek: { playback.seekByRatio($0) }
+                    onSeek: { ratio in
+                        playbackStore.projectSeek(ratio: ratio)
+                        playback.seekByRatio(ratio)
+                    }
                 )
             }
             .padding(.horizontal, 12)

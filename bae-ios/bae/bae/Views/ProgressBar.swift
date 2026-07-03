@@ -31,8 +31,8 @@ struct ProgressBar: View {
                 in: 0...1,
                 onEditingChanged: { editing in
                     if !editing, let ratio = dragRatio {
-                        onSeek(ratio)
                         dragRatio = nil
+                        onSeek(ratio)
                     }
                 }
             )

@@ -79,7 +79,10 @@ struct ExpandedNowPlayingView: View {
 
             ProgressBar(
                 positionSubject: playbackStore.playbackPositionSubject,
-                onSeek: { playback.seekByRatio($0) }
+                onSeek: { ratio in
+                    playbackStore.projectSeek(ratio: ratio)
+                    playback.seekByRatio(ratio)
+                }
             )
 
             transport

@@ -12,3 +12,20 @@ enum PlaybackPositionEvent {
     case position(progress: Double, elapsed: String, remaining: String)
     case reset
 }
+
+struct PlaybackPositionSnapshot {
+    let positionMs: UInt64
+    let durationMs: UInt64
+    let progress: Double
+
+    var event: PlaybackPositionEvent {
+        .position(
+            progress: progress,
+            elapsed: DurationClock.text(Int64(positionMs)),
+            remaining: DurationClock.remaining(
+                positionMs: positionMs,
+                durationMs: durationMs
+            )
+        )
+    }
+}

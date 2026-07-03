@@ -26,7 +26,11 @@ final class MediaControlService: @unchecked Sendable {
     private var isShowingPreview = false
     private var currentDurationMs: UInt64?
 
-    func setupRemoteCommands(playback: Playback, previewAudio: PreviewAudio) {
+    func setupRemoteCommands(
+        playback: Playback,
+        previewAudio: PreviewAudio,
+        playbackStore: PlaybackStore
+    ) {
         guard !commandsRegistered else {
             return
         }
@@ -46,7 +50,8 @@ final class MediaControlService: @unchecked Sendable {
         registerScrubCommand(
             center: center,
             playback: playback,
-            previewAudio: previewAudio
+            previewAudio: previewAudio,
+            playbackStore: playbackStore
         )
     }
 
@@ -116,7 +121,8 @@ final class MediaControlService: @unchecked Sendable {
     private func registerScrubCommand(
         center: MPRemoteCommandCenter,
         playback: Playback,
-        previewAudio: PreviewAudio
+        previewAudio: PreviewAudio,
+        playbackStore: PlaybackStore
     ) {
         center.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let self,
@@ -137,6 +143,12 @@ final class MediaControlService: @unchecked Sendable {
                 previewAudio.previewSeekByRatio(ratio)
             }
             else {
+                if let snapshot = playbackStore.projectSeek(ratio: ratio) {
+                    updatePosition(
+                        positionMs: snapshot.positionMs,
+                        durationMs: snapshot.durationMs
+                    )
+                }
                 playback.seekByRatio(ratio)
             }
             return .success

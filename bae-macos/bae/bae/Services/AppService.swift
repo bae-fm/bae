@@ -153,7 +153,8 @@ final class AppService: @unchecked Sendable, Observable {
         appHandle.registerArtworkAnalyzer(analyzer: VisionArtworkAnalyzer())
         mediaControlService.setupRemoteCommands(
             playback: playback,
-            previewAudio: previewAudio
+            previewAudio: previewAudio,
+            playbackStore: playbackStore
         )
         revalidateDiscogsToken()
     }

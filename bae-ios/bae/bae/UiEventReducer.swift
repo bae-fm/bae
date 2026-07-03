@@ -211,7 +211,7 @@ enum UiEventReducer {
         albumTitle: String,
         into context: ReducerContext
     ) {
-        context.playbackStore.nowPlaying = .playing(track)
+        context.playbackStore.play(track: track)
         context.mediaControlService.beginPlaybackSession()
         updateMediaControls(
             track: track,
@@ -248,7 +248,7 @@ enum UiEventReducer {
 
         case .playbackStopped:
             playbackStore.nowPlaying = .stopped
-            playbackStore.playbackPositionSubject.send(.reset)
+            playbackStore.resetPlaybackPosition()
             mediaControlService.clearNowPlaying()
             mediaControlService.endPlaybackSession()
 
@@ -264,19 +264,14 @@ enum UiEventReducer {
             let durationMs,
             let progress
         ):
-            playbackStore.playbackPositionSubject.send(
-                .position(
-                    progress: progress,
-                    elapsed: DurationClock.text(Int64(positionMs)),
-                    remaining: DurationClock.remaining(
-                        positionMs: positionMs,
-                        durationMs: durationMs
-                    )
-                )
+            let snapshot = playbackStore.updatePlaybackPosition(
+                positionMs: positionMs,
+                durationMs: durationMs,
+                progress: progress
             )
             mediaControlService.updatePosition(
-                positionMs: positionMs,
-                durationMs: durationMs
+                positionMs: snapshot.positionMs,
+                durationMs: snapshot.durationMs
             )
 
         default:
@@ -359,7 +354,6 @@ private func applyPlaybackLoading(
     }
     else {
         playbackStore.beginLoading(trackId: trackId)
-        playbackStore.playbackPositionSubject.send(.reset)
     }
 }
 

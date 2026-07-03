@@ -205,7 +205,7 @@ enum UiEventReducer {
         case .playbackStopped:
             let playbackStore = context.playbackStore
             playbackStore.nowPlaying = .stopped
-            playbackStore.playbackPositionSubject.send(.reset)
+            playbackStore.resetPlaybackPosition()
             context.appService.mediaControlService.updateNowPlaying(
                 state: .stopped,
                 appHandle: context.appService.appHandle
@@ -241,7 +241,6 @@ enum UiEventReducer {
         }
         else {
             playbackStore.beginLoading(trackId: trackId)
-            playbackStore.playbackPositionSubject.send(.reset)
         }
         context.appService.mediaControlService.updateNowPlaying(
             state: .loading(trackId: trackId, track: track),
@@ -259,7 +258,7 @@ enum UiEventReducer {
         _ fields: NowPlayingFields,
         into context: ReducerContext
     ) {
-        context.playbackStore.nowPlaying = .playing(fields.nowPlayingTrack())
+        context.playbackStore.play(track: fields.nowPlayingTrack())
         updateMediaControls(fields, isPlaying: true, into: context)
     }
 
@@ -307,19 +306,14 @@ enum UiEventReducer {
             let durationMs,
             let progress
         ):
-            playbackStore.playbackPositionSubject.send(
-                .position(
-                    progress: progress,
-                    elapsed: DurationClock.text(Int64(positionMs)),
-                    remaining: DurationClock.remaining(
-                        positionMs: positionMs,
-                        durationMs: durationMs
-                    )
-                )
+            let snapshot = playbackStore.updatePlaybackPosition(
+                positionMs: positionMs,
+                durationMs: durationMs,
+                progress: progress
             )
             context.appService.mediaControlService.updatePosition(
-                positionMs: positionMs,
-                durationMs: durationMs
+                positionMs: snapshot.positionMs,
+                durationMs: snapshot.durationMs
             )
 
         case .volumeChanged(let volume):
