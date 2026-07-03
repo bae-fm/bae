@@ -72,6 +72,7 @@ struct LibrarySettingsTab: View {
             }
 
             if isConnected {
+                MembersSection()
                 RecoveryCodeSection(generate: sync.generateRestoreCode)
             }
         }

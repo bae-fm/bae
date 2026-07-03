@@ -1,14 +1,16 @@
 import SwiftUI
 import os.log
 
-private let logger = Logger.bae("MembersSettings")
+private let logger = Logger.bae("MembersSection")
 
-/// The Members settings tab: lists the devices in this library's membership
-/// chain, lets an owner approve a new device (which hands back an invite code),
-/// and lets an owner remove a device (which rotates the library key). The list
-/// loads when the tab appears and after each approve/remove so the chain stays
-/// current. Reading the chain and the mutations all run off the main thread.
-struct MembersSettingsTab: View {
+/// Device-management rows for the current library's membership chain: lists the
+/// devices (with this device flagged), lets an owner approve a new device
+/// (handing back an invite code) and remove a device (which rotates the library
+/// key). Rendered inside the Library settings Form, below the Sync section and
+/// only while sync is connected — the underlying membership calls require an
+/// active sync manager. The list loads when the section appears and after each
+/// approve/remove.
+struct MembersSection: View {
     @Environment(Sync.self)
     var sync
 
@@ -28,45 +30,27 @@ struct MembersSettingsTab: View {
     private var showApprove = false
 
     var body: some View {
-        Form {
-            Section("Devices") {
-                switch membership {
-                case nil:
-                    if let loadError {
-                        Text(loadError)
-                            .foregroundStyle(.red)
-                            .font(.callout)
-                    }
-                    else {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    }
-                case .some(let membership):
-                    ForEach(membership.members, id: \.pubkey) { member in
-                        MemberRow(
-                            member: member,
-                            onRemove: { removeConfirm = member },
-                        )
-                    }
+        Section("Devices") {
+            switch membership {
+            case nil:
+                if let loadError {
+                    Text(loadError)
+                        .foregroundStyle(.red)
+                        .font(.callout)
                 }
-            }
-
-            if let actionError {
-                Text(actionError)
-                    .foregroundStyle(.red)
-                    .font(.callout)
-            }
-
-            if membership?.selfIsOwner == true {
-                Section {
-                    Button("Add a device...") {
-                        actionError = nil
-                        showApprove = true
-                    }
+                else {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                }
+            case .some(let membership):
+                ForEach(membership.members, id: \.pubkey) { member in
+                    MemberRow(
+                        member: member,
+                        onRemove: { removeConfirm = member },
+                    )
                 }
             }
         }
-        .formStyle(.grouped)
         .task { load() }
         .onDisappear {
             loadTask?.cancel()
@@ -97,6 +81,21 @@ struct MembersSettingsTab: View {
             Text(
                 "It will lose access and the library key will be rotated. Devices still in the library re-key automatically."
             )
+        }
+
+        if let actionError {
+            Text(actionError)
+                .foregroundStyle(.red)
+                .font(.callout)
+        }
+
+        if membership?.selfIsOwner == true {
+            Section {
+                Button("Add a device...") {
+                    actionError = nil
+                    showApprove = true
+                }
+            }
         }
     }
 
