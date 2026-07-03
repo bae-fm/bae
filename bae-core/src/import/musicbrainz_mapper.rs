@@ -319,7 +319,7 @@ pub fn map_mb_response_to_db(
         let artist_name = response
             .artist_credit
             .first()
-            .expect("MusicBrainz release has no artist credits")
+            .ok_or_else(|| format!("MusicBrainz release {} has no artist credits", response.id))?
             .name
             .clone();
         let artist = DbArtist {
@@ -349,7 +349,7 @@ pub fn map_mb_response_to_db(
     let mb_release_group = response
         .release_group
         .as_ref()
-        .expect("MusicBrainz release missing release_group");
+        .ok_or_else(|| format!("MusicBrainz release {} missing release_group", response.id))?;
     let mut identities = vec![ReleaseIdentity {
         source: MetadataSource::MusicBrainz,
         source_group_id: mb_release_group.id.clone(),
@@ -961,6 +961,40 @@ mod tests {
         assert_eq!(mb.source, MetadataSource::MusicBrainz);
         assert_eq!(mb.source_group_id, "rg-test");
         assert_eq!(mb.source_release_id.as_deref(), Some("test-release"));
+    }
+
+    #[test]
+    fn release_with_no_artist_credits_returns_err() {
+        let mut response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![make_mb_track("1", "Track 1")],
+        }]);
+        response.artist_credit = vec![];
+
+        let err = map(&response, None, None)
+            .expect_err("expected missing artist credits to return an error");
+
+        assert!(
+            err.contains("has no artist credits"),
+            "unexpected error message: {err}"
+        );
+    }
+
+    #[test]
+    fn release_with_no_release_group_returns_err() {
+        let mut response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![make_mb_track("1", "Track 1")],
+        }]);
+        response.release_group = None;
+
+        let err = map(&response, None, None)
+            .expect_err("expected missing release group to return an error");
+
+        assert!(
+            err.contains("missing release_group"),
+            "unexpected error message: {err}"
+        );
     }
 
     #[test]

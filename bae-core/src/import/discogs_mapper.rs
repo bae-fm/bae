@@ -287,7 +287,7 @@ pub fn map_discogs_to_db(
         let rg = mb
             .release_group
             .as_ref()
-            .expect("MusicBrainz release missing release_group");
+            .ok_or_else(|| format!("MusicBrainz release {} missing release_group", mb.id))?;
         identities.push(ReleaseIdentity {
             source: MetadataSource::MusicBrainz,
             source_group_id: rg.id.clone(),
@@ -968,6 +968,22 @@ mod tests {
         assert_eq!(mb.source, MetadataSource::MusicBrainz);
         assert_eq!(mb.source_group_id, "mb-group-7");
         assert_eq!(mb.source_release_id.as_deref(), Some("mb-rel-7"));
+    }
+
+    #[test]
+    fn mb_xref_without_release_group_returns_err() {
+        let mut release = make_release(vec![make_track("1", "Track 1")]);
+        release.master_id = Some("d-master-99".to_string());
+        let mut mb_xref = mb_xref_with_group("mb-rel-7", "mb-group-7");
+        mb_xref.release_group = None;
+
+        let err = map(&release, None, Some(&mb_xref))
+            .expect_err("expected missing MB release group to return an error");
+
+        assert!(
+            err.contains("missing release_group"),
+            "unexpected error message: {err}"
+        );
     }
 
     #[test]
