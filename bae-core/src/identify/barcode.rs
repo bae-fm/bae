@@ -30,14 +30,13 @@ pub async fn lookup_barcode(
     Ok(combined)
 }
 
-/// Annotate search results with library status. Missing status rows default
-/// to "not in library". Returns `(matches, statuses)` with aligned ordering.
+/// Annotate search results with library status. Returns `(matches, statuses)`
+/// with the ordering from `check_releases_in_library`.
 pub async fn annotate_with_library_status(
     results: Vec<MetadataResult>,
     library_manager: &crate::library::LibraryManager,
 ) -> Result<(Vec<MetadataResult>, Vec<LibraryStatus>), String> {
     use crate::db::LibraryCheck;
-    use std::collections::HashMap;
 
     let checks: Vec<LibraryCheck> = results.iter().map(LibraryCheck::from).collect();
 
@@ -46,26 +45,5 @@ pub async fn annotate_with_library_status(
         .await
         .map_err(|e| format!("Failed to check library status: {e}"))?;
 
-    let status_map: HashMap<String, LibraryStatus> = statuses
-        .into_iter()
-        .map(|s| (s.release_id.clone(), s))
-        .collect();
-
-    let aligned: Vec<LibraryStatus> = results
-        .iter()
-        .map(|r| {
-            status_map
-                .get(&r.release_id)
-                .cloned()
-                .unwrap_or_else(|| LibraryStatus {
-                    release_id: r.release_id.clone(),
-                    release_in_library: false,
-                    album_in_library: false,
-                    album_title: None,
-                    album_id: None,
-                })
-        })
-        .collect();
-
-    Ok((results, aligned))
+    Ok((results, statuses))
 }
