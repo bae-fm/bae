@@ -39,9 +39,9 @@ impl CpalAudioOutput {
         let initial_volume = if std::env::var("SKIP_AUDIO_TESTS").is_ok()
             || std::env::var("MUTE_TEST_AUDIO").is_ok()
         {
-            0u32
+            0.0
         } else {
-            10000u32
+            1.0
         };
         Ok(Self {
             controls: AudioOutputControls::new(initial_volume),

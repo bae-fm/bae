@@ -42,14 +42,14 @@ impl AudioState {
 #[derive(Clone)]
 pub(crate) struct AudioOutputControls {
     state: Arc<AtomicU8>,
-    volume: Arc<AtomicU32>,
+    volume: Arc<AtomicF32>,
 }
 
 impl AudioOutputControls {
-    pub(crate) fn new(initial_volume: u32) -> Self {
+    pub(crate) fn new(initial_volume: f32) -> Self {
         Self {
             state: Arc::new(AtomicU8::new(AudioState::Stopped as u8)),
-            volume: Arc::new(AtomicU32::new(initial_volume)),
+            volume: Arc::new(AtomicF32::new(initial_volume)),
         }
     }
 
@@ -62,12 +62,31 @@ impl AudioOutputControls {
     }
 
     pub(crate) fn set_volume(&self, volume: f32) {
-        self.volume
-            .store((volume.clamp(0.0, 1.0) * 10000.0) as u32, Ordering::Relaxed);
+        self.volume.store(volume.clamp(0.0, 1.0));
     }
 
     pub(crate) fn get_volume(&self) -> f32 {
-        self.volume.load(Ordering::Relaxed) as f32 / 10000.0
+        self.volume.load()
+    }
+}
+
+struct AtomicF32 {
+    bits: AtomicU32,
+}
+
+impl AtomicF32 {
+    fn new(value: f32) -> Self {
+        Self {
+            bits: AtomicU32::new(value.to_bits()),
+        }
+    }
+
+    fn store(&self, value: f32) {
+        self.bits.store(value.to_bits(), Ordering::Relaxed);
+    }
+
+    fn load(&self) -> f32 {
+        f32::from_bits(self.bits.load(Ordering::Relaxed))
     }
 }
 
@@ -349,7 +368,7 @@ impl CaptureAudioOutput {
     ) {
         let (notify_tx, notify_rx) = tokio::sync::mpsc::unbounded_channel();
         let output = Self {
-            controls: AudioOutputControls::new(10000),
+            controls: AudioOutputControls::new(1.0),
             notify_tx,
             realtime,
         };
@@ -509,7 +528,7 @@ pub struct RealtimeProbeOutput {
 impl RealtimeProbeOutput {
     pub fn new() -> Self {
         Self {
-            controls: AudioOutputControls::new(10000),
+            controls: AudioOutputControls::new(1.0),
         }
     }
 }

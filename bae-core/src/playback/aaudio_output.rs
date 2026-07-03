@@ -41,7 +41,7 @@ pub struct AAudioOutput {
 impl AAudioOutput {
     pub fn new() -> Result<Self, AudioError> {
         Ok(Self {
-            controls: AudioOutputControls::new(10000),
+            controls: AudioOutputControls::new(1.0),
         })
     }
 }
