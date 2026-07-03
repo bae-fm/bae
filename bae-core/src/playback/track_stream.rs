@@ -21,9 +21,9 @@ const DEFAULT_BUFFER_MS: u32 = 100;
 /// Shared state between sink and source
 pub struct StreamingState {
     /// Audio sample rate
-    sample_rate: AtomicU32,
+    sample_rate: u32,
     /// Number of channels
-    channels: AtomicU32,
+    channels: u32,
     /// Current playback position in samples (per channel)
     position_samples: AtomicU64,
     /// Whether the producer has finished (EOF reached)
@@ -42,8 +42,8 @@ pub struct StreamingState {
 impl StreamingState {
     fn new(sample_rate: u32, channels: u32) -> Self {
         Self {
-            sample_rate: AtomicU32::new(sample_rate),
-            channels: AtomicU32::new(channels),
+            sample_rate,
+            channels,
             position_samples: AtomicU64::new(0),
             finished: AtomicBool::new(false),
             cancelled: AtomicBool::new(false),
@@ -60,11 +60,11 @@ impl StreamingState {
     }
 
     pub fn sample_rate(&self) -> u32 {
-        self.sample_rate.load(Ordering::Relaxed)
+        self.sample_rate
     }
 
     pub fn channels(&self) -> u32 {
-        self.channels.load(Ordering::Relaxed)
+        self.channels
     }
 
     pub fn position_samples(&self) -> u64 {
