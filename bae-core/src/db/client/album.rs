@@ -133,9 +133,11 @@ impl Database {
     /// Insert a new album
     pub async fn insert_album(&self, album: &DbAlbum) -> Result<(), DbError> {
         let album = album.clone();
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| insert_album_row(conn, &album, &reg))
-            .await
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            insert_album_row(sql.connection(), &album, &reg)
+        })
+        .await
     }
 
     /// Get all albums, sorted by the given criteria.
@@ -382,8 +384,9 @@ impl Database {
         primary_release_id: &str,
     ) -> Result<(), DbError> {
         let (album_id, primary_release_id) = (album_id.to_string(), primary_release_id.to_string());
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| {
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            let conn = sql.connection();
             conn.execute(
                 "UPDATE albums SET primary_release_id = ?, _updated_at = ? WHERE id = ?",
                 params![primary_release_id, reg, album_id],
@@ -399,8 +402,9 @@ impl Database {
     /// that primary_release_id pointed at.
     pub async fn clear_album_primary_release(&self, album_id: &str) -> Result<(), DbError> {
         let album_id = album_id.to_string();
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| {
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            let conn = sql.connection();
             conn.execute(
                 "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
                 params![reg, album_id],

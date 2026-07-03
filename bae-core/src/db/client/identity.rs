@@ -13,8 +13,9 @@ impl Database {
         let release_id = release_id.to_string();
         let identities = identities.to_vec();
         let now = self.inner.clock.now().to_rfc3339();
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| {
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            let conn = sql.connection();
             for identity in &identities {
                 insert_release_identity_row(conn, &release_id, identity, &reg, &now)?;
             }
@@ -279,12 +280,12 @@ impl Database {
         let new_album = new_album.cloned();
         let new_metadata = new_metadata.to_vec();
         let now = self.inner.clock.now().to_rfc3339();
-        // One HLC register stamp for every synced row this transaction touches.
-        let reg = self.register_stamp().await?;
 
         self
-            .call(move |conn| {
-                let tx = conn;
+            .call_sql(move |sql| {
+                let tx = sql.connection();
+                // One HLC stamp for every synced row this transaction touches.
+                let reg = sql.stamp();
 
                 // 1. Insert the destination album (if brand-new). Must come
                 //    before the release UPDATE so the FK on `releases.album_id`

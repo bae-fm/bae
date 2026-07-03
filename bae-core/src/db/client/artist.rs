@@ -4,8 +4,9 @@ impl Database {
     /// Insert a new artist
     pub async fn insert_artist(&self, artist: &DbArtist) -> Result<(), DbError> {
         let artist = artist.clone();
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| {
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            let conn = sql.connection();
             conn.execute(
                 r#"
                     INSERT INTO artists (
@@ -90,8 +91,9 @@ impl Database {
             mb_id.map(str::to_string),
             sort_name.map(str::to_string),
         );
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| {
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            let conn = sql.connection();
             conn.execute(
                 r#"
                     UPDATE artists SET
@@ -112,16 +114,20 @@ impl Database {
     /// Insert album-artist relationship
     pub async fn insert_album_artist(&self, album_artist: &DbAlbumArtist) -> Result<(), DbError> {
         let album_artist = album_artist.clone();
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| insert_album_artist_row(conn, &album_artist, &reg))
-            .await
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            insert_album_artist_row(sql.connection(), &album_artist, &reg)
+        })
+        .await
     }
     /// Insert track-artist relationship
     pub async fn insert_track_artist(&self, track_artist: &DbTrackArtist) -> Result<(), DbError> {
         let track_artist = track_artist.clone();
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| insert_track_artist_row(conn, &track_artist, &reg))
-            .await
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            insert_track_artist_row(sql.connection(), &track_artist, &reg)
+        })
+        .await
     }
     /// Get artists for an album (ordered by position)
     pub async fn get_artists_for_album(&self, album_id: &str) -> Result<Vec<DbArtist>, DbError> {

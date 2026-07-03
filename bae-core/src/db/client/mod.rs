@@ -5,7 +5,7 @@ use crate::queue::QueueItem;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use coven::rusqlite::{params, Connection, OptionalExtension, Row};
-use coven::{ClockRef, Coven, CovenError, CovenHandle, DbError};
+use coven::{ClockRef, Coven, CovenError, CovenHandle, DbError, SqlContext};
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -627,18 +627,19 @@ impl Database {
     where
         R: Send + 'static,
     {
-        self.inner
-            .handle
-            .sql(move |sql| f(sql.connection()).map_err(CovenError::from))
-            .await
-            .map_err(Self::coven_error)
+        self.call_sql(move |sql| f(sql.connection())).await
     }
 
-    /// Stamp a synced row's `_updated_at` from coven's SQL context.
-    async fn register_stamp(&self) -> Result<String, DbError> {
+    async fn call_sql<R>(
+        &self,
+        f: impl for<'ctx, 'conn> FnOnce(SqlContext<'ctx, 'conn>) -> Result<R, DbError> + Send + 'static,
+    ) -> Result<R, DbError>
+    where
+        R: Send + 'static,
+    {
         self.inner
             .handle
-            .sql(|sql| Ok(sql.stamp()))
+            .sql(move |sql| f(sql).map_err(CovenError::from))
             .await
             .map_err(Self::coven_error)
     }

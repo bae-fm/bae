@@ -4,9 +4,11 @@ impl Database {
     /// Upsert a library image record
     pub async fn upsert_library_image(&self, image: &DbLibraryImage) -> Result<(), DbError> {
         let image = image.clone();
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| upsert_library_image_row(conn, &image, &reg))
-            .await
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            upsert_library_image_row(sql.connection(), &image, &reg)
+        })
+        .await
     }
 
     /// Write a host-provided image blob and its `covers`/`artist_images` row as
@@ -227,11 +229,12 @@ impl Database {
         source_path: Option<&str>,
         retain_pinned: bool,
     ) -> Result<(), DbError> {
-        let created_at = self.register_stamp().await?;
         let file_id = file_id.to_string();
         let cloud_key = cloud_key.to_string();
         let source_path = source_path.map(str::to_string);
-        self.call(move |conn| {
+        self.call_sql(move |sql| {
+            let created_at = sql.stamp();
+            let conn = sql.connection();
             conn.execute(
                 "DELETE FROM cloud_outbox WHERE operation = 'delete' AND cloud_key = ?1",
                 [&cloud_key],
@@ -261,9 +264,10 @@ impl Database {
     /// enqueues cancels itself, but the UI snapshot query must tolerate them.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_cloud_outbox_cancel(&self, cloud_key: &str) -> Result<(), DbError> {
-        let created_at = self.register_stamp().await?;
         let cloud_key = cloud_key.to_string();
-        self.call(move |conn| {
+        self.call_sql(move |sql| {
+            let created_at = sql.stamp();
+            let conn = sql.connection();
             conn.execute(
                 "INSERT OR IGNORE INTO cloud_outbox \
                  (operation, cloud_key, scope, created_at) \
@@ -278,9 +282,10 @@ impl Database {
 
     /// Add a delete entry to the cloud outbox.
     pub async fn add_cloud_outbox_delete(&self, cloud_key: &str) -> Result<(), DbError> {
-        let created_at = self.register_stamp().await?;
         let cloud_key = cloud_key.to_string();
-        self.call(move |conn| {
+        self.call_sql(move |sql| {
+            let created_at = sql.stamp();
+            let conn = sql.connection();
             conn.execute(
                 "DELETE FROM cloud_outbox \
                  WHERE operation IN ('upload', 'cancel') AND cloud_key = ?1",
@@ -421,7 +426,7 @@ impl Database {
 
 fn row_to_db_outbox_row(row: &Row<'_>) -> coven::rusqlite::Result<DbOutboxRow> {
     // coven writes `created_at` as its HLC stamp (`millis-counter-device`, the
-    // same format `make_remote` enqueues with and `register_stamp` mints); the
+    // same format `make_remote` enqueues and `SqlContext::stamp` mints); the
     // UI needs an instant for the "queued N ago" label, so take the stamp's
     // physical millis. A value that isn't a coven stamp is corrupt.
     let created_at_raw = row.get::<_, String>("created_at")?;

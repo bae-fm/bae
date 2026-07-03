@@ -4,9 +4,11 @@ impl Database {
     /// Insert a new track
     pub async fn insert_track(&self, track: &DbTrack) -> Result<(), DbError> {
         let track = track.clone();
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| insert_track_row(conn, &track, &reg))
-            .await
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            insert_track_row(sql.connection(), &track, &reg)
+        })
+        .await
     }
 
     /// Find track by ID. Caller-provided ID — may not exist.

@@ -4,9 +4,11 @@ impl Database {
     /// Insert a new release.
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), DbError> {
         let release = release.clone();
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| insert_release_row(conn, &release, &reg))
-            .await
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            insert_release_row(sql.connection(), &release, &reg)
+        })
+        .await
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -17,8 +19,9 @@ impl Database {
         images: &[DbLibraryImage],
     ) -> Result<(), DbError> {
         let (works, track_works, images) = (works.to_vec(), track_works.to_vec(), images.to_vec());
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| {
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            let conn = sql.connection();
             for work in &works {
                 insert_work_row(conn, work, &reg)?;
             }
@@ -50,10 +53,10 @@ impl Database {
             metadata.to_vec(),
             track_artists.to_vec(),
         );
-        // One HLC register stamp for every synced row this transaction writes.
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| {
-            let tx = conn;
+        self.call_sql(move |sql| {
+            let tx = sql.connection();
+            // One HLC stamp for every synced row this transaction writes.
+            let reg = sql.stamp();
             insert_album_row(tx, &album, &reg)?;
             insert_release_row(tx, &release, &reg)?;
             for track in &tracks {
@@ -84,10 +87,10 @@ impl Database {
             metadata.to_vec(),
             track_artists.to_vec(),
         );
-        // One HLC register stamp for every synced row this transaction writes.
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| {
-            let tx = conn;
+        self.call_sql(move |sql| {
+            let tx = sql.connection();
+            // One HLC stamp for every synced row this transaction writes.
+            let reg = sql.stamp();
             insert_release_row(tx, &release, &reg)?;
             for track in &tracks {
                 insert_track_row(tx, track, &reg)?;
@@ -138,10 +141,10 @@ impl Database {
             track_artists.to_vec(),
         );
         let now = self.inner.clock.now().to_rfc3339();
-        // One HLC register stamp for every synced row this edit touches.
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| {
-            let tx = conn;
+        self.call_sql(move |sql| {
+            let tx = sql.connection();
+            // One HLC stamp for every synced row this edit touches.
+            let reg = sql.stamp();
 
             // 1. Update album.
             tx.execute(
@@ -414,9 +417,11 @@ impl Database {
     /// Insert a new file record
     pub async fn insert_file(&self, file: &DbFile) -> Result<(), DbError> {
         let file = file.clone();
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| insert_file_row(conn, &file, &reg))
-            .await
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            insert_file_row(sql.connection(), &file, &reg)
+        })
+        .await
     }
 
     /// Get files for a release
@@ -521,7 +526,7 @@ impl Database {
                 w.sql(move |sql| {
                     let tx = sql.connection();
                     // Every synced row this transaction inserts shares one HLC
-                    // register stamp for `_updated_at`; wall-clock `now` stays
+                    // stamp for `_updated_at`; wall-clock `now` stays
                     // for `created_at`.
                     let reg = sql.stamp();
 
@@ -707,9 +712,10 @@ impl Database {
         let import_id = import_id.to_string();
         let release_id = release_id.to_string();
         let error = error.to_string();
-        let reg = self.register_stamp().await?;
         let now = self.inner.clock.now().timestamp();
-        self.call(move |conn| {
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            let conn = sql.connection();
             let album_id = conn
                 .query_row(
                     "SELECT album_id FROM releases WHERE id = ?",
@@ -821,8 +827,9 @@ impl Database {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn set_remote_for_test(&self, release_id: &str, remote: bool) -> Result<(), DbError> {
         let release_id = release_id.to_string();
-        let reg = self.register_stamp().await?;
-        self.call(move |conn| {
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            let conn = sql.connection();
             conn.execute(
                 "UPDATE releases SET remote = ?, _updated_at = ? WHERE id = ?",
                 params![remote, reg, release_id],
