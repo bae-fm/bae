@@ -45,7 +45,7 @@ use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use crate::playback::{create_track_stream_pair, TrackStream};
 use crate::util::format::PhysicalSideMedium;
 use std::collections::HashSet;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::sync::oneshot;
 use tracing::{debug, error, info, trace, warn};
@@ -163,15 +163,6 @@ pub enum PlaybackCommand {
     Next,
     /// Auto-advance from track completion (play pregap)
     AutoAdvance,
-    /// Internal: the audio callback crossed a gapless track boundary — it
-    /// advanced from the current track into the pre-staged next track within
-    /// one persistent stream. The advance already happened in the audio layer;
-    /// the handler reports the finishing track's decode stats, syncs track
-    /// bookkeeping, and preloads the following track. It does not rebuild the
-    /// stream. The payload carries both tracks' identities so the handler is
-    /// a pure function of its input — no shared cell to consult for either
-    /// the finishing track or the new current.
-    TrackCrossed(TrackCrossing),
     /// Internal: the in-core decoder for `track_id` filled its ring buffer to
     /// the play threshold (or reached EOF). Sent from a watcher task awaiting
     /// the decoder's ready signal; the handler emits Playing/Paused only if this
@@ -659,7 +650,7 @@ pub struct PlaybackService {
     /// JoinHandle for the current decoder thread (needed for seek cancellation)
     current_decoder_handle: Option<std::thread::JoinHandle<()>>,
     /// Listener task handles for the current track (position ticks + completion)
-    current_listener_handles: Vec<tokio::task::JoinHandle<()>>,
+    current_listener_handle: Option<tokio::task::JoinHandle<()>>,
     /// Preloaded next track prepared data
     next_prepared: Option<PlaybackPreparedTrack>,
     /// Preloaded next-track source held for the stream-rebuild path (a format
@@ -690,8 +681,9 @@ pub struct PlaybackService {
     /// Sender cloned into each `PlaybackSource`; fired by the audio callback
     /// when it crosses a gapless track boundary, carrying the finishing and
     /// incoming track identities + the finishing track's decode stats.
-    /// Bridged to `TrackCrossed`.
     boundary_tx: tokio_mpsc::UnboundedSender<TrackCrossing>,
+    /// Receiver side of `boundary_tx`, drained by the service loop.
+    boundary_rx: tokio_mpsc::UnboundedReceiver<TrackCrossing>,
     pending_side_pause: Option<SidePauseDecision>,
     /// Prioritizes byte fetches across tracks: the current track's reader fetches
     /// immediately, a next-track preload's reader yields to it. Shared into every
@@ -759,38 +751,8 @@ pub(crate) fn default_audio_output(
 
 pub(crate) struct StreamSetup {
     pub(crate) stream: Box<dyn AudioStream>,
-    pub(crate) bridge_handles: Vec<tokio::task::JoinHandle<()>>,
     pub(crate) position_rx: tokio_mpsc::UnboundedReceiver<PositionEvent>,
     pub(crate) completion_rx: tokio_mpsc::UnboundedReceiver<CompletionEvent>,
-}
-
-/// Spawn a task that forwards events from the audio callback's sync `mpsc`
-/// receiver to a tokio async sender, exiting once either side closes. The
-/// two channels into the audio callback share this shape — separate spawn
-/// blocks were a near-duplicate.
-fn spawn_sync_to_async_bridge<T: Send + 'static>(
-    sync_rx: mpsc::Receiver<T>,
-    async_tx: tokio_mpsc::UnboundedSender<T>,
-    name: &'static str,
-) -> tokio::task::JoinHandle<()> {
-    tokio::spawn({
-        let sync_rx = Arc::new(std::sync::Mutex::new(sync_rx));
-        async move {
-            loop {
-                let rx = sync_rx.clone();
-                match tokio::task::spawn_blocking(move || rx.lock().unwrap().recv()).await {
-                    Ok(Ok(event)) => {
-                        if async_tx.send(event).is_err() {
-                            // Async receiver gone (listener dropped).
-                            debug!("{name} bridge: async receiver dropped; exiting");
-                            break;
-                        }
-                    }
-                    _ => break,
-                }
-            }
-        }
-    })
 }
 
 pub(crate) async fn setup_audio_stream(
@@ -803,13 +765,8 @@ pub(crate) async fn setup_audio_stream(
         (guard.sample_rate(), guard.channels())
     };
 
-    let (position_tx, position_rx) = mpsc::channel::<PositionEvent>();
-    let (completion_tx, completion_rx) = mpsc::channel::<CompletionEvent>();
-    let (position_tx_async, position_rx_async) = tokio_mpsc::unbounded_channel();
-    let (completion_tx_async, completion_rx_async) = tokio_mpsc::unbounded_channel();
-
-    let h1 = spawn_sync_to_async_bridge(position_rx, position_tx_async, "Position");
-    let h2 = spawn_sync_to_async_bridge(completion_rx, completion_tx_async, "Completion");
+    let (position_tx, position_rx) = tokio_mpsc::unbounded_channel();
+    let (completion_tx, completion_rx) = tokio_mpsc::unbounded_channel();
 
     let stream = match audio_output.create_stream(
         source,
@@ -821,17 +778,14 @@ pub(crate) async fn setup_audio_stream(
     ) {
         Ok(stream) => stream,
         Err(e) => {
-            h1.abort();
-            h2.abort();
             return Err(PlaybackError::task(format!("Audio stream: {:?}", e)));
         }
     };
 
     Ok(StreamSetup {
         stream,
-        bridge_handles: vec![h1, h2],
-        position_rx: position_rx_async,
-        completion_rx: completion_rx_async,
+        position_rx,
+        completion_rx,
     })
 }
 
@@ -1004,21 +958,7 @@ impl PlaybackService {
                 }
             }
         });
-        // Bridge gapless-boundary signals (sent from the audio callback via each
-        // PlaybackSource) to the command loop. Async so it drains without a
-        // blocking thread and is cancelled cleanly on runtime shutdown — the
-        // sender outlives any single stream, so a blocking receiver would wedge
-        // runtime teardown.
-        let (boundary_tx, mut boundary_rx) = tokio_mpsc::unbounded_channel::<TrackCrossing>();
-        let command_tx_for_boundary = command_tx.clone();
-        runtime_handle.spawn(async move {
-            while let Some(crossing) = boundary_rx.recv().await {
-                dispatch_command(
-                    &command_tx_for_boundary,
-                    PlaybackCommand::TrackCrossed(crossing),
-                );
-            }
-        });
+        let (boundary_tx, boundary_rx) = tokio_mpsc::unbounded_channel::<TrackCrossing>();
         std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -1053,7 +993,7 @@ impl PlaybackService {
                     current_prepared: None,
                     current_playback_source: None,
                     current_decoder_handle: None,
-                    current_listener_handles: Vec::new(),
+                    current_listener_handle: None,
                     next_prepared: None,
                     next_track_stream: None,
                     next_decoder_handle: None,
@@ -1065,6 +1005,7 @@ impl PlaybackService {
                     shared_file_buffer: None,
                     last_position_display,
                     boundary_tx,
+                    boundary_rx,
                     pending_side_pause: None,
                     fetch_arbiter: FetchArbiter::new(),
                 };
@@ -1288,9 +1229,6 @@ impl PlaybackService {
                             self.stop().await;
                         }
                     }
-                }
-                PlaybackCommand::TrackCrossed(crossing) => {
-                    self.handle_track_crossed(crossing).await;
                 }
                 PlaybackCommand::TrackReady {
                     track_id,
@@ -1586,6 +1524,9 @@ impl PlaybackService {
                     if let LibraryEvent::TracksDeleted { track_ids } = event {
                         self.handle_tracks_deleted(track_ids).await;
                     }
+                }
+                Some(crossing) = self.boundary_rx.recv() => {
+                    self.handle_track_crossed(crossing).await;
                 }
                 else => break,
             }

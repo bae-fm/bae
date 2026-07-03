@@ -18,7 +18,8 @@ use ndk::audio::{
 };
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc as tokio_mpsc;
 use tracing::{debug, error, info, warn};
 
 /// Number of frames pulled and written per loop iteration. Interleaved across
@@ -164,8 +165,8 @@ impl AudioOutput for AAudioOutput {
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
-        position_tx: mpsc::Sender<PositionEvent>,
-        completion_tx: mpsc::Sender<CompletionEvent>,
+        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
+        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         let state = self.state.clone();

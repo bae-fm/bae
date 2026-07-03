@@ -46,7 +46,7 @@ pub struct TrackFmt {
 }
 
 /// Payload of the boundary signal. Carries the finishing track's identity +
-/// decode stats so the service's `TrackCrossed` handler can emit `DecodeStats`
+/// decode stats so the service's boundary handler can emit `DecodeStats`
 /// without reading shared state, plus the incoming track's identity for state
 /// updates. Only the track ids are surfaced — the boundary handler doesn't
 /// need duration/pregap/offset, which live in the prepared track on the

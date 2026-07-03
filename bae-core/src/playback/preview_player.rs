@@ -55,7 +55,7 @@ pub(crate) struct PreviewPlayer {
     /// Last known position for the preview file.
     position: Duration,
     /// Abort handles for preview position/completion listener tasks.
-    listener_handles: Vec<JoinHandle<()>>,
+    listener_handle: Option<JoinHandle<()>>,
     /// Sparse buffer for the current preview (retained across seeks).
     buffer: Option<SharedSparseBuffer>,
     /// JoinHandle for the preview decoder thread (needed for seek cancellation).
@@ -82,7 +82,7 @@ impl PreviewPlayer {
             path: None,
             duration: Duration::ZERO,
             position: Duration::ZERO,
-            listener_handles: Vec::new(),
+            listener_handle: None,
             buffer: None,
             decoder_handle: None,
             seek_offset: Duration::ZERO,
@@ -338,7 +338,7 @@ impl PreviewPlayer {
 
     /// Abort preview position/completion listener tasks.
     fn abort_listeners(&mut self) {
-        for handle in self.listener_handles.drain(..) {
+        if let Some(handle) = self.listener_handle.take() {
             handle.abort();
         }
     }
@@ -425,9 +425,6 @@ impl PreviewPlayer {
 
         if let Err(e) = setup.stream.play() {
             error!("Failed to start preview playback: {:?}", e);
-            for h in setup.bridge_handles {
-                h.abort();
-            }
             return false;
         }
 
@@ -500,10 +497,7 @@ impl PreviewPlayer {
             }
         });
 
-        self.listener_handles = vec![setup.bridge_handles, vec![h3]]
-            .into_iter()
-            .flatten()
-            .collect();
+        self.listener_handle = Some(h3);
 
         true
     }

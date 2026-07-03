@@ -394,7 +394,7 @@ impl PlaybackService {
 
     /// Advance the queue's current pointer past the finished track to the front
     /// and emit the queue update. Used by `Next`, `AutoAdvance` (preloaded path),
-    /// and `TrackCrossed`. The front is the track being played: the preload
+    /// and the gapless boundary handler. The front is the track being played: the preload
     /// refreshes whenever the queue mutates, so the advanced front and the track
     /// these callers go on to play are the same one.
     pub(super) fn advance_to_preloaded(&mut self) {

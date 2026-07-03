@@ -10,7 +10,7 @@ impl PlaybackService {
 
     /// Abort current track listener tasks (position ticks + completion).
     pub(super) fn abort_current_listeners(&mut self) {
-        for handle in self.current_listener_handles.drain(..) {
+        if let Some(handle) = self.current_listener_handle.take() {
             handle.abort();
         }
     }
@@ -99,9 +99,6 @@ impl PlaybackService {
 
         if let Err(e) = setup.stream.play() {
             error!("Failed to start streaming playback: {:?}", e);
-            for h in setup.bridge_handles {
-                h.abort();
-            }
             return false;
         }
 
@@ -165,10 +162,7 @@ impl PlaybackService {
             }
         });
 
-        self.current_listener_handles = vec![setup.bridge_handles, vec![listener_handle]]
-            .into_iter()
-            .flatten()
-            .collect();
+        self.current_listener_handle = Some(listener_handle);
 
         true
     }

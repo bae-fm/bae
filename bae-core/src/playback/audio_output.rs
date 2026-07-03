@@ -11,7 +11,8 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 #[cfg(feature = "test-utils")]
 use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
 use std::sync::Arc;
-use std::sync::{mpsc, Mutex};
+use std::sync::Mutex;
+use tokio::sync::mpsc as tokio_mpsc;
 
 /// Audio output state - directly controls what the audio callback does.
 ///
@@ -81,8 +82,8 @@ pub trait AudioOutput: Send + 'static {
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
-        position_tx: mpsc::Sender<PositionEvent>,
-        completion_tx: mpsc::Sender<CompletionEvent>,
+        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
+        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError>;
 
@@ -209,8 +210,8 @@ impl AudioOutput for CaptureAudioOutput {
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
-        position_tx: mpsc::Sender<PositionEvent>,
-        completion_tx: mpsc::Sender<CompletionEvent>,
+        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
+        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         let captured = Arc::new(Mutex::new(Vec::<f32>::new()));
@@ -360,8 +361,8 @@ impl AudioOutput for RealtimeProbeOutput {
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
-        position_tx: mpsc::Sender<PositionEvent>,
-        completion_tx: mpsc::Sender<CompletionEvent>,
+        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
+        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         let state = self.state.clone();
