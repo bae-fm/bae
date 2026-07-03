@@ -23,7 +23,7 @@ impl PlaybackService {
 
             // Advance to next track if queue has one, otherwise stay stopped
             if let Some(next_id) = self.playback_queue.advance_to_front() {
-                self.play_track(&next_id, false, false).await;
+                self.play_track(&next_id, TrackStart::Direct, false).await;
             }
         } else {
             // Current track is fine, but check preloaded next track
@@ -254,7 +254,7 @@ impl PlaybackService {
             NextEntry::Play(track_id) => {
                 self.pending_side_pause = None;
                 self.emit_queue_update();
-                self.play_track(&track_id, true, false).await;
+                self.play_track(&track_id, TrackStart::Natural, false).await;
             }
             other => {
                 error!("side-pause resume expected Play for {pending_track_id}, got {other:?}");
@@ -408,8 +408,12 @@ impl PlaybackService {
             // Preload started but the streaming source isn't ready yet.
             self.advance_to_preloaded();
             self.clear_next_track_state();
-            self.play_track(preloaded_track_id, natural, preserve_paused)
-                .await;
+            self.play_track(
+                preloaded_track_id,
+                TrackStart::from_natural_transition(natural),
+                preserve_paused,
+            )
+            .await;
         }
     }
 
@@ -452,8 +456,12 @@ impl PlaybackService {
             {
                 source.cancel();
             }
-            self.play_track(&track_id, is_natural_transition, preserve_paused)
-                .await;
+            self.play_track(
+                &track_id,
+                TrackStart::from_natural_transition(is_natural_transition),
+                preserve_paused,
+            )
+            .await;
             return;
         }
 

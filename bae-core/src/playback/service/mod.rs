@@ -545,6 +545,31 @@ enum PreloadedNextSource {
     Staged,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(super) enum TrackStart {
+    Direct,
+    Natural,
+    Position(std::time::Duration),
+}
+
+impl TrackStart {
+    fn from_natural_transition(is_natural_transition: bool) -> Self {
+        if is_natural_transition {
+            Self::Natural
+        } else {
+            Self::Direct
+        }
+    }
+
+    fn position(self, pregap_ms: Option<i64>) -> std::time::Duration {
+        match self {
+            Self::Natural => std::time::Duration::ZERO,
+            Self::Direct => pregap_seek_position(pregap_ms).unwrap_or(std::time::Duration::ZERO),
+            Self::Position(position) => position,
+        }
+    }
+}
+
 impl PreloadedNext {
     fn track_id(&self) -> &str {
         self.prepared.track_info.track_id.as_str()
@@ -1110,7 +1135,7 @@ impl PlaybackService {
                     }
                     self.pending_side_pause = None;
                     self.emit_queue_update();
-                    self.play_track(&track_id, false, false).await; // Direct selection: skip pregap, start playing
+                    self.play_track(&track_id, TrackStart::Direct, false).await;
                 }
                 PlaybackCommand::PlayRelease { release_id, start_track_index, shuffle } => {
                     let track_ids = match self.library_manager.get_track_ids(&release_id).await {
@@ -1158,7 +1183,7 @@ impl PlaybackService {
                     );
                     self.pending_side_pause = None;
                     self.emit_queue_update();
-                    self.play_track(&first_track, false, false).await;
+                    self.play_track(&first_track, TrackStart::Direct, false).await;
                 }
                 PlaybackCommand::PlayLibraryShuffled => {
                     let track_ids = match self.fetch_source_tracks(&ContextSource::Library).await {
@@ -1185,7 +1210,7 @@ impl PlaybackService {
                     );
                     self.pending_side_pause = None;
                     self.emit_queue_update();
-                    self.play_track(&first_track, false, false).await;
+                    self.play_track(&first_track, TrackStart::Direct, false).await;
                 }
                 PlaybackCommand::Pause => {
                     self.pause().await;
@@ -1217,7 +1242,8 @@ impl PlaybackService {
                             NextEntry::Play(next_track) => {
                                 info!("No preloaded track, playing from queue: {}", next_track);
                                 self.emit_queue_update();
-                                self.play_track(&next_track, false, !was_side_paused).await;
+                                self.play_track(&next_track, TrackStart::Direct, !was_side_paused)
+                                    .await;
                                 // preserve paused
                             }
                             _ => {
@@ -1259,12 +1285,12 @@ impl PlaybackService {
                     match self.playback_queue.next_entry() {
                         NextEntry::RepeatCurrent(track_id) => {
                             info!("Repeat mode: track, replaying {}", track_id);
-                            self.play_track(&track_id, true, false).await;
+                            self.play_track(&track_id, TrackStart::Natural, false).await;
                         }
                         NextEntry::Play(next_track) => {
                             info!("Playing from queue: {}", next_track);
                             self.emit_queue_update();
-                            self.play_track(&next_track, true, false).await;
+                            self.play_track(&next_track, TrackStart::Natural, false).await;
                         }
                         NextEntry::Stop => {
                             info!("No next track available, stopping");
@@ -1336,11 +1362,12 @@ impl PlaybackService {
                                 // previous_action already stepped the context cursor
                                 // back and made this track current; just play it.
                                 self.emit_queue_update();
-                                self.play_track(&previous_track_id, false, true).await;
+                                self.play_track(&previous_track_id, TrackStart::Direct, true)
+                                    .await;
                             }
                             PreviousAction::RestartCurrent => {
                                 info!("Restarting current track from beginning");
-                                self.play_track(&current_track_id, false, true).await; // preserve paused
+                                self.play_track(&current_track_id, TrackStart::Direct, true).await;
                             }
                         }
                     }
@@ -1521,7 +1548,7 @@ impl PlaybackService {
 
                         self.pending_side_pause = None;
                         self.emit_queue_update();
-                        self.play_track(&entry.track_id, false, false).await;
+                        self.play_track(&entry.track_id, TrackStart::Direct, false).await;
                     }
                 }
                 PlaybackCommand::PreviewPlay(path) => {
@@ -1576,17 +1603,8 @@ impl PlaybackService {
     }
 }
 
-fn pregap_seek_position(
-    pregap_ms: Option<i64>,
-    is_natural_transition: bool,
-) -> Option<std::time::Duration> {
-    if is_natural_transition {
-        // Natural transition: start at INDEX 00, play the pregap
-        None
-    } else {
-        // Direct selection: skip to INDEX 01 if there's a pregap
-        pregap_ms
-            .filter(|&p| p > 0)
-            .map(|p| std::time::Duration::from_millis(p as u64))
-    }
+fn pregap_seek_position(pregap_ms: Option<i64>) -> Option<std::time::Duration> {
+    pregap_ms
+        .filter(|&p| p > 0)
+        .map(|p| std::time::Duration::from_millis(p as u64))
 }

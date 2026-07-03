@@ -99,23 +99,34 @@ fn clear_preloaded_next_removes_staged_source() {
 #[test]
 fn pregap_seek_position_cases() {
     use std::time::Duration;
-    // (pregap_ms, is_natural_transition) -> seek position.
-    // A natural transition always plays from the start (None, so the pregap
-    // is heard); a direct selection skips a positive pregap and otherwise
-    // needs no seek.
+    // Direct selection skips a positive pregap and otherwise needs no seek.
     let cases = [
-        (Some(3000i64), false, Some(Duration::from_millis(3000))),
-        (Some(3000i64), true, None),
-        (None, false, None),
-        (None, true, None),
+        (Some(3000i64), Some(Duration::from_millis(3000))),
+        (None, None),
     ];
-    for (pregap_ms, is_natural_transition, expected) in cases {
+    for (pregap_ms, expected) in cases {
         assert_eq!(
-            pregap_seek_position(pregap_ms, is_natural_transition),
+            pregap_seek_position(pregap_ms),
             expected,
-            "pregap_ms={pregap_ms:?} natural={is_natural_transition}"
+            "pregap_ms={pregap_ms:?}"
         );
     }
+}
+
+#[test]
+fn track_start_position_cases() {
+    use std::time::Duration;
+
+    assert_eq!(
+        TrackStart::Direct.position(Some(3000)),
+        Duration::from_millis(3000)
+    );
+    assert_eq!(TrackStart::Direct.position(None), Duration::ZERO);
+    assert_eq!(TrackStart::Natural.position(Some(3000)), Duration::ZERO);
+    assert_eq!(
+        TrackStart::Position(Duration::from_millis(42_000)).position(Some(3000)),
+        Duration::from_millis(42_000)
+    );
 }
 
 // Seek tests for SparseStreamingBuffer integration

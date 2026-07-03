@@ -256,17 +256,17 @@ impl PlaybackService {
     }
 
     /// Play a track.
-    /// - `is_natural_transition`: if true, plays from INDEX 00 (pregap included)
+    /// - `start`: selects direct starts, natural transitions, or a restored raw position
     /// - `preserve_paused`: if true, inherits current paused state; if false, always starts playing
     pub(super) async fn play_track(
         &mut self,
         track_id: &str,
-        is_natural_transition: bool,
+        start: TrackStart,
         preserve_paused: bool,
     ) {
         info!(
-            "Playing track: {} (natural_transition: {}, preserve_paused: {})",
-            track_id, is_natural_transition, preserve_paused
+            "Playing track: {} (start: {:?}, preserve_paused: {})",
+            track_id, start, preserve_paused
         );
 
         // Tear down the outgoing track up front so a manual switch silences the
@@ -327,27 +327,14 @@ impl PlaybackService {
             },
         );
 
-        // Calculate pregap seek position if needed (direct selection skips pregap)
-        let pregap_skip_duration = pregap_seek_position(prepared.pregap_ms, is_natural_transition);
+        let start_position = start.position(prepared.pregap_ms);
+        let start_sample_offset =
+            (start_position.as_secs_f64() * prepared.sample_rate as f64) as u64;
+        let decode = prepared.decode_params(start_sample_offset);
 
-        // Seek to the track's first sample plus any pregap skip; trim lead-in
-        // there and stop at the track's end.
-        let pregap_offset = match pregap_skip_duration {
-            Some(d) => (d.as_secs_f64() * prepared.sample_rate as f64) as u64,
-            None => 0,
-        };
-        let decode = prepared.decode_params(pregap_offset);
-
-        // Position offset: when we skip pregap, decoder positions start at 0 but actual
-        // track position is pregap_ms
-        let position_offset = if pregap_skip_duration.is_some() {
-            std::time::Duration::from_millis(prepared.pregap_ms.unwrap_or(0).max(0) as u64)
-        } else {
-            std::time::Duration::ZERO
-        };
         let sample_rate = prepared.sample_rate;
         let channels = prepared.channels;
-        let fmt = prepared.track_fmt(position_offset);
+        let fmt = prepared.track_fmt(start_position);
 
         // Store prepared track state so the shared tail reads this load's buffer
         // and cancel token.

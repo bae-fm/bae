@@ -209,15 +209,12 @@ impl PlaybackService {
         {
             self.audio_output
                 .set_state(crate::playback::audio_output::AudioState::Paused);
-            self.play_track(&track_id, false, true).await;
+            let start = parsed
+                .position_ms
+                .map(|pos| TrackStart::Position(std::time::Duration::from_millis(pos)))
+                .unwrap_or(TrackStart::Direct);
+            self.play_track(&track_id, start, true).await;
 
-            // A missing position means none was captured: resume from the start,
-            // don't force a seek to 0.
-            if let Some(pos) = parsed.position_ms {
-                if pos > 0 {
-                    self.seek(std::time::Duration::from_millis(pos)).await;
-                }
-            }
             // Emit the position we restored to so late-mounting views can read it
             // on mount. `None` means none was captured — the track's start (0).
             let restored_pos = parsed.position_ms.unwrap_or(0);
