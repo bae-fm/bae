@@ -44,6 +44,7 @@ object UiEventReducer {
             BridgeUiEvent.PlaybackStopped,
             is BridgeUiEvent.PlaybackError,
             is BridgeUiEvent.PlaybackProgress,
+            is BridgeUiEvent.PlaybackSeeked,
             is BridgeUiEvent.RepeatModeChanged,
             is BridgeUiEvent.QueueUpdated,
             is BridgeUiEvent.VolumeChanged,
@@ -127,6 +128,16 @@ object UiEventReducer {
 
             is BridgeUiEvent.PlaybackProgress -> {
                 player.onProgress(
+                    trackId = event.trackId,
+                    positionMs = event.positionMs.toLong(),
+                    durationMs = event.durationMs.toLong(),
+                    progress = event.progress,
+                )
+            }
+
+            is BridgeUiEvent.PlaybackSeeked -> {
+                player.onSeeked(
+                    trackId = event.trackId,
                     positionMs = event.positionMs.toLong(),
                     durationMs = event.durationMs.toLong(),
                     progress = event.progress,

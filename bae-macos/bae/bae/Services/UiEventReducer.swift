@@ -119,6 +119,7 @@ enum UiEventReducer {
         switch event {
         case .playbackPlaying, .playbackPaused, .playbackLoading,
             .playbackStopped, .playbackError, .playbackProgress,
+            .playbackSeeked,
             .volumeChanged, .muteChanged, .repeatModeChanged,
             .queueUpdated, .queueItemsAdded:
             reducePlayback(event, into: context)
@@ -164,7 +165,8 @@ enum UiEventReducer {
             .playbackStopped:
             reducePlaybackNowPlaying(event, into: context)
 
-        case .playbackError, .playbackProgress, .volumeChanged, .muteChanged,
+        case .playbackError, .playbackProgress, .playbackSeeked,
+            .volumeChanged, .muteChanged,
             .repeatModeChanged, .queueUpdated, .queueItemsAdded:
             reducePlaybackStateAndControls(event, into: context)
 
@@ -302,18 +304,35 @@ enum UiEventReducer {
             context.uiStore.showError(DisplayError(reason))
 
         case .playbackProgress(
+            let trackId,
             let positionMs,
             let durationMs,
             let progress
         ):
-            let snapshot = playbackStore.updatePlaybackPosition(
-                positionMs: positionMs,
-                durationMs: durationMs,
-                progress: progress
+            updatePlaybackPosition(
+                playbackStore.updatePlaybackProgress(
+                    trackId: trackId,
+                    positionMs: positionMs,
+                    durationMs: durationMs,
+                    progress: progress
+                ),
+                into: context
             )
-            context.appService.mediaControlService.updatePosition(
-                positionMs: snapshot.positionMs,
-                durationMs: snapshot.durationMs
+
+        case .playbackSeeked(
+            let trackId,
+            let positionMs,
+            let durationMs,
+            let progress
+        ):
+            updatePlaybackPosition(
+                playbackStore.updatePlaybackSeeked(
+                    trackId: trackId,
+                    positionMs: positionMs,
+                    durationMs: durationMs,
+                    progress: progress
+                ),
+                into: context
             )
 
         case .volumeChanged(let volume):
@@ -350,6 +369,20 @@ enum UiEventReducer {
         default:
             break
         }
+    }
+
+    @MainActor
+    private static func updatePlaybackPosition(
+        _ snapshot: PlaybackPositionSnapshot?,
+        into context: ReducerContext
+    ) {
+        guard let snapshot else {
+            return
+        }
+        context.appService.mediaControlService.updatePosition(
+            positionMs: snapshot.positionMs,
+            durationMs: snapshot.durationMs
+        )
     }
 }
 

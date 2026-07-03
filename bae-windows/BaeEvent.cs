@@ -16,7 +16,8 @@ public sealed class BaeEvent
     public string Type { get; set; } = string.Empty;
 
     // Identify the playing track and its album, so "go to now playing" can open
-    // that album and reveal the track. Carried by PlaybackPlaying / PlaybackPaused.
+    // that album and reveal the track. Carried by PlaybackPlaying /
+    // PlaybackPaused / PlaybackProgress / PlaybackSeeked.
     public string? TrackId { get; set; }
     public string? AlbumId { get; set; }
     public string? TrackTitle { get; set; }
@@ -25,8 +26,8 @@ public sealed class BaeEvent
 
     // Raw track length / playback position in milliseconds; formatted for the
     // locale by the handler. DurationMs is carried by PlaybackPlaying /
-    // PlaybackPaused / PlaybackProgress / PreviewPlaying; PositionMs by
-    // PlaybackProgress / PreviewProgress.
+    // PlaybackPaused / PlaybackProgress / PlaybackSeeked / PreviewPlaying;
+    // PositionMs by PlaybackProgress / PlaybackSeeked / PreviewProgress.
     public ulong DurationMs { get; set; }
     public ulong PositionMs { get; set; }
     public double Progress { get; set; }

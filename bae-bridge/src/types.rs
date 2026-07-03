@@ -1415,9 +1415,18 @@ pub enum BridgeUiEvent {
         duration_ms: u64,
         reason: BridgePlaybackPauseReason,
     },
-    /// Position update — goes to NSView. Carries both regular ticks from the
-    /// position listener and one-off updates emitted after a seek completes.
+    /// Position tick — goes to NSView.
     PlaybackProgress {
+        track_id: String,
+        position_ms: u64,
+        /// User-facing track duration (pregap-adjusted), so the media-control
+        /// update reads it from the event instead of the now-playing slice.
+        duration_ms: u64,
+        progress: f64,
+    },
+    /// Position after a seek completes — goes to NSView.
+    PlaybackSeeked {
+        track_id: String,
         position_ms: u64,
         /// User-facing track duration (pregap-adjusted), so the media-control
         /// update reads it from the event instead of the now-playing slice.

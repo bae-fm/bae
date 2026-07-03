@@ -127,24 +127,26 @@ impl UiEventBus {
                         bus.emit(bus_event);
                     }
                     PlaybackProgress::PositionUpdate {
+                        track_id,
                         position_ms,
                         duration_ms,
                         progress,
-                        ..
                     } => {
                         bus.emit(UiBusEvent::PlaybackProgress {
+                            track_id,
                             position_ms,
                             duration_ms,
                             progress,
                         });
                     }
                     PlaybackProgress::Seeked {
+                        track_id,
                         position_ms,
                         duration_ms,
                         progress,
-                        ..
                     } => {
-                        bus.emit(UiBusEvent::PlaybackProgress {
+                        bus.emit(UiBusEvent::PlaybackSeeked {
+                            track_id,
                             position_ms,
                             duration_ms,
                             progress,

@@ -2944,6 +2944,16 @@ enum FfiEvent {
     },
     PlaybackStopped,
     PlaybackProgress {
+        track_id: String,
+        progress: f64,
+        /// Raw elapsed position in milliseconds; the C# formats it.
+        position_ms: u64,
+        /// Raw track length in milliseconds; the C# formats the remaining time
+        /// (`duration_ms - position_ms`) for the locale.
+        duration_ms: u64,
+    },
+    PlaybackSeeked {
+        track_id: String,
         progress: f64,
         /// Raw elapsed position in milliseconds; the C# formats it.
         position_ms: u64,
@@ -3270,11 +3280,24 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
         UiBusEvent::SyncingChanged { syncing } => FfiEvent::SyncingChanged { syncing: *syncing },
         UiBusEvent::SyncTimeChanged { time } => FfiEvent::SyncTimeChanged { sync_time: *time },
         UiBusEvent::PlaybackProgress {
+            track_id,
             progress,
             position_ms,
             duration_ms,
             ..
         } => FfiEvent::PlaybackProgress {
+            track_id: track_id.clone(),
+            progress: *progress,
+            position_ms: *position_ms,
+            duration_ms: *duration_ms,
+        },
+        UiBusEvent::PlaybackSeeked {
+            track_id,
+            progress,
+            position_ms,
+            duration_ms,
+        } => FfiEvent::PlaybackSeeked {
+            track_id: track_id.clone(),
             progress: *progress,
             position_ms: *position_ms,
             duration_ms: *duration_ms,
@@ -5461,6 +5484,23 @@ mod tests {
             assert_eq!(json["track_id"], "trk-1");
             assert_eq!(json["album_id"], "alb-1");
         }
+    }
+
+    #[test]
+    fn playback_seeked_maps_to_distinct_ffi_event() {
+        let event = UiBusEvent::PlaybackSeeked {
+            track_id: "trk-1".to_string(),
+            position_ms: 75_000,
+            duration_ms: 100_000,
+            progress: 0.75,
+        };
+
+        let ffi = map_event(&event).expect("seeked event maps to an FFI event");
+        let json = serde_json::to_value(&ffi).expect("FFI event serializes");
+
+        assert_eq!(json["type"], "PlaybackSeeked");
+        assert_eq!(json["track_id"], "trk-1");
+        assert_eq!(json["position_ms"], 75_000);
     }
 
     #[test]

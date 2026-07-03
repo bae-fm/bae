@@ -111,6 +111,14 @@ interface PlaybackEventSink {
     fun onStopped()
 
     fun onProgress(
+        trackId: String,
+        positionMs: Long,
+        durationMs: Long,
+        progress: Double,
+    )
+
+    fun onSeeked(
+        trackId: String,
         positionMs: Long,
         durationMs: Long,
         progress: Double,
@@ -131,10 +139,50 @@ interface PlaybackEventSink {
 }
 
 private const val TAG = "bae.BaeCorePlayer"
+private const val SEEK_TARGET_WINDOW_MS = 100L
 private val logger = BaeLogger(TAG)
 
 /** Bridge durations are 0 when unknown; map that to Media3's [C.TIME_UNSET]. */
 private fun durationOrUnset(durationMs: Long): Long = if (durationMs > 0L) durationMs else C.TIME_UNSET
+
+private fun playbackPositionTargetsCurrentTrack(
+    currentTrackId: String?,
+    trackId: String,
+): Boolean {
+    if (currentTrackId != null && currentTrackId != trackId) {
+        logger.warning("ignoring playback position for stale track $trackId; current track is $currentTrackId")
+        return false
+    }
+    return true
+}
+
+private fun availableCommands(
+    hasNext: Boolean,
+    hasPrevious: Boolean,
+): Player.Commands {
+    val builder =
+        Player.Commands
+            .Builder()
+            .add(Player.COMMAND_PLAY_PAUSE)
+            .add(Player.COMMAND_STOP)
+            .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+            .add(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
+            .add(Player.COMMAND_SET_REPEAT_MODE)
+            .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
+            .add(Player.COMMAND_GET_TIMELINE)
+            .add(Player.COMMAND_GET_METADATA)
+
+    listOf(
+        hasNext to listOf(Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM),
+        hasPrevious to listOf(Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM),
+    ).forEach { (enabled, commands) ->
+        if (enabled) {
+            commands.forEach { builder.add(it) }
+        }
+    }
+
+    return builder.build()
+}
 
 internal class PlaybackSystemHooks(
     private val context: Context,
@@ -576,15 +624,13 @@ class BaeCorePlayer(
         get() = pendingSeek?.targetPositionMs ?: anchorPositionMs
 
     private data class PendingSeek(
-        val originPositionMs: Long,
+        val trackId: String?,
         val targetPositionMs: Long,
     ) {
-        fun accepts(positionMs: Long): Boolean =
-            if (targetPositionMs >= originPositionMs) {
-                positionMs >= targetPositionMs
-            } else {
-                positionMs <= targetPositionMs
-            }
+        fun isNearTarget(positionMs: Long): Boolean {
+            val distanceFromTarget = kotlin.math.abs(positionMs - targetPositionMs)
+            return distanceFromTarget <= SEEK_TARGET_WINDOW_MS
+        }
     }
 
     init {
@@ -659,7 +705,9 @@ class BaeCorePlayer(
         playWhenReady = true
         sidePausePrompt = null
         if (current != null) {
-            pendingSeek = null
+            if (current.meta.trackId != playingTrackId) {
+                pendingSeek = null
+            }
             playingTrackId = current.meta.trackId
             currentMeta = current.meta
             durationMs = current.durationMs
@@ -758,16 +806,45 @@ class BaeCorePlayer(
         )
 
     override fun onProgress(
+        trackId: String,
         positionMs: Long,
         durationMs: Long,
         progress: Double,
     ) {
         val pendingSeek = pendingSeek
         if (pendingSeek != null) {
-            if (!pendingSeek.accepts(positionMs)) {
+            if (pendingSeek.trackId != null && pendingSeek.trackId != trackId) {
+                return
+            }
+            if (!pendingSeek.isNearTarget(positionMs)) {
                 return
             }
             this.pendingSeek = null
+        }
+        applyPlaybackPosition(trackId, positionMs, durationMs, progress)
+    }
+
+    override fun onSeeked(
+        trackId: String,
+        positionMs: Long,
+        durationMs: Long,
+        progress: Double,
+    ) {
+        if (!playbackPositionTargetsCurrentTrack(playingTrackId, trackId)) {
+            return
+        }
+        pendingSeek = null
+        applyPlaybackPosition(trackId, positionMs, durationMs, progress)
+    }
+
+    private fun applyPlaybackPosition(
+        trackId: String,
+        positionMs: Long,
+        durationMs: Long,
+        progress: Double,
+    ) {
+        if (!playbackPositionTargetsCurrentTrack(playingTrackId, trackId)) {
+            return
         }
         anchorPositionMs = positionMs
         this.durationMs = durationOrUnset(durationMs)
@@ -950,7 +1027,7 @@ class BaeCorePlayer(
 
         return State
             .Builder()
-            .setAvailableCommands(availableCommands())
+            .setAvailableCommands(availableCommands(hasNext, hasPrevious))
             .setPlaybackState(playbackState)
             .setPlayWhenReady(playWhenReady, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
             .setRepeatMode(media3RepeatMode)
@@ -962,31 +1039,6 @@ class BaeCorePlayer(
                     if (playbackState == Player.STATE_READY && playWhenReady) 1.0f else 0.0f,
                 ),
             ).build()
-    }
-
-    private fun availableCommands(): Player.Commands {
-        val builder =
-            Player.Commands
-                .Builder()
-                .add(Player.COMMAND_PLAY_PAUSE)
-                .add(Player.COMMAND_STOP)
-                .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
-                .add(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
-                .add(Player.COMMAND_SET_REPEAT_MODE)
-                .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
-                .add(Player.COMMAND_GET_TIMELINE)
-                .add(Player.COMMAND_GET_METADATA)
-
-        listOf(
-            hasNext to listOf(Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM),
-            hasPrevious to listOf(Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM),
-        ).forEach { (enabled, commands) ->
-            if (enabled) {
-                commands.forEach { builder.add(it) }
-            }
-        }
-
-        return builder.build()
     }
 
     // ── Transport commands (forward to core; no local state change) ──────────
@@ -1049,7 +1101,7 @@ class BaeCorePlayer(
                     appHandle.seekByRatio(targetPositionMs.toDouble() / total.toDouble())
                     pendingSeek =
                         PendingSeek(
-                            originPositionMs = effectivePositionMs,
+                            trackId = playingTrackId,
                             targetPositionMs = targetPositionMs,
                         )
                     publish()
@@ -1073,7 +1125,7 @@ class BaeCorePlayer(
     }
 
     override fun handleRelease(): ListenableFuture<*> {
-        detachSystemHooks()
+        systemHooks.detach()
         return Futures.immediateVoidFuture()
     }
 

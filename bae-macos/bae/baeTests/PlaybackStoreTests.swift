@@ -195,7 +195,21 @@ struct PlaybackStoreSeekProjectionTests {
             remaining: "-0:25"
         )
 
-        let accepted = store.updatePlaybackPosition(
+        let stillProjected = store.updatePlaybackPosition(
+            positionMs: 76_000,
+            durationMs: 100_000,
+            progress: 0.76
+        )
+
+        #expect(stillProjected.positionMs == 75_000)
+        expectPosition(
+            store.playbackPositionSubject.value,
+            progress: 0.75,
+            elapsed: "1:15",
+            remaining: "-0:25"
+        )
+
+        let accepted = store.updatePlaybackSeeked(
             positionMs: 76_000,
             durationMs: 100_000,
             progress: 0.76
@@ -383,4 +397,42 @@ private func expectPosition(
     #expect(actualProgress == progress)
     #expect(actualElapsed == elapsed)
     #expect(actualRemaining == remaining)
+}
+
+extension PlaybackStore {
+    fileprivate func updatePlaybackPosition(
+        positionMs: UInt64,
+        durationMs: UInt64,
+        progress: Double
+    ) -> PlaybackPositionSnapshot {
+        guard
+            let snapshot = updatePlaybackProgress(
+                trackId: "track-1",
+                positionMs: positionMs,
+                durationMs: durationMs,
+                progress: progress
+            )
+        else {
+            preconditionFailure("playback progress targeted the test track")
+        }
+        return snapshot
+    }
+
+    fileprivate func updatePlaybackSeeked(
+        positionMs: UInt64,
+        durationMs: UInt64,
+        progress: Double
+    ) -> PlaybackPositionSnapshot {
+        guard
+            let snapshot = updatePlaybackSeeked(
+                trackId: "track-1",
+                positionMs: positionMs,
+                durationMs: durationMs,
+                progress: progress
+            )
+        else {
+            preconditionFailure("playback seeked targeted the test track")
+        }
+        return snapshot
+    }
 }

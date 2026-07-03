@@ -47,12 +47,15 @@ class PlaybackStore {
     /// player. The prior track stays on screen until the target's metadata
     /// lands via `setLoadingTarget`.
     func beginLoading(trackId: String) {
+        let previousTrackId = nowPlaying.track?.trackId
         nowPlaying = .loading(
             trackId: trackId,
             target: nil,
             previous: nowPlaying.track
         )
-        resetPlaybackPosition()
+        if trackId != previousTrackId {
+            resetPlaybackPosition()
+        }
     }
 
     /// A loading state carrying the target track's metadata arrived (core's
@@ -104,22 +107,69 @@ class PlaybackStore {
         nowPlaying = .playing(track)
     }
 
-    func updatePlaybackPosition(
+    func updatePlaybackProgress(
+        trackId: String,
+        positionMs: UInt64,
+        durationMs: UInt64,
+        progress: Double
+    ) -> PlaybackPositionSnapshot? {
+        guard acceptsPlaybackPosition(trackId: trackId) else {
+            return playbackPosition?.snapshot
+        }
+        if case .projected(let projected, let pendingSeek) = playbackPosition {
+            if !pendingSeek.acceptsProgress(
+                trackId: trackId,
+                positionMs: positionMs
+            ) {
+                return projected
+            }
+        }
+        return publishCurrentPosition(
+            positionMs: positionMs,
+            durationMs: durationMs,
+            progress: progress
+        )
+    }
+
+    func updatePlaybackSeeked(
+        trackId: String,
+        positionMs: UInt64,
+        durationMs: UInt64,
+        progress: Double
+    ) -> PlaybackPositionSnapshot? {
+        guard acceptsPlaybackPosition(trackId: trackId) else {
+            return playbackPosition?.snapshot
+        }
+        return publishCurrentPosition(
+            positionMs: positionMs,
+            durationMs: durationMs,
+            progress: progress
+        )
+    }
+
+    private func publishCurrentPosition(
         positionMs: UInt64,
         durationMs: UInt64,
         progress: Double
     ) -> PlaybackPositionSnapshot {
-        if case .projected(let projected, let pendingSeek) = playbackPosition {
-            if !pendingSeek.accepts(positionMs) {
-                return projected
-            }
-        }
         let snapshot = PlaybackPositionSnapshot(
             positionMs: positionMs,
             durationMs: durationMs,
             progress: progress
         )
         return publish(snapshot, state: .current(snapshot))
+    }
+
+    private func acceptsPlaybackPosition(trackId: String) -> Bool {
+        guard let currentTrackId = nowPlaying.track?.trackId,
+            currentTrackId != trackId
+        else {
+            return true
+        }
+        logger.warning(
+            "ignoring playback position for stale track \(trackId); current track is \(currentTrackId)"
+        )
+        return false
     }
 
     @discardableResult
@@ -142,7 +192,7 @@ class PlaybackStore {
             progress: clampedRatio
         )
         let pendingSeek = PendingSeek(
-            originPositionMs: currentPosition.positionMs,
+            trackId: nowPlaying.track?.trackId,
             targetPositionMs: targetPositionMs
         )
         return publish(snapshot, state: .projected(snapshot, pendingSeek))
@@ -186,25 +236,19 @@ private enum PlaybackPositionState {
 }
 
 private struct PendingSeek {
-    let originPositionMs: UInt64
+    let trackId: String?
     let targetPositionMs: UInt64
-    private static let targetAcceptanceWindowMs: UInt64 = 1_000
+    private static let targetAcceptanceWindowMs: UInt64 = 100
 
-    func accepts(_ positionMs: UInt64) -> Bool {
+    func acceptsProgress(trackId: String, positionMs: UInt64) -> Bool {
+        guard self.trackId == nil || self.trackId == trackId else {
+            return false
+        }
         let distanceFromTarget =
             positionMs > targetPositionMs
             ? positionMs - targetPositionMs
             : targetPositionMs - positionMs
-        if targetPositionMs >= originPositionMs {
-            return positionMs >= targetPositionMs
-        }
-        else {
-            guard positionMs <= originPositionMs else {
-                return false
-            }
-            return positionMs <= targetPositionMs
-                || distanceFromTarget <= Self.targetAcceptanceWindowMs
-        }
+        return distanceFromTarget <= Self.targetAcceptanceWindowMs
     }
 }
 

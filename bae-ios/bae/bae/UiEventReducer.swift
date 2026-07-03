@@ -77,7 +77,8 @@ enum UiEventReducer {
         case .playbackPlaying, .playbackPaused:
             reducePlaybackTransport(event, into: context)
 
-        case .playbackLoading, .playbackStopped, .playbackError, .playbackProgress:
+        case .playbackLoading, .playbackStopped, .playbackError,
+            .playbackProgress, .playbackSeeked:
             reducePlaybackState(event, into: context)
 
         case .repeatModeChanged, .volumeChanged, .muteChanged, .queueUpdated:
@@ -260,15 +261,38 @@ enum UiEventReducer {
             context.configStore.showError(DisplayError(reason))
 
         case .playbackProgress(
+            let trackId,
             let positionMs,
             let durationMs,
             let progress
         ):
-            let snapshot = playbackStore.updatePlaybackPosition(
-                positionMs: positionMs,
-                durationMs: durationMs,
-                progress: progress
+            guard
+                let snapshot = playbackStore.updatePlaybackProgress(
+                    trackId: trackId,
+                    positionMs: positionMs,
+                    durationMs: durationMs,
+                    progress: progress
+                )
+            else { break }
+            mediaControlService.updatePosition(
+                positionMs: snapshot.positionMs,
+                durationMs: snapshot.durationMs
             )
+
+        case .playbackSeeked(
+            let trackId,
+            let positionMs,
+            let durationMs,
+            let progress
+        ):
+            guard
+                let snapshot = playbackStore.updatePlaybackSeeked(
+                    trackId: trackId,
+                    positionMs: positionMs,
+                    durationMs: durationMs,
+                    progress: progress
+                )
+            else { break }
             mediaControlService.updatePosition(
                 positionMs: snapshot.positionMs,
                 durationMs: snapshot.durationMs

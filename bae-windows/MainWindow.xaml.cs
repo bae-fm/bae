@@ -31,7 +31,7 @@ public sealed partial class MainWindow : Window
 {
     private const uint PositionUpdateIntervalMs = 250;
     private const ulong FirstPageSize = 500;
-    private const ulong BackwardSeekTargetWindowMs = 1000;
+    private const ulong SeekTargetWindowMs = 100;
 
     // LabelKey is a chrome key resolved to the localized menu label at display
     // time; Field is the locale-free sort identifier the FFI expects (never
@@ -64,7 +64,6 @@ public sealed partial class MainWindow : Window
 
     private sealed record SeekProjection(
         string? TrackId,
-        ulong OriginPositionMs,
         ulong TargetPositionMs,
         ulong DurationMs,
         double Progress);
@@ -1515,7 +1514,6 @@ public sealed partial class MainWindow : Window
 
         var projection = new SeekProjection(
             nowPlaying.TrackId,
-            position.PositionMs,
             targetPositionMs,
             position.DurationMs,
             progress);
@@ -1559,51 +1557,80 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private bool SeekProjectionCaughtUp(BaeEvent evt, SeekProjection projection)
+    private static bool IsNearSeekTarget(BaeEvent evt, SeekProjection projection)
     {
-        if (projection.TargetPositionMs >= projection.OriginPositionMs)
-        {
-            return evt.PositionMs >= projection.TargetPositionMs;
-        }
+        var distance = evt.PositionMs > projection.TargetPositionMs
+            ? evt.PositionMs - projection.TargetPositionMs
+            : projection.TargetPositionMs - evt.PositionMs;
+        return distance <= SeekTargetWindowMs;
+    }
 
-        var seekDistanceMs = projection.OriginPositionMs - projection.TargetPositionMs;
-        return evt.PositionMs <= projection.TargetPositionMs
-            || (seekDistanceMs > BackwardSeekTargetWindowMs
-                && evt.PositionMs <= projection.OriginPositionMs
-                && evt.PositionMs - projection.TargetPositionMs <= BackwardSeekTargetWindowMs);
+    private bool PlaybackPositionTargetsCurrentTrack(BaeEvent evt)
+    {
+        if (evt.TrackId is null)
+        {
+            BaeDiagnostics.Logger.Warning("Ignoring playback position with no track id.");
+            return false;
+        }
+        if (_nowPlaying?.TrackId is { } currentTrackId && currentTrackId != evt.TrackId)
+        {
+            BaeDiagnostics.Logger.Warning(
+                $"Ignoring playback position for stale track {evt.TrackId}; current track is {currentTrackId}.");
+            return false;
+        }
+        return true;
     }
 
     private void RenderPlaybackProgress(BaeEvent evt)
     {
+        if (!PlaybackPositionTargetsCurrentTrack(evt))
+        {
+            return;
+        }
         var snapshot = new PlaybackPositionSnapshot(
             evt.DurationMs,
             evt.PositionMs,
             evt.Progress);
         var projection = _nowPlaying?.Position?.Projection;
-        _nowPlaying = _nowPlaying is { } nowPlaying
-            ? nowPlaying with { Position = new PlaybackPositionState(snapshot, projection) }
-            : new NowPlayingState(null, null, new PlaybackPositionState(snapshot, projection));
 
         if (projection is not null)
         {
-            if (projection.TrackId != _nowPlaying?.TrackId)
+            if (projection.TrackId != evt.TrackId || !IsNearSeekTarget(evt, projection))
             {
-                ClearSeekProjection();
+                RenderSeekPosition(
+                    projection.Progress,
+                    projection.TargetPositionMs,
+                    projection.DurationMs);
+                return;
             }
-            else
-            {
-                if (!SeekProjectionCaughtUp(evt, projection))
-                {
-                    RenderSeekPosition(
-                        projection.Progress,
-                        projection.TargetPositionMs,
-                        projection.DurationMs);
-                    return;
-                }
-
-                ClearSeekProjection();
-            }
+            projection = null;
         }
+
+        _nowPlaying = _nowPlaying is { } nowPlaying
+            ? nowPlaying with { Position = new PlaybackPositionState(snapshot, projection) }
+            : new NowPlayingState(null, evt.TrackId, new PlaybackPositionState(snapshot, projection));
+
+        if (!_userSeeking)
+        {
+            NpProgress.Value = evt.Progress;
+        }
+        NpElapsed.Text = DurationLabel(evt.PositionMs);
+        NpRemaining.Text = DurationLabel(RemainingDurationMs(evt.PositionMs, evt.DurationMs));
+    }
+
+    private void RenderPlaybackSeeked(BaeEvent evt)
+    {
+        if (!PlaybackPositionTargetsCurrentTrack(evt))
+        {
+            return;
+        }
+        var snapshot = new PlaybackPositionSnapshot(
+            evt.DurationMs,
+            evt.PositionMs,
+            evt.Progress);
+        _nowPlaying = _nowPlaying is { } nowPlaying
+            ? nowPlaying with { Position = new PlaybackPositionState(snapshot, null) }
+            : new NowPlayingState(null, evt.TrackId, new PlaybackPositionState(snapshot, null));
 
         if (!_userSeeking)
         {
@@ -1654,6 +1681,9 @@ public sealed partial class MainWindow : Window
                 break;
             case "PlaybackProgress":
                 RenderPlaybackProgress(evt);
+                break;
+            case "PlaybackSeeked":
+                RenderPlaybackSeeked(evt);
                 break;
             case "VolumeChanged":
                 _suppressVolume = true;

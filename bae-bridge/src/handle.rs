@@ -1759,10 +1759,23 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             reason: BridgePlaybackPauseReason::from_core(reason),
         }),
         UiBusEvent::PlaybackProgress {
+            track_id,
             position_ms,
             duration_ms,
             progress,
         } => Some(BridgeUiEvent::PlaybackProgress {
+            track_id,
+            position_ms,
+            duration_ms,
+            progress,
+        }),
+        UiBusEvent::PlaybackSeeked {
+            track_id,
+            position_ms,
+            duration_ms,
+            progress,
+        } => Some(BridgeUiEvent::PlaybackSeeked {
+            track_id,
             position_ms,
             duration_ms,
             progress,
@@ -2419,6 +2432,30 @@ mod tests {
                 [crate::types::BridgeUiEvent::MuteChanged { is_muted: true }]
             ),
             "expected the event behind the lag to still be delivered, got: {events:?}",
+        );
+    }
+
+    #[test]
+    fn convert_ui_event_preserves_seeked_position_kind() {
+        let event = super::convert_ui_event(bae_core::ui::UiBusEvent::PlaybackSeeked {
+            track_id: "track-1".to_string(),
+            position_ms: 75_000,
+            duration_ms: 100_000,
+            progress: 0.75,
+        })
+        .expect("seeked event maps to a bridge event");
+
+        assert!(
+            matches!(
+                event,
+                crate::types::BridgeUiEvent::PlaybackSeeked {
+                    ref track_id,
+                    position_ms: 75_000,
+                    duration_ms: 100_000,
+                    progress,
+                } if track_id == "track-1" && progress == 0.75
+            ),
+            "expected PlaybackSeeked, got {event:?}",
         );
     }
 

@@ -35,6 +35,14 @@ class UiEventReducerTest {
             override fun onStopped() {}
 
             override fun onProgress(
+                trackId: String,
+                positionMs: Long,
+                durationMs: Long,
+                progress: Double,
+            ) {}
+
+            override fun onSeeked(
+                trackId: String,
                 positionMs: Long,
                 durationMs: Long,
                 progress: Double,
@@ -167,5 +175,40 @@ class UiEventReducerTest {
         )
 
         assertEquals("Track Title", received?.trackTitle)
+    }
+
+    @Test
+    fun playbackSeekedRoutesIntoThePlayer() {
+        val (library, config) = stores()
+        var receivedTrackId: String? = null
+        var receivedPositionMs: Long? = null
+        val sink =
+            object : PlaybackEventSink by noopPlayer {
+                override fun onSeeked(
+                    trackId: String,
+                    positionMs: Long,
+                    durationMs: Long,
+                    progress: Double,
+                ) {
+                    receivedTrackId = trackId
+                    receivedPositionMs = positionMs
+                }
+            }
+
+        UiEventReducer.reduce(
+            BridgeUiEvent.PlaybackSeeked(
+                trackId = "t1",
+                positionMs = 75_000uL,
+                durationMs = 100_000uL,
+                progress = 0.75,
+            ),
+            library,
+            config,
+            sink,
+            noopErrors,
+        )
+
+        assertEquals("t1", receivedTrackId)
+        assertEquals(75_000L, receivedPositionMs)
     }
 }
