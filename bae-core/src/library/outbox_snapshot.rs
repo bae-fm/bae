@@ -21,7 +21,7 @@ use tracing::debug;
 use crate::db::Database;
 use crate::library::upload_throughput::UploadThroughput;
 
-use crate::db::DisplayedOutboxOp;
+use crate::db::DbOutboxOperation;
 
 /// What an upload is doing right now. Derived from the row plus the in-flight
 /// map; never stored.
@@ -193,7 +193,7 @@ pub(crate) async fn build_outbox_snapshot(
 
     for row in rows {
         match row.operation {
-            DisplayedOutboxOp::Upload => {
+            DbOutboxOperation::Upload => {
                 // An upload row always carries the file id it reports progress
                 // under; only a delete has none.
                 let file_id = row
@@ -264,7 +264,7 @@ pub(crate) async fn build_outbox_snapshot(
                     state,
                 });
             }
-            DisplayedOutboxOp::Delete => {
+            DbOutboxOperation::Delete => {
                 deletes.push(DeleteOp {
                     id: row.id,
                     cloud_key: row.cloud_key,

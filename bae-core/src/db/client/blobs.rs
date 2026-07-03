@@ -408,74 +408,53 @@ impl Database {
                          LEFT JOIN release_files rf ON rf.id = co.file_id \
                          LEFT JOIN releases r ON r.id = rf.release_id \
                          LEFT JOIN albums a ON a.id = r.album_id \
+                         WHERE co.operation != 'cancel' \
                          ORDER BY co.id",
             )?;
-            let rows = stmt.query_map([], |row| {
-                // coven writes `created_at` as its HLC stamp
-                // (`millis-counter-device`, the same format `make_remote`
-                // enqueues with and `register_stamp` mints); the UI needs an
-                // instant for the "queued N ago" label, so take the stamp's
-                // physical millis. A value that isn't a coven stamp is corrupt
-                // — surface it as a column-conversion error rather than masking
-                // it. The index is `created_at`'s position in the SELECT
-                // (`co.id`=0, …, `co.created_at`=4) so the diagnostic names the
-                // right column.
-                let created_at_raw = row.get::<_, String>("created_at")?;
-                let created_at = coven::Timestamp::parse(&created_at_raw)
-                    .map(|t| t.millis as i64)
-                    .ok_or_else(|| {
-                        coven::rusqlite::Error::FromSqlConversionFailure(
-                            4,
-                            coven::rusqlite::types::Type::Text,
-                            format!("created_at {created_at_raw:?} is not a coven HLC stamp")
-                                .into(),
-                        )
-                    })?;
-                let operation_raw = row.get::<_, String>("operation")?;
-                // Parse to the full domain, then keep only the displayed subset.
-                // A non-domain string is genuine corruption (column-conversion
-                // error, as before). A `cancel` (coven's tombstone retry) is kept
-                // out of the snapshot by the WHERE filter; reaching it here means
-                // that filter drifted, so warn with the row's key and drop it.
-                let operation = match OutboxOpKind::parse(&operation_raw) {
-                    Some(OutboxOpKind::Upload) => DisplayedOutboxOp::Upload,
-                    Some(OutboxOpKind::Delete) => DisplayedOutboxOp::Delete,
-                    Some(OutboxOpKind::Cancel) => {
-                        let cloud_key = row.get::<_, String>("cloud_key")?;
-                        tracing::warn!(
-                            cloud_key,
-                            "cancel row reached the outbox snapshot; the WHERE filter drifted — ignoring"
-                        );
-                        return Ok(None);
-                    }
-                    None => {
-                        return Err(column_conversion_error(
-                            row,
-                            "operation",
-                            format!("invalid cloud_outbox.operation: {operation_raw:?}"),
-                        ));
-                    }
-                };
-                Ok(Some(DbOutboxRow {
-                    id: row.get("id")?,
-                    operation,
-                    file_id: row.get("file_id")?,
-                    cloud_key: row.get("cloud_key")?,
-                    created_at,
-                    attempt_count: row.get("attempt_count")?,
-                    last_error: row.get("last_error")?,
-                    release_id: row.get("release_id")?,
-                    title: row.get("title")?,
-                    file_name: row.get("file_name")?,
-                    file_size: row.get("file_size")?,
-                }))
-            })?;
-            rows.collect::<coven::rusqlite::Result<Vec<Option<DbOutboxRow>>>>()
-                .map(|rows| rows.into_iter().flatten().collect())
+            let rows = stmt.query_map([], row_to_db_outbox_row)?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
                 .map_err(DbError::from)
         })
         .await
     }
+}
+
+fn row_to_db_outbox_row(row: &Row<'_>) -> coven::rusqlite::Result<DbOutboxRow> {
+    // coven writes `created_at` as its HLC stamp (`millis-counter-device`, the
+    // same format `make_remote` enqueues with and `register_stamp` mints); the
+    // UI needs an instant for the "queued N ago" label, so take the stamp's
+    // physical millis. A value that isn't a coven stamp is corrupt.
+    let created_at_raw = row.get::<_, String>("created_at")?;
+    let created_at = coven::Timestamp::parse(&created_at_raw)
+        .map(|t| t.millis as i64)
+        .ok_or_else(|| {
+            column_conversion_error(
+                row,
+                "created_at",
+                format!("created_at {created_at_raw:?} is not a coven HLC stamp"),
+            )
+        })?;
+    let operation_raw = row.get::<_, String>("operation")?;
+    let operation = DbOutboxOperation::parse(&operation_raw).ok_or_else(|| {
+        column_conversion_error(
+            row,
+            "operation",
+            format!("invalid cloud_outbox.operation: {operation_raw:?}"),
+        )
+    })?;
+    Ok(DbOutboxRow {
+        id: row.get("id")?,
+        operation,
+        file_id: row.get("file_id")?,
+        cloud_key: row.get("cloud_key")?,
+        created_at,
+        attempt_count: row.get("attempt_count")?,
+        last_error: row.get("last_error")?,
+        release_id: row.get("release_id")?,
+        title: row.get("title")?,
+        file_name: row.get("file_name")?,
+        file_size: row.get("file_size")?,
+    })
 }
 
 fn image_versions(

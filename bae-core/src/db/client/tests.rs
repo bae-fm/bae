@@ -459,25 +459,44 @@ mod outbox_items_tests {
         (db, tmp)
     }
 
-    /// `cancel` rows are coven tombstone retries and render nothing in the
-    /// processing snapshot.
     #[tokio::test]
-    async fn outbox_items_omits_cancel_operation() {
+    async fn outbox_items_returns_uploads_and_deletes_not_cancels() {
+        let (db, _tmp) = empty_db().await;
+        db.add_cloud_outbox_upload("file-1", "upload-key", None, false)
+            .await
+            .unwrap();
+        db.add_cloud_outbox_delete("delete-key").await.unwrap();
+        db.add_cloud_outbox_cancel("cancel-key").await.unwrap();
+
+        let rows = db.outbox_items().await.unwrap();
+        assert_eq!(rows.len(), 2);
+        assert!(matches!(rows[0].operation, DbOutboxOperation::Upload));
+        assert_eq!(rows[0].cloud_key, "upload-key");
+        assert!(matches!(rows[1].operation, DbOutboxOperation::Delete));
+        assert_eq!(rows[1].cloud_key, "delete-key");
+    }
+
+    #[tokio::test]
+    async fn outbox_items_rejects_unknown_operation() {
         let (db, _tmp) = empty_db().await;
         db.add_cloud_outbox_delete("cloud-key").await.unwrap();
+
         db.call(|conn| {
+            conn.execute_batch("PRAGMA ignore_check_constraints = ON;")
+                .map_err(DbError::from)?;
             conn.execute(
-                "UPDATE cloud_outbox SET operation = 'cancel' WHERE cloud_key = 'cloud-key'",
+                "UPDATE cloud_outbox SET operation = 'bogus' WHERE cloud_key = 'cloud-key'",
                 [],
             )
-            .map(|_| ())
-            .map_err(DbError::from)
+            .map_err(DbError::from)?;
+            conn.execute_batch("PRAGMA ignore_check_constraints = OFF;")
+                .map_err(DbError::from)
         })
         .await
         .unwrap();
 
-        let rows = db.outbox_items().await.unwrap();
-        assert!(rows.is_empty());
+        let result = db.outbox_items().await;
+        assert!(result.is_err());
     }
 }
 
