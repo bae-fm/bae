@@ -140,7 +140,7 @@ impl ExportService {
     /// On future-drop the cancel flag flips, the encoder loop exits between
     /// frames, and any partially-written output file is removed.
     pub async fn export_track(
-        plan: ExportTrackPlan,
+        mut plan: ExportTrackPlan,
         output_path: &Path,
         format: ExportFormat,
     ) -> Result<(), String> {
@@ -172,7 +172,9 @@ impl ExportService {
         let cancel = Arc::new(AtomicBool::new(false));
         let _cancel_guard = CancelOnDrop(Arc::clone(&cancel));
 
-        let decoded_pcm = load_track_audio(&plan).await.map_err(|e| e.to_string())?;
+        let decoded_pcm = load_track_audio(&mut plan)
+            .await
+            .map_err(|e| e.to_string())?;
 
         let output_path_owned = output_path.to_path_buf();
         let cancel_for_blocking = Arc::clone(&cancel);
@@ -371,27 +373,25 @@ fn resize_cover(data: &[u8]) -> Result<Vec<u8>, String> {
 ///
 /// Used by export to decode entire tracks into memory for re-encoding. Every
 /// track decodes its whole backing file and trims to its sample window.
-async fn load_track_audio(plan: &ExportTrackPlan) -> Result<Arc<DecodedPcm>, PlaybackError> {
-    let track_id = plan.audio_meta.track.id.as_str();
-    let audio_format = &plan.audio_meta.audio_format;
+async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<Arc<DecodedPcm>, PlaybackError> {
+    let track_id = plan.audio_meta.track.id.clone();
 
-    let file_data = &plan.audio_bytes;
+    let audio_data_owned = std::mem::take(&mut plan.audio_bytes);
     debug!(
         "Loading audio for track {} ({} bytes)",
         track_id,
-        file_data.len()
+        audio_data_owned.len()
     );
 
     // Every track decodes its whole backing file; the sample window trims it to
     // just this track. A per-track source (start 0 / end None) decodes whole.
-    let audio_data_owned: Vec<u8> = file_data.clone();
     // start_sample is a non-negative sample position; a negative one is corrupt
     // metadata, surfaced rather than silently decoded from the start. 0 means the
     // track begins at the file start, so no start trim is needed.
-    let start_sample = u64::try_from(audio_format.start_sample)
+    let start_sample = u64::try_from(plan.audio_meta.audio_format.start_sample)
         .expect("audio_format.start_sample is a non-negative sample position");
     let start_sample = (start_sample > 0).then_some(start_sample);
-    let end_sample = audio_format.end_sample.map(|s| s as u64);
+    let end_sample = plan.audio_meta.audio_format.end_sample.map(|s| s as u64);
 
     debug!(
         "Decoding {} bytes of audio data to PCM",
