@@ -7,6 +7,7 @@ use nom::{
     IResult,
 };
 use std::fs;
+use std::io::Read;
 use std::path::Path;
 use thiserror::Error;
 use tracing::warn;
@@ -196,8 +197,10 @@ impl CueFlacProcessor {
     }
     /// Analyze a FLAC file and extract metadata
     pub fn analyze_flac(flac_path: &Path) -> Result<FlacInfo, CueFlacError> {
-        let file_data = fs::read(flac_path)?;
-        Self::analyze_flac_data(&file_data)
+        let mut file = fs::File::open(flac_path)?;
+        let mut header = [0u8; 42];
+        file.read_exact(&mut header)?;
+        Self::analyze_flac_data(&header)
     }
 
     /// Analyze in-memory FLAC data and extract metadata.
@@ -205,65 +208,35 @@ impl CueFlacProcessor {
         if file_data.len() < 4 || &file_data[0..4] != b"fLaC" {
             return Err(CueFlacError::Flac("Invalid FLAC signature".to_string()));
         }
-
-        let mut pos = 4;
-        let mut sample_rate = 0u32;
-        let mut bits_per_sample = 0u32;
-        let mut channels = 0u32;
-        let mut total_samples = 0u64;
-
-        loop {
-            if pos + 4 > file_data.len() {
-                return Err(CueFlacError::Flac("Unexpected end of file".to_string()));
-            }
-
-            let header = u32::from_be_bytes([
-                file_data[pos],
-                file_data[pos + 1],
-                file_data[pos + 2],
-                file_data[pos + 3],
-            ]);
-
-            let is_last = (header & 0x80000000) != 0;
-            let block_type = ((header >> 24) & 0x7F) as u8;
-            let block_size = (header & 0x00FFFFFF) as usize;
-            pos += 4;
-
-            if pos + block_size > file_data.len() {
-                return Err(CueFlacError::Flac("Block extends beyond file".to_string()));
-            }
-
-            if block_type == 0 && block_size >= 18 {
-                // STREAMINFO block
-                let block = &file_data[pos..pos + block_size];
-                // Sample rate: bits 80-99 (20 bits)
-                sample_rate = ((block[10] as u32) << 12)
-                    | ((block[11] as u32) << 4)
-                    | ((block[12] as u32) >> 4);
-                // Channels - 1: bits 100-102 (3 bits)
-                channels = (((block[12] >> 1) & 0x07) as u32) + 1;
-                // Bits per sample - 1: bits 103-107 (5 bits, spans bytes 12-13)
-                bits_per_sample =
-                    ((((block[12] & 0x01) as u32) << 4) | (((block[13] & 0xF0) >> 4) as u32)) + 1;
-                // Total samples: bits 108-143 (36 bits)
-                total_samples = (((block[13] & 0x0F) as u64) << 32)
-                    | ((block[14] as u64) << 24)
-                    | ((block[15] as u64) << 16)
-                    | ((block[16] as u64) << 8)
-                    | (block[17] as u64);
-            }
-
-            pos += block_size;
-            if is_last {
-                break;
-            }
+        if file_data.len() < 42 {
+            return Err(CueFlacError::Flac("Unexpected end of file".to_string()));
         }
 
-        if bits_per_sample == 0 {
+        let header = u32::from_be_bytes([file_data[4], file_data[5], file_data[6], file_data[7]]);
+        let block_type = ((header >> 24) & 0x7F) as u8;
+        let block_size = (header & 0x00FF_FFFF) as usize;
+        if block_type != 0 {
             return Err(CueFlacError::Flac(
-                "Could not determine bits per sample from FLAC".to_string(),
+                "First FLAC metadata block is not STREAMINFO".to_string(),
             ));
         }
+        if block_size != 34 {
+            return Err(CueFlacError::Flac(
+                "FLAC STREAMINFO block has invalid length".to_string(),
+            ));
+        }
+
+        let block = &file_data[8..42];
+        let sample_rate =
+            ((block[10] as u32) << 12) | ((block[11] as u32) << 4) | ((block[12] as u32) >> 4);
+        let channels = (((block[12] >> 1) & 0x07) as u32) + 1;
+        let bits_per_sample =
+            ((((block[12] & 0x01) as u32) << 4) | (((block[13] & 0xF0) >> 4) as u32)) + 1;
+        let total_samples = (((block[13] & 0x0F) as u64) << 32)
+            | ((block[14] as u64) << 24)
+            | ((block[15] as u64) << 16)
+            | ((block[16] as u64) << 8)
+            | (block[17] as u64);
 
         Ok(FlacInfo {
             sample_rate,

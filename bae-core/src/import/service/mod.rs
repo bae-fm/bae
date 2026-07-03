@@ -680,7 +680,7 @@ impl ImportService {
         // `duration_ms` from the CUE sheet or a standalone-file probe. After
         // this point the DbTracks live inside `tracks_to_files`.
         emit_preparing(PrepareStep::ValidatingTracks);
-        let tracks_to_files = map_tracks_to_files(db_tracks, &categorized).await?;
+        let tracks_to_files = map_tracks_to_files(db_tracks, &categorized)?;
 
         // Resolve local cover path from discovered files
         let cover_image_path = match &selected_cover {

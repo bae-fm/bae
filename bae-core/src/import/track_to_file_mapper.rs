@@ -4,8 +4,11 @@ use crate::import::folder_scanner::{
     AudioContent, CategorizedFiles, ScannedCueFlacPair, ScannedFile,
 };
 use crate::import::types::{CueAudioAnalysis, CueFlacAnalysis, TrackFile};
+use std::io::Read;
 use std::sync::Arc;
 use tracing::{debug, info, warn};
+
+const APE_HEADER_PREFIX_BYTES: usize = 4096;
 
 /// Map tracks to their source audio files using the scan's categorised output.
 ///
@@ -18,7 +21,7 @@ use tracing::{debug, info, warn};
 /// imports each track maps 1:1 to an audio file. In both cases each DbTrack
 /// is moved into a TrackFile variant and its `duration_ms` is populated
 /// from the CUE sheet or a standalone-file probe.
-pub async fn map_tracks_to_files(
+pub fn map_tracks_to_files(
     tracks: Vec<DbTrack>,
     files: &CategorizedFiles,
 ) -> Result<Vec<TrackFile>, String> {
@@ -188,10 +191,8 @@ fn extract_duration_from_file(file_path: &std::path::Path) -> Option<i64> {
     }
 }
 
-/// Probe a CUE-backed container: APE parses its header, FLAC reads its stream
-/// info, ALAC is probed via FFmpeg. Bytes are read once (for APE / FLAC) or
-/// opened by path (for ALAC, whose probe already streams through FFmpeg) and
-/// dropped on return.
+/// Probe a CUE-backed container: APE parses a bounded front header, FLAC reads
+/// STREAMINFO, and ALAC is probed via FFmpeg.
 pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<CueAudioAnalysis, String> {
     let ext = audio_path
         .extension()
@@ -202,18 +203,34 @@ pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<CueAudio
         return analyze_cue_alac(audio_path);
     }
 
-    let data = std::fs::read(audio_path)
-        .map_err(|e| format!("Failed to read audio file {:?}: {}", audio_path, e))?;
-
     if ext.as_deref() == Some("ape") {
-        let ape_info = crate::ape::parse_ape_header_from_data(&data, data.len() as u64)
+        let (header, file_size) = read_file_prefix(audio_path, APE_HEADER_PREFIX_BYTES)?;
+        let ape_info = crate::ape::parse_ape_header_from_data(&header, file_size)
             .map_err(|e| format!("Failed to parse APE {:?}: {}", audio_path, e))?;
         Ok(CueAudioAnalysis::Ape { ape_info })
     } else {
-        let flac_info = CueFlacProcessor::analyze_flac_data(&data)
+        let flac_info = CueFlacProcessor::analyze_flac(audio_path)
             .map_err(|e| format!("Failed to analyze FLAC {:?}: {}", audio_path, e))?;
         Ok(CueAudioAnalysis::Flac { flac_info })
     }
+}
+
+fn read_file_prefix(path: &std::path::Path, max_bytes: usize) -> Result<(Vec<u8>, u64), String> {
+    let mut file =
+        std::fs::File::open(path).map_err(|e| format!("Failed to open {:?}: {}", path, e))?;
+    let file_size = file
+        .metadata()
+        .map_err(|e| format!("Failed to stat {:?}: {}", path, e))?
+        .len();
+    let bytes_to_read = if file_size < max_bytes as u64 {
+        file_size as usize
+    } else {
+        max_bytes
+    };
+    let mut data = vec![0u8; bytes_to_read];
+    file.read_exact(&mut data)
+        .map_err(|e| format!("Failed to read header from {:?}: {}", path, e))?;
+    Ok((data, file_size))
 }
 
 /// Probe an `.m4a` container via FFmpeg and require ALAC. AAC-in-MP4 is a
@@ -406,8 +423,8 @@ mod tests {
             unpaired_cue_sheets: Vec::new(),
         }
     }
-    #[tokio::test]
-    async fn test_map_tracks_to_files_individual_files() {
+    #[test]
+    fn test_map_tracks_to_files_individual_files() {
         let tracks = create_test_tracks(3);
         let files = categorized_track_files(
             vec![
@@ -417,9 +434,7 @@ mod tests {
             ],
             "FLAC",
         );
-        let mappings = map_tracks_to_files(tracks, &files)
-            .await
-            .expect("mapping should succeed");
+        let mappings = map_tracks_to_files(tracks, &files).expect("mapping should succeed");
         assert_eq!(mappings.len(), 3);
         assert_eq!(mappings[0].db_track().id, "track-0");
         assert_eq!(
@@ -438,27 +453,27 @@ mod tests {
         );
         assert!(matches!(mappings[0], TrackFile::Standalone { .. }));
     }
-    #[tokio::test]
-    async fn test_map_tracks_to_files_no_audio_files() {
+    #[test]
+    fn test_map_tracks_to_files_no_audio_files() {
         let tracks = create_test_tracks(2);
         let files = categorized_track_files(Vec::new(), "FLAC");
-        let result = map_tracks_to_files(tracks, &files).await;
+        let result = map_tracks_to_files(tracks, &files);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("No audio files found"));
     }
-    #[tokio::test]
-    async fn test_map_tracks_to_files_more_tracks_than_files() {
+    #[test]
+    fn test_map_tracks_to_files_more_tracks_than_files() {
         let tracks = create_test_tracks(5);
         let files = categorized_track_files(
             vec!["/album/01.flac", "/album/02.flac", "/album/03.flac"],
             "FLAC",
         );
-        let result = map_tracks_to_files(tracks, &files).await;
+        let result = map_tracks_to_files(tracks, &files);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Track count mismatch"));
     }
-    #[tokio::test]
-    async fn test_map_tracks_to_files_more_files_than_tracks() {
+    #[test]
+    fn test_map_tracks_to_files_more_files_than_tracks() {
         let tracks = create_test_tracks(2);
         let files = categorized_track_files(
             vec![
@@ -469,12 +484,12 @@ mod tests {
             ],
             "FLAC",
         );
-        let result = map_tracks_to_files(tracks, &files).await;
+        let result = map_tracks_to_files(tracks, &files);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Track count mismatch"));
     }
-    #[tokio::test]
-    async fn test_map_tracks_to_files_multi_disc_cue_flac() {
+    #[test]
+    fn test_map_tracks_to_files_multi_disc_cue_flac() {
         let tmp = tempfile::TempDir::new().expect("tempdir");
         let cd1_dir = tmp.path().join("CD1");
         let cd2_dir = tmp.path().join("CD2");
@@ -492,7 +507,6 @@ mod tests {
         tracks.extend(create_test_tracks_for_disc(2, 8));
         let files = collect_release_candidate_files(tmp.path()).expect("scan should succeed");
         let track_files = map_tracks_to_files(tracks, &files)
-            .await
             .expect("multi-disc CUE/FLAC mapping should succeed");
         assert_eq!(track_files.len(), 16);
         let mapped: HashMap<String, PathBuf> = track_files
@@ -565,7 +579,6 @@ mod tests {
         let total_tracks: usize = (1..=10).sum();
         let files = collect_release_candidate_files(tmp.path()).expect("scan should succeed");
         let track_files = map_tracks_to_files(tracks, &files)
-            .await
             .expect("10-disc CUE/FLAC mapping should succeed with natural sort");
         assert_eq!(track_files.len(), total_tracks);
         let mapped: HashMap<String, PathBuf> = track_files
@@ -623,8 +636,8 @@ mod tests {
     /// tracklist spans four sides (A/B/C/D, -> `side` values 1..=4) but the
     /// rip is one pair. This is a legitimate vinyl rip shape that
     /// `map_tracks_to_files` must accept.
-    #[tokio::test]
-    async fn test_map_tracks_to_files_cue_flac_multi_side_single_pair() {
+    #[test]
+    fn test_map_tracks_to_files_cue_flac_multi_side_single_pair() {
         let tmp = tempfile::TempDir::new().expect("tempdir");
         // The CUE's FILE directive references "CDImage.flac" (see
         // `make_cue_sheet`), so the on-disk audio must use that name for
@@ -656,7 +669,6 @@ mod tests {
         let files = collect_release_candidate_files(tmp.path()).expect("scan should succeed");
 
         let track_files = map_tracks_to_files(tracks, &files)
-            .await
             .expect("single-pair rip of a multi-side vinyl should map successfully");
         assert_eq!(track_files.len(), 9);
         for tf in &track_files {
@@ -670,8 +682,8 @@ mod tests {
     /// Guard against a `CategorizedFiles` with an unparsed CUE reaching the
     /// mapper: without the parsed sheet the mapper can't align tracks, so it
     /// must error rather than proceed.
-    #[tokio::test]
-    async fn test_map_tracks_to_files_unparsed_cue_errors() {
+    #[test]
+    fn test_map_tracks_to_files_unparsed_cue_errors() {
         let tracks = create_test_tracks(3);
         let files = CategorizedFiles {
             audio: AudioContent::CueFlacPairs {
@@ -687,7 +699,7 @@ mod tests {
             documents: Vec::new(),
             unpaired_cue_sheets: Vec::new(),
         };
-        let result = map_tracks_to_files(tracks, &files).await;
+        let result = map_tracks_to_files(tracks, &files);
         assert!(result.is_err());
         assert!(
             result.unwrap_err().contains("CUE sheet not parsed"),
