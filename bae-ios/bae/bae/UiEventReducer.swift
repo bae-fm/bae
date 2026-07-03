@@ -266,17 +266,14 @@ enum UiEventReducer {
             let durationMs,
             let progress
         ):
-            guard
-                let snapshot = playbackStore.updatePlaybackProgress(
+            updatePlaybackPosition(
+                playbackStore.updatePlaybackProgress(
                     trackId: trackId,
                     positionMs: positionMs,
                     durationMs: durationMs,
                     progress: progress
-                )
-            else { break }
-            mediaControlService.updatePosition(
-                positionMs: snapshot.positionMs,
-                durationMs: snapshot.durationMs
+                ),
+                into: context
             )
 
         case .playbackSeeked(
@@ -285,17 +282,14 @@ enum UiEventReducer {
             let durationMs,
             let progress
         ):
-            guard
-                let snapshot = playbackStore.updatePlaybackSeeked(
+            updatePlaybackPosition(
+                playbackStore.updatePlaybackSeeked(
                     trackId: trackId,
                     positionMs: positionMs,
                     durationMs: durationMs,
                     progress: progress
-                )
-            else { break }
-            mediaControlService.updatePosition(
-                positionMs: snapshot.positionMs,
-                durationMs: snapshot.durationMs
+                ),
+                into: context
             )
 
         default:
@@ -398,5 +392,19 @@ private func updateMediaControls(
         ),
         isPlaying: isPlaying,
         appHandle: context.appHandle
+    )
+}
+
+@MainActor
+private func updatePlaybackPosition(
+    _ snapshot: PlaybackPositionSnapshot?,
+    into context: ReducerContext
+) {
+    guard let snapshot else {
+        return
+    }
+    context.mediaControlService.updatePosition(
+        positionMs: snapshot.positionMs,
+        durationMs: snapshot.durationMs
     )
 }

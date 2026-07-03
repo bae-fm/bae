@@ -376,6 +376,28 @@ struct PlaybackStoreSeekProjectionTests {
             return
         }
     }
+
+    @MainActor
+    @Test("same-track loading keeps the projected seek position")
+    func sameTrackLoadingKeepsProjectedPosition() {
+        let store = PlaybackStore()
+        store.nowPlaying = .playing(makeTrack("track-1"))
+        _ = store.updatePlaybackPosition(
+            positionMs: 10_000,
+            durationMs: 100_000,
+            progress: 0.1
+        )
+
+        _ = store.projectSeek(ratio: 0.75)
+        store.beginLoading(trackId: "track-1")
+
+        expectPosition(
+            store.playbackPositionSubject.value,
+            progress: 0.75,
+            elapsed: "1:15",
+            remaining: "-0:25"
+        )
+    }
 }
 
 private func expectPosition(

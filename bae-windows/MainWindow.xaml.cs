@@ -1606,16 +1606,7 @@ public sealed partial class MainWindow : Window
             projection = null;
         }
 
-        _nowPlaying = _nowPlaying is { } nowPlaying
-            ? nowPlaying with { Position = new PlaybackPositionState(snapshot, projection) }
-            : new NowPlayingState(null, evt.TrackId, new PlaybackPositionState(snapshot, projection));
-
-        if (!_userSeeking)
-        {
-            NpProgress.Value = evt.Progress;
-        }
-        NpElapsed.Text = DurationLabel(evt.PositionMs);
-        NpRemaining.Text = DurationLabel(RemainingDurationMs(evt.PositionMs, evt.DurationMs));
+        ApplyPlaybackPositionSnapshot(evt, projection);
     }
 
     private void RenderPlaybackSeeked(BaeEvent evt)
@@ -1624,13 +1615,18 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
+        ApplyPlaybackPositionSnapshot(evt, null);
+    }
+
+    private void ApplyPlaybackPositionSnapshot(BaeEvent evt, SeekProjection? projection)
+    {
         var snapshot = new PlaybackPositionSnapshot(
             evt.DurationMs,
             evt.PositionMs,
             evt.Progress);
         _nowPlaying = _nowPlaying is { } nowPlaying
-            ? nowPlaying with { Position = new PlaybackPositionState(snapshot, null) }
-            : new NowPlayingState(null, evt.TrackId, new PlaybackPositionState(snapshot, null));
+            ? nowPlaying with { Position = new PlaybackPositionState(snapshot, projection) }
+            : new NowPlayingState(null, evt.TrackId, new PlaybackPositionState(snapshot, projection));
 
         if (!_userSeeking)
         {
