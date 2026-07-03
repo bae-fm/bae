@@ -111,13 +111,10 @@ pub(crate) unsafe extern "C" fn streaming_avio_read_callback(
         return ffmpeg_sys_next::AVERROR_EOF;
     }
 
-    let mut temp_buf = vec![0u8; buf_size as usize];
-    match ctx.reader.lock().unwrap().read(&mut temp_buf) {
+    let output = std::slice::from_raw_parts_mut(buf, buf_size as usize);
+    match ctx.reader.lock().unwrap().read(output) {
         Some(0) => ffmpeg_sys_next::AVERROR_EOF,
-        Some(n) => {
-            ptr::copy_nonoverlapping(temp_buf.as_ptr(), buf, n);
-            n as c_int
-        }
+        Some(n) => n as c_int,
         None => {
             // Reader cancelled
             ctx.cancel_token
