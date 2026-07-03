@@ -188,7 +188,6 @@ impl PlaybackTestFixture {
         )
         .await?;
         assert!(!setup.track_ids.is_empty(), "Should have imported tracks");
-        std::env::set_var("MUTE_TEST_AUDIO", "1");
         let playback_handle = bae_core::playback::PlaybackService::start(
             setup.library_manager.clone(),
             setup.runtime_handle,
@@ -3023,7 +3022,6 @@ impl HighSampleRateTestFixture {
             audio_format.sample_rate
         );
 
-        std::env::set_var("MUTE_TEST_AUDIO", "1");
         let playback_handle = bae_core::playback::PlaybackService::start(
             library_manager.clone(),
             runtime_handle,
@@ -4046,9 +4044,8 @@ async fn test_restore_populates_last_position_display() {
     let tracks = library_manager.get_tracks(&releases[0].id).await.unwrap();
     let track_id = tracks[0].id.clone();
 
-    // Mute audio for tests and write a snapshot. No service is running yet,
-    // so no one can consume the snapshot before our test service starts.
-    std::env::set_var("MUTE_TEST_AUDIO", "1");
+    // Write a snapshot before the service starts, so no one can consume it
+    // before our test service starts.
     let state = bae_core::db::DbPlaybackState {
         context: None,
         manual: "[]".to_string(),
@@ -4158,7 +4155,6 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
     // context source is the same release with a cursor past its three tracks.
     let manual_track_id = tracks[2].id.clone();
 
-    std::env::set_var("MUTE_TEST_AUDIO", "1");
     let state = bae_core::db::DbPlaybackState {
         context: Some(bae_core::db::DbPlaybackContext {
             source: release.id.clone(),
@@ -4284,7 +4280,6 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         .id
         .clone();
 
-    std::env::set_var("MUTE_TEST_AUDIO", "1");
     let handle =
         bae_core::playback::PlaybackService::start(library_manager.clone(), runtime_handle, 100);
     handle.set_volume(0.0);
@@ -4391,7 +4386,6 @@ async fn restore_test_library() -> RestoreTestLibrary {
     let tracks = library_manager.get_tracks(&releases[0].id).await.unwrap();
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
     assert!(!track_ids.is_empty(), "the test album imported some tracks");
-    std::env::set_var("MUTE_TEST_AUDIO", "1");
     RestoreTestLibrary {
         library_manager,
         runtime_handle,
@@ -4702,7 +4696,6 @@ impl CloudOnlyPlaybackFixture {
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert!(!track_ids.is_empty(), "Should have imported tracks");
 
-        std::env::set_var("MUTE_TEST_AUDIO", "1");
         let playback_handle =
             bae_core::playback::PlaybackService::start(library_manager, runtime_handle, 100);
         playback_handle.set_volume(0.0);

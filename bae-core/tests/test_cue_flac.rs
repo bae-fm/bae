@@ -315,7 +315,6 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     let track1 = &tracks[0];
     let expected_duration_ms: i64 = 8000; // Track 1 is 0:00 to 0:08
 
-    std::env::set_var("MUTE_TEST_AUDIO", "1");
     let playback_handle = bae_core::playback::PlaybackService::start(
         library_manager.clone(),
         tokio::runtime::Handle::current(),
