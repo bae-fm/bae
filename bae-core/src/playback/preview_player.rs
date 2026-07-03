@@ -52,8 +52,6 @@ pub(crate) struct PreviewPlayer {
     path: Option<String>,
     /// Last known duration for the preview file.
     duration: Duration,
-    /// Last known position for the preview file.
-    position: Duration,
     /// Abort handles for preview position/completion listener tasks.
     listener_handle: Option<JoinHandle<()>>,
     /// Sparse buffer for the current preview (retained across seeks).
@@ -62,8 +60,6 @@ pub(crate) struct PreviewPlayer {
     decoder_handle: Option<std::thread::JoinHandle<()>>,
     /// Token for the active preview decoder's AVIO reader.
     decoder_cancel_token: Option<Arc<std::sync::atomic::AtomicBool>>,
-    /// Seek offset for the current preview (added to decoder-relative position).
-    seek_offset: Duration,
     sample_rate: u32,
     channels: u32,
 }
@@ -83,12 +79,10 @@ impl PreviewPlayer {
             playback_source: None,
             path: None,
             duration: Duration::ZERO,
-            position: Duration::ZERO,
             listener_handle: None,
             buffer: None,
             decoder_handle: None,
             decoder_cancel_token: None,
-            seek_offset: Duration::ZERO,
             sample_rate: 44100,
             channels: 2,
         }
@@ -266,14 +260,6 @@ impl PreviewPlayer {
             crate::playback::audio_output::AudioState::Playing => {
                 preview_output.set_state(crate::playback::audio_output::AudioState::Paused);
 
-                // Record the current position so resume can continue from there.
-                let position = self
-                    .playback_source
-                    .as_ref()
-                    .map(|s| self.seek_offset + s.lock().unwrap().position())
-                    .unwrap_or(self.position);
-                self.position = position;
-
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PreviewStateChanged(PreviewState::Paused {
@@ -327,9 +313,7 @@ impl PreviewPlayer {
 
         let was_previewing = self.path.is_some();
         self.path = None;
-        self.position = Duration::ZERO;
         self.duration = Duration::ZERO;
-        self.seek_offset = Duration::ZERO;
 
         if was_previewing {
             info!("Preview stopped");
@@ -385,8 +369,8 @@ impl PreviewPlayer {
 
         // Preview never chains; wrap in a PlaybackSource and drop the boundary
         // receiver so the sender's sends are no-ops. The fmt's values aren't
-        // read by the preview listener (which captures `seek_offset` and the
-        // duration locally), but they're set realistically for hygiene.
+        // consumed by a boundary listener, but the position listener reads them
+        // from the position event.
         let preview_fmt = TrackFmt {
             track_id: path.clone(),
             duration_ms: duration.as_millis() as u64,
@@ -441,14 +425,10 @@ impl PreviewPlayer {
             preview_output.set_state(crate::playback::audio_output::AudioState::Playing);
         }
 
-        let seek_offset = seek_to.unwrap_or(Duration::ZERO);
-
         self.stream = Some(setup.stream);
         self.playback_source = Some(source.clone());
         self.path = Some(path.clone());
-        self.position = seek_offset;
         self.duration = duration;
-        self.seek_offset = seek_offset;
 
         let dur_ms = duration.as_millis() as u64;
         let preview_state = if paused {
@@ -478,8 +458,7 @@ impl PreviewPlayer {
                 tokio::select! {
                     // Preview is single-track; the audio callback tags every
                     // tick with the same fmt we built above. Read its fields
-                    // directly so the listener doesn't carry parallel copies
-                    // of seek_offset/dur_ms.
+                    // directly so the listener doesn't carry parallel copies.
                     Some((fmt, pos)) = position_rx_async.recv() => {
                         let actual_pos_ms = (fmt.position_offset + pos).as_millis() as u64;
                         emit_progress(
