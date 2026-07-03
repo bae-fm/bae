@@ -495,6 +495,7 @@ impl PlaybackPreparedTrack {
     }
 }
 
+#[derive(Clone)]
 struct PlaybackPreparedTrack {
     track_info: PlaybackTrackInfo,
     /// Raw audio buffer (may have headers prepended for CUE/FLAC).

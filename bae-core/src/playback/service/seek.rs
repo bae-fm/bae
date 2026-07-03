@@ -9,17 +9,13 @@ impl PlaybackService {
         }
 
         let prepared = match &self.current_prepared {
-            Some(p) => p,
+            Some(prepared) => prepared.clone(),
             None => {
                 error!("Cannot seek: no current_prepared");
                 return;
             }
         };
-
         let track_id = prepared.track_info.track_id.clone();
-        let sample_rate = prepared.sample_rate;
-        let channels = prepared.channels;
-        let buffer = prepared.buffer.clone();
 
         // Check for same-position seek (difference < 100ms)
         let current_position = self
@@ -58,29 +54,21 @@ impl PlaybackService {
         let staged_next: Option<(TrackStream, TrackFmt)> =
             staged_next.map(|(s, fmt)| (s, (*fmt).clone()));
 
-        // Tear down old decoder, preserve buffer
-        let cancel_token = self
-            .current_prepared
-            .as_ref()
-            .map(|p| p.cancel_token.clone())
-            .unwrap_or_else(|| Arc::new(std::sync::atomic::AtomicBool::new(true)));
         teardown_decoder_for_seek(
             &mut self.current_playback_source,
-            &buffer,
-            &cancel_token,
+            &prepared.buffer,
+            &prepared.cancel_token,
             &mut self.current_decoder_handle,
         )
         .await;
 
-        // Seek to the track's start plus the requested in-track position.
-        let position_samples = (position.as_secs_f64() * sample_rate as f64) as u64;
-
         // Mint a fresh cancel token for the seek's decoder so the ready-watcher's
         // TrackReady is tied to this seek, and a later seek/switch supersedes it.
         let new_cancel_token = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        if let Some(prepared) = &mut self.current_prepared {
-            prepared.cancel_token = new_cancel_token;
-        }
+        self.current_prepared
+            .as_mut()
+            .expect("seek keeps the prepared track through decoder teardown")
+            .cancel_token = new_cancel_token;
 
         // Show buffering at the target immediately (the same Loading→Playing arc
         // the play path uses): the bar jumps to the seek position via Seeked
@@ -88,16 +76,12 @@ impl PlaybackService {
         // ready-watcher confirms Playing once audio flows. The decoder reads
         // immediately and the demand-driven fill fetches the seek target first,
         // so there's no fixed wait and no frozen-but-Playing bar.
-        let prepared = self
-            .current_prepared
-            .as_ref()
-            .expect("seek requires a current track");
+        let position_samples = (position.as_secs_f64() * prepared.sample_rate as f64) as u64;
         let decode = prepared.decode_params(position_samples);
         info!(
             "Seek: position {:?}, seek_to {}",
             position, decode.target_sample
         );
-        let loading_duration_ms = pregap_adjusted_duration(prepared);
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::StateChanged {
@@ -105,18 +89,21 @@ impl PlaybackService {
                     track_id: track_id.clone(),
                     resolved: Some(LoadingTrack {
                         track_info: prepared.track_info.clone(),
-                        duration_ms: loading_duration_ms,
+                        duration_ms: pregap_adjusted_duration(&prepared),
                     }),
                 },
             },
         );
 
-        // Seek keeps the same current track, with the seek target as the new
-        // stream's in-track offset.
         let fmt = prepared.track_fmt(position);
-
         if !self
-            .start_decoder_and_watch(decode, fmt, sample_rate, channels, track_id.clone())
+            .start_decoder_and_watch(
+                decode,
+                fmt,
+                prepared.sample_rate,
+                prepared.channels,
+                track_id.clone(),
+            )
             .await
         {
             // The rebuilt stream failed. The preserved next track was taken out
