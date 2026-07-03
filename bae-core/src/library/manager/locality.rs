@@ -116,6 +116,7 @@ impl LibraryManager {
                 file_count: summary.file_count,
                 total_size: summary.total_size,
                 created_at: enqueued_at,
+                payload: (),
                 state: crate::library::DownloadState::Queued,
             };
             if self.download_queue.enqueue(op) {
@@ -186,14 +187,11 @@ impl LibraryManager {
     /// at a time.
     async fn run_download_worker(&self) {
         loop {
-            // `next_queued_release` returns `None` while paused or empty, so this
-            // one check covers both — park until an enqueue, resume, or retry
-            // wakes us. `run_queued_pin` flips the picked release to Active.
-            let Some(release_id) = self.download_queue.next_queued_release() else {
+            let Some(op) = self.download_queue.next_queued() else {
                 self.download_queue.wait().await;
                 continue;
             };
-            self.run_queued_pin(&release_id).await;
+            self.run_queued_pin(&op.release_id).await;
         }
     }
 

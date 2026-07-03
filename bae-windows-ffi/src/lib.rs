@@ -2347,7 +2347,7 @@ pub unsafe extern "C" fn bae_download_snapshot(handle: *const BaeHandle) -> *mut
     let snapshot = handle.0.services.library_manager().download_snapshot();
     json_cstring(&FfiDownloadSnapshot {
         downloads: snapshot
-            .downloads
+            .ops
             .iter()
             .map(|op| {
                 let (state, percent, error) = match &op.state {

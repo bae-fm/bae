@@ -1578,7 +1578,7 @@ fn automation_export_snapshot(
 ) -> AutomationExportSnapshot {
     use bae_core::library::ExportState;
     let exports = snapshot
-        .exports
+        .ops
         .into_iter()
         .map(|op| {
             let (state, percent, error) = match op.state {
@@ -1588,7 +1588,7 @@ fn automation_export_snapshot(
             };
             AutomationExportOp {
                 release_id: op.release_id,
-                target_dir: op.target_dir.to_string_lossy().to_string(),
+                target_dir: op.payload.to_string_lossy().to_string(),
                 title: op.title,
                 file_count: op.file_count,
                 total_size: op.total_size,

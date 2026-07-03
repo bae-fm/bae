@@ -1611,7 +1611,7 @@ fn convert_download_snapshot(
     use bae_core::library::DownloadState;
 
     let downloads = snapshot
-        .downloads
+        .ops
         .into_iter()
         .map(|op| {
             let (state, percent, error) = match op.state {
@@ -1656,7 +1656,7 @@ fn convert_export_snapshot(
     use bae_core::library::ExportState;
 
     let exports = snapshot
-        .exports
+        .ops
         .into_iter()
         .map(|op| {
             let (state, percent, error) = match op.state {
@@ -1666,7 +1666,7 @@ fn convert_export_snapshot(
             };
             BridgeExportOp {
                 release_id: op.release_id,
-                target_dir: op.target_dir.to_string_lossy().to_string(),
+                target_dir: op.payload.to_string_lossy().to_string(),
                 title: op.title,
                 file_count: op.file_count,
                 total_size: op.total_size,

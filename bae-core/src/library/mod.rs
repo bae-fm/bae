@@ -1,28 +1,26 @@
 pub mod app_services;
 mod discogs_credentials;
-pub mod download_queue;
 pub mod download_snapshot;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod export;
-pub mod export_queue;
 pub mod export_snapshot;
 pub mod manager;
 pub mod outbox_snapshot;
+pub mod release_queue;
 pub(crate) mod sync_controller;
 pub mod sync_events;
 pub mod upload_throughput;
 pub use app_services::*;
-pub use download_queue::DownloadQueue;
 pub use download_snapshot::{DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use export::{ExportFormat, MP3_EXPORT_BITRATE};
-pub use export_queue::ExportQueue;
 pub use export_snapshot::{ExportOp, ExportProgress, ExportSnapshot, ExportState};
 pub use manager::*;
 pub use outbox_snapshot::{
     DeleteOp, OutboxSnapshot, UploadActivity, UploadOp, UploadProgress, UploadReleaseGroup,
     UploadState,
 };
+pub use release_queue::ReleaseQueue;
 pub use upload_throughput::UploadThroughput;
 
 use crate::config::{Config, ConfigError, ConfigYaml};
@@ -34,6 +32,9 @@ use std::sync::Arc;
 use tracing::{debug, warn};
 
 pub use tokio_util::sync::CancellationToken;
+
+pub type DownloadQueue = ReleaseQueue<()>;
+pub type ExportQueue = ReleaseQueue<PathBuf>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RestoreFromCodeError {

@@ -1875,23 +1875,20 @@ async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
     manager.enqueue_pins(vec![release_id.clone()]).await;
     let snap = manager.download_snapshot();
     assert_eq!(snap.total.queued, 1);
-    assert_eq!(snap.downloads.len(), 1);
-    assert_eq!(snap.downloads[0].title, "Test Album");
-    assert_eq!(snap.downloads[0].file_count, 1);
-    assert_eq!(
-        snap.downloads[0].state,
-        crate::library::DownloadState::Queued
-    );
+    assert_eq!(snap.ops.len(), 1);
+    assert_eq!(snap.ops[0].title, "Test Album");
+    assert_eq!(snap.ops[0].file_count, 1);
+    assert_eq!(snap.ops[0].state, crate::library::DownloadState::Queued);
     assert!(snap.paused);
 
     // Re-enqueuing the same release is a no-op: still one entry.
     manager.enqueue_pins(vec![release_id.clone()]).await;
-    assert_eq!(manager.download_snapshot().downloads.len(), 1);
+    assert_eq!(manager.download_snapshot().ops.len(), 1);
 
     // Cancel drops the entry.
     manager.cancel_download(&release_id);
     let snap = manager.download_snapshot();
-    assert!(snap.downloads.is_empty());
+    assert!(snap.ops.is_empty());
 }
 
 /// An already-pinned release is skipped at enqueue rather than re-downloaded.
@@ -1926,7 +1923,7 @@ async fn download_queue_skips_already_pinned() {
     );
 
     manager.enqueue_pins(vec![release_id.clone()]).await;
-    assert!(manager.download_snapshot().downloads.is_empty());
+    assert!(manager.download_snapshot().ops.is_empty());
 }
 
 /// A pin that fails (no cloud home for a cloud-only release) lands `Failed`
@@ -1943,11 +1940,7 @@ async fn download_queue_failed_pin_retries() {
     // rather than sleeping a fixed interval.
     let failed = wait_for(|| {
         matches!(
-            manager
-                .download_snapshot()
-                .downloads
-                .first()
-                .map(|op| &op.state),
+            manager.download_snapshot().ops.first().map(|op| &op.state),
             Some(crate::library::DownloadState::Failed { .. })
         )
     })
@@ -1960,7 +1953,7 @@ async fn download_queue_failed_pin_retries() {
     manager.retry_downloads();
     let snap = manager.download_snapshot();
     assert!(
-        snap.downloads.first().is_some_and(|op| matches!(
+        snap.ops.first().is_some_and(|op| matches!(
             op.state,
             crate::library::DownloadState::Queued
                 | crate::library::DownloadState::Active { .. }
@@ -1971,7 +1964,7 @@ async fn download_queue_failed_pin_retries() {
 
     // Cancelling clears it regardless of the in-flight retry.
     manager.cancel_download(&release_id);
-    let cleared = wait_for(|| manager.download_snapshot().downloads.is_empty()).await;
+    let cleared = wait_for(|| manager.download_snapshot().ops.is_empty()).await;
     assert!(cleared, "cancel removes the entry");
 }
 
@@ -2038,11 +2031,11 @@ async fn export_queue_enqueue_dedups_and_cancels_while_paused() {
         .unwrap();
     let snap = manager.export_snapshot();
     assert_eq!(snap.total.queued, 1);
-    assert_eq!(snap.exports.len(), 1);
-    assert_eq!(snap.exports[0].title, "Test Album");
-    assert_eq!(snap.exports[0].file_count, 1);
-    assert_eq!(snap.exports[0].target_dir, target);
-    assert_eq!(snap.exports[0].state, crate::library::ExportState::Queued);
+    assert_eq!(snap.ops.len(), 1);
+    assert_eq!(snap.ops[0].title, "Test Album");
+    assert_eq!(snap.ops[0].file_count, 1);
+    assert_eq!(snap.ops[0].payload, target);
+    assert_eq!(snap.ops[0].state, crate::library::ExportState::Queued);
     assert!(snap.paused);
 
     // Re-enqueuing the same release is a no-op: still one entry.
@@ -2050,11 +2043,11 @@ async fn export_queue_enqueue_dedups_and_cancels_while_paused() {
         .enqueue_export(&release_id, target.clone())
         .await
         .unwrap();
-    assert_eq!(manager.export_snapshot().exports.len(), 1);
+    assert_eq!(manager.export_snapshot().ops.len(), 1);
 
     // Cancel drops the entry.
     manager.cancel_export(&release_id);
-    assert!(manager.export_snapshot().exports.is_empty());
+    assert!(manager.export_snapshot().ops.is_empty());
 }
 
 /// The verbatim copy-out: exported bytes equal the source bytes, laid out at
@@ -2095,7 +2088,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
         .unwrap();
 
     // Success removes the entry from the queue.
-    let done = wait_for(|| manager.export_snapshot().exports.is_empty()).await;
+    let done = wait_for(|| manager.export_snapshot().ops.is_empty()).await;
     assert!(done, "the export should complete and clear the queue");
 
     // Byte-accuracy + folder layout.
@@ -2162,11 +2155,7 @@ async fn export_write_error_marks_failed_and_retries() {
 
     let failed = wait_for(|| {
         matches!(
-            manager
-                .export_snapshot()
-                .exports
-                .first()
-                .map(|op| &op.state),
+            manager.export_snapshot().ops.first().map(|op| &op.state),
             Some(crate::library::ExportState::Failed { .. })
         )
     })
@@ -2178,7 +2167,7 @@ async fn export_write_error_marks_failed_and_retries() {
     manager.retry_exports();
     assert!(manager
         .export_snapshot()
-        .exports
+        .ops
         .first()
         .is_some_and(|op| matches!(
             op.state,
@@ -2188,7 +2177,7 @@ async fn export_write_error_marks_failed_and_retries() {
         )));
 
     manager.cancel_export(&release_id);
-    let cleared = wait_for(|| manager.export_snapshot().exports.is_empty()).await;
+    let cleared = wait_for(|| manager.export_snapshot().ops.is_empty()).await;
     assert!(cleared, "cancel removes the entry");
 }
 
@@ -2247,11 +2236,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
 
     let failed = wait_for(|| {
         matches!(
-            manager
-                .export_snapshot()
-                .exports
-                .first()
-                .map(|op| &op.state),
+            manager.export_snapshot().ops.first().map(|op| &op.state),
             Some(crate::library::ExportState::Failed { .. })
         )
     })

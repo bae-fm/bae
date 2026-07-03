@@ -47,11 +47,11 @@ impl LibraryManager {
 
         let op = crate::library::ExportOp {
             release_id: release_id.to_string(),
-            target_dir,
             title: summary.album_title,
             file_count: summary.file_count,
             total_size: summary.total_size,
             created_at: self.clock.now().timestamp_millis(),
+            payload: target_dir,
             state: crate::library::ExportState::Queued,
         };
         if self.export_queue.enqueue(op) {
@@ -127,7 +127,7 @@ impl LibraryManager {
     /// present before recording a failure — a cancelled export isn't a failure.
     async fn run_queued_export(&self, op: crate::library::ExportOp) {
         let release_id = op.release_id.clone();
-        let target_dir = op.target_dir.clone();
+        let target_dir = op.payload.clone();
 
         let worker = self.clone();
         let task_release_id = release_id.clone();
