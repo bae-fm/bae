@@ -72,7 +72,6 @@ fn decode_audio_decodes_unsigned_8_bit_wav_as_full_range_pcm() {
     let wav = wav_with_fmt(1, 8, 1, 44_100, &[0, 128, 255]);
     let decoded = decode_audio(&wav, None, None).unwrap();
 
-    assert_eq!(decoded.bits_per_sample, 32);
     assert_eq!(decoded.samples.len(), 3);
     assert!(decoded.samples[0] < -2_000_000_000, "{:?}", decoded.samples);
     assert!(
@@ -93,7 +92,6 @@ fn decode_audio_decodes_64_bit_float_wav_as_full_range_pcm() {
     let wav = wav_with_fmt(3, 64, 1, 44_100, &data);
     let decoded = decode_audio(&wav, None, None).unwrap();
 
-    assert_eq!(decoded.bits_per_sample, 32);
     assert_eq!(decoded.samples.len(), 3);
     assert!(decoded.samples[0] < -1_000_000_000, "{:?}", decoded.samples);
     assert!(
@@ -114,7 +112,6 @@ fn decode_audio_decodes_signed_64_bit_wav_as_full_range_pcm() {
     let wav = wav_extensible_pcm(64, 1, 44_100, &data);
     let decoded = decode_audio(&wav, None, None).unwrap();
 
-    assert_eq!(decoded.bits_per_sample, 32);
     assert_eq!(decoded.samples.len(), 3);
     assert!(decoded.samples[0] < -1_000_000_000, "{:?}", decoded.samples);
     assert!(

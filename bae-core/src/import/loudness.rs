@@ -129,11 +129,7 @@ impl LoudnessProgressSink {
 }
 
 impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
-    fn on_format(&mut self, sample_rate: u32, channels: u32, bits_per_sample: u32) {
-        if bits_per_sample != 32 {
-            self.error = Some(format!("decoded PCM must be 32-bit, got {bits_per_sample}"));
-            return;
-        }
+    fn on_format(&mut self, sample_rate: u32, channels: u32) {
         match crate::loudness::LoudnessMeter::new(channels, sample_rate) {
             Ok(meter) => {
                 self.state = Some(MeterState {

@@ -492,7 +492,6 @@ fn decode_alac_fixture_smoke() {
 
     assert_eq!(decoded.sample_rate, 44100);
     assert_eq!(decoded.channels, 2);
-    assert_eq!(decoded.bits_per_sample, 16);
 
     let expected_samples = 44_100usize * 2 * 2;
     assert_eq!(

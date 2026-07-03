@@ -12,18 +12,15 @@ pub struct DecodedPcm {
     channels: u32,
     /// Sample rate in Hz
     sample_rate: u32,
-    /// Decoded PCM bit depth.
-    bits_per_sample: u32,
 }
 
 impl DecodedPcm {
     /// Create a new decoded PCM buffer.
-    pub fn new(samples: Vec<i32>, sample_rate: u32, channels: u32, bits_per_sample: u32) -> Self {
+    pub fn new(samples: Vec<i32>, sample_rate: u32, channels: u32) -> Self {
         Self {
             samples: Arc::new(samples),
             channels,
             sample_rate,
-            bits_per_sample,
         }
     }
 
@@ -35,11 +32,6 @@ impl DecodedPcm {
     /// Get the number of channels
     pub fn channels(&self) -> u32 {
         self.channels
-    }
-
-    /// Get bits per sample
-    pub fn bits_per_sample(&self) -> u32 {
-        self.bits_per_sample
     }
 
     /// Get full-range raw samples (for export/re-encoding)

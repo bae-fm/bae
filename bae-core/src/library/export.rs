@@ -308,7 +308,7 @@ impl ExportService {
                         .audio_format
                         .bits_per_sample
                         .map(|bits| bits as u32)
-                        .unwrap_or_else(|| decoded_pcm.bits_per_sample()),
+                        .unwrap_or(32),
                     &cancel_for_blocking,
                 )
                 .map_err(|e| format!("Failed to encode FLAC: {e}"))?,
@@ -533,7 +533,6 @@ async fn load_track_audio(plan: &ExportTrackPlan) -> Result<Arc<DecodedPcm>, Pla
         decoded.samples,
         decoded.sample_rate,
         decoded.channels,
-        decoded.bits_per_sample,
     )))
 }
 

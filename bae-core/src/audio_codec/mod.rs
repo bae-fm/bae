@@ -84,7 +84,6 @@ pub struct DecodedAudio {
     pub samples: Vec<i32>,
     pub sample_rate: u32,
     pub channels: u32,
-    pub bits_per_sample: u32,
 }
 
 /// Receives a decode as it streams: the format once, then interleaved-i32 chunks.
@@ -96,7 +95,7 @@ pub struct DecodedAudio {
 /// can't unwind through it); the caller checks the sink afterward.
 pub trait DecodedSink {
     /// Called once after the stream is probed, before any samples.
-    fn on_format(&mut self, sample_rate: u32, channels: u32, bits_per_sample: u32);
+    fn on_format(&mut self, sample_rate: u32, channels: u32);
     /// One interleaved-i32 chunk, already trimmed to the requested
     /// `[start_sample, end_sample)` window.
     fn on_samples(&mut self, samples: &[i32]);
