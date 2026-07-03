@@ -1,5 +1,101 @@
 use super::*;
 
+fn test_track_info(track_id: &str) -> PlaybackTrackInfo {
+    PlaybackTrackInfo {
+        track_id: track_id.to_string(),
+        track_title: "Track Title".to_string(),
+        artist_names: "Artist Name".to_string(),
+        artist_id: "artist-id".to_string(),
+        album_id: "album-id".to_string(),
+        album_title: "Album Title".to_string(),
+        cover_image_id: None,
+        release_id: "release-id".to_string(),
+        side: None,
+    }
+}
+
+fn test_prepared_track(
+    track_id: &str,
+    buffer: SharedSparseBuffer,
+    buffer_shared: bool,
+) -> PlaybackPreparedTrack {
+    PlaybackPreparedTrack {
+        track_info: test_track_info(track_id),
+        buffer,
+        buffer_shared,
+        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        sample_rate: 44_100,
+        channels: 2,
+        pregap_ms: None,
+        duration: std::time::Duration::from_secs(1),
+        start_sample: 0,
+        end_sample: None,
+        content_type: crate::util::content_type::ContentType::Flac,
+        start_byte: None,
+        end_byte: None,
+        replay_gain_linear: 1.0,
+    }
+}
+
+fn finished_decoder_handle() -> std::thread::JoinHandle<()> {
+    std::thread::spawn(|| {})
+}
+
+fn test_track_fmt(track_id: &str) -> TrackFmt {
+    TrackFmt {
+        track_id: track_id.to_string(),
+        duration_ms: 1_000,
+        pregap_ms: None,
+        position_offset: std::time::Duration::ZERO,
+        replay_gain_linear: 1.0,
+    }
+}
+
+#[test]
+fn clear_preloaded_next_cancels_held_unshared_buffer() {
+    let buffer = create_sparse_buffer(1_024);
+    let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
+    let mut preloaded = Some(PreloadedNext {
+        prepared: test_prepared_track("next-track", buffer.clone(), false),
+        decoder_handle: finished_decoder_handle(),
+        source: PreloadedNextSource::Held(source),
+    });
+
+    clear_preloaded_next(&mut preloaded, None);
+
+    assert!(preloaded.is_none());
+    assert!(buffer.is_cancelled());
+}
+
+#[test]
+fn clear_preloaded_next_removes_staged_source() {
+    let (_current_sink, current_source, _current_ready) = create_track_stream_pair(44_100, 2);
+    let (_next_sink, next_source, _next_ready) = create_track_stream_pair(44_100, 2);
+    let (boundary_tx, _boundary_rx) = tokio_mpsc::unbounded_channel();
+    let gapless = Arc::new(Mutex::new(source::PlaybackSource::new(
+        current_source,
+        test_track_fmt("current-track"),
+        boundary_tx,
+    )));
+    gapless
+        .lock()
+        .unwrap()
+        .stage_next(next_source, test_track_fmt("next-track"));
+
+    let buffer = create_sparse_buffer(1_024);
+    let mut preloaded = Some(PreloadedNext {
+        prepared: test_prepared_track("next-track", buffer.clone(), false),
+        decoder_handle: finished_decoder_handle(),
+        source: PreloadedNextSource::Staged,
+    });
+
+    clear_preloaded_next(&mut preloaded, Some(&gapless));
+
+    assert!(preloaded.is_none());
+    assert!(!gapless.lock().unwrap().has_next());
+    assert!(buffer.is_cancelled());
+}
+
 #[test]
 fn pregap_seek_position_cases() {
     use std::time::Duration;

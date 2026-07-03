@@ -2,9 +2,7 @@ use super::*;
 
 impl PlaybackService {
     pub(super) fn next_track_id(&self) -> Option<&str> {
-        self.next_prepared
-            .as_ref()
-            .map(|p| p.track_info.track_id.as_str())
+        self.preloaded_next.as_ref().map(PreloadedNext::track_id)
     }
 
     pub(super) async fn handle_tracks_deleted(&mut self, track_ids: Vec<String>) {
@@ -29,8 +27,8 @@ impl PlaybackService {
             }
         } else {
             // Current track is fine, but check preloaded next track
-            if let Some(ref next_prepared) = self.next_prepared {
-                if ids.contains(&next_prepared.track_info.track_id) {
+            if let Some(preloaded) = &self.preloaded_next {
+                if ids.contains(preloaded.track_id()) {
                     self.clear_next_track_state();
                 }
             }
@@ -48,6 +46,8 @@ impl PlaybackService {
     /// Preload the next track for gapless playback.
     /// This eagerly starts the decoder so samples are ready when we switch tracks.
     pub(super) async fn preload_next_track(&mut self, track_id: &str) {
+        self.clear_next_track_state();
+
         // Prepare track: fetch metadata, create buffer, start reading
         let prepared = prepare_track_for_playback(
             &self.library_manager,
@@ -107,16 +107,22 @@ impl PlaybackService {
                 .lock()
                 .unwrap()
                 .stage_next(source, prepared.track_fmt(std::time::Duration::ZERO));
-            self.next_track_stream = None;
+            self.preloaded_next = Some(PreloadedNext {
+                prepared,
+                decoder_handle,
+                source: PreloadedNextSource::Staged,
+            });
         } else {
             info!(
                 "Preload: holding next track for stream-rebuild path: {}",
                 track_id
             );
-            self.next_track_stream = Some(source);
+            self.preloaded_next = Some(PreloadedNext {
+                prepared,
+                decoder_handle,
+                source: PreloadedNextSource::Held(source),
+            });
         }
-        self.next_prepared = Some(prepared);
-        self.next_decoder_handle = Some(decoder_handle);
 
         info!("Preloaded next track (streaming): {}", track_id);
     }
@@ -145,13 +151,13 @@ impl PlaybackService {
             return Ok(None);
         };
 
-        let next_info = match self.next_prepared.as_ref() {
-            Some(prepared) if prepared.track_info.track_id == next_track_id => {
-                prepared.track_info.clone()
+        let next_info = match self.preloaded_next.as_ref() {
+            Some(preloaded) if preloaded.track_id() == next_track_id => {
+                preloaded.prepared.track_info.clone()
             }
-            Some(prepared) => {
+            Some(preloaded) => {
                 debug!(
-                    preloaded_track_id = %prepared.track_info.track_id,
+                    preloaded_track_id = %preloaded.track_id(),
                     queue_next_track_id = %next_track_id,
                     "side-pause decision ignoring stale preloaded next track"
                 );
@@ -278,49 +284,24 @@ impl PlaybackService {
     }
 
     pub(super) fn clear_next_track_state(&mut self) {
-        // Cancel the preloaded next source, whether staged in the gapless chain
-        // or held for the rebuild path.
-        if let Some(source) = self.take_preloaded_next() {
-            source.cancel();
-        }
-        // Cancel any active sparse buffer for the next track (unless shared)
-        if let Some(prepared) = &self.next_prepared {
-            if !prepared.buffer_shared {
-                prepared.buffer.cancel();
-            }
-        }
-        self.next_prepared = None;
-        self.next_decoder_handle = None;
+        clear_preloaded_next(
+            &mut self.preloaded_next,
+            self.current_playback_source.as_ref(),
+        );
     }
 
-    /// Whether a preloaded next-track source is available — staged in the gapless
-    /// chain or held for the rebuild path.
+    /// Whether a preloaded next-track source is available.
     pub(super) fn has_preloaded_next(&self) -> bool {
-        if self.next_track_stream.is_some() {
-            return true;
+        let Some(preloaded) = &self.preloaded_next else {
+            return false;
+        };
+        match &preloaded.source {
+            PreloadedNextSource::Held(_) => true,
+            PreloadedNextSource::Staged => self
+                .current_playback_source
+                .as_ref()
+                .is_some_and(|gapless| gapless.lock().unwrap().has_next()),
         }
-        match &self.current_playback_source {
-            Some(g) => g.lock().unwrap().has_next(),
-            None => false,
-        }
-    }
-
-    /// Take ownership of the preloaded next-track source for a stream rebuild,
-    /// from wherever it is held (gapless chain or holding field). The fmt is
-    /// discarded — the rebuild path constructs a fresh fmt from `next_prepared`
-    /// when initializing the new stream.
-    pub(super) fn take_preloaded_next(&mut self) -> Option<TrackStream> {
-        if let Some(source) = self.next_track_stream.take() {
-            return Some(source);
-        }
-        if let Some(gapless) = &self.current_playback_source {
-            return gapless
-                .lock()
-                .unwrap()
-                .take_next()
-                .map(|(source, _fmt)| source);
-        }
-        None
     }
 
     /// Promote track bookkeeping after the audio callback crossed a gapless
@@ -348,8 +329,8 @@ impl PlaybackService {
             },
         );
 
-        let next_prepared = match self.next_prepared.take() {
-            Some(p) => p,
+        let preloaded = match self.preloaded_next.take() {
+            Some(preloaded) => preloaded,
             None => {
                 warn!(
                     track_id = %crossing.incoming_track_id,
@@ -358,12 +339,17 @@ impl PlaybackService {
                 return;
             }
         };
+        let PreloadedNext {
+            prepared: next_prepared,
+            decoder_handle,
+            ..
+        } = preloaded;
         let track_id = crossing.incoming_track_id;
         info!("Gapless boundary: now playing {}", track_id);
 
         // The previous track's decoder has finished; the next track's decoder
         // becomes the current one.
-        self.current_decoder_handle = self.next_decoder_handle.take();
+        self.current_decoder_handle = Some(decoder_handle);
 
         // Release the previous track's buffer (unless shared with the new one).
         if let Some(prev) = self.current_prepared.take() {
@@ -437,13 +423,18 @@ impl PlaybackService {
         is_natural_transition: bool,
         preserve_paused: bool,
     ) {
-        let next_prepared = match self.next_prepared.take() {
-            Some(p) => p,
+        let preloaded = match self.preloaded_next.take() {
+            Some(preloaded) => preloaded,
             None => {
-                error!("play_preloaded_track called but no next_prepared");
+                error!("play_preloaded_track called without preloaded state");
                 return;
             }
         };
+        let PreloadedNext {
+            prepared: next_prepared,
+            decoder_handle,
+            source: preloaded_source,
+        } = preloaded;
 
         let pregap_ms = next_prepared.pregap_ms;
         let track_id = next_prepared.track_info.track_id.clone();
@@ -456,7 +447,9 @@ impl PlaybackService {
             if !next_prepared.buffer_shared {
                 next_prepared.buffer.cancel();
             }
-            if let Some(source) = self.take_preloaded_next() {
+            if let Some(source) =
+                detach_preloaded_source(self.current_playback_source.as_ref(), preloaded_source)
+            {
                 source.cancel();
             }
             self.play_track(&track_id, is_natural_transition, preserve_paused)
@@ -466,9 +459,9 @@ impl PlaybackService {
 
         // Recover the preloaded next source (staged in the gapless chain or held
         // for the rebuild path) BEFORE tearing down the current stream.
-        let source = self
-            .take_preloaded_next()
-            .expect("Preloaded track has no streaming source");
+        let source =
+            detach_preloaded_source(self.current_playback_source.as_ref(), preloaded_source)
+                .expect("Preloaded track has no streaming source");
 
         // Cancel current streaming state
         if let Some(gapless) = self.current_playback_source.take() {
@@ -483,9 +476,8 @@ impl PlaybackService {
         }
 
         // Swap next to current. The preloaded track's decoder becomes the current
-        // one (its handle was held in next_decoder_handle); the previous track's
-        // decoder was cancelled above via the source.
-        self.current_decoder_handle = self.next_decoder_handle.take();
+        // one; the previous track's decoder was cancelled above via the source.
+        self.current_decoder_handle = Some(decoder_handle);
         self.current_prepared = Some(next_prepared);
         // The preloaded track is now the playing one: hand its reader fetch
         // priority over whatever gets preloaded next.

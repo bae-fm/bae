@@ -274,6 +274,7 @@ impl PlaybackService {
         // leaving them running until this method overwrites the current state at
         // the end. Spares a shared source buffer the incoming track reuses.
         self.teardown_current_track();
+        self.clear_next_track_state();
 
         emit_progress(
             &self.progress_tx,

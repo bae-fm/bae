@@ -534,6 +534,59 @@ struct PlaybackPreparedTrack {
     replay_gain_linear: f32,
 }
 
+struct PreloadedNext {
+    prepared: PlaybackPreparedTrack,
+    decoder_handle: std::thread::JoinHandle<()>,
+    source: PreloadedNextSource,
+}
+
+enum PreloadedNextSource {
+    Held(TrackStream),
+    Staged,
+}
+
+impl PreloadedNext {
+    fn track_id(&self) -> &str {
+        self.prepared.track_info.track_id.as_str()
+    }
+}
+
+fn clear_preloaded_next(
+    preloaded_next: &mut Option<PreloadedNext>,
+    current_playback_source: Option<&Arc<Mutex<source::PlaybackSource>>>,
+) {
+    let Some(preloaded) = preloaded_next.take() else {
+        return;
+    };
+
+    let PreloadedNext {
+        prepared, source, ..
+    } = preloaded;
+
+    if let Some(source) = detach_preloaded_source(current_playback_source, source) {
+        source.cancel();
+    }
+    if !prepared.buffer_shared {
+        prepared.buffer.cancel();
+    }
+}
+
+fn detach_preloaded_source(
+    current_playback_source: Option<&Arc<Mutex<source::PlaybackSource>>>,
+    source: PreloadedNextSource,
+) -> Option<TrackStream> {
+    match source {
+        PreloadedNextSource::Held(source) => Some(source),
+        PreloadedNextSource::Staged => current_playback_source.and_then(|gapless| {
+            gapless
+                .lock()
+                .unwrap()
+                .take_next()
+                .map(|(source, _)| source)
+        }),
+    }
+}
+
 /// Finalize a PlaybackPreparedTrack from resolved audio, display info, and buffer.
 fn finalize_playback_track(
     resolved: ResolvedTrackAudio,
@@ -651,15 +704,9 @@ pub struct PlaybackService {
     current_decoder_handle: Option<std::thread::JoinHandle<()>>,
     /// Listener task handles for the current track (position ticks + completion)
     current_listener_handle: Option<tokio::task::JoinHandle<()>>,
-    /// Preloaded next track prepared data
-    next_prepared: Option<PlaybackPreparedTrack>,
-    /// Preloaded next-track source held for the stream-rebuild path (a format
-    /// change vs the live stream, or no live stream yet). When the next track
-    /// shares the live stream's format it is staged into the `PlaybackSource`
-    /// instead and this stays `None`.
-    next_track_stream: Option<TrackStream>,
-    /// JoinHandle for the preloaded next track decoder thread
-    next_decoder_handle: Option<std::thread::JoinHandle<()>>,
+    /// Preloaded next track state, either staged into the current gapless source
+    /// or held for a stream rebuild.
+    preloaded_next: Option<PreloadedNext>,
     /// Mute state — core tracks this so UI doesn't need to.
     is_muted: bool,
     pre_mute_volume: f32,
@@ -994,9 +1041,7 @@ impl PlaybackService {
                     current_playback_source: None,
                     current_decoder_handle: None,
                     current_listener_handle: None,
-                    next_prepared: None,
-                    next_track_stream: None,
-                    next_decoder_handle: None,
+                    preloaded_next: None,
                     preview,
                     main_was_playing_before_preview: false,
                     is_muted: false,
@@ -1046,7 +1091,6 @@ impl PlaybackService {
                     }
                     self.audio_output
                         .set_state(crate::playback::audio_output::AudioState::Stopped);
-                    self.clear_next_track_state();
                     // Direct selection: the track's release becomes the playing
                     // context, with the cursor at the chosen track.
                     match self.library_manager.get_play_context(&track_id).await {
@@ -1215,7 +1259,6 @@ impl PlaybackService {
                     match self.playback_queue.next_entry() {
                         NextEntry::RepeatCurrent(track_id) => {
                             info!("Repeat mode: track, replaying {}", track_id);
-                            self.clear_next_track_state();
                             self.play_track(&track_id, true, false).await;
                         }
                         NextEntry::Play(next_track) => {
@@ -1292,7 +1335,6 @@ impl PlaybackService {
                                 info!("Going to previous track: {}", previous_track_id);
                                 // previous_action already stepped the context cursor
                                 // back and made this track current; just play it.
-                                self.clear_next_track_state();
                                 self.emit_queue_update();
                                 self.play_track(&previous_track_id, false, true).await;
                             }
@@ -1478,7 +1520,6 @@ impl PlaybackService {
                         );
 
                         self.pending_side_pause = None;
-                        self.clear_next_track_state();
                         self.emit_queue_update();
                         self.play_track(&entry.track_id, false, false).await;
                     }
