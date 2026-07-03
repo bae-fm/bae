@@ -2571,11 +2571,7 @@ async fn test_cue_flac_playback() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32: Vec<f32> = reference
-        .samples
-        .iter()
-        .map(|&s| s as f32 / 32768.0)
-        .collect();
+    let reference_f32 = reference.samples_as_f32();
 
     // Wait for enough samples (2 seconds)
     let target_samples = sample_rate as usize * channels * 2;
@@ -2714,11 +2710,7 @@ async fn test_cue_flac_seek() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32: Vec<f32> = reference
-        .samples
-        .iter()
-        .map(|&s| s as f32 / 32768.0)
-        .collect();
+    let reference_f32 = reference.samples_as_f32();
 
     // Wait for enough captured samples (1 second)
     let target_samples = sample_rate as usize * channels;
@@ -2839,11 +2831,7 @@ async fn test_direct_play_skips_pregap_cue_flac() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32: Vec<f32> = reference
-        .samples
-        .iter()
-        .map(|&s| s as f32 / 32768.0)
-        .collect();
+    let reference_f32 = reference.samples_as_f32();
 
     // Wait for enough captured samples (2 seconds)
     let target_samples = sample_rate as usize * channels * 2;
@@ -3336,11 +3324,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32: Vec<f32> = reference
-        .samples
-        .iter()
-        .map(|&s| s as f32 / 32768.0)
-        .collect();
+    let reference_f32 = reference.samples_as_f32();
 
     // Track 2 is ~12s total (INDEX 00 at 8s to 20s in file). After seeking to 5s,
     // ~7s remain. The decoder must stop at track 2's end boundary (stop_at),

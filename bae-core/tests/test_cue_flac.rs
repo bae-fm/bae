@@ -229,11 +229,7 @@ async fn test_cue_flac_playback_uses_track_positions() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32: Vec<f32> = reference
-        .samples
-        .iter()
-        .map(|&s| s as f32 / 32768.0)
-        .collect();
+    let reference_f32 = reference.samples_as_f32();
 
     // Align and compare
     let snippet_len = 500 * channels;

@@ -562,11 +562,7 @@ async fn test_cue_ape_playback_uses_track_positions() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32: Vec<f32> = reference
-        .samples
-        .iter()
-        .map(|&s| s as f32 / 32768.0)
-        .collect();
+    let reference_f32 = reference.samples_as_f32();
 
     // Align and compare
     let snippet_len = 500 * channels;
@@ -683,11 +679,7 @@ async fn test_cue_ape_playback_no_decode_errors() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32: Vec<f32> = reference
-        .samples
-        .iter()
-        .map(|&s| s as f32 / 32768.0)
-        .collect();
+    let reference_f32 = reference.samples_as_f32();
 
     // Align and compare
     let snippet_len = 500 * channels;
@@ -829,11 +821,7 @@ async fn test_cue_ape_seek() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32: Vec<f32> = reference
-        .samples
-        .iter()
-        .map(|&s| s as f32 / 32768.0)
-        .collect();
+    let reference_f32 = reference.samples_as_f32();
 
     let needed_for_seek = sample_rate as usize * channels;
     let captured_snapshot =
@@ -1160,11 +1148,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
     let sample_rate = reference.sample_rate;
 
     // Convert reference i32 to f32
-    let reference_f32: Vec<f32> = reference
-        .samples
-        .iter()
-        .map(|&s| s as f32 / 32768.0)
-        .collect();
+    let reference_f32 = reference.samples_as_f32();
 
     // === COMPARE ===
     // The capture is one gapless stream: track 1's 28s→30s tail, then track 2.
@@ -1343,11 +1327,7 @@ async fn test_cue_ape_next_track() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32: Vec<f32> = reference
-        .samples
-        .iter()
-        .map(|&s| s as f32 / 32768.0)
-        .collect();
+    let reference_f32 = reference.samples_as_f32();
 
     // Align and compare
     let snippet_len = 500 * channels;

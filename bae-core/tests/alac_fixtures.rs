@@ -482,9 +482,11 @@ fn cue_alac_cue_sheet_has_three_tracks() {
 
 /// Decoding the 2-second ALAC silence fixture through the production decoder
 /// must produce the expected sample count (2s * 44100 Hz * 2 ch = 176400
-/// samples) and match the probe's sample rate / channel count. Silence means
-/// every sample must be 0 — so we assert that too, which is a useful sanity
-/// check that we haven't accidentally decoded noise.
+/// samples) and match the decoder's output format. The source ALAC bit depth is
+/// asserted by the probe/import tests above; `decode_audio` emits 32-bit PCM
+/// after sample conversion. Silence means every sample must be 0, so we assert
+/// that too, which is a useful sanity check that we haven't accidentally
+/// decoded noise.
 #[test]
 fn decode_alac_fixture_smoke() {
     let bytes = std::fs::read(fixture_dir().join("silence-alac.m4a")).expect("read alac");
