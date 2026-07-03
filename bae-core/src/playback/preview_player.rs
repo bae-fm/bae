@@ -12,7 +12,7 @@
 //! outputs silence until the first samples land.
 
 use crate::playback::audio_output::{AudioOutput, AudioStream};
-use crate::playback::data_source::{AudioDataReader, AudioReadConfig, LocalReader};
+use crate::playback::data_source::{AudioDataReader, LocalReader};
 use crate::playback::progress::{emit_progress, PlaybackProgress, PreviewState};
 use crate::playback::service::{
     default_audio_output, dispatch_command, log_streaming_decode_failure, setup_audio_stream,
@@ -136,11 +136,7 @@ impl PreviewPlayer {
 
         // Create sparse buffer and start local file reader
         let buffer = create_sparse_buffer(source_size);
-        let read_config = AudioReadConfig {
-            path: path.clone(),
-            source_size,
-        };
-        let reader: Box<dyn AudioDataReader> = Box::new(LocalReader::new(read_config));
+        let reader: Box<dyn AudioDataReader> = Box::new(LocalReader::new(path.clone()));
         reader.start_reading(buffer.clone(), self.progress_tx.clone());
 
         // Probe duration and sample rate from file

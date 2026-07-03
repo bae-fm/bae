@@ -115,26 +115,18 @@ pub trait AudioDataReader: Send + 'static {
     );
 }
 
-/// Configuration for reading audio data.
-#[derive(Debug, Clone)]
-pub struct AudioReadConfig {
-    /// Path to the audio file (local path or cloud key)
-    pub path: String,
-    pub source_size: u64,
-}
-
 /// Reads from local filesystem.
 ///
 /// Used for:
 /// - Non-storage releases (files at original import location)
 /// - Storage releases with local backend
 pub struct LocalReader {
-    config: AudioReadConfig,
+    path: String,
 }
 
 impl LocalReader {
-    pub fn new(config: AudioReadConfig) -> Self {
-        Self { config }
+    pub fn new(path: impl Into<String>) -> Self {
+        Self { path: path.into() }
     }
 }
 
@@ -194,9 +186,7 @@ impl AudioDataReader for LocalReader {
         buffer: SharedSparseBuffer,
         progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
     ) {
-        // The file size is recorded at the buffer's construction; this reader
-        // only needs the path (the fill reads bytes through `fetch`).
-        let AudioReadConfig { path, .. } = self.config;
+        let path = self.path;
         let (wake, buffer) = prepare_fill(buffer);
 
         tokio::spawn(async move {
@@ -685,13 +675,6 @@ mod tests {
         }
     }
 
-    fn full_file_config(path: impl Into<String>, source_size: u64) -> AudioReadConfig {
-        AudioReadConfig {
-            path: path.into(),
-            source_size,
-        }
-    }
-
     const WINDOW: u64 = CLOUD_STREAM_READ_SIZE;
 
     /// A preload reader's fetch waits while the playing track has a fetch in
@@ -1036,10 +1019,9 @@ mod tests {
         // Our own clone of the wake handle; the fill takes another via
         // `start_reading`, and the buffer holds the third.
         let wake = buffer.fill_wake_handle();
-        let reader = Box::new(LocalReader::new(full_file_config(
+        let reader = Box::new(LocalReader::new(
             temp_file.path().to_str().expect("temp path is UTF-8"),
-            source_size,
-        )));
+        ));
         let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
         reader.start_reading(buffer.clone(), progress_tx);
         let weak = Arc::downgrade(&buffer);
@@ -1129,12 +1111,9 @@ mod tests {
         temp_file.write_all(test_data).unwrap();
         temp_file.flush().unwrap();
 
-        let config = full_file_config(
+        let reader = Box::new(LocalReader::new(
             temp_file.path().to_str().expect("temp path is UTF-8"),
-            test_data.len() as u64,
-        );
-
-        let reader = Box::new(LocalReader::new(config));
+        ));
         let buffer = create_sparse_buffer(test_data.len() as u64);
 
         let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
@@ -1156,11 +1135,9 @@ mod tests {
         temp_file.write_all(&data).unwrap();
         temp_file.flush().unwrap();
 
-        let config = full_file_config(
+        let reader = Box::new(LocalReader::new(
             temp_file.path().to_str().expect("temp path is UTF-8"),
-            source_size,
-        );
-        let reader = Box::new(LocalReader::new(config));
+        ));
         let buffer = create_sparse_buffer(source_size);
 
         // Register the seek demand before the fill loop starts (the seek case).
@@ -1204,9 +1181,7 @@ mod tests {
             .to_string();
         drop(temp_file);
 
-        let config = full_file_config(path, test_data.len() as u64);
-
-        let reader = Box::new(LocalReader::new(config));
+        let reader = Box::new(LocalReader::new(path));
         let buffer = create_sparse_buffer(test_data.len() as u64);
 
         let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
@@ -1233,9 +1208,10 @@ mod tests {
     #[tokio::test]
     async fn test_local_file_reader_read_error_reports_error() {
         let dir = tempfile::tempdir().unwrap();
-        let config = full_file_config(dir.path().to_str().expect("temp path is UTF-8"), 1);
 
-        let reader = Box::new(LocalReader::new(config));
+        let reader = Box::new(LocalReader::new(
+            dir.path().to_str().expect("temp path is UTF-8"),
+        ));
         let buffer = create_sparse_buffer(1);
 
         let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
