@@ -53,12 +53,15 @@ struct IdentifyServiceInner {
     runtime_handle: tokio::runtime::Handle,
     event_tx: broadcast::Sender<ImportEvent>,
     cover_art_archive: CoverArtArchiveClient,
-    cancel_tokens: Mutex<HashMap<String, CancellationToken>>,
-    /// Per-candidate sender into the running driver's internal event channel.
-    /// External callers (the bridge) push events here via methods like
-    /// `toggle_signal` / `rerun`. Populated when a driver starts; removed when
-    /// it terminates.
-    inboxes: Mutex<HashMap<String, mpsc::UnboundedSender<IdentifyEvent>>>,
+    drivers: Mutex<HashMap<String, CandidateDriver>>,
+}
+
+struct CandidateDriver {
+    token: CancellationToken,
+    /// Sender into the running driver's internal event channel. External
+    /// callers (the bridge) push events here via methods like `toggle_signal`
+    /// and `rerun`.
+    inbox: mpsc::UnboundedSender<IdentifyEvent>,
 }
 
 /// Builder / entry point for constructing and running the service.
@@ -77,8 +80,7 @@ impl IdentifyService {
                 runtime_handle,
                 event_tx,
                 cover_art_archive,
-                cancel_tokens: Mutex::new(HashMap::new()),
-                inboxes: Mutex::new(HashMap::new()),
+                drivers: Mutex::new(HashMap::new()),
             }),
         }
     }
@@ -97,21 +99,17 @@ impl IdentifyServiceHandle {
         self.cancel(&key);
 
         let token = CancellationToken::new();
-        self.inner
-            .cancel_tokens
-            .lock()
-            .unwrap()
-            .insert(key.clone(), token.clone());
-
         // Pre-create the driver's inbox so external pokes (`toggle_signal` /
         // `rerun`) race-free find it even before the driver task lands the
         // receiver.
         let (event_tx, event_rx) = mpsc::unbounded_channel::<IdentifyEvent>();
-        self.inner
-            .inboxes
-            .lock()
-            .unwrap()
-            .insert(key.clone(), event_tx.clone());
+        self.inner.drivers.lock().unwrap().insert(
+            key.clone(),
+            CandidateDriver {
+                token: token.clone(),
+                inbox: event_tx.clone(),
+            },
+        );
 
         // Subscribe to the import bus synchronously, before this returns, so
         // the extraction service (started right after) can't emit its first
@@ -127,13 +125,10 @@ impl IdentifyServiceHandle {
     /// Cancel an in-flight identify. Drops the driver task on the next
     /// await point.
     pub fn cancel(&self, key: &str) {
-        let token = self.inner.cancel_tokens.lock().unwrap().remove(key);
-        if let Some(token) = token {
-            token.cancel();
+        let driver = self.inner.drivers.lock().unwrap().remove(key);
+        if let Some(driver) = driver {
+            driver.token.cancel();
         }
-        // The driver also clears the inbox on exit, but cancellation arrives
-        // before the next await point so prune eagerly here too.
-        self.inner.inboxes.lock().unwrap().remove(key);
     }
 
     /// Toggle a signal in a candidate's toolbar — include or exclude it from
@@ -161,12 +156,32 @@ impl IdentifyServiceHandle {
     /// candidate has no live driver — the event is dropped, which is the
     /// correct no-op for a stale UI action.
     fn push_event(&self, key: &str, event: IdentifyEvent, op: &str) {
-        let inbox = self.inner.inboxes.lock().unwrap().get(key).cloned();
+        let inbox = self
+            .inner
+            .drivers
+            .lock()
+            .unwrap()
+            .get(key)
+            .map(|driver| driver.inbox.clone());
         if let Some(tx) = inbox {
             if tx.send(event).is_err() {
                 debug!("{op}: driver for {key} already stopped");
             }
         }
+    }
+}
+
+fn remove_driver_if_current(
+    inner: &IdentifyServiceInner,
+    key: &str,
+    inbox: &mpsc::UnboundedSender<IdentifyEvent>,
+) {
+    let mut drivers = inner.drivers.lock().unwrap();
+    if drivers
+        .get(key)
+        .is_some_and(|driver| driver.inbox.same_channel(inbox))
+    {
+        drivers.remove(key);
     }
 }
 
@@ -261,9 +276,7 @@ async fn run_driver(
         // which re-derives the state. The driver stays alive to receive those.
         if matches!(state, IdentifyState::Idle) {
             // Idle only happens via Cancelled; Cancelled is terminal too.
-            // Remove the cancel token + inbox so subsequent calls are no-ops.
-            inner.cancel_tokens.lock().unwrap().remove(&key);
-            inner.inboxes.lock().unwrap().remove(&key);
+            remove_driver_if_current(&inner, &key, &event_tx);
             return;
         }
 
