@@ -123,8 +123,7 @@ fn is_zip_false_positive(candidate: &str, line: &str) -> bool {
 /// Each sub-rule is conservative — we keep false positives in order not to
 /// lose real album titles.
 pub fn should_reject_line(line: &str) -> bool {
-    is_barcode_line(line)
-        || is_catalog_line(line)
+    is_catalog_line(line)
         || is_out_of_length_band(line)
         || is_track_listing(line)
         || has_runtime_suffix(line)
@@ -132,12 +131,6 @@ pub fn should_reject_line(line: &str) -> bool {
         || is_legal_prose(line)
         || is_all_digits(line)
         || is_universal_stop_phrase(line)
-}
-
-fn is_barcode_line(line: &str) -> bool {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| Regex::new(r"^[\d\s\-]{8,16}$").unwrap());
-    re.is_match(line)
 }
 
 fn is_catalog_line(line: &str) -> bool {
