@@ -4,7 +4,7 @@ use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
-use coven::rusqlite::{params, Connection, OptionalExtension, Row};
+use coven::rusqlite::{params, Connection, OptionalExtension, Params, Row};
 use coven::{ClockRef, Coven, CovenError, CovenHandle, DbError, SqlContext};
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
@@ -1257,7 +1257,21 @@ fn insert_release_artist_role_row(
     role: &DbReleaseArtistRole,
     reg: &str,
 ) -> Result<(), DbError> {
-    insert_artist_role_row(conn, ArtistRoleInsert::Release(role), reg)
+    insert_artist_role_row(
+        conn,
+        "release_artist_roles",
+        "release_id",
+        params![
+            role.id,
+            role.release_id,
+            role.artist_id,
+            role.position,
+            role.source.as_str(),
+            role.source_credit,
+            reg,
+            role.created_at.to_rfc3339()
+        ],
+    )
 }
 
 fn insert_track_artist_role_row(
@@ -1265,108 +1279,39 @@ fn insert_track_artist_role_row(
     role: &DbTrackArtistRole,
     reg: &str,
 ) -> Result<(), DbError> {
-    insert_artist_role_row(conn, ArtistRoleInsert::Track(role), reg)
-}
-
-enum ArtistRoleInsert<'a> {
-    Release(&'a DbReleaseArtistRole),
-    Track(&'a DbTrackArtistRole),
-}
-
-impl ArtistRoleInsert<'_> {
-    fn table(&self) -> &'static str {
-        match self {
-            Self::Release(_) => "release_artist_roles",
-            Self::Track(_) => "track_artist_roles",
-        }
-    }
-
-    fn target_column(&self) -> &'static str {
-        match self {
-            Self::Release(_) => "release_id",
-            Self::Track(_) => "track_id",
-        }
-    }
-
-    fn id(&self) -> &str {
-        match self {
-            Self::Release(role) => &role.id,
-            Self::Track(role) => &role.id,
-        }
-    }
-
-    fn target_id(&self) -> &str {
-        match self {
-            Self::Release(role) => &role.release_id,
-            Self::Track(role) => &role.track_id,
-        }
-    }
-
-    fn artist_id(&self) -> &str {
-        match self {
-            Self::Release(role) => &role.artist_id,
-            Self::Track(role) => &role.artist_id,
-        }
-    }
-
-    fn position(&self) -> i32 {
-        match self {
-            Self::Release(role) => role.position,
-            Self::Track(role) => role.position,
-        }
-    }
-
-    fn source(&self) -> MetadataSource {
-        match self {
-            Self::Release(role) => role.source,
-            Self::Track(role) => role.source,
-        }
-    }
-
-    fn source_credit(&self) -> &Option<String> {
-        match self {
-            Self::Release(role) => &role.source_credit,
-            Self::Track(role) => &role.source_credit,
-        }
-    }
-
-    fn created_at(&self) -> DateTime<Utc> {
-        match self {
-            Self::Release(role) => role.created_at,
-            Self::Track(role) => role.created_at,
-        }
-    }
+    insert_artist_role_row(
+        conn,
+        "track_artist_roles",
+        "track_id",
+        params![
+            role.id,
+            role.track_id,
+            role.artist_id,
+            role.position,
+            role.source.as_str(),
+            role.source_credit,
+            reg,
+            role.created_at.to_rfc3339()
+        ],
+    )
 }
 
 fn insert_artist_role_row(
     conn: &Connection,
-    row: ArtistRoleInsert<'_>,
-    reg: &str,
+    table: &'static str,
+    target_column: &'static str,
+    values: impl Params,
 ) -> Result<(), DbError> {
     let sql = format!(
         r#"
-        INSERT INTO {} (
-            id, {}, artist_id, position, source, source_credit, _updated_at, created_at
+        INSERT INTO {table} (
+            id, {target_column}, artist_id, position, source, source_credit, _updated_at, created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        "#,
-        row.table(),
-        row.target_column()
+        "#
     );
-    conn.execute(
-        &sql,
-        params![
-            row.id(),
-            row.target_id(),
-            row.artist_id(),
-            row.position(),
-            row.source().as_str(),
-            row.source_credit(),
-            reg,
-            row.created_at().to_rfc3339()
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
+    conn.execute(&sql, values)
+        .map(|_| ())
+        .map_err(DbError::from)
 }
 
 fn insert_file_row(conn: &Connection, file: &DbFile, reg: &str) -> Result<(), DbError> {
