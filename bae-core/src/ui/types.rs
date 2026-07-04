@@ -327,15 +327,11 @@ pub enum UiBusEvent {
     OutboxChanged {
         snapshot: crate::library::OutboxSnapshot,
     },
-    /// A pin/unpin/manage/unmanage transition advanced. `percent` is the
-    /// overall release progress; `label` is a ready-to-render line. The UI
-    /// shows a determinate bar on the release row until `ReleaseTransferEnded`.
+    /// A pin/unpin/manage/unmanage transition started. The UI shows an
+    /// in-flight indicator on the release row until `ReleaseTransferEnded`.
     ReleaseTransferProgress {
         release_id: String,
         action: crate::album_detail::ReleaseStorageAction,
-        file_no: Option<u32>,
-        total: Option<u32>,
-        percent: u8,
     },
     /// A transition finished (success or failure) — the UI clears its transfer
     /// indicator. Failure text still arrives via the thrown error.

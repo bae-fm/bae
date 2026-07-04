@@ -22,10 +22,8 @@ import Observation
 /// are background queue work, a transfer is a foregrounded action with its own
 /// determinate bar.
 
-/// An in-flight storage transition for a release: the core-formatted line and
-/// the overall percent core already combined across files.
+/// An in-flight storage transition for a release.
 struct TransferState: Equatable {
-    let percent: UInt8
     let label: String
 }
 

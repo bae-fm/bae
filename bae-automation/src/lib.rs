@@ -566,8 +566,8 @@ pub struct AutomationReleaseExport {
 #[serde(rename_all = "snake_case")]
 pub enum AutomationExportState {
     Queued,
-    Active,
-    Failed,
+    Active { percent: u8 },
+    Failed { error: String },
 }
 
 /// One queued export in the `export_status` snapshot.
@@ -580,10 +580,6 @@ pub struct AutomationExportOp {
     pub total_size: i64,
     pub created_at: i64,
     pub state: AutomationExportState,
-    /// Overall release percent while `state` is `active`; 0 otherwise.
-    pub percent: u8,
-    /// The failure reason, present only while `state` is `failed`.
-    pub error: Option<String>,
 }
 
 /// Per-state counts for the export queue.
@@ -1581,10 +1577,12 @@ fn automation_export_snapshot(
         .ops
         .into_iter()
         .map(|op| {
-            let (state, percent, error) = match op.state {
-                ExportState::Queued => (AutomationExportState::Queued, 0, None),
-                ExportState::Active { percent } => (AutomationExportState::Active, percent, None),
-                ExportState::Failed { error } => (AutomationExportState::Failed, 0, Some(error)),
+            let state = match op.state {
+                ExportState::Queued => AutomationExportState::Queued,
+                ExportState::Active { progress } => {
+                    AutomationExportState::Active { percent: progress }
+                }
+                ExportState::Failed { error } => AutomationExportState::Failed { error },
             };
             AutomationExportOp {
                 release_id: op.release_id,
@@ -1594,8 +1592,6 @@ fn automation_export_snapshot(
                 total_size: op.total_size,
                 created_at: op.created_at,
                 state,
-                percent,
-                error,
             }
         })
         .collect();

@@ -1610,10 +1610,10 @@ fn convert_download_snapshot(
         .ops
         .into_iter()
         .map(|op| {
-            let (state, percent, error) = match op.state {
-                DownloadState::Queued => (BridgeDownloadState::Queued, 0, None),
-                DownloadState::Active { percent } => (BridgeDownloadState::Active, percent, None),
-                DownloadState::Failed { error } => (BridgeDownloadState::Failed, 0, Some(error)),
+            let state = match op.state {
+                DownloadState::Queued => BridgeDownloadState::Queued,
+                DownloadState::Active { .. } => BridgeDownloadState::Active,
+                DownloadState::Failed { error } => BridgeDownloadState::Failed { error },
             };
             BridgeDownloadOp {
                 release_id: op.release_id,
@@ -1622,8 +1622,6 @@ fn convert_download_snapshot(
                 total_size: op.total_size,
                 created_at: op.created_at,
                 state,
-                percent,
-                error,
             }
         })
         .collect();
@@ -1655,10 +1653,10 @@ fn convert_export_snapshot(
         .ops
         .into_iter()
         .map(|op| {
-            let (state, percent, error) = match op.state {
-                ExportState::Queued => (BridgeExportState::Queued, 0, None),
-                ExportState::Active { percent } => (BridgeExportState::Active, percent, None),
-                ExportState::Failed { error } => (BridgeExportState::Failed, 0, Some(error)),
+            let state = match op.state {
+                ExportState::Queued => BridgeExportState::Queued,
+                ExportState::Active { progress } => BridgeExportState::Active { percent: progress },
+                ExportState::Failed { error } => BridgeExportState::Failed { error },
             };
             BridgeExportOp {
                 release_id: op.release_id,
@@ -1668,8 +1666,6 @@ fn convert_export_snapshot(
                 total_size: op.total_size,
                 created_at: op.created_at,
                 state,
-                percent,
-                error,
             }
         })
         .collect();
@@ -1965,19 +1961,12 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
         UiBusEvent::OutboxChanged { snapshot } => Some(BridgeUiEvent::OutboxChanged {
             snapshot: convert_outbox_snapshot(snapshot),
         }),
-        UiBusEvent::ReleaseTransferProgress {
-            release_id,
-            action,
-            file_no,
-            total,
-            percent,
-        } => Some(BridgeUiEvent::ReleaseTransferProgress {
-            release_id,
-            action: crate::types::BridgeReleaseStorageAction::from_core(action),
-            file_no,
-            total,
-            percent,
-        }),
+        UiBusEvent::ReleaseTransferProgress { release_id, action } => {
+            Some(BridgeUiEvent::ReleaseTransferProgress {
+                release_id,
+                action: crate::types::BridgeReleaseStorageAction::from_core(action),
+            })
+        }
         UiBusEvent::ReleaseTransferEnded { release_id } => {
             Some(BridgeUiEvent::ReleaseTransferEnded { release_id })
         }

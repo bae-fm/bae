@@ -3898,7 +3898,7 @@ async fn aborted_transfer_still_emits_transfer_ended() {
     let driver = manager.clone();
     let handle = tokio::spawn(async move {
         let result = driver
-            .drive_transfer("rel-abort", ReleaseStorageAction::Pin, progress_rx, |_| {})
+            .drive_transfer("rel-abort", ReleaseStorageAction::Pin, progress_rx)
             .await;
         panic!("the parked driver must only exit by abort, returned {result:?}");
     });

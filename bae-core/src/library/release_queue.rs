@@ -3,28 +3,29 @@
 //! Pinning and exporting both process one release at a time, keep transient
 //! in-memory rows for the queue pane, and support pause, cancel, and retry.
 //! `Extra` carries the operation-specific row payload: downloads use `()`,
-//! exports use their target directory.
+//! exports use their target directory. `Progress` carries the active-row
+//! progress shape: downloads have no determinate progress, exports use percent.
 
 use std::sync::Mutex;
 
 use tokio::sync::Notify;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ReleaseQueueState {
+pub enum ReleaseQueueState<Progress> {
     Queued,
-    Active { percent: u8 },
+    Active { progress: Progress },
     Failed { error: String },
 }
 
 #[derive(Debug, Clone)]
-pub struct ReleaseQueueOp<Extra> {
+pub struct ReleaseQueueOp<Extra, Progress> {
     pub release_id: String,
     pub title: String,
     pub file_count: i64,
     pub total_size: i64,
     pub created_at: i64,
     pub payload: Extra,
-    pub state: ReleaseQueueState,
+    pub state: ReleaseQueueState<Progress>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -35,16 +36,16 @@ pub struct ReleaseQueueProgress {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct ReleaseQueueSnapshot<Extra> {
-    pub ops: Vec<ReleaseQueueOp<Extra>>,
+pub struct ReleaseQueueSnapshot<Extra, Progress> {
+    pub ops: Vec<ReleaseQueueOp<Extra, Progress>>,
     pub total: ReleaseQueueProgress,
     pub paused: bool,
 }
 
-pub fn build_release_queue_snapshot<Extra: Clone>(
-    ops: &[ReleaseQueueOp<Extra>],
+pub fn build_release_queue_snapshot<Extra: Clone, Progress: Clone>(
+    ops: &[ReleaseQueueOp<Extra, Progress>],
     paused: bool,
-) -> ReleaseQueueSnapshot<Extra> {
+) -> ReleaseQueueSnapshot<Extra, Progress> {
     let mut total = ReleaseQueueProgress::default();
     for op in ops {
         match &op.state {
@@ -61,18 +62,18 @@ pub fn build_release_queue_snapshot<Extra: Clone>(
     }
 }
 
-pub struct ReleaseQueue<Extra> {
-    state: Mutex<State<Extra>>,
+pub struct ReleaseQueue<Extra, Progress> {
+    state: Mutex<State<Extra, Progress>>,
     notify: Notify,
 }
 
-struct State<Extra> {
-    ops: Vec<ReleaseQueueOp<Extra>>,
+struct State<Extra, Progress> {
+    ops: Vec<ReleaseQueueOp<Extra, Progress>>,
     paused: bool,
     active_abort: Option<tokio::task::AbortHandle>,
 }
 
-impl<Extra: Clone> ReleaseQueue<Extra> {
+impl<Extra: Clone, Progress: Clone + Default> ReleaseQueue<Extra, Progress> {
     pub fn new() -> Self {
         Self {
             state: Mutex::new(State {
@@ -92,7 +93,7 @@ impl<Extra: Clone> ReleaseQueue<Extra> {
         self.notify.notified().await;
     }
 
-    pub fn ops(&self) -> Vec<ReleaseQueueOp<Extra>> {
+    pub fn ops(&self) -> Vec<ReleaseQueueOp<Extra, Progress>> {
         self.state.lock().unwrap().ops.clone()
     }
 
@@ -100,7 +101,7 @@ impl<Extra: Clone> ReleaseQueue<Extra> {
         self.state.lock().unwrap().paused
     }
 
-    pub fn enqueue(&self, op: ReleaseQueueOp<Extra>) -> bool {
+    pub fn enqueue(&self, op: ReleaseQueueOp<Extra, Progress>) -> bool {
         let mut state = self.state.lock().unwrap();
         if state.ops.iter().any(|o| o.release_id == op.release_id) {
             return false;
@@ -118,7 +119,7 @@ impl<Extra: Clone> ReleaseQueue<Extra> {
             .any(|o| o.release_id == release_id)
     }
 
-    pub fn next_queued(&self) -> Option<ReleaseQueueOp<Extra>> {
+    pub fn next_queued(&self) -> Option<ReleaseQueueOp<Extra, Progress>> {
         let state = self.state.lock().unwrap();
         if state.paused {
             return None;
@@ -139,16 +140,11 @@ impl<Extra: Clone> ReleaseQueue<Extra> {
         else {
             return false;
         };
-        op.state = ReleaseQueueState::Active { percent: 0 };
+        op.state = ReleaseQueueState::Active {
+            progress: Progress::default(),
+        };
         state.active_abort = Some(abort);
         true
-    }
-
-    pub fn set_active_percent(&self, release_id: &str, percent: u8) {
-        let mut state = self.state.lock().unwrap();
-        if let Some(op) = state.ops.iter_mut().find(|o| o.release_id == release_id) {
-            op.state = ReleaseQueueState::Active { percent };
-        }
     }
 
     pub fn remove(&self, release_id: &str) {
@@ -199,9 +195,18 @@ impl<Extra: Clone> ReleaseQueue<Extra> {
     }
 }
 
-impl<Extra: Clone> Default for ReleaseQueue<Extra> {
+impl<Extra: Clone, Progress: Clone + Default> Default for ReleaseQueue<Extra, Progress> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<Extra: Clone> ReleaseQueue<Extra, u8> {
+    pub fn set_active_percent(&self, release_id: &str, percent: u8) {
+        let mut state = self.state.lock().unwrap();
+        if let Some(op) = state.ops.iter_mut().find(|o| o.release_id == release_id) {
+            op.state = ReleaseQueueState::Active { progress: percent };
+        }
     }
 }
 
@@ -209,7 +214,7 @@ impl<Extra: Clone> Default for ReleaseQueue<Extra> {
 mod tests {
     use super::*;
 
-    fn op(release_id: &str) -> ReleaseQueueOp<()> {
+    fn op(release_id: &str) -> ReleaseQueueOp<(), u8> {
         ReleaseQueueOp {
             release_id: release_id.to_string(),
             title: "Album Title".to_string(),
@@ -246,7 +251,7 @@ mod tests {
         assert_eq!(q.next_queued().map(|o| o.release_id), Some("rel-a".into()));
         assert!(q.activate("rel-a", dummy_abort()));
         let ops = q.ops();
-        assert_eq!(ops[0].state, ReleaseQueueState::Active { percent: 0 });
+        assert_eq!(ops[0].state, ReleaseQueueState::Active { progress: 0 });
         assert_eq!(ops[1].state, ReleaseQueueState::Queued);
 
         assert_eq!(q.next_queued().map(|o| o.release_id), Some("rel-b".into()));
@@ -271,7 +276,7 @@ mod tests {
         assert!(q.activate("rel-a", dummy_abort()));
 
         q.set_active_percent("rel-a", 50);
-        assert_eq!(q.ops()[0].state, ReleaseQueueState::Active { percent: 50 });
+        assert_eq!(q.ops()[0].state, ReleaseQueueState::Active { progress: 50 });
 
         q.mark_failed("rel-a", "boom".to_string());
         assert_eq!(
@@ -299,7 +304,7 @@ mod tests {
 
     #[test]
     fn pause_returns_prior_value() {
-        let q: ReleaseQueue<()> = ReleaseQueue::new();
+        let q: ReleaseQueue<(), u8> = ReleaseQueue::new();
         assert!(!q.set_paused(true));
         assert!(q.is_paused());
         assert!(q.set_paused(false));
@@ -309,7 +314,7 @@ mod tests {
     #[test]
     fn snapshot_counts_roll_up_to_total() {
         let mut active = op("rel-a");
-        active.state = ReleaseQueueState::Active { percent: 42 };
+        active.state = ReleaseQueueState::Active { progress: 42 };
         let queued = op("rel-b");
         let mut failed = op("rel-c");
         failed.state = ReleaseQueueState::Failed {

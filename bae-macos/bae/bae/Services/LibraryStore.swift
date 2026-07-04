@@ -504,11 +504,9 @@ final class LibraryStore {
     /// loaded (the row isn't visible, so nothing renders the indicator).
     func handleReleaseTransferProgress(
         releaseId: String,
-        percent: UInt8,
         label: String
     ) {
         releaseSummaries[releaseId]?.transfer = TransferState(
-            percent: percent,
             label: label
         )
     }

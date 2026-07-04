@@ -1597,16 +1597,12 @@ pub enum BridgeUiEvent {
     OutboxChanged {
         snapshot: BridgeOutboxSnapshot,
     },
-    /// A pin/unpin/manage/unmanage transition advanced. `percent` is the overall
-    /// release progress; `file_no`/`total` are present once per-file progress is
-    /// known (absent at the start). The UI composes the localized line and shows
-    /// a determinate bar on the release row until `ReleaseTransferEnded`.
+    /// A pin/unpin/manage/unmanage transition started. The UI composes the
+    /// localized line and shows an in-flight indicator on the release row until
+    /// `ReleaseTransferEnded`.
     ReleaseTransferProgress {
         release_id: String,
         action: BridgeReleaseStorageAction,
-        file_no: Option<u32>,
-        total: Option<u32>,
-        percent: u8,
     },
     /// A transition finished (success or failure) — the UI clears its transfer
     /// indicator. Failure text still arrives via the thrown error.
@@ -1665,19 +1661,16 @@ pub struct BridgeUploadProgress {
     pub activity: Option<BridgeUploadActivity>,
 }
 
-/// A queued download's state. `Active` carries the overall release percent in
-/// the op's `percent`; `Failed` carries the reason in the op's `error`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+/// A queued download's state.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDownloadState {
     Queued,
     Active,
-    Failed,
+    Failed { error: String },
 }
 
 /// One queued download — a whole release being pinned. Mirror of bae-core's
-/// `DownloadOp`; carries raw fields the UI renders directly. `percent` is the
-/// overall release progress while `state` is `Active` (0 otherwise); `error`
-/// is the reason while `state` is `Failed`.
+/// `DownloadOp`; carries raw fields the UI renders directly.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeDownloadOp {
     pub release_id: String,
@@ -1689,15 +1682,10 @@ pub struct BridgeDownloadOp {
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
     pub state: BridgeDownloadState,
-    /// Overall release percent while `state` is `Active`; 0 otherwise.
-    pub percent: u8,
-    /// The failure reason, present only when `state` is `Failed`.
-    pub error: Option<String>,
 }
 
 /// Per-state counts for the download queue. Used per-release (the storage-row
-/// "Downloading" badge) and as the overall total (the pane header). No bytes:
-/// downloads track an overall percent per release, not aggregate bytes.
+/// "Downloading" badge) and as the overall total (the pane header).
 #[derive(Debug, Clone, Default, uniffi::Record)]
 pub struct BridgeDownloadProgress {
     pub queued: u32,
@@ -1717,20 +1705,16 @@ pub struct BridgeDownloadSnapshot {
     pub paused: bool,
 }
 
-/// A queued export's state. `Active` carries the overall release percent in the
-/// op's `percent`; `Failed` carries the reason in the op's `error`. Mirror of
-/// bae-core's `ExportState`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+/// A queued export's state. Mirror of bae-core's `ExportState`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeExportState {
     Queued,
-    Active,
-    Failed,
+    Active { percent: u8 },
+    Failed { error: String },
 }
 
 /// One queued export — a whole release being copied out verbatim to a folder.
 /// Mirror of bae-core's `ExportOp`; carries raw fields the UI renders directly.
-/// `percent` is the overall release progress while `state` is `Active` (0
-/// otherwise); `error` is the reason while `state` is `Failed`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeExportOp {
     pub release_id: String,
@@ -1745,10 +1729,6 @@ pub struct BridgeExportOp {
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
     pub state: BridgeExportState,
-    /// Overall release percent while `state` is `Active`; 0 otherwise.
-    pub percent: u8,
-    /// The failure reason, present only when `state` is `Failed`.
-    pub error: Option<String>,
 }
 
 /// Per-state counts for the export queue, driving the pane header. No bytes:
@@ -3524,8 +3504,6 @@ mod loc_key_coverage {
         "core.outbox.bytes_progress",
         "core.outbox.throughput",
         "core.outbox.eta",
-        // Storage transfer file counter.
-        "core.transfer.files",
         // Release-group card pressing count.
         "core.import.pressings",
         // Generic lookup-failure line for the keyless `Diagnostic` variant:

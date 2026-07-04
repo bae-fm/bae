@@ -461,20 +461,8 @@ impl UiEventBus {
                     Ok(LibraryEvent::OutboxChanged { snapshot }) => {
                         bus.emit(UiBusEvent::OutboxChanged { snapshot });
                     }
-                    Ok(LibraryEvent::ReleaseTransferProgress {
-                        release_id,
-                        action,
-                        file_no,
-                        total,
-                        percent,
-                    }) => {
-                        bus.emit(UiBusEvent::ReleaseTransferProgress {
-                            release_id,
-                            action,
-                            file_no,
-                            total,
-                            percent,
-                        });
+                    Ok(LibraryEvent::ReleaseTransferProgress { release_id, action }) => {
+                        bus.emit(UiBusEvent::ReleaseTransferProgress { release_id, action });
                     }
                     Ok(LibraryEvent::ReleaseTransferEnded { release_id }) => {
                         bus.emit(UiBusEvent::ReleaseTransferEnded { release_id });

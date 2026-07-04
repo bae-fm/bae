@@ -33,8 +33,8 @@ use tracing::{debug, warn};
 
 pub use tokio_util::sync::CancellationToken;
 
-pub type DownloadQueue = ReleaseQueue<()>;
-pub type ExportQueue = ReleaseQueue<PathBuf>;
+pub type DownloadQueue = ReleaseQueue<(), ()>;
+pub type ExportQueue = ReleaseQueue<PathBuf, u8>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RestoreFromCodeError {

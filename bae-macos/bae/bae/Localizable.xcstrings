@@ -22892,193 +22892,193 @@
         }
       }
     },
-    "Downloading %lld%%": {
-      "comment": "Download row state badge: downloading at a percent; %lld is the percent",
+    "Downloading": {
+      "comment": "Download row state badge: active download",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Downloading %lld%%"
+            "value": "Downloading"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Descargando %lld%%"
+            "value": "Descargando"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Téléchargement %lld%%"
+            "value": "Téléchargement"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wird heruntergeladen %lld%%"
+            "value": "Wird heruntergeladen"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Baixando %lld%%"
+            "value": "Baixando"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ダウンロード中 %lld%%"
+            "value": "ダウンロード中"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "下载中 %lld%%"
+            "value": "下载中"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "جارٍ التنزيل %lld%%"
+            "value": "جارٍ التنزيل"
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "מוריד %lld%%"
+            "value": "מוריד"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Завантаження %lld%%"
+            "value": "Завантаження"
           }
         },
         "bg": {
           "stringUnit": {
             "state": "translated",
-            "value": "Изтегляне %lld%%"
+            "value": "Изтегляне"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pobieranie %lld%%"
+            "value": "Pobieranie"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stahování %lld%%"
+            "value": "Stahování"
           }
         },
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preuzimanje %lld%%"
+            "value": "Preuzimanje"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld%% 다운로드 중"
+            "value": "다운로드 중"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "下載ing %lld%%"
+            "value": "下載ing"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scaricaing %lld%%"
+            "value": "Scaricaing"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "İndiring %lld%%"
+            "value": "İndiring"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tải xuốnging %lld%%"
+            "value": "Tải xuốnging"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Downloading %lld%%"
+            "value": "Downloading"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "डाउनलोडing %lld%%"
+            "value": "डाउनलोडing"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "ডাউনলোডing %lld%%"
+            "value": "ডাউনলোডing"
           }
         },
         "ta": {
           "stringUnit": {
             "state": "translated",
-            "value": "பதிவிறக்குing %lld%%"
+            "value": "பதிவிறக்குing"
           }
         },
         "te": {
           "stringUnit": {
             "state": "translated",
-            "value": "డౌన్‌లోడ్ing %lld%%"
+            "value": "డౌన్‌లోడ్ing"
           }
         },
         "mr": {
           "stringUnit": {
             "state": "translated",
-            "value": "डाउनलोडing %lld%%"
+            "value": "डाउनलोडing"
           }
         },
         "ur": {
           "stringUnit": {
             "state": "translated",
-            "value": "ڈاؤن لوڈing %lld%%"
+            "value": "ڈاؤن لوڈing"
           }
         },
         "gu": {
           "stringUnit": {
             "state": "translated",
-            "value": "ડાઉનલોડing %lld%%"
+            "value": "ડાઉનલોડing"
           }
         },
         "kn": {
           "stringUnit": {
             "state": "translated",
-            "value": "ಡೌನ್‌ಲೋಡ್ing %lld%%"
+            "value": "ಡೌನ್‌ಲೋಡ್ing"
           }
         },
         "ml": {
           "stringUnit": {
             "state": "translated",
-            "value": "ഡൗൺലോഡ്ing %lld%%"
+            "value": "ഡൗൺലോഡ്ing"
           }
         },
         "pa": {
           "stringUnit": {
             "state": "translated",
-            "value": "ਡਾਊਨਲੋਡing %lld%%"
+            "value": "ਡਾਊਨਲੋਡing"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "ดาวน์โหลดing %lld%%"
+            "value": "ดาวน์โหลดing"
           }
         }
       }

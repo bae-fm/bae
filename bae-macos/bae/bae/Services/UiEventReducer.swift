@@ -639,22 +639,10 @@ extension UiEventReducer {
     ) {
         let libraryStore = context.libraryStore
         switch event {
-        case .releaseTransferProgress(
-            let releaseId,
-            let action,
-            let fileNo,
-            let total,
-            let percent
-        ):
+        case .releaseTransferProgress(let releaseId, let action):
             libraryStore.handleReleaseTransferProgress(
                 releaseId: releaseId,
-                percent: percent,
-                label: transferProgressLabel(
-                    action: action,
-                    fileNo: fileNo,
-                    total: total,
-                    percent: percent
-                )
+                label: action.transferProgressVerb
             )
 
         case .releaseTransferEnded(let releaseId):

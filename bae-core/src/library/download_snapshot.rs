@@ -7,10 +7,10 @@ use super::release_queue::{
     ReleaseQueueState,
 };
 
-pub type DownloadState = ReleaseQueueState;
-pub type DownloadOp = ReleaseQueueOp<()>;
+pub type DownloadState = ReleaseQueueState<()>;
+pub type DownloadOp = ReleaseQueueOp<(), ()>;
 pub type DownloadProgress = ReleaseQueueProgress;
-pub type DownloadSnapshot = ReleaseQueueSnapshot<()>;
+pub type DownloadSnapshot = ReleaseQueueSnapshot<(), ()>;
 
 pub fn build_download_snapshot(downloads: &[DownloadOp], paused: bool) -> DownloadSnapshot {
     build_release_queue_snapshot(downloads, paused)

@@ -9,10 +9,10 @@ use super::release_queue::{
     ReleaseQueueState,
 };
 
-pub type ExportState = ReleaseQueueState;
-pub type ExportOp = ReleaseQueueOp<PathBuf>;
+pub type ExportState = ReleaseQueueState<u8>;
+pub type ExportOp = ReleaseQueueOp<PathBuf, u8>;
 pub type ExportProgress = ReleaseQueueProgress;
-pub type ExportSnapshot = ReleaseQueueSnapshot<PathBuf>;
+pub type ExportSnapshot = ReleaseQueueSnapshot<PathBuf, u8>;
 
 pub fn build_export_snapshot(exports: &[ExportOp], paused: bool) -> ExportSnapshot {
     build_release_queue_snapshot(exports, paused)

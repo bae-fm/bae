@@ -180,7 +180,7 @@ private struct StorageFooter: View {
 
 /// Bottom-pane section showing the in-memory download (pin) queue: a header
 /// band with the summary, a pause/resume toggle, and a "Retry now" action, plus
-/// one row per release (title, file count, size, a Queued/Active-percent/Failed
+/// one row per release (title, file count, size, a Queued/Active/Failed
 /// badge, and a cancel button). Hidden when the queue is idle. Reads
 /// `DownloadStore` at the leaf; the reducer is the sole writer, so actions don't
 /// optimistically mutate — the follow-up `downloadQueueChanged` event refreshes
@@ -242,9 +242,8 @@ private struct DownloadsSection: View {
     }
 }
 
-/// One download-queue row: album title, file count, size, a state badge
-/// (Queued / Downloading at a percent / Failed with the reason in a tooltip),
-/// and a cancel button. Mirrors `OutboxUploadRow`'s layout.
+/// One download-queue row: album title, file count, size, a state badge, and a
+/// cancel button. Mirrors `OutboxUploadRow`'s layout.
 private struct DownloadRow: View {
     let op: BridgeDownloadOp
     let onCancel: () -> Void
@@ -282,9 +281,6 @@ private struct DownloadRow: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 6)
-        // Always attached; nil/empty when there's no error, so the row's
-        // structure doesn't change as its state flips.
-        .help(op.error ?? "")
     }
 
     @ViewBuilder
@@ -295,13 +291,14 @@ private struct DownloadRow: View {
                 .foregroundStyle(.secondary)
         case .active:
             Label(
-                "Downloading \(Int(op.percent))%",
+                "Downloading",
                 systemImage: "arrow.down.circle.fill"
             )
             .foregroundStyle(.orange)
-        case .failed:
+        case .failed(let error):
             Label("Failed", systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.red)
+                .help(error)
         }
     }
 }
@@ -410,9 +407,6 @@ private struct ExportRow: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 6)
-        // Always attached; nil/empty when there's no error, so the row's
-        // structure doesn't change as its state flips.
-        .help(op.error ?? "")
     }
 
     @ViewBuilder
@@ -421,15 +415,16 @@ private struct ExportRow: View {
         case .queued:
             Label("Queued", systemImage: "clock")
                 .foregroundStyle(.secondary)
-        case .active:
+        case .active(let percent):
             Label(
-                "Exporting \(Int(op.percent))%",
+                "Exporting \(Int(percent))%",
                 systemImage: "square.and.arrow.up.fill"
             )
             .foregroundStyle(.orange)
-        case .failed:
+        case .failed(let error):
             Label("Failed", systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.red)
+                .help(error)
         }
     }
 }

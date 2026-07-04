@@ -492,16 +492,11 @@ pub enum LibraryEvent {
     OutboxChanged {
         snapshot: crate::library::OutboxSnapshot,
     },
-    /// A pin/unpin/manage/unmanage transition advanced. `percent` is the
-    /// overall release progress (combined across files, computed in core);
-    /// `label` is a ready-to-render line. The UI shows a determinate bar until
-    /// the matching `ReleaseTransferEnded` arrives.
+    /// A pin/unpin/manage/unmanage transition started. The UI shows an in-flight
+    /// indicator until the matching `ReleaseTransferEnded` arrives.
     ReleaseTransferProgress {
         release_id: String,
         action: ReleaseStorageAction,
-        file_no: Option<u32>,
-        total: Option<u32>,
-        percent: u8,
     },
     /// A transition finished (success OR failure) — the UI clears its transfer
     /// indicator. On failure the user-facing reason still arrives via the

@@ -1193,7 +1193,6 @@ private struct StorageStatusBand: View {
             // running pin/unpin/manage/unmanage updates the bar in place.
             if let transfer = release.summary.transfer {
                 progressBar(
-                    value: Double(transfer.percent) / 100,
                     label: transfer.label
                 )
             }
@@ -1214,7 +1213,7 @@ private struct StorageStatusBand: View {
         .padding()
     }
 
-    private func progressBar(value: Double, label: String) -> some View {
+    private func progressBar(value: Double? = nil, label: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             ProgressView(value: value)
                 .progressViewStyle(.linear)

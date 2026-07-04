@@ -78,7 +78,7 @@ impl LibraryManager {
     // per-release task: one release downloads at a time, the rest wait, and the
     // user can pause/cancel/retry. The queue is transient — on restart it's
     // empty and any release that wasn't fully pinned stays cloud-only (a pin
-    // flips a release to pinned only after every file lands; see `do_pin`).
+    // flips a release to pinned only after every file lands).
 
     /// Enqueue releases to pin for offline. Skips ids already in the queue (any
     /// state) or already pinned; for each new one, resolves its title /
@@ -185,10 +185,9 @@ impl LibraryManager {
 
     /// Run one queued release's pin: spawn `TransferService::pin_release_task`,
     /// flip the entry to `Active` and register its abort handle atomically, then
-    /// drive its progress (folding per-file percent into the release's
-    /// `Active { percent }` and re-emitting the inline `ReleaseTransferProgress`
-    /// the storage row reads). On success drop the entry; on failure mark it
-    /// `Failed` (it stays in the queue for retry).
+    /// drive its progress and re-emit the inline `ReleaseTransferProgress` the
+    /// storage row reads. On success drop the entry; on failure mark it `Failed`
+    /// (it stays in the queue for retry).
     ///
     /// `cancel_download` aborts the in-flight task via the registered handle. A
     /// cancel removes the queue entry; on its way out the drain sees the channel
@@ -210,14 +209,10 @@ impl LibraryManager {
         }
         self.emit_download_queue_changed();
 
-        // Drive the pin through the shared transfer driver; the progress hook
-        // folds each overall percent into the queue snapshot (the inline
-        // `ReleaseTransferProgress` bar is emitted by `drive_transfer` itself).
+        // Drive the pin through the shared transfer driver; the inline
+        // `ReleaseTransferProgress` bar is emitted by `drive_transfer` itself.
         let outcome = self
-            .drive_transfer(release_id, ReleaseStorageAction::Pin, rx, |overall| {
-                self.download_queue.set_active_percent(release_id, overall);
-                self.emit_download_queue_changed();
-            })
+            .drive_transfer(release_id, ReleaseStorageAction::Pin, rx)
             .await;
         self.download_queue.clear_active_abort();
 
@@ -233,9 +228,9 @@ impl LibraryManager {
 
         match outcome {
             Ok(()) => {
-                // The release is pinned. `do_pin` (via `pin_release_blobs`) already
-                // emitted `ReleaseUpdated`, so its `pinned` flag flips true
-                // reactively — just drop the queue entry.
+                // The release is pinned. `pin_release_blobs` already emitted
+                // `ReleaseUpdated`, so its `pinned` flag flips true reactively —
+                // just drop the queue entry.
                 self.download_queue.remove(release_id);
                 self.emit_download_queue_changed();
             }
@@ -252,7 +247,7 @@ impl LibraryManager {
         let transfer_service = crate::storage::local::transfer::TransferService::new(self.clone());
         let rx = transfer_service.unpin_release(release_id.to_string());
         let result = self
-            .drive_transfer(release_id, ReleaseStorageAction::Unpin, rx, |_| {})
+            .drive_transfer(release_id, ReleaseStorageAction::Unpin, rx)
             .await;
         if result.is_ok() {
             self.spawn_cleanup();
@@ -263,18 +258,17 @@ impl LibraryManager {
     /// Manage a local release: upload its files to the cloud home. `pin`
     /// chooses whether coven keeps the blobs in `storage/pinned/` (offline) vs the
     /// evictable cache. The in-place source is always deleted once the upload lands
-    /// (a remote release has no local path — see `transfer::do_make_remote`).
+    /// (a remote release has no local path).
     pub async fn make_release_remote(&self, release_id: &str, pin: bool) -> Result<(), String> {
         let transfer_service = crate::storage::local::transfer::TransferService::new(self.clone());
         let rx = transfer_service.make_release_remote(release_id.to_string(), pin);
-        self.drive_transfer(release_id, ReleaseStorageAction::MakeRemote, rx, |_| {})
+        self.drive_transfer(release_id, ReleaseStorageAction::MakeRemote, rx)
             .await
     }
 
     /// Unmanage a remote release: copy its files back out to `new_path` and
-    /// drop the remote copies. See `transfer::do_make_local` for the
-    /// durability-first ordering (every copy is verified at the new path before
-    /// any delete is queued).
+    /// drop the remote copies. coven owns the durability-first ordering: every
+    /// copy is verified at the new path before any delete is queued.
     pub async fn make_release_local(&self, release_id: &str, new_path: &str) -> Result<(), String> {
         // Register a cancellation token so `cancel_release_transition` can stop
         // this transfer; the guard deregisters even if this future is dropped.
@@ -295,7 +289,7 @@ impl LibraryManager {
             cancel,
         );
         let result = self
-            .drive_transfer(release_id, ReleaseStorageAction::MakeLocal, rx, |_| {})
+            .drive_transfer(release_id, ReleaseStorageAction::MakeLocal, rx)
             .await;
         if result.is_ok() {
             self.spawn_cleanup();
@@ -345,16 +339,10 @@ impl LibraryManager {
         }
     }
 
-    /// Drain a transfer's progress channel, translating each non-terminal
-    /// `TransferProgress` into a `ReleaseTransferProgress` UI event and emitting
-    /// `ReleaseTransferEnded` on completion or failure. The overall percent is
-    /// the per-file percent folded across the file count, computed here so the
-    /// UI renders a single figure without re-deriving it. Returns the failure
-    /// error string (also surfaced to the caller) on `Failed`.
-    ///
-    /// `on_overall` is called with each new overall percent before it's emitted,
-    /// so the download queue worker can fold the same figure into its snapshot;
-    /// the foreground unpin/manage/unmanage transitions pass a no-op.
+    /// Drain a transfer's progress channel, translating start into a
+    /// `ReleaseTransferProgress` UI event and emitting `ReleaseTransferEnded` on
+    /// completion or failure. Returns the failure error string (also surfaced to
+    /// the caller) on `Failed`.
     pub(super) async fn drive_transfer(
         &self,
         release_id: &str,
@@ -362,7 +350,6 @@ impl LibraryManager {
         mut rx: tokio::sync::mpsc::UnboundedReceiver<
             crate::storage::local::transfer::TransferProgress,
         >,
-        mut on_overall: impl FnMut(u8),
     ) -> Result<(), String> {
         use crate::storage::local::transfer::TransferProgress;
 
@@ -377,16 +364,6 @@ impl LibraryManager {
             armed: true,
         };
 
-        let emit_progress = |percent: u8, file_no: Option<u32>, total: Option<u32>| {
-            self.emit(LibraryEvent::ReleaseTransferProgress {
-                release_id: release_id.to_string(),
-                action,
-                file_no,
-                total,
-                percent,
-            });
-        };
-
         let outcome = loop {
             let Some(progress) = rx.recv().await else {
                 break Err(format!(
@@ -395,29 +372,11 @@ impl LibraryManager {
                 ));
             };
             match progress {
-                TransferProgress::Started { .. } => {
-                    // The first file count isn't known to be > 1 yet, and a bare
-                    // "X of N" with file 1 reads as redundant; show the action
-                    // alone until the first FileProgress reports real position.
-                    emit_progress(0, None, None);
-                }
-                TransferProgress::FileProgress {
-                    file_index,
-                    total_files,
-                    percent,
-                    ..
-                } => {
-                    // `total_files` is never zero: every producer (pin / manage /
-                    // unmanage) rejects an empty file list before its per-file
-                    // loop, and FileProgress is only emitted from inside that loop.
-                    let overall =
-                        ((file_index as u32 * 100 + percent as u32) / total_files as u32) as u8;
-                    on_overall(overall);
-                    emit_progress(
-                        overall,
-                        Some(file_index as u32 + 1),
-                        Some(total_files as u32),
-                    );
+                TransferProgress::Started => {
+                    self.emit(LibraryEvent::ReleaseTransferProgress {
+                        release_id: release_id.to_string(),
+                        action,
+                    });
                 }
                 TransferProgress::Complete { .. } => break Ok(()),
                 TransferProgress::Failed { error, .. } => break Err(error),
