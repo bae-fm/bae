@@ -140,16 +140,25 @@ fn generate_tagged_album_files(
     }
 }
 
-/// A minimal valid JPEG (SOI/APP0/DQT/SOF0/EOI) used as embedded cover
-/// data — the import never decodes it, it only stores the bytes.
-const EMBEDDED_JPEG: &[u8] = &[
-    0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01,
-    0x00, 0x01, 0x00, 0x00, 0xFF, 0xD9,
-];
+/// Embedded cover width/height for the fixture below.
+const EMBEDDED_COVER_DIMS: (u32, u32) = (64, 48);
 
-/// Like `generate_tagged_album_files`, but also embeds `EMBEDDED_JPEG` as
-/// a front cover in every file — a tagged rip whose only artwork is
-/// embedded in the audio.
+/// A real, decodable JPEG cover (solid color, [`EMBEDDED_COVER_DIMS`]) embedded
+/// in test audio. The store path decodes every cover and re-encodes it to a
+/// ≤600 JPEG, so fixtures must be genuine images, not hand-written JPEG headers.
+fn embedded_cover_jpeg() -> Vec<u8> {
+    let (w, h) = EMBEDDED_COVER_DIMS;
+    let img = image::RgbImage::from_pixel(w, h, image::Rgb([200, 60, 40]));
+    let mut buf = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(img)
+        .write_to(&mut buf, image::ImageFormat::Jpeg)
+        .unwrap();
+    buf.into_inner()
+}
+
+/// Like `generate_tagged_album_files`, but also embeds a real JPEG cover
+/// (`embedded_cover_jpeg`) as the front cover in every file — a tagged rip
+/// whose only artwork is embedded in the audio.
 fn generate_tagged_album_files_with_embedded_cover(
     dir: &Path,
     album_title: &str,
@@ -176,7 +185,7 @@ fn generate_tagged_album_files_with_embedded_cover(
         tag.insert_text(ItemKey::AlbumArtist, album_artist.to_string());
         tag.set_track(t.track_number);
         tag.push_picture(
-            Picture::unchecked(EMBEDDED_JPEG.to_vec())
+            Picture::unchecked(embedded_cover_jpeg())
                 .pic_type(PictureType::CoverFront)
                 .mime_type(MimeType::Jpeg)
                 .build(),
@@ -192,16 +201,23 @@ fn generate_album_with_cover(dir: &Path, filenames: &[&str]) {
     generate_album_files(dir, filenames);
     let scans = dir.join("scans");
     fs::create_dir_all(&scans).unwrap();
-    let jpeg: Vec<u8> = vec![
-        0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00,
-        0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06, 0x07, 0x06,
-        0x05, 0x08, 0x07, 0x07, 0x07, 0x09, 0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D, 0x0C, 0x0B, 0x0B,
-        0x0C, 0x19, 0x12, 0x13, 0x0F, 0x14, 0x1D, 0x1A, 0x1F, 0x1E, 0x1D, 0x1A, 0x1C, 0x1C, 0x20,
-        0x24, 0x2E, 0x27, 0x20, 0x22, 0x2C, 0x23, 0x1C, 0x1C, 0x28, 0x37, 0x29, 0x2C, 0x30, 0x31,
-        0x34, 0x34, 0x34, 0x1F, 0x27, 0x39, 0x3D, 0x38, 0x32, 0x3C, 0x2E, 0x33, 0x34, 0x32, 0xFF,
-        0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xD9,
-    ];
-    fs::write(scans.join("back.jpg"), &jpeg).unwrap();
+    fs::write(scans.join("back.jpg"), embedded_cover_jpeg()).unwrap();
+}
+
+/// Like `generate_album_with_cover`, but the folder image is an oversized
+/// (1000×1000) PNG — a source that must be downscaled and re-encoded to JPEG at
+/// store time. Returns the selection path for the cover.
+fn generate_album_with_oversized_cover(dir: &Path, filenames: &[&str]) -> String {
+    generate_album_files(dir, filenames);
+    let scans = dir.join("scans");
+    fs::create_dir_all(&scans).unwrap();
+    let img = image::RgbImage::from_pixel(1000, 1000, image::Rgb([20, 160, 90]));
+    let mut buf = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(img)
+        .write_to(&mut buf, image::ImageFormat::Png)
+        .unwrap();
+    fs::write(scans.join("cover.png"), buf.into_inner()).unwrap();
+    "scans/cover.png".to_string()
 }
 
 fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
@@ -931,6 +947,65 @@ async fn import_with_cover_art() {
         .await
         .expect("cover blob should be readable");
     assert!(!cover_bytes.is_empty(), "cover bytes should not be empty");
+}
+
+/// An oversized folder cover is resized to a ≤600 JPEG thumbnail at import: the
+/// stored blob decodes to 600×600 JPEG (from a 1000×1000 PNG source) and the
+/// `covers` row records JPEG, not the source PNG.
+#[tokio::test]
+#[serial]
+async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
+    support::tracing_init();
+
+    let release = discogs_release("Oversized Cover Album", &["Track"]);
+    let release_id_key = seed_discogs_test_release(release);
+    let f = ImportFixture::new().await;
+
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    let cover_path = generate_album_with_oversized_cover(&album_dir, &["01 Track.flac"]);
+
+    let import_id = uuid::Uuid::new_v4().to_string();
+    f.handle
+        .send_command(ImportCommand::Folder {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            selected_cover: Some(CoverSelection::Local(cover_path)),
+            storage_mode: StorageMode::Local,
+            pin: false,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            },
+            user_edit: None,
+        })
+        .unwrap();
+
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+
+    // The row records the stored format (JPEG), not the source PNG.
+    let cover =
+        f.db.find_library_image(&release_id, &LibraryImageType::Cover)
+            .await
+            .unwrap()
+            .expect("cover image in DB");
+    assert_eq!(
+        cover.content_type,
+        bae_core::util::content_type::ContentType::Jpeg
+    );
+
+    // The stored blob is a ≤600 JPEG downscaled from the 1000×1000 PNG source.
+    let cover_bytes = support::read_cover_image_blob(&f.db, &f.library_manager, &release_id)
+        .await
+        .expect("cover blob should be readable");
+    assert_eq!(
+        image::guess_format(&cover_bytes).unwrap(),
+        image::ImageFormat::Jpeg
+    );
+    let decoded = image::load_from_memory(&cover_bytes).unwrap();
+    assert_eq!((decoded.width(), decoded.height()), (600, 600));
+    assert_eq!(cover.file_size, cover_bytes.len() as i64);
 }
 
 /// On a browsable home the readable cloud_path is computed AT IMPORT — for every
@@ -1722,10 +1797,17 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
         "cover must be sourced from the embedded picture"
     );
 
+    // The embedded picture (≤600) keeps its dimensions but the store path
+    // re-encodes it to JPEG, so assert on the decoded image, not raw bytes.
     let bytes = support::read_cover_image_blob(&f.db, &f.library_manager, &release_id)
         .await
         .expect("cover blob readable");
-    assert_eq!(bytes, EMBEDDED_JPEG, "cover bytes are the embedded picture");
+    assert_eq!(
+        image::guess_format(&bytes).unwrap(),
+        image::ImageFormat::Jpeg
+    );
+    let decoded = image::load_from_memory(&bytes).unwrap();
+    assert_eq!((decoded.width(), decoded.height()), EMBEDDED_COVER_DIMS);
 }
 
 /// A folder image outranks the embedded picture: when both exist, the
@@ -1752,7 +1834,7 @@ async fn unknown_import_folder_image_wins_over_embedded_cover() {
     // selection — the auto-pick must still prefer this folder image.
     let scans = album_dir.join("scans");
     fs::create_dir_all(&scans).unwrap();
-    fs::write(scans.join("cover.jpg"), EMBEDDED_JPEG).unwrap();
+    fs::write(scans.join("cover.jpg"), embedded_cover_jpeg()).unwrap();
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle

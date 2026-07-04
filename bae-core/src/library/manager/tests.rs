@@ -852,6 +852,79 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
     );
 }
 
+/// `change_cover` resizes whatever the user picks to a ≤600 JPEG thumbnail
+/// before storing it: a 900×300 PNG release image lands as a 600×200 JPEG blob
+/// (downscaled to fit 600, aspect kept), and the `covers` row records JPEG.
+#[tokio::test]
+async fn change_cover_stores_a_resized_jpeg_thumbnail() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let mut release = create_test_release(&album.id);
+    release.remote = false;
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+
+    // An oversized non-JPEG release image on disk, registered as the release's
+    // user-provided file so `change_cover` reads it back through coven.
+    let source_dir = TempDir::new().unwrap();
+    let cover_bytes = {
+        let img = ::image::RgbImage::from_pixel(900, 300, ::image::Rgb([20, 160, 90]));
+        let mut buf = std::io::Cursor::new(Vec::new());
+        ::image::DynamicImage::ImageRgb8(img)
+            .write_to(&mut buf, ::image::ImageFormat::Png)
+            .unwrap();
+        buf.into_inner()
+    };
+    std::fs::write(source_dir.path().join("art.png"), &cover_bytes).unwrap();
+    let file = DbFile::new(
+        &release.id,
+        "art.png",
+        cover_bytes.len() as i64,
+        ContentType::Png,
+        Uuid::new_v4().to_string(),
+        Utc::now(),
+    );
+    manager.add_file(&file).await.unwrap();
+    manager
+        .database
+        .register_release_external_refs_for_test(&release.id, &source_dir.path().to_string_lossy())
+        .await
+        .unwrap();
+
+    manager
+        .change_cover(
+            &album.id,
+            &release.id,
+            CoverSelection::ReleaseImage {
+                file_id: file.id.clone(),
+            },
+        )
+        .await
+        .unwrap();
+
+    // The stored blob decodes as a ≤600 JPEG, not the 900×300 PNG source.
+    let stored = manager
+        .read_cover_image_blob(&release.id)
+        .await
+        .unwrap()
+        .expect("cover blob stored");
+    assert_eq!(
+        ::image::guess_format(&stored).unwrap(),
+        ::image::ImageFormat::Jpeg
+    );
+    let decoded = ::image::load_from_memory(&stored).unwrap();
+    assert_eq!((decoded.width(), decoded.height()), (600, 200));
+
+    // The row describes the stored thumbnail: JPEG, and its size matches.
+    let row = manager
+        .get_library_image(&release.id, &LibraryImageType::Cover)
+        .await
+        .unwrap()
+        .expect("cover row stored");
+    assert_eq!(row.content_type, ContentType::Jpeg);
+    assert_eq!(row.file_size, stored.len() as i64);
+}
+
 /// Queueing an album expands to its PRIMARY release's tracks, not the
 /// earliest-imported one. When the user picks a non-default primary (e.g. a
 /// later remaster over the original vinyl rip), enqueueing the album must

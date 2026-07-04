@@ -258,9 +258,6 @@ impl ExportService {
     }
 }
 
-/// Maximum dimension for embedded cover art.
-const COVER_MAX_SIZE: u32 = 600;
-
 /// Write metadata tags to an encoded audio file. Each tag is written only when
 /// the user's `metadata` selection includes it; cover art is governed by
 /// `cover_data` being `Some` (the plan omits the bytes when it's deselected),
@@ -323,10 +320,10 @@ fn write_tags(
     }
 
     if let Some(data) = cover_data {
-        let resized = resize_cover(data)?;
-
+        // The stored cover is already a ≤600 JPEG (resized at store time), so
+        // embed its bytes directly — no second resize/JPEG pass here.
         tag.push_picture(
-            Picture::unchecked(resized)
+            Picture::unchecked(data.to_vec())
                 .pic_type(PictureType::CoverFront)
                 .build(),
         );
@@ -340,33 +337,6 @@ fn write_tags(
 
     debug!("Wrote metadata tags to {}", path.display());
     Ok(())
-}
-
-/// Resize cover art to fit within COVER_MAX_SIZE, encoded as JPEG.
-fn resize_cover(data: &[u8]) -> Result<Vec<u8>, String> {
-    let img = image::load_from_memory(data)
-        .map_err(|e| format!("Failed to decode cover image: {}", e))?;
-
-    let (w, h) = (img.width(), img.height());
-
-    let img = if w > COVER_MAX_SIZE || h > COVER_MAX_SIZE {
-        debug!(
-            "Resizing cover art from {}x{} to fit {}x{}",
-            w, h, COVER_MAX_SIZE, COVER_MAX_SIZE
-        );
-        img.resize(
-            COVER_MAX_SIZE,
-            COVER_MAX_SIZE,
-            image::imageops::FilterType::Lanczos3,
-        )
-    } else {
-        img
-    };
-
-    let mut buf = std::io::Cursor::new(Vec::new());
-    img.write_to(&mut buf, image::ImageFormat::Jpeg)
-        .map_err(|e| format!("Failed to encode cover as JPEG: {}", e))?;
-    Ok(buf.into_inner())
 }
 
 /// Decode a track's source audio (already read into the plan) to PCM.
