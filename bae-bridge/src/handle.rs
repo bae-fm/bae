@@ -1082,16 +1082,14 @@ impl AppHandle {
     }
 
     /// Register the platform artwork analyzer. Called once at app boot
-    /// (e.g. from `BaeApp`'s startup path). The same adapter backs both the
-    /// identify pipeline's barcode phase and the candidate text-scan
-    /// service, so Swift supplies a single Vision implementation. Without a
-    /// registered analyzer both paths fall back to no-ops.
+    /// (e.g. from `BaeApp`'s startup path). Extraction owns artwork OCR and
+    /// streams its barcode/text signals to identify; without a registered
+    /// analyzer, extraction falls back to no-ops.
     pub fn register_artwork_analyzer(
         &self,
         analyzer: Box<dyn crate::types::ArtworkAnalyzerCallback>,
     ) {
         let adapter = std::sync::Arc::new(crate::identify::ArtworkAnalyzerAdapter::new(analyzer));
-        self.services.identify().register_analyzer(adapter.clone());
         self.services.extraction().register_analyzer(adapter);
     }
 

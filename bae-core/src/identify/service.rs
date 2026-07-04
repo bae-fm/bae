@@ -2,7 +2,6 @@
 //! per-candidate cancellation. One `IdentifyService` per app; each candidate
 //! runs in its own spawned driver task.
 
-use super::analyzer::{ArtworkAnalyzer, NoopAnalyzer};
 use super::barcode::{annotate_with_library_status, lookup_barcode};
 use super::discid::lookup_and_resolve;
 use super::state::{step, Effect, ExcludedSignal, IdentifyEvent, IdentifyState};
@@ -54,7 +53,6 @@ struct IdentifyServiceInner {
     runtime_handle: tokio::runtime::Handle,
     event_tx: broadcast::Sender<ImportEvent>,
     cover_art_archive: CoverArtArchiveClient,
-    analyzer: Mutex<Arc<dyn ArtworkAnalyzer>>,
     cancel_tokens: Mutex<HashMap<String, CancellationToken>>,
     /// Per-candidate sender into the running driver's internal event channel.
     /// External callers (the bridge) push events here via methods like
@@ -79,7 +77,6 @@ impl IdentifyService {
                 runtime_handle,
                 event_tx,
                 cover_art_archive,
-                analyzer: Mutex::new(Arc::new(NoopAnalyzer) as Arc<dyn ArtworkAnalyzer>),
                 cancel_tokens: Mutex::new(HashMap::new()),
                 inboxes: Mutex::new(HashMap::new()),
             }),
@@ -88,12 +85,6 @@ impl IdentifyService {
 }
 
 impl IdentifyServiceHandle {
-    /// Register the platform artwork analyzer. Called once at app boot from
-    /// the bridge's `register_artwork_analyzer`.
-    pub fn register_analyzer(&self, analyzer: Arc<dyn ArtworkAnalyzer>) {
-        *self.inner.analyzer.lock().unwrap() = analyzer;
-    }
-
     /// Start identifying `key`. Fire-and-forget — events emit through the
     /// import event channel as `ImportEvent::IdentifyStateChanged`. Identify
     /// consumes the `Signals` the extraction service streams, so the caller
