@@ -45,6 +45,7 @@ targets:
         BaeDatadogClientToken: $(BAE_DATADOG_CLIENT_TOKEN)
         BaeEnvironment: $(BAE_ENVIRONMENT)
         BaeGitCommit: $(BAE_GIT_COMMIT)
+        BaeCovenRev: $(BAE_COVEN_REV)
         BaeSentryDsn: $(BAE_SENTRY_DSN)
         NSCameraUsageDescription: bae uses the camera to scan a device's code when adding it to your library.
         CFBundleDocumentTypes:

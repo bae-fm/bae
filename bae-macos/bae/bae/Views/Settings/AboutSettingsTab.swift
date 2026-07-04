@@ -16,7 +16,7 @@ struct AboutSettingsTab: View {
                 Text("Version \(version)")
                     .foregroundStyle(.secondary)
             }
-            if let commit = Bundle.main.infoDictionary?["BAEGitCommit"]
+            if let commit = Bundle.main.infoDictionary?["BaeGitCommit"]
                 as? String
             {
                 Text(commit)

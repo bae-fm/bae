@@ -126,8 +126,12 @@ jobs:
     - name: Set release version
       run: |
         VERSION="${{ needs.calculate-version.outputs.version }}"
-        echo "BAE_VERSION=$VERSION" >> "$GITHUB_ENV"
-        echo "BAE_GIT_COMMIT=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+        COVEN_REV=$(scripts/coven-rev.sh)
+        {
+          echo "BAE_VERSION=$VERSION"
+          echo "BAE_GIT_COMMIT=$(git rev-parse --short HEAD)"
+          echo "BAE_COVEN_REV=$COVEN_REV"
+        } >> "$GITHUB_ENV"
         sed -i '' "s/MARKETING_VERSION: .*/MARKETING_VERSION: \"$VERSION\"/" bae-macos/bae/project.yml
         MACOS_MIN=$(grep 'macOS:' bae-macos/bae/project.yml | head -1 | sed 's/.*"\(.*\)"/\1/')
         # Empty here would stamp an empty sparkle:minimumSystemVersion into the appcast.
@@ -148,13 +152,11 @@ jobs:
       run: |
         # CFBundleShortVersionString is the user-facing 0.N; CFBundleVersion is the
         # monotonic build number Sparkle and the App Store use to order builds.
-        SHORT_SHA=$(git rev-parse --short HEAD)
-        COVEN_REV=$(scripts/coven-rev.sh)
         BUILD_NUMBER="${{ github.run_number }}"
         /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $BAE_VERSION" bae-macos/bae/bae/Info.plist
         /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" bae-macos/bae/bae/Info.plist
-        /usr/libexec/PlistBuddy -c "Add :BAEGitCommit string $SHORT_SHA" bae-macos/bae/bae/Info.plist
-        /usr/libexec/PlistBuddy -c "Add :BAECovenRev string $COVEN_REV" bae-macos/bae/bae/Info.plist
+        /usr/libexec/PlistBuddy -c "Set :BaeGitCommit $BAE_GIT_COMMIT" bae-macos/bae/bae/Info.plist
+        /usr/libexec/PlistBuddy -c "Set :BaeCovenRev $BAE_COVEN_REV" bae-macos/bae/bae/Info.plist
         # Per-edition: display name (bae / baeium) and the Sparkle feed this build
         # checks for updates (each edition has its own feed so they never cross).
         /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $PRODUCT_NAME" bae-macos/bae/bae/Info.plist
