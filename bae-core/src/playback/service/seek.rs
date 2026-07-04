@@ -8,14 +8,14 @@ impl PlaybackService {
             return;
         }
 
-        let prepared = match &self.current_prepared {
-            Some(prepared) => prepared.clone(),
+        let current_prepared = match self.current_prepared.as_mut() {
+            Some(prepared) => prepared,
             None => {
                 error!("Cannot seek: no current_prepared");
                 return;
             }
         };
-        let track_id = prepared.track_info.track_id.clone();
+        let track_id = current_prepared.track_info.track_id.clone();
 
         // Check for same-position seek (difference < 100ms)
         let current_position = self
@@ -32,6 +32,14 @@ impl PlaybackService {
             self.emit_position_display(position.as_millis() as u64, track_id);
             return;
         }
+
+        let old_buffer = current_prepared.buffer.clone();
+        let old_cancel_token = current_prepared.cancel_token.clone();
+        let prepared = current_prepared.clone();
+        // Mint a fresh cancel token for the seek's decoder so the ready-watcher's
+        // TrackReady is tied to this seek, and a later seek/switch supersedes it.
+        let new_cancel_token = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        current_prepared.cancel_token = new_cancel_token;
 
         // Abort old listeners immediately to prevent stale position ticks
         self.abort_current_listeners();
@@ -50,19 +58,11 @@ impl PlaybackService {
 
         teardown_decoder_for_seek(
             &mut self.current_playback_source,
-            &prepared.buffer,
-            &prepared.cancel_token,
+            &old_buffer,
+            &old_cancel_token,
             &mut self.current_decoder_handle,
         )
         .await;
-
-        // Mint a fresh cancel token for the seek's decoder so the ready-watcher's
-        // TrackReady is tied to this seek, and a later seek/switch supersedes it.
-        let new_cancel_token = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        self.current_prepared
-            .as_mut()
-            .expect("seek keeps the prepared track through decoder teardown")
-            .cancel_token = new_cancel_token;
 
         // Show buffering at the target immediately (the same Loading→Playing arc
         // the play path uses): the bar jumps to the seek position via Seeked
