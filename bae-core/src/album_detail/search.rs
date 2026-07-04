@@ -51,11 +51,7 @@ impl SearchResults {
                     }
                 })
                 .collect(),
-            tracks: raw
-                .tracks
-                .into_iter()
-                .map(TrackSearchResult::from)
-                .collect(),
+            tracks: raw.tracks,
             composers: raw
                 .composers
                 .into_iter()
@@ -95,27 +91,4 @@ pub struct AlbumSearchResult {
     pub cover: Option<ImageRef>,
 }
 
-/// Resolved track search result, produced from `DbTrackSearchResult`.
-#[derive(Debug, Clone)]
-pub struct TrackSearchResult {
-    pub id: String,
-    pub title: String,
-    pub duration_ms: Option<i64>,
-    pub album_id: String,
-    pub album_title: String,
-    pub artist_name: String,
-}
-
-impl From<DbTrackSearchResult> for TrackSearchResult {
-    /// Field-by-field copy into the display-ready shape.
-    fn from(raw: DbTrackSearchResult) -> Self {
-        TrackSearchResult {
-            id: raw.id,
-            title: raw.title,
-            duration_ms: raw.duration_ms,
-            album_id: raw.album_id,
-            album_title: raw.album_title,
-            artist_name: raw.artist_name,
-        }
-    }
-}
+pub type TrackSearchResult = DbTrackSearchResult;
