@@ -504,7 +504,7 @@ pub fn normalize(text: &str) -> String {
         .nfd()
         .filter(|c| !unicode_normalization::char::is_combining_mark(*c))
         .collect();
-    let mut s = decomposed.to_lowercase();
+    let s = decomposed.to_lowercase();
     // Collapse any run of whitespace to a single space.
     let mut collapsed = String::with_capacity(s.len());
     let mut prev_space = false;
@@ -519,25 +519,9 @@ pub fn normalize(text: &str) -> String {
             prev_space = false;
         }
     }
-    s = collapsed.trim().to_string();
-    // Strip leading / trailing non-alphanumeric runs.
-    while s
-        .chars()
-        .next()
-        .map(|c| !c.is_alphanumeric())
-        .unwrap_or(false)
-    {
-        s.remove(0);
-    }
-    while s
-        .chars()
-        .last()
-        .map(|c| !c.is_alphanumeric())
-        .unwrap_or(false)
-    {
-        s.pop();
-    }
-    s
+    collapsed
+        .trim_matches(|c: char| !c.is_alphanumeric())
+        .to_string()
 }
 
 /// Greedy incremental clustering. Each line joins the closest existing
