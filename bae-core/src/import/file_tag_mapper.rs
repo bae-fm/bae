@@ -416,23 +416,14 @@ pub fn map_cue_sheets_to_db(
 /// ("1970"), a range ("2000 / 2004"), or a full date; take the first 4-digit
 /// run.
 fn year_from_cue_date(date: Option<&str>) -> Option<i32> {
-    let date = date?;
-    let bytes = date.as_bytes();
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i].is_ascii_digit() {
-            let start = i;
-            while i < bytes.len() && bytes[i].is_ascii_digit() {
-                i += 1;
-            }
-            if i - start >= 4 {
-                return date[start..start + 4].parse::<i32>().ok();
-            }
-        } else {
-            i += 1;
-        }
-    }
-    None
+    let digits = date?
+        .split(|c: char| !c.is_ascii_digit())
+        .find(|part| part.len() >= 4)?;
+    Some(
+        digits[..4]
+            .parse::<i32>()
+            .expect("four ASCII digits parse as i32"),
+    )
 }
 
 /// Probe a file's container/codec without reading its full tag set. Used to
@@ -1422,6 +1413,15 @@ mod tests {
 
         // A tag with no date information yields no year.
         assert_eq!(year_from_tag(&Tag::new(TagType::Id3v2)), None);
+    }
+
+    #[test]
+    fn year_from_cue_date_reads_first_four_digit_run() {
+        assert_eq!(year_from_cue_date(Some("1970")), Some(1970));
+        assert_eq!(year_from_cue_date(Some("1970-02-03")), Some(1970));
+        assert_eq!(year_from_cue_date(Some("2000 / 2004")), Some(2000));
+        assert_eq!(year_from_cue_date(Some("rem 99")), None);
+        assert_eq!(year_from_cue_date(None), None);
     }
 
     #[test]
