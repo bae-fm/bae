@@ -22,7 +22,7 @@ pub use outbox_snapshot::{
 pub use release_queue::ReleaseQueue;
 pub use upload_throughput::UploadThroughput;
 
-use crate::config::{Config, ConfigError, ConfigYaml};
+use crate::config::{Config, ConfigError};
 use crate::keys::KeyService;
 use coven::LibraryDir;
 use coven::{EncryptionError, EncryptionService};
@@ -370,20 +370,13 @@ pub fn unlock_library(library_id: &str, key_hex: &str) -> Result<(), UnlockError
     // "no fingerprint computed".
     let fingerprint = EncryptionService::new(key_hex)?.fingerprint();
 
-    // Load config for this library to get the stored fingerprint
     let libraries = Config::discover_libraries();
     let lib_info = libraries
         .into_iter()
         .find(|lib| lib.id == library_id)
         .ok_or_else(|| UnlockError::NotFound(library_id.to_string()))?;
 
-    // Read and parse config.yaml to get the stored fingerprint
-    let config_path = lib_info.path.join("config.yaml");
-    let config_str = std::fs::read_to_string(&config_path)?;
-    let yaml_config: ConfigYaml =
-        serde_yaml::from_str(&config_str).map_err(|e| UnlockError::Config(e.to_string()))?;
-
-    if let Some(ref stored_fp) = yaml_config.encryption_key_fingerprint {
+    if let Some(ref stored_fp) = lib_info.encryption_key_fingerprint {
         if *stored_fp != fingerprint {
             return Err(UnlockError::Validation(
                 "Encryption key fingerprint mismatch".to_string(),

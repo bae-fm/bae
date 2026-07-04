@@ -512,6 +512,7 @@ pub struct LibraryInfo {
     pub path: PathBuf,
     pub is_active: bool,
     pub cloud_provider: Option<CloudProvider>,
+    pub encryption_key_fingerprint: Option<String>,
 }
 
 /// Application configuration.
@@ -808,6 +809,7 @@ impl Config {
                     path,
                     is_active,
                     cloud_provider: yaml.cloud_home.provider.clone(),
+                    encryption_key_fingerprint: yaml.encryption_key_fingerprint,
                 }
             })
             .collect();
@@ -1396,6 +1398,7 @@ mod tests {
         let lib2_path = libraries_dir.join("lib-2");
         let mut lib2 = make_test_config("lib-2", lib2_path.clone());
         lib2.library_name = "Second Library".to_string();
+        lib2.encryption_key_fingerprint = Some("fingerprint-2".to_string());
         lib2.save_to_config_yaml().unwrap();
 
         // Create an invalid dir (no config.yaml)
@@ -1416,6 +1419,10 @@ mod tests {
             .find(|(_, y)| y.library_id == "lib-2")
             .unwrap();
         assert_eq!(lib2_entry.1.library_name, "Second Library");
+        assert_eq!(
+            lib2_entry.1.encryption_key_fingerprint.as_deref(),
+            Some("fingerprint-2")
+        );
     }
 
     #[test]
