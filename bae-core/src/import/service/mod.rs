@@ -44,6 +44,7 @@ struct PreparedMetadata {
     db_album: DbAlbum,
     db_release: DbRelease,
     db_tracks: Vec<DbTrack>,
+    remote_cover_image: Option<(crate::db::DbLibraryImage, Vec<u8>)>,
     /// Raw (source, json) pairs from the metadata resolver, wrapped into
     /// DbReleaseMetadata at commit.
     resolved_metadata: Vec<(String, String)>,
@@ -693,7 +694,7 @@ impl ImportService {
         // Build the remote cover record + its bytes (no storage yet — the winning
         // cover's bytes are handed to coven's local store below, and its row is
         // written by finalize).
-        let remote_cover_image: Option<(crate::db::DbLibraryImage, Vec<u8>)> =
+        prepared.remote_cover_image =
             if let Some((bytes, content_type, url, source)) = remote_cover_data {
                 let now = library_manager.clock().now();
                 Some((
@@ -737,7 +738,6 @@ impl ImportService {
             cover_image_path.as_deref(),
             &import_id,
             &candidate_key,
-            remote_cover_image,
             embedded_cover,
             &db_metadata,
         )
@@ -814,7 +814,6 @@ impl ImportService {
         cover_image_path: Option<&Path>,
         import_id: &str,
         candidate_key: &str,
-        remote_cover_image: Option<(crate::db::DbLibraryImage, Vec<u8>)>,
         embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
         db_metadata: &[DbReleaseMetadata],
     ) -> Result<(), String> {
@@ -830,11 +829,11 @@ impl ImportService {
             remapped_release_artist_roles,
             remapped_track_artist_roles,
             identities,
+            remote_cover_image,
             ..
         } = prepared;
         let new_album = existing_album_id.is_none().then_some(&*db_album);
         let album_id = existing_album_id.as_deref().unwrap_or(&db_album.id);
-        let has_remote_cover = remote_cover_image.is_some();
 
         self.emit_started(candidate_key, &db_release.id, import_id);
         info!(
@@ -973,21 +972,19 @@ impl ImportService {
             }
         }
 
-        let local_cover_image = if !has_remote_cover {
-            self.build_cover_image_record(&db_release.id, discovered_files, cover_image_path)?
-        } else {
-            None
-        };
-
-        // Embedded cover art is the last resort: use it only when no remote
-        // selection and no folder image produced a cover. This keeps the priority
-        // Remote/Local > folder image > embedded — a tagged rip with embedded art
-        // but no sidecar image still gets a cover, but a folder image always wins.
-        let embedded_cover_image: Option<(crate::db::DbLibraryImage, Vec<u8>)> =
-            match embedded_cover {
-                Some((bytes, content_type)) if !has_remote_cover && local_cover_image.is_none() => {
+        // The winning cover (Remote > Local folder image > embedded): finalize
+        // writes its bytes and row in one coven batch.
+        let cover_winner = match remote_cover_image.take() {
+            Some(remote) => Some(remote),
+            None => match self.build_cover_image_record(
+                &db_release.id,
+                discovered_files,
+                cover_image_path,
+            )? {
+                Some(local) => Some(local),
+                None => embedded_cover.map(|(bytes, content_type)| {
                     let now = library_manager.clock().now();
-                    Some((
+                    (
                         crate::db::DbLibraryImage {
                             id: db_release.id.clone(),
                             image_type: crate::db::LibraryImageType::Cover,
@@ -1001,16 +998,10 @@ impl ImportService {
                             created_at: now,
                         },
                         bytes,
-                    ))
-                }
-                _ => None,
-            };
-
-        // The winning cover (Remote > Local folder image > embedded): finalize
-        // writes its bytes and row in one coven batch.
-        let cover_winner = remote_cover_image
-            .or(local_cover_image)
-            .or(embedded_cover_image);
+                    )
+                }),
+            },
+        };
         // Resize the winning cover to a ≤600px JPEG thumbnail — one funnel for
         // all three sources — and patch the record to describe the stored bytes:
         // the resize always emits JPEG, so the row and the `cloud_path` extension

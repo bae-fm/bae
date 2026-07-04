@@ -2,7 +2,7 @@ use crate::cue_flac::CueSheet;
 use crate::util::content_type_hint::ContentTypeHint;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, trace, warn};
 #[derive(Debug, Error)]
 pub enum MetadataDetectionError {
     #[error("IO error: {0}")]
@@ -193,18 +193,18 @@ fn discid_from_raw_offsets(
         )))
     })?;
     let mb_discid_str = disc.id();
-    info!("MusicBrainz DiscID calculated: {}", mb_discid_str);
+    debug!("MusicBrainz DiscID calculated: {}", mb_discid_str);
     Ok(mb_discid_str.to_string())
 }
 
 /// Calculate MusicBrainz DiscID from LOG file alone
 /// This is the most efficient method as it doesn't require CUE or audio files
 pub fn calculate_mb_discid_from_log(log_path: &Path) -> Result<String, MetadataDetectionError> {
-    info!("Calculating MusicBrainz DiscID from LOG: {:?}", log_path);
-    info!("Reading LOG file: {:?}", log_path);
+    debug!("Calculating MusicBrainz DiscID from LOG: {:?}", log_path);
+    trace!("Reading LOG file: {:?}", log_path);
     let log_content = crate::text_encoding::read_text_file(log_path)?.text;
 
-    info!("LOG file decoded, length: {} chars", log_content.len());
+    trace!("LOG file decoded, length: {} chars", log_content.len());
     let toc_sectors = extract_log_toc_sectors(&log_content)?;
     let raw_track_sectors: Vec<i32> = toc_sectors.iter().map(|(start, _)| *start).collect();
     let raw_leadout_sector = toc_sectors
@@ -212,7 +212,7 @@ pub fn calculate_mb_discid_from_log(log_path: &Path) -> Result<String, MetadataD
         .expect("LOG TOC parser returned at least one row")
         .1
         + 1;
-    info!("Found {} track(s) in LOG file", raw_track_sectors.len());
+    debug!("Found {} track(s) in LOG file", raw_track_sectors.len());
     discid_from_raw_offsets(
         "LOG",
         &raw_track_sectors,
@@ -235,12 +235,12 @@ fn calculate_mb_discid_from_cue_audio(
     method_label: &str,
     duration_label: &str,
 ) -> Result<String, MetadataDetectionError> {
-    info!(
+    debug!(
         "Calculating MusicBrainz DiscID from {method_label}, audio: {:?}",
         audio_path
     );
     let duration_seconds = probe_duration_seconds(audio_path)?;
-    info!("{duration_label} duration: {:.2} seconds", duration_seconds);
+    trace!("{duration_label} duration: {:.2} seconds", duration_seconds);
     calculate_mb_discid_from_cue_duration(sheet, duration_seconds, method_label)
 }
 
@@ -278,7 +278,7 @@ fn calculate_mb_discid_from_cue_duration(
         .map(|t| t.start_cue_frames as i32)
         .collect();
     let raw_leadout_sector = (duration_seconds * 75.0).round() as i32;
-    info!("Found {} track(s) in CUE file", raw_track_sectors.len());
+    debug!("Found {} track(s) in CUE file", raw_track_sectors.len());
     discid_from_raw_offsets(
         method_label,
         &raw_track_sectors,

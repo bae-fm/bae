@@ -206,6 +206,7 @@ impl ImportService {
             db_album,
             db_release,
             db_tracks,
+            remote_cover_image: None,
             resolved_metadata,
             existing_album_id,
             remapped_track_artists,
