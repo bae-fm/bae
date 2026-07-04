@@ -443,43 +443,24 @@ impl Cluster {
     /// fragments from winning. If every member is below that floor (rare —
     /// happens only for tiny candidate strings), take the first.
     pub fn pick_representative(&self) -> String {
-        let mut best: Option<&SourcedLine> = None;
-        let mut best_key: Option<(usize, u8, usize)> = None;
-
-        for m in &self.members {
-            if m.text.chars().count() < 4 {
-                continue;
-            }
-            let weight = source_weight(&m.source);
-            let case_rank = case_rank(&m.text);
-            let len = m.text.chars().count();
-            let key = (weight, case_rank, len);
-
-            let better = match best_key {
-                None => true,
-                Some((w, c, l)) => {
-                    // Sort by (weight desc, case_rank desc, length desc).
-                    match weight.cmp(&w) {
-                        std::cmp::Ordering::Greater => true,
-                        std::cmp::Ordering::Less => false,
-                        std::cmp::Ordering::Equal => match case_rank.cmp(&c) {
-                            std::cmp::Ordering::Greater => true,
-                            std::cmp::Ordering::Less => false,
-                            std::cmp::Ordering::Equal => len > l,
-                        },
-                    }
+        self.members
+            .iter()
+            .enumerate()
+            .filter_map(|(index, m)| {
+                let len = m.text.chars().count();
+                if len < 4 {
+                    return None;
                 }
-            };
-
-            if better {
-                best = Some(m);
-                best_key = Some(key);
-            }
-        }
-
-        // Fallback: if every member is shorter than the 4-char guard, take
-        // whatever we have.
-        best.map(|m| m.text.clone())
+                Some((
+                    source_weight(&m.source),
+                    case_rank(&m.text),
+                    len,
+                    std::cmp::Reverse(index),
+                    m,
+                ))
+            })
+            .max_by_key(|(weight, case_rank, len, index, _)| (*weight, *case_rank, *len, *index))
+            .map(|(_, _, _, _, m)| m.text.clone())
             .or_else(|| self.members.first().map(|m| m.text.clone()))
             .unwrap_or_default()
     }
