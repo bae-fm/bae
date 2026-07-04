@@ -65,6 +65,20 @@ struct ExtractionServiceInner {
     cancellation: CancellationRegistry,
 }
 
+struct ExtractionRelease {
+    inner: Arc<ExtractionServiceInner>,
+    key: String,
+    generation: u64,
+}
+
+impl Drop for ExtractionRelease {
+    fn drop(&mut self) {
+        self.inner
+            .cancellation
+            .release_if_current(&self.key, self.generation);
+    }
+}
+
 /// Builder / entry point for constructing the service.
 pub struct ExtractionService;
 
@@ -122,8 +136,13 @@ async fn run_extraction(
     token: CancellationToken,
     generation: u64,
 ) {
+    let _release = ExtractionRelease {
+        inner: inner.clone(),
+        key: key.clone(),
+        generation,
+    };
+
     if token.is_cancelled() {
-        inner.cancellation.release_if_current(&key, generation);
         return;
     }
 
@@ -154,7 +173,6 @@ async fn run_extraction(
                 inner,
                 key,
                 token,
-                generation,
                 ExtractionInputs {
                     disc_id: fast.disc_id,
                     barcodes: fast.cue_barcodes,
@@ -182,7 +200,6 @@ async fn run_extraction(
                 },
             };
             if token.is_cancelled() {
-                inner.cancellation.release_if_current(&key, generation);
                 return;
             }
             // `_cover_staging` holds the temp dir the cover blob was staged into;
@@ -201,7 +218,6 @@ async fn run_extraction(
                 Ok(staged) => staged,
                 Err(e) => {
                     error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");
-                    inner.cancellation.release_if_current(&key, generation);
                     return;
                 }
             };
@@ -209,7 +225,6 @@ async fn run_extraction(
                 inner,
                 key,
                 token,
-                generation,
                 ExtractionInputs {
                     disc_id,
                     barcodes: Vec::new(),
@@ -244,7 +259,6 @@ async fn stream_extraction(
     inner: Arc<ExtractionServiceInner>,
     key: String,
     token: CancellationToken,
-    generation: u64,
     inputs: ExtractionInputs,
 ) {
     let ExtractionInputs {
@@ -257,7 +271,6 @@ async fn stream_extraction(
     let has_artwork = !artwork_paths.is_empty();
 
     if token.is_cancelled() {
-        inner.cancellation.release_if_current(&key, generation);
         return;
     }
 
@@ -280,7 +293,6 @@ async fn stream_extraction(
     // One OCR request at a time (Vision on the ANE is effectively serial).
     for path in artwork_paths {
         if token.is_cancelled() {
-            inner.cancellation.release_if_current(&key, generation);
             return;
         }
 
@@ -296,7 +308,6 @@ async fn stream_extraction(
             };
 
         if token.is_cancelled() {
-            inner.cancellation.release_if_current(&key, generation);
             return;
         }
 
@@ -327,7 +338,6 @@ async fn stream_extraction(
         // Re-check cancellation before emitting; a successor's `start()` can
         // flip the token during the synchronous push/classify window.
         if token.is_cancelled() {
-            inner.cancellation.release_if_current(&key, generation);
             return;
         }
 
@@ -346,7 +356,6 @@ async fn stream_extraction(
     }
 
     if token.is_cancelled() {
-        inner.cancellation.release_if_current(&key, generation);
         return;
     }
 
@@ -374,8 +383,6 @@ async fn stream_extraction(
             },
         },
     );
-
-    inner.cancellation.release_if_current(&key, generation);
 
     // Diagnostic dump runs after the final emit — the UI already has its
     // final state, so a slow filesystem write doesn't delay completion.
