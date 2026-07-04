@@ -1114,11 +1114,6 @@ impl PlaybackService {
                 PlaybackCommand::Play(track_id) => {
                     self.preview.stop();
                     self.main_was_playing_before_preview = false;
-                    if let Some(stream) = self.stream.take() {
-                        drop(stream);
-                    }
-                    self.audio_output
-                        .set_state(crate::playback::audio_output::AudioState::Stopped);
                     // Direct selection: the track's release becomes the playing
                     // context, with the cursor at the chosen track.
                     match self.library_manager.get_play_context(&track_id).await {

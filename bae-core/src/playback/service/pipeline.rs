@@ -31,9 +31,7 @@ impl PlaybackService {
     /// promptly. `play_track` overwrites `current_decoder_handle` with the new
     /// thread's handle right after.
     pub(super) fn teardown_current_track(&mut self) {
-        if let Some(stream) = self.stream.take() {
-            drop(stream);
-        }
+        self.stream = None;
         if let Some(source) = self.current_playback_source.take() {
             match source.lock() {
                 Ok(guard) => guard.cancel(),
@@ -65,9 +63,7 @@ impl PlaybackService {
     /// Returns true if initialization succeeded, false on error.
     pub(super) async fn init_streaming(&mut self, source: TrackStream, fmt: TrackFmt) -> bool {
         // Drop old stream first
-        if let Some(stream) = self.stream.take() {
-            drop(stream);
-        }
+        self.stream = None;
 
         // fmt is the per-stream formatting envelope; the caller built it from
         // its prepared track (see `PlaybackPreparedTrack::track_fmt`). The
