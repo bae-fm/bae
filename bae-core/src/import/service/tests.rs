@@ -1,6 +1,51 @@
 use super::*;
+use crate::config::{Config, ConfigHandle};
+use crate::db::Database;
+use crate::keys::KeyService;
 use coven::FixedClock;
 use coven::SequentialIdProvider;
+use tempfile::TempDir;
+
+async fn setup_import_service() -> (ImportService, TempDir) {
+    let temp_dir = TempDir::new().unwrap();
+    let db_path = temp_dir.path().join("test.db");
+    let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
+        .await
+        .unwrap();
+    let library_dir = coven::LibraryDir::new(temp_dir.path());
+    let library_id = format!("test-{}", temp_dir.path().display());
+    let config = Config::with_defaults(
+        library_id.clone(),
+        "test-device".to_string(),
+        library_dir.clone(),
+        "Test Library".to_string(),
+    );
+    crate::config::install_test_keyring();
+    let manager = LibraryManager::new(
+        database,
+        library_dir,
+        Arc::new(ConfigHandle::new(config)),
+        KeyService::new(library_id),
+        Arc::new(coven::SystemClock),
+        Arc::new(coven::UuidProvider),
+        tokio::runtime::Handle::current(),
+    );
+    let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (event_tx, _) = tokio::sync::broadcast::channel(16);
+    (
+        ImportService {
+            commands_rx,
+            event_tx,
+            library_manager: manager,
+        },
+        temp_dir,
+    )
+}
+
+fn write_test_jpeg(path: &Path) {
+    let image = ::image::RgbImage::from_pixel(1, 1, ::image::Rgb([0, 0, 0]));
+    image.save(path).unwrap();
+}
 
 #[test]
 fn affected_roots_maps_changed_paths_to_their_watched_roots() {
@@ -71,6 +116,195 @@ fn image_cover_priority_ranks_front_and_cover_first() {
     assert_eq!(ImportService::image_cover_priority("Back.jpg"), 1);
     assert_eq!(ImportService::image_cover_priority("inlay.png"), 1);
     assert_eq!(ImportService::image_cover_priority("disc1.jpg"), 1);
+}
+
+#[tokio::test]
+async fn explicit_bmp_cover_is_selected() {
+    let (service, tmp) = setup_import_service().await;
+    let bmp = tmp.path().join("cover.bmp");
+    let jpg = tmp.path().join("front.jpg");
+    std::fs::write(&bmp, b"bmp bytes").unwrap();
+    std::fs::write(&jpg, b"jpg bytes").unwrap();
+    let discovered = vec![
+        DiscoveredFile {
+            path: bmp.clone(),
+            relative_path: "cover.bmp".to_string(),
+            size: 9,
+        },
+        DiscoveredFile {
+            path: jpg,
+            relative_path: "front.jpg".to_string(),
+            size: 9,
+        },
+    ];
+
+    let (image, bytes) = service
+        .build_cover_image_record("release-1", &discovered, Some("cover.bmp"))
+        .unwrap()
+        .expect("selected cover should build a record");
+
+    assert_eq!(
+        image.content_type,
+        crate::util::content_type::ContentType::Bmp
+    );
+    assert_eq!(image.source_url.as_deref(), Some("release://cover.bmp"));
+    assert_eq!(bytes, b"bmp bytes");
+}
+
+#[tokio::test]
+async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
+    let (service, tmp) = setup_import_service().await;
+    let fallback = tmp.path().join("front.jpg");
+    std::fs::write(&fallback, b"jpg bytes").unwrap();
+    let discovered = vec![DiscoveredFile {
+        path: fallback,
+        relative_path: "front.jpg".to_string(),
+        size: 9,
+    }];
+
+    let err = service
+        .build_cover_image_record("release-1", &discovered, Some("cover.bmp"))
+        .unwrap_err();
+
+    assert!(
+        err.contains("Selected cover") && err.contains("not found"),
+        "got: {err}"
+    );
+}
+
+#[tokio::test]
+async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
+    let (service, _tmp) = setup_import_service().await;
+
+    let err = service
+        .build_cover_image_record("release-1", &[], Some("cover.bmp"))
+        .unwrap_err();
+
+    assert!(
+        err.contains("Selected cover") && err.contains("not found"),
+        "got: {err}"
+    );
+}
+
+#[tokio::test]
+async fn selected_local_cover_path_must_match_discovered_file() {
+    let (service, tmp) = setup_import_service().await;
+    let folder = tmp.path().join("release");
+    std::fs::create_dir(&folder).unwrap();
+    write_test_jpeg(&folder.join("front.jpg"));
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac"),
+        folder.join("01.flac"),
+    )
+    .unwrap();
+
+    let result = service
+        .prepare_and_run_folder_import(
+            "import-1".to_string(),
+            folder.to_string_lossy().into_owned(),
+            folder,
+            Some(CoverSelection::Local("cover.bmp".to_string())),
+            StorageMode::Local,
+            false,
+            crate::import::IdentityChoice::Unknown,
+            None,
+        )
+        .await;
+
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("Selected cover cover.bmp not found"),
+        "got: {err}"
+    );
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn unreadable_selected_cover_is_an_error() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let (service, tmp) = setup_import_service().await;
+    let cover = tmp.path().join("cover.jpg");
+    std::fs::write(&cover, b"jpg bytes").unwrap();
+    std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let discovered = vec![DiscoveredFile {
+        path: cover.clone(),
+        relative_path: "cover.jpg".to_string(),
+        size: 9,
+    }];
+
+    let result = service.build_cover_image_record("release-1", &discovered, Some("cover.jpg"));
+
+    std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o600)).unwrap();
+    let err = result.unwrap_err();
+    assert!(err.contains("Failed to read cover art"), "got: {err}");
+}
+
+async fn rescan_seeded_root(
+    service: &ImportService,
+    root: &Path,
+) -> (
+    HashMap<PathBuf, HashSet<String>>,
+    tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
+) {
+    let mut last_keys =
+        HashMap::from([(root.to_path_buf(), HashSet::from(["old-key".to_string()]))]);
+    let (event_tx, events) = tokio::sync::broadcast::channel(16);
+    let folder_registry = Arc::new(Mutex::new(
+        crate::import::folder_registry::ImportFolderRegistry::load(
+            service.library_manager.library_dir(),
+        ),
+    ));
+
+    ImportService::rescan_and_reconcile(
+        root,
+        &mut last_keys,
+        &event_tx,
+        &service.library_manager,
+        &folder_registry,
+    )
+    .await;
+
+    (last_keys, events)
+}
+
+#[tokio::test]
+async fn rescan_missing_root_removes_previous_candidates() {
+    let (service, tmp) = setup_import_service().await;
+    let root = tmp.path().join("missing-root");
+    let (last_keys, mut events) = rescan_seeded_root(&service, &root).await;
+
+    match events.recv().await.unwrap() {
+        crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
+            assert_eq!(candidate_key, "old-key");
+        }
+        event => panic!("expected candidate removal, got {event:?}"),
+    }
+    assert!(matches!(
+        events.recv().await.unwrap(),
+        crate::import::handle::ImportEvent::Scan(ScanEvent::Finished)
+    ));
+    assert!(last_keys.get(&root).unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn rescan_non_directory_root_keeps_previous_candidates() {
+    let (service, tmp) = setup_import_service().await;
+    let root = tmp.path().join("not-a-directory");
+    std::fs::write(&root, b"not a directory").unwrap();
+    let (last_keys, mut events) = rescan_seeded_root(&service, &root).await;
+
+    match events.recv().await.unwrap() {
+        crate::import::handle::ImportEvent::Scan(ScanEvent::Failed { error }) => {
+            assert!(
+                error.to_lowercase().contains("not a directory"),
+                "got: {error}"
+            );
+        }
+        event => panic!("expected scan failure, got {event:?}"),
+    }
+    assert_eq!(last_keys.get(&root).unwrap().len(), 1);
+    assert!(last_keys.get(&root).unwrap().contains("old-key"));
 }
 
 #[test]

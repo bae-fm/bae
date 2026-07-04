@@ -81,6 +81,18 @@ impl ContentTypeHint {
         )
     }
 
+    pub fn is_raster_image(&self) -> bool {
+        self.is_image() && !matches!(self, Self::Svg)
+    }
+
+    /// Whether `path`'s extension classifies as a raster image. Returns `false`
+    /// for paths with no extension, non-UTF-8 extensions, and SVG.
+    pub fn path_is_raster_image(path: &Path) -> bool {
+        path.extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| Self::from_extension(e).is_raster_image())
+    }
+
     /// Convert image hints to the equivalent probe-verified `ContentType`.
     ///
     /// Image extensions predict codecs reliably (a `.png` file's bytes are
@@ -246,6 +258,32 @@ mod tests {
         assert!(!ContentTypeHint::PlainText.is_image());
         assert!(!ContentTypeHint::Pdf.is_image());
         assert!(!ContentTypeHint::Unknown("svg2".to_string()).is_image());
+    }
+
+    #[test]
+    fn is_raster_image_membership() {
+        assert!(ContentTypeHint::Jpeg.is_raster_image());
+        assert!(ContentTypeHint::Png.is_raster_image());
+        assert!(ContentTypeHint::Gif.is_raster_image());
+        assert!(ContentTypeHint::Webp.is_raster_image());
+        assert!(ContentTypeHint::Bmp.is_raster_image());
+
+        assert!(!ContentTypeHint::Svg.is_raster_image());
+        assert!(!ContentTypeHint::Flac.is_raster_image());
+        assert!(!ContentTypeHint::PlainText.is_raster_image());
+        assert!(!ContentTypeHint::Pdf.is_raster_image());
+        assert!(!ContentTypeHint::Unknown("svg2".to_string()).is_raster_image());
+    }
+
+    #[test]
+    fn path_is_raster_image_membership() {
+        assert!(ContentTypeHint::path_is_raster_image(Path::new(
+            "cover.bmp"
+        )));
+        assert!(!ContentTypeHint::path_is_raster_image(Path::new(
+            "cover.svg"
+        )));
+        assert!(!ContentTypeHint::path_is_raster_image(Path::new("README")));
     }
 
     #[test]

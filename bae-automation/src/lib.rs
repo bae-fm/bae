@@ -780,6 +780,7 @@ impl AutomationState {
             } => self.update_candidate(candidate_key, |candidate| {
                 candidate.common_mut().skipped = skipped;
             }),
+            ScanEvent::Failed { error } => self.fail_event_indexing(error),
             ScanEvent::Finished => {}
         }
     }
@@ -981,8 +982,12 @@ impl Automation {
                     .map_err(AutomationError::import)?;
                 let wait_for_finish = async {
                     while let Some(event) = rx.recv().await {
-                        if matches!(event, ScanEvent::Finished) {
-                            return Ok::<(), AutomationError>(());
+                        match event {
+                            ScanEvent::Finished => return Ok::<(), AutomationError>(()),
+                            ScanEvent::Failed { error } => {
+                                return Err(AutomationError::import(error));
+                            }
+                            _ => {}
                         }
                     }
                     Err(AutomationError::Unavailable(

@@ -12,7 +12,7 @@ use {
     },
     crate::import::folder_registry::ImportFolderRegistry,
     crate::import::folder_scanner::{
-        scan_for_candidates_with_callback, InvalidCandidate, ScanItem,
+        scan_for_candidates_with_callback, FolderScanError, InvalidCandidate, ScanItem,
     },
     crate::import::track_to_file_mapper::map_tracks_to_files,
     crate::import::types::{CoverSelection, DiscoveredFile, ImportPhase, PrepareStep, TrackFile},
@@ -192,8 +192,9 @@ impl ImportService {
     /// Re-scan `root` and reconcile against the candidate keys last emitted for
     /// it: emit every current candidate (the reducer keeps in-progress state for
     /// ones it already holds) and `CandidateRemoved` for any that vanished. A
-    /// scan error (folder unreadable/deleted) reconciles to empty, removing all
-    /// of the folder's candidates.
+    /// missing root reconciles to empty, removing all of the folder's candidates;
+    /// other scan errors keep the previous candidate set so a transient fault
+    /// does not report the folder as deleted.
     async fn rescan_and_reconcile(
         root: &Path,
         last_keys: &mut HashMap<PathBuf, HashSet<String>>,
@@ -213,17 +214,37 @@ impl ImportService {
         })
         .await;
 
+        let emit_scan_failed = |message: String| {
+            send_event(
+                event_tx,
+                crate::import::handle::ImportEvent::Scan(ScanEvent::Failed { error: message }),
+            );
+        };
+
         let (mut candidates, invalid_candidates): (_, Vec<InvalidCandidate>) = match scanned {
             Ok(Ok(split)) => split,
-            Ok(Err(e)) => {
-                warn!(
-                    "re-scan of {} failed ({e}); removing its candidates",
-                    root.display()
-                );
-                (Vec::new(), Vec::new())
-            }
+            Ok(Err(e)) => match &e {
+                FolderScanError::Io { path, source }
+                    if path == root && source.kind() == std::io::ErrorKind::NotFound =>
+                {
+                    warn!(
+                        "re-scan of {} found the folder missing ({e}); removing its candidates",
+                        root.display()
+                    );
+                    (Vec::new(), Vec::new())
+                }
+                _ => {
+                    warn!(
+                        "re-scan of {} failed ({e}); keeping previous candidates",
+                        root.display()
+                    );
+                    emit_scan_failed(e.to_string());
+                    return;
+                }
+            },
             Err(e) => {
                 error!("folder scan task panicked for {}: {e}", root.display());
+                emit_scan_failed(format!("Folder scan task failed: {e}"));
                 return;
             }
         };
@@ -241,14 +262,15 @@ impl ImportService {
             {
                 Ok(is_added) => is_added,
                 Err(e) => {
-                    // A DB read fault leaves the candidate as "not added" rather
-                    // than dropping it — the user still sees it under "New" and
-                    // can act on it; the next re-scan retries the lookup.
                     warn!(
-                        "added-state lookup failed for {}; treating as not added: {e}",
+                        "added-state lookup failed for {}; scan failed: {e}",
                         candidate.path.display()
                     );
-                    false
+                    emit_scan_failed(format!(
+                        "Added-state lookup failed for {}: {e}",
+                        candidate.path.display()
+                    ));
+                    return;
                 }
             };
         }
@@ -640,16 +662,8 @@ impl ImportService {
         let tracks_to_files =
             map_tracks_to_files(std::mem::take(&mut prepared.db_tracks), &categorized)?;
 
-        // Resolve local cover path from discovered files
-        let cover_image_path = match &selected_cover {
-            Some(CoverSelection::Local(filename)) => discovered_files.iter().find_map(|f| {
-                let path_str = f.path.to_string_lossy();
-                if path_str.ends_with(filename) {
-                    Some(f.path.clone())
-                } else {
-                    None
-                }
-            }),
+        let selected_cover_path = match &selected_cover {
+            Some(CoverSelection::Local(path)) => Some(path.as_str()),
             _ => None,
         };
 
@@ -735,7 +749,7 @@ impl ImportService {
             &mut prepared,
             &discovered_files,
             &tracks_to_files,
-            cover_image_path.as_deref(),
+            selected_cover_path,
             &import_id,
             &candidate_key,
             embedded_cover,
@@ -811,7 +825,7 @@ impl ImportService {
         prepared: &mut PreparedMetadata,
         discovered_files: &[DiscoveredFile],
         tracks_to_files: &[TrackFile],
-        cover_image_path: Option<&Path>,
+        selected_cover_path: Option<&str>,
         import_id: &str,
         candidate_key: &str,
         embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
@@ -979,7 +993,7 @@ impl ImportService {
             None => match self.build_cover_image_record(
                 &db_release.id,
                 discovered_files,
-                cover_image_path,
+                selected_cover_path,
             )? {
                 Some(local) => Some(local),
                 None => embedded_cover.map(|(bytes, content_type)| {

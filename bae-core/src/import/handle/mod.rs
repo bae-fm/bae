@@ -186,6 +186,11 @@ pub enum ScanEvent {
         candidate_key: String,
         skipped: bool,
     },
+    /// A folder scan could not read the watched root. Previous candidates are
+    /// left in place because the scan did not produce a replacement snapshot.
+    Failed {
+        error: String,
+    },
     Finished,
 }
 

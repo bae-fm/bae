@@ -292,6 +292,11 @@ impl UiEventBus {
                                 skipped,
                             });
                         }
+                        ScanEvent::Failed { error } => {
+                            bus.emit(UiBusEvent::Error {
+                                error: crate::ui::UiError::import(error),
+                            });
+                        }
                         ScanEvent::Finished => {
                             bus.emit(UiBusEvent::ScanFinished);
                         }

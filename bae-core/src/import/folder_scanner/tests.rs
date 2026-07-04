@@ -166,6 +166,7 @@ fn test_collect_release_candidate_files_skips_hidden_and_bae() {
     // Create visible files
     std::fs::write(root.join("track.flac"), fake_flac()).unwrap();
     std::fs::write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    std::fs::write(root.join("back.bmp"), b"BMvalid bmp marker").unwrap();
 
     // Create hidden file that should be ignored
     std::fs::write(root.join(".DS_Store"), b"mac junk").unwrap();
@@ -192,9 +193,36 @@ fn test_collect_release_candidate_files_skips_hidden_and_bae() {
         .iter()
         .map(|f| f.relative_path.as_str())
         .collect();
-    assert_eq!(artwork_paths, vec!["cover.jpg"]);
+    assert_eq!(artwork_paths, vec!["back.bmp", "cover.jpg"]);
 
     assert!(files.documents.is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn unreadable_child_directory_fails_scan() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    let blocked = root.join("blocked");
+    std::fs::create_dir(&blocked).unwrap();
+    std::fs::set_permissions(&blocked, std::fs::Permissions::from_mode(0o000)).unwrap();
+
+    let err = match FileTree::from_filesystem(root) {
+        Ok(_) => panic!("unreadable directory should fail the scan"),
+        Err(err) => err,
+    };
+
+    std::fs::set_permissions(&blocked, std::fs::Permissions::from_mode(0o700)).unwrap();
+
+    match err {
+        FolderScanError::Io { path, source } => {
+            assert_eq!(path, blocked);
+            assert_eq!(source.kind(), std::io::ErrorKind::PermissionDenied);
+        }
+        FolderScanError::Other(message) => panic!("expected IO error, got {message}"),
+    }
 }
 
 #[test]

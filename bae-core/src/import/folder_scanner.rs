@@ -11,11 +11,12 @@ use crate::cue_flac::CueFlacProcessor;
 use crate::util::content_type_hint::ContentTypeHint;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::fmt;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use tracing::{debug, info};
 
-const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp", "gif", "bmp"];
 const DOCUMENT_EXTENSIONS: &[&str] = &["cue", "log", "txt", "m3u", "m3u8"];
 
 /// Extensions used by download clients and browsers to mark an
@@ -274,6 +275,32 @@ pub struct FileTree {
     dirs: BTreeMap<PathBuf, DirEntry>,
 }
 
+#[derive(Debug)]
+pub enum FolderScanError {
+    Io { path: PathBuf, source: io::Error },
+    Other(String),
+}
+
+impl FolderScanError {
+    fn io(path: impl Into<PathBuf>, source: io::Error) -> Self {
+        Self::Io {
+            path: path.into(),
+            source,
+        }
+    }
+}
+
+impl fmt::Display for FolderScanError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io { path, source } => write!(f, "{}: {source}", path.display()),
+            Self::Other(message) => f.write_str(message),
+        }
+    }
+}
+
+impl std::error::Error for FolderScanError {}
+
 #[derive(Debug, Default)]
 struct DirEntry {
     files: Vec<usize>,
@@ -292,17 +319,22 @@ impl FileTree {
 
     /// Build a FileTree by recursively walking the filesystem from `root`.
     /// Skips hidden files/directories (names starting with '.') and noise files.
-    pub(crate) fn from_filesystem(root: &Path) -> Result<Self, String> {
+    pub(crate) fn from_filesystem(root: &Path) -> Result<Self, FolderScanError> {
         let mut files = Vec::new();
         Self::walk_dir(root, root, &mut files)?;
         Ok(Self::new(files))
     }
 
-    fn walk_dir(current: &Path, root: &Path, files: &mut Vec<FileEntry>) -> Result<(), String> {
-        let entries = fs::read_dir(current)
-            .map_err(|e| format!("Failed to read dir {:?}: {}", current, e))?;
+    fn walk_dir(
+        current: &Path,
+        root: &Path,
+        files: &mut Vec<FileEntry>,
+    ) -> Result<(), FolderScanError> {
+        let entries =
+            fs::read_dir(current).map_err(|source| FolderScanError::io(current, source))?;
 
-        for entry in entries.flatten() {
+        for entry in entries {
+            let entry = entry.map_err(|source| FolderScanError::io(current, source))?;
             let path = entry.path();
 
             // Skip hidden files and directories (including .bae/)
@@ -312,26 +344,27 @@ impl FileTree {
                 }
             }
 
-            if path.is_file() {
+            let metadata = entry
+                .metadata()
+                .map_err(|source| FolderScanError::io(path.clone(), source))?;
+
+            if metadata.is_file() {
                 if is_noise_file(&path) {
                     continue;
                 }
 
-                let size = entry
-                    .metadata()
-                    .map_err(|e| format!("Failed to read metadata for {:?}: {}", path, e))?
-                    .len();
+                let size = metadata.len();
 
                 let relative = path
                     .strip_prefix(root)
-                    .map_err(|e| format!("Failed to strip prefix: {}", e))?
+                    .map_err(|e| FolderScanError::Other(format!("Failed to strip prefix: {e}")))?
                     .to_path_buf();
 
                 files.push(FileEntry {
                     path: relative,
                     size,
                 });
-            } else if path.is_dir() {
+            } else if metadata.is_dir() {
                 Self::walk_dir(&path, root, files)?;
             }
         }
@@ -450,10 +483,7 @@ fn cue_pair_codec_label(ext: &str) -> &'static str {
 
 /// Check if a file is an image/artwork file
 fn is_image_file(path: &Path) -> bool {
-    path.extension()
-        .and_then(|ext| ext.to_str())
-        .map(|ext| IMAGE_EXTENSIONS.contains(&ext.to_lowercase().as_str()))
-        .unwrap_or(false)
+    ContentTypeHint::path_is_raster_image(path)
 }
 
 /// Check if a file is a document file (.cue, .log, .txt, .m3u)
@@ -1040,7 +1070,10 @@ where
 /// Scan a folder and invoke `on_item` for each leaf: a valid release candidate,
 /// or an invalid one (looked like a release but failed validation). Both carry
 /// `watched_folder_path` stamped from the scan root.
-pub fn scan_for_candidates_with_callback<F>(root: PathBuf, mut on_item: F) -> Result<(), String>
+pub fn scan_for_candidates_with_callback<F>(
+    root: PathBuf,
+    mut on_item: F,
+) -> Result<(), FolderScanError>
 where
     F: FnMut(ScanItem),
 {
@@ -1071,6 +1104,7 @@ where
             }));
         }
     })
+    .map_err(FolderScanError::Other)
 }
 
 /// Collect all files from a release directory and categorize them.
@@ -1079,7 +1113,7 @@ where
 /// and categorizes them into audio (CUE/FLAC pairs or track files), artwork, and documents.
 /// Unrecognized file types are ignored.
 pub fn collect_release_candidate_files(release_root: &Path) -> Result<CategorizedFiles, String> {
-    let tree = FileTree::from_filesystem(release_root)?;
+    let tree = FileTree::from_filesystem(release_root).map_err(|e| e.to_string())?;
     // An invalid folder can't be imported: surface its reason as the error so
     // the import-commit caller fails with why the folder is unusable.
     match categorize_files_from_tree(&tree, &PathBuf::new(), release_root)? {
