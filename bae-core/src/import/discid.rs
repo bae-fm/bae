@@ -60,19 +60,37 @@ fn probe_duration_seconds(audio_path: &Path) -> Result<f64, MetadataDetectionErr
     })?;
     Ok(probe.duration.as_secs_f64())
 }
-/// Extract lead-out sector from EAC/XLD log file
-/// Looks for the "End sector" column in the TOC table
+fn parse_log_toc_row(line: &str) -> Option<(i32, i32)> {
+    let parts: Vec<&str> = line.split('|').collect();
+    if parts.len() < 5 {
+        return None;
+    }
+
+    let track_num = parts[0].trim().parse::<u32>().ok()?;
+    if !(1..=99).contains(&track_num) {
+        return None;
+    }
+
+    let start_sector = parts[3].trim().parse::<i32>().ok()?;
+    let end_sector = parts[4].trim().parse::<i32>().ok()?;
+    if start_sector < 0 || end_sector <= 0 {
+        return None;
+    }
+
+    Some((start_sector, end_sector))
+}
+
+/// Extract raw `(start_sector, end_sector)` pairs from an EAC/XLD LOG TOC table.
 /// Format: "       10  | 37:42.72 |  4:14.43 |    169722    |   188814"
-/// The 5th column (index 4) contains the end sector for each track
-/// Returns (final offset with 150 added, raw sector without 150)
-fn extract_leadout_from_log(log_content: &str) -> Option<(i32, i32)> {
-    trace!("Parsing LOG file to extract lead-out sector");
+fn extract_log_toc_sectors(log_content: &str) -> Result<Vec<(i32, i32)>, MetadataDetectionError> {
+    trace!("Parsing LOG file TOC");
     let mut in_toc_section = false;
-    let mut last_end_sector = None;
-    let mut track_count = 0;
+    let mut track_sectors = Vec::new();
     for line in log_content.lines() {
         let line = line.trim();
         let line_lower = line.to_ascii_lowercase();
+        let toc_row = parse_log_toc_row(line);
+
         if line_lower.contains("toc")
             && (line_lower.contains("cd") || line_lower.contains("extracted"))
         {
@@ -80,27 +98,16 @@ fn extract_leadout_from_log(log_content: &str) -> Option<(i32, i32)> {
             trace!("Found TOC section header: {}", line);
             continue;
         }
-        if !in_toc_section && line.contains('|') {
-            let parts: Vec<&str> = line.split('|').collect();
-            if parts.len() >= 5 {
-                let first_col = parts[0].trim();
-                if let Ok(track_num) = first_col.parse::<u32>() {
-                    if (1..=99).contains(&track_num) {
-                        let end_sector_str = parts[4].trim();
-                        if end_sector_str.parse::<i32>().is_ok() {
-                            in_toc_section = true;
-                            trace!("Found TOC table format directly (no header)");
-                        }
-                    }
-                }
-            }
+        if !in_toc_section && toc_row.is_some() {
+            in_toc_section = true;
+            trace!("Found TOC table format directly (no header)");
         }
         if in_toc_section
             && (line_lower.contains("range status")
                 || line_lower.contains("accuraterip")
-                || (line.is_empty() && track_count > 0 && last_end_sector.is_some()))
+                || (line.is_empty() && !track_sectors.is_empty()))
         {
-            trace!("End of TOC section, found {} tracks", track_count);
+            trace!("End of TOC section, found {} tracks", track_sectors.len());
             break;
         }
         if !in_toc_section {
@@ -113,30 +120,18 @@ fn extract_leadout_from_log(log_content: &str) -> Option<(i32, i32)> {
         {
             continue;
         }
-        if line.contains('|') {
-            let parts: Vec<&str> = line.split('|').collect();
-            if parts.len() >= 5 {
-                let end_sector_str = parts[4].trim();
-                if let Ok(sector) = end_sector_str.parse::<i32>() {
-                    if sector > 0 {
-                        track_count += 1;
-                        last_end_sector = Some(sector);
-                        trace!("  Track {} end sector: {}", track_count, sector);
-                    }
-                }
-            }
+        if let Some((start_sector, end_sector)) = toc_row {
+            track_sectors.push((start_sector, end_sector));
+            trace!(
+                "  Track {} sectors: start={}, end={}",
+                track_sectors.len(),
+                start_sector,
+                end_sector
+            );
         }
     }
-    if let Some(sector) = last_end_sector {
-        let lead_out_start = sector + 1;
-        let lead_out = lead_out_start + 150;
-        info!(
-            "Extracted lead-out from LOG: {} sectors (last track end: {}, lead-out start: {}, tracks found: {})",
-            lead_out, sector, lead_out_start, track_count
-        );
-        Some((lead_out, lead_out_start))
-    } else {
-        warn!("Could not find any end sectors in LOG file");
+    if track_sectors.is_empty() {
+        warn!("Could not find any TOC rows in LOG file");
         let toc_start = log_content.lines().position(|l| {
             let l_lower = l.to_ascii_lowercase();
             l_lower.contains("toc") && (l_lower.contains("cd") || l_lower.contains("extracted"))
@@ -152,92 +147,13 @@ fn extract_leadout_from_log(log_content: &str) -> Option<(i32, i32)> {
             log_content.lines().take(30).collect::<Vec<_>>().join("\n")
         };
         debug!("LOG content preview (TOC section):\n{}", preview);
-        None
-    }
-}
-/// Extract track offsets from EAC/XLD log file
-/// Looks for the "Start sector" column in the TOC table
-/// Format: "       10  | 37:42.72 |  4:14.43 |    169722    |   188814"
-/// The 4th column (index 3) contains the start sector for each track
-/// Returns (final offsets with 150 added, raw sectors without 150)
-fn extract_track_offsets_from_log(
-    log_content: &str,
-) -> Result<(Vec<i32>, Vec<i32>), MetadataDetectionError> {
-    trace!("Parsing LOG file to extract track offsets");
-    let mut in_toc_section = false;
-    let mut track_offsets = Vec::new();
-    let mut raw_sectors = Vec::new();
-    for line in log_content.lines() {
-        let line = line.trim();
-        let line_lower = line.to_ascii_lowercase();
-        if line_lower.contains("toc")
-            && (line_lower.contains("cd") || line_lower.contains("extracted"))
-        {
-            in_toc_section = true;
-            trace!("Found TOC section header: {}", line);
-            continue;
-        }
-        if !in_toc_section && line.contains('|') {
-            let parts: Vec<&str> = line.split('|').collect();
-            if parts.len() >= 5 {
-                let first_col = parts[0].trim();
-                if let Ok(track_num) = first_col.parse::<u32>() {
-                    if (1..=99).contains(&track_num) {
-                        let start_sector_str = parts[3].trim();
-                        if start_sector_str.parse::<i32>().is_ok() {
-                            in_toc_section = true;
-                            trace!("Found TOC table format directly (no header)");
-                        }
-                    }
-                }
-            }
-        }
-        if in_toc_section
-            && (line_lower.contains("range status")
-                || line_lower.contains("accuraterip")
-                || (line.is_empty() && !track_offsets.is_empty()))
-        {
-            trace!("End of TOC section, found {} tracks", track_offsets.len());
-            break;
-        }
-        if !in_toc_section {
-            continue;
-        }
-        if line.contains("---")
-            || line.is_empty()
-            || (line_lower.contains("track")
-                && (line_lower.contains("start") || line_lower.contains("sector")))
-        {
-            continue;
-        }
-        if line.contains('|') {
-            let parts: Vec<&str> = line.split('|').collect();
-            if parts.len() >= 5 {
-                let start_sector_str = parts[3].trim();
-                if let Ok(sector) = start_sector_str.parse::<i32>() {
-                    if sector >= 0 {
-                        raw_sectors.push(sector);
-                        let offset = sector + 150;
-                        track_offsets.push(offset);
-                        debug!(
-                            "  Track {} start sector: {} (offset: {})",
-                            track_offsets.len(),
-                            sector,
-                            offset
-                        );
-                    }
-                }
-            }
-        }
-    }
-    if track_offsets.is_empty() {
         return Err(MetadataDetectionError::Io(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            "No track offsets found in LOG file",
+            "No TOC rows found in LOG file",
         )));
     }
-    info!("Extracted {} track offset(s) from LOG", track_offsets.len());
-    Ok((track_offsets, raw_sectors))
+
+    Ok(track_sectors)
 }
 /// Calculate MusicBrainz DiscID from LOG file alone
 /// This is the most efficient method as it doesn't require CUE or audio files
@@ -247,25 +163,23 @@ pub fn calculate_mb_discid_from_log(log_path: &Path) -> Result<String, MetadataD
     let log_content = crate::text_encoding::read_text_file(log_path)?.text;
 
     info!("LOG file decoded, length: {} chars", log_content.len());
-    let (track_offsets, raw_track_sectors) = extract_track_offsets_from_log(&log_content)?;
+    let toc_sectors = extract_log_toc_sectors(&log_content)?;
+    let raw_track_sectors: Vec<i32> = toc_sectors.iter().map(|(start, _)| *start).collect();
+    let track_offsets: Vec<i32> = raw_track_sectors
+        .iter()
+        .map(|sector| sector + 150)
+        .collect();
     info!("Found {} track(s) in LOG file", track_offsets.len());
     info!(
         "LOG METHOD - Raw track start sectors (before adding 150): {:?}",
         raw_track_sectors
     );
-    let (lead_out_sectors, raw_leadout_sector) = extract_leadout_from_log(&log_content)
-        .ok_or_else(|| {
-            warn!(
-                "Could not extract lead-out sector from log file. Log content preview (first 500 chars):\n{}",
-                log_content.chars().take(500).collect::< String > ()
-            );
-            MetadataDetectionError::Io(
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "Could not extract lead-out sector from log file",
-                ),
-            )
-        })?;
+    let raw_leadout_sector = toc_sectors
+        .last()
+        .expect("LOG TOC parser returned at least one row")
+        .1
+        + 1;
+    let lead_out_sectors = raw_leadout_sector + 150;
     info!(
         "LOG METHOD - Raw lead-out sector (before adding 150): {}",
         raw_leadout_sector
@@ -567,36 +481,21 @@ mod tests {
                 }
             }
         }
-        let lead_out = extract_leadout_from_log(&log_content);
-        match lead_out {
-            Some((final_offset, raw_sector)) => {
-                println!(
-                    "Successfully extracted lead-out: {} sectors (raw: {})",
-                    final_offset, raw_sector,
-                );
-                assert_eq!(
-                    final_offset, 188965,
-                    "Expected lead-out to be 188965 (188814 + 1 + 150)",
-                );
-                assert_eq!(
-                    raw_sector, 188815,
-                    "Expected raw lead-out sector to be 188815 (188814 + 1)",
-                );
-            }
-            None => {
-                eprintln!("❌ Failed to extract lead-out from LOG file");
-                eprintln!(
-                    "LOG content preview (TOC section):\n{}",
-                    log_content
-                        .lines()
-                        .skip_while(|l| !l.contains("TOC of the extracted"))
-                        .take(15)
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                );
-                panic!("Failed to extract lead-out");
-            }
-        }
+        let toc_sectors = extract_log_toc_sectors(&log_content).expect("LOG TOC should parse");
+        let last_end_sector = toc_sectors
+            .last()
+            .expect("LOG TOC should include at least one track")
+            .1;
+        let raw_sector = last_end_sector + 1;
+        let final_offset = raw_sector + 150;
+        assert_eq!(
+            final_offset, 188965,
+            "Expected lead-out to be 188965 (188814 + 1 + 150)",
+        );
+        assert_eq!(
+            raw_sector, 188815,
+            "Expected raw lead-out sector to be 188815 (188814 + 1)",
+        );
     }
     #[test]
     fn test_calculate_mb_discid_from_log() {
