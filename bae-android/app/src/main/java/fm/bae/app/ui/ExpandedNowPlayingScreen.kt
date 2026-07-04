@@ -185,25 +185,10 @@ private fun ExpandedTrackInfo(
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 private fun ExpandedSeekSection(player: fm.bae.app.playback.BaeCorePlayer) {
-    val position by player.position.collectAsState()
-    NowPlayingSeekSlider(
-        position = position,
+    PlaybackProgressAndroidView(
         player = player,
         modifier = Modifier.fillMaxWidth(),
     )
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = position.elapsedLabel,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        Text(
-            text = position.remainingLabel,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
 }
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)

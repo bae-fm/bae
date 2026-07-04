@@ -22,7 +22,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -40,7 +39,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.media3.common.C
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -59,9 +57,6 @@ import uniffi.bae_bridge.BridgeRepeatMode
 fun NowPlayingBar(session: OpenLibrary) {
     val player = session.playback
     val nowPlaying by player.nowPlaying.collectAsState()
-    val isPlaying by player.isPlaying.collectAsState()
-    val isLoading by player.isLoading.collectAsState()
-    val position by player.position.collectAsState()
     val repeatMode by player.repeatMode.collectAsState()
 
     val track = nowPlaying ?: return
@@ -100,7 +95,10 @@ fun NowPlayingBar(session: OpenLibrary) {
                     onOpenQueue = { queueOpen = true },
                 )
             }
-            NowPlayingSeekRow(position = position, player = player)
+            PlaybackProgressAndroidView(
+                player = player,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -216,54 +214,4 @@ private fun NowPlayingTransportButtons(
                 },
         )
     }
-}
-
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-@Composable
-private fun NowPlayingSeekRow(
-    position: fm.bae.app.playback.PlaybackPosition,
-    player: fm.bae.app.playback.BaeCorePlayer,
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = position.elapsedLabel,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        NowPlayingSeekSlider(
-            position = position,
-            player = player,
-            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-        )
-        Text(
-            text = position.remainingLabel,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-@Composable
-fun NowPlayingSeekSlider(
-    position: fm.bae.app.playback.PlaybackPosition,
-    player: fm.bae.app.playback.BaeCorePlayer,
-    modifier: Modifier = Modifier,
-) {
-    // While dragging, follow the finger; the progress events would otherwise snap
-    // the thumb back mid-drag. Null means "not dragging".
-    var dragRatio by remember { mutableStateOf<Float?>(null) }
-    val shownRatio = dragRatio ?: position.progress.toFloat().coerceIn(0f, 1f)
-    Slider(
-        value = shownRatio,
-        onValueChange = { dragRatio = it },
-        onValueChangeFinished = {
-            dragRatio?.let { ratio ->
-                val duration = player.duration
-                if (duration != C.TIME_UNSET && duration > 0L) player.seekTo((ratio * duration).toLong())
-            }
-            dragRatio = null
-        },
-        modifier = modifier,
-    )
 }
