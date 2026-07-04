@@ -358,10 +358,12 @@ pub unsafe extern "C" fn bae_configure_diagnostics(
             source,
             app,
         );
-        let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-        let ids: coven::IdRef = Arc::new(coven::UuidProvider);
-        let diagnostics = Diagnostics::configure(config, clock, ids)
-            .map_err(|e| format!("diagnostics setup failed: {e}"))?;
+        let diagnostics = Diagnostics::configure(
+            config,
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::UuidProvider),
+        )
+        .map_err(|e| format!("diagnostics setup failed: {e}"))?;
         install_logging(diagnostics.clone())?;
         replace_diagnostics(diagnostics);
         Ok(())
