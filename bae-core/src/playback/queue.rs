@@ -452,12 +452,10 @@ impl PlaybackQueue {
     pub fn skip_to(&mut self, id: &QueueEntryId) -> Option<QueueEntry> {
         match self.locate(id) {
             Some(EntryLocation::Manual(pos)) => {
-                for _ in 0..pos {
-                    self.manual.pop_front();
-                }
                 let entry = self
                     .manual
-                    .pop_front()
+                    .drain(..=pos)
+                    .next_back()
                     .expect("locate reported a manual entry");
                 self.current = Some(entry.clone());
                 Some(entry)
