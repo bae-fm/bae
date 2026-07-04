@@ -46,11 +46,11 @@ impl ImportService {
             return Ok(None);
         }
 
-        // Determine which file is the cover: match by absolute path if provided
-        let cover_index = if let Some(selected_path) = cover_image_path {
+        // Determine which file is the cover: match by absolute path if provided.
+        let selected_cover = if let Some(selected_path) = cover_image_path {
             let found = image_files
                 .iter()
-                .position(|(f, _)| f.path.as_path() == selected_path);
+                .find(|(f, _)| f.path.as_path() == selected_path);
             if found.is_none() {
                 info!(
                     "Selected cover {:?} not found among images, using priority",
@@ -62,16 +62,12 @@ impl ImportService {
             None
         };
 
-        let cover_index = cover_index.unwrap_or_else(|| {
-            image_files.sort_by(|(_, a), (_, b)| {
-                let a_priority = Self::image_cover_priority(a);
-                let b_priority = Self::image_cover_priority(b);
-                a_priority.cmp(&b_priority)
-            });
-            0
+        let (cover_file, relative_path) = selected_cover.unwrap_or_else(|| {
+            image_files
+                .iter()
+                .min_by_key(|(_, relative_path)| Self::image_cover_priority(relative_path))
+                .expect("image_files is non-empty after earlier check")
         });
-
-        let (cover_file, relative_path) = &image_files[cover_index];
         let content_type = resolve_file_content_type(&cover_file.path)?;
         let source_url = format!("release://{}", relative_path);
 
