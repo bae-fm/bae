@@ -551,21 +551,7 @@ impl ImportService {
             .await
             .map_err(|e| format!("Failed to overwrite prior import: {e}"))?;
 
-        let PreparedMetadata {
-            db_album,
-            mut db_release,
-            db_tracks,
-            resolved_metadata,
-            existing_album_id,
-            remapped_track_artists,
-            remapped_album_artists,
-            work_graph,
-            remapped_release_artist_roles,
-            remapped_track_artist_roles,
-            identities,
-            album_title,
-            artist_name,
-        } = self
+        let mut prepared = self
             .reconcile_prepared_release(
                 parsed,
                 metadata_pairs,
@@ -581,8 +567,8 @@ impl ImportService {
         let emit_preparing = {
             let import_id = import_id.clone();
             let candidate_key = candidate_key.clone();
-            let album_title = album_title.clone();
-            let artist_name = artist_name.clone();
+            let album_title = prepared.album_title.clone();
+            let artist_name = prepared.artist_name.clone();
             let event_tx = self.event_tx.clone();
             move |step: PrepareStep| {
                 send_event(
@@ -603,11 +589,11 @@ impl ImportService {
         step_times.push(("resolve_metadata", last_step_start.elapsed()));
         last_step_start = std::time::Instant::now();
 
-        db_release.source_folder_name = folder
+        prepared.db_release.source_folder_name = folder
             .file_name()
             .and_then(|n| n.to_str())
             .map(|s| s.to_string());
-        db_release.content_hash = Some(content_hash);
+        prepared.db_release.content_hash = Some(content_hash);
 
         // Phase 0b: Remote cover art is downloaded through the
         // session-wide LRU cache. The UI may have pre-fetched the URL
@@ -650,7 +636,8 @@ impl ImportService {
         // `duration_ms` from the CUE sheet or a standalone-file probe. After
         // this point the DbTracks live inside `tracks_to_files`.
         emit_preparing(PrepareStep::ValidatingTracks);
-        let tracks_to_files = map_tracks_to_files(db_tracks, &categorized)?;
+        let tracks_to_files =
+            map_tracks_to_files(std::mem::take(&mut prepared.db_tracks), &categorized)?;
 
         // Resolve local cover path from discovered files
         let cover_image_path = match &selected_cover {
@@ -690,11 +677,11 @@ impl ImportService {
         emit_preparing(PrepareStep::SavingToDatabase);
 
         let metadata_now = library_manager.clock().now();
-        let db_metadata: Vec<DbReleaseMetadata> = resolved_metadata
+        let db_metadata: Vec<DbReleaseMetadata> = std::mem::take(&mut prepared.resolved_metadata)
             .into_iter()
             .map(|(src, json)| {
                 DbReleaseMetadata::new(
-                    &db_release.id,
+                    &prepared.db_release.id,
                     &src,
                     json,
                     library_manager.ids().new_id(),
@@ -702,11 +689,6 @@ impl ImportService {
                 )
             })
             .collect();
-
-        let album_id = existing_album_id
-            .as_deref()
-            .unwrap_or(&db_album.id)
-            .to_string();
 
         // Build the remote cover record + its bytes (no storage yet — the winning
         // cover's bytes are handed to coven's local store below, and its row is
@@ -716,7 +698,7 @@ impl ImportService {
                 let now = library_manager.clock().now();
                 Some((
                     crate::db::DbLibraryImage {
-                        id: db_release.id.clone(),
+                        id: prepared.db_release.id.clone(),
                         image_type: crate::db::LibraryImageType::Cover,
                         content_type,
                         file_size: bytes.len() as i64,
@@ -734,15 +716,14 @@ impl ImportService {
             } else {
                 None
             };
-        let remote_cover_set = remote_cover_image.is_some();
 
         step_times.push(("save_to_database", last_step_start.elapsed()));
         last_step_start = std::time::Instant::now();
 
         info!(
             "Prepared album '{}' (release: {}) with {} tracks",
-            db_album.title,
-            db_release.id,
+            prepared.db_album.title,
+            prepared.db_release.id,
             tracks_to_files.len()
         );
 
@@ -750,24 +731,15 @@ impl ImportService {
         self.run_import(
             &storage_mode,
             pin,
-            &mut db_release,
+            &mut prepared,
             &discovered_files,
             &tracks_to_files,
             cover_image_path.as_deref(),
             &import_id,
             &candidate_key,
-            remote_cover_set,
             remote_cover_image,
             embedded_cover,
             &db_metadata,
-            &remapped_track_artists,
-            &remapped_album_artists,
-            &work_graph,
-            &remapped_release_artist_roles,
-            &remapped_track_artist_roles,
-            existing_album_id.is_none().then_some(&db_album),
-            &album_id,
-            &identities,
         )
         .await?;
 
@@ -780,7 +752,7 @@ impl ImportService {
             .collect();
         info!(
             "Import timing for '{}': total={:.0?} [{}]",
-            album_title,
+            prepared.album_title,
             total_duration,
             step_summary.join(", ")
         );
@@ -796,8 +768,8 @@ impl ImportService {
                 let line = import_trace_line(
                     library_manager.clock().now().to_rfc3339(),
                     &import_id,
-                    &album_title,
-                    &artist_name,
+                    &prepared.album_title,
+                    &prepared.artist_name,
                     total_duration,
                     &step_times,
                 );
@@ -836,27 +808,33 @@ impl ImportService {
         &self,
         storage_mode: &StorageMode,
         pin: bool,
-        db_release: &mut DbRelease,
+        prepared: &mut PreparedMetadata,
         discovered_files: &[DiscoveredFile],
         tracks_to_files: &[TrackFile],
         cover_image_path: Option<&Path>,
         import_id: &str,
         candidate_key: &str,
-        remote_cover_set: bool,
         remote_cover_image: Option<(crate::db::DbLibraryImage, Vec<u8>)>,
         embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
         db_metadata: &[DbReleaseMetadata],
-        remapped_track_artists: &[crate::db::DbTrackArtist],
-        remapped_album_artists: &[crate::db::DbAlbumArtist],
-        work_graph: &ParsedWorkGraph,
-        remapped_release_artist_roles: &[crate::db::DbReleaseArtistRole],
-        remapped_track_artist_roles: &[crate::db::DbTrackArtistRole],
-        new_album: Option<&crate::db::DbAlbum>,
-        album_id: &str,
-        identities: &[crate::import::types::ReleaseIdentity],
     ) -> Result<(), String> {
         let library_manager = &self.library_manager;
         let total_files = discovered_files.len();
+        let PreparedMetadata {
+            db_album,
+            db_release,
+            existing_album_id,
+            remapped_track_artists,
+            remapped_album_artists,
+            work_graph,
+            remapped_release_artist_roles,
+            remapped_track_artist_roles,
+            identities,
+            ..
+        } = prepared;
+        let new_album = existing_album_id.is_none().then_some(&*db_album);
+        let album_id = existing_album_id.as_deref().unwrap_or(&db_album.id);
+        let has_remote_cover = remote_cover_image.is_some();
 
         self.emit_started(candidate_key, &db_release.id, import_id);
         info!(
@@ -995,7 +973,7 @@ impl ImportService {
             }
         }
 
-        let local_cover_image = if !remote_cover_set {
+        let local_cover_image = if !has_remote_cover {
             self.build_cover_image_record(&db_release.id, discovered_files, cover_image_path)?
         } else {
             None
@@ -1007,7 +985,7 @@ impl ImportService {
         // but no sidecar image still gets a cover, but a folder image always wins.
         let embedded_cover_image: Option<(crate::db::DbLibraryImage, Vec<u8>)> =
             match embedded_cover {
-                Some((bytes, content_type)) if !remote_cover_set && local_cover_image.is_none() => {
+                Some((bytes, content_type)) if !has_remote_cover && local_cover_image.is_none() => {
                     let now = library_manager.clock().now();
                     Some((
                         crate::db::DbLibraryImage {
