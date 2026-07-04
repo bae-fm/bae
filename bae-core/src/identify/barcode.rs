@@ -4,9 +4,10 @@
 //! identify only looks the codes up.
 
 use crate::db::LibraryStatus;
-use crate::discogs::DiscogsClient;
+use crate::discogs::client::{DiscogsClient, DiscogsSearchParams};
 use crate::import::cover_art::CoverArtArchiveClient;
-use crate::import::search::{search_discogs_by_barcode, search_mb_by_barcode, MetadataResult};
+use crate::import::search::{search_discogs, search_mb, MetadataResult};
+use crate::musicbrainz::ReleaseSearchParams;
 
 /// Union search: MB first, then Discogs. Returns the merged results (MB
 /// before Discogs), deduped on (source, release_id). Errors on MB bubble up
@@ -17,11 +18,25 @@ pub async fn lookup_barcode(
     barcode: &str,
     discogs_client: Option<&DiscogsClient>,
 ) -> Result<Vec<MetadataResult>, String> {
-    let mut combined: Vec<MetadataResult> =
-        search_mb_by_barcode(cover_art_archive, barcode.to_string()).await?;
+    let mut combined: Vec<MetadataResult> = search_mb(
+        cover_art_archive,
+        ReleaseSearchParams {
+            barcode: Some(barcode.to_string()),
+            ..Default::default()
+        },
+    )
+    .await?;
 
     if let Some(client) = discogs_client {
-        match search_discogs_by_barcode(client, barcode.to_string()).await {
+        match search_discogs(
+            client,
+            DiscogsSearchParams {
+                barcode: Some(barcode.to_string()),
+                ..Default::default()
+            },
+        )
+        .await
+        {
             Ok(mut discogs) => combined.append(&mut discogs),
             Err(e) => tracing::debug!("Discogs barcode search failed for {barcode}: {e}"),
         }

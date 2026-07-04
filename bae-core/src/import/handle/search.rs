@@ -1,5 +1,85 @@
 use super::*;
 
+enum ProviderSearchParams {
+    MusicBrainz(crate::musicbrainz::ReleaseSearchParams),
+    Discogs(crate::discogs::client::DiscogsSearchParams),
+}
+
+impl SearchQuery {
+    fn into_provider_params(self) -> ProviderSearchParams {
+        match self {
+            SearchQuery::General {
+                artist,
+                album,
+                source: MetadataSource::MusicBrainz,
+            } => ProviderSearchParams::MusicBrainz(mb_general_params(artist, album, None, None)),
+            SearchQuery::General {
+                artist,
+                album,
+                source: MetadataSource::Discogs,
+            } => ProviderSearchParams::Discogs(discogs_general_params(artist, album, None, None)),
+            SearchQuery::CatalogNumber {
+                catalog_number,
+                source: MetadataSource::MusicBrainz,
+            } => ProviderSearchParams::MusicBrainz(crate::musicbrainz::ReleaseSearchParams {
+                catalog_number: Some(catalog_number),
+                ..Default::default()
+            }),
+            SearchQuery::CatalogNumber {
+                catalog_number,
+                source: MetadataSource::Discogs,
+            } => ProviderSearchParams::Discogs(crate::discogs::client::DiscogsSearchParams {
+                catno: Some(catalog_number),
+                ..Default::default()
+            }),
+            SearchQuery::Barcode {
+                barcode,
+                source: MetadataSource::MusicBrainz,
+            } => ProviderSearchParams::MusicBrainz(crate::musicbrainz::ReleaseSearchParams {
+                barcode: Some(barcode),
+                ..Default::default()
+            }),
+            SearchQuery::Barcode {
+                barcode,
+                source: MetadataSource::Discogs,
+            } => ProviderSearchParams::Discogs(crate::discogs::client::DiscogsSearchParams {
+                barcode: Some(barcode),
+                ..Default::default()
+            }),
+        }
+    }
+}
+
+fn mb_general_params(
+    artist: String,
+    album: String,
+    year: Option<String>,
+    label: Option<String>,
+) -> crate::musicbrainz::ReleaseSearchParams {
+    crate::musicbrainz::ReleaseSearchParams {
+        artist: Some(artist),
+        album: Some(album),
+        year,
+        label,
+        ..Default::default()
+    }
+}
+
+fn discogs_general_params(
+    artist: String,
+    album: String,
+    year: Option<String>,
+    label: Option<String>,
+) -> crate::discogs::client::DiscogsSearchParams {
+    crate::discogs::client::DiscogsSearchParams {
+        artist: Some(artist),
+        release_title: Some(album),
+        year,
+        label,
+        ..Default::default()
+    }
+}
+
 impl ImportServiceHandle {
     /// Fetch raw cover-art bytes for `url`. The UI calls this when it
     /// needs to render a remote cover — the bytes are not threaded
@@ -30,52 +110,16 @@ impl ImportServiceHandle {
     ) -> Result<GroupedSearchResults, String> {
         use crate::db::LibraryCheck;
 
-        let results = match query {
-            SearchQuery::General {
-                artist,
-                album,
-                source,
-            } => match source {
-                MetadataSource::MusicBrainz => {
-                    self.search_musicbrainz(artist, album, None, None).await?
-                }
-                MetadataSource::Discogs => {
-                    let client = self.discogs_client()?;
-                    crate::import::search::search_discogs(&client, artist, album, None, None)
-                        .await
-                        .map_err(Self::discogs_search_error)?
-                }
-            },
-            SearchQuery::CatalogNumber {
-                catalog_number,
-                source,
-            } => match source {
-                MetadataSource::MusicBrainz => {
-                    crate::import::search::search_mb_by_catalog_number(
-                        &self.cover_art_archive,
-                        catalog_number,
-                    )
-                    .await?
-                }
-                MetadataSource::Discogs => {
-                    let client = self.discogs_client()?;
-                    crate::import::search::search_discogs_by_catalog_number(&client, catalog_number)
-                        .await
-                        .map_err(Self::discogs_search_error)?
-                }
-            },
-            SearchQuery::Barcode { barcode, source } => match source {
-                MetadataSource::MusicBrainz => {
-                    crate::import::search::search_mb_by_barcode(&self.cover_art_archive, barcode)
-                        .await?
-                }
-                MetadataSource::Discogs => {
-                    let client = self.discogs_client()?;
-                    crate::import::search::search_discogs_by_barcode(&client, barcode)
-                        .await
-                        .map_err(Self::discogs_search_error)?
-                }
-            },
+        let results = match query.into_provider_params() {
+            ProviderSearchParams::MusicBrainz(params) => {
+                crate::import::search::search_mb(&self.cover_art_archive, params).await?
+            }
+            ProviderSearchParams::Discogs(params) => {
+                let client = self.discogs_client()?;
+                crate::import::search::search_discogs(&client, params)
+                    .await
+                    .map_err(Self::discogs_search_error)?
+            }
         };
 
         let checks: Vec<LibraryCheck> = results.iter().map(LibraryCheck::from).collect();
@@ -119,9 +163,12 @@ impl ImportServiceHandle {
         label: Option<String>,
     ) -> Result<Vec<crate::import::search::MetadataResult>, String> {
         let client = self.discogs_client()?;
-        crate::import::search::search_discogs(&client, artist, album, year, label)
-            .await
-            .map_err(Self::discogs_search_error)
+        crate::import::search::search_discogs(
+            &client,
+            discogs_general_params(artist, album, year, label),
+        )
+        .await
+        .map_err(Self::discogs_search_error)
     }
 
     pub async fn search_musicbrainz(
@@ -131,12 +178,9 @@ impl ImportServiceHandle {
         year: Option<String>,
         label: Option<String>,
     ) -> Result<Vec<crate::import::search::MetadataResult>, String> {
-        crate::import::search::search_musicbrainz(
+        crate::import::search::search_mb(
             &self.cover_art_archive,
-            artist,
-            album,
-            year,
-            label,
+            mb_general_params(artist, album, year, label),
         )
         .await
     }

@@ -227,22 +227,11 @@ async fn musicbrainz_releases_to_metadata(
         .collect()
 }
 
-/// Search MusicBrainz for metadata matching given criteria.
-/// Includes cover art checks from the Cover Art Archive.
-pub async fn search_musicbrainz(
+/// Search MusicBrainz for metadata matching the provider params.
+pub async fn search_mb(
     cover_art_archive: &CoverArtArchiveClient,
-    artist: String,
-    album: String,
-    year: Option<String>,
-    label: Option<String>,
+    params: ReleaseSearchParams,
 ) -> Result<Vec<MetadataResult>, String> {
-    let params = ReleaseSearchParams {
-        artist: Some(artist),
-        album: Some(album),
-        year,
-        label,
-        ..Default::default()
-    };
     let releases = retry_with_backoff(3, "MusicBrainz search", || {
         musicbrainz::search_releases_with_params(&params)
     })
@@ -252,89 +241,11 @@ pub async fn search_musicbrainz(
     Ok(musicbrainz_releases_to_metadata(cover_art_archive, releases).await)
 }
 
-/// Search Discogs for metadata matching given criteria.
+/// Search Discogs for metadata matching the provider params.
 pub async fn search_discogs(
     client: &DiscogsClient,
-    artist: String,
-    album: String,
-    year: Option<String>,
-    label: Option<String>,
+    params: DiscogsSearchParams,
 ) -> Result<Vec<MetadataResult>, DiscogsError> {
-    let params = DiscogsSearchParams {
-        artist: Some(artist),
-        release_title: Some(album),
-        year,
-        label,
-        ..Default::default()
-    };
-    let results = client.search_with_params(&params).await?;
-    Ok(results
-        .into_iter()
-        .map(discogs_search_result_to_metadata)
-        .collect())
-}
-
-/// Search by catalog number on MusicBrainz.
-pub async fn search_mb_by_catalog_number(
-    cover_art_archive: &CoverArtArchiveClient,
-    catalog_number: String,
-) -> Result<Vec<MetadataResult>, String> {
-    let params = ReleaseSearchParams {
-        catalog_number: Some(catalog_number),
-        ..Default::default()
-    };
-    let releases = retry_with_backoff(3, "MusicBrainz catalog search", || {
-        musicbrainz::search_releases_with_params(&params)
-    })
-    .await
-    .map_err(|e| format!("MusicBrainz search failed: {e}"))?;
-
-    Ok(musicbrainz_releases_to_metadata(cover_art_archive, releases).await)
-}
-
-/// Search by catalog number on Discogs.
-pub async fn search_discogs_by_catalog_number(
-    client: &DiscogsClient,
-    catalog_number: String,
-) -> Result<Vec<MetadataResult>, DiscogsError> {
-    let params = DiscogsSearchParams {
-        catno: Some(catalog_number),
-        ..Default::default()
-    };
-    let results = client.search_with_params(&params).await?;
-    Ok(results
-        .into_iter()
-        .map(discogs_search_result_to_metadata)
-        .collect())
-}
-
-/// Search by barcode on MusicBrainz.
-pub async fn search_mb_by_barcode(
-    cover_art_archive: &CoverArtArchiveClient,
-    barcode: String,
-) -> Result<Vec<MetadataResult>, String> {
-    let params = ReleaseSearchParams {
-        barcode: Some(barcode),
-        ..Default::default()
-    };
-    let releases = retry_with_backoff(3, "MusicBrainz barcode search", || {
-        musicbrainz::search_releases_with_params(&params)
-    })
-    .await
-    .map_err(|e| format!("MusicBrainz search failed: {e}"))?;
-
-    Ok(musicbrainz_releases_to_metadata(cover_art_archive, releases).await)
-}
-
-/// Search by barcode on Discogs.
-pub async fn search_discogs_by_barcode(
-    client: &DiscogsClient,
-    barcode: String,
-) -> Result<Vec<MetadataResult>, DiscogsError> {
-    let params = DiscogsSearchParams {
-        barcode: Some(barcode),
-        ..Default::default()
-    };
     let results = client.search_with_params(&params).await?;
     Ok(results
         .into_iter()
