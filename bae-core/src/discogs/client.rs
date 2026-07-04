@@ -2,7 +2,7 @@ use crate::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, D
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
 use lru::LruCache;
-use reqwest::{Client, Error as ReqwestError};
+use reqwest::{Client, Error as ReqwestError, Response, StatusCode};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
@@ -85,6 +85,22 @@ impl DiscogsError {
     /// can prompt the user to re-enter it.
     pub fn is_invalid_api_key(&self) -> bool {
         matches!(self, DiscogsError::InvalidApiKey)
+    }
+}
+
+fn classify_discogs_response(response: Response) -> Result<Response, DiscogsError> {
+    let status = response.status();
+    if status.is_success() {
+        return Ok(response);
+    }
+
+    match status {
+        StatusCode::NOT_FOUND => Err(DiscogsError::NotFound),
+        StatusCode::TOO_MANY_REQUESTS => Err(DiscogsError::RateLimit),
+        StatusCode::UNAUTHORIZED => Err(DiscogsError::InvalidApiKey),
+        _ => Err(DiscogsError::Request(
+            response.error_for_status().unwrap_err(),
+        )),
     }
 }
 /// Discogs search response wrapper
@@ -406,17 +422,7 @@ impl DiscogsClient {
             .send()
             .await?;
 
-        if response.status() == 401 {
-            Err(DiscogsError::InvalidApiKey)
-        } else if response.status() == 429 {
-            Err(DiscogsError::RateLimit)
-        } else if response.status().is_success() {
-            Ok(())
-        } else {
-            Err(DiscogsError::Request(
-                response.error_for_status().unwrap_err(),
-            ))
-        }
+        classify_discogs_response(response).map(|_| ())
     }
 
     /// Flexible search using any combination of supported parameters
@@ -463,40 +469,34 @@ impl DiscogsClient {
         let response = self.client.get(&url).query(&query_params).send().await?;
         let status = response.status();
         debug!("Response status: {}", status);
-        if response.status().is_success() {
-            let search_response: SearchResponse = response.json().await?;
-            info!(
-                "Discogs search returned {} total result(s)",
-                search_response.results.len()
+        let response = classify_discogs_response(response).inspect_err(|error| match error {
+            DiscogsError::RateLimit => warn!("Discogs rate limit exceeded"),
+            DiscogsError::InvalidApiKey => warn!("Discogs invalid API key"),
+            DiscogsError::NotFound => warn!("Discogs API not found: {}", status),
+            DiscogsError::Request(_) => warn!("Discogs API error: {}", status),
+            DiscogsError::Serialization(_) => {}
+        })?;
+        let search_response: SearchResponse = response.json().await?;
+        info!(
+            "Discogs search returned {} total result(s)",
+            search_response.results.len()
+        );
+        for (i, result) in search_response.results.iter().enumerate().take(3) {
+            debug!(
+                "  Raw result {}: {} (type: {}, master_id: {:?})",
+                i + 1,
+                result.title,
+                result.result_type,
+                result.master_id
             );
-            for (i, result) in search_response.results.iter().enumerate().take(3) {
-                debug!(
-                    "  Raw result {}: {} (type: {}, master_id: {:?})",
-                    i + 1,
-                    result.title,
-                    result.result_type,
-                    result.master_id
-                );
-            }
-            let releases: Vec<_> = search_response
-                .results
-                .into_iter()
-                .filter(|r| r.result_type == "release")
-                .collect();
-            info!("  → {} release(s) after filtering", releases.len());
-            Ok(releases)
-        } else if response.status() == 429 {
-            warn!("Discogs rate limit exceeded");
-            Err(DiscogsError::RateLimit)
-        } else if response.status() == 401 {
-            warn!("Discogs invalid API key");
-            Err(DiscogsError::InvalidApiKey)
-        } else {
-            warn!("Discogs API error: {}", status);
-            Err(DiscogsError::Request(
-                response.error_for_status().unwrap_err(),
-            ))
         }
+        let releases: Vec<_> = search_response
+            .results
+            .into_iter()
+            .filter(|r| r.result_type == "release")
+            .collect();
+        info!("  → {} release(s) after filtering", releases.len());
+        Ok(releases)
     }
     /// Get detailed information about a specific release.
     ///
@@ -521,26 +521,15 @@ impl DiscogsClient {
         let mut params = HashMap::new();
         params.insert("token", &self.api_key);
         let response = self.client.get(&url).query(&params).send().await?;
-        if response.status().is_success() {
-            let raw_json = response.text().await.map_err(DiscogsError::Request)?;
-            let release = parse_discogs_release_json(&raw_json)?;
-            let value = (release, raw_json);
-            release_cache()
-                .lock()
-                .expect("Discogs release cache mutex poisoned")
-                .put(id.to_string(), value.clone());
-            Ok(value)
-        } else if response.status() == 404 {
-            Err(DiscogsError::NotFound)
-        } else if response.status() == 429 {
-            Err(DiscogsError::RateLimit)
-        } else if response.status() == 401 {
-            Err(DiscogsError::InvalidApiKey)
-        } else {
-            Err(DiscogsError::Request(
-                response.error_for_status().unwrap_err(),
-            ))
-        }
+        let response = classify_discogs_response(response)?;
+        let raw_json = response.text().await.map_err(DiscogsError::Request)?;
+        let release = parse_discogs_release_json(&raw_json)?;
+        let value = (release, raw_json);
+        release_cache()
+            .lock()
+            .expect("Discogs release cache mutex poisoned")
+            .put(id.to_string(), value.clone());
+        Ok(value)
     }
 
     /// Fetch a Discogs master release to get the original release year.
@@ -570,26 +559,15 @@ impl DiscogsClient {
         params.insert("token", &self.api_key);
         let response = self.client.get(&url).query(&params).send().await?;
 
-        if response.status().is_success() {
-            let raw_json = response.text().await.map_err(DiscogsError::Request)?;
-            let year = parse_discogs_master_year(&raw_json)?;
-            let value = (year, raw_json);
-            master_cache()
-                .lock()
-                .expect("Discogs master cache mutex poisoned")
-                .put(master_id.to_string(), value.clone());
-            Ok(value)
-        } else if response.status() == 404 {
-            Err(DiscogsError::NotFound)
-        } else if response.status() == 429 {
-            Err(DiscogsError::RateLimit)
-        } else if response.status() == 401 {
-            Err(DiscogsError::InvalidApiKey)
-        } else {
-            Err(DiscogsError::Request(
-                response.error_for_status().unwrap_err(),
-            ))
-        }
+        let response = classify_discogs_response(response)?;
+        let raw_json = response.text().await.map_err(DiscogsError::Request)?;
+        let year = parse_discogs_master_year(&raw_json)?;
+        let value = (year, raw_json);
+        master_cache()
+            .lock()
+            .expect("Discogs master cache mutex poisoned")
+            .put(master_id.to_string(), value.clone());
+        Ok(value)
     }
 
     /// Get the primary image URL for a Discogs artist
@@ -605,38 +583,31 @@ impl DiscogsClient {
         let mut params = std::collections::HashMap::new();
         params.insert("token", &self.api_key);
         let response = self.client.get(&url).query(&params).send().await?;
+        let response = match classify_discogs_response(response) {
+            Ok(response) => response,
+            Err(DiscogsError::NotFound) => return Ok(None),
+            Err(error) => return Err(error),
+        };
 
-        if response.status().is_success() {
-            let json: serde_json::Value = response.json().await.map_err(DiscogsError::Request)?;
-            let image_url = json
-                .get("images")
-                .and_then(|images| images.as_array())
-                .and_then(|images| {
-                    images
-                        .iter()
-                        .find(|img| {
-                            img.get("type")
-                                .and_then(|t| t.as_str())
-                                .map(|t| t == "primary")
-                                .unwrap_or(false)
-                        })
-                        .or_else(|| images.first())
-                })
-                .and_then(|img| img.get("uri").and_then(|u| u.as_str()))
-                .map(|s| s.to_string());
+        let json: serde_json::Value = response.json().await.map_err(DiscogsError::Request)?;
+        let image_url = json
+            .get("images")
+            .and_then(|images| images.as_array())
+            .and_then(|images| {
+                images
+                    .iter()
+                    .find(|img| {
+                        img.get("type")
+                            .and_then(|t| t.as_str())
+                            .map(|t| t == "primary")
+                            .unwrap_or(false)
+                    })
+                    .or_else(|| images.first())
+            })
+            .and_then(|img| img.get("uri").and_then(|u| u.as_str()))
+            .map(|s| s.to_string());
 
-            Ok(image_url)
-        } else if response.status() == 404 {
-            Ok(None)
-        } else if response.status() == 429 {
-            Err(DiscogsError::RateLimit)
-        } else if response.status() == 401 {
-            Err(DiscogsError::InvalidApiKey)
-        } else {
-            Err(DiscogsError::Request(
-                response.error_for_status().unwrap_err(),
-            ))
-        }
+        Ok(image_url)
     }
 }
 
