@@ -19,7 +19,9 @@ pub mod sparse_buffer;
 pub mod track_stream;
 
 #[cfg(feature = "test-utils")]
-pub use audio_output::{wait_for_samples, CaptureAudioOutput, RealtimeProbeOutput};
+pub use audio_output::{
+    wait_for_samples, CaptureAudioOutput, RealtimeCaptureAudioOutput, RealtimeProbeOutput,
+};
 pub use audio_output::{
     AudioError, AudioOutput, AudioState, AudioStream, CompletionEvent, PositionEvent,
 };

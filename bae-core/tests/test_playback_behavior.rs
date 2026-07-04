@@ -668,7 +668,8 @@ impl CueFlacTestFixture {
     /// but a track can fully decode and gaplessly advance before a follow-up
     /// command lands — use `with_realtime_capture` for seek/pause tests.
     async fn with_capture() -> Result<Self, Box<dyn std::error::Error>> {
-        Self::with_capture_paced(false).await
+        let (capture_output, capture_stream_rx) = bae_core::playback::CaptureAudioOutput::new();
+        Self::with_capture_output(Box::new(capture_output), capture_stream_rx).await
     }
 
     /// Real-time-paced capture: the drain sleeps each buffer's wall-clock
@@ -676,10 +677,15 @@ impl CueFlacTestFixture {
     /// whole tracks ahead. Required for tests that play, then issue a command
     /// (seek, pause) that must land on the track under test.
     async fn with_realtime_capture() -> Result<Self, Box<dyn std::error::Error>> {
-        Self::with_capture_paced(true).await
+        let (capture_output, capture_stream_rx) =
+            bae_core::playback::RealtimeCaptureAudioOutput::new();
+        Self::with_capture_output(Box::new(capture_output), capture_stream_rx).await
     }
 
-    async fn with_capture_paced(realtime: bool) -> Result<Self, Box<dyn std::error::Error>> {
+    async fn with_capture_output(
+        capture_output: Box<dyn bae_core::playback::AudioOutput>,
+        capture_stream_rx: tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         tracing_init();
         let temp_dir = TempDir::new()?;
         let db_path = temp_dir.path().join("test.db");
@@ -742,16 +748,11 @@ impl CueFlacTestFixture {
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert_eq!(track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
 
-        let (capture_output, capture_stream_rx) = if realtime {
-            bae_core::playback::CaptureAudioOutput::new_realtime()
-        } else {
-            bae_core::playback::CaptureAudioOutput::new()
-        };
         let playback_handle = bae_core::playback::PlaybackService::start_with_output(
             library_manager.clone(),
             runtime_handle,
             100,
-            Box::new(capture_output),
+            capture_output,
         );
         let progress_rx = playback_handle.subscribe_progress();
 

@@ -329,52 +329,223 @@ pub trait AudioOutput: Send + 'static {
 /// the decoder produced them.
 #[cfg(feature = "test-utils")]
 pub struct CaptureAudioOutput {
-    controls: AudioOutputControls,
-    notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>,
-    /// When true, the drain paces itself to real time (sleeping one buffer's
-    /// wall-clock duration after each pull) instead of draining at full speed.
-    /// Full-speed draining lets the decoder run a whole track and gaplessly
-    /// advance before a test can issue a follow-up command (e.g. a seek); a
-    /// real-time drain keeps playback on the track under test, the way the cpal
-    /// sink does in production. Tests that just want samples fast use `new()`.
-    realtime: bool,
+    core: CaptureOutputCore,
+}
+
+/// Audio output that captures raw f32 samples and paces pulls to real time.
+///
+/// Each call to `create_stream` mints a fresh capture buffer; the receiver
+/// returned from `new()` yields one `Arc<Mutex<Vec<f32>>>` per stream in
+/// creation order. Volume is NOT applied — samples are captured exactly as
+/// the decoder produced them.
+#[cfg(feature = "test-utils")]
+pub struct RealtimeCaptureAudioOutput {
+    core: CaptureOutputCore,
 }
 
 #[cfg(feature = "test-utils")]
-impl CaptureAudioOutput {
-    /// Returns the output and a receiver that yields one buffer per
-    /// `create_stream` call, in creation order.
-    pub fn new() -> (
-        Self,
-        tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>,
-    ) {
-        Self::with_pacing(false)
-    }
+struct CaptureOutputCore {
+    controls: AudioOutputControls,
+    notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>,
+}
 
-    /// Like `new()`, but the drain paces to real time. Use for tests whose
-    /// follow-up commands (seek, pause) must land on the track being played
-    /// rather than racing a full-speed decode that has already advanced.
-    pub fn new_realtime() -> (
-        Self,
-        tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>,
-    ) {
-        Self::with_pacing(true)
-    }
+#[cfg(feature = "test-utils")]
+type PreparedCaptureStream = (AudioOutputControls, Arc<Mutex<Vec<f32>>>);
 
-    fn with_pacing(
-        realtime: bool,
-    ) -> (
+#[cfg(feature = "test-utils")]
+impl CaptureOutputCore {
+    fn new() -> (
         Self,
         tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>,
     ) {
         let (notify_tx, notify_rx) = tokio::sync::mpsc::unbounded_channel();
-        let output = Self {
+        let core = Self {
             controls: AudioOutputControls::new(1.0),
             notify_tx,
-            realtime,
         };
-        (output, notify_rx)
+        (core, notify_rx)
     }
+
+    fn prepare_stream(&self) -> Result<PreparedCaptureStream, AudioError> {
+        let captured = Arc::new(Mutex::new(Vec::<f32>::new()));
+        self.notify_tx
+            .send(captured.clone())
+            .map_err(|_| AudioError::StreamBuildError("capture receiver dropped".to_string()))?;
+        Ok((self.controls.clone(), captured))
+    }
+
+    fn set_state(&self, new_state: AudioState) {
+        self.controls.set_state(new_state);
+    }
+
+    fn get_state(&self) -> AudioState {
+        self.controls.get_state()
+    }
+}
+
+#[cfg(feature = "test-utils")]
+fn spawn_capture_stream<F>(
+    controls: AudioOutputControls,
+    captured: Arc<Mutex<Vec<f32>>>,
+    source: Arc<Mutex<PlaybackSource>>,
+    position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
+    completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+    position_update_interval_ms: u32,
+    mut after_samples: F,
+) -> (
+    Arc<std::sync::atomic::AtomicBool>,
+    std::thread::JoinHandle<()>,
+)
+where
+    F: FnMut(usize) + Send + 'static,
+{
+    let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let stop_clone = stop.clone();
+
+    let thread = std::thread::spawn(move || {
+        let mut buf = vec![0.0f32; 4096];
+        let mut drain = AudioDrain::new(
+            controls,
+            source,
+            position_tx,
+            completion_tx,
+            position_update_interval_ms,
+        );
+
+        loop {
+            if stop_clone.load(Ordering::Acquire) {
+                break;
+            }
+
+            match drain.drain_iteration(&mut buf, false, false, None) {
+                DrainStatus::Idle => {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                    continue;
+                }
+                DrainStatus::Completed => {
+                    break;
+                }
+                DrainStatus::Samples { read } => {
+                    if let Ok(mut guard) = captured.lock() {
+                        guard.extend_from_slice(&buf[..read]);
+                    } else {
+                        break;
+                    }
+
+                    after_samples(read);
+                }
+            }
+        }
+    });
+
+    (stop, thread)
+}
+
+#[cfg(feature = "test-utils")]
+macro_rules! impl_capture_output_constructor {
+    ($type:ty) => {
+        impl $type {
+            /// Returns the output and a receiver that yields one buffer per
+            /// `create_stream` call, in creation order.
+            pub fn new() -> (
+                Self,
+                tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>,
+            ) {
+                let (core, notify_rx) = CaptureOutputCore::new();
+                (Self { core }, notify_rx)
+            }
+        }
+    };
+}
+
+#[cfg(feature = "test-utils")]
+macro_rules! capture_output_control_methods {
+    () => {
+        fn set_state(&self, new_state: AudioState) {
+            self.core.set_state(new_state);
+        }
+
+        fn get_state(&self) -> AudioState {
+            self.core.get_state()
+        }
+
+        fn set_volume(&self, _volume: f32) {
+            // Capture output ignores volume — raw samples
+        }
+
+        fn get_volume(&self) -> f32 {
+            1.0 // Capture output has no volume control
+        }
+    };
+}
+
+#[cfg(feature = "test-utils")]
+impl_capture_output_constructor!(CaptureAudioOutput);
+
+#[cfg(feature = "test-utils")]
+impl_capture_output_constructor!(RealtimeCaptureAudioOutput);
+
+#[cfg(feature = "test-utils")]
+impl AudioOutput for CaptureAudioOutput {
+    fn create_stream(
+        &mut self,
+        source: Arc<Mutex<PlaybackSource>>,
+        _source_sample_rate: u32,
+        _source_channels: u32,
+        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
+        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+        position_update_interval_ms: u32,
+    ) -> Result<Box<dyn AudioStream>, AudioError> {
+        let (controls, captured) = self.core.prepare_stream()?;
+        let (stop, thread) = spawn_capture_stream(
+            controls,
+            captured,
+            source,
+            position_tx,
+            completion_tx,
+            position_update_interval_ms,
+            |_| {},
+        );
+
+        Ok(Box::new(CaptureStream {
+            stop,
+            thread: Some(thread),
+        }))
+    }
+
+    capture_output_control_methods!();
+}
+
+#[cfg(feature = "test-utils")]
+impl AudioOutput for RealtimeCaptureAudioOutput {
+    fn create_stream(
+        &mut self,
+        source: Arc<Mutex<PlaybackSource>>,
+        source_sample_rate: u32,
+        source_channels: u32,
+        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
+        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+        position_update_interval_ms: u32,
+    ) -> Result<Box<dyn AudioStream>, AudioError> {
+        let (controls, captured) = self.core.prepare_stream()?;
+        let channels = source_channels.max(1);
+        let (stop, thread) = spawn_capture_stream(
+            controls,
+            captured,
+            source,
+            position_tx,
+            completion_tx,
+            position_update_interval_ms,
+            move |read| sleep_realtime_buffer(read, channels, source_sample_rate),
+        );
+
+        Ok(Box::new(CaptureStream {
+            stop,
+            thread: Some(thread),
+        }))
+    }
+
+    capture_output_control_methods!();
 }
 
 /// Polls `buffer` every 50 ms until it holds at least `at_least` samples or
@@ -423,87 +594,6 @@ impl Drop for CaptureStream {
                 tracing::warn!("capture audio thread panicked during shutdown: {:?}", e);
             }
         }
-    }
-}
-
-#[cfg(feature = "test-utils")]
-impl AudioOutput for CaptureAudioOutput {
-    fn create_stream(
-        &mut self,
-        source: Arc<Mutex<PlaybackSource>>,
-        source_sample_rate: u32,
-        source_channels: u32,
-        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
-        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
-        position_update_interval_ms: u32,
-    ) -> Result<Box<dyn AudioStream>, AudioError> {
-        let captured = Arc::new(Mutex::new(Vec::<f32>::new()));
-        let _ = self.notify_tx.send(captured.clone());
-
-        let controls = self.controls.clone();
-        let realtime = self.realtime;
-        let channels = source_channels.max(1);
-        let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let stop_clone = stop.clone();
-
-        let thread = std::thread::spawn(move || {
-            let mut buf = vec![0.0f32; 4096];
-            let mut drain = AudioDrain::new(
-                controls,
-                source,
-                position_tx,
-                completion_tx,
-                position_update_interval_ms,
-            );
-
-            loop {
-                if stop_clone.load(Ordering::Acquire) {
-                    break;
-                }
-
-                match drain.drain_iteration(&mut buf, false, false, None) {
-                    DrainStatus::Idle => {
-                        std::thread::sleep(std::time::Duration::from_millis(1));
-                        continue;
-                    }
-                    DrainStatus::Completed => {
-                        break;
-                    }
-                    DrainStatus::Samples { read } => {
-                        if let Ok(mut guard) = captured.lock() {
-                            guard.extend_from_slice(&buf[..read]);
-                        } else {
-                            break;
-                        }
-
-                        if realtime {
-                            sleep_realtime_buffer(read, channels, source_sample_rate);
-                        }
-                    }
-                }
-            }
-        });
-
-        Ok(Box::new(CaptureStream {
-            stop,
-            thread: Some(thread),
-        }))
-    }
-
-    fn set_state(&self, new_state: AudioState) {
-        self.controls.set_state(new_state);
-    }
-
-    fn get_state(&self) -> AudioState {
-        self.controls.get_state()
-    }
-
-    fn set_volume(&self, _volume: f32) {
-        // Capture output ignores volume — raw samples
-    }
-
-    fn get_volume(&self) -> f32 {
-        1.0 // Capture output has no volume control
     }
 }
 
