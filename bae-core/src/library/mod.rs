@@ -47,14 +47,27 @@ fn library_dir_path(app_dir: &Path, library_id: &str) -> PathBuf {
     app_dir.join("libraries").join(library_id)
 }
 
-fn restore_error(error: impl ToString) -> RestoreFromCodeError {
-    RestoreFromCodeError::Restore(error.to_string())
-}
-
 struct CodeOperationCancel {
     token: CancellationToken,
     library_dir: PathBuf,
     library_dir_existed: bool,
+}
+
+#[derive(Debug, thiserror::Error)]
+enum LibraryCodeOperationError {
+    #[error("operation cancelled")]
+    Cancelled,
+    #[error("{0}")]
+    Failed(String),
+}
+
+impl From<LibraryCodeOperationError> for RestoreFromCodeError {
+    fn from(error: LibraryCodeOperationError) -> Self {
+        match error {
+            LibraryCodeOperationError::Cancelled => RestoreFromCodeError::Cancelled,
+            LibraryCodeOperationError::Failed(error) => RestoreFromCodeError::Restore(error),
+        }
+    }
 }
 
 /// Create a new library with an optional name, and set it as active.
@@ -139,7 +152,7 @@ pub async fn restore_from_code(
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
-    restore_from_code_with_cancel(code, oauth_tokens, cloudkit_ops, None, on_status)
+    restore_from_code_inner(code, oauth_tokens, cloudkit_ops, None, on_status)
         .await
         .map_err(|e| e.to_string())
 }
@@ -151,50 +164,9 @@ pub async fn restore_from_code_cancellable(
     cancel: CancellationToken,
     on_status: impl Fn(&str),
 ) -> Result<Config, RestoreFromCodeError> {
-    restore_from_code_with_cancel(code, oauth_tokens, cloudkit_ops, Some(cancel), on_status).await
-}
-
-async fn restore_from_code_with_cancel(
-    code: &str,
-    oauth_tokens: Option<coven::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
-    cancel: Option<CancellationToken>,
-    on_status: impl Fn(&str),
-) -> Result<Config, RestoreFromCodeError> {
-    let app_dir = crate::config::bae_dir().map_err(restore_error)?;
-    let cancel = prepare_code_operation_cancel(
-        code,
-        &app_dir,
-        cancel,
-        |code| {
-            crate::sync::decode_restore_code_info(code)
-                .map(|info| info.library_id)
-                .map_err(|e| e.to_string())
-        },
-        restore_error,
-    )?;
-    let synced_tables = crate::sync::synced_tables();
-    let migrations = crate::migrations::all();
-
-    let restore = crate::sync::restore_from_code(
-        code,
-        &synced_tables,
-        &migrations,
-        oauth_tokens,
-        cloudkit_ops,
-        &app_dir,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        on_status,
-    );
-    run_code_operation(
-        restore,
-        cancel,
-        restore_error,
-        RestoreFromCodeError::Restore,
-        || RestoreFromCodeError::Cancelled,
-    )
-    .await
+    restore_from_code_inner(code, oauth_tokens, cloudkit_ops, Some(cancel), on_status)
+        .await
+        .map_err(RestoreFromCodeError::from)
 }
 
 /// Remove the library directory a cancelled restore/join left partially built.
@@ -222,8 +194,13 @@ pub enum JoinFromCodeError {
     Join(String),
 }
 
-fn join_error(error: impl ToString) -> JoinFromCodeError {
-    JoinFromCodeError::Join(error.to_string())
+impl From<LibraryCodeOperationError> for JoinFromCodeError {
+    fn from(error: LibraryCodeOperationError) -> Self {
+        match error {
+            LibraryCodeOperationError::Cancelled => JoinFromCodeError::Cancelled,
+            LibraryCodeOperationError::Failed(error) => JoinFromCodeError::Join(error),
+        }
+    }
 }
 
 /// Join a shared library from an invite code. Wraps coven's
@@ -236,7 +213,7 @@ pub async fn join_from_code(
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
-    join_from_code_with_cancel(code, oauth_tokens, cloudkit_ops, None, on_status)
+    join_from_code_inner(code, oauth_tokens, cloudkit_ops, None, on_status)
         .await
         .map_err(|e| e.to_string())
 }
@@ -248,45 +225,139 @@ pub async fn join_from_code_cancellable(
     cancel: CancellationToken,
     on_status: impl Fn(&str),
 ) -> Result<Config, JoinFromCodeError> {
-    join_from_code_with_cancel(code, oauth_tokens, cloudkit_ops, Some(cancel), on_status).await
+    join_from_code_inner(code, oauth_tokens, cloudkit_ops, Some(cancel), on_status)
+        .await
+        .map_err(JoinFromCodeError::from)
 }
 
-async fn join_from_code_with_cancel(
+async fn restore_from_code_inner(
     code: &str,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: Option<CancellationToken>,
     on_status: impl Fn(&str),
-) -> Result<Config, JoinFromCodeError> {
-    let app_dir = crate::config::bae_dir().map_err(join_error)?;
+) -> Result<Config, LibraryCodeOperationError> {
+    run_library_code_operation(
+        code,
+        oauth_tokens,
+        cloudkit_ops,
+        cancel,
+        on_status,
+        restore_code_library_id,
+        |code, app_dir, synced_tables, migrations, oauth_tokens, cloudkit_ops, on_status| async move {
+            crate::sync::restore_from_code(
+                &code,
+                &synced_tables,
+                &migrations,
+                oauth_tokens,
+                cloudkit_ops,
+                &app_dir,
+                std::sync::Arc::new(coven::SystemClock),
+                std::sync::Arc::new(coven::UuidProvider),
+                on_status,
+            )
+            .await
+        },
+    )
+    .await
+}
+
+async fn join_from_code_inner(
+    code: &str,
+    oauth_tokens: Option<coven::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+    cancel: Option<CancellationToken>,
+    on_status: impl Fn(&str),
+) -> Result<Config, LibraryCodeOperationError> {
+    run_library_code_operation(
+        code,
+        oauth_tokens,
+        cloudkit_ops,
+        cancel,
+        on_status,
+        invite_code_library_id,
+        |code, app_dir, synced_tables, migrations, oauth_tokens, cloudkit_ops, on_status| async move {
+            crate::sync::join_from_invite_code(
+                &code,
+                &app_dir,
+                &synced_tables,
+                &migrations,
+                oauth_tokens,
+                cloudkit_ops,
+                std::sync::Arc::new(coven::SystemClock),
+                std::sync::Arc::new(coven::UuidProvider),
+                on_status,
+            )
+            .await
+        },
+    )
+    .await
+}
+
+fn restore_code_library_id(code: &str) -> Result<String, String> {
+    crate::sync::decode_restore_code_info(code)
+        .map(|info| info.library_id)
+        .map_err(|e| e.to_string())
+}
+
+fn invite_code_library_id(code: &str) -> Result<String, String> {
+    crate::sync::decode_invite_code_info(code)
+        .map(|info| info.library_id)
+        .map_err(|e| e.to_string())
+}
+
+async fn run_library_code_operation<Decode, Build, Operation, OperationError, OnStatus>(
+    code: &str,
+    oauth_tokens: Option<coven::OAuthTokens>,
+    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+    cancel: Option<CancellationToken>,
+    on_status: OnStatus,
+    decode_library_id: Decode,
+    build_operation: Build,
+) -> Result<Config, LibraryCodeOperationError>
+where
+    Decode: FnOnce(&str) -> Result<String, String>,
+    Build: FnOnce(
+        String,
+        PathBuf,
+        Vec<coven::SyncedTable>,
+        Vec<coven::Migration>,
+        Option<coven::OAuthTokens>,
+        Option<Arc<dyn coven::CloudKitOps>>,
+        OnStatus,
+    ) -> Operation,
+    Operation: Future<Output = Result<coven::Config, OperationError>>,
+    OperationError: ToString,
+    OnStatus: Fn(&str),
+{
+    let app_dir =
+        crate::config::bae_dir().map_err(|e| LibraryCodeOperationError::Failed(e.to_string()))?;
     let cancel = prepare_code_operation_cancel(
         code,
         &app_dir,
         cancel,
-        |code| {
-            crate::sync::decode_invite_code_info(code)
-                .map(|info| info.library_id)
-                .map_err(|e| e.to_string())
-        },
-        join_error,
+        decode_library_id,
+        LibraryCodeOperationError::Failed,
     )?;
     let synced_tables = crate::sync::synced_tables();
     let migrations = crate::migrations::all();
-
-    let join = crate::sync::join_from_invite_code(
-        code,
-        &app_dir,
-        &synced_tables,
-        &migrations,
+    let operation = build_operation(
+        code.to_string(),
+        app_dir,
+        synced_tables,
+        migrations,
         oauth_tokens,
         cloudkit_ops,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
         on_status,
     );
-    run_code_operation(join, cancel, join_error, JoinFromCodeError::Join, || {
-        JoinFromCodeError::Cancelled
-    })
+
+    run_code_operation(
+        operation,
+        cancel,
+        |error| LibraryCodeOperationError::Failed(error.to_string()),
+        LibraryCodeOperationError::Failed,
+        || LibraryCodeOperationError::Cancelled,
+    )
     .await
 }
 
