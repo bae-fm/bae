@@ -155,6 +155,48 @@ fn extract_log_toc_sectors(log_content: &str) -> Result<Vec<(i32, i32)>, Metadat
 
     Ok(track_sectors)
 }
+
+fn discid_from_raw_offsets(
+    method_label: &str,
+    raw_track_sectors: &[i32],
+    raw_leadout_sector: i32,
+    leadout_source: &str,
+) -> Result<String, MetadataDetectionError> {
+    let track_offsets: Vec<i32> = raw_track_sectors
+        .iter()
+        .map(|sector| sector + 150)
+        .collect();
+    let lead_out_sectors = raw_leadout_sector + 150;
+    debug!(
+        "{method_label} raw track start sectors before adding 150: {:?}",
+        raw_track_sectors
+    );
+    debug!("{method_label} raw lead-out sector {leadout_source}: {raw_leadout_sector}");
+    debug!(
+        "{method_label} lead-out offset: {lead_out_sectors} sectors (raw: {raw_leadout_sector} + 150)"
+    );
+
+    let mut offsets = Vec::with_capacity(track_offsets.len() + 1);
+    offsets.push(lead_out_sectors);
+    offsets.extend_from_slice(&track_offsets);
+
+    debug!(
+        "{method_label} DiscID offsets: first_track=1, last_track={}, offsets={:?}",
+        track_offsets.len(),
+        offsets
+    );
+
+    let disc = discid::DiscId::put(1, &offsets).map_err(|e| {
+        MetadataDetectionError::Io(std::io::Error::other(format!(
+            "Failed to calculate DiscID: {}",
+            e
+        )))
+    })?;
+    let mb_discid_str = disc.id();
+    info!("MusicBrainz DiscID calculated: {}", mb_discid_str);
+    Ok(mb_discid_str.to_string())
+}
+
 /// Calculate MusicBrainz DiscID from LOG file alone
 /// This is the most efficient method as it doesn't require CUE or audio files
 pub fn calculate_mb_discid_from_log(log_path: &Path) -> Result<String, MetadataDetectionError> {
@@ -165,56 +207,18 @@ pub fn calculate_mb_discid_from_log(log_path: &Path) -> Result<String, MetadataD
     info!("LOG file decoded, length: {} chars", log_content.len());
     let toc_sectors = extract_log_toc_sectors(&log_content)?;
     let raw_track_sectors: Vec<i32> = toc_sectors.iter().map(|(start, _)| *start).collect();
-    let track_offsets: Vec<i32> = raw_track_sectors
-        .iter()
-        .map(|sector| sector + 150)
-        .collect();
-    info!("Found {} track(s) in LOG file", track_offsets.len());
-    info!(
-        "LOG METHOD - Raw track start sectors (before adding 150): {:?}",
-        raw_track_sectors
-    );
     let raw_leadout_sector = toc_sectors
         .last()
         .expect("LOG TOC parser returned at least one row")
         .1
         + 1;
-    let lead_out_sectors = raw_leadout_sector + 150;
-    info!(
-        "LOG METHOD - Raw lead-out sector (before adding 150): {}",
-        raw_leadout_sector
-    );
-    info!(
-        "LOG METHOD - Lead-out offset: {} sectors (raw: {} + 150)",
-        lead_out_sectors, raw_leadout_sector
-    );
-    let mut offsets = Vec::with_capacity(track_offsets.len() + 1);
-    offsets.push(lead_out_sectors);
-    offsets.extend_from_slice(&track_offsets);
-    let first_track = 1;
-    let last_track = track_offsets.len() as i32;
-    info!(
-        "First track: {}, Last track: {}, Total offsets: {}",
-        first_track,
-        last_track,
-        offsets.len()
-    );
-    info!("LOG METHOD - Offsets array (lead-out first, then tracks):");
-    info!("   Lead-out: {} sectors", offsets[0]);
-    for (i, offset) in offsets.iter().enumerate().skip(1) {
-        info!("   Track {}: {} sectors", i, offset);
-    }
-    info!("LOG METHOD - Raw offsets array: {:?}", offsets);
-    let disc = discid::DiscId::put(first_track, &offsets).map_err(|e| {
-        MetadataDetectionError::Io(std::io::Error::other(format!(
-            "Failed to calculate DiscID: {}",
-            e
-        )))
-    })?;
-    let mb_discid_str = disc.id();
-    info!("MusicBrainz DiscID: {}", mb_discid_str);
-    info!("MusicBrainz DiscID result: {}", mb_discid_str);
-    Ok(mb_discid_str.to_string())
+    info!("Found {} track(s) in LOG file", raw_track_sectors.len());
+    discid_from_raw_offsets(
+        "LOG",
+        &raw_track_sectors,
+        raw_leadout_sector,
+        "from LOG lead-out",
+    )
 }
 /// Calculate MusicBrainz DiscID from a parsed CUE sheet and its FLAC file.
 /// Track offsets come from the CUE; the lead-out is derived from probe duration.
@@ -273,51 +277,14 @@ fn calculate_mb_discid_from_cue_duration(
         .iter()
         .map(|t| t.start_cue_frames as i32)
         .collect();
-    let track_offsets: Vec<i32> = raw_track_sectors.iter().map(|&r| r + 150).collect();
-    info!("Found {} track(s) in CUE file", track_offsets.len());
-    info!(
-        "{} METHOD - Raw track start sectors (before adding 150): {:?}",
-        method_label, raw_track_sectors
-    );
     let raw_leadout_sector = (duration_seconds * 75.0).round() as i32;
-    let lead_out_sectors = raw_leadout_sector + 150;
-    info!(
-        "{} METHOD - Raw lead-out sector (from container duration): {} sectors",
-        method_label, raw_leadout_sector
-    );
-    info!(
-        "{} METHOD - Lead-out offset: {} sectors (raw: {} + 150)",
-        method_label, lead_out_sectors, raw_leadout_sector
-    );
-    let mut offsets = Vec::with_capacity(track_offsets.len() + 1);
-    offsets.push(lead_out_sectors);
-    offsets.extend_from_slice(&track_offsets);
-    let first_track = 1;
-    let last_track = track_offsets.len() as i32;
-    info!(
-        "First track: {}, Last track: {}, Total offsets: {}",
-        first_track,
-        last_track,
-        offsets.len()
-    );
-    info!(
-        "{} METHOD - Offsets array (lead-out first, then tracks):",
-        method_label
-    );
-    info!("   Lead-out: {} sectors", offsets[0]);
-    for (i, offset) in offsets.iter().enumerate().skip(1) {
-        info!("   Track {}: {} sectors", i, offset);
-    }
-    info!("{} METHOD - Raw offsets array: {:?}", method_label, offsets);
-    let disc = discid::DiscId::put(first_track, &offsets).map_err(|e| {
-        MetadataDetectionError::Io(std::io::Error::other(format!(
-            "Failed to calculate DiscID: {}",
-            e
-        )))
-    })?;
-    let mb_discid_str = disc.id();
-    info!("MusicBrainz DiscID calculated: {}", mb_discid_str);
-    Ok(mb_discid_str.to_string())
+    info!("Found {} track(s) in CUE file", raw_track_sectors.len());
+    discid_from_raw_offsets(
+        method_label,
+        &raw_track_sectors,
+        raw_leadout_sector,
+        "from container duration",
+    )
 }
 
 /// Compute a MusicBrainz DiscID from pre-resolved LOG/CUE/audio paths.
