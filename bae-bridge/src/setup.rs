@@ -190,6 +190,7 @@ pub fn init_keyring() {
 #[uniffi::export]
 pub fn discover_libraries() -> Result<Vec<BridgeLibrary>, BridgeError> {
     Ok(Config::discover_libraries()
+        .map_err(BridgeError::config)?
         .into_iter()
         .map(local_library_from_info)
         .collect())

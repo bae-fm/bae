@@ -539,7 +539,11 @@ struct FfiLibrary {
 /// result with [`bae_string_free`].
 #[no_mangle]
 pub extern "C" fn bae_libraries() -> *mut c_char {
-    let libraries: Vec<FfiLibrary> = bae_core::config::Config::discover_libraries()
+    let libraries = match bae_core::config::Config::discover_libraries() {
+        Ok(libraries) => libraries,
+        Err(e) => return error_cstring(&e.to_string()),
+    };
+    let libraries: Vec<FfiLibrary> = libraries
         .into_iter()
         .map(|library| FfiLibrary {
             id: library.id,

@@ -45,10 +45,6 @@ pub enum RestoreFromCodeError {
     Restore(String),
 }
 
-fn library_dir_path(app_dir: &Path, library_id: &str) -> PathBuf {
-    app_dir.join("libraries").join(library_id)
-}
-
 struct CodeOperationCancel {
     token: CancellationToken,
     library_dir: PathBuf,
@@ -92,7 +88,10 @@ pub fn create_library(name: String, ids: &dyn coven::IdProvider) -> Result<Confi
 
     // coven's LibraryDir::create returns coven's Config; bae's Config adds its own
     // fields (Discogs), so build and persist the bae one here.
-    let library_dir = LibraryDir::new(library_dir_path(&bae_dir, &library_id));
+    let library_dir = LibraryDir::new(crate::config::registered_library_path(
+        &bae_dir,
+        &library_id,
+    ));
     std::fs::create_dir_all(&*library_dir)?;
     let device_id = ids.new_id();
     let config = Config::with_defaults(library_id, device_id, library_dir, name);
@@ -375,7 +374,7 @@ fn prepare_code_operation_cancel<E>(
     };
 
     let library_id = decode_library_id(code).map_err(&error)?;
-    let library_dir = library_dir_path(app_dir, &library_id);
+    let library_dir = crate::config::registered_library_path(app_dir, &library_id);
     let library_dir_existed = library_dir.try_exists().map_err(|e| error(e.to_string()))?;
     Ok(Some(CodeOperationCancel {
         token,
@@ -429,26 +428,37 @@ pub enum UnlockError {
     Encryption(#[from] EncryptionError),
     #[error("keyring: {0}")]
     Key(#[from] crate::keys::KeyError),
-    #[error("I/O: {0}")]
-    Io(#[from] std::io::Error),
 }
 
 /// Unlock a library by validating the encryption key against the stored
 /// fingerprint, then saving it to the keyring.
 pub fn unlock_library(library_id: &str, key_hex: &str) -> Result<(), UnlockError> {
+    let bae_dir = crate::config::bae_dir().map_err(|e| UnlockError::Config(e.to_string()))?;
+    unlock_library_in_dir(&bae_dir, library_id, key_hex, &coven::UuidProvider)
+}
+
+fn unlock_library_in_dir(
+    bae_dir: &Path,
+    library_id: &str,
+    key_hex: &str,
+    ids: &dyn coven::IdProvider,
+) -> Result<(), UnlockError> {
     // `EncryptionService::new` performs the hex+length validation and returns
     // `EncryptionError::KeyManagement` with the specific cause, so a malformed
     // key surfaces as `UnlockError::Encryption` rather than collapsing into
     // "no fingerprint computed".
     let fingerprint = EncryptionService::new(key_hex)?.fingerprint();
 
-    let libraries = Config::discover_libraries();
-    let lib_info = libraries
-        .into_iter()
-        .find(|lib| lib.id == library_id)
-        .ok_or_else(|| UnlockError::NotFound(library_id.to_string()))?;
+    let config =
+        Config::load_registered_library_from_bae_dir(bae_dir, library_id, ids).map_err(|e| {
+            if matches!(e, ConfigError::Io(ref io) if io.kind() == std::io::ErrorKind::NotFound) {
+                UnlockError::NotFound(library_id.to_string())
+            } else {
+                UnlockError::Config(e.to_string())
+            }
+        })?;
 
-    if let Some(ref stored_fp) = lib_info.encryption_key_fingerprint {
+    if let Some(ref stored_fp) = config.encryption_key_fingerprint {
         if *stored_fp != fingerprint {
             return Err(UnlockError::Validation(
                 "Encryption key fingerprint mismatch".to_string(),
@@ -461,4 +471,45 @@ pub fn unlock_library(library_id: &str, key_hex: &str) -> Result<(), UnlockError
     key_service.set_encryption_key(key_hex)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+    use tempfile::TempDir;
+
+    #[test]
+    #[serial]
+    fn unlock_library_uses_requested_library_not_active_pointer() {
+        crate::config::install_test_keyring();
+        let tmp = TempDir::new().unwrap();
+        let library_id = "library-to-unlock";
+        let key_hex = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+        let bae_dir = tmp.path().join(".bae");
+        let library_path = crate::config::registered_library_path(&bae_dir, library_id);
+        let mut config = Config::with_defaults(
+            library_id.to_string(),
+            "device-id".to_string(),
+            LibraryDir::new(library_path),
+            "Library Name".to_string(),
+        );
+        config.encryption_key_fingerprint =
+            Some(EncryptionService::new(key_hex).unwrap().fingerprint());
+        config.save_to_config_yaml().unwrap();
+        std::fs::create_dir(bae_dir.join("active-library")).unwrap();
+
+        unlock_library_in_dir(
+            &bae_dir,
+            library_id,
+            key_hex,
+            &coven::SequentialIdProvider::new("generated-device"),
+        )
+        .unwrap();
+
+        let stored = KeyService::new(library_id.to_string())
+            .get_encryption_key()
+            .unwrap();
+        assert_eq!(stored.as_deref(), Some(key_hex));
+    }
 }

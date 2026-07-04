@@ -603,30 +603,14 @@ fn resolve_library_id(selector: &LibrarySelector) -> Result<String, CliError> {
     match selector {
         LibrarySelector::Id(id) => Ok(id.clone()),
         LibrarySelector::Path(path) => library_id_from_path(path),
-        LibrarySelector::Active => {
-            let libraries = Config::discover_libraries();
-            active_library_id_from_discovered(&libraries)
-        }
+        LibrarySelector::Active => Config::active_library_id()
+            .map_err(|e| CliError::Config(e.to_string()))?
+            .ok_or_else(|| {
+                CliError::Unavailable(
+                    "no active library; pass --library-id or --library-path".to_string(),
+                )
+            }),
     }
-}
-
-fn active_library_id_from_discovered(
-    libraries: &[bae_core::config::LibraryInfo],
-) -> Result<String, CliError> {
-    if libraries.is_empty() {
-        return Err(CliError::Unavailable(
-            "no libraries found under ~/.bae".to_string(),
-        ));
-    }
-    libraries
-        .iter()
-        .find(|library| library.is_active)
-        .map(|library| library.id.clone())
-        .ok_or_else(|| {
-            CliError::Unavailable(
-                "no active library; pass --library-id or --library-path".to_string(),
-            )
-        })
 }
 
 fn library_id_from_path(path: &Path) -> Result<String, CliError> {
@@ -713,44 +697,5 @@ impl CliError {
                 "message": self.to_string(),
             }
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use bae_core::config::LibraryInfo;
-
-    #[test]
-    fn active_library_selection_uses_active_library() {
-        let libraries = vec![library_info("first", false), library_info("active", true)];
-
-        assert_eq!(
-            active_library_id_from_discovered(&libraries).expect("active library id"),
-            "active"
-        );
-    }
-
-    #[test]
-    fn active_library_selection_rejects_discovered_libraries_without_active_pointer() {
-        let libraries = vec![library_info("first", false)];
-
-        let error = active_library_id_from_discovered(&libraries)
-            .expect_err("missing active library should fail");
-
-        assert!(matches!(error, CliError::Unavailable(_)));
-        assert!(error
-            .to_string()
-            .contains("no active library; pass --library-id or --library-path"));
-    }
-
-    fn library_info(id: &str, is_active: bool) -> LibraryInfo {
-        LibraryInfo {
-            id: id.to_string(),
-            name: id.to_string(),
-            path: PathBuf::from(format!("/tmp/{id}")),
-            is_active,
-            cloud_provider: None,
-        }
     }
 }
