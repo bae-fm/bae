@@ -44,6 +44,35 @@ async fn wait_for_rate_limit() {
     *last_request = Instant::now();
 }
 
+async fn mb_get(request: reqwest::RequestBuilder) -> Result<reqwest::Response, MusicBrainzError> {
+    wait_for_rate_limit().await;
+    let response = request
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(MusicBrainzError::from_reqwest)?;
+
+    let status = response.status();
+    if status.is_success() {
+        Ok(response)
+    } else {
+        let url = response.url().clone();
+        match response.text().await {
+            Ok(error_text) => warn!(
+                "MusicBrainz API error response ({} from {}): {}",
+                status, url, error_text
+            ),
+            Err(error) => warn!(
+                "MusicBrainz API error response ({} from {}) with unreadable body: {}",
+                status, url, error
+            ),
+        }
+        Err(MusicBrainzError::Provider {
+            status: Some(status.as_u16()),
+        })
+    }
+}
+
 /// Capacity for each request-kind cache. Sized for a typical session
 /// (a few imports, each touching 1-3 releases). Eviction costs one
 /// network round-trip — same as a cold start.
@@ -193,34 +222,13 @@ pub async fn lookup_by_discid(
     ));
     debug!("MusicBrainz API request: {}", url_with_params);
 
-    wait_for_rate_limit().await;
-
-    let response = http_client()
-        .get(url_with_params.as_str())
-        .header("Accept", "application/json")
-        .send()
-        .await
-        .map_err(MusicBrainzError::from_reqwest)?;
-
-    if !response.status().is_success() {
-        let status = response.status();
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-
-        warn!(
-            "MusicBrainz API error response ({}): {}",
-            status, error_text
-        );
-
-        if status == 404 {
+    let response = match mb_get(http_client().get(url_with_params.as_str())).await {
+        Ok(response) => response,
+        Err(MusicBrainzError::Provider { status: Some(404) }) => {
             return Err(MusicBrainzError::NotFound(discid.to_string()));
         }
-        return Err(MusicBrainzError::Provider {
-            status: Some(status.as_u16()),
-        });
-    }
+        Err(error) => return Err(error),
+    };
 
     let disc_response: DiscIdResponse = response
         .json()
@@ -267,20 +275,7 @@ async fn fetch_release_group_with_relations(
     );
     debug!("Fetching release-group with relations: {}", url);
 
-    wait_for_rate_limit().await;
-
-    let response = http_client()
-        .get(&url)
-        .header("Accept", "application/json")
-        .send()
-        .await
-        .map_err(MusicBrainzError::from_reqwest)?;
-
-    if !response.status().is_success() {
-        return Err(MusicBrainzError::Provider {
-            status: Some(response.status().as_u16()),
-        });
-    }
+    let response = mb_get(http_client().get(&url)).await?;
 
     response
         .json()
@@ -314,23 +309,13 @@ pub async fn lookup_release_by_id(
     );
     debug!("MusicBrainz API request: {}", url);
 
-    wait_for_rate_limit().await;
-
-    let response = http_client()
-        .get(&url)
-        .header("Accept", "application/json")
-        .send()
-        .await
-        .map_err(MusicBrainzError::from_reqwest)?;
-
-    if !response.status().is_success() {
-        if response.status() == 404 {
+    let response = match mb_get(http_client().get(&url)).await {
+        Ok(response) => response,
+        Err(MusicBrainzError::Provider { status: Some(404) }) => {
             return Err(MusicBrainzError::NotFound(release_id.to_string()));
         }
-        return Err(MusicBrainzError::Provider {
-            status: Some(response.status().as_u16()),
-        });
-    }
+        Err(error) => return Err(error),
+    };
 
     let raw_json = response
         .text()
@@ -429,20 +414,7 @@ pub async fn fetch_release_group_json(release_group_id: &str) -> Result<String, 
     );
     debug!("Fetching release-group JSON: {}", url);
 
-    wait_for_rate_limit().await;
-
-    let response = http_client()
-        .get(&url)
-        .header("Accept", "application/json")
-        .send()
-        .await
-        .map_err(MusicBrainzError::from_reqwest)?;
-
-    if !response.status().is_success() {
-        return Err(MusicBrainzError::Provider {
-            status: Some(response.status().as_u16()),
-        });
-    }
+    let response = mb_get(http_client().get(&url)).await?;
 
     let raw_json = response
         .text()
@@ -485,28 +457,17 @@ pub async fn lookup_release_id_by_discogs_url(
     );
     debug!("MusicBrainz URL lookup: {}", url);
 
-    wait_for_rate_limit().await;
-
-    let response = http_client()
-        .get(&url)
-        .header("Accept", "application/json")
-        .send()
-        .await
-        .map_err(MusicBrainzError::from_reqwest)?;
-
-    if response.status() == 404 {
-        discogs_url_lookup_cache()
-            .lock()
-            .expect("Discogs URL lookup cache mutex poisoned")
-            .put(discogs_release_id.to_string(), None);
-        return Ok(None);
-    }
-
-    if !response.status().is_success() {
-        return Err(MusicBrainzError::Provider {
-            status: Some(response.status().as_u16()),
-        });
-    }
+    let response = match mb_get(http_client().get(&url)).await {
+        Ok(response) => response,
+        Err(MusicBrainzError::Provider { status: Some(404) }) => {
+            discogs_url_lookup_cache()
+                .lock()
+                .expect("Discogs URL lookup cache mutex poisoned")
+                .put(discogs_release_id.to_string(), None);
+            return Ok(None);
+        }
+        Err(error) => return Err(error),
+    };
 
     let lookup: UrlLookupResponse = response
         .json()
@@ -694,42 +655,19 @@ pub async fn search_releases_with_params(
         url, query
     );
 
-    wait_for_rate_limit().await;
-
-    let response = http_client()
-        .get(url)
-        .query(&[
-            ("query", query.as_str()),
-            ("limit", "25"),
-            (
-                "inc",
-                "recordings+artist-credits+release-groups+labels+media+url-rels+recording-level-rels+work-level-rels+work-rels+artist-rels",
-            ),
-        ])
-        .header("Accept", "application/json")
-        .send()
-        .await
-        .map_err(MusicBrainzError::from_reqwest)?;
-
-    if !response.status().is_success() {
-        let status = response.status();
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-
-        warn!(
-            "MusicBrainz API error response ({}): {}",
-            status, error_text
-        );
-
-        if status == 404 {
-            return Ok(Vec::new());
-        }
-        return Err(MusicBrainzError::Provider {
-            status: Some(status.as_u16()),
-        });
-    }
+    let request = http_client().get(url).query(&[
+        ("query", query.as_str()),
+        ("limit", "25"),
+        (
+            "inc",
+            "recordings+artist-credits+release-groups+labels+media+url-rels+recording-level-rels+work-level-rels+work-rels+artist-rels",
+        ),
+    ]);
+    let response = match mb_get(request).await {
+        Ok(response) => response,
+        Err(MusicBrainzError::Provider { status: Some(404) }) => return Ok(Vec::new()),
+        Err(error) => return Err(error),
+    };
 
     let search_response: SearchResponse = response
         .json()
