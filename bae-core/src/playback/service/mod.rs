@@ -1090,6 +1090,20 @@ impl PlaybackService {
         handle
     }
 
+    async fn apply_repeat_mode(&mut self, mode: RepeatMode) {
+        if self.playback_queue.repeat_mode() == mode {
+            return;
+        }
+
+        self.playback_queue.set_repeat_mode(mode);
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::RepeatModeChanged { mode },
+        );
+        self.emit_queue_update();
+        self.persist_playback_state().await;
+    }
+
     async fn run(&mut self) {
         info!("PlaybackService started");
         let mut library_event_rx = self.library_manager.subscribe_events();
@@ -1483,29 +1497,11 @@ impl PlaybackService {
                     self.on_queue_mutated().await;
                 }
                 PlaybackCommand::SetRepeatMode(mode) => {
-                    if self.playback_queue.repeat_mode() != mode {
-                        self.playback_queue.set_repeat_mode(mode);
-                        emit_progress(
-                            &self.progress_tx,
-                            PlaybackProgress::RepeatModeChanged { mode },
-                        );
-                        self.emit_queue_update();
-                        self.persist_playback_state().await;
-                    }
+                    self.apply_repeat_mode(mode).await;
                 }
                 PlaybackCommand::CycleRepeatMode => {
-                    let next = match self.playback_queue.repeat_mode() {
-                        RepeatMode::Off => RepeatMode::Context,
-                        RepeatMode::Context => RepeatMode::Track,
-                        RepeatMode::Track => RepeatMode::Off,
-                    };
-                    self.playback_queue.set_repeat_mode(next);
-                    emit_progress(
-                        &self.progress_tx,
-                        PlaybackProgress::RepeatModeChanged { mode: next },
-                    );
-                    self.emit_queue_update();
-                    self.persist_playback_state().await;
+                    let next = self.playback_queue.repeat_mode().next();
+                    self.apply_repeat_mode(next).await;
                 }
                 PlaybackCommand::SetShuffle(on) => {
                     match self.playback_queue.context_source().cloned() {

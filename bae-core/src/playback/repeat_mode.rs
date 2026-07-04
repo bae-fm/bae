@@ -8,3 +8,13 @@ pub enum RepeatMode {
     /// Loop the whole context (the release being played from).
     Context,
 }
+
+impl RepeatMode {
+    pub(crate) fn next(self) -> Self {
+        match self {
+            Self::Off => Self::Context,
+            Self::Context => Self::Track,
+            Self::Track => Self::Off,
+        }
+    }
+}
