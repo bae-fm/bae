@@ -279,70 +279,65 @@ impl Database {
         let target_album_id = target_album_id.to_string();
         let new_album = new_album.cloned();
         let new_metadata = new_metadata.to_vec();
-        let now = self.inner.clock.now().to_rfc3339();
+        let now_dt = self.inner.clock.now();
+        let now = now_dt.to_rfc3339();
 
-        self
-            .call_sql(move |sql| {
-                let tx = sql.connection();
-                // One HLC stamp for every synced row this transaction touches.
-                let reg = sql.stamp();
+        self.call_sql(move |sql| {
+            let tx = sql.connection();
+            // One HLC stamp for every synced row this transaction touches.
+            let reg = sql.stamp();
 
-                // 1. Insert the destination album (if brand-new). Must come
-                //    before the release UPDATE so the FK on `releases.album_id`
-                //    points at an existing row.
-                if let Some(album) = &new_album {
-                    insert_album_row(tx, album, &reg)?;
+            // 1. Insert the destination album (if brand-new). Must come
+            //    before the release UPDATE so the FK on `releases.album_id`
+            //    points at an existing row.
+            if let Some(album) = &new_album {
+                insert_album_row(tx, album, &reg)?;
 
-                    // Copy album_artists from the source. Each row gets a fresh
-                    // PK (generated in Rust to match the rest of the codebase)
-                    // and is rebound to the new album. The UNIQUE(album_id,
-                    // artist_id) constraint is satisfied because we're inserting
-                    // into a different album. If the source is about to be
-                    // deleted (sole release moved), the SELECT still sees the
-                    // source rows because the DELETE happens later in the same
-                    // transaction.
-                    let source_artists: Vec<(String, i32)> = {
-                        let mut stmt = tx
-                            .prepare(
-                                "SELECT artist_id, position FROM album_artists \
+                // Copy album_artists from the source. Each row gets a fresh
+                // PK (generated in Rust to match the rest of the codebase)
+                // and is rebound to the new album. The UNIQUE(album_id,
+                // artist_id) constraint is satisfied because we're inserting
+                // into a different album. If the source is about to be
+                // deleted (sole release moved), the SELECT still sees the
+                // source rows because the DELETE happens later in the same
+                // transaction.
+                let source_artists: Vec<(String, i32)> = {
+                    let mut stmt = tx.prepare(
+                        "SELECT artist_id, position FROM album_artists \
                                  WHERE album_id = ? ORDER BY position",
-                            )?;
-                        let rows = stmt
-                            .query_map(params![current_album_id], |row| {
-                                Ok((row.get::<_, String>("artist_id")?, row.get::<_, i32>("position")?))
-                            })?;
-                        rows.collect::<coven::rusqlite::Result<Vec<_>>>()?
-                    };
-                    for (artist_id, position) in source_artists {
-                        tx.execute(
-                            r#"
-                            INSERT INTO album_artists (id, album_id, artist_id, position, _updated_at, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                            "#,
-                            params![
-                                uuid::Uuid::new_v4().to_string(),
-                                album.id,
-                                artist_id,
-                                position,
-                                reg,
-                                now,
-                            ],
-                        )?;
-                    }
+                    )?;
+                    let rows = stmt.query_map(params![current_album_id], |row| {
+                        Ok((
+                            row.get::<_, String>("artist_id")?,
+                            row.get::<_, i32>("position")?,
+                        ))
+                    })?;
+                    rows.collect::<coven::rusqlite::Result<Vec<_>>>()?
+                };
+                for (artist_id, position) in source_artists {
+                    let album_artist = DbAlbumArtist::new(
+                        &album.id,
+                        &artist_id,
+                        position,
+                        uuid::Uuid::new_v4().to_string(),
+                        now_dt,
+                    );
+                    insert_album_artist_row(tx, &album_artist, &reg)?;
                 }
+            }
 
-                // 2. Replace identity rows.
-                tx.execute(
-                    "DELETE FROM release_identities WHERE release_id = ?",
-                    params![release_id],
-                )?;
-                for identity in &new_identities {
-                    insert_release_identity_row(tx, &release_id, identity, &reg, &now)?;
-                }
+            // 2. Replace identity rows.
+            tx.execute(
+                "DELETE FROM release_identities WHERE release_id = ?",
+                params![release_id],
+            )?;
+            for identity in &new_identities {
+                insert_release_identity_row(tx, &release_id, identity, &reg, &now)?;
+            }
 
-                // 3. Update release: album, metadata source.
-                tx.execute(
-                    r#"
+            // 3. Update release: album, metadata source.
+            tx.execute(
+                r#"
                     UPDATE releases SET
                         album_id = ?,
                         metadata_source = ?,
@@ -350,108 +345,92 @@ impl Database {
                         _updated_at = ?
                     WHERE id = ?
                     "#,
-                    params![
-                        target_album_id,
-                        new_metadata_source,
-                        new_metadata_source_release_id,
-                        reg,
-                        release_id,
-                    ],
+                params![
+                    target_album_id,
+                    new_metadata_source,
+                    new_metadata_source_release_id,
+                    reg,
+                    release_id,
+                ],
+            )?;
+
+            // 4. Replace cached source payload. Always wipe first — Unknown
+            //    drops to file_tags (`new_metadata` empty) and the prior
+            //    MB/Discogs JSON has no business sticking around. For
+            //    Exact/Approximate, the caller hands us the freshly-fetched
+            //    payload (matching the new `metadata_source_release_id`) so
+            //    a later re-projection can replay the seed without
+            //    divergence.
+            tx.execute(
+                "DELETE FROM release_metadata WHERE release_id = ?",
+                params![release_id],
+            )?;
+            for meta in &new_metadata {
+                insert_release_metadata_row(tx, meta)?;
+            }
+
+            // 5. Source-album cleanup. Only runs when the release actually
+            //    moved; same-album updates don't vacate anything.
+            let mut source_album_deleted = false;
+            if target_album_id != current_album_id {
+                // Recheck inside the transaction: how many releases does the
+                // source album hold now (after the UPDATE above)?
+                let remaining: i64 = tx.query_row(
+                    "SELECT COUNT(*) FROM releases WHERE album_id = ?",
+                    params![current_album_id],
+                    |row| row.get(0),
                 )?;
 
-                // 4. Replace cached source payload. Always wipe first — Unknown
-                //    drops to file_tags (`new_metadata` empty) and the prior
-                //    MB/Discogs JSON has no business sticking around. For
-                //    Exact/Approximate, the caller hands us the freshly-fetched
-                //    payload (matching the new `metadata_source_release_id`) so
-                //    a later re-projection can replay the seed without
-                //    divergence.
-                tx.execute(
-                    "DELETE FROM release_metadata WHERE release_id = ?",
-                    params![release_id],
-                )?;
-                for meta in &new_metadata {
-                    tx.execute(
-                        r#"
-                        INSERT INTO release_metadata (id, release_id, source, json, fetched_at)
-                        VALUES (?, ?, ?, ?, ?)
-                        "#,
-                        params![
-                            meta.id,
-                            release_id,
-                            meta.source,
-                            meta.json,
-                            meta.fetched_at.to_rfc3339(),
-                        ],
-                    )?;
-                }
-
-                // 5. Source-album cleanup. Only runs when the release actually
-                //    moved; same-album updates don't vacate anything.
-                let mut source_album_deleted = false;
-                if target_album_id != current_album_id {
-                    // Recheck inside the transaction: how many releases does the
-                    // source album hold now (after the UPDATE above)?
-                    let remaining: i64 = tx
+                if remaining == 0 {
+                    // No releases left → delete the album. There can be no
+                    // imports to clear because the only way `releases` is
+                    // empty is if every prior release left the album, and
+                    // imports reference releases (not albums) — moving a
+                    // release elsewhere keeps the import row pointing at the
+                    // same release, just with a different `album_id`.
+                    tx.execute("DELETE FROM albums WHERE id = ?", params![current_album_id])?;
+                    source_album_deleted = true;
+                } else {
+                    // Album survives. If its `primary_release_id` pointed at
+                    // the moved release, repoint it at the oldest remaining
+                    // release (matching the "first release" fallback used
+                    // elsewhere in the read path).
+                    let dangling: Option<String> = tx
                         .query_row(
-                            "SELECT COUNT(*) FROM releases WHERE album_id = ?",
-                            params![current_album_id],
-                            |row| row.get(0),
-                        )?;
-
-                    if remaining == 0 {
-                        // No releases left → delete the album. There can be no
-                        // imports to clear because the only way `releases` is
-                        // empty is if every prior release left the album, and
-                        // imports reference releases (not albums) — moving a
-                        // release elsewhere keeps the import row pointing at the
-                        // same release, just with a different `album_id`.
-                        tx.execute(
-                            "DELETE FROM albums WHERE id = ?",
-                            params![current_album_id],
-                        )?;
-                        source_album_deleted = true;
-                    } else {
-                        // Album survives. If its `primary_release_id` pointed at
-                        // the moved release, repoint it at the oldest remaining
-                        // release (matching the "first release" fallback used
-                        // elsewhere in the read path).
-                        let dangling: Option<String> = tx
-                            .query_row(
-                                "SELECT primary_release_id FROM albums \
+                            "SELECT primary_release_id FROM albums \
                                  WHERE id = ? AND primary_release_id = ?",
-                                params![current_album_id, release_id],
-                                |row| row.get::<_, Option<String>>(0),
-                            )
-                            .optional()?
-                            .flatten();
+                            params![current_album_id, release_id],
+                            |row| row.get::<_, Option<String>>(0),
+                        )
+                        .optional()?
+                        .flatten();
 
-                        if dangling.is_some() {
-                            let new_primary: Option<String> = tx
-                                .query_row(
-                                    "SELECT id FROM releases \
+                    if dangling.is_some() {
+                        let new_primary: Option<String> = tx
+                            .query_row(
+                                "SELECT id FROM releases \
                                      WHERE album_id = ? \
                                      ORDER BY created_at ASC, id ASC \
                                      LIMIT 1",
-                                    params![current_album_id],
-                                    |row| row.get::<_, String>(0),
-                                )
-                                .optional()?;
+                                params![current_album_id],
+                                |row| row.get::<_, String>(0),
+                            )
+                            .optional()?;
 
-                            tx.execute(
-                                "UPDATE albums SET primary_release_id = ?, _updated_at = ? \
+                        tx.execute(
+                            "UPDATE albums SET primary_release_id = ?, _updated_at = ? \
                                  WHERE id = ?",
-                                params![new_primary, reg, current_album_id],
-                            )?;
-                        }
+                            params![new_primary, reg, current_album_id],
+                        )?;
                     }
                 }
+            }
 
-                Ok(SetIdentityOutcome {
-                    source_album_deleted,
-                })
+            Ok(SetIdentityOutcome {
+                source_album_deleted,
             })
-            .await
+        })
+        .await
     }
 
     /// Check, for each candidate in `checks`, whether the library already
