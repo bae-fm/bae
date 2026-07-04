@@ -6,8 +6,6 @@ use nom::{
     multi::many0,
     IResult,
 };
-use std::fs;
-use std::io::Read;
 use std::path::Path;
 use thiserror::Error;
 use tracing::warn;
@@ -15,8 +13,6 @@ use tracing::warn;
 pub enum CueFlacError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("FLAC parsing error: {0}")]
-    Flac(String),
     #[error("CUE parsing error: {0}")]
     CueParsing(String),
 }
@@ -128,25 +124,6 @@ impl CueSheet {
             .then_some(first)
     }
 }
-/// FLAC file analysis results
-#[derive(Debug, Clone)]
-pub struct FlacInfo {
-    pub sample_rate: u32,
-    pub bits_per_sample: u32,
-    pub channels: u32,
-    pub total_samples: u64,
-}
-
-impl FlacInfo {
-    /// Calculate duration in milliseconds
-    pub fn duration_ms(&self) -> u64 {
-        if self.sample_rate == 0 {
-            return 0;
-        }
-        (self.total_samples * 1000) / self.sample_rate as u64
-    }
-}
-
 /// Represents a CUE/FLAC pair found during import
 #[derive(Debug, Clone)]
 pub struct CueFlacPair {
@@ -195,57 +172,6 @@ impl CueFlacProcessor {
         }
         Ok(pairs)
     }
-    /// Analyze a FLAC file and extract metadata
-    pub fn analyze_flac(flac_path: &Path) -> Result<FlacInfo, CueFlacError> {
-        let mut file = fs::File::open(flac_path)?;
-        let mut header = [0u8; 42];
-        file.read_exact(&mut header)?;
-        Self::analyze_flac_data(&header)
-    }
-
-    /// Analyze in-memory FLAC data and extract metadata.
-    pub fn analyze_flac_data(file_data: &[u8]) -> Result<FlacInfo, CueFlacError> {
-        if file_data.len() < 4 || &file_data[0..4] != b"fLaC" {
-            return Err(CueFlacError::Flac("Invalid FLAC signature".to_string()));
-        }
-        if file_data.len() < 42 {
-            return Err(CueFlacError::Flac("Unexpected end of file".to_string()));
-        }
-
-        let header = u32::from_be_bytes([file_data[4], file_data[5], file_data[6], file_data[7]]);
-        let block_type = ((header >> 24) & 0x7F) as u8;
-        let block_size = (header & 0x00FF_FFFF) as usize;
-        if block_type != 0 {
-            return Err(CueFlacError::Flac(
-                "First FLAC metadata block is not STREAMINFO".to_string(),
-            ));
-        }
-        if block_size != 34 {
-            return Err(CueFlacError::Flac(
-                "FLAC STREAMINFO block has invalid length".to_string(),
-            ));
-        }
-
-        let block = &file_data[8..42];
-        let sample_rate =
-            ((block[10] as u32) << 12) | ((block[11] as u32) << 4) | ((block[12] as u32) >> 4);
-        let channels = (((block[12] >> 1) & 0x07) as u32) + 1;
-        let bits_per_sample =
-            ((((block[12] & 0x01) as u32) << 4) | (((block[13] & 0xF0) >> 4) as u32)) + 1;
-        let total_samples = (((block[13] & 0x0F) as u64) << 32)
-            | ((block[14] as u64) << 24)
-            | ((block[15] as u64) << 16)
-            | ((block[16] as u64) << 8)
-            | (block[17] as u64);
-
-        Ok(FlacInfo {
-            sample_rate,
-            bits_per_sample,
-            channels,
-            total_samples,
-        })
-    }
-
     /// Parse a CUE sheet file
     pub fn parse_cue_sheet(cue_path: &Path) -> Result<CueSheet, CueFlacError> {
         use tracing::{debug, error};

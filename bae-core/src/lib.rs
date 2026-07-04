@@ -1,5 +1,4 @@
 pub mod album_detail;
-pub mod ape;
 pub mod app;
 pub mod audio_codec;
 #[doc(hidden)]

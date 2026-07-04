@@ -22,7 +22,8 @@
 //! ## Phase 3: Metadata Persistence
 //! - Store file records with storage paths
 //! - Store track audio format records
-use crate::cue_flac::{CueSheet, FlacInfo};
+use crate::audio_codec::ProbeResult;
+use crate::cue_flac::CueSheet;
 use crate::db::DbTrack;
 use serde::{Deserialize, Serialize};
 use std::{path::Path, path::PathBuf, sync::Arc};
@@ -599,19 +600,8 @@ pub struct CueFlacAnalysis {
 }
 
 #[derive(Debug)]
-pub enum CueAudioAnalysis {
-    Flac {
-        flac_info: FlacInfo,
-    },
-    Ape {
-        ape_info: crate::ape::ApeInfo,
-    },
-    Alac {
-        duration_ms: u64,
-        sample_rate: u32,
-        channels: u32,
-        bits_per_sample: Option<u32>,
-    },
+pub struct CueAudioAnalysis {
+    pub probe: ProbeResult,
 }
 
 /// A file discovered during folder scan.

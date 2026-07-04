@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use tracing::warn;
 
-use crate::import::types::{CueAudioAnalysis, CueFlacAnalysis, TrackFile};
+use crate::import::types::{CueFlacAnalysis, TrackFile};
 use crate::util::content_type::ContentType;
 use crate::util::content_type_hint::ContentTypeHint;
 
@@ -137,30 +137,12 @@ struct CueAnalysisFormat {
 }
 
 fn cue_analysis_format(cue_pair: &CueFlacAnalysis) -> CueAnalysisFormat {
-    match &cue_pair.analysis {
-        CueAudioAnalysis::Flac { flac_info } => CueAnalysisFormat {
-            content_type: ContentType::Flac,
-            sample_rate: flac_info.sample_rate,
-            bits_per_sample: Some(flac_info.bits_per_sample as i64),
-            channels: flac_info.channels,
-        },
-        CueAudioAnalysis::Ape { ape_info } => CueAnalysisFormat {
-            content_type: ContentType::Ape,
-            sample_rate: ape_info.sample_rate,
-            bits_per_sample: Some(ape_info.bits_per_sample as i64),
-            channels: ape_info.channels as u32,
-        },
-        CueAudioAnalysis::Alac {
-            sample_rate,
-            channels,
-            bits_per_sample,
-            ..
-        } => CueAnalysisFormat {
-            content_type: ContentType::Alac,
-            sample_rate: *sample_rate,
-            bits_per_sample: bits_per_sample.map(|b| b as i64),
-            channels: *channels,
-        },
+    let probe = &cue_pair.analysis.probe;
+    CueAnalysisFormat {
+        content_type: probe.content_type.clone(),
+        sample_rate: probe.sample_rate,
+        bits_per_sample: probe.bits_per_sample.map(|b| b as i64),
+        channels: probe.channels,
     }
 }
 

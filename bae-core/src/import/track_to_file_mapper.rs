@@ -1,14 +1,11 @@
-use crate::cue_flac::{CueFlacProcessor, CueSheet};
+use crate::cue_flac::CueSheet;
 use crate::db::DbTrack;
 use crate::import::folder_scanner::{
     AudioContent, CategorizedFiles, ScannedCueFlacPair, ScannedFile,
 };
 use crate::import::types::{CueAudioAnalysis, CueFlacAnalysis, TrackFile};
-use std::io::Read;
 use std::sync::Arc;
 use tracing::{debug, info, warn};
-
-const APE_HEADER_PREFIX_BYTES: usize = 4096;
 
 /// Map tracks to their source audio files using the scan's categorised output.
 ///
@@ -147,110 +144,37 @@ fn map_tracks_to_cue_flac(
 }
 
 fn container_duration_ms(analysis: &CueAudioAnalysis) -> Option<i64> {
-    match analysis {
-        CueAudioAnalysis::Flac { flac_info } => Some(flac_info.duration_ms() as i64),
-        CueAudioAnalysis::Ape { ape_info } => {
-            if ape_info.sample_rate == 0 {
-                return None;
-            }
-            Some(((ape_info.total_samples * 1000) / ape_info.sample_rate as u64) as i64)
-        }
-        CueAudioAnalysis::Alac { duration_ms, .. } => Some(*duration_ms as i64),
-    }
+    Some(analysis.probe.duration.as_millis() as i64)
 }
 
 /// Extract duration from a standalone audio file.
-///
-/// Uses libFLAC for FLAC files, FFmpeg probe for everything else (MP3, APE, etc.).
 fn extract_duration_from_file(file_path: &std::path::Path) -> Option<i64> {
-    let extension = file_path.extension().and_then(|e| e.to_str());
-    if extension.is_some_and(|e| e.eq_ignore_ascii_case("flac")) {
-        match CueFlacProcessor::analyze_flac(file_path) {
-            Ok(flac_info) => Some(flac_info.duration_ms() as i64),
-            Err(e) => {
-                warn!(
-                    "Failed to extract FLAC duration via libFLAC: {} for {}",
-                    e,
-                    file_path.display()
-                );
-                None
-            }
-        }
-    } else {
-        let Some(path_str) = file_path.to_str() else {
-            warn!(
-                "Cannot probe duration for non-UTF-8 path: {}",
-                file_path.display()
-            );
-            return None;
-        };
-        // probe_audio_from_path logs its own failure reason; None here means it
-        // couldn't be probed, so the track lands with no duration.
-        let probe = crate::audio_codec::probe_audio_from_path(path_str)?;
-        Some(probe.duration.as_millis() as i64)
-    }
-}
-
-/// Probe a CUE-backed container: APE parses a bounded front header, FLAC reads
-/// STREAMINFO, and ALAC is probed via FFmpeg.
-pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<CueAudioAnalysis, String> {
-    let ext = audio_path
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(str::to_lowercase);
-
-    if ext.as_deref() == Some("m4a") {
-        return analyze_cue_alac(audio_path);
-    }
-
-    if ext.as_deref() == Some("ape") {
-        let (header, file_size) = read_file_prefix(audio_path, APE_HEADER_PREFIX_BYTES)?;
-        let ape_info = crate::ape::parse_ape_header_from_data(&header, file_size)
-            .map_err(|e| format!("Failed to parse APE {:?}: {}", audio_path, e))?;
-        Ok(CueAudioAnalysis::Ape { ape_info })
-    } else {
-        let flac_info = CueFlacProcessor::analyze_flac(audio_path)
-            .map_err(|e| format!("Failed to analyze FLAC {:?}: {}", audio_path, e))?;
-        Ok(CueAudioAnalysis::Flac { flac_info })
-    }
-}
-
-fn read_file_prefix(path: &std::path::Path, max_bytes: usize) -> Result<(Vec<u8>, u64), String> {
-    let mut file =
-        std::fs::File::open(path).map_err(|e| format!("Failed to open {:?}: {}", path, e))?;
-    let file_size = file
-        .metadata()
-        .map_err(|e| format!("Failed to stat {:?}: {}", path, e))?
-        .len();
-    let bytes_to_read = if file_size < max_bytes as u64 {
-        file_size as usize
-    } else {
-        max_bytes
+    let Some(path_str) = file_path.to_str() else {
+        warn!(
+            "Cannot probe duration for non-UTF-8 path: {}",
+            file_path.display()
+        );
+        return None;
     };
-    let mut data = vec![0u8; bytes_to_read];
-    file.read_exact(&mut data)
-        .map_err(|e| format!("Failed to read header from {:?}: {}", path, e))?;
-    Ok((data, file_size))
+    // probe_audio_from_path logs its own failure reason; None here means it
+    // couldn't be probed, so the track lands with no duration.
+    let probe = crate::audio_codec::probe_audio_from_path(path_str)?;
+    Some(probe.duration.as_millis() as i64)
 }
 
-/// Probe an `.m4a` container via FFmpeg and require ALAC. AAC-in-MP4 is a
-/// legitimate format in the wild but not something CUE+MP4 rips produce —
-/// reject it with a clear error rather than silently proceeding.
-fn analyze_cue_alac(audio_path: &std::path::Path) -> Result<CueAudioAnalysis, String> {
+/// Probe a CUE-backed container through FFmpeg.
+pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<CueAudioAnalysis, String> {
     let path_str = audio_path
         .to_str()
         .ok_or_else(|| format!("Non-UTF-8 audio path: {:?}", audio_path))?;
     let probe = crate::audio_codec::probe_audio_from_path(path_str)
-        .ok_or_else(|| format!("Failed to probe .m4a audio file: {:?}", audio_path))?;
+        .ok_or_else(|| format!("Failed to probe CUE audio file: {:?}", audio_path))?;
     match probe.content_type {
-        crate::util::content_type::ContentType::Alac => Ok(CueAudioAnalysis::Alac {
-            duration_ms: probe.duration.as_millis() as u64,
-            sample_rate: probe.sample_rate,
-            channels: probe.channels,
-            bits_per_sample: probe.bits_per_sample,
-        }),
+        crate::util::content_type::ContentType::Flac
+        | crate::util::content_type::ContentType::Ape
+        | crate::util::content_type::ContentType::Alac => Ok(CueAudioAnalysis { probe }),
         other => Err(format!(
-            "CUE+MP4 expects ALAC audio, got {} in {:?}",
+            "CUE audio expects FLAC, APE, or ALAC, got {} in {:?}",
             other.display_name(),
             audio_path
         )),
@@ -294,8 +218,7 @@ mod tests {
     use std::fs;
 
     /// Synthetic FLAC bytes valid enough to round-trip through the CUE/FLAC
-    /// import analyzer: `file_validation::is_valid_flac` and
-    /// `CueFlacProcessor::analyze_flac_data`.
+    /// import analyzer and `file_validation::is_valid_flac`.
     ///
     /// 44.1 kHz / 2-channel / 16-bit STREAMINFO declaring 1 second of audio,
     /// padded with zeros above the truncation guard's threshold (file must be
@@ -601,33 +524,19 @@ mod tests {
         }
     }
 
-    /// The `Alac` variant of `CueAudioAnalysis` round-trips through pattern
-    /// matching and flows through `container_duration_ms`. No probe is
-    /// required; this constructs the variant directly the way the analyzer
-    /// would after a successful `.m4a` probe.
+    /// `CueAudioAnalysis` carries one FFmpeg probe for every CUE-backed
+    /// container, and `container_duration_ms` reads its duration directly.
     #[test]
-    fn test_cue_audio_analysis_alac_round_trip() {
-        let analysis = CueAudioAnalysis::Alac {
-            duration_ms: 100,
-            sample_rate: 44100,
-            channels: 2,
-            bits_per_sample: Some(16),
+    fn test_cue_audio_analysis_probe_duration() {
+        let analysis = CueAudioAnalysis {
+            probe: crate::audio_codec::ProbeResult {
+                content_type: crate::util::content_type::ContentType::Alac,
+                duration: std::time::Duration::from_millis(100),
+                sample_rate: 44100,
+                channels: 2,
+                bits_per_sample: Some(16),
+            },
         };
-
-        match &analysis {
-            CueAudioAnalysis::Alac {
-                duration_ms,
-                sample_rate,
-                channels,
-                bits_per_sample,
-            } => {
-                assert_eq!(*duration_ms, 100);
-                assert_eq!(*sample_rate, 44100);
-                assert_eq!(*channels, 2);
-                assert_eq!(*bits_per_sample, Some(16));
-            }
-            _ => panic!("expected CueAudioAnalysis::Alac"),
-        }
 
         assert_eq!(container_duration_ms(&analysis), Some(100));
     }

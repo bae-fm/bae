@@ -45,17 +45,20 @@ pub(crate) fn find_matching_audio_for_cue<'a>(
             && p.file_stem().and_then(|s| s.to_str()) == Some(file_stem)
     })
 }
-/// Get FLAC file duration in seconds using libFLAC
-fn get_flac_duration_seconds(flac_path: &Path) -> Result<f64, MetadataDetectionError> {
-    use crate::cue_flac::CueFlacProcessor;
-    let flac_info = CueFlacProcessor::analyze_flac(flac_path).map_err(|e| {
+fn probe_duration_seconds(audio_path: &Path) -> Result<f64, MetadataDetectionError> {
+    let path_str = audio_path.to_str().ok_or_else(|| {
         MetadataDetectionError::Io(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            format!("Failed to read FLAC metadata: {}", e),
+            format!("Non-UTF-8 audio path: {:?}", audio_path),
         ))
     })?;
-    let duration_seconds = flac_info.duration_ms() as f64 / 1000.0;
-    Ok(duration_seconds)
+    let probe = crate::audio_codec::probe_audio_from_path(path_str).ok_or_else(|| {
+        MetadataDetectionError::Io(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("Failed to probe audio file: {:?}", audio_path),
+        ))
+    })?;
+    Ok(probe.duration.as_secs_f64())
 }
 /// Extract lead-out sector from EAC/XLD log file
 /// Looks for the "End sector" column in the TOC table
@@ -300,18 +303,27 @@ pub fn calculate_mb_discid_from_log(log_path: &Path) -> Result<String, MetadataD
     Ok(mb_discid_str.to_string())
 }
 /// Calculate MusicBrainz DiscID from a parsed CUE sheet and its FLAC file.
-/// Track offsets come from the CUE; the lead-out is derived from FLAC duration.
+/// Track offsets come from the CUE; the lead-out is derived from probe duration.
 pub fn calculate_mb_discid_from_cue_flac(
     sheet: &CueSheet,
     flac_path: &Path,
 ) -> Result<String, MetadataDetectionError> {
+    calculate_mb_discid_from_cue_audio(sheet, flac_path, "CUE/FLAC", "FLAC")
+}
+
+fn calculate_mb_discid_from_cue_audio(
+    sheet: &CueSheet,
+    audio_path: &Path,
+    method_label: &str,
+    duration_label: &str,
+) -> Result<String, MetadataDetectionError> {
     info!(
-        "Calculating MusicBrainz DiscID from CUE+FLAC, FLAC: {:?}",
-        flac_path
+        "Calculating MusicBrainz DiscID from {method_label}, audio: {:?}",
+        audio_path
     );
-    let duration_seconds = get_flac_duration_seconds(flac_path)?;
-    info!("⏱️ FLAC duration: {:.2} seconds", duration_seconds);
-    calculate_mb_discid_from_cue_duration(sheet, duration_seconds, "CUE/FLAC")
+    let duration_seconds = probe_duration_seconds(audio_path)?;
+    info!("{duration_label} duration: {:.2} seconds", duration_seconds);
+    calculate_mb_discid_from_cue_duration(sheet, duration_seconds, method_label)
 }
 
 /// Calculate MusicBrainz DiscID from a parsed CUE sheet and any audio file
@@ -319,38 +331,18 @@ pub fn calculate_mb_discid_from_cue_flac(
 /// `.m4a`, APE, MP3, WAV, OGG, and anything else FFmpeg recognises. Track
 /// offsets come from the CUE; the lead-out is derived from probe duration.
 ///
-/// FLAC has its own entry point (`calculate_mb_discid_from_cue_flac`) because
-/// it reads STREAMINFO directly instead of going through FFmpeg.
 pub fn calculate_mb_discid_from_cue_probe(
     sheet: &CueSheet,
     audio_path: &Path,
 ) -> Result<String, MetadataDetectionError> {
-    info!(
-        "Calculating MusicBrainz DiscID from CUE+probe, audio: {:?}",
-        audio_path
-    );
-    let path_str = audio_path.to_str().ok_or_else(|| {
-        MetadataDetectionError::Io(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            format!("Non-UTF-8 audio path: {:?}", audio_path),
-        ))
-    })?;
-    let probe = crate::audio_codec::probe_audio_from_path(path_str).ok_or_else(|| {
-        MetadataDetectionError::Io(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            format!("Failed to probe audio file: {:?}", audio_path),
-        ))
-    })?;
-    let duration_seconds = probe.duration.as_secs_f64();
-    info!("Audio duration: {:.2} seconds", duration_seconds);
-    calculate_mb_discid_from_cue_duration(sheet, duration_seconds, "CUE/probe")
+    calculate_mb_discid_from_cue_audio(sheet, audio_path, "CUE/probe", "Audio")
 }
 
 /// Shared MusicBrainz DiscID calculation: given a parsed CUE sheet and the
 /// container's total duration in seconds, build the offsets array (lead-out
 /// first, then track starts, all offsets include the 150-sector pregap) and
-/// hand it to the `discid` crate. Used by both `_from_cue_flac` (FLAC
-/// STREAMINFO duration) and `_from_cue_probe` (FFmpeg duration).
+/// hand it to the `discid` crate. Used by both `_from_cue_flac` and
+/// `_from_cue_probe`.
 fn calculate_mb_discid_from_cue_duration(
     sheet: &CueSheet,
     duration_seconds: f64,
@@ -691,9 +683,7 @@ mod tests {
 
     /// The shared duration-based disc ID path is container-agnostic: given a
     /// CUE sheet and a container duration in seconds, the FLAC and probe
-    /// wrappers produce the same disc ID. This test fixes that contract
-    /// without requiring a real audio file — the wrappers just source the
-    /// duration differently (FLAC STREAMINFO vs FFmpeg probe).
+    /// wrappers produce the same disc ID.
     #[test]
     fn test_cue_duration_discid_matches_across_codecs() {
         use crate::cue_flac::{CueSheet, CueTrack};

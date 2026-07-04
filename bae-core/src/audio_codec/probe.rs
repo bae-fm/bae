@@ -10,6 +10,7 @@ use tracing::{debug, warn};
 /// Probe-discovered audio properties. Populated from `AVCodecID` and
 /// `AVCodecParameters`, so every field reflects what FFmpeg actually sees
 /// in the bytes rather than what the file extension promises.
+#[derive(Debug, Clone)]
 pub struct ProbeResult {
     pub content_type: ContentType,
     pub duration: std::time::Duration,
@@ -145,13 +146,45 @@ unsafe fn open_best_audio_stream(
     Some((fmt_ctx, stream_index))
 }
 
+fn duration_from_time_base(
+    units: i64,
+    time_base: ffmpeg_sys_next::AVRational,
+) -> Option<std::time::Duration> {
+    if units <= 0 || time_base.num <= 0 || time_base.den <= 0 {
+        return None;
+    }
+
+    let micros = units as i128 * time_base.num as i128 * 1_000_000i128 / time_base.den as i128;
+    (micros > 0).then(|| std::time::Duration::from_micros(micros as u64))
+}
+
+unsafe fn probed_duration(
+    path: &str,
+    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
+    stream: *mut ffmpeg_sys_next::AVStream,
+) -> Option<std::time::Duration> {
+    if let Some(duration) = duration_from_time_base((*stream).duration, (*stream).time_base) {
+        return Some(duration);
+    }
+
+    let duration_us = (*fmt_ctx).duration;
+    if duration_us > 0 {
+        debug!(
+            "probe_audio_from_path: using container duration for {path}; stream duration was unavailable"
+        );
+        Some(std::time::Duration::from_micros(duration_us as u64))
+    } else {
+        None
+    }
+}
+
 pub fn probe_audio_from_path(path: &str) -> Option<ProbeResult> {
     unsafe {
         use ffmpeg_sys_next::*;
 
         let (mut fmt_ctx, stream_index) = open_best_audio_stream(path, "probe_audio_from_path")?;
-        let duration_us = (*fmt_ctx).duration;
         let stream = *(*fmt_ctx).streams.add(stream_index as usize);
+        let duration = probed_duration(path, fmt_ctx, stream);
         let codecpar = (*stream).codecpar;
         let codec_id = (*codecpar).codec_id;
         let sample_rate = (*codecpar).sample_rate as u32;
@@ -173,10 +206,10 @@ pub fn probe_audio_from_path(path: &str) -> Option<ProbeResult> {
 
         avformat_close_input(&mut fmt_ctx);
 
-        if duration_us > 0 {
+        if let Some(duration) = duration {
             Some(ProbeResult {
                 content_type: content_type_from_codec_id(codec_id),
-                duration: std::time::Duration::from_micros(duration_us as u64),
+                duration,
                 sample_rate,
                 bits_per_sample,
                 channels,
