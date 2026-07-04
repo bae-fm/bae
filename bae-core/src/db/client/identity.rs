@@ -476,83 +476,58 @@ impl Database {
         &self,
         checks: &[LibraryCheck],
     ) -> Result<Vec<LibraryStatus>, DbError> {
-        // Translate each check into the (source, release_id, group_id) inputs the
-        // closure binds — `LibraryCheck` isn't `Send + 'static`-friendly through
-        // the closure boundary, so carry plain strings.
-        let checks: Vec<(String, String, Option<String>)> = checks
-            .iter()
-            .map(|c| {
-                (
-                    c.source.as_str().to_string(),
-                    c.release_id.clone(),
-                    c.source_group_id.clone(),
-                )
-            })
-            .collect();
+        let checks = checks.to_vec();
 
         self.call(move |conn| {
             let mut statuses = Vec::with_capacity(checks.len());
 
-            for (source, release_id, group_id) in &checks {
-                let mut release_in_library = false;
-                let mut album_in_library = false;
-                let mut album_title: Option<String> = None;
-                let mut album_id: Option<String> = None;
-
-                // Per-pressing match — exact identity at the specific release.
-                let row = conn
+            for check in &checks {
+                let source = check.source.as_str();
+                let group_id = check.source_group_id.as_deref();
+                let matched = conn
                     .query_row(
                         r#"
                             SELECT
-                                a.id, a.title, a.artist_id, a.year, a.primary_release_id,
-                                a.is_compilation, a.created_at
+                                a.id AS album_id,
+                                a.title AS album_title,
+                                ri.source_release_id = ? AS release_match
                             FROM albums a
                             JOIN releases r ON r.album_id = a.id
                             JOIN release_identities ri ON ri.release_id = r.id
-                            WHERE ri.source = ? AND ri.source_release_id = ?
+                            WHERE ri.source = ?
+                              AND (
+                                  ri.source_release_id = ?
+                                  OR (? IS NOT NULL AND ri.source_group_id = ?)
+                              )
+                            ORDER BY release_match DESC
                             LIMIT 1
                             "#,
-                        params![source, release_id],
-                        row_to_album,
+                        params![
+                            check.release_id,
+                            source,
+                            check.release_id,
+                            group_id,
+                            group_id
+                        ],
+                        |row| {
+                            Ok((
+                                row.get::<_, String>("album_id")?,
+                                row.get::<_, String>("album_title")?,
+                                row.get::<_, i64>("release_match")? != 0,
+                            ))
+                        },
                     )
                     .optional()?;
 
-                if let Some(album) = row {
-                    release_in_library = true;
-                    album_in_library = true;
-                    album_title = Some(album.title);
-                    album_id = Some(album.id);
-                } else if let Some(group_id) = group_id {
-                    // Album-level match — any release in the library shares
-                    // the candidate's group identity.
-                    let row = conn
-                        .query_row(
-                            r#"
-                                SELECT
-                                    a.id, a.title, a.artist_id, a.year, a.primary_release_id,
-                                    a.is_compilation, a.created_at
-                                FROM albums a
-                                JOIN releases r ON r.album_id = a.id
-                                JOIN release_identities ri ON ri.release_id = r.id
-                                WHERE ri.source = ? AND ri.source_group_id = ?
-                                LIMIT 1
-                                "#,
-                            params![source, group_id],
-                            row_to_album,
-                        )
-                        .optional()?;
-
-                    if let Some(album) = row {
-                        album_in_library = true;
-                        album_title = Some(album.title);
-                        album_id = Some(album.id);
-                    }
-                }
-
+                let (album_id, album_title, release_in_library) = matched
+                    .map(|(album_id, album_title, release_match)| {
+                        (Some(album_id), Some(album_title), release_match)
+                    })
+                    .unwrap_or((None, None, false));
                 statuses.push(LibraryStatus {
-                    release_id: release_id.clone(),
+                    release_id: check.release_id.clone(),
                     release_in_library,
-                    album_in_library,
+                    album_in_library: album_id.is_some(),
                     album_title,
                     album_id,
                 });

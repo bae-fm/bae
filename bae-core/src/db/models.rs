@@ -237,6 +237,7 @@ pub struct DbAlbumSummary {
 /// `source_group_id` covers candidates where the search result didn't
 /// surface a group (rare for MB, can happen for Discogs releases without
 /// a master) — those checks skip the album-level lookup.
+#[derive(Debug, Clone)]
 pub struct LibraryCheck {
     pub release_id: String,
     pub source: MetadataSource,
