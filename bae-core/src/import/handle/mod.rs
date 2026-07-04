@@ -211,8 +211,7 @@ impl ImportServiceHandle {
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
         cover_art_archive: CoverArtArchiveClient,
     ) -> Self {
-        let progress_handle =
-            ImportProgressHandle::new(event_tx.subscribe(), runtime_handle.clone());
+        let progress_handle = ImportProgressHandle::new(event_tx.clone(), runtime_handle.clone());
         let watched_folders = WatchedFolderControl::new(
             folder_registry,
             watcher_tx,

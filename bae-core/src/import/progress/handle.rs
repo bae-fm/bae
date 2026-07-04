@@ -1,13 +1,7 @@
 use crate::import::handle::ImportEvent;
 use crate::import::types::ImportProgress;
-use std::collections::HashMap;
-use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    Arc, Mutex,
-};
 use tokio::sync::{broadcast, mpsc as tokio_mpsc};
-use tracing::{info, warn};
-type SubscriptionId = u64;
+use tracing::warn;
 /// Filter criteria for progress subscriptions
 #[derive(Debug, Clone)]
 enum SubscriptionFilter {
@@ -43,60 +37,57 @@ impl SubscriptionFilter {
         }
     }
 }
-struct Subscription {
-    filter: SubscriptionFilter,
-    tx: tokio_mpsc::UnboundedSender<ImportProgress>,
-}
 /// Handle for subscribing to import progress updates
 #[derive(Clone)]
 pub struct ImportProgressHandle {
-    subscriptions: Arc<Mutex<HashMap<SubscriptionId, Subscription>>>,
-    next_id: Arc<AtomicU64>,
+    event_tx: broadcast::Sender<ImportEvent>,
+    runtime_handle: tokio::runtime::Handle,
 }
 impl ImportProgressHandle {
-    /// Create a new progress handle and spawn background task to process progress updates.
-    /// Subscribes to the unified ImportEvent broadcast and filters for Progress variants.
+    /// Create a new progress handle.
     pub fn new(
-        mut event_rx: broadcast::Receiver<ImportEvent>,
+        event_tx: broadcast::Sender<ImportEvent>,
         runtime_handle: tokio::runtime::Handle,
     ) -> Self {
-        let subscriptions: Arc<Mutex<HashMap<SubscriptionId, Subscription>>> =
-            Arc::new(Mutex::new(HashMap::new()));
-        let subscriptions_clone = subscriptions.clone();
-        runtime_handle.spawn(async move {
+        Self {
+            event_tx,
+            runtime_handle,
+        }
+    }
+
+    fn subscribe_filtered(
+        &self,
+        filter: SubscriptionFilter,
+    ) -> tokio_mpsc::UnboundedReceiver<ImportProgress> {
+        let mut event_rx = self.event_tx.subscribe();
+        let (tx, rx) = tokio_mpsc::unbounded_channel();
+        self.runtime_handle.spawn(async move {
             loop {
                 match event_rx.recv().await {
                     Ok(ImportEvent::ImportProgress { progress, .. }) => {
-                        let mut subs = subscriptions_clone.lock().unwrap();
-                        let mut to_remove = Vec::new();
-                        for (id, subscription) in subs.iter() {
-                            if subscription.filter.matches(&progress)
-                                && subscription.tx.send(progress.clone()).is_err()
-                            {
-                                to_remove.push(*id);
-                            }
+                        if tx.is_closed() {
+                            break;
                         }
-                        for id in to_remove {
-                            subs.remove(&id);
+                        if filter.matches(&progress) && tx.send(progress).is_err() {
+                            break;
                         }
                     }
-                    Ok(_) => continue,
+                    Ok(_) => {
+                        if tx.is_closed() {
+                            break;
+                        }
+                    }
                     Err(broadcast::error::RecvError::Lagged(n)) => {
                         warn!("Import progress lagged by {n} events");
                         continue;
                     }
-                    Err(broadcast::error::RecvError::Closed) => {
-                        info!("Channel closed, exiting");
-                        break;
-                    }
+                    Err(broadcast::error::RecvError::Closed) => break,
                 }
             }
         });
-        Self {
-            subscriptions,
-            next_id: Arc::new(AtomicU64::new(1)),
-        }
+        rx
     }
+
     /// Subscribe to progress updates for a specific release
     /// Returns a receiver that yields only progress updates for the specified release
     /// Subscription is automatically removed when receiver is dropped
@@ -104,14 +95,7 @@ impl ImportProgressHandle {
         &self,
         release_id: String,
     ) -> tokio_mpsc::UnboundedReceiver<ImportProgress> {
-        let (tx, rx) = tokio_mpsc::unbounded_channel();
-        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        let subscription = Subscription {
-            filter: SubscriptionFilter::Release { release_id },
-            tx,
-        };
-        self.subscriptions.lock().unwrap().insert(id, subscription);
-        rx
+        self.subscribe_filtered(SubscriptionFilter::Release { release_id })
     }
     /// Subscribe to progress updates for a specific import operation
     /// Returns a receiver that yields Preparing events and any event with matching import_id
@@ -120,27 +104,13 @@ impl ImportProgressHandle {
         &self,
         import_id: String,
     ) -> tokio_mpsc::UnboundedReceiver<ImportProgress> {
-        let (tx, rx) = tokio_mpsc::unbounded_channel();
-        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        let subscription = Subscription {
-            filter: SubscriptionFilter::Import { import_id },
-            tx,
-        };
-        self.subscriptions.lock().unwrap().insert(id, subscription);
-        rx
+        self.subscribe_filtered(SubscriptionFilter::Import { import_id })
     }
     /// Subscribe to progress updates for ALL import operations
     /// Returns a receiver that yields any event with an import_id (for toolbar dropdown)
     /// Subscription is automatically removed when receiver is dropped
     pub fn subscribe_all_imports(&self) -> tokio_mpsc::UnboundedReceiver<ImportProgress> {
-        let (tx, rx) = tokio_mpsc::unbounded_channel();
-        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        let subscription = Subscription {
-            filter: SubscriptionFilter::AllImports,
-            tx,
-        };
-        self.subscriptions.lock().unwrap().insert(id, subscription);
-        rx
+        self.subscribe_filtered(SubscriptionFilter::AllImports)
     }
 }
 #[cfg(test)]
