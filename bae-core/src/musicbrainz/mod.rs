@@ -6,11 +6,10 @@
 //! deserialize into live in the `types` submodule, re-exported here so
 //! callers keep using `crate::musicbrainz::Mb…` paths.
 
-use std::num::NonZeroUsize;
-use std::sync::{Mutex as StdMutex, OnceLock};
+use std::sync::OnceLock;
 use std::time::Duration;
 
-use lru::LruCache;
+use crate::util::session_cache::SessionCache;
 use thiserror::Error;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
@@ -73,50 +72,27 @@ async fn mb_get(request: reqwest::RequestBuilder) -> Result<reqwest::Response, M
     }
 }
 
-/// Capacity for each request-kind cache. Sized for a typical session
-/// (a few imports, each touching 1-3 releases). Eviction costs one
-/// network round-trip — same as a cold start.
-const CACHE_CAPACITY: usize = 25;
-
 type ReleaseCacheValue = (MbReleaseResponse, ExternalUrls, String);
 
 /// In-memory cache for `release/{id}` lookups. Stores the parsed
 /// response, extracted URLs, and raw JSON so callers that need any of
 /// the three can hit warm cache. Mutex is `std::sync::Mutex` since the
 /// guard is dropped before any await.
-fn release_cache() -> &'static StdMutex<LruCache<String, ReleaseCacheValue>> {
-    static CACHE: OnceLock<StdMutex<LruCache<String, ReleaseCacheValue>>> = OnceLock::new();
-    CACHE.get_or_init(|| {
-        StdMutex::new(LruCache::new(
-            NonZeroUsize::new(CACHE_CAPACITY).expect("CACHE_CAPACITY > 0"),
-        ))
-    })
-}
+static RELEASE_CACHE: SessionCache<ReleaseCacheValue> =
+    SessionCache::new("MusicBrainz release cache");
 
 /// In-memory cache for `release-group/{id}` JSON. Discogs cross-reference
 /// archival keeps the raw JSON; we cache that string directly.
-fn release_group_json_cache() -> &'static StdMutex<LruCache<String, String>> {
-    static CACHE: OnceLock<StdMutex<LruCache<String, String>>> = OnceLock::new();
-    CACHE.get_or_init(|| {
-        StdMutex::new(LruCache::new(
-            NonZeroUsize::new(CACHE_CAPACITY).expect("CACHE_CAPACITY > 0"),
-        ))
-    })
-}
+static RELEASE_GROUP_JSON_CACHE: SessionCache<String> =
+    SessionCache::new("MusicBrainz release-group JSON cache");
 
 /// In-memory cache for `url?resource=https://www.discogs.com/release/{id}`
 /// lookups. Key: Discogs release ID; value: linked MB release ID (or
 /// `None` if no link exists). This call is part of the cross-reference
 /// archival path; caching means a confirmed Discogs import warms the
 /// lookup for the worker's later commit-time call.
-fn discogs_url_lookup_cache() -> &'static StdMutex<LruCache<String, Option<String>>> {
-    static CACHE: OnceLock<StdMutex<LruCache<String, Option<String>>>> = OnceLock::new();
-    CACHE.get_or_init(|| {
-        StdMutex::new(LruCache::new(
-            NonZeroUsize::new(CACHE_CAPACITY).expect("CACHE_CAPACITY > 0"),
-        ))
-    })
-}
+static DISCOGS_URL_LOOKUP_CACHE: SessionCache<Option<String>> =
+    SessionCache::new("Discogs URL lookup cache");
 
 /// Pre-populate the Discogs-URL → MB-release-ID lookup cache. Tests
 /// use this to short-circuit the cross-reference path without hitting
@@ -124,10 +100,7 @@ fn discogs_url_lookup_cache() -> &'static StdMutex<LruCache<String, Option<Strin
 /// natural result for synthetic test releases.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_discogs_url_lookup(discogs_release_id: &str, mb_release_id: Option<String>) {
-    discogs_url_lookup_cache()
-        .lock()
-        .expect("Discogs URL lookup cache mutex poisoned")
-        .put(discogs_release_id.to_string(), mb_release_id);
+    DISCOGS_URL_LOOKUP_CACHE.put(discogs_release_id, mb_release_id);
 }
 
 /// Pre-populate the MB release cache. Tests use this to drive the
@@ -137,10 +110,7 @@ pub fn seed_discogs_url_lookup(discogs_release_id: &str, mb_release_id: Option<S
 /// being asserted on.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_release_cache(release_id: &str, value: (MbReleaseResponse, ExternalUrls, String)) {
-    release_cache()
-        .lock()
-        .expect("release cache mutex poisoned")
-        .put(release_id.to_string(), value);
+    RELEASE_CACHE.put(release_id, value);
 }
 
 /// Pre-populate the MB release-group JSON cache. Pairs with
@@ -148,10 +118,7 @@ pub fn seed_release_cache(release_id: &str, value: (MbReleaseResponse, ExternalU
 /// path without HTTP.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_release_group_json_cache(release_group_id: &str, raw_json: String) {
-    release_group_json_cache()
-        .lock()
-        .expect("release-group json cache mutex poisoned")
-        .put(release_group_id.to_string(), raw_json);
+    RELEASE_GROUP_JSON_CACHE.put(release_group_id, raw_json);
 }
 
 /// A MusicBrainz lookup failure, keeping the wire-level distinction the
@@ -292,12 +259,7 @@ async fn fetch_release_group_with_relations(
 pub async fn lookup_release_by_id(
     release_id: &str,
 ) -> Result<(MbReleaseResponse, ExternalUrls, String), MusicBrainzError> {
-    if let Some(hit) = release_cache()
-        .lock()
-        .expect("release cache mutex poisoned")
-        .get(release_id)
-        .cloned()
-    {
+    if let Some(hit) = RELEASE_CACHE.get_cloned(release_id) {
         debug!("MusicBrainz release cache hit for {}", release_id);
         return Ok(hit);
     }
@@ -382,10 +344,7 @@ pub async fn lookup_release_by_id(
     }
 
     let value = (mb_response, external_urls, raw_json);
-    release_cache()
-        .lock()
-        .expect("release cache mutex poisoned")
-        .put(release_id.to_string(), value.clone());
+    RELEASE_CACHE.put(release_id, value.clone());
 
     Ok(value)
 }
@@ -395,12 +354,7 @@ pub async fn lookup_release_by_id(
 /// Uses the same endpoint as `fetch_release_group_with_relations` but returns the
 /// raw JSON text instead of a parsed struct. Hits the session-wide LRU cache.
 pub async fn fetch_release_group_json(release_group_id: &str) -> Result<String, MusicBrainzError> {
-    if let Some(hit) = release_group_json_cache()
-        .lock()
-        .expect("release-group json cache mutex poisoned")
-        .get(release_group_id)
-        .cloned()
-    {
+    if let Some(hit) = RELEASE_GROUP_JSON_CACHE.get_cloned(release_group_id) {
         debug!(
             "MusicBrainz release-group JSON cache hit for {}",
             release_group_id
@@ -421,10 +375,7 @@ pub async fn fetch_release_group_json(release_group_id: &str) -> Result<String, 
         .await
         .map_err(|e| MusicBrainzError::Other(format!("Failed to read response body: {}", e)))?;
 
-    release_group_json_cache()
-        .lock()
-        .expect("release-group json cache mutex poisoned")
-        .put(release_group_id.to_string(), raw_json.clone());
+    RELEASE_GROUP_JSON_CACHE.put(release_group_id, raw_json.clone());
 
     Ok(raw_json)
 }
@@ -437,12 +388,7 @@ pub async fn fetch_release_group_json(release_group_id: &str) -> Result<String, 
 pub async fn lookup_release_id_by_discogs_url(
     discogs_release_id: &str,
 ) -> Result<Option<String>, MusicBrainzError> {
-    if let Some(hit) = discogs_url_lookup_cache()
-        .lock()
-        .expect("Discogs URL lookup cache mutex poisoned")
-        .get(discogs_release_id)
-        .cloned()
-    {
+    if let Some(hit) = DISCOGS_URL_LOOKUP_CACHE.get_cloned(discogs_release_id) {
         debug!(
             "MusicBrainz URL lookup cache hit for {}",
             discogs_release_id
@@ -460,10 +406,7 @@ pub async fn lookup_release_id_by_discogs_url(
     let response = match mb_get(http_client().get(&url)).await {
         Ok(response) => response,
         Err(MusicBrainzError::Provider { status: Some(404) }) => {
-            discogs_url_lookup_cache()
-                .lock()
-                .expect("Discogs URL lookup cache mutex poisoned")
-                .put(discogs_release_id.to_string(), None);
+            DISCOGS_URL_LOOKUP_CACHE.put(discogs_release_id, None);
             return Ok(None);
         }
         Err(error) => return Err(error),
@@ -481,10 +424,7 @@ pub async fn lookup_release_id_by_discogs_url(
         .filter(|r| r.relation_type.as_deref() == Some("discogs"))
         .find_map(|r| r.release.as_ref().and_then(|rel| rel.id.clone()));
 
-    discogs_url_lookup_cache()
-        .lock()
-        .expect("Discogs URL lookup cache mutex poisoned")
-        .put(discogs_release_id.to_string(), release_id.clone());
+    DISCOGS_URL_LOOKUP_CACHE.put(discogs_release_id, release_id.clone());
 
     Ok(release_id)
 }

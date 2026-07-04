@@ -4,3 +4,4 @@ pub mod cover;
 pub mod format;
 pub mod fs;
 pub mod http;
+pub mod session_cache;

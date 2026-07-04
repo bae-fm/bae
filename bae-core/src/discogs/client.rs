@@ -1,19 +1,12 @@
 use crate::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
-use lru::LruCache;
+use crate::util::session_cache::SessionCache;
 use reqwest::{Client, Error as ReqwestError, Response, StatusCode};
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::num::NonZeroUsize;
-use std::sync::{Mutex as StdMutex, OnceLock};
 use thiserror::Error;
 use tracing::{debug, warn};
-
-/// Capacity for each request-kind cache. Sized for a typical session
-/// (a few imports, each touching 1-3 releases). Eviction costs one
-/// network round-trip — same as a cold start.
-const CACHE_CAPACITY: usize = 25;
 
 /// In-memory cache for `releases/{id}` lookups. Cache key is the
 /// release ID; value is the parsed release plus the raw JSON for
@@ -23,25 +16,11 @@ const CACHE_CAPACITY: usize = 25;
 type ReleaseCacheValue = (DiscogsRelease, String);
 type MasterCacheValue = (Option<u32>, String);
 
-fn release_cache() -> &'static StdMutex<LruCache<String, ReleaseCacheValue>> {
-    static CACHE: OnceLock<StdMutex<LruCache<String, ReleaseCacheValue>>> = OnceLock::new();
-    CACHE.get_or_init(|| {
-        StdMutex::new(LruCache::new(
-            NonZeroUsize::new(CACHE_CAPACITY).expect("CACHE_CAPACITY > 0"),
-        ))
-    })
-}
+static RELEASE_CACHE: SessionCache<ReleaseCacheValue> = SessionCache::new("Discogs release cache");
 
 /// In-memory cache for `masters/{id}` lookups. Same structure as the
 /// release cache, keyed by master ID.
-fn master_cache() -> &'static StdMutex<LruCache<String, MasterCacheValue>> {
-    static CACHE: OnceLock<StdMutex<LruCache<String, MasterCacheValue>>> = OnceLock::new();
-    CACHE.get_or_init(|| {
-        StdMutex::new(LruCache::new(
-            NonZeroUsize::new(CACHE_CAPACITY).expect("CACHE_CAPACITY > 0"),
-        ))
-    })
-}
+static MASTER_CACHE: SessionCache<MasterCacheValue> = SessionCache::new("Discogs master cache");
 
 /// Pre-populate the release cache. Tests use this to drive
 /// `prepare_release` without making an HTTP call. The raw JSON is
@@ -49,10 +28,7 @@ fn master_cache() -> &'static StdMutex<LruCache<String, MasterCacheValue>> {
 /// string when the archival content isn't being asserted on.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_release_cache(id: &str, value: (DiscogsRelease, String)) {
-    release_cache()
-        .lock()
-        .expect("Discogs release cache mutex poisoned")
-        .put(id.to_string(), value);
+    RELEASE_CACHE.put(id, value);
 }
 
 /// Pre-populate the master cache. Tests use this when a synthetic
@@ -60,10 +36,7 @@ pub fn seed_release_cache(id: &str, value: (DiscogsRelease, String)) {
 /// fetch then resolves through the cache.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_master_cache(master_id: &str, year: Option<u32>, raw_json: String) {
-    master_cache()
-        .lock()
-        .expect("Discogs master cache mutex poisoned")
-        .put(master_id.to_string(), (year, raw_json));
+    MASTER_CACHE.put(master_id, (year, raw_json));
 }
 #[derive(Error, Debug)]
 pub enum DiscogsError {
@@ -507,12 +480,7 @@ impl DiscogsClient {
     }
 
     async fn get_release_inner(&self, id: &str) -> Result<(DiscogsRelease, String), DiscogsError> {
-        if let Some(hit) = release_cache()
-            .lock()
-            .expect("Discogs release cache mutex poisoned")
-            .get(id)
-            .cloned()
-        {
+        if let Some(hit) = RELEASE_CACHE.get_cloned(id) {
             debug!("Discogs release cache hit for {}", id);
             return Ok(hit);
         }
@@ -525,10 +493,7 @@ impl DiscogsClient {
         let raw_json = response.text().await.map_err(DiscogsError::Request)?;
         let release = parse_discogs_release_json(&raw_json)?;
         let value = (release, raw_json);
-        release_cache()
-            .lock()
-            .expect("Discogs release cache mutex poisoned")
-            .put(id.to_string(), value.clone());
+        RELEASE_CACHE.put(id, value.clone());
         Ok(value)
     }
 
@@ -544,12 +509,7 @@ impl DiscogsClient {
         &self,
         master_id: &str,
     ) -> Result<(Option<u32>, String), DiscogsError> {
-        if let Some(hit) = master_cache()
-            .lock()
-            .expect("Discogs master cache mutex poisoned")
-            .get(master_id)
-            .cloned()
-        {
+        if let Some(hit) = MASTER_CACHE.get_cloned(master_id) {
             debug!("Discogs master cache hit for {}", master_id);
             return Ok(hit);
         }
@@ -563,10 +523,7 @@ impl DiscogsClient {
         let raw_json = response.text().await.map_err(DiscogsError::Request)?;
         let year = parse_discogs_master_year(&raw_json)?;
         let value = (year, raw_json);
-        master_cache()
-            .lock()
-            .expect("Discogs master cache mutex poisoned")
-            .put(master_id.to_string(), value.clone());
+        MASTER_CACHE.put(master_id, value.clone());
         Ok(value)
     }
 
