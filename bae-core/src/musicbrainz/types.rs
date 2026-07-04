@@ -167,26 +167,7 @@ impl MbReleaseResponse {
 #[derive(Debug, Clone, Deserialize)]
 pub(super) struct DiscIdResponse {
     #[serde(default)]
-    pub(super) releases: Vec<DiscIdRelease>,
-}
-
-/// A release within a disc ID lookup response (has slightly different shape from full release)
-#[derive(Debug, Clone, Deserialize)]
-pub struct DiscIdRelease {
-    pub id: String,
-    pub title: String,
-    pub date: Option<String>,
-    pub country: Option<String>,
-    #[serde(rename = "artist-credit", default)]
-    pub artist_credit: Vec<MbArtistCredit>,
-    #[serde(rename = "release-group")]
-    pub release_group: Option<MbReleaseGroupRef>,
-    #[serde(rename = "label-info", default)]
-    pub label_info: Vec<MbLabelInfo>,
-    #[serde(default)]
-    pub media: Vec<MbMedium>,
-    #[serde(default)]
-    pub relations: Vec<MbRelation>,
+    pub(super) releases: Vec<MbReleaseResponse>,
 }
 
 /// Response from the release search endpoint

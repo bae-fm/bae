@@ -176,7 +176,7 @@ impl MusicBrainzError {
 /// Lookup releases by MusicBrainz DiscID
 pub async fn lookup_by_discid(
     discid: &str,
-) -> Result<(Vec<DiscIdRelease>, ExternalUrls), MusicBrainzError> {
+) -> Result<(Vec<MbReleaseResponse>, ExternalUrls), MusicBrainzError> {
     info!("MusicBrainz: Looking up DiscID '{}'", discid);
     let base_url = reqwest::Url::parse("https://musicbrainz.org/ws/2/discid/")
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse base URL: {}", e)))?;

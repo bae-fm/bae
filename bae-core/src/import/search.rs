@@ -10,7 +10,7 @@
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::import::cover_art::{CoverArtArchiveClient, RemoteCover};
 use crate::import::types::MetadataSource;
-use crate::musicbrainz::{self, DiscIdRelease, ReleaseSearchParams, SearchRelease};
+use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use crate::retry::retry_with_backoff;
 use crate::signals::LookupFailure;
 use tracing::warn;
@@ -161,7 +161,7 @@ fn parse_year(date: Option<&str>) -> Option<i32> {
     date?.split('-').next()?.parse().ok()
 }
 
-fn disc_id_release_to_metadata(r: DiscIdRelease, cover_art: Option<RemoteCover>) -> MetadataResult {
+fn mb_release_to_metadata(r: MbReleaseResponse, cover_art: Option<RemoteCover>) -> MetadataResult {
     let (label, catalog_number) = r
         .label_info
         .first()
@@ -292,7 +292,7 @@ pub async fn lookup_by_discid(
             let results: Vec<MetadataResult> = releases
                 .into_iter()
                 .zip(covers)
-                .map(|(r, cover_art)| disc_id_release_to_metadata(r, cover_art))
+                .map(|(r, cover_art)| mb_release_to_metadata(r, cover_art))
                 .collect();
 
             if results.len() == 1 {
