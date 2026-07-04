@@ -10,7 +10,7 @@ use super::file_validation;
 use crate::cue_flac::CueFlacProcessor;
 use crate::util::content_type_hint::ContentTypeHint;
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{debug, info};
@@ -672,6 +672,12 @@ enum CategorizeOutcome {
     Invalid(InvalidReason),
 }
 
+#[derive(Debug, Clone, Copy)]
+struct DetectedCueAudioPair {
+    cue_index: usize,
+    audio_index: usize,
+}
+
 /// Shorthand for a failed-validation leaf carrying `reason`.
 fn invalid(reason: InvalidReason) -> Result<CategorizeOutcome, String> {
     Ok(CategorizeOutcome::Invalid(reason))
@@ -760,7 +766,7 @@ fn categorize_files_from_tree(
     // Parse every CUE exactly once. The pair builder, the incomplete-rip
     // guard, and the pair-detection pass below all read from this map —
     // single source of truth per CUE.
-    let parsed_cues: std::collections::HashMap<PathBuf, crate::cue_flac::CueSheet> = all_cue
+    let parsed_cues: HashMap<PathBuf, crate::cue_flac::CueSheet> = all_cue
         .iter()
         .map(|cue| {
             CueFlacProcessor::parse_cue_sheet(&cue.path)
@@ -772,23 +778,39 @@ fn categorize_files_from_tree(
     // Detect CUE+audio pairs by the CUE's own FILE directive — single-FILE
     // sheets pair with the named audio file in the same directory; multi-FILE
     // sheets (one FILE per TRACK) cannot pair on purpose.
-    let audio_paths_set: std::collections::HashSet<&PathBuf> =
-        all_audio.iter().map(|f| &f.path).collect();
-    let detected_pairs: Vec<crate::cue_flac::CueFlacPair> = all_cue
+    let audio_by_path: HashMap<PathBuf, usize> = all_audio
         .iter()
-        .filter_map(|cue| {
-            let sheet = parsed_cues.get(&cue.path)?;
-            let file_reference = sheet.single_file()?;
-            let cue_dir = cue.path.parent()?;
-            let audio_path = cue_dir.join(file_reference);
-            audio_paths_set
-                .contains(&audio_path)
-                .then_some(crate::cue_flac::CueFlacPair {
-                    audio_path,
-                    cue_path: cue.path.clone(),
-                })
-        })
+        .enumerate()
+        .map(|(index, audio)| (audio.path.clone(), index))
         .collect();
+    let detected_pairs: Vec<DetectedCueAudioPair> = all_cue
+        .iter()
+        .enumerate()
+        .map(|(cue_index, cue)| {
+            let sheet = parsed_cues
+                .get(&cue.path)
+                .expect("parsed_cues is populated for every CUE");
+            let Some(file_reference) = sheet.single_file() else {
+                return Ok(None);
+            };
+            let cue_dir = cue
+                .path
+                .parent()
+                .ok_or_else(|| format!("CUE file has no parent: {:?}", cue.path))?;
+            let audio_path = cue_dir.join(file_reference);
+            Ok(audio_by_path
+                .get(&audio_path)
+                .map(|audio_index| DetectedCueAudioPair {
+                    cue_index,
+                    audio_index: *audio_index,
+                }))
+        })
+        .collect::<Result<Vec<_>, String>>()?
+        .into_iter()
+        .flatten()
+        .collect();
+    let paired_cue_indices: HashSet<usize> =
+        detected_pairs.iter().map(|pair| pair.cue_index).collect();
 
     // CUE mismatch guard: a non-pairing CUE whose FILE directive references
     // something not on disk AND whose declared track count exceeds the audio
@@ -800,11 +822,8 @@ fn categorize_files_from_tree(
     // the same per-track FLACs and track counts match — stay as documents.
     // Paired CUEs are skipped outright: pair-detection already verified their
     // audio exists.
-    let paired_cues: std::collections::HashSet<PathBuf> =
-        detected_pairs.iter().map(|p| p.cue_path.clone()).collect();
-
-    for cue in &all_cue {
-        if paired_cues.contains(&cue.path) {
+    for (cue_index, cue) in all_cue.iter().enumerate() {
+        if paired_cue_indices.contains(&cue_index) {
             continue;
         }
 
@@ -815,7 +834,7 @@ fn categorize_files_from_tree(
         let cue_sheet = parsed_cues
             .get(&cue.path)
             .expect("parsed_cues is populated for every CUE");
-        let unique_refs: std::collections::HashSet<&str> = cue_sheet
+        let unique_refs: HashSet<&str> = cue_sheet
             .tracks
             .iter()
             .map(|t| t.file_reference.as_str())
@@ -846,28 +865,16 @@ fn categorize_files_from_tree(
 
     let (audio, unpaired_cue_sheets) = if !detected_pairs.is_empty() {
         let mut pairs = Vec::new();
-        let mut used_audio_paths = std::collections::HashSet::new();
-        let mut used_cue_paths = std::collections::HashSet::new();
         let mut parsed_cues = parsed_cues;
 
         for pair in detected_pairs {
-            let cue_file = all_cue
-                .iter()
-                .find(|f| f.path == pair.cue_path)
-                .cloned()
-                .ok_or_else(|| format!("CUE file not found: {:?}", pair.cue_path))?;
-            let audio_file = all_audio
-                .iter()
-                .find(|f| f.path == pair.audio_path)
-                .cloned()
-                .ok_or_else(|| format!("Audio file not found: {:?}", pair.audio_path))?;
+            let cue_file = all_cue[pair.cue_index].clone();
+            let audio_file = all_audio[pair.audio_index].clone();
 
             let cue_sheet = parsed_cues
-                .remove(&pair.cue_path)
+                .remove(&cue_file.path)
                 .expect("detected CUE pair has a parsed CUE sheet");
 
-            used_audio_paths.insert(pair.audio_path);
-            used_cue_paths.insert(pair.cue_path);
             let total_size = cue_file.size + audio_file.size;
             pairs.push(ScannedCueFlacPair {
                 cue_file,
@@ -878,8 +885,8 @@ fn categorize_files_from_tree(
         }
 
         // Unused CUE files (not part of a pair) become documents
-        for cue in all_cue {
-            if !used_cue_paths.contains(&cue.path) {
+        for (cue_index, cue) in all_cue.into_iter().enumerate() {
+            if !paired_cue_indices.contains(&cue_index) {
                 documents.push(cue);
             }
         }
