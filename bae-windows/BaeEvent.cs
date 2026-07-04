@@ -60,7 +60,7 @@ public sealed class BaeEvent
     // Scan-candidate events.
     public string? Key { get; set; }
     public string? Name { get; set; }
-    public int? TrackCount { get; set; }
+    public int TrackCount { get; set; }
     public string? Format { get; set; }
     public List<string>? AudioPaths { get; set; }
 

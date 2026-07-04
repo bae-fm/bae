@@ -67,6 +67,7 @@
   <data name="import.back_to_search" xml:space="preserve"><value>검색으로 돌아가기</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>폴더 선택 및 스캔</value></data>
   <data name="import.complete" xml:space="preserve"><value>가져옴</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# track} other {# tracks}}</value></data>
   <data name="import.confirm_title" xml:space="preserve"><value>가져오기 확인</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>스캔 및 가져오기</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>가져올 폴더를 놓으세요</value></data>

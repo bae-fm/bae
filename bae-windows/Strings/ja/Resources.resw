@@ -67,6 +67,7 @@
   <data name="import.back_to_search" xml:space="preserve"><value>検索に戻る</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>フォルダを選択してスキャン</value></data>
   <data name="import.complete" xml:space="preserve"><value>取り込み完了</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# track} other {# tracks}}</value></data>
   <data name="import.confirm_title" xml:space="preserve"><value>取り込みを確認</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>スキャンして取り込む</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>フォルダをドロップして取り込む</value></data>

@@ -10,8 +10,6 @@ pub enum ExportFormat {
     Mp3,
 }
 
-pub use crate::audio_codec::MP3_EXPORT_BITRATE;
-
 /// Render a single-track export's suggested filename stem (no extension) from a
 /// template and the track's tag data. Supported tokens:
 /// `{title} {artist} {album} {year} {track_number} {disc_number} {track_total}`.

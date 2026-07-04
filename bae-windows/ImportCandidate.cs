@@ -11,7 +11,7 @@ public sealed class ImportCandidate
 {
     public string Key { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public int? TrackCount { get; set; }
+    public int TrackCount { get; set; }
     public string Format { get; set; } = string.Empty;
 
     /// <summary>The auto-identification status, e.g. "identifying…" / "found (3)".</summary>
@@ -35,10 +35,7 @@ public sealed class ImportCandidate
     public override string ToString()
     {
         var parts = new List<string> { Name };
-        if (TrackCount is int count)
-        {
-            parts.Add($"{count} tracks");
-        }
+        parts.Add(Loc.Chrome("import.candidate.tracks", "count", TrackCount));
 
         if (!string.IsNullOrEmpty(Format))
         {

@@ -67,6 +67,7 @@
   <data name="import.back_to_search" xml:space="preserve"><value>العودة إلى البحث</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>اختر المجلد وافحص</value></data>
   <data name="import.complete" xml:space="preserve"><value>تم الاستيراد</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# track} other {# tracks}}</value></data>
   <data name="import.confirm_title" xml:space="preserve"><value>تأكيد الاستيراد</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>افحص واستورد</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>أسقِط مجلدًا للاستيراد</value></data>

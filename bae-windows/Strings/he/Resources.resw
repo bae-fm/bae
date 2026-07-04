@@ -67,6 +67,7 @@
   <data name="import.back_to_search" xml:space="preserve"><value>חזרה לחיפוש</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>בחרו תיקייה וסרקו</value></data>
   <data name="import.complete" xml:space="preserve"><value>יובא</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# track} other {# tracks}}</value></data>
   <data name="import.confirm_title" xml:space="preserve"><value>אישור ייבוא</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>סרוק וייבא</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>גררו תיקייה לייבוא</value></data>

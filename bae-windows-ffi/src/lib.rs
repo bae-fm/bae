@@ -698,9 +698,7 @@ pub unsafe extern "C" fn bae_export_track(
     };
     let format = match format.as_str() {
         "flac" => ExportFormat::Flac,
-        "mp3" => ExportFormat::Mp3 {
-            bitrate: bae_core::library::MP3_EXPORT_BITRATE,
-        },
+        "mp3" => ExportFormat::Mp3,
         other => return error_cstring(&format!("unknown export format: {other}")),
     };
     let app = &handle.0;
@@ -3032,7 +3030,7 @@ enum FfiEvent {
     CandidateAdded {
         key: String,
         name: String,
-        track_count: Option<u32>,
+        track_count: u32,
         format: String,
         audio_paths: Vec<String>,
     },

@@ -13,7 +13,7 @@ pub mod upload_throughput;
 pub use app_services::*;
 pub use download_snapshot::{DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use export::{ExportFormat, MP3_EXPORT_BITRATE};
+pub use export::ExportFormat;
 pub use export_snapshot::{ExportOp, ExportProgress, ExportSnapshot, ExportState};
 pub use manager::*;
 pub use outbox_snapshot::{
