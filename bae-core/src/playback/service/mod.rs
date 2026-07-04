@@ -76,16 +76,6 @@ pub(crate) fn log_streaming_decode_failure(
     }
 }
 
-/// Snapshot of the most recent position display values.
-///
-/// Written on every position tick and by `emit_position_display` so that
-/// late-mounting UI elements (e.g. the NSView created after startup restore)
-/// can populate themselves immediately instead of waiting for the next tick.
-#[derive(Debug, Clone)]
-pub struct PositionDisplay {
-    pub progress: f64,
-}
-
 /// Track metadata resolved once at prepare time, cached for the duration of playback.
 /// Used to populate PlaybackState emissions so the bridge doesn't need DB access.
 #[derive(Debug, Clone)]
@@ -285,7 +275,7 @@ async fn await_shutdown_ack(rx: oneshot::Receiver<()>) {
 pub struct PlaybackHandle {
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     progress_handle: PlaybackProgressHandle,
-    last_position_display: std::sync::Arc<std::sync::Mutex<Option<PositionDisplay>>>,
+    last_position_display: std::sync::Arc<std::sync::Mutex<Option<f64>>>,
 }
 impl PlaybackHandle {
     pub fn play(&self, track_id: String) {
@@ -418,11 +408,11 @@ impl PlaybackHandle {
         let _ = rx.await;
     }
 
-    /// Read the most recent position display values. Used by late-mounting
+    /// Read the most recent position display progress. Used by late-mounting
     /// views (e.g. the progress NSView after startup restore) to populate
     /// themselves immediately instead of waiting for the next position tick.
-    pub fn get_last_position_display(&self) -> Option<PositionDisplay> {
-        self.last_position_display.lock().unwrap().clone()
+    pub fn get_last_position_display(&self) -> Option<f64> {
+        *self.last_position_display.lock().unwrap()
     }
     pub fn skip_to_entry(&self, entry_id: QueueEntryId) {
         dispatch_command(&self.command_tx, PlaybackCommand::SkipTo(entry_id));
@@ -750,7 +740,7 @@ pub struct PlaybackService {
     shared_file_buffer: Option<(String, SharedSparseBuffer)>,
     /// Shared with PlaybackHandle. Written on every position tick and by
     /// `emit_position_display`; read by late-mounting views.
-    last_position_display: Arc<std::sync::Mutex<Option<PositionDisplay>>>,
+    last_position_display: Arc<std::sync::Mutex<Option<f64>>>,
     /// Sender cloned into each `PlaybackSource`; fired by the audio callback
     /// when it crosses a gapless track boundary, carrying the finishing and
     /// incoming track identities + the finishing track's decode stats.

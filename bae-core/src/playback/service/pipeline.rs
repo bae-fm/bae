@@ -120,9 +120,7 @@ impl PlaybackService {
                         *current_position_shared.lock().unwrap() = Some(actual_pos);
                         let raw_pos_ms = actual_pos.as_millis() as u64;
                         let progress = crate::playback::format::compute_progress(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
-                        *last_position_display.lock().unwrap() = Some(PositionDisplay {
-                            progress,
-                        });
+                        *last_position_display.lock().unwrap() = Some(progress);
                         let (adjusted_pos_ms, adjusted_dur_ms) =
                             crate::playback::format::adjust_for_pregap(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
                         emit_progress(

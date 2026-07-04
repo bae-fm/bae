@@ -19,7 +19,7 @@ impl PlaybackService {
         let progress =
             crate::playback::format::compute_progress(position_ms, raw_dur_ms, pregap_ms);
 
-        *self.last_position_display.lock().unwrap() = Some(PositionDisplay { progress });
+        *self.last_position_display.lock().unwrap() = Some(progress);
 
         emit_progress(
             &self.progress_tx,
