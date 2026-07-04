@@ -28,7 +28,9 @@ impl PlaybackService {
         if count == 0 {
             return;
         }
-        let event = PlaybackProgress::QueueItemsAdded { count };
-        let _ = self.progress_tx.send(event);
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::QueueItemsAdded { count },
+        );
     }
 }
