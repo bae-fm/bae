@@ -276,7 +276,7 @@ impl PlaybackService {
             context,
             manual: serde_json::to_string(&snap.manual)
                 .expect("serializing a Vec<String> to JSON cannot fail"),
-            repeat: repeat_to_str(snap.repeat).to_string(),
+            repeat: repeat_to_str(snap.repeat),
             current_track_id: snap.current_track_id,
             position_ms,
             volume: if self.is_muted {

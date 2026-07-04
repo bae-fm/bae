@@ -40,10 +40,10 @@ impl PersistedPlayback {
         };
 
         let repeat = match repeat_from_str(&row.repeat) {
-            Some(repeat) => repeat,
-            None => {
+            Ok(repeat) => repeat,
+            Err(e) => {
                 warn!(
-                    "discarding the playback resume cache: unrecognized repeat {:?}",
+                    "discarding the playback resume cache: unrecognized repeat {:?} ({e})",
                     row.repeat
                 );
                 return None;
@@ -130,23 +130,16 @@ fn source_from_str(source: String) -> ContextSource {
 }
 
 /// Serialize `RepeatMode` for the `playback_state.repeat` column.
-pub fn repeat_to_str(mode: RepeatMode) -> &'static str {
-    match mode {
-        RepeatMode::Off => "off",
-        RepeatMode::Track => "track",
-        RepeatMode::Context => "context",
+pub fn repeat_to_str(mode: RepeatMode) -> String {
+    match serde_json::to_value(mode).expect("RepeatMode serializes to JSON") {
+        serde_json::Value::String(s) => s,
+        other => panic!("RepeatMode serialized to a non-string JSON value: {other:?}"),
     }
 }
 
-/// Parse the `playback_state.repeat` column, or `None` for an unrecognized value
-/// (the boundary parse discards the whole cache when this is `None`).
-fn repeat_from_str(s: &str) -> Option<RepeatMode> {
-    match s {
-        "off" => Some(RepeatMode::Off),
-        "track" => Some(RepeatMode::Track),
-        "context" => Some(RepeatMode::Context),
-        _ => None,
-    }
+/// Parse the `playback_state.repeat` column.
+fn repeat_from_str(s: &str) -> Result<RepeatMode, serde_json::Error> {
+    serde_json::from_value(serde_json::Value::String(s.to_string()))
 }
 
 #[cfg(test)]
@@ -232,6 +225,18 @@ mod tests {
             ContextSource::Library,
         ] {
             assert_eq!(source_from_str(source_to_str(&source)), source);
+        }
+    }
+
+    #[test]
+    fn repeat_encoding_uses_lowercase_names() {
+        for (mode, encoded) in [
+            (RepeatMode::Off, "off"),
+            (RepeatMode::Track, "track"),
+            (RepeatMode::Context, "context"),
+        ] {
+            assert_eq!(repeat_to_str(mode), encoded);
+            assert_eq!(repeat_from_str(encoded).expect("repeat parses"), mode);
         }
     }
 
