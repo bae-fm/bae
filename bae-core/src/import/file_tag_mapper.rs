@@ -20,7 +20,7 @@
 //! from any tag carrying a date. Both stay `None` if not determinable
 //! rather than being defaulted.
 
-use super::{ParsedAlbum, ParsedWorkGraph};
+use super::{find_or_push_artist, ParsedAlbum, ParsedWorkGraph};
 use crate::cue_flac::CueSheet;
 use crate::db::ReleaseMetadataSource;
 use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbTrack, DbTrackArtist};
@@ -280,27 +280,20 @@ fn assemble_parsed_album(seed: AlbumSeed, clock: &dyn Clock, ids: &dyn IdProvide
         // junction is the source of truth for per-track credits, not a
         // divergence-only annotation.
         if let Some(track_artist_name) = seed_track.artist.as_ref() {
-            let already_exists = artists
-                .iter()
-                .any(|a| a.name.eq_ignore_ascii_case(track_artist_name));
-
-            if !already_exists {
-                artists.push(DbArtist {
-                    id: ids.new_id(),
-                    name: track_artist_name.clone(),
-                    sort_name: Some(track_artist_name.clone()),
-                    discogs_artist_id: None,
-                    musicbrainz_artist_id: None,
-                    created_at: now,
-                });
-            }
-
-            let artist_id = artists
-                .iter()
-                .find(|a| a.name.eq_ignore_ascii_case(track_artist_name))
-                .expect("artist was just inserted or already present")
-                .id
-                .clone();
+            let artist_id = find_or_push_artist(
+                &mut artists,
+                |artist| artist.name.eq_ignore_ascii_case(track_artist_name),
+                || {
+                    (
+                        track_artist_name.to_string(),
+                        Some(track_artist_name.to_string()),
+                        None,
+                        None,
+                    )
+                },
+                ids,
+                now,
+            );
 
             track_artists.push(DbTrackArtist::new(
                 &db_track.id,

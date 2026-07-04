@@ -34,6 +34,32 @@ use crate::db::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
 };
+use coven::IdProvider;
+
+pub(crate) fn find_or_push_artist(
+    artists: &mut Vec<DbArtist>,
+    matches: impl Fn(&DbArtist) -> bool,
+    seed: impl FnOnce() -> (String, Option<String>, Option<String>, Option<String>),
+    ids: &dyn IdProvider,
+    now: chrono::DateTime<chrono::Utc>,
+) -> String {
+    if let Some(existing) = artists.iter().find(|artist| matches(artist)) {
+        return existing.id.clone();
+    }
+
+    let (name, sort_name, discogs_artist_id, musicbrainz_artist_id) = seed();
+    let artist = DbArtist {
+        id: ids.new_id(),
+        name,
+        sort_name,
+        discogs_artist_id,
+        musicbrainz_artist_id,
+        created_at: now,
+    };
+    let id = artist.id.clone();
+    artists.push(artist);
+    id
+}
 
 #[derive(Debug, Clone)]
 pub struct ParsedWorkGraph {

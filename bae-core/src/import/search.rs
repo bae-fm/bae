@@ -601,16 +601,18 @@ fn build_discogs_detail(release: &crate::discogs::DiscogsRelease) -> ImportSearc
     let tracks: Vec<ReleaseTrack> = processed
         .iter()
         .map(|pt| {
-            let source_track = release.tracklist.iter().find(|t| {
-                pt.original_positions.iter().any(|p| p == &t.position) && t.type_ != "heading"
-            });
-
+            let source_track_index = pt
+                .source_track_indices
+                .first()
+                .expect("processed Discogs track has a source track");
+            let source_track = &release.tracklist[*source_track_index];
             let duration_ms = source_track
-                .and_then(|t| t.duration.as_ref())
+                .duration
+                .as_ref()
                 .and_then(|d| parse_duration_to_ms(d));
             ReleaseTrack {
                 title: pt.title.clone(),
-                artist: source_track.and_then(|t| t.artists.first().map(|a| a.name.clone())),
+                artist: source_track.artists.first().map(|a| a.name.clone()),
                 duration_ms,
                 position: pt.position.clone(),
                 side: pt.side as u32,
