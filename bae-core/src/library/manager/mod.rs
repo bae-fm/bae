@@ -528,6 +528,7 @@ pub enum LibraryEvent {
 /// - State transitions (importing -> complete/failed)
 /// - Query methods for library browsing
 /// - Deletion with cloud storage cleanup
+#[derive(Clone)]
 pub struct LibraryManager {
     database: Database,
     library_dir: LibraryDir,
@@ -598,27 +599,6 @@ impl std::fmt::Debug for LibraryManager {
     }
 }
 
-impl Clone for LibraryManager {
-    fn clone(&self) -> Self {
-        Self {
-            database: self.database.clone(),
-            library_dir: self.library_dir.clone(),
-            config_handle: self.config_handle.clone(),
-            key_service: self.key_service.clone(),
-            clock: self.clock.clone(),
-            ids: self.ids.clone(),
-            runtime_handle: self.runtime_handle.clone(),
-            handle: self.handle.clone(),
-            event_tx: self.event_tx.clone(),
-            sync: self.sync.clone(),
-            transfer_cancels: self.transfer_cancels.clone(),
-            download_queue: self.download_queue.clone(),
-            export_queue: self.export_queue.clone(),
-            #[cfg(any(test, feature = "test-utils"))]
-            test_overrides: self.test_overrides.clone(),
-        }
-    }
-}
 impl LibraryManager {
     /// Open coven through the top-level builder and create the library manager
     /// over the resulting handle.
