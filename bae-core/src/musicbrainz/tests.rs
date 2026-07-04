@@ -23,6 +23,25 @@ fn test_release_search_params_build_query() {
     );
 }
 
+#[test]
+fn release_search_params_ignore_blank_fields() {
+    let blank_params = ReleaseSearchParams {
+        artist: Some("   ".to_string()),
+        album: Some("\n\t".to_string()),
+        ..Default::default()
+    };
+    assert!(!blank_params.has_any_field());
+    assert_eq!(blank_params.build_query(), "");
+
+    let params = ReleaseSearchParams {
+        artist: Some("  Artist Name  ".to_string()),
+        year: Some(" 2000 ".to_string()),
+        ..Default::default()
+    };
+    assert!(params.has_any_field());
+    assert_eq!(params.build_query(), "artist:\"Artist Name\" AND date:2000");
+}
+
 #[tokio::test(start_paused = true)]
 async fn test_rate_limiter_enforces_spacing() {
     // First call should return immediately

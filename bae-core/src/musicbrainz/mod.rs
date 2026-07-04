@@ -578,62 +578,53 @@ pub struct ReleaseSearchParams {
 }
 
 impl ReleaseSearchParams {
+    fn query_fields(&self) -> [(&Option<String>, &'static str, QueryValueFormat); 8] {
+        [
+            (&self.artist, "artist", QueryValueFormat::Quoted),
+            (&self.album, "release", QueryValueFormat::Quoted),
+            (&self.year, "date", QueryValueFormat::Bare),
+            (&self.label, "label", QueryValueFormat::Quoted),
+            (&self.catalog_number, "catno", QueryValueFormat::Quoted),
+            (&self.barcode, "barcode", QueryValueFormat::Bare),
+            (&self.format, "format", QueryValueFormat::Quoted),
+            (&self.country, "country", QueryValueFormat::Quoted),
+        ]
+    }
+
     /// Check if at least one field is filled
     pub fn has_any_field(&self) -> bool {
-        self.artist.is_some()
-            || self.album.is_some()
-            || self.year.is_some()
-            || self.label.is_some()
-            || self.catalog_number.is_some()
-            || self.barcode.is_some()
-            || self.format.is_some()
-            || self.country.is_some()
+        self.query_fields().iter().any(|(value, _, _)| {
+            value
+                .as_deref()
+                .is_some_and(|value| !value.trim().is_empty())
+        })
     }
 
     /// Build Lucene query string from filled fields
     fn build_query(&self) -> String {
-        let mut parts = Vec::new();
-        if let Some(ref artist) = self.artist {
-            if !artist.trim().is_empty() {
-                parts.push(format!("artist:\"{}\"", artist.trim()));
-            }
+        self.query_fields()
+            .into_iter()
+            .filter_map(|(value, key, format)| {
+                let value = value.as_deref()?.trim();
+                (!value.is_empty()).then(|| format.render(key, value))
+            })
+            .collect::<Vec<_>>()
+            .join(" AND ")
+    }
+}
+
+#[derive(Copy, Clone)]
+enum QueryValueFormat {
+    Bare,
+    Quoted,
+}
+
+impl QueryValueFormat {
+    fn render(self, key: &str, value: &str) -> String {
+        match self {
+            Self::Bare => format!("{}:{}", key, value),
+            Self::Quoted => format!("{}:\"{}\"", key, value),
         }
-        if let Some(ref album) = self.album {
-            if !album.trim().is_empty() {
-                parts.push(format!("release:\"{}\"", album.trim()));
-            }
-        }
-        if let Some(ref year) = self.year {
-            if !year.trim().is_empty() {
-                parts.push(format!("date:{}", year.trim()));
-            }
-        }
-        if let Some(ref label) = self.label {
-            if !label.trim().is_empty() {
-                parts.push(format!("label:\"{}\"", label.trim()));
-            }
-        }
-        if let Some(ref catno) = self.catalog_number {
-            if !catno.trim().is_empty() {
-                parts.push(format!("catno:\"{}\"", catno.trim()));
-            }
-        }
-        if let Some(ref barcode) = self.barcode {
-            if !barcode.trim().is_empty() {
-                parts.push(format!("barcode:{}", barcode.trim()));
-            }
-        }
-        if let Some(ref format) = self.format {
-            if !format.trim().is_empty() {
-                parts.push(format!("format:\"{}\"", format.trim()));
-            }
-        }
-        if let Some(ref country) = self.country {
-            if !country.trim().is_empty() {
-                parts.push(format!("country:\"{}\"", country.trim()));
-            }
-        }
-        parts.join(" AND ")
     }
 }
 
