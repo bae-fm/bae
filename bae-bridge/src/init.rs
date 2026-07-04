@@ -99,8 +99,10 @@ pub fn init_app(
 pub fn configure_diagnostics(
     config: BridgeDiagnosticsConfig,
 ) -> Result<Arc<BridgeDiagnostics>, BridgeError> {
-    let diagnostics =
-        Diagnostics::configure(config.into_core()).map_err(diagnostics_error_to_bridge)?;
+    let clock: coven::ClockRef = Arc::new(coven::SystemClock);
+    let ids: coven::IdRef = Arc::new(coven::UuidProvider);
+    let diagnostics = Diagnostics::configure(config.into_core(), clock, ids)
+        .map_err(diagnostics_error_to_bridge)?;
     configure_logging(diagnostics.clone())?;
     Ok(Arc::new(BridgeDiagnostics { diagnostics }))
 }

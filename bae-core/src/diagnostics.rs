@@ -17,6 +17,7 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
+use coven::{ClockRef, IdRef};
 use regex::Regex;
 use reqwest::{
     header::{HeaderMap, HeaderValue, CONTENT_TYPE},
@@ -26,7 +27,6 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
 use tracing::{field::Visit, Event, Subscriber};
 use tracing_subscriber::{layer::Context, Layer};
-use uuid::Uuid;
 
 use crate::retry::retry_with_backoff_if;
 
@@ -109,38 +109,6 @@ impl DatadogDiagnosticsConfig {
     }
 }
 
-#[derive(Clone)]
-pub struct DiagnosticsDependencies {
-    now: Arc<dyn Fn() -> DateTime<Utc> + Send + Sync>,
-    request_id: Arc<dyn Fn() -> String + Send + Sync>,
-}
-
-impl DiagnosticsDependencies {
-    pub fn new(
-        now: impl Fn() -> DateTime<Utc> + Send + Sync + 'static,
-        request_id: impl Fn() -> String + Send + Sync + 'static,
-    ) -> Self {
-        Self {
-            now: Arc::new(now),
-            request_id: Arc::new(request_id),
-        }
-    }
-
-    fn now(&self) -> DateTime<Utc> {
-        (self.now)()
-    }
-
-    fn request_id(&self) -> String {
-        (self.request_id)()
-    }
-}
-
-impl Default for DiagnosticsDependencies {
-    fn default() -> Self {
-        Self::new(Utc::now, || Uuid::new_v4().to_string())
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiagnosticEvent {
     pub kind: DiagnosticKind,
@@ -198,7 +166,7 @@ enum DiagnosticsInner {
     Worker {
         tx: mpsc::UnboundedSender<WorkerMessage>,
         app: AppDiagnosticMetadata,
-        dependencies: DiagnosticsDependencies,
+        clock: ClockRef,
     },
 }
 
@@ -209,13 +177,10 @@ impl Diagnostics {
         }
     }
 
-    pub fn configure(config: DiagnosticsConfig) -> Result<Self, DiagnosticsError> {
-        Self::configure_with_dependencies(config, DiagnosticsDependencies::default())
-    }
-
-    pub fn configure_with_dependencies(
+    pub fn configure(
         config: DiagnosticsConfig,
-        dependencies: DiagnosticsDependencies,
+        clock: ClockRef,
+        ids: IdRef,
     ) -> Result<Self, DiagnosticsError> {
         let DiagnosticsConfig::Enabled(config) = config else {
             return Ok(Self::noop());
@@ -224,17 +189,18 @@ impl Diagnostics {
             return Err(DiagnosticsError::IncompleteConfig);
         }
         let config = config.normalized();
-        Self::with_transport(config, dependencies, Arc::new(DatadogTransport::new()))
+        Self::with_transport(config, clock, ids, Arc::new(DatadogTransport::new()))
     }
 
     fn with_transport(
         config: DatadogDiagnosticsConfig,
-        dependencies: DiagnosticsDependencies,
+        clock: ClockRef,
+        ids: IdRef,
         transport: Arc<dyn DiagnosticsTransport>,
     ) -> Result<Self, DiagnosticsError> {
         let (tx, rx) = mpsc::unbounded_channel();
         let app = config.app.clone();
-        let worker = DiagnosticsWorker::new(config, dependencies.clone(), transport, rx);
+        let worker = DiagnosticsWorker::new(config, ids, transport, rx);
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -245,11 +211,7 @@ impl Diagnostics {
             .map_err(DiagnosticsError::SpawnWorker)?;
 
         Ok(Self {
-            inner: Arc::new(DiagnosticsInner::Worker {
-                tx,
-                app,
-                dependencies,
-            }),
+            inner: Arc::new(DiagnosticsInner::Worker { tx, app, clock }),
         })
     }
 
@@ -299,7 +261,7 @@ impl Diagnostics {
     }
 
     fn emit_event(&self, input: DiagnosticEventInput) -> Result<(), DiagnosticsError> {
-        let Some((app, dependencies)) = self.app_context() else {
+        let Some((app, clock)) = self.app_context() else {
             return Ok(());
         };
         self.emit(DiagnosticEvent {
@@ -308,7 +270,7 @@ impl Diagnostics {
             level: input.level,
             target: input.target,
             message: redact_text(&input.message),
-            timestamp: dependencies.now(),
+            timestamp: clock.now(),
             fields: sanitize_fields(input.fields),
             app,
         })
@@ -322,12 +284,10 @@ impl Diagnostics {
             .map_err(|_| DiagnosticsError::WorkerStopped)
     }
 
-    fn app_context(&self) -> Option<(AppDiagnosticMetadata, DiagnosticsDependencies)> {
+    fn app_context(&self) -> Option<(AppDiagnosticMetadata, ClockRef)> {
         match self.inner.as_ref() {
             DiagnosticsInner::Noop => None,
-            DiagnosticsInner::Worker {
-                app, dependencies, ..
-            } => Some((app.clone(), dependencies.clone())),
+            DiagnosticsInner::Worker { app, clock, .. } => Some((app.clone(), clock.clone())),
         }
     }
 }
@@ -348,7 +308,7 @@ enum WorkerMessage {
 
 struct DiagnosticsWorker {
     config: DatadogDiagnosticsConfig,
-    dependencies: DiagnosticsDependencies,
+    ids: IdRef,
     transport: Arc<dyn DiagnosticsTransport>,
     rx: mpsc::UnboundedReceiver<WorkerMessage>,
     buffered: VecDeque<DiagnosticEvent>,
@@ -357,13 +317,13 @@ struct DiagnosticsWorker {
 impl DiagnosticsWorker {
     fn new(
         config: DatadogDiagnosticsConfig,
-        dependencies: DiagnosticsDependencies,
+        ids: IdRef,
         transport: Arc<dyn DiagnosticsTransport>,
         rx: mpsc::UnboundedReceiver<WorkerMessage>,
     ) -> Self {
         Self {
             config,
-            dependencies,
+            ids,
             transport,
             rx,
             buffered: VecDeque::new(),
@@ -418,14 +378,13 @@ impl DiagnosticsWorker {
 
         let batch_len = self.buffered.len().min(BATCH_SIZE);
         let batch: Vec<_> = self.buffered.drain(..batch_len).collect();
-        let request =
-            match DatadogRequest::build(&self.config, &batch, self.dependencies.request_id()) {
-                Ok(request) => request,
-                Err(e) => {
-                    self.restore_front(batch);
-                    return Err(e);
-                }
-            };
+        let request = match DatadogRequest::build(&self.config, &batch, self.ids.new_id()) {
+            Ok(request) => request,
+            Err(e) => {
+                self.restore_front(batch);
+                return Err(e);
+            }
+        };
 
         match send_with_retry(self.transport.as_ref(), request).await {
             Ok(()) => Ok(()),
@@ -779,15 +738,16 @@ mod tests {
         }
     }
 
-    fn dependencies() -> DiagnosticsDependencies {
-        DiagnosticsDependencies::new(
-            || {
-                DateTime::parse_from_rfc3339("2026-06-20T00:00:00Z")
-                    .expect("test timestamp parses")
-                    .with_timezone(&Utc)
-            },
-            || "request-id".to_string(),
-        )
+    fn clock() -> ClockRef {
+        Arc::new(coven::FixedClock(
+            DateTime::parse_from_rfc3339("2026-06-20T00:00:00Z")
+                .expect("test timestamp parses")
+                .with_timezone(&Utc),
+        ))
+    }
+
+    fn ids() -> IdRef {
+        Arc::new(coven::SequentialIdProvider::new("request-id"))
     }
 
     fn event() -> DiagnosticEvent {
@@ -797,7 +757,7 @@ mod tests {
             level: DiagnosticLevel::Warn,
             target: "target".to_string(),
             message: "message".to_string(),
-            timestamp: dependencies().now(),
+            timestamp: clock().now(),
             fields: BTreeMap::from([("operation".to_string(), "scan".to_string())]),
             app: config().app,
         }
@@ -825,10 +785,7 @@ mod tests {
         incomplete.client_token = String::new();
         assert!(!DiagnosticsConfig::Enabled(incomplete.clone()).sends_events());
         assert!(matches!(
-            Diagnostics::configure_with_dependencies(
-                DiagnosticsConfig::Enabled(incomplete),
-                dependencies()
-            ),
+            Diagnostics::configure(DiagnosticsConfig::Enabled(incomplete), clock(), ids()),
             Err(DiagnosticsError::IncompleteConfig)
         ));
 
@@ -955,7 +912,7 @@ mod tests {
     #[tokio::test]
     async fn batching_flushes_events_through_transport() {
         let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
-        let diagnostics = Diagnostics::with_transport(config(), dependencies(), transport.clone())
+        let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
             .expect("diagnostics starts");
         diagnostics
             .log(
@@ -980,7 +937,7 @@ mod tests {
             Err(DiagnosticsError::Status(StatusCode::BAD_REQUEST)),
             Ok(()),
         ]));
-        let diagnostics = Diagnostics::with_transport(config(), dependencies(), transport.clone())
+        let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
             .expect("diagnostics starts");
         diagnostics
             .event("opened", [("screen".to_string(), "library".to_string())])
@@ -998,7 +955,7 @@ mod tests {
     #[serial]
     async fn tracing_layer_maps_events_to_diagnostics() {
         let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
-        let diagnostics = Diagnostics::with_transport(config(), dependencies(), transport.clone())
+        let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
             .expect("diagnostics starts");
 
         tracing::subscriber::with_default(
