@@ -301,24 +301,18 @@ pub enum IdentifyState {
 }
 
 impl IdentifyState {
-    /// The carried `SignalsContext`, cloned, for the states that own one.
-    /// `Idle` has no context. Lets `step` handle `SignalToggled` / `ReRun`
-    /// uniformly without matching each variant.
-    fn context_cloned(&self) -> Option<SignalsContext> {
+    /// The carried `SignalsContext` for the states that own one.
+    /// `Idle` has no context. Lets `step`, toolbar projection, and signal
+    /// actions share one access path.
+    fn context(&self) -> Option<&SignalsContext> {
         match self {
             IdentifyState::Triangulating { context, .. }
             | IdentifyState::Found { context, .. }
             | IdentifyState::Conflict { context, .. }
             | IdentifyState::NotFoundAnywhere { context }
-            | IdentifyState::ManualOnly { context, .. } => Some(context.clone()),
+            | IdentifyState::ManualOnly { context, .. } => Some(context),
             IdentifyState::Idle => None,
         }
-    }
-
-    /// Whether this state carries a [`SignalsContext`] — everything but `Idle`.
-    /// Gates the toggle / re-run handling without a clone.
-    fn has_context(&self) -> bool {
-        !matches!(self, IdentifyState::Idle)
     }
 
     /// Apply a signal toggle. During `Triangulating` the exclusion is only
@@ -339,15 +333,14 @@ impl IdentifyState {
                     context,
                 }
             }
-            // Settled states re-combine immediately; `Idle` (no context) is
-            // unreachable here behind `has_context` but stays total.
-            other => match other.context_cloned() {
-                Some(mut context) => {
-                    context.toggle(signal);
-                    re_derive(context)
-                }
-                None => other,
-            },
+            IdentifyState::Found { mut context, .. }
+            | IdentifyState::Conflict { mut context }
+            | IdentifyState::NotFoundAnywhere { mut context }
+            | IdentifyState::ManualOnly { mut context, .. } => {
+                context.toggle(signal);
+                re_derive(context)
+            }
+            IdentifyState::Idle => IdentifyState::Idle,
         }
     }
 
@@ -356,14 +349,14 @@ impl IdentifyState {
     /// catalog candidate. Each carries its value, origin, live state, and
     /// whether the user has excluded it. `Idle` has no toolbar.
     pub fn toolbar(&self) -> Vec<ToolbarSignal> {
-        let Some(context) = self.context_cloned() else {
+        let Some(context) = self.context() else {
             return Vec::new();
         };
         let mut signals = Vec::new();
-        signals.push(self.disc_badge(&context));
-        signals.push(self.barcode_badge(&context));
+        signals.push(self.disc_badge(context));
+        signals.push(self.barcode_badge(context));
         for catalog in &context.catalogs {
-            signals.push(self.catalog_badge(catalog, &context));
+            signals.push(self.catalog_badge(catalog, context));
         }
         signals
     }
@@ -575,17 +568,13 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
     // state it re-combines in place. `ReRun` is ignored mid-triangulation — the
     // lookups are already in flight.
     match &event {
-        IdentifyEvent::SignalToggled { signal } if state.has_context() => {
+        IdentifyEvent::SignalToggled { signal } if state.context().is_some() => {
             return (state.with_toggled(signal.clone()), vec![]);
         }
-        IdentifyEvent::ReRun
-            if state.has_context() && !matches!(state, IdentifyState::Triangulating { .. }) =>
-        {
-            return rerun(
-                state
-                    .context_cloned()
-                    .expect("has_context implies a context"),
-            );
+        IdentifyEvent::ReRun if !matches!(state, IdentifyState::Triangulating { .. }) => {
+            if let Some(context) = state.context() {
+                return rerun(context.clone());
+            }
         }
         _ => {}
     }
