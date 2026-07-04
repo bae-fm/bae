@@ -139,7 +139,6 @@ interface PlaybackEventSink {
 }
 
 private const val TAG = "bae.BaeCorePlayer"
-private const val SEEK_TARGET_WINDOW_MS = 100L
 private val logger = BaeLogger(TAG)
 
 /** Bridge durations are 0 when unknown; map that to Media3's [C.TIME_UNSET]. */
@@ -628,10 +627,7 @@ class BaeCorePlayer(
         val trackId: String?,
         val targetPositionMs: Long,
     ) {
-        fun isNearTarget(positionMs: Long): Boolean {
-            val distanceFromTarget = kotlin.math.abs(positionMs - targetPositionMs)
-            return distanceFromTarget <= SEEK_TARGET_WINDOW_MS
-        }
+        fun matches(trackId: String): Boolean = this.trackId == null || this.trackId == trackId
     }
 
     init {
@@ -813,14 +809,8 @@ class BaeCorePlayer(
         progress: Double,
     ) {
         val pendingSeek = pendingSeek
-        if (pendingSeek != null) {
-            if (pendingSeek.trackId != null && pendingSeek.trackId != trackId) {
-                return
-            }
-            if (!pendingSeek.isNearTarget(positionMs)) {
-                return
-            }
-            this.pendingSeek = null
+        if (pendingSeek != null && pendingSeek.matches(trackId)) {
+            return
         }
         applyPlaybackPosition(trackId, positionMs, durationMs, progress)
     }

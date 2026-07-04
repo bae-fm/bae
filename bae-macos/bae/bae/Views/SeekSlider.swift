@@ -10,9 +10,9 @@ class SeekSlider: NSSlider {
     override func mouseDown(with event: NSEvent) {
         // NSSlider's default click-on-track is a page-step increment toward
         // the click, not a jump-to-click. That moves doubleValue only a tiny
-        // amount, so the resulting seek gets rejected as a same-position
-        // seek (< 100ms diff). Compute the click position synchronously so
-        // click and drag both commit to the clicked location.
+        // amount, so core treats the result as a same-position seek. Compute
+        // the click position synchronously so click and drag both commit to
+        // the clicked location.
         if let cell = cell as? NSSliderCell {
             let point = convert(event.locationInWindow, from: nil)
             let knobRect = cell.knobRect(flipped: isFlipped)

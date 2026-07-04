@@ -117,10 +117,7 @@ class PlaybackStore {
             return playbackPosition?.snapshot
         }
         if case .projected(let projected, let pendingSeek) = playbackPosition {
-            if !pendingSeek.acceptsProgress(
-                trackId: trackId,
-                positionMs: positionMs
-            ) {
+            if pendingSeek.matches(trackId: trackId) {
                 return projected
             }
         }
@@ -192,8 +189,7 @@ class PlaybackStore {
             progress: clampedRatio
         )
         let pendingSeek = PendingSeek(
-            trackId: nowPlaying.track?.trackId,
-            targetPositionMs: targetPositionMs
+            trackId: nowPlaying.track?.trackId
         )
         return publish(snapshot, state: .projected(snapshot, pendingSeek))
     }
@@ -237,18 +233,9 @@ private enum PlaybackPositionState {
 
 private struct PendingSeek {
     let trackId: String?
-    let targetPositionMs: UInt64
-    private static let targetAcceptanceWindowMs: UInt64 = 100
 
-    func acceptsProgress(trackId: String, positionMs: UInt64) -> Bool {
-        guard self.trackId == nil || self.trackId == trackId else {
-            return false
-        }
-        let distanceFromTarget =
-            positionMs > targetPositionMs
-            ? positionMs - targetPositionMs
-            : targetPositionMs - positionMs
-        return distanceFromTarget <= Self.targetAcceptanceWindowMs
+    func matches(trackId: String) -> Bool {
+        self.trackId == nil || self.trackId == trackId
     }
 }
 

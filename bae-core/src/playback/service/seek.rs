@@ -29,6 +29,7 @@ impl PlaybackService {
                 "Seek: Skipping seek to same position (difference: {:?} < 100ms)",
                 position_diff
             );
+            self.emit_position_display(position.as_millis() as u64, track_id);
             return;
         }
 

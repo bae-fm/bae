@@ -48,7 +48,23 @@ class PlaybackSeekProjectionTest {
             remaining = formatRemainingMs(75_000, 100_000),
         )
 
-        player.onProgress(positionMs = 75_000, durationMs = 100_000, progress = 0.75)
+        player.onProgress(positionMs = 75_050, durationMs = 100_000, progress = 0.7505)
+        assertPosition(
+            player.position.value,
+            progress = 0.75,
+            elapsed = formatDurationMs(75_000),
+            remaining = formatRemainingMs(75_000, 100_000),
+        )
+
+        player.onProgress(positionMs = 80_000, durationMs = 100_000, progress = 0.80)
+        assertPosition(
+            player.position.value,
+            progress = 0.75,
+            elapsed = formatDurationMs(75_000),
+            remaining = formatRemainingMs(75_000, 100_000),
+        )
+
+        player.onSeeked(positionMs = 75_000, durationMs = 100_000, progress = 0.75)
         assertPosition(
             player.position.value,
             progress = 0.75,

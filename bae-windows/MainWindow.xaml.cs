@@ -31,7 +31,6 @@ public sealed partial class MainWindow : Window
 {
     private const uint PositionUpdateIntervalMs = 250;
     private const ulong FirstPageSize = 500;
-    private const ulong SeekTargetWindowMs = 100;
 
     // LabelKey is a chrome key resolved to the localized menu label at display
     // time; Field is the locale-free sort identifier the FFI expects (never
@@ -1557,14 +1556,6 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private static bool IsNearSeekTarget(BaeEvent evt, SeekProjection projection)
-    {
-        var distance = evt.PositionMs > projection.TargetPositionMs
-            ? evt.PositionMs - projection.TargetPositionMs
-            : projection.TargetPositionMs - evt.PositionMs;
-        return distance <= SeekTargetWindowMs;
-    }
-
     private bool PlaybackPositionTargetsCurrentTrack(BaeEvent evt)
     {
         if (evt.TrackId is null)
@@ -1595,7 +1586,7 @@ public sealed partial class MainWindow : Window
 
         if (projection is not null)
         {
-            if (projection.TrackId != evt.TrackId || !IsNearSeekTarget(evt, projection))
+            if (projection.TrackId == evt.TrackId)
             {
                 RenderSeekPosition(
                     projection.Progress,
@@ -1603,10 +1594,9 @@ public sealed partial class MainWindow : Window
                     projection.DurationMs);
                 return;
             }
-            projection = null;
         }
 
-        ApplyPlaybackPositionSnapshot(evt, projection);
+        ApplyPlaybackPositionSnapshot(evt, null);
     }
 
     private void RenderPlaybackSeeked(BaeEvent evt)

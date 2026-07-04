@@ -2016,6 +2016,19 @@ async fn test_same_position_seek_keeps_position_updates_flowing() {
         .unwrap_or(2000);
     let same_position = Duration::from_millis(current_pos_ms + 50);
     fixture.playback_handle.seek(same_position);
+    let seeked_position = fixture.wait_for_seeked(Duration::from_secs(2)).await;
+    assert!(
+        seeked_position.is_some(),
+        "Should receive Seeked event when position difference < 100ms",
+    );
+    if let Some(seeked_position) = seeked_position {
+        let diff = Duration::from_millis(seeked_position).abs_diff(same_position);
+        assert!(
+            diff < Duration::from_millis(100),
+            "Seeked display should stay near the requested position, got {:?}",
+            diff,
+        );
+    }
     tokio::time::sleep(Duration::from_millis(500)).await;
     let position_update = fixture
         .wait_for_position_update(Duration::from_secs(2))
