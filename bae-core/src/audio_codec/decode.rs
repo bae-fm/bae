@@ -104,6 +104,11 @@ struct AudioStreamInfo {
     codecpar: *mut ffmpeg_sys_next::AVCodecParameters,
 }
 
+enum InputOpenProbeError {
+    Open(i32),
+    Probe(i32),
+}
+
 enum DecodeCodecOpenError {
     Missing(ffmpeg_sys_next::AVCodecID),
     Allocate,
@@ -119,6 +124,62 @@ impl DecodeCodecOpenError {
             Self::CopyParams(ret) => format!("Failed to copy codec params: {}", av_err_str(*ret)),
             Self::Open(ret) => format!("Failed to open codec: {}", av_err_str(*ret)),
         }
+    }
+}
+
+enum ProbedAudioCodecOpenError {
+    MissingStream(String),
+    Codec {
+        audio: AudioStreamInfo,
+        error: DecodeCodecOpenError,
+    },
+}
+
+unsafe fn allocate_input_format_context<F>(
+    avio: *mut ffmpeg_sys_next::AVIOContext,
+    configure: F,
+) -> Result<*mut ffmpeg_sys_next::AVFormatContext, ()>
+where
+    F: FnOnce(*mut ffmpeg_sys_next::AVFormatContext),
+{
+    let fmt_ctx = ffmpeg_sys_next::avformat_alloc_context();
+    if fmt_ctx.is_null() {
+        free_custom_avio_context(avio);
+        return Err(());
+    }
+    (*fmt_ctx).pb = avio;
+    configure(fmt_ctx);
+    Ok(fmt_ctx)
+}
+
+unsafe fn open_and_probe_input(
+    fmt_ctx: &mut *mut ffmpeg_sys_next::AVFormatContext,
+    avio: *mut ffmpeg_sys_next::AVIOContext,
+) -> Result<(), InputOpenProbeError> {
+    use ffmpeg_sys_next::*;
+
+    debug_assert_eq!((**fmt_ctx).pb, avio);
+
+    let ret = avformat_open_input(fmt_ctx, ptr::null(), ptr::null_mut(), ptr::null_mut());
+    if ret < 0 {
+        return Err(InputOpenProbeError::Open(ret));
+    }
+
+    let ret = avformat_find_stream_info(*fmt_ctx, ptr::null_mut());
+    if ret < 0 {
+        return Err(InputOpenProbeError::Probe(ret));
+    }
+
+    Ok(())
+}
+
+unsafe fn open_probed_audio_codec(
+    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
+) -> Result<(AudioStreamInfo, *mut ffmpeg_sys_next::AVCodecContext), ProbedAudioCodecOpenError> {
+    let audio = find_audio_stream(fmt_ctx).map_err(ProbedAudioCodecOpenError::MissingStream)?;
+    match open_audio_codec(audio.codecpar) {
+        Ok(codec_ctx) => Ok((audio, codec_ctx)),
+        Err(error) => Err(ProbedAudioCodecOpenError::Codec { audio, error }),
     }
 }
 
@@ -414,43 +475,35 @@ unsafe fn decode_audio_avio(
         return Err("Failed to create AVIO context".to_string());
     }
 
-    // Create format context
-    let mut fmt_ctx = avformat_alloc_context();
-    if fmt_ctx.is_null() {
-        free_custom_avio_context(avio);
-        return Err("Failed to allocate format context".to_string());
-    }
-    (*fmt_ctx).pb = avio;
-
-    // Open input (NULL filename since we're using custom I/O)
-    let ret = avformat_open_input(&mut fmt_ctx, ptr::null(), ptr::null_mut(), ptr::null_mut());
-    if ret < 0 {
-        free_format_and_custom_avio(fmt_ctx, avio);
-        return Err(format!("Failed to open input: {}", av_err_str(ret)));
-    }
-
-    // Find stream info
-    let ret = avformat_find_stream_info(fmt_ctx, ptr::null_mut());
-    if ret < 0 {
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        return Err(format!("Failed to find stream info: {}", av_err_str(ret)));
+    let mut fmt_ctx = allocate_input_format_context(avio, |_| {})
+        .map_err(|()| "Failed to allocate format context".to_string())?;
+    if let Err(e) = open_and_probe_input(&mut fmt_ctx, avio) {
+        return match e {
+            InputOpenProbeError::Open(ret) => {
+                free_format_and_custom_avio(fmt_ctx, avio);
+                Err(format!("Failed to open input: {}", av_err_str(ret)))
+            }
+            InputOpenProbeError::Probe(ret) => {
+                close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+                Err(format!("Failed to find stream info: {}", av_err_str(ret)))
+            }
+        };
     }
 
     // Only count fatal errors from the audio decode below -- probing an embedded
     // cover during `find_stream_info` above may have logged its own.
     reset_ffmpeg_errors();
 
-    let audio = match find_audio_stream(fmt_ctx) {
-        Ok(audio) => audio,
-        Err(e) => {
+    let (audio, codec_ctx) = match open_probed_audio_codec(fmt_ctx) {
+        Ok(opened) => opened,
+        Err(ProbedAudioCodecOpenError::MissingStream(e)) => {
             close_input_and_free_custom_avio(&mut fmt_ctx, avio);
             return Err(e);
         }
-    };
-
-    let codec_ctx = match open_audio_codec(audio.codecpar) {
-        Ok(codec_ctx) => codec_ctx,
-        Err(DecodeCodecOpenError::Missing(AVCodecID::AV_CODEC_ID_PCM_S64LE)) => {
+        Err(ProbedAudioCodecOpenError::Codec {
+            audio,
+            error: DecodeCodecOpenError::Missing(AVCodecID::AV_CODEC_ID_PCM_S64LE),
+        }) => {
             let result = decode_packed_s64_packets_to_sink(
                 fmt_ctx,
                 audio.stream_index,
@@ -467,9 +520,9 @@ unsafe fn decode_audio_avio(
             sink.set_decode_error_count(get_ffmpeg_errors());
             return result;
         }
-        Err(e) => {
+        Err(ProbedAudioCodecOpenError::Codec { error, .. }) => {
             close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-            return Err(e.message());
+            return Err(error.message());
         }
     };
 
@@ -915,63 +968,55 @@ unsafe fn decode_audio_streaming_impl(
     // Mark stream as seekable so avformat_seek_file works
     (*avio).seekable = AVIO_SEEKABLE_NORMAL as c_int;
 
-    // Create format context
-    let mut fmt_ctx = avformat_alloc_context();
-    if fmt_ctx.is_null() {
-        free_custom_avio_context(avio);
+    let mut fmt_ctx = allocate_input_format_context(avio, |fmt_ctx| {
+        // Make the demuxer load its seek index from the file's own seektable.
+        // FLAC (and MP3) only populate that index when this flag is set; without
+        // it, avformat_seek_file ignores the seektable and binary-searches the
+        // file -- reading the end, then bisecting frame by frame. Over a cloud
+        // home each of those reads is a separate ranged fetch (~15 of them, ~1s
+        // each), so a single track start or in-track seek stalls for ~10s. With
+        // the flag, a seektable-bearing FLAC seeks in one fetch. No-op for
+        // APE/MP4/WAV, which are already indexed (see
+        // notes/ffmpeg-seek-behavior.md).
+        (*fmt_ctx).flags |= AVFMT_FLAG_FAST_SEEK as c_int;
+    })
+    .map_err(|()| {
         let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::decode(
-            "Failed to allocate format context",
-        ));
-    }
-    (*fmt_ctx).pb = avio;
-    // Make the demuxer load its seek index from the file's own seektable. FLAC
-    // (and MP3) only populate that index when this flag is set; without it,
-    // avformat_seek_file ignores the seektable and binary-searches the file --
-    // reading the end, then bisecting frame by frame. Over a cloud home each of
-    // those reads is a separate ranged fetch (~15 of them, ~1s each), so a single
-    // track start or in-track seek stalls for ~10s. With the flag, a
-    // seektable-bearing FLAC seeks in one fetch. No-op for APE/MP4/WAV, which are
-    // already indexed (see notes/ffmpeg-seek-behavior.md).
-    (*fmt_ctx).flags |= AVFMT_FLAG_FAST_SEEK as c_int;
+        StreamingDecodeError::decode("Failed to allocate format context")
+    })?;
 
-    // Open input
-    let ret = avformat_open_input(&mut fmt_ctx, ptr::null(), ptr::null_mut(), ptr::null_mut());
-    if ret < 0 {
-        free_format_and_custom_avio(fmt_ctx, avio);
+    if let Err(e) = open_and_probe_input(&mut fmt_ctx, avio) {
+        let error = match e {
+            InputOpenProbeError::Open(ret) => {
+                free_format_and_custom_avio(fmt_ctx, avio);
+                StreamingDecodeError::input_error(
+                    &cancel_status,
+                    format!("Failed to open input: {}", av_err_str(ret)),
+                )
+            }
+            InputOpenProbeError::Probe(ret) => {
+                close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+                StreamingDecodeError::input_error(
+                    &cancel_status,
+                    format!("Failed to find stream info: {}", av_err_str(ret)),
+                )
+            }
+        };
         let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::input_error(
-            &cancel_status,
-            format!("Failed to open input: {}", av_err_str(ret)),
-        ));
-    }
-
-    // Find stream info
-    let ret = avformat_find_stream_info(fmt_ctx, ptr::null_mut());
-    if ret < 0 {
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::input_error(
-            &cancel_status,
-            format!("Failed to find stream info: {}", av_err_str(ret)),
-        ));
+        return Err(error);
     }
 
-    let audio = match find_audio_stream(fmt_ctx) {
-        Ok(audio) => audio,
-        Err(e) => {
+    let (audio, codec_ctx) = match open_probed_audio_codec(fmt_ctx) {
+        Ok(opened) => opened,
+        Err(ProbedAudioCodecOpenError::MissingStream(e)) => {
             close_input_and_free_custom_avio(&mut fmt_ctx, avio);
             let _ = Box::from_raw(avio_ctx_ptr);
             return Err(StreamingDecodeError::decode(e));
         }
-    };
-
-    let codec_ctx = match open_audio_codec(audio.codecpar) {
-        Ok(codec_ctx) => codec_ctx,
-        Err(e) => {
+        Err(ProbedAudioCodecOpenError::Codec { error, .. }) => {
             close_input_and_free_custom_avio(&mut fmt_ctx, avio);
             let _ = Box::from_raw(avio_ctx_ptr);
-            return Err(StreamingDecodeError::decode(e.message()));
+            return Err(StreamingDecodeError::decode(error.message()));
         }
     };
 
