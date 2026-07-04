@@ -90,8 +90,6 @@ pub struct DiscogsSearchParams {
     pub label: Option<String>,
     pub catno: Option<String>,
     pub barcode: Option<String>,
-    pub format: Option<String>,
-    pub country: Option<String>,
 }
 /// Individual search result
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -431,12 +429,6 @@ impl DiscogsClient {
         }
         if let Some(ref barcode) = params.barcode {
             query_params.push(("barcode", barcode));
-        }
-        if let Some(ref format) = params.format {
-            query_params.push(("format", format));
-        }
-        if let Some(ref country) = params.country {
-            query_params.push(("country", country));
         }
         info!("Discogs API: GET {} with params: {:?}", url, params);
         let response = self.client.get(&url).query(&query_params).send().await?;

@@ -3332,7 +3332,6 @@ fn make_mb_release_for_re_identify(
 
 fn empty_mb_external_urls() -> crate::musicbrainz::ExternalUrls {
     crate::musicbrainz::ExternalUrls {
-        discogs_master_url: None,
         discogs_release_url: None,
     }
 }

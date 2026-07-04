@@ -138,16 +138,11 @@ fn test_extract_urls_from_relations() {
     ];
 
     let mut urls = ExternalUrls {
-        discogs_master_url: None,
         discogs_release_url: None,
     };
 
     extract_urls_from_relations(&relations, &mut urls);
 
-    assert_eq!(
-        urls.discogs_master_url.as_deref(),
-        Some("https://www.discogs.com/master/12345")
-    );
     assert_eq!(
         urls.discogs_release_url.as_deref(),
         Some("https://www.discogs.com/release/67890")
@@ -261,7 +256,6 @@ fn make_mb_response(id: &str, release_group_id: Option<&str>) -> MbReleaseRespon
 
 fn empty_external_urls() -> ExternalUrls {
     ExternalUrls {
-        discogs_master_url: None,
         discogs_release_url: None,
     }
 }

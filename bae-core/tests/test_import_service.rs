@@ -1441,7 +1441,6 @@ fn seed_mb_with_discogs_xref(
         relations: vec![],
     };
     let external_urls = ExternalUrls {
-        discogs_master_url: None,
         discogs_release_url: Some(format!(
             "https://www.discogs.com/release/{}",
             discogs_release_id
@@ -1621,7 +1620,6 @@ async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
                 relations: vec![],
             },
             ExternalUrls {
-                discogs_master_url: None,
                 discogs_release_url: None,
             },
             "{}".to_string(),

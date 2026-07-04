@@ -140,7 +140,6 @@ impl MbReleaseResponse {
     /// Extract ExternalUrls from release relations and release-group relations
     pub(super) fn extract_external_urls(&self) -> ExternalUrls {
         let mut urls = ExternalUrls {
-            discogs_master_url: None,
             discogs_release_url: None,
         };
 
@@ -230,10 +229,9 @@ pub(super) fn extract_urls_from_relations(relations: &[MbRelation], urls: &mut E
             continue;
         };
 
-        if resource.contains("discogs.com/master/") && urls.discogs_master_url.is_none() {
-            urls.discogs_master_url = Some(resource.clone());
-        } else if resource.contains("discogs.com/release/") && urls.discogs_release_url.is_none() {
+        if resource.contains("discogs.com/release/") && urls.discogs_release_url.is_none() {
             urls.discogs_release_url = Some(resource.clone());
+            break;
         }
     }
 }
@@ -241,6 +239,5 @@ pub(super) fn extract_urls_from_relations(relations: &[MbRelation], urls: &mut E
 /// External URLs extracted from MusicBrainz relationships
 #[derive(Debug, Clone)]
 pub struct ExternalUrls {
-    pub discogs_master_url: Option<String>,
     pub discogs_release_url: Option<String>,
 }

@@ -203,14 +203,14 @@ pub async fn lookup_by_discid(
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
 
     let mut external_urls = ExternalUrls {
-        discogs_master_url: None,
         discogs_release_url: None,
     };
 
     for release in &disc_response.releases {
-        if external_urls.discogs_master_url.is_none() {
-            extract_urls_from_relations(&release.relations, &mut external_urls);
+        if external_urls.discogs_release_url.is_some() {
+            break;
         }
+        extract_urls_from_relations(&release.relations, &mut external_urls);
     }
 
     if disc_response.releases.is_empty() {
@@ -225,7 +225,7 @@ pub async fn lookup_by_discid(
         discid
     );
 
-    if external_urls.discogs_master_url.is_some() || external_urls.discogs_release_url.is_some() {
+    if external_urls.discogs_release_url.is_some() {
         info!("  Found Discogs URL in relationships");
     }
 
@@ -296,15 +296,12 @@ pub async fn lookup_release_by_id(
         release_id
     );
 
-    if let Some(resource) = &external_urls.discogs_master_url {
-        info!("Found Discogs master URL: {}", resource);
-    }
     if let Some(resource) = &external_urls.discogs_release_url {
         info!("Found Discogs release URL: {}", resource);
     }
 
     // If release-group relations weren't included inline, fetch them separately
-    if external_urls.discogs_master_url.is_none() && external_urls.discogs_release_url.is_none() {
+    if external_urls.discogs_release_url.is_none() {
         let has_rg_relations = mb_response
             .release_group
             .as_ref()
@@ -320,9 +317,6 @@ pub async fn lookup_release_by_id(
                 if let Ok(rg_response) = fetch_release_group_with_relations(rg_id).await {
                     extract_urls_from_relations(&rg_response.relations, &mut external_urls);
 
-                    if let Some(resource) = &external_urls.discogs_master_url {
-                        info!("Found Discogs master URL on release-group: {}", resource);
-                    }
                     if let Some(resource) = &external_urls.discogs_release_url {
                         info!("Found Discogs release URL on release-group: {}", resource);
                     }
@@ -501,12 +495,10 @@ pub struct ReleaseSearchParams {
     pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub barcode: Option<String>,
-    pub format: Option<String>,
-    pub country: Option<String>,
 }
 
 impl ReleaseSearchParams {
-    fn query_fields(&self) -> [(&Option<String>, &'static str, QueryValueFormat); 8] {
+    fn query_fields(&self) -> [(&Option<String>, &'static str, QueryValueFormat); 6] {
         [
             (&self.artist, "artist", QueryValueFormat::Quoted),
             (&self.album, "release", QueryValueFormat::Quoted),
@@ -514,8 +506,6 @@ impl ReleaseSearchParams {
             (&self.label, "label", QueryValueFormat::Quoted),
             (&self.catalog_number, "catno", QueryValueFormat::Quoted),
             (&self.barcode, "barcode", QueryValueFormat::Bare),
-            (&self.format, "format", QueryValueFormat::Quoted),
-            (&self.country, "country", QueryValueFormat::Quoted),
         ]
     }
 
