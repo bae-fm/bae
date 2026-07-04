@@ -84,7 +84,7 @@ fn sanitize_key_for_filename(key: &str) -> String {
 
     use sha2::{Digest, Sha256};
     let digest = Sha256::digest(key.as_bytes());
-    let suffix: String = digest.iter().take(4).map(|b| format!("{b:02x}")).collect();
+    let suffix = hex::encode(&digest[..4]);
     // Leave room for the `__` separator + 8 hex chars.
     let head_len = SANITIZED_FILENAME_CAP.saturating_sub(2 + suffix.len());
     let mut head: String = sanitized.chars().take(head_len).collect();
