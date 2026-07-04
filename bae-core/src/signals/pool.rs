@@ -1,7 +1,7 @@
 //! The accumulating text pool fed to the classifier pipeline: it gathers
 //! per-source-tagged lines and folder-bracket catalogs, dedups them, and
-//! classifies the contents into `(catalogs, free_text)` incrementally as the
-//! extraction pass adds more lines.
+//! classifies the contents incrementally as the extraction pass adds more
+//! lines.
 
 use crate::identify::candidate_text::{
     self, apply_free_text_cutoff, catalog_numbers_sourced, cluster_lines_incremental,
@@ -31,6 +31,12 @@ pub(super) struct Pool {
     clustered_through: usize,
 }
 
+pub(super) struct Classification {
+    pub(super) catalogs: Vec<SourcedValue>,
+    pub(super) free_text: Vec<String>,
+    pub(super) ranked_clusters: Vec<Cluster>,
+}
+
 impl Pool {
     pub(super) fn push(&mut self, line: SourcedLine) {
         if line.text.is_empty() {
@@ -51,11 +57,11 @@ impl Pool {
         }
     }
 
-    /// Classify the pool's current contents into `(catalogs, free_text)`.
+    /// Classify the pool's current contents.
     /// Catalog extraction is a whole-pool regex pass (cheap). Free-text
     /// clustering is incremental: only lines added since the last call are
     /// classified against the existing clusters.
-    pub(super) fn classify(&mut self) -> (Vec<SourcedValue>, Vec<String>) {
+    pub(super) fn classify(&mut self) -> Classification {
         // Catalogs: regex over the sourced line text (each survivor keeps its
         // line's origin), plus the bracket-routed extras from folder names.
         let mut catalogs = catalog_numbers_sourced(&self.lines);
@@ -84,7 +90,11 @@ impl Pool {
         rank_clusters_in_place(&mut ranked);
         let free_text = apply_free_text_cutoff(&ranked);
 
-        (catalogs, free_text)
+        Classification {
+            catalogs,
+            free_text,
+            ranked_clusters: ranked,
+        }
     }
 }
 
@@ -126,8 +136,15 @@ mod tests {
         for b in brackets {
             pool.push_bracket((*b).to_string());
         }
-        let (catalogs, free_text) = pool.classify();
-        (catalogs.into_iter().map(|c| c.value).collect(), free_text)
+        let classification = pool.classify();
+        (
+            classification
+                .catalogs
+                .into_iter()
+                .map(|c| c.value)
+                .collect(),
+            classification.free_text,
+        )
     }
 
     #[test]

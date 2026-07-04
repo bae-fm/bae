@@ -7,7 +7,7 @@
 
 use super::pool::Pool;
 use super::SourcedValue;
-use crate::identify::candidate_text::{self, Source, SourcedLine};
+use crate::identify::candidate_text::{should_reject_line, Cluster, Source, SourcedLine};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use tracing::warn;
@@ -22,6 +22,7 @@ pub(super) fn dump_scan(
     key: &str,
     folder: &Path,
     pool: &Pool,
+    ranked_clusters: &[Cluster],
     catalogs: &[SourcedValue],
     free_text: &[String],
     now: chrono::DateTime<chrono::Utc>,
@@ -36,21 +37,21 @@ pub(super) fn dump_scan(
     let filename = sanitize_key_for_filename(key);
     let path = dir.join(format!("{filename}.json"));
 
-    let clusters = candidate_text::rank_clusters(candidate_text::cluster_lines(
-        pool.lines
-            .iter()
-            .filter(|l| !candidate_text::should_reject_line(&l.text))
-            .cloned()
-            .collect(),
-    ));
     let rejected: Vec<_> = pool
         .lines
         .iter()
-        .filter(|l| candidate_text::should_reject_line(&l.text))
+        .filter(|l| should_reject_line(&l.text))
         .collect();
 
     let json = build_dump_json(
-        key, folder, pool, &clusters, &rejected, catalogs, free_text, now,
+        key,
+        folder,
+        pool,
+        ranked_clusters,
+        &rejected,
+        catalogs,
+        free_text,
+        now,
     );
     std::fs::write(path, serde_json::to_vec_pretty(&json)?)?;
     Ok(())
@@ -97,7 +98,7 @@ fn build_dump_json(
     key: &str,
     folder: &Path,
     pool: &Pool,
-    clusters: &[candidate_text::Cluster],
+    clusters: &[Cluster],
     rejected: &[&SourcedLine],
     catalogs: &[SourcedValue],
     free_text: &[String],

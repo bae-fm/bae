@@ -264,11 +264,17 @@ async fn stream_extraction(
     // First snapshot: disc ID and CUE barcodes are already settled and the
     // autocomplete pool is populated. Barcode/text stay `Scanning` while
     // artwork OCR is pending.
-    let (catalogs, free_text) = pool.classify();
+    let classification = pool.classify();
     emit_signals(
         &inner,
         &key,
-        scanning_signals(disc_id.clone(), &barcodes, has_artwork, catalogs, free_text),
+        scanning_signals(
+            disc_id.clone(),
+            &barcodes,
+            has_artwork,
+            classification.catalogs,
+            classification.free_text,
+        ),
     );
 
     // One OCR request at a time (Vision on the ANE is effectively serial).
@@ -325,11 +331,17 @@ async fn stream_extraction(
             return;
         }
 
-        let (catalogs, free_text) = pool.classify();
+        let classification = pool.classify();
         emit_signals(
             &inner,
             &key,
-            scanning_signals(disc_id.clone(), &barcodes, has_artwork, catalogs, free_text),
+            scanning_signals(
+                disc_id.clone(),
+                &barcodes,
+                has_artwork,
+                classification.catalogs,
+                classification.free_text,
+            ),
         );
     }
 
@@ -339,7 +351,10 @@ async fn stream_extraction(
     }
 
     // Final settled snapshot.
-    let (catalogs, free_text) = pool.classify();
+    let classification = pool.classify();
+    let catalogs = classification.catalogs;
+    let free_text = classification.free_text;
+    let ranked_clusters = classification.ranked_clusters;
     let barcode = if has_artwork || !barcodes.is_empty() {
         BarcodeSignal::Settled {
             codes: barcodes.clone(),
@@ -370,7 +385,13 @@ async fn stream_extraction(
         let dump_pool = pool;
         tokio::task::spawn_blocking(move || {
             if let Err(e) = dump_scan(
-                &dump_key, &folder, &dump_pool, &catalogs, &free_text, dump_now,
+                &dump_key,
+                &folder,
+                &dump_pool,
+                &ranked_clusters,
+                &catalogs,
+                &free_text,
+                dump_now,
             ) {
                 debug!("signals: dump failed for {dump_key:?}: {e}");
             }

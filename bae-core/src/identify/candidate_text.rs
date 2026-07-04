@@ -517,19 +517,6 @@ pub fn normalize(text: &str) -> String {
         .to_string()
 }
 
-/// Greedy incremental clustering. Each line joins the closest existing
-/// cluster whose Jaro-Winkler similarity ≥ `JW_THRESHOLD`, otherwise starts
-/// its own. Lines below `MIN_CLUSTER_LEN` after normalization form their
-/// own singleton clusters (similarity on short strings is unreliable).
-///
-/// Convenience wrapper over `cluster_lines_incremental` — starts from an
-/// empty cluster set. Used by tests and by one-shot classify paths.
-pub fn cluster_lines(lines: Vec<SourcedLine>) -> Vec<Cluster> {
-    let mut clusters: Vec<Cluster> = Vec::new();
-    cluster_lines_incremental(&mut clusters, &lines);
-    clusters
-}
-
 /// Classify `new_lines` against `clusters`, appending each line into the
 /// best-matching cluster or starting a new one. Mutates `clusters` in place
 /// so the caller can hold it across calls and avoid re-classifying old
@@ -575,13 +562,6 @@ pub fn cluster_lines_incremental(clusters: &mut Vec<Cluster>, new_lines: &[Sourc
 }
 
 /// Sort clusters by score descending.
-pub fn rank_clusters(mut clusters: Vec<Cluster>) -> Vec<Cluster> {
-    rank_clusters_in_place(&mut clusters);
-    clusters
-}
-
-/// In-place rank. Same sort key as `rank_clusters`, for callers that hold
-/// an owned `Vec` and want to avoid the move/return dance.
 pub fn rank_clusters_in_place(clusters: &mut [Cluster]) {
     clusters.sort_by_key(|c| std::cmp::Reverse(c.score()));
 }
@@ -1119,6 +1099,12 @@ mod tests {
             source: Source::CueField,
             text: text.to_string(),
         }
+    }
+
+    fn cluster_lines(lines: Vec<SourcedLine>) -> Vec<Cluster> {
+        let mut clusters: Vec<Cluster> = Vec::new();
+        cluster_lines_incremental(&mut clusters, &lines);
+        clusters
     }
 
     #[test]
