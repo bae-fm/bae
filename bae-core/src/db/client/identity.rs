@@ -136,44 +136,8 @@ impl Database {
         &self,
         identities: &[crate::import::ReleaseIdentity],
     ) -> Result<Option<String>, DbError> {
-        if identities.is_empty() {
-            return Ok(None);
-        }
-
-        let pairs: Vec<(String, String)> = identities
-            .iter()
-            .map(|id| (id.source.as_str().to_string(), id.source_group_id.clone()))
-            .collect();
-
-        self.call(move |conn| {
-            let placeholders = pairs
-                .iter()
-                .map(|_| "(?, ?)")
-                .collect::<Vec<_>>()
-                .join(", ");
-            let sql = format!(
-                r#"
-                    SELECT r.album_id
-                    FROM releases r
-                    JOIN release_identities ri ON ri.release_id = r.id
-                    WHERE (ri.source, ri.source_group_id) IN ({placeholders})
-                    LIMIT 1
-                    "#,
-            );
-            let mut binds: Vec<&str> = Vec::with_capacity(pairs.len() * 2);
-            for (source, group_id) in &pairs {
-                binds.push(source);
-                binds.push(group_id);
-            }
-            conn.query_row(
-                &sql,
-                coven::rusqlite::params_from_iter(binds.iter()),
-                |row| row.get::<_, String>("album_id"),
-            )
-            .optional()
-            .map_err(DbError::from)
-        })
-        .await
+        self.find_album_by_identity_group_match(identities, None)
+            .await
     }
 
     /// Same as `find_album_by_identity_group`, but ignores rows belonging to
@@ -185,6 +149,15 @@ impl Database {
         identities: &[crate::import::ReleaseIdentity],
         exclude_release_id: &str,
     ) -> Result<Option<String>, DbError> {
+        self.find_album_by_identity_group_match(identities, Some(exclude_release_id))
+            .await
+    }
+
+    async fn find_album_by_identity_group_match(
+        &self,
+        identities: &[crate::import::ReleaseIdentity],
+        exclude_release_id: Option<&str>,
+    ) -> Result<Option<String>, DbError> {
         if identities.is_empty() {
             return Ok(None);
         }
@@ -193,7 +166,7 @@ impl Database {
             .iter()
             .map(|id| (id.source.as_str().to_string(), id.source_group_id.clone()))
             .collect();
-        let exclude_release_id = exclude_release_id.to_string();
+        let exclude_release_id = exclude_release_id.map(str::to_string);
 
         self.call(move |conn| {
             let placeholders = pairs
@@ -201,22 +174,30 @@ impl Database {
                 .map(|_| "(?, ?)")
                 .collect::<Vec<_>>()
                 .join(", ");
+            let exclude_predicate = if exclude_release_id.is_some() {
+                "AND ri.release_id != ?"
+            } else {
+                ""
+            };
             let sql = format!(
                 r#"
                     SELECT r.album_id
                     FROM releases r
                     JOIN release_identities ri ON ri.release_id = r.id
                     WHERE (ri.source, ri.source_group_id) IN ({placeholders})
-                      AND ri.release_id != ?
+                      {exclude_predicate}
                     LIMIT 1
                     "#,
             );
-            let mut binds: Vec<&str> = Vec::with_capacity(pairs.len() * 2 + 1);
+            let mut binds: Vec<&str> =
+                Vec::with_capacity(pairs.len() * 2 + usize::from(exclude_release_id.is_some()));
             for (source, group_id) in &pairs {
                 binds.push(source);
                 binds.push(group_id);
             }
-            binds.push(&exclude_release_id);
+            if let Some(exclude_release_id) = &exclude_release_id {
+                binds.push(exclude_release_id);
+            }
             conn.query_row(
                 &sql,
                 coven::rusqlite::params_from_iter(binds.iter()),
