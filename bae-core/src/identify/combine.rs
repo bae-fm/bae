@@ -257,13 +257,7 @@ fn single_group(results: &[(MetadataResult, LibraryStatus)]) -> Option<GroupKey>
 fn unzip_results(
     pairs: Vec<(MetadataResult, LibraryStatus)>,
 ) -> (Vec<MetadataResult>, Vec<LibraryStatus>) {
-    let mut matches = Vec::with_capacity(pairs.len());
-    let mut statuses = Vec::with_capacity(pairs.len());
-    for (m, s) in pairs {
-        matches.push(m);
-        statuses.push(s);
-    }
-    (matches, statuses)
+    pairs.into_iter().unzip()
 }
 
 #[cfg(test)]
