@@ -287,18 +287,6 @@ pub async fn lookup_release_by_id(
     let mb_response: MbReleaseResponse = serde_json::from_str(&raw_json)
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
 
-    #[cfg(debug_assertions)]
-    {
-        let temp_path = std::env::temp_dir().join("musicbrainz_release_response.json");
-        match std::fs::write(&temp_path, &raw_json) {
-            Ok(()) => debug!("MusicBrainz release response written to {:?}", temp_path),
-            Err(e) => debug!(
-                "MusicBrainz release response cache write to {:?} failed: {}",
-                temp_path, e
-            ),
-        }
-    }
-
     let mut external_urls = mb_response.extract_external_urls();
 
     debug!(
@@ -604,21 +592,6 @@ pub async fn search_releases_with_params(
         .json()
         .await
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
-
-    #[cfg(debug_assertions)]
-    {
-        let temp_path = std::env::temp_dir().join("musicbrainz_search_response.json");
-        match serde_json::to_string_pretty(&search_response) {
-            Ok(json_str) => match std::fs::write(&temp_path, json_str) {
-                Ok(()) => debug!("MusicBrainz search response written to {:?}", temp_path),
-                Err(e) => debug!(
-                    "MusicBrainz search response cache write to {:?} failed: {}",
-                    temp_path, e
-                ),
-            },
-            Err(e) => debug!("MusicBrainz search response serialize failed: {}", e),
-        }
-    }
 
     if let Some(ref error_msg) = search_response.error {
         warn!("MusicBrainz API returned error: {}", error_msg);
