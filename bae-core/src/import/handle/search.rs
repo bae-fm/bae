@@ -18,22 +18,8 @@ impl ImportServiceHandle {
             .ok_or_else(|| "Discogs API key not configured".to_string())
     }
 
-    /// Run a Discogs search and map its error to a display string for the
-    /// caller. The search's outcome folds into the stored key's validation
-    /// inside `DiscogsClient` itself (it self-reports each call to the
-    /// validation observer); this wrapper doesn't record anything.
-    async fn run_discogs_search(
-        &self,
-        search: impl std::future::Future<
-            Output = Result<
-                Vec<crate::import::search::MetadataResult>,
-                crate::discogs::client::DiscogsError,
-            >,
-        >,
-    ) -> Result<Vec<crate::import::search::MetadataResult>, String> {
-        search
-            .await
-            .map_err(|e| format!("Discogs search failed: {e}"))
+    fn discogs_search_error(e: crate::discogs::client::DiscogsError) -> String {
+        format!("Discogs search failed: {e}")
     }
 
     /// Search for releases, check library status, and bundle the results into
@@ -55,10 +41,9 @@ impl ImportServiceHandle {
                 }
                 MetadataSource::Discogs => {
                     let client = self.discogs_client()?;
-                    self.run_discogs_search(crate::import::search::search_discogs(
-                        &client, artist, album, None, None,
-                    ))
-                    .await?
+                    crate::import::search::search_discogs(&client, artist, album, None, None)
+                        .await
+                        .map_err(Self::discogs_search_error)?
                 }
             },
             SearchQuery::CatalogNumber {
@@ -74,13 +59,9 @@ impl ImportServiceHandle {
                 }
                 MetadataSource::Discogs => {
                     let client = self.discogs_client()?;
-                    self.run_discogs_search(
-                        crate::import::search::search_discogs_by_catalog_number(
-                            &client,
-                            catalog_number,
-                        ),
-                    )
-                    .await?
+                    crate::import::search::search_discogs_by_catalog_number(&client, catalog_number)
+                        .await
+                        .map_err(Self::discogs_search_error)?
                 }
             },
             SearchQuery::Barcode { barcode, source } => match source {
@@ -90,10 +71,9 @@ impl ImportServiceHandle {
                 }
                 MetadataSource::Discogs => {
                     let client = self.discogs_client()?;
-                    self.run_discogs_search(crate::import::search::search_discogs_by_barcode(
-                        &client, barcode,
-                    ))
-                    .await?
+                    crate::import::search::search_discogs_by_barcode(&client, barcode)
+                        .await
+                        .map_err(Self::discogs_search_error)?
                 }
             },
         };
@@ -139,10 +119,9 @@ impl ImportServiceHandle {
         label: Option<String>,
     ) -> Result<Vec<crate::import::search::MetadataResult>, String> {
         let client = self.discogs_client()?;
-        self.run_discogs_search(crate::import::search::search_discogs(
-            &client, artist, album, year, label,
-        ))
-        .await
+        crate::import::search::search_discogs(&client, artist, album, year, label)
+            .await
+            .map_err(Self::discogs_search_error)
     }
 
     pub async fn search_musicbrainz(
