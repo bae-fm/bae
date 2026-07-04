@@ -12,8 +12,6 @@
 use std::{
     collections::{BTreeMap, VecDeque},
     fmt,
-    future::Future,
-    pin::Pin,
     sync::{Arc, OnceLock},
     time::Duration,
 };
@@ -515,11 +513,9 @@ pub enum DiagnosticsError {
     Status(StatusCode),
 }
 
+#[async_trait::async_trait]
 pub trait DiagnosticsTransport: Send + Sync {
-    fn send<'a>(
-        &'a self,
-        request: DatadogRequest,
-    ) -> Pin<Box<dyn Future<Output = Result<(), DiagnosticsError>> + Send + 'a>>;
+    async fn send(&self, request: DatadogRequest) -> Result<(), DiagnosticsError>;
 }
 
 #[derive(Debug)]
@@ -535,27 +531,23 @@ impl DatadogTransport {
     }
 }
 
+#[async_trait::async_trait]
 impl DiagnosticsTransport for DatadogTransport {
-    fn send<'a>(
-        &'a self,
-        request: DatadogRequest,
-    ) -> Pin<Box<dyn Future<Output = Result<(), DiagnosticsError>> + Send + 'a>> {
-        Box::pin(async move {
-            let response = self
-                .client
-                .post(request.url)
-                .headers(request.headers)
-                .body(request.body)
-                .send()
-                .await
-                .map_err(DiagnosticsError::Transport)?;
+    async fn send(&self, request: DatadogRequest) -> Result<(), DiagnosticsError> {
+        let response = self
+            .client
+            .post(request.url)
+            .headers(request.headers)
+            .body(request.body)
+            .send()
+            .await
+            .map_err(DiagnosticsError::Transport)?;
 
-            if response.status().is_success() {
-                Ok(())
-            } else {
-                Err(DiagnosticsError::Status(response.status()))
-            }
-        })
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(DiagnosticsError::Status(response.status()))
+        }
     }
 }
 
@@ -1060,17 +1052,13 @@ mod tests {
         }
     }
 
+    #[async_trait::async_trait]
     impl DiagnosticsTransport for RecordingTransport {
-        fn send<'a>(
-            &'a self,
-            request: DatadogRequest,
-        ) -> Pin<Box<dyn Future<Output = Result<(), DiagnosticsError>> + Send + 'a>> {
-            Box::pin(async move {
-                self.requests_guard().push(request);
-                self.outcomes_guard()
-                    .pop_front()
-                    .expect("test provides a transport outcome")
-            })
+        async fn send(&self, request: DatadogRequest) -> Result<(), DiagnosticsError> {
+            self.requests_guard().push(request);
+            self.outcomes_guard()
+                .pop_front()
+                .expect("test provides a transport outcome")
         }
     }
 }
