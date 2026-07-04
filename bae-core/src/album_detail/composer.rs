@@ -69,23 +69,12 @@ pub struct WorkReleaseSummary {
 
 impl WorkReleaseSummary {
     pub(crate) fn from_raw(raw: DbWorkReleaseSummary, cover: Option<ImageRef>) -> Self {
-        let display_name = match raw.release_name.as_deref() {
-            Some(name) => name.to_string(),
-            None => {
-                let mut parts = Vec::new();
-                if let Some(year) = raw.year {
-                    parts.push(year.to_string());
-                }
-                if let Some(format) = raw.format.as_deref() {
-                    parts.push(format.to_string());
-                }
-                if parts.is_empty() {
-                    format!("Release {}", raw.release_index)
-                } else {
-                    parts.join(" ")
-                }
-            }
-        };
+        let display_name = release_display_name(
+            raw.release_name.as_deref(),
+            raw.year,
+            raw.format.as_deref(),
+            raw.release_index,
+        );
         Self {
             release_id: raw.release_id,
             album_id: raw.album_id,

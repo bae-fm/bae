@@ -319,27 +319,12 @@ impl ReleaseDetail {
             });
         }
 
-        // Human-readable name for picker UI. Tries in order:
-        // 1. The stored `release_name` (e.g. "1974 Vinyl", "Deluxe Edition").
-        // 2. "$year $format" (e.g. "1974 Vinyl").
-        // 3. "Release $N" (1-based) when neither is present.
-        let display_name = match release.release_name.as_deref() {
-            Some(name) => name.to_string(),
-            None => {
-                let mut parts = Vec::new();
-                if let Some(y) = release.pressing.year {
-                    parts.push(y.to_string());
-                }
-                if let Some(f) = release.pressing.format.as_deref() {
-                    parts.push(f.to_string());
-                }
-                if parts.is_empty() {
-                    format!("Release {}", release_index + 1)
-                } else {
-                    parts.join(" ")
-                }
-            }
-        };
+        let display_name = release_display_name(
+            release.release_name.as_deref(),
+            release.pressing.year,
+            release.pressing.format.as_deref(),
+            (release_index + 1) as i64,
+        );
 
         // The summary is the slim projection of this same release: build that row
         // (with the file totals computed above) and route it through the shared

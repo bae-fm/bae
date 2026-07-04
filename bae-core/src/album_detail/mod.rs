@@ -68,6 +68,30 @@ pub(crate) fn join_artist_names(artists: &[DbArtist]) -> String {
         .join(", ")
 }
 
+pub(crate) fn release_display_name(
+    release_name: Option<&str>,
+    year: Option<i32>,
+    format: Option<&str>,
+    release_number: i64,
+) -> String {
+    if let Some(name) = release_name {
+        return name.to_string();
+    }
+
+    let mut parts = Vec::new();
+    if let Some(year) = year {
+        parts.push(year.to_string());
+    }
+    if let Some(format) = format {
+        parts.push(format.to_string());
+    }
+    if parts.is_empty() {
+        format!("Release {release_number}")
+    } else {
+        parts.join(" ")
+    }
+}
+
 /// The TWO storage states a release's audio can be in -- the shared
 /// `releases.remote` fact. This is ORTHOGONAL to pinned-ness: whether coven keeps
 /// a remote release's blobs local (`storage/pinned/`) vs evictable
