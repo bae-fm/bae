@@ -1,7 +1,6 @@
 //! The cloud-sync responsibility extracted from [`LibraryManager`]: the upload
 //! pipeline (outbox in-flight + throughput + pause), the connection lifecycle and
-//! provider configuration, the encryption-service cell, the membership ops, and
-//! the coven make-Remote / make-Local primitives.
+//! provider configuration, the encryption-service cell, and the membership ops.
 //!
 //! `LibraryManager` holds one `SyncController` and delegates its public sync API
 //! to it. The controller never references the manager back; the resolver-side
@@ -10,12 +9,11 @@
 //! sync part and does the re-emit itself.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
 use tokio::sync::broadcast;
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 use crate::config::{CloudProvider, ConfigHandle};
 use crate::db::Database;
@@ -174,127 +172,6 @@ impl SyncController {
             paused,
         )
         .await
-    }
-
-    // =========================================================================
-    // coven-owned locality transitions (make-Remote / make-Local)
-    // =========================================================================
-
-    /// The make-Local destination map: each release file's blob id → the user path
-    /// (`new_path/original_filename`) its bytes go back to. Host-provided blobs (the
-    /// cover) take no dest — coven restores them to its local store. The single
-    /// place the dest shape is built, shared by the production transition and the
-    /// test driver.
-    async fn make_local_dest(
-        &self,
-        release_id: &str,
-        new_path: &str,
-    ) -> Result<HashMap<String, PathBuf>, LibraryError> {
-        let files = self.database.get_files_for_release(release_id).await?;
-        Ok(files
-            .iter()
-            .map(|f| {
-                (
-                    f.id.clone(),
-                    std::path::Path::new(new_path).join(&f.original_filename),
-                )
-            })
-            .collect())
-    }
-
-    /// Bridge bae's `CancellationToken` to the `watch::Receiver<bool>` coven's
-    /// make_local polls between blobs: when the token fires, flip the watch. Returns
-    /// the receiver and the bridge task's handle (abort it once make_local returns).
-    /// The single place the bridge lives.
-    fn cancel_token_to_watch(
-        cancel: &crate::library::CancellationToken,
-    ) -> (
-        tokio::sync::watch::Receiver<bool>,
-        tokio::task::JoinHandle<()>,
-    ) {
-        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(cancel.is_cancelled());
-        let token = cancel.clone();
-        let handle = tokio::spawn(async move {
-            token.cancelled().await;
-            let _ = cancel_tx.send(true);
-        });
-        (cancel_rx, handle)
-    }
-
-    /// Map a coven `make_local` result to bae's: a cancel before the commit is a
-    /// clean stop (coven rolled back the partial copies and left the release
-    /// Remote), every other error is surfaced. Shared by the production transition
-    /// and the test driver.
-    fn map_make_local_result(
-        release_id: &str,
-        result: Result<(), coven::MakeLocalError>,
-    ) -> Result<(), LibraryError> {
-        match result {
-            Ok(()) => Ok(()),
-            Err(coven::MakeLocalError::Cancelled) => {
-                debug!(
-                    release_id,
-                    "make-local cancelled before commit; release stays Remote"
-                );
-                Ok(())
-            }
-            Err(e) => Err(LibraryError::Storage(format!(
-                "make release {release_id} local: {e}"
-            ))),
-        }
-    }
-
-    /// Make a release Remote (Local → Remote) through coven: coven enqueues an
-    /// upload per user-provided blob from its external file, uploads each, and on
-    /// the last flips the `remote` gate true, drops the external refs, deletes the
-    /// source files, and re-emits the subtree (the host-provided cover then rides
-    /// along). Returns once enqueued; completion fires `on_root_made_remote`.
-    pub(crate) async fn coven_make_remote(
-        &self,
-        release_id: &str,
-        pin: bool,
-    ) -> Result<(), LibraryError> {
-        self.handle
-            .make_remote("releases", release_id, pin)
-            .await
-            .map_err(|e| LibraryError::Storage(format!("make release {release_id} remote: {e}")))
-    }
-
-    /// Cancel an in-flight make-Remote of `release_id` through coven: clears the
-    /// intent and pending uploads and tombstones any blob already in the cloud.
-    /// The gate never flips, so the release stays Local.
-    pub(crate) async fn coven_cancel_make_remote(
-        &self,
-        release_id: &str,
-    ) -> Result<(), LibraryError> {
-        self.handle
-            .cancel_make_remote("releases", release_id)
-            .await
-            .map_err(|e| {
-                LibraryError::Storage(format!("cancel make release {release_id} remote: {e}"))
-            })
-    }
-
-    /// Make a release Local (Remote → Local) through coven: coven materializes each
-    /// blob back to a local file durability-first — every release file (a
-    /// user-provided blob) to `new_path/{original_filename}`, the host-provided
-    /// cover to coven's local store (no dest) — then flips the `remote` gate false,
-    /// registers the external refs, and enqueues the cloud deletes in one atomic
-    /// commit. `cancel` aborts before the commit (the release stays Remote).
-    pub(crate) async fn coven_make_local(
-        &self,
-        release_id: &str,
-        new_path: &str,
-        cancel: &crate::library::CancellationToken,
-    ) -> Result<(), LibraryError> {
-        let dest = self.make_local_dest(release_id, new_path).await?;
-        let (cancel_rx, bridge) = Self::cancel_token_to_watch(cancel);
-        let result = self
-            .handle
-            .make_local("releases", release_id, &dest, &cancel_rx)
-            .await;
-        bridge.abort();
-        Self::map_make_local_result(release_id, result)
     }
 
     // =========================================================================

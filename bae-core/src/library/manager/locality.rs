@@ -10,7 +10,10 @@ impl LibraryManager {
     /// source files, and re-emits the subtree (the host-provided cover then rides
     /// along). Returns once enqueued; completion fires `on_root_made_remote`.
     pub async fn coven_make_remote(&self, release_id: &str, pin: bool) -> Result<(), LibraryError> {
-        self.sync.coven_make_remote(release_id, pin).await
+        self.handle
+            .make_remote("releases", release_id, pin)
+            .await
+            .map_err(|e| LibraryError::Storage(format!("make release {release_id} remote: {e}")))
     }
 
     /// Cancel an in-flight make-Remote of `release_id` through coven: clears the
@@ -20,7 +23,12 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<(), LibraryError> {
-        self.sync.coven_cancel_make_remote(release_id).await
+        self.handle
+            .cancel_make_remote("releases", release_id)
+            .await
+            .map_err(|e| {
+                LibraryError::Storage(format!("cancel make release {release_id} remote: {e}"))
+            })
     }
 
     /// Make a release Local (Remote → Local) through coven: coven materializes each
@@ -35,9 +43,79 @@ impl LibraryManager {
         new_path: &str,
         cancel: &crate::library::CancellationToken,
     ) -> Result<(), LibraryError> {
-        self.sync
-            .coven_make_local(release_id, new_path, cancel)
-            .await
+        let dest = self.make_local_dest(release_id, new_path).await?;
+        let (cancel_rx, bridge) = self.cancel_token_to_watch(cancel);
+        let result = self
+            .handle
+            .make_local("releases", release_id, &dest, &cancel_rx)
+            .await;
+        bridge.abort();
+        Self::map_make_local_result(release_id, result)
+    }
+
+    /// The make-Local destination map: each release file's blob id → the user path
+    /// (`new_path/original_filename`) its bytes go back to. Host-provided blobs (the
+    /// cover) take no dest — coven restores them to its local store.
+    async fn make_local_dest(
+        &self,
+        release_id: &str,
+        new_path: &str,
+    ) -> Result<HashMap<String, PathBuf>, LibraryError> {
+        let files = self.database.get_files_for_release(release_id).await?;
+        Ok(files
+            .iter()
+            .map(|f| {
+                (
+                    f.id.clone(),
+                    std::path::Path::new(new_path).join(&f.original_filename),
+                )
+            })
+            .collect())
+    }
+
+    /// Bridge bae's `CancellationToken` to the `watch::Receiver<bool>` coven's
+    /// make_local polls between blobs.
+    fn cancel_token_to_watch(
+        &self,
+        cancel: &crate::library::CancellationToken,
+    ) -> (
+        tokio::sync::watch::Receiver<bool>,
+        tokio::task::JoinHandle<()>,
+    ) {
+        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(cancel.is_cancelled());
+        let token = cancel.clone();
+        let handle = self.runtime_handle.spawn(async move {
+            token.cancelled().await;
+            if let Err(error) = cancel_tx.send(true) {
+                debug!(
+                    ?error,
+                    "make-local cancellation signal receiver already dropped"
+                );
+            }
+        });
+        (cancel_rx, handle)
+    }
+
+    /// Map a coven `make_local` result to bae's: a cancel before the commit is a
+    /// successful return after coven rolled back the partial copies and left the
+    /// release Remote; every other error is surfaced.
+    fn map_make_local_result(
+        release_id: &str,
+        result: Result<(), coven::MakeLocalError>,
+    ) -> Result<(), LibraryError> {
+        match result {
+            Ok(()) => Ok(()),
+            Err(coven::MakeLocalError::Cancelled) => {
+                debug!(
+                    release_id,
+                    "make-local cancelled before commit; release stays Remote"
+                );
+                Ok(())
+            }
+            Err(e) => Err(LibraryError::Storage(format!(
+                "make release {release_id} local: {e}"
+            ))),
+        }
     }
 
     pub fn generate_restore_code(&self) -> Result<String, String> {
