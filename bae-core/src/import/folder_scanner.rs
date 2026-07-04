@@ -5,13 +5,12 @@
 //! 2. Single release (multi-disc) - disc subfolders with audio, optional artwork
 //! 3. Collections - recursive tree where leaves are single releases
 //!
-//! The detection logic is abstract over the file source via the `FileTree`
-//! representation.
+//! The detection logic runs over a `FileTree` built once from the filesystem.
 use super::file_validation;
 use crate::cue_flac::CueFlacProcessor;
 use crate::util::content_type_hint::ContentTypeHint;
 use sha2::{Digest, Sha256};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{debug, info};
@@ -260,7 +259,7 @@ pub struct FolderCandidate {
     pub is_added: bool,
 }
 
-// ── FileTree: abstract file source ──────────────────────────────────────────
+// ── FileTree: indexed file source ───────────────────────────────────────────
 
 /// A single file entry in a `FileTree`.
 #[derive(Debug, Clone)]
@@ -276,11 +275,23 @@ pub struct FileEntry {
 /// Built by walking the filesystem once.
 pub struct FileTree {
     files: Vec<FileEntry>,
+    dirs: BTreeMap<PathBuf, DirEntry>,
+}
+
+#[derive(Debug, Default)]
+struct DirEntry {
+    files: Vec<usize>,
+    subdirs: BTreeSet<PathBuf>,
 }
 
 impl FileTree {
     pub fn new(files: Vec<FileEntry>) -> Self {
-        Self { files }
+        let mut tree = Self {
+            files,
+            dirs: BTreeMap::new(),
+        };
+        tree.rebuild_index();
+        tree
     }
 
     /// Build a FileTree by recursively walking the filesystem from `root`.
@@ -288,7 +299,7 @@ impl FileTree {
     pub(crate) fn from_filesystem(root: &Path) -> Result<Self, String> {
         let mut files = Vec::new();
         Self::walk_dir(root, root, &mut files)?;
-        Ok(Self { files })
+        Ok(Self::new(files))
     }
 
     fn walk_dir(current: &Path, root: &Path, files: &mut Vec<FileEntry>) -> Result<(), String> {
@@ -334,63 +345,77 @@ impl FileTree {
 
     /// Files whose parent directory is exactly `dir` (not recursive).
     fn files_in_dir<'a>(&'a self, dir: &Path) -> impl Iterator<Item = &'a FileEntry> {
-        // For root dir, we use "" as the canonical form
-        let dir = if dir == Path::new("") || dir == Path::new(".") {
-            PathBuf::new()
-        } else {
-            dir.to_path_buf()
-        };
+        let indices = self
+            .dirs
+            .get(&Self::normalize_dir(dir))
+            .map(|entry| entry.files.clone())
+            .unwrap_or_default();
 
-        self.files.iter().filter(move |f| {
-            f.path
-                .parent()
-                .map(|p| p == dir)
-                .unwrap_or(dir.as_os_str().is_empty())
-        })
+        indices.into_iter().map(|idx| &self.files[idx])
     }
 
     /// Distinct immediate child directories of `dir`.
     fn immediate_subdirs(&self, dir: &Path) -> Vec<PathBuf> {
-        let dir_normalized = if dir == Path::new("") || dir == Path::new(".") {
-            PathBuf::new()
-        } else {
-            dir.to_path_buf()
-        };
-
-        let mut subdirs = BTreeSet::new();
-        for f in &self.files {
-            // Check if this file is under `dir`
-            if let Ok(relative) = f.path.strip_prefix(&dir_normalized) {
-                // If there's at least one component before the filename, the first
-                // component is an immediate subdirectory
-                let mut components = relative.components();
-                if let Some(first) = components.next() {
-                    // Only count as subdir if there's more after the first component
-                    // (i.e., the first component is a directory, not the file itself)
-                    if components.next().is_some() {
-                        subdirs.insert(dir_normalized.join(first));
-                    }
-                }
-            }
-        }
-        subdirs.into_iter().collect()
+        self.dirs
+            .get(&Self::normalize_dir(dir))
+            .map(|entry| entry.subdirs.iter().cloned().collect())
+            .unwrap_or_default()
     }
 
     /// All files recursively under `dir` (inclusive).
     fn all_files_under<'a>(&'a self, dir: &Path) -> impl Iterator<Item = &'a FileEntry> {
-        let dir_normalized = if dir == Path::new("") || dir == Path::new(".") {
+        let mut indices = Vec::new();
+        self.collect_file_indices_under(&Self::normalize_dir(dir), &mut indices);
+        indices.into_iter().map(|idx| &self.files[idx])
+    }
+
+    fn rebuild_index(&mut self) {
+        self.dirs.clear();
+        self.dirs.entry(PathBuf::new()).or_default();
+
+        for idx in 0..self.files.len() {
+            let parent = {
+                let file = &self.files[idx];
+                Self::normalize_dir(file.path.parent().unwrap_or_else(|| Path::new("")))
+            };
+            self.dirs.entry(parent.clone()).or_default().files.push(idx);
+            self.index_dir_path(&parent);
+        }
+    }
+
+    fn index_dir_path(&mut self, dir: &Path) {
+        let mut parent = PathBuf::new();
+        self.dirs.entry(parent.clone()).or_default();
+
+        for component in dir.components() {
+            let child = parent.join(component.as_os_str());
+            self.dirs
+                .entry(parent.clone())
+                .or_default()
+                .subdirs
+                .insert(child.clone());
+            self.dirs.entry(child.clone()).or_default();
+            parent = child;
+        }
+    }
+
+    fn collect_file_indices_under(&self, dir: &Path, out: &mut Vec<usize>) {
+        let Some(entry) = self.dirs.get(dir) else {
+            return;
+        };
+
+        out.extend(entry.files.iter().copied());
+        for subdir in &entry.subdirs {
+            self.collect_file_indices_under(subdir, out);
+        }
+    }
+
+    fn normalize_dir(dir: &Path) -> PathBuf {
+        if dir.as_os_str().is_empty() || dir == Path::new(".") {
             PathBuf::new()
         } else {
             dir.to_path_buf()
-        };
-
-        self.files.iter().filter(move |f| {
-            if dir_normalized.as_os_str().is_empty() {
-                true
-            } else {
-                f.path.starts_with(&dir_normalized)
-            }
-        })
+        }
     }
 }
 
