@@ -8,11 +8,11 @@ impl LibraryManager {
     /// first read, whereas the `SyncManager` (and its cloud client) is built lazily
     /// once connected and still absent on mobile when the first listing query runs.
     pub fn is_sync_configured(&self) -> bool {
-        self.sync.is_sync_configured()
+        self.config_handle.config().cloud_home.provider.is_some()
     }
 
     pub fn has_cloud_home(&self) -> bool {
-        self.sync.has_cloud_home()
+        self.handle.is_connected()
     }
 
     /// The one coven data handle. The playback reader clones it to stream blob
@@ -49,11 +49,11 @@ impl LibraryManager {
     /// release only becomes remote once the upload observer (which fires from
     /// inside the running loop) confirms the last upload landed.
     pub fn is_sync_ready(&self) -> bool {
-        self.sync.is_sync_ready()
+        self.handle.is_syncing()
     }
 
     pub fn trigger_sync(&self) {
-        self.sync.trigger_sync()
+        self.handle.sync_now();
     }
 
     pub async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), String> {

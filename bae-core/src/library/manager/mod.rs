@@ -46,7 +46,6 @@ use crate::db::{
 };
 use crate::keys::BaeKeyServiceExt;
 use crate::keys::KeyService;
-use crate::library::discogs_credentials::DiscogsCredentials;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::library::export::ExportService;
 use crate::library::sync_controller::SyncController;
@@ -544,14 +543,9 @@ pub struct LibraryManager {
     handle: CovenHandle,
     event_tx: broadcast::Sender<LibraryEvent>,
     /// The cloud-sync responsibility: the upload pipeline (outbox in-flight,
-    /// throughput, pause), the connection lifecycle and provider config, the
-    /// encryption-service cell, membership, and the coven make-Remote/make-Local
-    /// primitives. The manager delegates its public sync API here.
+    /// throughput, pause), provider connection, membership, and the coven
+    /// make-Remote/make-Local primitives.
     sync: SyncController,
-    /// The Discogs-credentials responsibility: the stored API key (keyring) and
-    /// its validation state (config), plus the client built from them. The
-    /// manager delegates its public Discogs API here.
-    discogs: DiscogsCredentials,
     /// Cancellation tokens for in-progress foreground transfers (unmanage),
     /// keyed by release id. `cancel_release_transition` fires the token; the
     /// transfer observes it between files, deletes the partial copies it wrote,
@@ -616,7 +610,6 @@ impl Clone for LibraryManager {
             handle: self.handle.clone(),
             event_tx: self.event_tx.clone(),
             sync: self.sync.clone(),
-            discogs: self.discogs.clone(),
             transfer_cancels: self.transfer_cancels.clone(),
             download_queue: self.download_queue.clone(),
             export_queue: self.export_queue.clone(),
@@ -679,8 +672,6 @@ impl LibraryManager {
             cloudkit_ops,
         );
 
-        let discogs = DiscogsCredentials::new(config_handle.clone(), key_service.clone());
-
         Ok(LibraryManager {
             database,
             library_dir,
@@ -692,7 +683,6 @@ impl LibraryManager {
             handle,
             event_tx,
             sync,
-            discogs,
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             export_queue: Arc::new(crate::library::ExportQueue::new()),
@@ -730,8 +720,6 @@ impl LibraryManager {
             None,
         );
 
-        let discogs = DiscogsCredentials::new(config_handle.clone(), key_service.clone());
-
         LibraryManager {
             database,
             library_dir,
@@ -743,7 +731,6 @@ impl LibraryManager {
             handle,
             event_tx,
             sync,
-            discogs,
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             export_queue: Arc::new(crate::library::ExportQueue::new()),

@@ -20,7 +20,7 @@ use tracing::{debug, info, warn};
 use crate::config::{CloudProvider, ConfigHandle};
 use crate::db::Database;
 use crate::keys::KeyService;
-use crate::library::{LibraryError, LibraryEvent, UploadThroughput};
+use crate::library::{LibraryError, LibraryEvent, OutboxSnapshot, UploadThroughput};
 use crate::sync::sync_manager::S3ConfigData;
 #[cfg(feature = "oauth-providers")]
 use coven::ClockRef;
@@ -119,30 +119,6 @@ impl SyncController {
     // Connection state
     // =========================================================================
 
-    /// Whether a cloud provider is connected. Reads config, not manager presence:
-    /// the connected provider lives in config and is known synchronously from the
-    /// first read, whereas the `SyncManager` (and its cloud client) is built lazily
-    /// once connected and still absent on mobile when the first listing query runs.
-    pub(crate) fn is_sync_configured(&self) -> bool {
-        self.config_handle.config().cloud_home.provider.is_some()
-    }
-
-    pub(crate) fn has_cloud_home(&self) -> bool {
-        self.handle.is_connected()
-    }
-
-    /// Whether the background sync loop is running and draining uploads. The
-    /// manage gate requires this: managing has no inline remote flip — the
-    /// release only becomes remote once the upload observer (which fires from
-    /// inside the running loop) confirms the last upload landed.
-    pub(crate) fn is_sync_ready(&self) -> bool {
-        self.handle.is_syncing()
-    }
-
-    pub(crate) fn trigger_sync(&self) {
-        self.handle.sync_now();
-    }
-
     /// Pause or resume the cloud-upload pipeline. Paused means new enqueues
     /// still land in the outbox but the sync cycle won't drain them; in-flight
     /// uploads finish (coven's `drain_uploads` checks the flag between
@@ -154,7 +130,7 @@ impl SyncController {
         if !paused {
             // Kick the loop so the queue starts draining immediately on resume
             // rather than waiting for the next idle tick.
-            self.trigger_sync();
+            self.handle.sync_now();
         }
         self.emit_outbox_changed().await;
     }
@@ -173,16 +149,7 @@ impl SyncController {
     /// at every outbox mutation, once per sync cycle, and on each upload
     /// lifecycle callback so the Storage Manager's queue panel stays current.
     pub(crate) async fn emit_outbox_changed(&self) {
-        let in_flight = { self.outbox_in_flight.lock().unwrap().clone() };
-        let paused = self.is_sync_paused();
-        match crate::library::outbox_snapshot::build_outbox_snapshot(
-            &self.database,
-            &in_flight,
-            &self.upload_throughput,
-            paused,
-        )
-        .await
-        {
+        match self.build_outbox_snapshot().await {
             Ok(snapshot) => self.emit(LibraryEvent::OutboxChanged { snapshot }),
             Err(e) => warn!("Failed to build outbox snapshot: {e}"),
         }
@@ -194,15 +161,19 @@ impl SyncController {
     pub(crate) async fn outbox_snapshot(
         &self,
     ) -> Result<crate::library::OutboxSnapshot, LibraryError> {
+        Ok(self.build_outbox_snapshot().await?)
+    }
+
+    async fn build_outbox_snapshot(&self) -> Result<OutboxSnapshot, coven::DbError> {
         let in_flight = { self.outbox_in_flight.lock().unwrap().clone() };
         let paused = self.is_sync_paused();
-        Ok(crate::library::outbox_snapshot::build_outbox_snapshot(
+        crate::library::outbox_snapshot::build_outbox_snapshot(
             &self.database,
             &in_flight,
             &self.upload_throughput,
             paused,
         )
-        .await?)
+        .await
     }
 
     // =========================================================================
@@ -329,10 +300,6 @@ impl SyncController {
     // =========================================================================
     // Membership
     // =========================================================================
-
-    pub(crate) fn generate_restore_code(&self) -> Result<String, String> {
-        self.handle.generate_restore_code()
-    }
 
     /// The library's membership: its devices (with this device flagged, each
     /// member's fingerprint, and whether it can be removed) and whether the
@@ -640,7 +607,7 @@ impl SyncController {
             }
         }
 
-        self.trigger_sync();
+        self.handle.sync_now();
 
         Ok(())
     }

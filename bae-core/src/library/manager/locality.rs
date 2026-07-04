@@ -41,7 +41,7 @@ impl LibraryManager {
     }
 
     pub fn generate_restore_code(&self) -> Result<String, String> {
-        self.sync.generate_restore_code()
+        self.handle.generate_restore_code()
     }
 
     /// The library's membership: its devices (with this device flagged, each

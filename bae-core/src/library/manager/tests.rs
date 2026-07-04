@@ -3838,7 +3838,7 @@ async fn discogs_validation_observer_confirms_and_rejects() {
     use crate::config::DiscogsValidation;
     use crate::discogs::client::DiscogsKeySignal;
     let (manager, _temp_dir) = setup_test_manager().await;
-    let observe = manager.discogs.discogs_validation_observer();
+    let observe = manager.discogs_validation_observer();
 
     // A success confirms a stored Unvalidated key.
     manager
