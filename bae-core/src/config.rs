@@ -78,6 +78,31 @@ fn dev_env_secret(var: &str) -> Option<String> {
     }
 }
 
+type CloudHomeS3Setter = fn(&mut coven::CloudHomeConfig, String);
+
+fn overlay_cloud_home_s3_env(cloud_home: &mut coven::CloudHomeConfig) {
+    let overlays: [(&str, CloudHomeS3Setter); 4] = [
+        ("BAE_CLOUD_HOME_S3_BUCKET", |cloud_home, value| {
+            cloud_home.s3_bucket = Some(value)
+        }),
+        ("BAE_CLOUD_HOME_S3_REGION", |cloud_home, value| {
+            cloud_home.s3_region = Some(value)
+        }),
+        ("BAE_CLOUD_HOME_S3_ENDPOINT", |cloud_home, value| {
+            cloud_home.s3_endpoint = Some(value)
+        }),
+        ("BAE_CLOUD_HOME_S3_KEY_PREFIX", |cloud_home, value| {
+            cloud_home.s3_key_prefix = Some(value)
+        }),
+    ];
+
+    for (var, apply) in overlays {
+        if let Some(value) = dev_env_secret(var) {
+            apply(cloud_home, value);
+        }
+    }
+}
+
 fn dev_mode_enabled() -> bool {
     std::env::var("BAE_DEV_MODE").is_ok() || {
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -593,16 +618,11 @@ impl Config {
         let mut config = Self::load_from_bae_dir(&bae_dir, ids);
 
         // Overlay dev-specific env vars on top of the config.yaml values
-        if let Some(path) = std::env::var("BAE_LIBRARY_PATH")
-            .ok()
-            .filter(|s| !s.is_empty())
-        {
+        if let Some(path) = dev_env_secret("BAE_LIBRARY_PATH") {
             config.library_dir = LibraryDir::new(PathBuf::from(path));
         }
 
-        let encryption_key_hex = std::env::var("BAE_ENCRYPTION_KEY")
-            .ok()
-            .filter(|k| !k.is_empty());
+        let encryption_key_hex = dev_env_secret("BAE_ENCRYPTION_KEY");
         if let Some(ref key) = encryption_key_hex {
             // `from_env` is infallible — a malformed env var is a dev setup
             // bug, not a runtime condition. Silently writing
@@ -616,42 +636,12 @@ impl Config {
             config.encryption_key_fingerprint = Some(fingerprint);
         }
 
-        if std::env::var("BAE_DISCOGS_API_KEY")
-            .ok()
-            .filter(|k| !k.is_empty())
-            .is_some()
-        {
+        if dev_env_secret("BAE_DISCOGS_API_KEY").is_some() {
             // In dev mode, assume the env-provided key is valid
             config.discogs = Some(DiscogsValidation::Valid);
         }
 
-        if let Some(v) = std::env::var("BAE_CLOUD_HOME_S3_BUCKET")
-            .ok()
-            .filter(|s| !s.is_empty())
-        {
-            config.cloud_home.s3_bucket = Some(v);
-        }
-
-        if let Some(v) = std::env::var("BAE_CLOUD_HOME_S3_REGION")
-            .ok()
-            .filter(|s| !s.is_empty())
-        {
-            config.cloud_home.s3_region = Some(v);
-        }
-
-        if let Some(v) = std::env::var("BAE_CLOUD_HOME_S3_ENDPOINT")
-            .ok()
-            .filter(|s| !s.is_empty())
-        {
-            config.cloud_home.s3_endpoint = Some(v);
-        }
-
-        if let Some(v) = std::env::var("BAE_CLOUD_HOME_S3_KEY_PREFIX")
-            .ok()
-            .filter(|s| !s.is_empty())
-        {
-            config.cloud_home.s3_key_prefix = Some(v);
-        }
+        overlay_cloud_home_s3_env(&mut config.cloud_home);
 
         config
     }
