@@ -211,7 +211,7 @@ fn row_to_work_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbWorkSummary> 
 
 fn row_to_composer_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbComposerSummary> {
     Ok(DbComposerSummary {
-        artist: row_to_aliased_artist(row, "artist")?,
+        artist: row_to_joined_artist(row)?,
         work_count: row.get("work_count")?,
         linked_release_count: row.get("linked_release_count")?,
         unlinked_credit_count: row.get("unlinked_credit_count")?,
@@ -233,9 +233,9 @@ fn row_to_track_role_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbTrackRo
             source_credit: row.get("source_credit")?,
             created_at: rfc3339_column(row, "created_at")?,
         },
-        track: row_to_aliased_track(row, "track")?,
-        album: row_to_aliased_album(row, "album")?,
-        artist: row_to_aliased_artist(row, "artist")?,
+        track: row_to_joined_track(row)?,
+        album: row_to_joined_album(row)?,
+        artist: row_to_joined_artist(row)?,
     })
 }
 
@@ -767,7 +767,7 @@ impl Database {
             let mut current_track_id: Option<String> = None;
 
             while let Some(row) = rows.next()? {
-                let track = row_to_aliased_track(row, "track")?;
+                let track = row_to_joined_track(row)?;
                 if current_track_id.as_deref() != Some(track.id.as_str()) {
                     if let Some(track) = current_track.take() {
                         tracks.push(track);
@@ -785,7 +785,7 @@ impl Database {
                         .as_mut()
                         .expect("joined release row has a current track")
                         .artists
-                        .push(row_to_aliased_artist(row, "artist")?);
+                        .push(row_to_joined_artist(row)?);
                 }
             }
 
@@ -838,60 +838,39 @@ fn metadata_source_column(row: &Row, column: &str) -> coven::rusqlite::Result<Me
         .map_err(|e| column_conversion_error(row, column, e))
 }
 
-fn row_to_aliased_artist(row: &Row, prefix: &str) -> coven::rusqlite::Result<DbArtist> {
-    let id_column = format!("{prefix}_id");
-    let name_column = format!("{prefix}_name");
-    let sort_name_column = format!("{prefix}_sort_name");
-    let discogs_id_column = format!("{prefix}_discogs_artist_id");
-    let musicbrainz_id_column = format!("{prefix}_musicbrainz_artist_id");
-    let created_at_column = format!("{prefix}_created_at");
+fn row_to_joined_artist(row: &Row) -> coven::rusqlite::Result<DbArtist> {
     Ok(DbArtist {
-        id: row.get(id_column.as_str())?,
-        name: row.get(name_column.as_str())?,
-        sort_name: row.get(sort_name_column.as_str())?,
-        discogs_artist_id: row.get(discogs_id_column.as_str())?,
-        musicbrainz_artist_id: row.get(musicbrainz_id_column.as_str())?,
-        created_at: rfc3339_column(row, &created_at_column)?,
+        id: row.get("artist_id")?,
+        name: row.get("artist_name")?,
+        sort_name: row.get("artist_sort_name")?,
+        discogs_artist_id: row.get("artist_discogs_artist_id")?,
+        musicbrainz_artist_id: row.get("artist_musicbrainz_artist_id")?,
+        created_at: rfc3339_column(row, "artist_created_at")?,
     })
 }
 
-fn row_to_aliased_album(row: &Row, prefix: &str) -> coven::rusqlite::Result<DbAlbum> {
-    let id_column = format!("{prefix}_id");
-    let title_column = format!("{prefix}_title");
-    let artist_id_column = format!("{prefix}_artist_id");
-    let year_column = format!("{prefix}_year");
-    let primary_release_id_column = format!("{prefix}_primary_release_id");
-    let is_compilation_column = format!("{prefix}_is_compilation");
-    let created_at_column = format!("{prefix}_created_at");
+fn row_to_joined_album(row: &Row) -> coven::rusqlite::Result<DbAlbum> {
     Ok(DbAlbum {
-        id: row.get(id_column.as_str())?,
-        title: row.get(title_column.as_str())?,
-        artist_id: row.get(artist_id_column.as_str())?,
-        year: row.get(year_column.as_str())?,
-        primary_release_id: row.get(primary_release_id_column.as_str())?,
-        is_compilation: row.get(is_compilation_column.as_str())?,
-        created_at: rfc3339_column(row, &created_at_column)?,
+        id: row.get("album_id")?,
+        title: row.get("album_title")?,
+        artist_id: row.get("album_artist_id")?,
+        year: row.get("album_year")?,
+        primary_release_id: row.get("album_primary_release_id")?,
+        is_compilation: row.get("album_is_compilation")?,
+        created_at: rfc3339_column(row, "album_created_at")?,
     })
 }
 
-fn row_to_aliased_track(row: &Row, prefix: &str) -> coven::rusqlite::Result<DbTrack> {
-    let id_column = format!("{prefix}_id");
-    let release_id_column = format!("{prefix}_release_id");
-    let title_column = format!("{prefix}_title");
-    let side_column = format!("{prefix}_side");
-    let track_number_column = format!("{prefix}_track_number");
-    let duration_ms_column = format!("{prefix}_duration_ms");
-    let discogs_position_column = format!("{prefix}_discogs_position");
-    let created_at_column = format!("{prefix}_created_at");
+fn row_to_joined_track(row: &Row) -> coven::rusqlite::Result<DbTrack> {
     Ok(DbTrack {
-        id: row.get(id_column.as_str())?,
-        release_id: row.get(release_id_column.as_str())?,
-        title: row.get(title_column.as_str())?,
-        side: row.get(side_column.as_str())?,
-        track_number: row.get(track_number_column.as_str())?,
-        duration_ms: row.get(duration_ms_column.as_str())?,
-        discogs_position: row.get(discogs_position_column.as_str())?,
-        created_at: rfc3339_column(row, &created_at_column)?,
+        id: row.get("track_id")?,
+        release_id: row.get("track_release_id")?,
+        title: row.get("track_title")?,
+        side: row.get("track_side")?,
+        track_number: row.get("track_track_number")?,
+        duration_ms: row.get("track_duration_ms")?,
+        discogs_position: row.get("track_discogs_position")?,
+        created_at: rfc3339_column(row, "track_created_at")?,
     })
 }
 

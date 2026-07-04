@@ -318,7 +318,7 @@ impl Database {
                             source_credit: row.get("source_credit")?,
                             created_at: rfc3339_column(row, "created_at")?,
                         },
-                        album: row_to_aliased_album(row, "album")?,
+                        album: row_to_joined_album(row)?,
                     })
                 })?
                 .collect::<coven::rusqlite::Result<Vec<_>>>()?;
@@ -424,8 +424,8 @@ impl Database {
                             source: metadata_source_column(row, "link_source")?,
                             created_at: rfc3339_column(row, "created_at")?,
                         },
-                        track: row_to_aliased_track(row, "track")?,
-                        album: row_to_aliased_album(row, "album")?,
+                        track: row_to_joined_track(row)?,
+                        album: row_to_joined_album(row)?,
                     })
                 })?
                 .collect::<coven::rusqlite::Result<Vec<_>>>()?;
