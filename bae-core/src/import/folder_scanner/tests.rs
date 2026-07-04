@@ -3,13 +3,11 @@ use super::*;
 /// Minimal valid FLAC header (42 bytes) with total_samples=0 (unknown length).
 /// This passes is_valid_flac without needing a realistic file size.
 fn fake_flac() -> Vec<u8> {
-    let mut buf = vec![
-        b'f', b'L', b'a', b'C', // magic
-        0x00, 0x00, 0x00, 34, // STREAMINFO block: type=0, length=34
-    ];
-    // STREAMINFO: 34 bytes, all zeros -> sample_rate=0 so size check is skipped
-    buf.extend_from_slice(&[0u8; 34]);
-    buf
+    std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/flac/01 Test Track 1.flac"
+    ))
+    .expect("read FLAC fixture")
 }
 
 /// Every scan item (valid + invalid) for `root`.
@@ -41,6 +39,19 @@ fn test_is_audio_file() {
     assert!(is_audio_file(Path::new("track.APE")));
     assert!(is_audio_file(Path::new("track.m4a")));
     assert!(is_audio_file(Path::new("track.M4A")));
+    assert!(is_audio_file(Path::new("track.wav")));
+    assert!(is_audio_file(Path::new("track.aif")));
+    assert!(is_audio_file(Path::new("track.aiff")));
+    assert!(is_audio_file(Path::new("track.aifc")));
+    assert!(is_audio_file(Path::new("track.ogg")));
+    assert!(is_audio_file(Path::new("track.oga")));
+    assert!(is_audio_file(Path::new("track.opus")));
+    assert!(is_audio_file(Path::new("track.wv")));
+    assert!(is_audio_file(Path::new("track.dsf")));
+    assert!(is_audio_file(Path::new("track.dff")));
+    assert!(!is_audio_file(Path::new("track.wma")));
+    assert!(!is_audio_file(Path::new("track.mpc")));
+    assert!(!is_audio_file(Path::new("track.spx")));
     assert!(!is_audio_file(Path::new("cover.jpg")));
     assert!(!is_audio_file(Path::new("notes.txt")));
 }
@@ -910,10 +921,8 @@ fn test_per_track_flacs_with_cue_and_artwork_subfolder() {
     );
 }
 
-/// A CUE paired with an `.m4a` file produces a `CUE+ALAC` format label —
-/// the label is driven by the codec name (`ContentType::display_name()`),
-/// not the raw uppercased extension. Detection is extension-only; the
-/// container is not decoded in this test (that requires Step 6 fixtures).
+/// A CUE paired with an `.m4a` file produces a `CUE+ALAC` format label
+/// because FFmpeg probes the actual codec instead of trusting the extension.
 #[test]
 fn test_collect_release_candidate_files_cue_alac_format_label() {
     let temp_dir = tempfile::tempdir().unwrap();
@@ -988,13 +997,19 @@ FILE "02 - Track Two.flac" WAVE
 
 #[test]
 fn test_cue_pair_codec_label_covers_supported_extensions() {
-    // Mirrors the detector's allowed extensions in `cue_flac.rs`.
-    assert_eq!(cue_pair_codec_label("flac"), "FLAC");
-    assert_eq!(cue_pair_codec_label("FLAC"), "FLAC");
-    assert_eq!(cue_pair_codec_label("ape"), "APE");
-    assert_eq!(cue_pair_codec_label("APE"), "APE");
-    assert_eq!(cue_pair_codec_label("m4a"), "ALAC");
-    assert_eq!(cue_pair_codec_label("M4A"), "ALAC");
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    assert_eq!(
+        cue_pair_codec_label(&manifest.join("tests/fixtures/flac/01 Test Track 1.flac")).unwrap(),
+        "FLAC"
+    );
+    assert_eq!(
+        cue_pair_codec_label(&manifest.join("tests/fixtures/cue_ape/Test Album.ape")).unwrap(),
+        "APE"
+    );
+    assert_eq!(
+        cue_pair_codec_label(&manifest.join("test-fixtures/alac/cue-alac.m4a")).unwrap(),
+        "ALAC"
+    );
 }
 
 /// A CUE+APE pair must report the parsed TRACK count from the CUE sheet,
@@ -1051,7 +1066,11 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
 
 /// Minimal valid APE (Monkey's Audio) header — just the "MAC " magic.
 fn fake_ape() -> Vec<u8> {
-    b"MAC \x00\x00\x00\x00".to_vec()
+    std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/cue_ape/Test Album.ape"
+    ))
+    .expect("read APE fixture")
 }
 
 /// Minimal valid MP3 with an ID3v2 header.
@@ -1065,20 +1084,54 @@ fn fake_mp3() -> Vec<u8> {
 /// to be non-empty and have a plausible shape for anything downstream
 /// that might sniff them.
 fn fake_m4a() -> Vec<u8> {
-    let mut buf = Vec::new();
-    // Box size: 28 bytes, big-endian u32.
-    // Layout: size(4) + type(4) + major(4) + minor(4) + brands(12).
-    buf.extend_from_slice(&28u32.to_be_bytes());
-    // Box type: `ftyp`.
-    buf.extend_from_slice(b"ftyp");
-    // Major brand: `M4A ` (space-padded).
-    buf.extend_from_slice(b"M4A ");
-    // Minor version: 0.
-    buf.extend_from_slice(&0u32.to_be_bytes());
-    // Compatible brands: `M4A `, `mp42`, `isom`.
-    buf.extend_from_slice(b"M4A mp42isom");
-    assert_eq!(buf.len(), 28);
-    buf
+    std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/test-fixtures/alac/cue-alac.m4a"
+    ))
+    .expect("read ALAC fixture")
+}
+
+fn fake_wav() -> Vec<u8> {
+    let samples = [0i16, i16::MAX, i16::MIN, 0];
+    let data_len = samples.len() * std::mem::size_of::<i16>();
+    let mut wav = Vec::with_capacity(44 + data_len);
+    wav.extend_from_slice(b"RIFF");
+    wav.extend_from_slice(&(36u32 + data_len as u32).to_le_bytes());
+    wav.extend_from_slice(b"WAVE");
+    wav.extend_from_slice(b"fmt ");
+    wav.extend_from_slice(&16u32.to_le_bytes());
+    wav.extend_from_slice(&1u16.to_le_bytes());
+    wav.extend_from_slice(&1u16.to_le_bytes());
+    wav.extend_from_slice(&44_100u32.to_le_bytes());
+    wav.extend_from_slice(&88_200u32.to_le_bytes());
+    wav.extend_from_slice(&2u16.to_le_bytes());
+    wav.extend_from_slice(&16u16.to_le_bytes());
+    wav.extend_from_slice(b"data");
+    wav.extend_from_slice(&(data_len as u32).to_le_bytes());
+    for sample in samples {
+        wav.extend_from_slice(&sample.to_le_bytes());
+    }
+    wav
+}
+
+fn fake_aiff() -> Vec<u8> {
+    b"FORM\x00\x00\x00\x04AIFF".to_vec()
+}
+
+fn fake_ogg() -> Vec<u8> {
+    b"OggS\x00\x02".to_vec()
+}
+
+fn fake_wavpack() -> Vec<u8> {
+    b"wvpk\x00\x00\x00\x00".to_vec()
+}
+
+fn fake_dsf() -> Vec<u8> {
+    b"DSD \x00\x00\x00\x00".to_vec()
+}
+
+fn fake_dff() -> Vec<u8> {
+    b"FRM8\x00\x00\x00\x04DSD ".to_vec()
 }
 
 /// Minimal valid JPEG (only the SOI + APP0 marker — enough for magic check).
@@ -1234,6 +1287,13 @@ enum FileKind {
     Mp3,
     Ape,
     M4a,
+    Wav,
+    Aiff,
+    Ogg,
+    Opus,
+    WavPack,
+    Dsf,
+    Dff,
     /// Empty FLAC file (size 0). The scanner must reject the candidate.
     ZeroByteFlac,
     /// Valid `fLaC` magic + STREAMINFO that declares far more samples
@@ -1316,6 +1376,12 @@ fn bytes_for(kind: FileKind) -> Vec<u8> {
         FileKind::Mp3 => fake_mp3(),
         FileKind::Ape => fake_ape(),
         FileKind::M4a => fake_m4a(),
+        FileKind::Wav => fake_wav(),
+        FileKind::Aiff => fake_aiff(),
+        FileKind::Ogg | FileKind::Opus => fake_ogg(),
+        FileKind::WavPack => fake_wavpack(),
+        FileKind::Dsf => fake_dsf(),
+        FileKind::Dff => fake_dff(),
         FileKind::ZeroByteFlac => Vec::new(),
         FileKind::TruncatedFlac => truncated_flac(),
         FileKind::BrokenFlac => broken_flac(),
@@ -1396,6 +1462,20 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
                     .map(str::to_lowercase),
                 Some("m4a".to_string()),
                 "fixture builder bug: M4A at {:?} must have .m4a extension",
+                path,
+            );
+        }
+        FileKind::Wav
+        | FileKind::Aiff
+        | FileKind::Ogg
+        | FileKind::Opus
+        | FileKind::WavPack
+        | FileKind::Dsf
+        | FileKind::Dff => {
+            assert!(
+                file_validation::is_valid_audio(path).unwrap_or(false),
+                "fixture builder bug: {:?} at {:?} fails audio validator",
+                kind,
                 path,
             );
         }
@@ -1543,6 +1623,13 @@ fn flat_audio(dir: &str, n: usize, kind: FileKind) -> Vec<FixtureEntry> {
         FileKind::Mp3 => "mp3",
         FileKind::Ape => "ape",
         FileKind::M4a => "m4a",
+        FileKind::Wav => "wav",
+        FileKind::Aiff => "aiff",
+        FileKind::Ogg => "ogg",
+        FileKind::Opus => "opus",
+        FileKind::WavPack => "wv",
+        FileKind::Dsf => "dsf",
+        FileKind::Dff => "dff",
         other => panic!(
             "flat_audio: unsupported kind {:?} — this helper only produces audio tracks",
             other,
@@ -1640,6 +1727,24 @@ fn test_write_m4a() {
     // to the unknown-extension fallback, so non-zero bytes pass.
     assert!(is_audio_file(&path));
     assert!(file_validation::is_valid_audio(&path).unwrap());
+}
+
+#[test]
+fn test_write_new_audio_formats() {
+    let tmp = tempfile::tempdir().unwrap();
+    for (name, kind) in [
+        ("01.wav", FileKind::Wav),
+        ("01.aiff", FileKind::Aiff),
+        ("01.ogg", FileKind::Ogg),
+        ("01.opus", FileKind::Opus),
+        ("01.wv", FileKind::WavPack),
+        ("01.dsf", FileKind::Dsf),
+        ("01.dff", FileKind::Dff),
+    ] {
+        let path = write_one(tmp.path(), name, kind);
+        assert!(is_audio_file(&path), "{name} must be classified as audio");
+        assert!(file_validation::is_valid_audio(&path).unwrap());
+    }
 }
 
 #[test]

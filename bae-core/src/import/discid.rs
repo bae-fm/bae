@@ -339,15 +339,21 @@ fn discid_from_cue_audio(sheet: &CueSheet, audio_path: &Path) -> Option<String> 
     };
     let result = match ContentTypeHint::from_extension(ext) {
         ContentTypeHint::Flac => calculate_mb_discid_from_cue_flac(sheet, audio_path),
-        ContentTypeHint::Mp3 | ContentTypeHint::Ape | ContentTypeHint::Mp4Container => {
-            calculate_mb_discid_from_cue_probe(sheet, audio_path)
-        }
+        ContentTypeHint::Mp3
+        | ContentTypeHint::Ape
+        | ContentTypeHint::Mp4Container
+        | ContentTypeHint::WavContainer
+        | ContentTypeHint::AiffContainer
+        | ContentTypeHint::WavPack
+        | ContentTypeHint::DsdContainer => calculate_mb_discid_from_cue_probe(sheet, audio_path),
         other @ (ContentTypeHint::Jpeg
         | ContentTypeHint::Png
         | ContentTypeHint::Gif
         | ContentTypeHint::Webp
         | ContentTypeHint::Bmp
         | ContentTypeHint::Svg
+        | ContentTypeHint::OggContainer
+        | ContentTypeHint::OpusContainer
         | ContentTypeHint::PlainText
         | ContentTypeHint::Pdf
         | ContentTypeHint::Unknown(_)) => {

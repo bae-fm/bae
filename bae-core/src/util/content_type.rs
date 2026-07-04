@@ -17,6 +17,11 @@ pub enum ContentType {
     Ape,
     Alac,
     Aac,
+    Pcm,
+    Opus,
+    Vorbis,
+    WavPack,
+    Dsd,
     // Images
     Jpeg,
     Png,
@@ -46,6 +51,11 @@ impl ContentType {
             Self::Ape => "audio/x-ape",
             Self::Alac => "audio/alac",
             Self::Aac => "audio/aac",
+            Self::Pcm => "audio/pcm",
+            Self::Opus => "audio/opus",
+            Self::Vorbis => "audio/vorbis",
+            Self::WavPack => "audio/wavpack",
+            Self::Dsd => "audio/dsd",
             Self::Jpeg => "image/jpeg",
             Self::Png => "image/png",
             Self::Gif => "image/gif",
@@ -71,6 +81,11 @@ impl ContentType {
             "audio/x-ape" | "audio/ape" => Self::Ape,
             "audio/alac" => Self::Alac,
             "audio/aac" => Self::Aac,
+            "audio/pcm" => Self::Pcm,
+            "audio/opus" => Self::Opus,
+            "audio/vorbis" => Self::Vorbis,
+            "audio/wavpack" => Self::WavPack,
+            "audio/dsd" => Self::Dsd,
             "image/jpeg" => Self::Jpeg,
             "image/png" => Self::Png,
             "image/gif" => Self::Gif,
@@ -92,6 +107,11 @@ impl ContentType {
             Self::Ape => "ape",
             Self::Alac => "m4a",
             Self::Aac => "m4a",
+            Self::Pcm => "wav",
+            Self::Opus => "opus",
+            Self::Vorbis => "ogg",
+            Self::WavPack => "wv",
+            Self::Dsd => "dsf",
             Self::Jpeg => "jpg",
             Self::Png => "png",
             Self::Gif => "gif",
@@ -108,7 +128,16 @@ impl ContentType {
     pub fn is_audio(&self) -> bool {
         matches!(
             self,
-            Self::Flac | Self::Mp3 | Self::Ape | Self::Alac | Self::Aac
+            Self::Flac
+                | Self::Mp3
+                | Self::Ape
+                | Self::Alac
+                | Self::Aac
+                | Self::Pcm
+                | Self::Opus
+                | Self::Vorbis
+                | Self::WavPack
+                | Self::Dsd
         ) || matches!(self, Self::Other(s) if s.starts_with("audio/"))
     }
 
@@ -127,6 +156,11 @@ impl ContentType {
             Self::Ape => "APE",
             Self::Alac => "ALAC",
             Self::Aac => "AAC",
+            Self::Pcm => "PCM",
+            Self::Opus => "Opus",
+            Self::Vorbis => "Vorbis",
+            Self::WavPack => "WavPack",
+            Self::Dsd => "DSD",
             Self::Jpeg => "JPEG",
             Self::Png => "PNG",
             Self::Gif => "GIF",
@@ -174,6 +208,11 @@ mod tests {
             ContentType::Ape,
             ContentType::Alac,
             ContentType::Aac,
+            ContentType::Pcm,
+            ContentType::Opus,
+            ContentType::Vorbis,
+            ContentType::WavPack,
+            ContentType::Dsd,
         ] {
             assert_eq!(
                 ContentType::from_mime(ct.as_str()),
@@ -215,6 +254,15 @@ mod tests {
     }
 
     #[test]
+    fn new_audio_mimes_are_stable() {
+        assert_eq!(ContentType::Pcm.as_str(), "audio/pcm");
+        assert_eq!(ContentType::Opus.as_str(), "audio/opus");
+        assert_eq!(ContentType::Vorbis.as_str(), "audio/vorbis");
+        assert_eq!(ContentType::WavPack.as_str(), "audio/wavpack");
+        assert_eq!(ContentType::Dsd.as_str(), "audio/dsd");
+    }
+
+    #[test]
     fn unknown_mime_lands_in_other() {
         assert_eq!(
             ContentType::from_mime("audio/ogg"),
@@ -237,6 +285,11 @@ mod tests {
         assert!(ContentType::Ape.is_audio());
         assert!(ContentType::Alac.is_audio());
         assert!(ContentType::Aac.is_audio());
+        assert!(ContentType::Pcm.is_audio());
+        assert!(ContentType::Opus.is_audio());
+        assert!(ContentType::Vorbis.is_audio());
+        assert!(ContentType::WavPack.is_audio());
+        assert!(ContentType::Dsd.is_audio());
 
         assert!(!ContentType::Jpeg.is_audio());
         assert!(!ContentType::PlainText.is_audio());
@@ -271,6 +324,11 @@ mod tests {
         assert_eq!(ContentType::Ape.display_name(), "APE");
         assert_eq!(ContentType::Alac.display_name(), "ALAC");
         assert_eq!(ContentType::Aac.display_name(), "AAC");
+        assert_eq!(ContentType::Pcm.display_name(), "PCM");
+        assert_eq!(ContentType::Opus.display_name(), "Opus");
+        assert_eq!(ContentType::Vorbis.display_name(), "Vorbis");
+        assert_eq!(ContentType::WavPack.display_name(), "WavPack");
+        assert_eq!(ContentType::Dsd.display_name(), "DSD");
         assert_eq!(ContentType::Jpeg.display_name(), "JPEG");
     }
 
@@ -281,6 +339,11 @@ mod tests {
         assert_eq!(ContentType::Ape.file_extension(), "ape");
         assert_eq!(ContentType::Alac.file_extension(), "m4a");
         assert_eq!(ContentType::Aac.file_extension(), "m4a");
+        assert_eq!(ContentType::Pcm.file_extension(), "wav");
+        assert_eq!(ContentType::Opus.file_extension(), "opus");
+        assert_eq!(ContentType::Vorbis.file_extension(), "ogg");
+        assert_eq!(ContentType::WavPack.file_extension(), "wv");
+        assert_eq!(ContentType::Dsd.file_extension(), "dsf");
         assert_eq!(ContentType::Jpeg.file_extension(), "jpg");
     }
 }

@@ -159,9 +159,12 @@ pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<CueAudio
     match probe.content_type {
         crate::util::content_type::ContentType::Flac
         | crate::util::content_type::ContentType::Ape
-        | crate::util::content_type::ContentType::Alac => Ok(CueAudioAnalysis { probe }),
+        | crate::util::content_type::ContentType::Alac
+        | crate::util::content_type::ContentType::Pcm
+        | crate::util::content_type::ContentType::WavPack
+        | crate::util::content_type::ContentType::Dsd => Ok(CueAudioAnalysis { probe }),
         other => Err(format!(
-            "CUE audio expects FLAC, APE, or ALAC, got {} in {:?}",
+            "CUE audio expects FLAC, APE, ALAC, PCM, WavPack, or DSD, got {} in {:?}",
             other.display_name(),
             audio_path
         )),

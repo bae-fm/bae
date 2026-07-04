@@ -27,7 +27,6 @@ use crate::db::{DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackArtist};
 use crate::util::content_type::ContentType;
 use coven::Clock;
 use coven::IdProvider;
-use lofty::file::FileType;
 use lofty::prelude::*;
 use lofty::probe::Probe;
 use std::path::{Path, PathBuf};
@@ -37,7 +36,7 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone)]
 struct FileTags {
     path: PathBuf,
-    file_type: FileType,
+    content_type: Option<ContentType>,
     title: Option<String>,
     track_artist: Option<String>,
     album_title: Option<String>,
@@ -108,10 +107,12 @@ pub fn map_file_tags_to_db(
     let year = extracted.iter().find_map(|t| t.year).map(|y| y as i32);
 
     // Format reflects the actual codec of the rip, not editorial pressing
-    // info, derived from the first audio file's codec. A heterogeneous rip
-    // (mixed codecs in one folder) is a malformed rip; it takes the first
-    // file's codec, which the user can correct in the editable form.
-    let format = format_from_file_type(extracted[0].file_type);
+    // info. If probing fails, the editable field stays blank instead of using
+    // an extension or container label.
+    let format = extracted[0]
+        .content_type
+        .as_ref()
+        .map(|content_type| content_type.display_name().to_string());
 
     // ── Track seeds: assign side from DISCNUMBER, track_number from
     // TRACKNUMBER. Positional fallback (index within side by file order) is
@@ -373,8 +374,8 @@ pub fn map_cue_sheets_to_db(
     // the container can't be probed; the user can correct it in the form.
     let format = audio_files
         .first()
-        .and_then(|p| probe_file_type(p))
-        .and_then(format_from_file_type);
+        .and_then(|p| probe_content_type(p))
+        .map(|content_type| content_type.display_name().to_string());
 
     let mut tracks: Vec<TrackSeed> = Vec::new();
     for (disc_index, sheet) in sheets.iter().enumerate() {
@@ -419,16 +420,17 @@ fn year_from_cue_date(date: Option<&str>) -> Option<i32> {
     )
 }
 
-/// Probe a file's container/codec without reading its full tag set. Used to
-/// derive the format label for a CUE image (whose codec isn't otherwise read).
-fn probe_file_type(path: &Path) -> Option<FileType> {
-    match Probe::open(path).and_then(|probe| probe.read()) {
-        Ok(tagged) => Some(tagged.file_type()),
-        // The scanner already admitted this file as audio, so a probe failure is
-        // exceptional. The format label stays optional (the user can set it in
-        // the editor), but don't drop the error silently.
-        Err(e) => {
-            tracing::warn!("failed to probe audio format of {}: {e}", path.display());
+/// Probe a file's codec through FFmpeg. Used to derive editable format labels
+/// from decoder identity rather than from the extension or container.
+fn probe_content_type(path: &Path) -> Option<ContentType> {
+    let Some(path_str) = path.to_str() else {
+        tracing::warn!("failed to probe audio format of non-UTF-8 path: {path:?}");
+        return None;
+    };
+    match crate::audio_codec::probe_audio_from_path(path_str) {
+        Some(probe) => Some(probe.content_type),
+        None => {
+            tracing::warn!("failed to probe audio format of {}", path.display());
             None
         }
     }
@@ -507,7 +509,7 @@ fn read_tags(path: &Path) -> Result<FileTags, String> {
         .read()
         .map_err(|e| format!("failed to read tags from {}: {}", path.display(), e))?;
 
-    let file_type = tagged.file_type();
+    let content_type = probe_content_type(path);
 
     // Prefer the file format's primary tag (e.g. ID3v2 on MP3, Vorbis on
     // FLAC); fall back to whichever tag is present (e.g. ID3v1-only on
@@ -532,7 +534,7 @@ fn read_tags(path: &Path) -> Result<FileTags, String> {
 
     Ok(FileTags {
         path: path.to_path_buf(),
-        file_type,
+        content_type,
         title,
         track_artist,
         album_title,
@@ -584,27 +586,6 @@ fn year_from_tag(tag: &lofty::tag::Tag) -> Option<u16> {
         }
     }
     None
-}
-
-/// Map the lofty-detected file format to the human-readable format
-/// label used in the compact line and elsewhere. Mirrors
-/// `ContentType::display_name()` for codec-named variants.
-///
-/// Only the codecs the folder scanner admits appear here: FLAC, MP3,
-/// APE, and the MP4 container (which covers both ALAC and AAC, hence
-/// the generic "M4A" label — without decoding the magic cookie we
-/// can't tell which). Anything else returns `None` rather than
-/// fabricating a label; in practice the scanner won't deliver such a
-/// file, so this is a structural guard, not a runtime branch.
-fn format_from_file_type(file_type: FileType) -> Option<String> {
-    let display = match file_type {
-        FileType::Flac => ContentType::Flac.display_name(),
-        FileType::Mpeg => ContentType::Mp3.display_name(),
-        FileType::Ape => ContentType::Ape.display_name(),
-        FileType::Mp4 => "M4A",
-        _ => return None,
-    };
-    Some(display.to_string())
 }
 
 #[cfg(test)]
@@ -1242,9 +1223,8 @@ mod tests {
         assert!(parsed.identities.is_empty());
     }
 
-    /// M4A with MP4 ilst tags. Format derives from the container label
-    /// since we don't probe the codec — both ALAC and AAC files appear
-    /// as `FileType::Mp4` to lofty.
+    /// M4A with MP4 ilst tags. Format derives from the probed codec, so
+    /// ALAC-in-MP4 does not collapse to a container label.
     #[test]
     fn m4a_with_mp4_ilst_tags() {
         let temp = TempDir::new().unwrap();
@@ -1271,10 +1251,37 @@ mod tests {
 
         assert_eq!(parsed.album.title, "Album Title");
         assert_eq!(parsed.album.year, Some(2020));
-        assert_eq!(parsed.release.pressing.format.as_deref(), Some("M4A"));
+        assert_eq!(parsed.release.pressing.format.as_deref(), Some("ALAC"));
         assert_eq!(parsed.tracks.len(), 1);
         assert_eq!(parsed.tracks[0].title, "Track One");
         assert!(parsed.identities.is_empty());
+    }
+
+    #[test]
+    fn aac_m4a_with_mp4_ilst_tags_uses_aac_label() {
+        let temp = TempDir::new().unwrap();
+        let src = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("test-fixtures")
+            .join("alac")
+            .join("silence-aac.m4a");
+
+        let f1 = copy_and_tag(
+            &src,
+            temp.path(),
+            "01.m4a",
+            TagType::Mp4Ilst,
+            Some("Track One"),
+            Some("Artist Name"),
+            Some("Album Title"),
+            Some("Artist Name"),
+            Some(2020),
+            Some(1),
+            None,
+        );
+
+        let parsed = map_tags(&[f1]).unwrap();
+
+        assert_eq!(parsed.release.pressing.format.as_deref(), Some("AAC"));
     }
 
     /// A few JPEG SOI/EOI bytes — enough to round-trip as opaque cover
@@ -1439,24 +1446,47 @@ mod tests {
     }
 
     #[test]
-    fn format_from_file_type_labels_admitted_codecs_only() {
+    fn probe_content_type_labels_m4a_by_codec() {
+        let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
         assert_eq!(
-            format_from_file_type(FileType::Flac),
-            Some(ContentType::Flac.display_name().to_string())
+            probe_content_type(&manifest.join("test-fixtures/alac/silence-alac.m4a")),
+            Some(ContentType::Alac)
         );
         assert_eq!(
-            format_from_file_type(FileType::Mpeg),
-            Some(ContentType::Mp3.display_name().to_string())
+            probe_content_type(&manifest.join("test-fixtures/alac/silence-aac.m4a")),
+            Some(ContentType::Aac)
         );
-        assert_eq!(
-            format_from_file_type(FileType::Ape),
-            Some(ContentType::Ape.display_name().to_string())
-        );
-        assert_eq!(
-            format_from_file_type(FileType::Mp4),
-            Some("M4A".to_string())
-        );
-        // Any other format isn't labeled rather than fabricating one.
-        assert_eq!(format_from_file_type(FileType::Wav), None);
+    }
+
+    #[test]
+    fn file_tag_format_labels_come_from_probed_content_type() {
+        let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let fixture_dir = manifest.join("test-fixtures").join("audio-format");
+        for (name, expected) in [
+            ("placeholder-pcm.wav", "PCM"),
+            ("placeholder-pcm.aiff", "PCM"),
+            ("placeholder-opus.opus", "Opus"),
+            ("placeholder-vorbis.ogg", "Vorbis"),
+            ("placeholder-wavpack.wv", "WavPack"),
+        ] {
+            let parsed = map_tags_with_folder(&[fixture_dir.join(name)], Some("Album Title"))
+                .unwrap_or_else(|e| panic!("{name}: {e}"));
+            assert_eq!(
+                parsed.release.pressing.format.as_deref(),
+                Some(expected),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn dsd_file_tag_seeding_fails_through_tag_reader() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("test-fixtures")
+            .join("audio-format")
+            .join("placeholder-dsd.dsf");
+        let err = map_tags_with_folder(&[path], Some("Album Title"))
+            .expect_err("lofty does not read DSF tags");
+        assert!(err.contains("failed to read tags"), "{err}");
     }
 }

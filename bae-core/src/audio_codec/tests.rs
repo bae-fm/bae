@@ -249,6 +249,42 @@ fn content_type_from_codec_id_maps_every_named_codec() {
         content_type_from_codec_id(AVCodecID::AV_CODEC_ID_AAC),
         ContentType::Aac
     );
+    assert_eq!(
+        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_PCM_S16LE),
+        ContentType::Pcm
+    );
+    assert_eq!(
+        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_PCM_F64BE),
+        ContentType::Pcm
+    );
+    assert_eq!(
+        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_OPUS),
+        ContentType::Opus
+    );
+    assert_eq!(
+        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_VORBIS),
+        ContentType::Vorbis
+    );
+    assert_eq!(
+        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_WAVPACK),
+        ContentType::WavPack
+    );
+    assert_eq!(
+        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_DSD_LSBF),
+        ContentType::Dsd
+    );
+    assert_eq!(
+        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_DSD_MSBF),
+        ContentType::Dsd
+    );
+    assert_eq!(
+        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_DSD_LSBF_PLANAR),
+        ContentType::Dsd
+    );
+    assert_eq!(
+        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_DSD_MSBF_PLANAR),
+        ContentType::Dsd
+    );
 }
 
 #[test]
@@ -257,10 +293,58 @@ fn content_type_from_codec_id_unknown_falls_into_other() {
     // Any codec outside our whitelist must round-trip as `Other(...)` so
     // the DB preserves the ID and nothing downstream silently treats it
     // as a known format.
-    let ct = content_type_from_codec_id(AVCodecID::AV_CODEC_ID_OPUS);
+    let ct = content_type_from_codec_id(AVCodecID::AV_CODEC_ID_AC3);
     match ct {
         ContentType::Other(s) => assert!(s.starts_with("codec:")),
         other => panic!("expected Other(codec:...), got {:?}", other),
+    }
+}
+
+#[test]
+fn probe_audio_from_path_maps_audio_format_fixtures() {
+    init();
+    let fixture = |name: &str| {
+        format!(
+            "{}/test-fixtures/audio-format/{name}",
+            env!("CARGO_MANIFEST_DIR")
+        )
+    };
+    for (name, expected) in [
+        ("placeholder-pcm.wav", ContentType::Pcm),
+        ("placeholder-pcm.aiff", ContentType::Pcm),
+        ("placeholder-opus.opus", ContentType::Opus),
+        ("placeholder-vorbis.ogg", ContentType::Vorbis),
+        ("placeholder-wavpack.wv", ContentType::WavPack),
+        ("placeholder-dsd.dsf", ContentType::Dsd),
+        ("placeholder-dsd.dff", ContentType::Dsd),
+    ] {
+        let path = fixture(name);
+        let probe = probe_audio_from_path(&path).unwrap_or_else(|| panic!("probe {name}"));
+        assert_eq!(probe.content_type, expected, "{name}");
+    }
+}
+
+#[test]
+fn decode_audio_decodes_audio_format_fixtures() {
+    init();
+    for name in [
+        "placeholder-pcm.wav",
+        "placeholder-pcm.aiff",
+        "placeholder-opus.opus",
+        "placeholder-vorbis.ogg",
+        "placeholder-wavpack.wv",
+        "placeholder-dsd.dsf",
+        "placeholder-dsd.dff",
+    ] {
+        let bytes = std::fs::read(format!(
+            "{}/test-fixtures/audio-format/{name}",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        let decoded = decode_audio(&bytes, None, None).unwrap_or_else(|e| panic!("{name}: {e}"));
+        assert!(decoded.sample_rate > 0, "{name}");
+        assert!(decoded.channels > 0, "{name}");
+        assert!(!decoded.samples.is_empty(), "{name}");
     }
 }
 

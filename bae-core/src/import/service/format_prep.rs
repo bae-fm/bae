@@ -15,6 +15,22 @@ use crate::util::content_type_hint::ContentTypeHint;
 
 use super::ImportService;
 
+fn admitted_audio_content_type(content_type: &ContentType) -> bool {
+    matches!(
+        content_type,
+        ContentType::Flac
+            | ContentType::Mp3
+            | ContentType::Ape
+            | ContentType::Alac
+            | ContentType::Aac
+            | ContentType::Pcm
+            | ContentType::Opus
+            | ContentType::Vorbis
+            | ContentType::WavPack
+            | ContentType::Dsd
+    )
+}
+
 /// Resolve the probe-verified `ContentType` for a discovered file.
 ///
 /// Audio files are probed (only the decoder knows which codec the container
@@ -36,6 +52,13 @@ pub(super) fn resolve_file_content_type(path: &Path) -> Result<ContentType, Stri
             .ok_or_else(|| format!("Invalid path: {}", path.display()))?;
         let probe = crate::audio_codec::probe_audio_from_path(path_str)
             .ok_or_else(|| format!("Failed to probe audio file: {}", path.display()))?;
+        if !admitted_audio_content_type(&probe.content_type) {
+            return Err(format!(
+                "Unsupported audio codec {} in {}",
+                probe.content_type.display_name(),
+                path.display()
+            ));
+        }
         return Ok(probe.content_type);
     }
 
@@ -110,6 +133,13 @@ fn standalone_probed_audio_format(
         .ok_or_else(|| format!("Invalid path: {}", file_path.display()))?;
     let probe = crate::audio_codec::probe_audio_from_path(path_str)
         .ok_or_else(|| format!("Failed to probe audio file: {}", file_path.display()))?;
+    if !admitted_audio_content_type(&probe.content_type) {
+        return Err(format!(
+            "Unsupported audio codec {} in {}",
+            probe.content_type.display_name(),
+            file_path.display()
+        ));
+    }
 
     // A per-track file is its own whole-file window: (0, None) samples and the
     // default (0, None) byte span -- the whole file.
@@ -261,5 +291,35 @@ impl ImportService {
         }
 
         Ok(audio_formats)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn audio_codec_allowlist_is_the_intentional_import_surface() {
+        for content_type in [
+            ContentType::Flac,
+            ContentType::Mp3,
+            ContentType::Ape,
+            ContentType::Alac,
+            ContentType::Aac,
+            ContentType::Pcm,
+            ContentType::Opus,
+            ContentType::Vorbis,
+            ContentType::WavPack,
+            ContentType::Dsd,
+        ] {
+            assert!(admitted_audio_content_type(&content_type));
+        }
+
+        assert!(!admitted_audio_content_type(&ContentType::Other(
+            "codec:AV_CODEC_ID_SPEEX".to_string()
+        )));
+        assert!(!admitted_audio_content_type(&ContentType::Other(
+            "audio/x-ms-wma".to_string()
+        )));
     }
 }

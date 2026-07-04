@@ -308,6 +308,52 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
 }
 
 #[test]
+fn resolve_file_content_type_uses_probe_for_new_audio_formats() {
+    let fixture = |name: &str| {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("test-fixtures")
+            .join("audio-format")
+            .join(name)
+    };
+    for (name, expected) in [
+        (
+            "placeholder-pcm.wav",
+            crate::util::content_type::ContentType::Pcm,
+        ),
+        (
+            "placeholder-pcm.aiff",
+            crate::util::content_type::ContentType::Pcm,
+        ),
+        (
+            "placeholder-opus.opus",
+            crate::util::content_type::ContentType::Opus,
+        ),
+        (
+            "placeholder-vorbis.ogg",
+            crate::util::content_type::ContentType::Vorbis,
+        ),
+        (
+            "placeholder-wavpack.wv",
+            crate::util::content_type::ContentType::WavPack,
+        ),
+        (
+            "placeholder-dsd.dsf",
+            crate::util::content_type::ContentType::Dsd,
+        ),
+        (
+            "placeholder-dsd.dff",
+            crate::util::content_type::ContentType::Dsd,
+        ),
+    ] {
+        assert_eq!(
+            resolve_file_content_type(&fixture(name)).unwrap(),
+            expected,
+            "{name}"
+        );
+    }
+}
+
+#[test]
 fn import_trace_line_escapes_json_strings() {
     let line = import_trace_line(
         "2024-01-01T00:00:00+00:00".to_string(),

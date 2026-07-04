@@ -167,7 +167,10 @@ impl CueFlacProcessor {
             if let Some(extension) = path.extension() {
                 let ext_lower = extension.to_str().map(|s| s.to_lowercase());
                 match ext_lower.as_deref() {
-                    Some("flac") | Some("ape") | Some("m4a") => audio_files.push(path.clone()),
+                    Some("flac") | Some("ape") | Some("m4a") | Some("wav") | Some("aif")
+                    | Some("aiff") | Some("aifc") | Some("wv") | Some("dsf") | Some("dff") => {
+                        audio_files.push(path.clone())
+                    }
                     Some("cue") => cue_files.push(path.clone()),
                     _ => {}
                 }

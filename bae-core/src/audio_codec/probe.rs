@@ -30,6 +30,35 @@ pub(super) fn content_type_from_codec_id(id: ffmpeg_sys_next::AVCodecID) -> Cont
         AVCodecID::AV_CODEC_ID_APE => ContentType::Ape,
         AVCodecID::AV_CODEC_ID_ALAC => ContentType::Alac,
         AVCodecID::AV_CODEC_ID_AAC => ContentType::Aac,
+        AVCodecID::AV_CODEC_ID_OPUS => ContentType::Opus,
+        AVCodecID::AV_CODEC_ID_VORBIS => ContentType::Vorbis,
+        AVCodecID::AV_CODEC_ID_WAVPACK => ContentType::WavPack,
+        AVCodecID::AV_CODEC_ID_DSD_LSBF
+        | AVCodecID::AV_CODEC_ID_DSD_MSBF
+        | AVCodecID::AV_CODEC_ID_DSD_LSBF_PLANAR
+        | AVCodecID::AV_CODEC_ID_DSD_MSBF_PLANAR => ContentType::Dsd,
+        AVCodecID::AV_CODEC_ID_PCM_S16LE
+        | AVCodecID::AV_CODEC_ID_PCM_S16BE
+        | AVCodecID::AV_CODEC_ID_PCM_U16LE
+        | AVCodecID::AV_CODEC_ID_PCM_U16BE
+        | AVCodecID::AV_CODEC_ID_PCM_S24LE
+        | AVCodecID::AV_CODEC_ID_PCM_S24BE
+        | AVCodecID::AV_CODEC_ID_PCM_U24LE
+        | AVCodecID::AV_CODEC_ID_PCM_U24BE
+        | AVCodecID::AV_CODEC_ID_PCM_S32LE
+        | AVCodecID::AV_CODEC_ID_PCM_S32BE
+        | AVCodecID::AV_CODEC_ID_PCM_U32LE
+        | AVCodecID::AV_CODEC_ID_PCM_U32BE
+        | AVCodecID::AV_CODEC_ID_PCM_F32LE
+        | AVCodecID::AV_CODEC_ID_PCM_F32BE
+        | AVCodecID::AV_CODEC_ID_PCM_F64LE
+        | AVCodecID::AV_CODEC_ID_PCM_F64BE
+        | AVCodecID::AV_CODEC_ID_PCM_U8
+        | AVCodecID::AV_CODEC_ID_PCM_S8
+        | AVCodecID::AV_CODEC_ID_PCM_ALAW
+        | AVCodecID::AV_CODEC_ID_PCM_MULAW
+        | AVCodecID::AV_CODEC_ID_PCM_S64LE
+        | AVCodecID::AV_CODEC_ID_PCM_S64BE => ContentType::Pcm,
         other => ContentType::Other(format!("codec:{:?}", other)),
     }
 }

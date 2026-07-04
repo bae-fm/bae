@@ -113,8 +113,49 @@ pub fn is_valid_audio(path: &Path) -> io::Result<bool> {
         "flac" => is_valid_flac(path),
         "mp3" => is_valid_mp3(path),
         "ape" => is_valid_ape(path),
+        "wav" => has_magic_at(path, &[(0, b"RIFF"), (8, b"WAVE")]),
+        "aif" | "aiff" | "aifc" => is_valid_aiff(path),
+        "ogg" | "oga" | "opus" => has_magic_at(path, &[(0, b"OggS")]),
+        "wv" => has_magic_at(path, &[(0, b"wvpk")]),
+        "dsf" => has_magic_at(path, &[(0, b"DSD ")]),
+        "dff" => has_magic_at(path, &[(0, b"FRM8")]),
         _ => Ok(true),
     }
+}
+
+fn has_magic_at(path: &Path, checks: &[(usize, &[u8])]) -> io::Result<bool> {
+    let file_size = fs::metadata(path)?.len();
+    if file_size == 0 {
+        return Ok(false);
+    }
+    let read_len = checks
+        .iter()
+        .map(|(offset, magic)| offset + magic.len())
+        .max()
+        .unwrap_or(0);
+    let mut buf = vec![0u8; read_len];
+    let mut file = fs::File::open(path)?;
+    let bytes_read = file.read(&mut buf)?;
+    if bytes_read < read_len {
+        return Ok(false);
+    }
+    Ok(checks
+        .iter()
+        .all(|(offset, magic)| &buf[*offset..*offset + magic.len()] == *magic))
+}
+
+fn is_valid_aiff(path: &Path) -> io::Result<bool> {
+    let file_size = fs::metadata(path)?.len();
+    if file_size == 0 {
+        return Ok(false);
+    }
+    let mut buf = [0u8; 12];
+    let mut file = fs::File::open(path)?;
+    let bytes_read = file.read(&mut buf)?;
+    if bytes_read < buf.len() {
+        return Ok(false);
+    }
+    Ok(&buf[0..4] == b"FORM" && (&buf[8..12] == b"AIFF" || &buf[8..12] == b"AIFC"))
 }
 
 /// Check if a file is a valid MP3 by reading the header.
@@ -441,9 +482,42 @@ mod tests {
         let file = write_temp_file("ape", b"MAC \x00\x00\x00\x00");
         assert!(is_valid_audio(file.path()).unwrap());
 
-        // Unknown extension — assumed valid
-        let file = write_temp_file("wav", &[0x00, 0x01]);
+        // WAV
+        let file = write_temp_file("wav", b"RIFF\x24\x00\x00\x00WAVE");
         assert!(is_valid_audio(file.path()).unwrap());
+
+        // AIFF
+        let file = write_temp_file("aiff", b"FORM\x00\x00\x00\x04AIFF");
+        assert!(is_valid_audio(file.path()).unwrap());
+
+        // Ogg
+        let file = write_temp_file("ogg", b"OggS\x00\x02");
+        assert!(is_valid_audio(file.path()).unwrap());
+
+        // WavPack
+        let file = write_temp_file("wv", b"wvpk\x00\x00\x00\x00");
+        assert!(is_valid_audio(file.path()).unwrap());
+
+        // DSF
+        let file = write_temp_file("dsf", b"DSD \x00\x00\x00\x00");
+        assert!(is_valid_audio(file.path()).unwrap());
+
+        // DFF
+        let file = write_temp_file("dff", b"FRM8\x00\x00\x00\x04DSD ");
+        assert!(is_valid_audio(file.path()).unwrap());
+    }
+
+    #[test]
+    fn test_new_audio_magic_rejects_malformed_headers() {
+        for ext in [
+            "wav", "aif", "aiff", "aifc", "ogg", "oga", "opus", "wv", "dsf", "dff",
+        ] {
+            let file = write_temp_file(ext, b"NOPE");
+            assert!(
+                !is_valid_audio(file.path()).unwrap(),
+                "{ext} malformed bytes must be rejected"
+            );
+        }
     }
 
     #[test]

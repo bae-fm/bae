@@ -22,6 +22,18 @@ pub enum ContentTypeHint {
     /// `.m4a` — MP4 container. Could wrap ALAC, AAC, or other MP4 audio codecs.
     /// The codec is unknown until the file is probed.
     Mp4Container,
+    /// `.wav` — RIFF/WAVE container, probed as PCM or another codec.
+    WavContainer,
+    /// `.aif`, `.aiff`, `.aifc` — AIFF/AIFF-C container, probed as PCM or another codec.
+    AiffContainer,
+    /// `.ogg`, `.oga` — Ogg container. Could wrap Vorbis, Opus, or FLAC.
+    OggContainer,
+    /// `.opus` — Ogg Opus container by convention; FFmpeg still verifies it.
+    OpusContainer,
+    /// `.wv` — WavPack container.
+    WavPack,
+    /// `.dsf`, `.dff` — DSD containers.
+    DsdContainer,
     // Images
     Jpeg,
     Png,
@@ -47,6 +59,12 @@ impl ContentTypeHint {
             "mp3" => Self::Mp3,
             "ape" => Self::Ape,
             "m4a" => Self::Mp4Container,
+            "wav" => Self::WavContainer,
+            "aif" | "aiff" | "aifc" => Self::AiffContainer,
+            "ogg" | "oga" => Self::OggContainer,
+            "opus" => Self::OpusContainer,
+            "wv" => Self::WavPack,
+            "dsf" | "dff" => Self::DsdContainer,
             "jpg" | "jpeg" => Self::Jpeg,
             "png" => Self::Png,
             "gif" => Self::Gif,
@@ -62,7 +80,16 @@ impl ContentTypeHint {
     pub fn is_audio(&self) -> bool {
         matches!(
             self,
-            Self::Flac | Self::Mp3 | Self::Ape | Self::Mp4Container
+            Self::Flac
+                | Self::Mp3
+                | Self::Ape
+                | Self::Mp4Container
+                | Self::WavContainer
+                | Self::AiffContainer
+                | Self::OggContainer
+                | Self::OpusContainer
+                | Self::WavPack
+                | Self::DsdContainer
         )
     }
 
@@ -139,6 +166,46 @@ mod tests {
             ContentTypeHint::from_extension("M4A"),
             ContentTypeHint::Mp4Container
         );
+        assert_eq!(
+            ContentTypeHint::from_extension("wav"),
+            ContentTypeHint::WavContainer
+        );
+        assert_eq!(
+            ContentTypeHint::from_extension("aif"),
+            ContentTypeHint::AiffContainer
+        );
+        assert_eq!(
+            ContentTypeHint::from_extension("aiff"),
+            ContentTypeHint::AiffContainer
+        );
+        assert_eq!(
+            ContentTypeHint::from_extension("aifc"),
+            ContentTypeHint::AiffContainer
+        );
+        assert_eq!(
+            ContentTypeHint::from_extension("ogg"),
+            ContentTypeHint::OggContainer
+        );
+        assert_eq!(
+            ContentTypeHint::from_extension("oga"),
+            ContentTypeHint::OggContainer
+        );
+        assert_eq!(
+            ContentTypeHint::from_extension("opus"),
+            ContentTypeHint::OpusContainer
+        );
+        assert_eq!(
+            ContentTypeHint::from_extension("wv"),
+            ContentTypeHint::WavPack
+        );
+        assert_eq!(
+            ContentTypeHint::from_extension("dsf"),
+            ContentTypeHint::DsdContainer
+        );
+        assert_eq!(
+            ContentTypeHint::from_extension("dff"),
+            ContentTypeHint::DsdContainer
+        );
     }
 
     #[test]
@@ -199,11 +266,7 @@ mod tests {
     fn from_extension_unknown_preserves_lowercased_ext() {
         assert_eq!(
             ContentTypeHint::from_extension("wav"),
-            ContentTypeHint::Unknown("wav".to_string())
-        );
-        assert_eq!(
-            ContentTypeHint::from_extension("ogg"),
-            ContentTypeHint::Unknown("ogg".to_string())
+            ContentTypeHint::WavContainer
         );
         assert_eq!(
             ContentTypeHint::from_extension("aac"),
@@ -211,7 +274,7 @@ mod tests {
         );
         assert_eq!(
             ContentTypeHint::from_extension("aiff"),
-            ContentTypeHint::Unknown("aiff".to_string())
+            ContentTypeHint::AiffContainer
         );
         assert_eq!(
             ContentTypeHint::from_extension("xyz"),
@@ -230,6 +293,12 @@ mod tests {
         assert!(ContentTypeHint::Mp3.is_audio());
         assert!(ContentTypeHint::Ape.is_audio());
         assert!(ContentTypeHint::Mp4Container.is_audio());
+        assert!(ContentTypeHint::WavContainer.is_audio());
+        assert!(ContentTypeHint::AiffContainer.is_audio());
+        assert!(ContentTypeHint::OggContainer.is_audio());
+        assert!(ContentTypeHint::OpusContainer.is_audio());
+        assert!(ContentTypeHint::WavPack.is_audio());
+        assert!(ContentTypeHint::DsdContainer.is_audio());
 
         assert!(!ContentTypeHint::Jpeg.is_audio());
         assert!(!ContentTypeHint::Png.is_audio());
@@ -239,7 +308,7 @@ mod tests {
         assert!(!ContentTypeHint::Svg.is_audio());
         assert!(!ContentTypeHint::PlainText.is_audio());
         assert!(!ContentTypeHint::Pdf.is_audio());
-        assert!(!ContentTypeHint::Unknown("wav".to_string()).is_audio());
+        assert!(!ContentTypeHint::Unknown("wma".to_string()).is_audio());
     }
 
     #[test]
@@ -255,6 +324,12 @@ mod tests {
         assert!(!ContentTypeHint::Mp3.is_image());
         assert!(!ContentTypeHint::Ape.is_image());
         assert!(!ContentTypeHint::Mp4Container.is_image());
+        assert!(!ContentTypeHint::WavContainer.is_image());
+        assert!(!ContentTypeHint::AiffContainer.is_image());
+        assert!(!ContentTypeHint::OggContainer.is_image());
+        assert!(!ContentTypeHint::OpusContainer.is_image());
+        assert!(!ContentTypeHint::WavPack.is_image());
+        assert!(!ContentTypeHint::DsdContainer.is_image());
         assert!(!ContentTypeHint::PlainText.is_image());
         assert!(!ContentTypeHint::Pdf.is_image());
         assert!(!ContentTypeHint::Unknown("svg2".to_string()).is_image());
@@ -319,6 +394,12 @@ mod tests {
         assert_eq!(ContentTypeHint::Flac.image_content_type(), None);
         assert_eq!(ContentTypeHint::Mp3.image_content_type(), None);
         assert_eq!(ContentTypeHint::Mp4Container.image_content_type(), None);
+        assert_eq!(ContentTypeHint::WavContainer.image_content_type(), None);
+        assert_eq!(ContentTypeHint::AiffContainer.image_content_type(), None);
+        assert_eq!(ContentTypeHint::OggContainer.image_content_type(), None);
+        assert_eq!(ContentTypeHint::OpusContainer.image_content_type(), None);
+        assert_eq!(ContentTypeHint::WavPack.image_content_type(), None);
+        assert_eq!(ContentTypeHint::DsdContainer.image_content_type(), None);
         assert_eq!(ContentTypeHint::PlainText.image_content_type(), None);
         assert_eq!(ContentTypeHint::Pdf.image_content_type(), None);
         assert_eq!(

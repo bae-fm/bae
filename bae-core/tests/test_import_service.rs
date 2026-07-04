@@ -517,6 +517,72 @@ async fn import_produces_audio_format_records() {
     assert_eq!(format.content_type.as_str(), "audio/flac");
 }
 
+#[tokio::test]
+#[serial]
+async fn exact_metadata_import_stores_dsd_audio_format() {
+    support::tracing_init();
+
+    for (index, fixture_name, import_name) in [
+        (1, "placeholder-dsd.dsf", "01 Track.dsf"),
+        (2, "placeholder-dsd.dff", "01 Track.dff"),
+    ] {
+        let release = discogs_release(&format!("DSD Format Album {index}"), &["Track"]);
+        let release_id_key = seed_discogs_test_release(release);
+        let f = ImportFixture::new().await;
+
+        let album_dir = f.temp_path().join("album");
+        fs::create_dir_all(&album_dir).unwrap();
+        fs::copy(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("test-fixtures")
+                .join("audio-format")
+                .join(fixture_name),
+            album_dir.join(import_name),
+        )
+        .unwrap();
+
+        let import_id = uuid::Uuid::new_v4().to_string();
+        f.handle
+            .send_command(ImportCommand {
+                import_id: import_id.clone(),
+                candidate_key: "test".to_string(),
+                folder: album_dir,
+                selected_cover: None,
+                storage_mode: StorageMode::Local,
+                pin: false,
+                identity_choice: IdentityChoice::Exact {
+                    release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+                },
+                user_edit: None,
+            })
+            .unwrap();
+
+        let mut progress_rx = f.handle.subscribe_import(import_id);
+        let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+
+        let files = f.db.get_files_for_release(&release_id).await.unwrap();
+        assert_eq!(files.len(), 1, "{fixture_name}");
+        assert_eq!(
+            files[0].content_type,
+            bae_core::util::content_type::ContentType::Dsd,
+            "{fixture_name}"
+        );
+
+        let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
+        assert_eq!(tracks.len(), 1, "{fixture_name}");
+        let format =
+            f.db.find_audio_format_by_track_id(&tracks[0].id)
+                .await
+                .unwrap()
+                .unwrap();
+        assert_eq!(
+            format.content_type,
+            bae_core::util::content_type::ContentType::Dsd,
+            "{fixture_name}"
+        );
+    }
+}
+
 /// The loudness pass emits a continuous `fraction` (0 → 1) as it scans, ticking
 /// ~0.1s of audio at a time rather than once per track, so the import UI bar
 /// advances during a track's measure span, not only at track boundaries.

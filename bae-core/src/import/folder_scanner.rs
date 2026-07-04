@@ -458,26 +458,30 @@ pub fn is_audio_file(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// Codec label for a CUE-paired audio file extension, used to build the
-/// `CUE+<codec>` format label. Mirrors the analyzer's extension dispatch
-/// (`track_to_file_mapper::analyze_cue_audio`): `.flac` → FLAC, `.ape` → APE,
-/// `.m4a` → ALAC (CUE+MP4 pairs are treated as ALAC by policy; AAC rejected
-/// at analysis time). Returns `ContentType::display_name()` so the label
-/// follows the canonical codec name.
-///
-/// The CUE pair detector in `cue_flac.rs` only admits these three extensions,
-/// so any other value reaching here is a programming error.
-fn cue_pair_codec_label(ext: &str) -> &'static str {
-    use crate::util::content_type::ContentType;
-    match ext.to_ascii_lowercase().as_str() {
-        "flac" => ContentType::Flac.display_name(),
-        "ape" => ContentType::Ape.display_name(),
-        "m4a" => ContentType::Alac.display_name(),
-        other => panic!(
-            "cue_pair_codec_label: unsupported CUE pair extension '{}' \
-             (detector in cue_flac.rs should have filtered this out)",
-            other
-        ),
+/// Codec label for a CUE-paired audio file, used to build the `CUE+<codec>`
+/// format label. The label comes from FFmpeg's probed codec identity, never
+/// from the extension, because containers such as MP4, Ogg, WAV, and AIFF do
+/// not prove the codec by filename.
+fn cue_pair_codec_label(path: &Path) -> Result<String, String> {
+    let path_str = path
+        .to_str()
+        .ok_or_else(|| format!("CUE audio path is not UTF-8: {}", path.display()))?;
+    let probe = crate::audio_codec::probe_audio_from_path(path_str)
+        .ok_or_else(|| format!("Failed to probe CUE audio file: {}", path.display()))?;
+    match probe.content_type {
+        crate::util::content_type::ContentType::Flac
+        | crate::util::content_type::ContentType::Ape
+        | crate::util::content_type::ContentType::Alac
+        | crate::util::content_type::ContentType::Pcm
+        | crate::util::content_type::ContentType::WavPack
+        | crate::util::content_type::ContentType::Dsd => {
+            Ok(probe.content_type.display_name().to_string())
+        }
+        other => Err(format!(
+            "CUE audio codec {} is not supported for single-file CUE playback in {}",
+            other.display_name(),
+            path.display()
+        )),
     }
 }
 
@@ -922,12 +926,7 @@ fn categorize_files_from_tree(
         }
 
         pairs.sort_by(|a, b| a.cue_file.relative_path.cmp(&b.cue_file.relative_path));
-        let ext = pairs
-            .first()
-            .and_then(|p| p.audio_file.path.extension())
-            .and_then(|e| e.to_str())
-            .expect("CUE pair audio file must have an extension");
-        let codec_label = cue_pair_codec_label(ext);
+        let codec_label = cue_pair_codec_label(&pairs[0].audio_file.path)?;
         let audio = AudioContent::CueFlacPairs {
             pairs,
             format_label: format!("CUE+{codec_label}"),
