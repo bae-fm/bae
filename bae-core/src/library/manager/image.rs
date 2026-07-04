@@ -95,7 +95,9 @@ impl LibraryManager {
         release_id: &str,
         selection: CoverSelection,
     ) -> Result<(), LibraryError> {
-        let (bytes, content_type, source, source_url) = match selection {
+        // The source content type is discarded: every stored cover is resized to
+        // JPEG below, so only the bytes, provenance, and URL carry through.
+        let (bytes, source, source_url) = match selection {
             CoverSelection::ReleaseImage { file_id } => {
                 let file = self
                     .get_file_by_id(&file_id)
@@ -106,24 +108,26 @@ impl LibraryManager {
                 // read (the user's own file when Local, the cache/cloud when Remote).
                 let bytes = self.read_release_blob(&file).await?;
                 let source_url = format!("release://{}", file.original_filename);
-                (
-                    bytes,
-                    file.content_type.clone(),
-                    "local".to_string(),
-                    Some(source_url),
-                )
+                (bytes, "local".to_string(), Some(source_url))
             }
             CoverSelection::RemoteCover { url, source } => {
-                let (bytes, content_type) =
+                let (bytes, _content_type) =
                     crate::import::cover_art::download_cover_art_bytes(&url)
                         .await
                         .map_err(|e| {
                             LibraryError::Import(format!("Failed to download cover: {e}"))
                         })?;
 
-                (bytes, content_type, source.as_str().to_string(), Some(url))
+                (bytes, source.as_str().to_string(), Some(url))
             }
         };
+
+        // Resize to a ≤600px JPEG thumbnail before deriving the storage key and
+        // record — the stored bytes, their format, and size all describe the
+        // thumbnail, not the source. The resize always emits JPEG.
+        let bytes = crate::util::cover::resize_cover(&bytes)
+            .map_err(|e| LibraryError::Import(format!("Failed to resize cover: {e}")))?;
+        let content_type = crate::util::content_type::ContentType::Jpeg;
 
         // Record the cover blob and row in one coven write. The cover's `id` IS
         // the release id. Under a

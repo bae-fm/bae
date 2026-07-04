@@ -1064,6 +1064,19 @@ impl ImportService {
         let cover_winner = remote_cover_image
             .or(local_cover_image)
             .or(embedded_cover_image);
+        // Resize the winning cover to a ≤600px JPEG thumbnail — one funnel for
+        // all three sources — and patch the record to describe the stored bytes:
+        // the resize always emits JPEG, so the row and the `cloud_path` extension
+        // `finalize_import_atomic` derives from it must say JPEG too.
+        let cover_winner = match cover_winner {
+            Some((mut image, bytes)) => {
+                let bytes = crate::util::cover::resize_cover(&bytes)?;
+                image.content_type = crate::util::content_type::ContentType::Jpeg;
+                image.file_size = bytes.len() as i64;
+                Some((image, bytes))
+            }
+            None => None,
+        };
         let library_image = cover_winner
             .as_ref()
             .map(|(image, bytes)| (image, bytes.as_slice()));
