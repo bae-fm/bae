@@ -16,9 +16,6 @@ mod import;
 mod scan;
 mod search;
 mod watch;
-mod watched_folders;
-
-use watched_folders::WatchedFolderControl;
 
 #[cfg(test)]
 mod tests;
@@ -157,10 +154,9 @@ pub struct ImportServiceHandle {
     /// `pub(crate)` because `app.rs` clones it to seed the identify and signals
     /// services at startup.
     pub(crate) event_tx: broadcast::Sender<ImportEvent>,
-    /// The watched-folders / scan-driving surface: the watched-folder list, the
-    /// folder-watcher command channel, and the shared handles those methods
-    /// need. The public watched-folder methods delegate here.
-    watched_folders: WatchedFolderControl,
+    folder_registry: Arc<Mutex<ImportFolderRegistry>>,
+    watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
+    runtime_handle: tokio::runtime::Handle,
     cover_art_archive: CoverArtArchiveClient,
 }
 
@@ -212,19 +208,14 @@ impl ImportServiceHandle {
         cover_art_archive: CoverArtArchiveClient,
     ) -> Self {
         let progress_handle = ImportProgressHandle::new(event_tx.clone(), runtime_handle.clone());
-        let watched_folders = WatchedFolderControl::new(
-            folder_registry,
-            watcher_tx,
-            event_tx.clone(),
-            runtime_handle,
-            library_manager.library_dir().clone(),
-        );
         Self {
             requests_tx,
             progress_handle,
             library_manager,
             event_tx,
-            watched_folders,
+            folder_registry,
+            watcher_tx,
+            runtime_handle,
             cover_art_archive,
         }
     }
