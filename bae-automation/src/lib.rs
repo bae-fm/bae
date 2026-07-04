@@ -347,13 +347,13 @@ pub enum AutomationImportProgress {
     },
     Started {
         id: String,
-        import_id: Option<String>,
+        import_id: String,
     },
     Progress {
         id: String,
         percent: u8,
         phase: String,
-        import_id: Option<String>,
+        import_id: String,
     },
     Complete {
         id: String,
@@ -368,7 +368,7 @@ pub enum AutomationImportProgress {
     Failed {
         id: String,
         error: String,
-        import_id: Option<String>,
+        import_id: String,
     },
 }
 
