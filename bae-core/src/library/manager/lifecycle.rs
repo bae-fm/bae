@@ -1,7 +1,7 @@
 //! Library-lifecycle operations for [`LibraryManager`]: rename a library,
 //! lock it (forget the active encryption key), and forget a local library
-//! (drop the master key, clear the active-library pointer, and remove its
-//! data directory). These mutate the library's on-disk presence and the
+//! (remove its data directory, clear the active-library pointer, and drop the
+//! master key). These mutate the library's on-disk presence and the
 //! active-library pointer — distinct from the config-access surface in
 //! `config.rs`, which only reads and writes config fields.
 
@@ -38,8 +38,8 @@ impl LibraryManager {
             .map_err(|e| format!("{e}"))
     }
 
-    /// Forget this (local) library on this device: delete its master encryption
-    /// key, clear the active-library pointer, and remove its data directory. The
+    /// Forget this (local) library on this device: remove its data directory,
+    /// clear the active-library pointer, and delete its master encryption key. The
     /// owner's cloud copy (if any) is untouched — this only drops the device's
     /// local presence.
     ///
@@ -48,26 +48,96 @@ impl LibraryManager {
     /// operation. The next launch re-discovers and opens another library (or
     /// onboards) since the active pointer is gone.
     pub fn forget_library(&self) -> Result<(), String> {
-        if let Err(e) = self.key_service.delete_encryption_key() {
-            warn!("Failed to delete encryption key while forgetting library: {e}");
-        }
-
-        let library_id = self.config_handle.config().library_id.clone();
-        let bae_dir = crate::config::bae_dir().map_err(|e| e.to_string())?;
-
+        let config = self.config_handle.config();
+        let library_id = config.library_id.clone();
+        let bae_dir = registered_bae_dir(config.library_dir.as_ref(), &library_id)?;
+        let library_dir = crate::config::registered_library_path(&bae_dir, &library_id);
         let active_pointer = bae_dir.join("active-library");
-        if active_pointer.exists() {
-            if let Err(e) = std::fs::remove_file(&active_pointer) {
-                warn!("Failed to clear active-library pointer: {e}");
+        let remove_active_pointer = active_pointer_matches_library(&active_pointer, &library_id)?;
+
+        match std::fs::remove_dir_all(&library_dir) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => {
+                return Err(format!(
+                    "Failed to remove library data at {}: {e}",
+                    library_dir.display()
+                ));
             }
         }
 
-        if let Some(dir) = crate::config::library_data_dir(&bae_dir, &library_id) {
-            if let Err(e) = std::fs::remove_dir_all(&dir) {
-                warn!("Failed to remove library data at {}: {e}", dir.display());
-            }
+        if remove_active_pointer {
+            std::fs::remove_file(&active_pointer).map_err(|e| {
+                format!(
+                    "Failed to clear active-library pointer at {}: {e}",
+                    active_pointer.display()
+                )
+            })?;
         }
+
+        self.key_service
+            .delete_encryption_key()
+            .map_err(|e| format!("Failed to delete encryption key: {e}"))?;
 
         Ok(())
     }
+}
+
+fn active_pointer_matches_library(
+    active_pointer: &std::path::Path,
+    library_id: &str,
+) -> Result<bool, String> {
+    let content = match std::fs::read_to_string(active_pointer) {
+        Ok(content) => content,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(e) => {
+            return Err(format!(
+                "Failed to read active-library pointer at {}: {e}",
+                active_pointer.display()
+            ));
+        }
+    };
+    let active_library_id = content.trim();
+    if active_library_id == library_id {
+        return Ok(true);
+    }
+    Err(format!(
+        "active-library pointer at {} points at {active_library_id}, not {library_id}",
+        active_pointer.display()
+    ))
+}
+
+fn registered_bae_dir(
+    library_dir: &std::path::Path,
+    library_id: &str,
+) -> Result<std::path::PathBuf, String> {
+    if library_dir.file_name() != Some(std::ffi::OsStr::new(library_id)) {
+        return Err(format!(
+            "library directory {} does not match library id {library_id}",
+            library_dir.display()
+        ));
+    }
+
+    let libraries_dir = library_dir.parent().ok_or_else(|| {
+        format!(
+            "library directory {} has no libraries parent",
+            library_dir.display()
+        )
+    })?;
+    if libraries_dir.file_name() != Some(std::ffi::OsStr::new("libraries")) {
+        return Err(format!(
+            "library directory {} is not under a libraries directory",
+            library_dir.display()
+        ));
+    }
+
+    libraries_dir
+        .parent()
+        .map(|path| path.to_path_buf())
+        .ok_or_else(|| {
+            format!(
+                "library directory {} has no bae directory parent",
+                library_dir.display()
+            )
+        })
 }

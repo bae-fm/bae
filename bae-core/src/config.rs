@@ -952,16 +952,6 @@ fn find_library_by_id(bae_dir: &std::path::Path, uuid: &str) -> Option<LibraryDi
     None
 }
 
-/// Absolute path to a library's data directory by its UUID, scanning
-/// `~/.bae/libraries/`. `None` if no directory there carries that id. Used by
-/// `forget_library` to locate the tree it removes.
-pub fn library_data_dir(bae_dir: &std::path::Path, library_id: &str) -> Option<PathBuf> {
-    discover_all_library_paths(bae_dir)
-        .into_iter()
-        .find(|(_, yaml)| yaml.library_id == library_id)
-        .map(|(path, _)| path)
-}
-
 /// Collect all (path, ConfigYaml) pairs from ~/.bae/libraries/.
 fn discover_all_library_paths(bae_dir: &std::path::Path) -> Vec<(PathBuf, ConfigYaml)> {
     let mut results = Vec::new();

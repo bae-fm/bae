@@ -61,6 +61,191 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
     (manager, temp_dir)
 }
 
+async fn setup_forget_library_manager(library_id: &str, home: &std::path::Path) -> LibraryManager {
+    let bae_dir = home.join(".bae");
+    let library_dir = crate::config::registered_library_path(&bae_dir, library_id);
+    setup_forget_library_manager_at(library_id, library_dir, home).await
+}
+
+async fn setup_forget_library_manager_at(
+    library_id: &str,
+    library_dir: std::path::PathBuf,
+    home: &std::path::Path,
+) -> LibraryManager {
+    let db_path = home.join("manager.db");
+    let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
+        .await
+        .unwrap();
+    let config = Config::with_defaults(
+        library_id.to_string(),
+        "test-device".to_string(),
+        LibraryDir::new(library_dir.clone()),
+        "Test Library".to_string(),
+    );
+    let config_handle = Arc::new(ConfigHandle::new(config));
+    crate::config::install_test_keyring();
+    let key_service = KeyService::new(library_id.to_string());
+    LibraryManager::new(
+        database,
+        LibraryDir::new(library_dir),
+        config_handle,
+        key_service,
+        Arc::new(coven::SystemClock),
+        Arc::new(coven::UuidProvider),
+        tokio::runtime::Handle::current(),
+    )
+}
+
+fn setup_forget_library_home(library_id: &str) -> (TempDir, std::path::PathBuf) {
+    let home = TempDir::new().unwrap();
+    let bae_dir = home.path().join(".bae");
+    let library_dir = crate::config::registered_library_path(&bae_dir, library_id);
+    (home, library_dir)
+}
+
+#[tokio::test]
+async fn forget_library_returns_error_when_registered_path_cannot_be_removed() {
+    let library_id = format!("forget-fails-{}", Uuid::new_v4());
+    let (home, library_path) = setup_forget_library_home(&library_id);
+    let bae_dir = home.path().join(".bae");
+    std::fs::create_dir_all(library_path.parent().unwrap()).unwrap();
+    std::fs::write(&library_path, b"not a directory").unwrap();
+    std::fs::write(bae_dir.join("active-library"), &library_id).unwrap();
+    let manager = setup_forget_library_manager(&library_id, home.path()).await;
+    manager.key_service.set_encryption_key("00").unwrap();
+
+    let err = manager
+        .forget_library()
+        .expect_err("directory removal failure must surface");
+
+    assert!(
+        err.contains("Failed to remove library data"),
+        "error should name the failed library data deletion: {err}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(bae_dir.join("active-library")).unwrap(),
+        library_id
+    );
+    assert_eq!(
+        manager.key_service.get_encryption_key().unwrap().as_deref(),
+        Some("00")
+    );
+}
+
+#[tokio::test]
+async fn forget_library_removes_registered_path_active_pointer_and_key() {
+    let library_id = format!("forget-succeeds-{}", Uuid::new_v4());
+    let (home, library_path) = setup_forget_library_home(&library_id);
+    let bae_dir = home.path().join(".bae");
+    std::fs::create_dir_all(&library_path).unwrap();
+    std::fs::write(library_path.join("config.yaml"), b"library data").unwrap();
+    std::fs::write(bae_dir.join("active-library"), &library_id).unwrap();
+    let manager = setup_forget_library_manager(&library_id, home.path()).await;
+    manager.key_service.set_encryption_key("00").unwrap();
+
+    manager.forget_library().unwrap();
+
+    assert!(!library_path.exists());
+    assert!(!bae_dir.join("active-library").exists());
+    assert!(manager.key_service.get_encryption_key().unwrap().is_none());
+}
+
+#[tokio::test]
+async fn forget_library_accepts_missing_directory_and_pointer_on_retry() {
+    let library_id = format!("forget-retry-{}", Uuid::new_v4());
+    let (home, library_path) = setup_forget_library_home(&library_id);
+    let bae_dir = home.path().join(".bae");
+    std::fs::create_dir_all(&bae_dir).unwrap();
+    let manager = setup_forget_library_manager(&library_id, home.path()).await;
+    manager.key_service.set_encryption_key("00").unwrap();
+
+    manager.forget_library().unwrap();
+
+    assert!(!library_path.exists());
+    assert!(!bae_dir.join("active-library").exists());
+    assert!(manager.key_service.get_encryption_key().unwrap().is_none());
+}
+
+#[tokio::test]
+async fn forget_library_returns_error_when_active_pointer_cannot_be_read() {
+    let library_id = format!("forget-pointer-fails-{}", Uuid::new_v4());
+    let (home, library_path) = setup_forget_library_home(&library_id);
+    let bae_dir = home.path().join(".bae");
+    std::fs::create_dir_all(&library_path).unwrap();
+    std::fs::create_dir(bae_dir.join("active-library")).unwrap();
+    let manager = setup_forget_library_manager(&library_id, home.path()).await;
+    manager.key_service.set_encryption_key("00").unwrap();
+
+    let err = manager
+        .forget_library()
+        .expect_err("active pointer read failure must surface");
+
+    assert!(
+        err.contains("Failed to read active-library pointer"),
+        "error should name the failed active pointer read: {err}"
+    );
+    assert!(library_path.exists());
+    assert!(bae_dir.join("active-library").is_dir());
+    assert_eq!(
+        manager.key_service.get_encryption_key().unwrap().as_deref(),
+        Some("00")
+    );
+}
+
+#[tokio::test]
+async fn forget_library_returns_error_when_active_pointer_names_another_library() {
+    let library_id = format!("forget-pointer-mismatch-{}", Uuid::new_v4());
+    let (home, library_path) = setup_forget_library_home(&library_id);
+    let bae_dir = home.path().join(".bae");
+    std::fs::create_dir_all(&library_path).unwrap();
+    std::fs::write(bae_dir.join("active-library"), "different-library").unwrap();
+    let manager = setup_forget_library_manager(&library_id, home.path()).await;
+    manager.key_service.set_encryption_key("00").unwrap();
+
+    let err = manager
+        .forget_library()
+        .expect_err("active pointer mismatch must surface");
+
+    assert!(
+        err.contains("points at different-library"),
+        "error should name the active pointer mismatch: {err}"
+    );
+    assert!(library_path.exists());
+    assert_eq!(
+        std::fs::read_to_string(bae_dir.join("active-library")).unwrap(),
+        "different-library"
+    );
+    assert_eq!(
+        manager.key_service.get_encryption_key().unwrap().as_deref(),
+        Some("00")
+    );
+}
+
+#[tokio::test]
+async fn forget_library_rejects_unregistered_library_dir() {
+    let library_id = format!("forget-unregistered-{}", Uuid::new_v4());
+    let home = TempDir::new().unwrap();
+    let library_path = home.path().join("external-library");
+    std::fs::create_dir_all(&library_path).unwrap();
+    let manager =
+        setup_forget_library_manager_at(&library_id, library_path.clone(), home.path()).await;
+    manager.key_service.set_encryption_key("00").unwrap();
+
+    let err = manager
+        .forget_library()
+        .expect_err("unregistered library directory must fail loudly");
+
+    assert!(
+        err.contains("does not match library id"),
+        "error should name the unregistered library directory: {err}"
+    );
+    assert!(library_path.exists());
+    assert_eq!(
+        manager.key_service.get_encryption_key().unwrap().as_deref(),
+        Some("00")
+    );
+}
+
 #[tokio::test]
 async fn mcp_config_rejects_port_zero_and_persists_valid_config() {
     let (manager, _temp_dir) = setup_test_manager().await;
