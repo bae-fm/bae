@@ -6,8 +6,10 @@ import android.os.Looper
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import fm.bae.app.data.ConfigStore
+import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryStore
+import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.UiEventReducer
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackService
@@ -44,14 +46,16 @@ private const val POSITION_UPDATE_INTERVAL_MS = 200u
 class OpenLibrary(
     val libraryId: String,
     val appHandle: AppHandle,
-    val libraryStore: LibraryStore,
-    val configStore: ConfigStore,
+    private val stores: OpenLibraryStores,
     val playback: BaeCorePlayer,
     private val appContext: Context,
 ) {
     // Library is always a thin wrapper around appHandle; construct it here rather
     // than requiring callers to pass a separately-constructed instance.
     val library = Library(appHandle)
+    val libraryStore: LibraryStore get() = stores.library
+    val configStore: ConfigStore get() = stores.config
+    val downloadStore: DownloadStore get() = stores.downloads
 
     /**
      * Subscribe to the live event stream, routing playback variants into the
@@ -71,8 +75,7 @@ class OpenLibrary(
                     scope.launch(Dispatchers.Main) {
                         UiEventReducer.reduce(
                             event,
-                            libraryStore,
-                            configStore,
+                            stores,
                             playback,
                             LocaleErrorLines(appContext),
                         )
@@ -256,8 +259,12 @@ object AppSessionHolder {
         OpenLibrary(
             libraryId = libraryId,
             appHandle = handle,
-            libraryStore = LibraryStore(),
-            configStore = ConfigStore(config, handle.isSyncReady()),
+            stores =
+                OpenLibraryStores(
+                    library = LibraryStore(),
+                    config = ConfigStore(config, handle.isSyncReady()),
+                    downloads = DownloadStore(handle.getDownloadSnapshot()),
+                ),
             playback =
                 BaeCorePlayer(
                     applicationLooper = Looper.getMainLooper(),

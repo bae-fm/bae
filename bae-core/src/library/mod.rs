@@ -10,7 +10,9 @@ pub(crate) mod sync_controller;
 pub mod sync_events;
 pub mod upload_throughput;
 pub use app_services::*;
-pub use download_snapshot::{DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState};
+pub use download_snapshot::{
+    DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState, DownloadTransferProgress,
+};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use export::ExportFormat;
 pub use export_snapshot::{ExportOp, ExportProgress, ExportSnapshot, ExportState};
@@ -32,7 +34,7 @@ use tracing::{debug, warn};
 
 pub use tokio_util::sync::CancellationToken;
 
-pub type DownloadQueue = ReleaseQueue<(), ()>;
+pub type DownloadQueue = ReleaseQueue<(), DownloadTransferProgress>;
 pub type ExportQueue = ReleaseQueue<PathBuf, u8>;
 
 #[derive(Debug, thiserror::Error)]

@@ -2309,8 +2309,17 @@ struct FfiDownloadOp {
     total_size: i64,
     /// "queued", "active", or "failed".
     state: String,
+    /// The active transfer's byte/file progress when `state` is "active".
+    progress: Option<FfiDownloadTransferProgress>,
     /// The failure message when `state` is "failed".
     error: Option<String>,
+}
+
+#[derive(Serialize)]
+struct FfiDownloadTransferProgress {
+    bytes_done: u64,
+    bytes_total: u64,
+    fraction: f64,
 }
 
 /// Per-state counts for the download queue, for the pane header's summary and
@@ -2350,10 +2359,18 @@ pub unsafe extern "C" fn bae_download_snapshot(handle: *const BaeHandle) -> *mut
             .ops
             .iter()
             .map(|op| {
-                let (state, error) = match &op.state {
-                    DownloadState::Queued => ("queued", None),
-                    DownloadState::Active { progress: () } => ("active", None),
-                    DownloadState::Failed { error } => ("failed", Some(error.clone())),
+                let (state, progress, error) = match &op.state {
+                    DownloadState::Queued => ("queued", None, None),
+                    DownloadState::Active { progress } => (
+                        "active",
+                        Some(FfiDownloadTransferProgress {
+                            bytes_done: progress.bytes_done,
+                            bytes_total: progress.bytes_total,
+                            fraction: progress.fraction,
+                        }),
+                        None,
+                    ),
+                    DownloadState::Failed { error } => ("failed", None, Some(error.clone())),
                 };
                 FfiDownloadOp {
                     release_id: op.release_id.clone(),
@@ -2361,6 +2378,7 @@ pub unsafe extern "C" fn bae_download_snapshot(handle: *const BaeHandle) -> *mut
                     file_count: op.file_count,
                     total_size: op.total_size,
                     state: state.to_string(),
+                    progress,
                     error,
                 }
             })

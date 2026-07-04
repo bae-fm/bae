@@ -4,11 +4,12 @@
 //! in-memory rows for the queue pane, and support pause, cancel, and retry.
 //! `Extra` carries the operation-specific row payload: downloads use `()`,
 //! exports use their target directory. `Progress` carries the active-row
-//! progress shape: downloads have no determinate progress, exports use percent.
+//! progress shape.
 
 use std::sync::Mutex;
 
 use tokio::sync::Notify;
+use tracing::warn;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReleaseQueueState<Progress> {
@@ -73,7 +74,7 @@ struct State<Extra, Progress> {
     active_abort: Option<tokio::task::AbortHandle>,
 }
 
-impl<Extra: Clone, Progress: Clone + Default> ReleaseQueue<Extra, Progress> {
+impl<Extra: Clone, Progress: Clone> ReleaseQueue<Extra, Progress> {
     pub fn new() -> Self {
         Self {
             state: Mutex::new(State {
@@ -131,7 +132,12 @@ impl<Extra: Clone, Progress: Clone + Default> ReleaseQueue<Extra, Progress> {
             .cloned()
     }
 
-    pub fn activate(&self, release_id: &str, abort: tokio::task::AbortHandle) -> bool {
+    pub fn activate(
+        &self,
+        release_id: &str,
+        abort: tokio::task::AbortHandle,
+        progress: Progress,
+    ) -> bool {
         let mut state = self.state.lock().unwrap();
         let Some(op) = state
             .ops
@@ -140,9 +146,7 @@ impl<Extra: Clone, Progress: Clone + Default> ReleaseQueue<Extra, Progress> {
         else {
             return false;
         };
-        op.state = ReleaseQueueState::Active {
-            progress: Progress::default(),
-        };
+        op.state = ReleaseQueueState::Active { progress };
         state.active_abort = Some(abort);
         true
     }
@@ -180,6 +184,17 @@ impl<Extra: Clone, Progress: Clone + Default> ReleaseQueue<Extra, Progress> {
         self.state.lock().unwrap().active_abort = None;
     }
 
+    pub fn set_active_progress(&self, release_id: &str, progress: Progress) -> bool {
+        let mut state = self.state.lock().unwrap();
+        let Some(op) = state.ops.iter_mut().find(|o| {
+            o.release_id == release_id && matches!(o.state, ReleaseQueueState::Active { .. })
+        }) else {
+            return false;
+        };
+        op.state = ReleaseQueueState::Active { progress };
+        true
+    }
+
     pub fn cancel(&self, release_id: &str) -> bool {
         let mut state = self.state.lock().unwrap();
         let was_active = state.ops.iter().any(|o| {
@@ -195,7 +210,7 @@ impl<Extra: Clone, Progress: Clone + Default> ReleaseQueue<Extra, Progress> {
     }
 }
 
-impl<Extra: Clone, Progress: Clone + Default> Default for ReleaseQueue<Extra, Progress> {
+impl<Extra: Clone, Progress: Clone> Default for ReleaseQueue<Extra, Progress> {
     fn default() -> Self {
         Self::new()
     }
@@ -203,9 +218,11 @@ impl<Extra: Clone, Progress: Clone + Default> Default for ReleaseQueue<Extra, Pr
 
 impl<Extra: Clone> ReleaseQueue<Extra, u8> {
     pub fn set_active_percent(&self, release_id: &str, percent: u8) {
-        let mut state = self.state.lock().unwrap();
-        if let Some(op) = state.ops.iter_mut().find(|o| o.release_id == release_id) {
-            op.state = ReleaseQueueState::Active { progress: percent };
+        if !self.set_active_progress(release_id, percent) {
+            warn!(
+                release_id,
+                percent, "ignored active queue percent for missing active release"
+            );
         }
     }
 }
@@ -249,7 +266,7 @@ mod tests {
         q.enqueue(op("rel-b"));
 
         assert_eq!(q.next_queued().map(|o| o.release_id), Some("rel-a".into()));
-        assert!(q.activate("rel-a", dummy_abort()));
+        assert!(q.activate("rel-a", dummy_abort(), 0));
         let ops = q.ops();
         assert_eq!(ops[0].state, ReleaseQueueState::Active { progress: 0 });
         assert_eq!(ops[1].state, ReleaseQueueState::Queued);
@@ -265,7 +282,7 @@ mod tests {
         q.enqueue(op("rel-a"));
         assert_eq!(q.next_queued().map(|o| o.release_id), Some("rel-a".into()));
         q.remove("rel-a");
-        assert!(!q.activate("rel-a", dummy_abort()));
+        assert!(!q.activate("rel-a", dummy_abort(), 0));
     }
 
     #[tokio::test]
@@ -273,7 +290,7 @@ mod tests {
         let q = ReleaseQueue::new();
         q.enqueue(op("rel-a"));
         assert_eq!(q.next_queued().map(|o| o.release_id), Some("rel-a".into()));
-        assert!(q.activate("rel-a", dummy_abort()));
+        assert!(q.activate("rel-a", dummy_abort(), 0));
 
         q.set_active_percent("rel-a", 50);
         assert_eq!(q.ops()[0].state, ReleaseQueueState::Active { progress: 50 });

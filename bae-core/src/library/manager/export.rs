@@ -129,7 +129,7 @@ impl LibraryManager {
         // Flip to Active and register the abort handle atomically. If a cancel
         // removed the entry in the gap since we picked it, abort the task we just
         // spawned and bail — nothing was written.
-        if !self.export_queue.activate(&release_id, abort.clone()) {
+        if !self.export_queue.activate(&release_id, abort.clone(), 0) {
             abort.abort();
             debug!("Export for {release_id} cancelled before it started; aborting");
             return;

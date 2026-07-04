@@ -9,6 +9,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
     private let playbackStore: PlaybackStore
     private let configStore: ConfigStore
     private let libraryStore: LibraryStore
+    private let downloadStore: DownloadStore
     private let mediaControlService: MediaControlService
     private let appHandle: AppHandle
 
@@ -16,12 +17,14 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
         playbackStore: PlaybackStore,
         configStore: ConfigStore,
         libraryStore: LibraryStore,
+        downloadStore: DownloadStore,
         mediaControlService: MediaControlService,
         appHandle: AppHandle
     ) {
         self.playbackStore = playbackStore
         self.configStore = configStore
         self.libraryStore = libraryStore
+        self.downloadStore = downloadStore
         self.mediaControlService = mediaControlService
         self.appHandle = appHandle
     }
@@ -30,6 +33,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
         let playbackStore = playbackStore
         let configStore = configStore
         let libraryStore = libraryStore
+        let downloadStore = downloadStore
         let mediaControlService = mediaControlService
         let appHandle = appHandle
         Task { @MainActor in
@@ -37,6 +41,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
                 playbackStore: playbackStore,
                 configStore: configStore,
                 libraryStore: libraryStore,
+                downloadStore: downloadStore,
                 mediaControlService: mediaControlService,
                 appHandle: appHandle
             )
@@ -52,6 +57,7 @@ struct ReducerContext {
     let playbackStore: PlaybackStore
     let configStore: ConfigStore
     let libraryStore: LibraryStore
+    let downloadStore: DownloadStore
     let mediaControlService: MediaControlService
     let appHandle: AppHandle
 }
@@ -86,6 +92,9 @@ enum UiEventReducer {
 
         case .configChanged, .syncError, .error, .errorCleared:
             reduceConfigAndError(event, into: context)
+
+        case .downloadQueueChanged(let snapshot):
+            context.downloadStore.snapshot = snapshot
 
         default:
             logger.debug("ignoring event \(String(describing: event))")

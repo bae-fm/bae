@@ -6,7 +6,9 @@ import fm.bae.app.AppSessionHolder
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.OpenLibrary
 import fm.bae.app.data.ConfigStore
+import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LibraryStore
+import fm.bae.app.data.OpenLibraryStores
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -99,8 +101,12 @@ class PlaybackServiceTest {
         return OpenLibrary(
             libraryId = "lib-1",
             appHandle = handle,
-            libraryStore = LibraryStore(),
-            configStore = ConfigStore(BridgeFixtures.config(), initialSyncReady = false),
+            stores =
+                OpenLibraryStores(
+                    library = LibraryStore(),
+                    config = ConfigStore(BridgeFixtures.config(), initialSyncReady = false),
+                    downloads = DownloadStore(BridgeFixtures.downloadSnapshot()),
+                ),
             playback =
                 BaeCorePlayer(
                     applicationLooper = looper,

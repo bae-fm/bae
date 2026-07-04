@@ -24,7 +24,7 @@ use std::future::Future;
 
 use crate::album_detail::ReleaseStorageAction;
 use crate::db::DbFile;
-use crate::library::LibraryManager;
+use crate::library::{DownloadTransferProgress, LibraryManager};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 
@@ -60,6 +60,8 @@ pub async fn read_release_file_bytes(
 pub enum TransferProgress {
     /// Operation started
     Started,
+    /// Operation reported determinate transfer progress.
+    Progress { progress: DownloadTransferProgress },
     /// Operation completed
     Complete { release_id: String },
     /// Operation failed
@@ -79,8 +81,7 @@ impl TransferService {
     /// Pin a release: have coven fetch its blobs into `storage/pinned/` on a
     /// spawned task. Returns a receiver for progress updates plus the task's
     /// handle, so the download queue worker can abort the fetch when the user
-    /// cancels — a half-finished pin just leaves some blobs in `pinned/` and the
-    /// release reads as not-yet-pinned, so re-pinning resumes idempotently.
+    /// cancels.
     pub fn pin_release_task(
         &self,
         release_id: String,
@@ -91,8 +92,12 @@ impl TransferService {
         self.spawn_transfer(
             release_id,
             ReleaseStorageAction::Pin,
-            |release_id, library_manager| async move {
-                library_manager.pin_release_blobs(&release_id).await?;
+            |release_id, library_manager, tx| async move {
+                library_manager
+                    .pin_release_blobs_with_progress(&release_id, |progress| {
+                        send_progress(&tx, TransferProgress::Progress { progress });
+                    })
+                    .await?;
                 Ok(())
             },
         )
@@ -104,7 +109,7 @@ impl TransferService {
         let (rx, _) = self.spawn_transfer(
             release_id,
             ReleaseStorageAction::Unpin,
-            |release_id, library_manager| async move {
+            |release_id, library_manager, _tx| async move {
                 library_manager.unpin_release_blobs(&release_id).await?;
                 Ok(())
             },
@@ -124,7 +129,7 @@ impl TransferService {
         let (rx, _) = self.spawn_transfer(
             release_id,
             ReleaseStorageAction::MakeRemote,
-            move |release_id, library_manager| async move {
+            move |release_id, library_manager, _tx| async move {
                 // The release reaches `remote = true` only when coven's upload drain
                 // flips it after the last upload lands. That drain runs from the sync
                 // loop, so the loop must be running — otherwise the uploads sit forever
@@ -161,7 +166,7 @@ impl TransferService {
         let (rx, _) = self.spawn_transfer(
             release_id,
             ReleaseStorageAction::MakeLocal,
-            move |release_id, library_manager| async move {
+            move |release_id, library_manager, _tx| async move {
                 tokio::fs::create_dir_all(std::path::Path::new(&new_path)).await?;
 
                 // coven materializes each blob durability-first, flips the gate false,
@@ -187,7 +192,7 @@ impl TransferService {
         tokio::task::JoinHandle<()>,
     )
     where
-        Run: FnOnce(String, LibraryManager) -> Fut + Send + 'static,
+        Run: FnOnce(String, LibraryManager, ProgressTx) -> Fut + Send + 'static,
         Fut: Future<Output = TransferResult> + Send + 'static,
     {
         let (tx, rx) = mpsc::unbounded_channel();
@@ -218,13 +223,13 @@ async fn run_transfer<Fut>(
     action: ReleaseStorageAction,
     library_manager: LibraryManager,
     tx: ProgressTx,
-    run: impl FnOnce(String, LibraryManager) -> Fut,
+    run: impl FnOnce(String, LibraryManager, ProgressTx) -> Fut,
 ) -> TransferResult
 where
     Fut: Future<Output = TransferResult> + Send,
 {
     start_transfer(&release_id, action, &library_manager, &tx).await?;
-    run(release_id.clone(), library_manager).await?;
+    run(release_id.clone(), library_manager, tx.clone()).await?;
     info!(
         action = ?action,
         release_id = %release_id,

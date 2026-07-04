@@ -254,13 +254,18 @@ private struct DownloadRow: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
 
-            Text(op.title)
-                .lineLimit(1)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 8) {
+                    Text(op.title)
+                        .lineLimit(1)
 
-            Text("\(op.fileCount) files · \(op.totalSizeText)")
-                .font(.caption)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
+                    Text(detailText)
+                        .font(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                progressView
+            }
 
             Spacer()
 
@@ -300,6 +305,17 @@ private struct DownloadRow: View {
                 .foregroundStyle(.red)
                 .help(error)
         }
+    }
+
+    @ViewBuilder
+    private var progressView: some View {
+        if case .active(let progress) = op.state {
+            DownloadTransferProgressView(progress: progress)
+        }
+    }
+
+    private var detailText: String {
+        "\(op.fileCount) files · \(op.totalSizeText)"
     }
 }
 

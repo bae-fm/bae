@@ -379,6 +379,26 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
     )
     .await;
     assert!(completed(&events) && !failed(&events), "pin succeeds");
+    assert!(
+        matches!(events.first(), Some(TransferProgress::Started)),
+        "pin starts"
+    );
+    assert!(
+        events.iter().any(|event| matches!(
+            event,
+            TransferProgress::Progress { progress }
+                if progress.bytes_done == 0 && progress.bytes_total == 22
+        )),
+        "pin reports known byte total"
+    );
+    assert!(
+        events.iter().any(|event| matches!(
+            event,
+            TransferProgress::Progress { progress }
+                if progress.bytes_done == 22 && progress.bytes_total == 22
+        )),
+        "pin reports completed bytes before completion"
+    );
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, true)

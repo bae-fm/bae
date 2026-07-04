@@ -41,6 +41,8 @@ targets:
       - path: ../../bae-macos/bae/bae/ImageLoader.swift
       - path: ../../bae-macos/bae/bae/BridgeSortField+CaseIterable.swift
       - path: ../../bae-macos/bae/bae/BridgeComposerSortField+CaseIterable.swift
+      - path: ../../bae-macos/bae/bae/BridgeDownloadTransferProgress+Derived.swift
+      - path: ../../bae-macos/bae/bae/DownloadTransferProgressView.swift
       - path: ../../bae-macos/bae/bae/DurationClock.swift
       - path: ../../bae-macos/bae/bae/Services/PlaybackStore.swift
       - path: ../../bae-macos/bae/bae/Services/PlaybackPositionEvent.swift

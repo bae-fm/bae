@@ -175,13 +175,43 @@ impl LibraryManager {
     /// `storage/pinned/` (from the evictable cache if already there, else the
     /// cloud). Idempotent. Pinned-ness is coven cache state — there is no bae flag.
     /// The low-level cache op behind the "Pin" transition.
-    pub(crate) async fn pin_release_blobs(&self, release_id: &str) -> Result<(), LibraryError> {
+    pub(crate) async fn pin_release_blobs_with_progress(
+        &self,
+        release_id: &str,
+        mut on_progress: impl FnMut(crate::library::DownloadTransferProgress),
+    ) -> Result<(), LibraryError> {
         let files = self.database.get_files_for_release(release_id).await?;
+        let bytes_total = download_total_bytes(release_id, &files)?;
+        let mut emit_progress = |bytes_done| {
+            on_progress(crate::library::DownloadTransferProgress::new(
+                release_id,
+                bytes_done,
+                bytes_total,
+            )?);
+            Ok::<(), LibraryError>(())
+        };
+        emit_progress(0)?;
+
         let blobs: Vec<_> = files.iter().map(Self::release_file_blob_ref).collect();
         self.handle
             .pin(&blobs)
             .await
-            .map_err(|e| LibraryError::Storage(format!("pin release {release_id}: {e}")))
+            .map_err(|e| LibraryError::Storage(format!("pin release {release_id}: {e}")))?;
+        emit_progress(bytes_total)?;
+
+        Ok(())
+    }
+
+    pub(crate) async fn initial_download_progress(
+        &self,
+        release_id: &str,
+    ) -> Result<crate::library::DownloadTransferProgress, LibraryError> {
+        let files = self.database.get_files_for_release(release_id).await?;
+        crate::library::DownloadTransferProgress::new(
+            release_id,
+            0,
+            download_total_bytes(release_id, &files)?,
+        )
     }
 
     /// Unpin a remote release's blobs: coven moves every blob from
@@ -225,4 +255,28 @@ fn image_ref_map(
             )
         })
         .collect()
+}
+
+fn download_file_sizes(release_id: &str, files: &[DbFile]) -> Result<Vec<u64>, LibraryError> {
+    files
+        .iter()
+        .map(|file| {
+            u64::try_from(file.file_size).map_err(|_| {
+                LibraryError::Storage(format!(
+                    "pin release {release_id}: file {} has negative size",
+                    file.id
+                ))
+            })
+        })
+        .collect()
+}
+
+fn download_total_bytes(release_id: &str, files: &[DbFile]) -> Result<u64, LibraryError> {
+    download_file_sizes(release_id, files)?
+        .iter()
+        .try_fold(0u64, |total, file_size| {
+            total.checked_add(*file_size).ok_or_else(|| {
+                LibraryError::Storage(format!("pin release {release_id}: byte total overflow"))
+            })
+        })
 }

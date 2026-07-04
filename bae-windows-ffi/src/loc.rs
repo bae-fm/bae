@@ -495,6 +495,7 @@ mod tests {
             "core.queue.downloading",
             "core.queue.failed",
             "core.queue.queued",
+            "core.download.bytes_progress",
             "core.outbox.bytes_progress",
             "core.outbox.throughput",
             "core.outbox.eta",

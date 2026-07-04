@@ -257,7 +257,7 @@ impl LibraryManager {
                 self.download_queue.wait().await;
                 continue;
             };
-            self.run_queued_pin(&op.release_id).await;
+            self.run_queued_pin(&op).await;
         }
     }
 
@@ -271,22 +271,35 @@ impl LibraryManager {
     /// cancel removes the queue entry; on its way out the drain sees the channel
     /// close, and we check whether the entry is still present before recording a
     /// failure — a cancelled download isn't a failure.
-    async fn run_queued_pin(&self, release_id: &str) {
+    async fn run_queued_pin(&self, op: &crate::library::DownloadOp) {
         use crate::storage::local::transfer::TransferService;
 
+        let release_id = op.release_id.as_str();
+        let initial_progress = match self.initial_download_progress(release_id).await {
+            Ok(progress) => progress,
+            Err(error) => {
+                error!("Pin failed for release {release_id}: {error}");
+                self.download_queue
+                    .mark_failed(release_id, error.to_string());
+                self.emit_download_queue_changed();
+                return;
+            }
+        };
         let transfer = TransferService::new(self.clone());
         let (rx, pin_task) = transfer.pin_release_task(release_id.to_string());
         let abort = pin_task.abort_handle();
         // Flip to Active and register the abort handle atomically. If a cancel
         // removed the entry in the gap since we picked it, abort the task we
         // just spawned and bail — the release stays cloud-only.
-        if !self.download_queue.activate(release_id, abort.clone()) {
+        if !self
+            .download_queue
+            .activate(release_id, abort.clone(), initial_progress)
+        {
             abort.abort();
             debug!("Pin for {release_id} cancelled before it started; aborting");
             return;
         }
         self.emit_download_queue_changed();
-
         // Drive the pin through the shared transfer driver; the inline
         // `ReleaseTransferProgress` bar is emitted by `drive_transfer` itself.
         let outcome = self
@@ -455,6 +468,21 @@ impl LibraryManager {
                         release_id: release_id.to_string(),
                         action,
                     });
+                }
+                TransferProgress::Progress { progress } => {
+                    if matches!(action, ReleaseStorageAction::Pin) {
+                        if self
+                            .download_queue
+                            .set_active_progress(release_id, progress)
+                        {
+                            self.emit_download_queue_changed();
+                        } else {
+                            tracing::warn!(
+                                release_id,
+                                "ignored download progress for missing active queue row"
+                            );
+                        }
+                    }
                 }
                 TransferProgress::Complete { .. } => break Ok(()),
                 TransferProgress::Failed { error, .. } => break Err(error),

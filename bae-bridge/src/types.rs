@@ -1662,11 +1662,24 @@ pub struct BridgeUploadProgress {
 }
 
 /// A queued download's state.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeDownloadState {
     Queued,
-    Active,
-    Failed { error: String },
+    Active {
+        progress: BridgeDownloadTransferProgress,
+    },
+    Failed {
+        error: String,
+    },
+}
+
+/// Byte progress for the active download. Mirrors the payload emitted by the
+/// transfer reading the release's blobs.
+#[derive(Debug, Clone, Default, PartialEq, uniffi::Record)]
+pub struct BridgeDownloadTransferProgress {
+    pub bytes_done: u64,
+    pub bytes_total: u64,
+    pub fraction: f64,
 }
 
 /// One queued download — a whole release being pinned. Mirror of bae-core's
@@ -3501,6 +3514,7 @@ mod loc_key_coverage {
         "core.queue.exporting",
         "core.queue.failed",
         "core.queue.queued",
+        "core.download.bytes_progress",
         "core.outbox.pending_deletes",
         "core.outbox.bytes_progress",
         "core.outbox.throughput",

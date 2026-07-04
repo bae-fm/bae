@@ -16,7 +16,12 @@ import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeUiEvent
 
 class UiEventReducerTest {
-    private fun stores(): Pair<LibraryStore, ConfigStore> = LibraryStore() to ConfigStore(BridgeFixtures.config(), initialSyncReady = false)
+    private fun stores(): OpenLibraryStores =
+        OpenLibraryStores(
+            library = LibraryStore(),
+            config = ConfigStore(BridgeFixtures.config(), initialSyncReady = false),
+            downloads = DownloadStore(BridgeFixtures.downloadSnapshot()),
+        )
 
     // These tests exercise the library-routing arm; the playback sink is a no-op
     // (a real BaeCorePlayer needs a live AppHandle, which unit tests don't have —
@@ -71,14 +76,24 @@ class UiEventReducerTest {
             override fun line(error: BridgeException) = ""
         }
 
+    private fun reduce(
+        event: BridgeUiEvent,
+        stores: OpenLibraryStores,
+        player: PlaybackEventSink = noopPlayer,
+        errors: ErrorLines = noopErrors,
+    ) {
+        UiEventReducer.reduce(event, stores, player, errors)
+    }
+
     @Test
     fun albumAddedRoutesIntoLibraryStoreAndBumpsGeneration() {
-        val (library, config) = stores()
+        val stores = stores()
+        val library = stores.library
         val detail = BridgeFixtures.albumDetail(BridgeFixtures.album(id = "alb-1"))
         val generationBefore = library.generation.value
         val composerGenerationBefore = library.composerGeneration.value
 
-        UiEventReducer.reduce(BridgeUiEvent.AlbumAdded(detail), library, config, noopPlayer, noopErrors)
+        reduce(BridgeUiEvent.AlbumAdded(detail), stores)
 
         assertNotNull("album should be interned", library.albumDetail("alb-1"))
         assertEquals(detail, library.albumDetail("alb-1"))
@@ -88,19 +103,17 @@ class UiEventReducerTest {
 
     @Test
     fun releaseChangesRefreshComposerPagesWithoutRebuildingAlbumPages() {
-        val (library, config) = stores()
+        val stores = stores()
+        val library = stores.library
         val album = BridgeFixtures.album(id = "alb-1", releaseIds = listOf("rel-1", "rel-2"))
         val detail = BridgeFixtures.albumDetail(album, releases = listOf(BridgeFixtures.release(id = "rel-1", albumId = "alb-1")))
-        UiEventReducer.reduce(BridgeUiEvent.AlbumAdded(detail), library, config, noopPlayer, noopErrors)
+        reduce(BridgeUiEvent.AlbumAdded(detail), stores)
         val albumGeneration = library.generation.value
         val composerGeneration = library.composerGeneration.value
 
-        UiEventReducer.reduce(
+        reduce(
             BridgeUiEvent.ReleaseAdded(album = album, release = BridgeFixtures.release(id = "rel-2", albumId = "alb-1")),
-            library,
-            config,
-            noopPlayer,
-            noopErrors,
+            stores,
         )
 
         assertEquals(albumGeneration, library.generation.value)
@@ -109,17 +122,15 @@ class UiEventReducerTest {
 
     @Test
     fun releaseUpdatedForAbsentAlbumIsDroppedWithoutThrowing() {
-        val (library, config) = stores()
+        val stores = stores()
+        val library = stores.library
         val release = BridgeFixtures.release(id = "rel-x", albumId = "alb-absent")
 
         // No album was ever added, so this targets an un-interned album. The
         // handler logs the skip and leaves the store untouched — it must not throw.
-        UiEventReducer.reduce(
+        reduce(
             BridgeUiEvent.ReleaseUpdated(albumId = "alb-absent", release = release),
-            library,
-            config,
-            noopPlayer,
-            noopErrors,
+            stores,
         )
 
         assertNull(library.albumDetail("alb-absent"))
@@ -128,22 +139,37 @@ class UiEventReducerTest {
 
     @Test
     fun syncingChangedRoutesIntoConfigStore() {
-        val (library, config) = stores()
+        val stores = stores()
+        val config = stores.config
         assertEquals(false, config.syncing.value)
 
         // config.syncing is the flow the library screen observes to show or hide
         // its sync indicator, so the reducer must mirror the SyncingChanged
         // signal onto it.
-        UiEventReducer.reduce(BridgeUiEvent.SyncingChanged(syncing = true), library, config, noopPlayer, noopErrors)
+        reduce(BridgeUiEvent.SyncingChanged(syncing = true), stores)
         assertEquals(true, config.syncing.value)
 
-        UiEventReducer.reduce(BridgeUiEvent.SyncingChanged(syncing = false), library, config, noopPlayer, noopErrors)
+        reduce(BridgeUiEvent.SyncingChanged(syncing = false), stores)
         assertEquals(false, config.syncing.value)
     }
 
     @Test
+    fun downloadQueueChangedRoutesIntoDownloadStore() {
+        val stores = stores()
+        val downloads = stores.downloads
+        val snapshot = BridgeFixtures.downloadSnapshot(queued = 1u, active = 1u, paused = true)
+
+        reduce(
+            BridgeUiEvent.DownloadQueueChanged(snapshot),
+            stores,
+        )
+
+        assertEquals(snapshot, downloads.snapshot.value)
+    }
+
+    @Test
     fun playbackLoadingForwardsResolvedTrackMetadataToThePlayer() {
-        val (library, config) = stores()
+        val stores = stores()
         var received: BridgeLoadingTrackInfo? = null
         val sink =
             object : PlaybackEventSink by noopPlayer {
@@ -166,12 +192,10 @@ class UiEventReducerTest {
 
         // The player needs the resolved metadata to project a current track during
         // loading; the reducer must forward it rather than drop it.
-        UiEventReducer.reduce(
+        reduce(
             BridgeUiEvent.PlaybackLoading(trackId = "t1", track = info),
-            library,
-            config,
+            stores,
             sink,
-            noopErrors,
         )
 
         assertEquals("Track Title", received?.trackTitle)
@@ -179,7 +203,7 @@ class UiEventReducerTest {
 
     @Test
     fun playbackSeekedRoutesIntoThePlayer() {
-        val (library, config) = stores()
+        val stores = stores()
         var receivedTrackId: String? = null
         var receivedPositionMs: Long? = null
         val sink =
@@ -195,17 +219,15 @@ class UiEventReducerTest {
                 }
             }
 
-        UiEventReducer.reduce(
+        reduce(
             BridgeUiEvent.PlaybackSeeked(
                 trackId = "t1",
                 positionMs = 75_000uL,
                 durationMs = 100_000uL,
                 progress = 0.75,
             ),
-            library,
-            config,
+            stores,
             sink,
-            noopErrors,
         )
 
         assertEquals("t1", receivedTrackId)

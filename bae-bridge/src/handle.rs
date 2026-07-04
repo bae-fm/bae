@@ -1604,7 +1604,10 @@ fn convert_upload_activity(
 fn convert_download_snapshot(
     snapshot: bae_core::library::DownloadSnapshot,
 ) -> crate::types::BridgeDownloadSnapshot {
-    use crate::types::{BridgeDownloadOp, BridgeDownloadSnapshot, BridgeDownloadState};
+    use crate::types::{
+        BridgeDownloadOp, BridgeDownloadSnapshot, BridgeDownloadState,
+        BridgeDownloadTransferProgress,
+    };
     use bae_core::library::DownloadState;
 
     let downloads = snapshot
@@ -1613,7 +1616,13 @@ fn convert_download_snapshot(
         .map(|op| {
             let state = match op.state {
                 DownloadState::Queued => BridgeDownloadState::Queued,
-                DownloadState::Active { .. } => BridgeDownloadState::Active,
+                DownloadState::Active { progress } => BridgeDownloadState::Active {
+                    progress: BridgeDownloadTransferProgress {
+                        bytes_done: progress.bytes_done,
+                        bytes_total: progress.bytes_total,
+                        fraction: progress.fraction,
+                    },
+                },
                 DownloadState::Failed { error } => BridgeDownloadState::Failed { error },
             };
             BridgeDownloadOp {

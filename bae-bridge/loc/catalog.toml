@@ -1806,6 +1806,43 @@ ml = "{done} of {total}"
 pa = "{done} of {total}"
 th = "{done} of {total}"
 
+[messages."core.download.bytes_progress"]
+comment = "Download queue: bytes downloaded of the total ({done}/{total} are pre-formatted byte counts)."
+args = { done = "Str", total = "Str" }
+value = "{done} of {total}"
+
+[messages."core.download.bytes_progress".translations]
+es = "{done} de {total}"
+fr = "{done} sur {total}"
+de = "{done} von {total}"
+pt-BR = "{done} de {total}"
+ja = "{total}中{done}"
+ko = "{done}/{total}"
+zh-Hans = "{done}/{total}"
+ar = "{done} من {total}"
+he = "{done} מתוך {total}"
+uk = "{done} з {total}"
+bg = "{done} от {total}"
+pl = "{done} z {total}"
+cs = "{done} z {total}"
+hr = "{done} od {total}"
+zh-Hant = "{done} of {total}"
+it = "{done} of {total}"
+tr = "{done} of {total}"
+vi = "{done} of {total}"
+nl = "{done} of {total}"
+hi = "{done} of {total}"
+bn = "{done} of {total}"
+ta = "{done} of {total}"
+te = "{done} of {total}"
+mr = "{done} of {total}"
+ur = "{done} of {total}"
+gu = "{done} of {total}"
+kn = "{done} of {total}"
+ml = "{done} of {total}"
+pa = "{done} of {total}"
+th = "{done} of {total}"
+
 [messages."core.outbox.throughput"]
 comment = "Storage queue: upload speed ({rate} is a pre-formatted byte count, e.g. '5.2 MB')."
 args = { rate = "Str" }

@@ -4544,6 +4544,31 @@ public sealed partial class MainWindow : Window
                 _ => Loc.Chrome("download.state.queued"),
             };
 
+            string DownloadDetail(DownloadOp op)
+            {
+                static string DisplayBytes(ulong bytes) =>
+                    Loc.Bytes(checked((long)bytes));
+
+                var parts = new List<string>
+                {
+                    Loc.Chrome("storage.files", "count", op.FileCount),
+                    Loc.Bytes(op.TotalSize),
+                    StateLabel(op),
+                };
+                if (op.Progress is { } progress)
+                {
+                    parts.Add(
+                        Loc.Core(
+                            "core.download.bytes_progress",
+                            new Dictionary<string, object?>
+                            {
+                                ["done"] = DisplayBytes(progress.BytesDone),
+                                ["total"] = DisplayBytes(progress.BytesTotal),
+                            }));
+                }
+                return string.Join(" · ", parts);
+            }
+
             // Header: a label (or "paused"), Retry (only with failures), and a
             // pause/resume toggle — mirroring the outbox panel's band.
             var band = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
@@ -4586,9 +4611,19 @@ public sealed partial class MainWindow : Window
                 labelColumn.Children.Add(new TextBlock { Text = op.Title, TextWrapping = TextWrapping.Wrap });
                 labelColumn.Children.Add(new TextBlock
                 {
-                    Text = $"{Loc.Chrome("storage.files", "count", op.FileCount)} · {Loc.Bytes(op.TotalSize)} · {StateLabel(op)}",
+                    Text = DownloadDetail(op),
                     Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
                 });
+                if (op.Progress is { } progress)
+                {
+                    labelColumn.Children.Add(new ProgressBar
+                    {
+                        Minimum = 0,
+                        Maximum = 1,
+                        Value = progress.Fraction,
+                        Height = 4,
+                    });
+                }
                 Grid.SetColumn(labelColumn, 0);
                 itemGrid.Children.Add(labelColumn);
 

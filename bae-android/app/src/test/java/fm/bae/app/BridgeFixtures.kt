@@ -6,6 +6,8 @@ import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
+import uniffi.bae_bridge.BridgeDownloadProgress
+import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeExportLocation
 import uniffi.bae_bridge.BridgeExportMetadata
 import uniffi.bae_bridge.BridgeGalleryItem
@@ -141,6 +143,23 @@ object BridgeFixtures {
             tracks = tracks,
             composers = composers,
             works = works,
+        )
+
+    fun downloadSnapshot(
+        queued: UInt = 0u,
+        active: UInt = 0u,
+        failed: UInt = 0u,
+        paused: Boolean = false,
+    ): BridgeDownloadSnapshot =
+        BridgeDownloadSnapshot(
+            downloads = emptyList(),
+            total =
+                BridgeDownloadProgress(
+                    queued = queued,
+                    active = active,
+                    failed = failed,
+                ),
+            paused = paused,
         )
 
     fun config(libraryId: String = "lib-1"): BridgeConfig =

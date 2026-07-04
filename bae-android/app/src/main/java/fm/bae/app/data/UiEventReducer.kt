@@ -9,8 +9,8 @@ private const val TAG = "bae.UiEventReducer"
 private val logger = BaeLogger(TAG)
 
 /**
- * Reduces [BridgeUiEvent]s into the [LibraryStore], [ConfigStore], and the
- * playback [PlaybackEventSink] (the [fm.bae.app.playback.BaeCorePlayer]).
+ * Reduces [BridgeUiEvent]s into the open library stores and the playback
+ * [PlaybackEventSink] (the [fm.bae.app.playback.BaeCorePlayer]).
  *
  * bae-core owns playback on Android, so the playback / queue / repeat / volume /
  * mute variants project into the [PlaybackEventSink]. Library, config, sync, and
@@ -24,8 +24,7 @@ private val logger = BaeLogger(TAG)
 object UiEventReducer {
     fun reduce(
         event: BridgeUiEvent,
-        libraryStore: LibraryStore,
-        configStore: ConfigStore,
+        stores: OpenLibraryStores,
         player: PlaybackEventSink,
         errors: ErrorLines,
     ) {
@@ -36,7 +35,9 @@ object UiEventReducer {
             is BridgeUiEvent.ReleaseAdded,
             is BridgeUiEvent.ReleaseUpdated,
             is BridgeUiEvent.ReleaseRemoved,
-            -> reduceLibrary(event, libraryStore)
+            -> {
+                reduceLibrary(event, stores.library)
+            }
 
             is BridgeUiEvent.PlaybackLoading,
             is BridgeUiEvent.PlaybackPlaying,
@@ -49,18 +50,28 @@ object UiEventReducer {
             is BridgeUiEvent.QueueUpdated,
             is BridgeUiEvent.VolumeChanged,
             is BridgeUiEvent.MuteChanged,
-            -> reducePlayback(event, player, configStore, errors)
+            -> {
+                reducePlayback(event, player, stores.config, errors)
+            }
 
             is BridgeUiEvent.ConfigChanged,
             is BridgeUiEvent.SyncingChanged,
             is BridgeUiEvent.SyncError,
             is BridgeUiEvent.Error,
             BridgeUiEvent.ErrorCleared,
-            -> reduceConfig(event, configStore, errors)
+            -> {
+                reduceConfig(event, stores.config, errors)
+            }
+
+            is BridgeUiEvent.DownloadQueueChanged -> {
+                stores.downloads.setSnapshot(event.snapshot)
+            }
 
             // Desktop-only events (import/scan/candidate/preview) never fire
             // on mobile; log if one ever does so a future mobile-firing event is visible.
-            else -> logger.debug("ignoring ${event::class.simpleName}")
+            else -> {
+                logger.debug("ignoring ${event::class.simpleName}")
+            }
         }
     }
 

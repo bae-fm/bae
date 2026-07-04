@@ -66,6 +66,7 @@ struct LibraryView: View {
             VStack(spacing: 0) {
                 LibraryBanner()
                 LibraryModePicker(mode: $mode)
+                DownloadProgressStrip()
                 content
             }
             .background(Theme.background)
@@ -276,6 +277,42 @@ struct LibraryView: View {
         }
         catch {
             searchError = error.localizedDescription
+        }
+    }
+}
+
+private struct DownloadProgressStrip: View {
+    @Environment(DownloadStore.self)
+    private var downloadStore
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(downloadStore.snapshot.downloads, id: \.releaseId) { op in
+                DownloadProgressRow(op: op)
+            }
+        }
+    }
+}
+
+private struct DownloadProgressRow: View {
+    let op: BridgeDownloadOp
+
+    var body: some View {
+        switch op.state {
+        case .active(let progress):
+            DownloadTransferProgressView(progress: progress)
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+                .background(Theme.surface)
+        case .failed(let error):
+            Text(error)
+                .font(.caption2)
+                .foregroundStyle(.red)
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+                .background(Theme.surface)
+        default:
+            EmptyView()
         }
     }
 }

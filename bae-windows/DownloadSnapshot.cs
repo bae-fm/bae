@@ -37,6 +37,18 @@ public sealed class DownloadOp
     /// <summary>"queued", "active", or "failed".</summary>
     public string State { get; set; } = string.Empty;
 
+    /// <summary>The active transfer's byte/file progress when <see cref="State"/>
+    /// is "active".</summary>
+    public DownloadTransferProgress? Progress { get; set; }
+
     /// <summary>The failure message when <see cref="State"/> is "failed".</summary>
     public string? Error { get; set; }
+}
+
+/// <summary>Byte and file progress for the active download.</summary>
+public sealed class DownloadTransferProgress
+{
+    public ulong BytesDone { get; set; }
+    public ulong BytesTotal { get; set; }
+    public double Fraction { get; set; }
 }

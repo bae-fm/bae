@@ -24,6 +24,7 @@ final class AppService: Observable {
     let playbackStore = PlaybackStore()
     let configStore: ConfigStore
     let libraryStore = LibraryStore()
+    let downloadStore: DownloadStore
 
     // ── Domain services (narrow projections of `AppHandle`) ───────────────
 
@@ -39,6 +40,7 @@ final class AppService: Observable {
             config: Config(bridge: config),
             syncReady: appHandle.isSyncReady()
         )
+        downloadStore = DownloadStore(snapshot: appHandle.getDownloadSnapshot())
         // `prefetchRelease` (desktop import flow) is unavailable on iOS, so
         // build the read services from the iOS-available closures explicitly
         // rather than the `init(handle:)` convenience that wires it.
@@ -94,6 +96,7 @@ final class AppService: Observable {
                 playbackStore: playbackStore,
                 configStore: configStore,
                 libraryStore: libraryStore,
+                downloadStore: downloadStore,
                 mediaControlService: mediaControlService,
                 appHandle: appHandle
             )

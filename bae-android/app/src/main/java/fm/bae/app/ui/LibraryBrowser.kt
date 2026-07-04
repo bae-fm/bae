@@ -5,11 +5,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -19,11 +21,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.coreString
+import fm.bae.app.data.DownloadStore
+import fm.bae.app.formatFileSize
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
+import uniffi.bae_bridge.BridgeDownloadOp
+import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
@@ -77,6 +85,7 @@ internal fun LibraryBrowser(
             onShuffleLibrary = { session.playLibraryShuffledOrReport(appContext) },
             onSettings = onSettings,
         )
+        DownloadProgressStrip(session.downloadStore)
         LibraryBrowserContent(
             modifier = Modifier.fillMaxWidth().weight(1f),
             session = session,
@@ -96,6 +105,72 @@ internal fun LibraryBrowser(
         )
         NowPlayingBar(session = session)
     }
+}
+
+@Composable
+private fun DownloadProgressStrip(downloadStore: DownloadStore) {
+    val snapshot by downloadStore.snapshot.collectAsState()
+    Column(modifier = Modifier.fillMaxWidth()) {
+        for (download in snapshot.downloads) {
+            DownloadProgressRow(download)
+        }
+    }
+}
+
+@Composable
+private fun DownloadProgressRow(download: BridgeDownloadOp) {
+    val context = LocalContext.current
+    val progress =
+        when (val state = download.state) {
+            is BridgeDownloadState.Active -> {
+                state.progress
+            }
+
+            is BridgeDownloadState.Failed -> {
+                Text(
+                    text = state.error,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                return
+            }
+
+            else -> {
+                return
+            }
+        }
+    Column {
+        LinearProgressIndicator(
+            progress = { progress.fraction.toFloat() },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text =
+                context.coreString(
+                    "core.download.bytes_progress",
+                    mapOf(
+                        "done" to progress.bytesDone.formatDownloadBytes(context),
+                        "total" to progress.bytesTotal.formatDownloadBytes(context),
+                    ),
+                ),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+private fun ULong.formatDownloadBytes(context: Context): String {
+    val byteCount = requireDownloadByteCountInDisplayRange()
+    return context.formatFileSize(byteCount)
+}
+
+private fun ULong.requireDownloadByteCountInDisplayRange(): Long {
+    require(this <= Long.MAX_VALUE.toULong()) {
+        "download byte count exceeds display range"
+    }
+    return toLong()
 }
 
 private fun OpenLibrary.playLibraryShuffledOrReport(appContext: Context) {

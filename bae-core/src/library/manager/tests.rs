@@ -1368,6 +1368,24 @@ async fn make_remote_release(
     album_title: &str,
     pin: bool,
 ) -> String {
+    make_remote_release_with_files(
+        manager,
+        dir,
+        album_title,
+        &[("track.flac", b"track-bytes")],
+        pin,
+    )
+    .await
+}
+
+#[cfg(feature = "test-utils")]
+async fn make_remote_release_with_files(
+    manager: &LibraryManager,
+    dir: &std::path::Path,
+    album_title: &str,
+    files: &[(&str, &[u8])],
+    pin: bool,
+) -> String {
     let mut album = create_test_album();
     album.title = album_title.to_string();
     let mut release = create_test_release(&album.id);
@@ -1375,16 +1393,19 @@ async fn make_remote_release(
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
     std::fs::create_dir_all(dir).unwrap();
-    std::fs::write(dir.join("track.flac"), b"track-bytes").unwrap();
-    let file = DbFile::new(
-        &release.id,
-        "track.flac",
-        11,
-        crate::util::content_type::ContentType::Flac,
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-    );
-    manager.add_file(&file).await.unwrap();
+    let created_at = Utc::now();
+    for (index, (name, bytes)) in files.iter().enumerate() {
+        std::fs::write(dir.join(name), bytes).unwrap();
+        let file = DbFile::new(
+            &release.id,
+            name,
+            bytes.len() as i64,
+            crate::util::content_type::ContentType::Flac,
+            format!("{}-test-file-{index}", release.id),
+            created_at,
+        );
+        manager.add_file(&file).await.unwrap();
+    }
     manager
         .database
         .register_release_external_refs_for_test(&release.id, &dir.to_string_lossy())
@@ -1392,7 +1413,7 @@ async fn make_remote_release(
         .unwrap();
     manager.coven_make_remote(&release.id, pin).await.unwrap();
     let n = manager.drain_uploads_for_test().await.unwrap();
-    assert_eq!(n, 1, "the release's one blob uploaded");
+    assert_eq!(n as usize, files.len(), "each release blob uploaded");
     release.id
 }
 
@@ -2034,6 +2055,70 @@ async fn download_queue_failed_pin_retries() {
     manager.cancel_download(&release_id);
     let cleared = wait_for(|| manager.download_snapshot().ops.is_empty()).await;
     assert!(cleared, "cancel removes the entry");
+}
+
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn download_queue_active_pin_reports_file_progress() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release_id = make_remote_release_with_files(
+        &manager,
+        &temp_dir.path().join("download-source"),
+        "Test Album",
+        &[("a.flac", b"aaa"), ("b.flac", b"bbbb")],
+        false,
+    )
+    .await;
+    let mut events = manager.subscribe_events();
+
+    manager.enqueue_pins(vec![release_id.clone()]).await;
+
+    let mut saw_initial = false;
+    let mut saw_completed_progress = false;
+    for _ in 0..20 {
+        let event = tokio::time::timeout(std::time::Duration::from_secs(2), events.recv())
+            .await
+            .expect("download queue event")
+            .expect("event channel stays open");
+        let LibraryEvent::DownloadQueueChanged { snapshot } = event else {
+            continue;
+        };
+        for op in snapshot.ops {
+            if op.release_id != release_id {
+                continue;
+            }
+            if let crate::library::DownloadState::Active { progress } = op.state {
+                if progress
+                    == (crate::library::DownloadTransferProgress {
+                        bytes_done: 0,
+                        bytes_total: 7,
+                        fraction: 0.0,
+                    })
+                {
+                    saw_initial = true;
+                }
+                if progress
+                    == (crate::library::DownloadTransferProgress {
+                        bytes_done: 7,
+                        bytes_total: 7,
+                        fraction: 1.0,
+                    })
+                {
+                    saw_completed_progress = true;
+                }
+            }
+        }
+        if saw_initial && saw_completed_progress {
+            break;
+        }
+    }
+
+    assert!(saw_initial, "active download starts with known totals");
+    assert!(
+        saw_completed_progress,
+        "active download reports completed file bytes before leaving the queue"
+    );
 }
 
 // ── Export queue ─────────────────────────────────────────────────
