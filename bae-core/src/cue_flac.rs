@@ -1,11 +1,4 @@
-use nom::{
-    branch::alt,
-    bytes::complete::{tag, take_until},
-    character::complete::{digit1, line_ending, space1},
-    combinator::{map_res, opt},
-    multi::many0,
-    IResult,
-};
+use nom::IResult;
 use std::path::Path;
 use thiserror::Error;
 use tracing::warn;
@@ -88,15 +81,6 @@ impl CueTrack {
     }
 }
 
-/// Classifies a `REM <keyword> <value>` line. `Other` covers REM keywords we
-/// don't capture (e.g. REM COMMENT, REM GENRE, REM DISCID, ripper-specific
-/// extensions).
-#[derive(Debug)]
-enum RemKind {
-    Date(String),
-    Other,
-}
-
 /// Represents a parsed CUE sheet
 #[derive(Debug, Clone)]
 pub struct CueSheet {
@@ -129,6 +113,45 @@ impl CueSheet {
 pub struct CueFlacPair {
     pub audio_path: std::path::PathBuf,
     pub cue_path: std::path::PathBuf,
+}
+
+#[derive(Debug)]
+struct PendingCueTrack {
+    number: u32,
+    title: Option<String>,
+    performer: Option<String>,
+    isrc: Option<String>,
+    pregap_cue_frames: Option<u64>,
+    start: Option<(u64, String)>,
+}
+
+impl PendingCueTrack {
+    fn new(number: u32) -> Self {
+        Self {
+            number,
+            title: None,
+            performer: None,
+            isrc: None,
+            pregap_cue_frames: None,
+            start: None,
+        }
+    }
+
+    fn finish(self, input: &str) -> Result<CueTrack, nom::Err<nom::error::Error<&str>>> {
+        let (start_cue_frames, file_reference) = self.start.ok_or_else(|| {
+            nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Tag))
+        })?;
+        Ok(CueTrack {
+            number: self.number,
+            title: self.title,
+            performer: self.performer,
+            isrc: self.isrc,
+            file_reference,
+            start_cue_frames,
+            pregap_cue_frames: self.pregap_cue_frames,
+            end_cue_frames: None,
+        })
+    }
 }
 /// Main processor for CUE/FLAC operations
 pub struct CueFlacProcessor;
@@ -221,93 +244,60 @@ impl CueFlacProcessor {
         let mut catalog: Option<String> = None;
         let mut date: Option<String> = None;
         let mut current_file: Option<String> = None;
-        let mut input = input;
+        let mut tracks: Vec<CueTrack> = Vec::new();
+        let mut current_track: Option<PendingCueTrack> = None;
 
-        loop {
-            let stripped = input.trim_start();
-            if stripped.is_empty() {
-                break;
-            }
-            if Self::starts_with_keyword(stripped, "TRACK") {
-                break;
-            }
-            if let Ok((i, _)) = line_ending::<_, nom::error::Error<&str>>(input) {
-                input = i;
+        for raw_line in input.lines() {
+            let line = raw_line.trim();
+            if line.is_empty() {
                 continue;
             }
-            if let Ok((i, _)) = space1::<_, nom::error::Error<&str>>(input) {
-                input = i;
-                continue;
-            }
-            if let Ok((i, name)) = Self::parse_file_line(input) {
-                current_file = Some(name);
-                input = i;
-                continue;
-            }
-            if let Ok((i, kind)) = Self::parse_rem_classified(input) {
-                match kind {
-                    RemKind::Date(d) => date = Some(d),
-                    RemKind::Other => {}
+
+            let track_directive = Self::parse_track_directive(line)?;
+            if let Some((number, audio)) = track_directive {
+                if let Some(track) = current_track.take() {
+                    tracks.push(track.finish(input)?);
                 }
-                input = i;
+                if !audio {
+                    if tracks.is_empty() {
+                        return Self::failure(input, nom::error::ErrorKind::Tag);
+                    }
+                    break;
+                }
+                if current_file.is_none() {
+                    return Self::failure(input, nom::error::ErrorKind::Tag);
+                }
+                current_track = Some(PendingCueTrack::new(number));
                 continue;
             }
-            if let Ok((i, c)) = Self::parse_catalog_line(input) {
-                catalog = Some(c);
-                input = i;
+
+            let file_directive = Self::parse_file_directive(line)?;
+            if let Some(file) = file_directive {
+                current_file = Some(file);
                 continue;
             }
-            if let Ok((i, t)) = Self::parse_title(input) {
-                title = Some(t);
-                input = i;
-                continue;
+
+            match current_track.as_mut() {
+                Some(track) => {
+                    let file_reference = current_file
+                        .as_deref()
+                        .expect("CUE TRACK parsing starts only after FILE is known");
+                    Self::apply_track_line(input, line, track, file_reference)?;
+                }
+                None => {
+                    Self::apply_header_line(
+                        line,
+                        &mut title,
+                        &mut performer,
+                        &mut catalog,
+                        &mut date,
+                    );
+                }
             }
-            if let Ok((i, p)) = Self::parse_performer(input) {
-                performer = Some(p);
-                input = i;
-                continue;
-            }
-            if Self::header_starts_with_known_skipped(stripped) {
-                input = Self::consume_line(input);
-                continue;
-            }
-            let line = Self::peek_line(stripped);
-            warn!("unrecognized CUE header line: {:?}", line);
-            input = Self::consume_line(input);
         }
 
-        // Body: TRACK entries that all read and possibly update
-        // `current_file`. A FILE that appears between tracks shifts every
-        // subsequent track to the new file; a FILE that appears inside a
-        // track body (between INDEX 00 and INDEX 01 — the per-track-rip
-        // convention) shifts only the rest of that body. Each track's
-        // `file_reference` is whichever FILE was current at the moment its
-        // INDEX 01 was parsed.
-        let mut current_file = current_file.ok_or_else(|| {
-            // TRACK before any FILE: no audio file to bind to.
-            nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Tag))
-        })?;
-        let mut tracks: Vec<CueTrack> = Vec::new();
-        loop {
-            let stripped = input.trim_start();
-            if stripped.is_empty() {
-                break;
-            }
-            // Trailing non-AUDIO content (e.g. MODE1/2048 data track after
-            // the final AUDIO track) terminates the body once we've parsed
-            // at least one AUDIO track. `parse_track` itself fails at the
-            // `tag("AUDIO")` step for non-AUDIO modes — that's a nom Error
-            // (not Failure), so we stop the loop rather than abort the
-            // parse. Failures from inside a track body (no INDEX 01,
-            // malformed INDEX, etc.) propagate.
-            match Self::parse_track(input, &mut current_file) {
-                Ok((rest, track)) => {
-                    tracks.push(track);
-                    input = rest;
-                }
-                Err(nom::Err::Error(_)) => break,
-                Err(e) => return Err(e),
-            }
+        if let Some(track) = current_track {
+            tracks.push(track.finish(input)?);
         }
         if tracks.is_empty() {
             return Err(nom::Err::Failure(nom::error::Error::new(
@@ -336,7 +326,7 @@ impl CueFlacProcessor {
             }
         }
         Ok((
-            input,
+            "",
             CueSheet {
                 title,
                 performer,
@@ -346,234 +336,141 @@ impl CueFlacProcessor {
             },
         ))
     }
-    /// Parse and skip a REM (comment) line.
-    fn parse_comment_line(input: &str) -> IResult<&str, &str> {
-        let (input, _) = tag("REM")(input)?;
-        let (input, _) = take_until("\n")(input)?;
-        let (input, _) = line_ending(input)?;
-        Ok((input, ""))
-    }
-    /// Parse a REM line and classify the keyword. Returns `RemKind::Other`
-    /// for REM keywords we don't capture (e.g. REM COMMENT, ripper-specific
-    /// extensions); the line is still consumed.
-    fn parse_rem_classified(input: &str) -> IResult<&str, RemKind> {
-        let (input, _) = tag("REM")(input)?;
-        let (input, _) = space1(input)?;
-        let kw_end = input
-            .find(|c: char| c.is_whitespace())
-            .unwrap_or(input.len());
-        let keyword = &input[..kw_end];
-        let after_kw = &input[kw_end..];
-        let value_start = after_kw.trim_start_matches([' ', '\t']);
-        let line_end = value_start.find('\n').unwrap_or(value_start.len());
-        let raw_value = value_start[..line_end].trim_end_matches('\r').trim();
-        let unquoted = match raw_value
-            .strip_prefix('"')
-            .and_then(|s| s.strip_suffix('"'))
-        {
-            Some(s) => s,
-            None => raw_value,
-        };
-        let kind = match keyword {
-            "DATE" => RemKind::Date(unquoted.to_string()),
-            _ => RemKind::Other,
-        };
-        let after_value = &value_start[line_end..];
-        let (after_value, _) = opt(line_ending)(after_value)?;
-        Ok((after_value, kind))
-    }
-    /// Parse a FILE line, returning the referenced filename.
-    /// Handles both quoted (`FILE "foo.flac" WAVE`) and unquoted forms.
-    fn parse_file_line(input: &str) -> IResult<&str, String> {
-        let (input, _) = tag("FILE")(input)?;
-        let (input, _) = space1(input)?;
-        let (input, name) = Self::parse_file_name(input)?;
-        let (input, _) = take_until("\n")(input)?;
-        let (input, _) = line_ending(input)?;
-        Ok((input, name))
-    }
 
-    fn parse_file_name(input: &str) -> IResult<&str, String> {
-        if let Ok((rest, quoted)) = Self::parse_quoted_string(input) {
-            return Ok((rest, quoted.trim().to_string()));
+    fn apply_header_line(
+        line: &str,
+        title: &mut Option<String>,
+        performer: &mut Option<String>,
+        catalog: &mut Option<String>,
+        date: &mut Option<String>,
+    ) {
+        match Self::keyword_and_rest(line) {
+            Some(("REM", rest)) => {
+                if let Some((keyword, value)) = Self::keyword_and_rest(rest) {
+                    if keyword == "DATE" {
+                        *date = Some(Self::strip_optional_quotes(value).to_string());
+                    }
+                }
+            }
+            Some(("CATALOG", rest)) => {
+                *catalog = Some(Self::strip_optional_quotes(rest).to_string());
+            }
+            Some(("TITLE", rest)) => {
+                if let Some(value) = Self::quoted_value(rest) {
+                    *title = Some(value.to_string());
+                }
+            }
+            Some(("PERFORMER", rest)) => {
+                if let Some(value) = Self::quoted_value(rest) {
+                    *performer = Some(value.to_string());
+                }
+            }
+            Some((keyword, _)) if Self::header_keyword_is_known_skipped(keyword) => {}
+            _ => warn!("unrecognized CUE header line: {:?}", line),
         }
-        let end = input.find(char::is_whitespace).unwrap_or(input.len());
-        if end == 0 {
-            return Err(nom::Err::Error(nom::error::Error::new(
-                input,
-                nom::error::ErrorKind::TakeTill1,
-            )));
-        }
-        Ok((&input[end..], input[..end].to_string()))
     }
-    /// Parse a CATALOG line, returning the catalog number (UPC/EAN/MCN).
-    fn parse_catalog_line(input: &str) -> IResult<&str, String> {
-        let (input, _) = tag("CATALOG")(input)?;
-        let (input, _) = space1(input)?;
-        let line_end = input.find('\n').unwrap_or(input.len());
-        let raw = input[..line_end].trim_end_matches('\r').trim();
-        let value = match raw.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
-            Some(s) => s.to_string(),
-            None => raw.to_string(),
-        };
-        let after = &input[line_end..];
-        let (after, _) = opt(line_ending)(after)?;
-        Ok((after, value))
-    }
-    /// Parse TITLE line
-    fn parse_title(input: &str) -> IResult<&str, String> {
-        let (input, _) = many0(alt((line_ending, space1, Self::parse_comment_line)))(input)?;
-        let (input, _) = tag("TITLE")(input)?;
-        let (input, _) = space1(input)?;
-        let (input, title) = Self::parse_quoted_string(input)?;
-        let (input, _) = opt(line_ending)(input)?;
-        Ok((input, title))
-    }
-    /// Parse PERFORMER line
-    fn parse_performer(input: &str) -> IResult<&str, String> {
-        let (input, _) = many0(alt((line_ending, space1, Self::parse_comment_line)))(input)?;
-        let (input, _) = tag("PERFORMER")(input)?;
-        let (input, _) = space1(input)?;
-        let (input, performer) = Self::parse_quoted_string(input)?;
-        let (input, _) = opt(line_ending)(input)?;
-        Ok((input, performer))
-    }
-    /// Parse a single TRACK entry as a per-line classifier. `current_file`
-    /// is read-write state shared with the caller — the track's
-    /// `file_reference` is whichever value `current_file` held when INDEX 01
-    /// was parsed (the file where the track actually starts), and any FILE
-    /// directive encountered inside the body updates `current_file` for the
-    /// rest of this track and every track that follows.
-    ///
-    /// Only AUDIO tracks are parsed; non-AUDIO modes (MODE1/2048, MODE2/2352,
-    /// etc.) cause `parse_track` to fail with a nom Error so the caller's
-    /// loop terminates. Spec-known commands within a track body can appear
-    /// in any order (TITLE, PERFORMER, ISRC, FLAGS, PREGAP, INDEX 00–99,
-    /// POSTGAP, plus CD-Text keywords). FILE may also appear inside the
-    /// body (the per-track-rip convention puts a track's INDEX 00 at the
-    /// end of file N and its INDEX 01 at the start of file N+1, with FILE
-    /// sitting between the two INDEX lines). Unknown commands (typos,
-    /// vendor extensions) emit a warning and are skipped. The track ends
-    /// at the next TRACK keyword or at EOF; INDEX 01 is required.
-    fn parse_track<'a>(input: &'a str, current_file: &mut String) -> IResult<&'a str, CueTrack> {
-        let (input, _) = many0(alt((line_ending, space1, Self::parse_comment_line)))(input)?;
-        let (input, _) = tag("TRACK")(input)?;
-        let (input, _) = space1(input)?;
-        let (input, number) = map_res(digit1, |s: &str| s.parse::<u32>())(input)?;
-        let (input, _) = space1(input)?;
-        let (input, _) = tag("AUDIO")(input)?;
-        let (input, _) = opt(take_until("\n"))(input)?;
-        let (mut input, _) = opt(line_ending)(input)?;
 
-        let mut title: Option<String> = None;
-        let mut performer: Option<String> = None;
-        let mut isrc: Option<String> = None;
-        let mut pregap_cue_frames: Option<u64> = None;
-        let mut start: Option<(u64, String)> = None;
-
-        loop {
-            let stripped = input.trim_start();
-            if stripped.is_empty() {
-                break;
+    fn apply_track_line<'a>(
+        input: &'a str,
+        line: &str,
+        track: &mut PendingCueTrack,
+        current_file: &str,
+    ) -> Result<(), nom::Err<nom::error::Error<&'a str>>> {
+        match Self::keyword_and_rest(line) {
+            Some(("REM", _)) => {}
+            Some(("TITLE", rest)) => {
+                if let Some(value) = Self::quoted_value(rest) {
+                    track.title = Some(value.to_string());
+                }
             }
-            if Self::starts_with_keyword(stripped, "TRACK") {
-                break;
+            Some(("PERFORMER", rest)) => {
+                if let Some(value) = Self::quoted_value(rest) {
+                    track.performer = Some(value.to_string());
+                }
             }
-            if let Ok((i, _)) = line_ending::<_, nom::error::Error<&str>>(input) {
-                input = i;
-                continue;
+            Some(("ISRC", rest)) => {
+                let code = rest.split_whitespace().next().ok_or_else(|| {
+                    nom::Err::Failure(nom::error::Error::new(
+                        input,
+                        nom::error::ErrorKind::TakeTill1,
+                    ))
+                })?;
+                track.isrc = Some(code.to_string());
             }
-            if let Ok((i, _)) = space1::<_, nom::error::Error<&str>>(input) {
-                input = i;
-                continue;
-            }
-            if let Ok((i, _)) = Self::parse_comment_line(input) {
-                input = i;
-                continue;
-            }
-            if let Ok((i, name)) = Self::parse_file_line(input) {
-                *current_file = name;
-                input = i;
-                continue;
-            }
-            if let Ok((i, t)) = Self::parse_title(input) {
-                title = Some(t);
-                input = i;
-                continue;
-            }
-            if let Ok((i, p)) = Self::parse_performer(input) {
-                performer = Some(p);
-                input = i;
-                continue;
-            }
-            if let Ok((i, code)) = Self::parse_isrc_line(input) {
-                isrc = Some(code);
-                input = i;
-                continue;
-            }
-            if let Ok((i, (idx_num, frames))) = Self::parse_index_line(input) {
-                match idx_num {
-                    0 => pregap_cue_frames = Some(frames),
-                    1 => start = Some((frames, current_file.clone())),
+            Some(("INDEX", rest)) => {
+                let (index_number, cue_frames) = Self::parse_index_values(input, rest)?;
+                match index_number {
+                    0 => track.pregap_cue_frames = Some(cue_frames),
+                    1 => {
+                        track.start = Some((cue_frames, current_file.to_string()));
+                    }
                     _ => {}
                 }
-                input = i;
-                continue;
             }
-            if Self::track_starts_with_known_skipped(stripped) {
-                input = Self::consume_line(input);
-                continue;
-            }
-            let line = Self::peek_line(stripped);
-            warn!("unrecognized CUE line in track {}: {:?}", number, line);
-            input = Self::consume_line(input);
+            Some((keyword, _)) if Self::track_keyword_is_known_skipped(keyword) => {}
+            _ => warn!(
+                "unrecognized CUE line in track {}: {:?}",
+                track.number, line
+            ),
         }
+        Ok(())
+    }
 
-        let (start_cue_frames, file_reference) = start.ok_or_else(|| {
+    fn parse_track_directive(
+        input: &str,
+    ) -> Result<Option<(u32, bool)>, nom::Err<nom::error::Error<&str>>> {
+        let Some(("TRACK", rest)) = Self::keyword_and_rest(input) else {
+            return Ok(None);
+        };
+        let mut parts = rest.split_whitespace();
+        let number = Self::parse_u32_token(input, parts.next())?;
+        let mode = parts.next().ok_or_else(|| {
             nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Tag))
         })?;
+        Ok(Some((number, mode == "AUDIO")))
+    }
 
-        Ok((
-            input,
-            CueTrack {
-                number,
-                title,
-                performer,
-                isrc,
-                file_reference,
-                start_cue_frames,
-                pregap_cue_frames,
-                end_cue_frames: None,
-            },
-        ))
+    fn parse_file_directive(
+        input: &str,
+    ) -> Result<Option<String>, nom::Err<nom::error::Error<&str>>> {
+        let Some(("FILE", rest)) = Self::keyword_and_rest(input) else {
+            return Ok(None);
+        };
+        Ok(Some(Self::parse_file_name_value(input, rest)?))
     }
-    /// Parse `ISRC <code>` and return the code (first whitespace-delimited
-    /// token after `ISRC`). Per spec the code is 12 alphanumeric characters
-    /// (CCXXXYYNNNNN); we don't validate format here, just extract.
-    fn parse_isrc_line(input: &str) -> IResult<&str, String> {
-        let (input, _) = many0(alt((line_ending, space1, Self::parse_comment_line)))(input)?;
-        let (input, _) = tag("ISRC")(input)?;
-        let (input, _) = space1(input)?;
-        let (input, code) = nom::bytes::complete::take_till1(|c: char| c.is_whitespace())(input)?;
-        let code = code.to_string();
-        let (input, _) = opt(take_until("\n"))(input)?;
-        let (input, _) = opt(line_ending)(input)?;
-        Ok((input, code))
+
+    fn parse_index_values<'a>(
+        input: &'a str,
+        rest: &str,
+    ) -> Result<(u32, u64), nom::Err<nom::error::Error<&'a str>>> {
+        let mut parts = rest.split_whitespace();
+        let index_number = Self::parse_u32_token(input, parts.next())?;
+        let time = parts.next().ok_or_else(|| {
+            nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+        })?;
+        let (_, cue_frames) = Self::parse_time(time).map_err(|_| {
+            nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+        })?;
+        Ok((index_number, cue_frames))
     }
-    /// Parse `INDEX <n> mm:ss:ff` and return the index number and frames.
-    fn parse_index_line(input: &str) -> IResult<&str, (u32, u64)> {
-        let (input, _) = many0(alt((line_ending, space1, Self::parse_comment_line)))(input)?;
-        let (input, _) = tag("INDEX")(input)?;
-        let (input, _) = space1(input)?;
-        let (input, idx_num) = map_res(digit1, |s: &str| s.parse::<u32>())(input)?;
-        let (input, _) = space1(input)?;
-        let (input, frames) = Self::parse_time(input)?;
-        let (input, _) = opt(line_ending)(input)?;
-        Ok((input, (idx_num, frames)))
+
+    fn parse_u32_token<'a>(
+        input: &'a str,
+        token: Option<&str>,
+    ) -> Result<u32, nom::Err<nom::error::Error<&'a str>>> {
+        token
+            .ok_or_else(|| {
+                nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+            })?
+            .parse::<u32>()
+            .map_err(|_| {
+                nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+            })
     }
+
     /// Spec-known commands valid inside a TRACK body that we don't store.
     /// Recognized so they don't trigger the unknown-line warning.
-    fn track_starts_with_known_skipped(input: &str) -> bool {
+    fn track_keyword_is_known_skipped(keyword: &str) -> bool {
         const TRACK_BODY_SKIPPED: &[&str] = &[
             "FLAGS",
             "PREGAP",
@@ -590,14 +487,12 @@ impl CueFlacProcessor {
             "UPC_EAN",
             "SIZE_INFO",
         ];
-        TRACK_BODY_SKIPPED
-            .iter()
-            .any(|kw| Self::starts_with_keyword(input, kw))
+        TRACK_BODY_SKIPPED.contains(&keyword)
     }
     /// Spec-known global-section commands we don't store. CD-Text keywords
     /// can also appear at the global level; CDTEXTFILE references an
     /// external binary CD-Text file.
-    fn header_starts_with_known_skipped(input: &str) -> bool {
+    fn header_keyword_is_known_skipped(keyword: &str) -> bool {
         const HEADER_SKIPPED: &[&str] = &[
             "CDTEXTFILE",
             "SONGWRITER",
@@ -611,50 +506,92 @@ impl CueFlacProcessor {
             "UPC_EAN",
             "SIZE_INFO",
         ];
-        HEADER_SKIPPED
-            .iter()
-            .any(|kw| Self::starts_with_keyword(input, kw))
+        HEADER_SKIPPED.contains(&keyword)
     }
-    /// Whether `input` begins with `keyword` followed by whitespace or EOF
-    /// (so that "TRACKBALL" doesn't match keyword "TRACK").
-    fn starts_with_keyword(input: &str, keyword: &str) -> bool {
-        if !input.starts_with(keyword) {
-            return false;
+
+    fn keyword_and_rest(input: &str) -> Option<(&str, &str)> {
+        let input = input.trim_start();
+        let end = input.find(char::is_whitespace).unwrap_or(input.len());
+        if end == 0 {
+            return None;
         }
-        match input[keyword.len()..].chars().next() {
-            None => true,
-            Some(c) => c.is_whitespace(),
+        Some((&input[..end], input[end..].trim_start()))
+    }
+
+    fn quoted_value(input: &str) -> Option<&str> {
+        let input = input.trim_start();
+        let after_open = input.strip_prefix('"')?;
+        let end = after_open.find('"')?;
+        Some(&after_open[..end])
+    }
+
+    fn strip_optional_quotes(input: &str) -> &str {
+        let input = input.trim();
+        if let Some(value) = Self::quoted_value(input) {
+            value
+        } else {
+            input
         }
     }
-    /// Advance past the next line ending. If no line ending, returns "".
-    fn consume_line(input: &str) -> &str {
-        match input.find('\n') {
-            Some(idx) => &input[idx + 1..],
-            None => "",
+
+    fn parse_file_name_value<'a>(
+        input: &'a str,
+        rest: &str,
+    ) -> Result<String, nom::Err<nom::error::Error<&'a str>>> {
+        let rest = rest.trim_start();
+        if let Some(value) = Self::quoted_value(rest) {
+            return Ok(value.trim().to_string());
         }
+        let name = rest.split_whitespace().next().ok_or_else(|| {
+            nom::Err::Failure(nom::error::Error::new(
+                input,
+                nom::error::ErrorKind::TakeTill1,
+            ))
+        })?;
+        Ok(name.to_string())
     }
-    /// Return the next line of input without trailing CR/LF, without consuming.
-    fn peek_line(input: &str) -> &str {
-        let end = input.find('\n').unwrap_or(input.len());
-        let line = &input[..end];
-        line.strip_suffix('\r').unwrap_or(line)
-    }
-    /// Parse quoted string
-    fn parse_quoted_string(input: &str) -> IResult<&str, String> {
-        let (input, _) = tag("\"")(input)?;
-        let (input, content) = take_until("\"")(input)?;
-        let (input, _) = tag("\"")(input)?;
-        Ok((input, content.to_string()))
-    }
+
     /// Parse time in MM:SS:FF format and return total CUE frames (1/75th second).
     fn parse_time(input: &str) -> IResult<&str, u64> {
-        let (input, minutes) = map_res(digit1, |s: &str| s.parse::<u64>())(input)?;
-        let (input, _) = tag(":")(input)?;
-        let (input, seconds) = map_res(digit1, |s: &str| s.parse::<u64>())(input)?;
-        let (input, _) = tag(":")(input)?;
-        let (input, frames) = map_res(digit1, |s: &str| s.parse::<u64>())(input)?;
+        let mut parts = input.splitn(3, ':');
+        let minutes = Self::parse_u64_time_field(input, parts.next())?;
+        let seconds = Self::parse_u64_time_field(input, parts.next())?;
+        let frames_and_rest = parts.next().ok_or_else(|| {
+            nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+        })?;
+        let frame_end = frames_and_rest
+            .find(|c: char| !c.is_ascii_digit())
+            .unwrap_or(frames_and_rest.len());
+        if frame_end == 0 {
+            return Self::error(input, nom::error::ErrorKind::Digit);
+        }
+        let frames = frames_and_rest[..frame_end].parse::<u64>().map_err(|_| {
+            nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+        })?;
         let total_cue_frames = (minutes * 60 + seconds) * 75 + frames;
-        Ok((input, total_cue_frames))
+        Ok((&frames_and_rest[frame_end..], total_cue_frames))
+    }
+
+    fn parse_u64_time_field<'a>(
+        input: &'a str,
+        token: Option<&str>,
+    ) -> Result<u64, nom::Err<nom::error::Error<&'a str>>> {
+        token
+            .ok_or_else(|| {
+                nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+            })?
+            .parse::<u64>()
+            .map_err(|_| {
+                nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+            })
+    }
+
+    fn error<T>(input: &str, kind: nom::error::ErrorKind) -> IResult<&str, T> {
+        Err(nom::Err::Error(nom::error::Error::new(input, kind)))
+    }
+
+    fn failure<T>(input: &str, kind: nom::error::ErrorKind) -> IResult<&str, T> {
+        Err(nom::Err::Failure(nom::error::Error::new(input, kind)))
     }
 }
 #[cfg(test)]

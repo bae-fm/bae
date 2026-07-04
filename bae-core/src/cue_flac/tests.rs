@@ -13,50 +13,6 @@ fn test_parse_time() {
     }
 }
 #[test]
-fn test_parse_quoted_string() {
-    let result = CueFlacProcessor::parse_quoted_string("\"Test Album\"");
-    assert!(result.is_ok());
-    let (_, string) = result.unwrap();
-    assert_eq!(string, "Test Album");
-}
-#[test]
-fn test_parse_quoted_string_with_special_chars() {
-    let result = CueFlacProcessor::parse_quoted_string(
-        "\"Track with Sections: i. First Part / ii. Second Part / iii. Third Part\"",
-    );
-    assert!(result.is_ok());
-    let (_, string) = result.unwrap();
-    assert_eq!(
-        string,
-        "Track with Sections: i. First Part / ii. Second Part / iii. Third Part",
-    );
-}
-#[test]
-fn test_parse_comment_line() {
-    let input = "REM GENRE \"Genre Name\"\n";
-    let result = CueFlacProcessor::parse_comment_line(input);
-    assert!(result.is_ok());
-    let (remaining, _) = result.unwrap();
-    assert_eq!(remaining, "");
-}
-#[test]
-fn test_parse_file_line() {
-    // FILE lines: a quoted name keeps its spaces; an unquoted name stops at
-    // the first whitespace.
-    let cases = [
-        (
-            "FILE \"Artist Name - Album Title.flac\" WAVE\n",
-            "Artist Name - Album Title.flac",
-        ),
-        ("FILE album.ape WAVE\n", "album.ape"),
-    ];
-    for (input, expected) in cases {
-        let (remaining, name) = CueFlacProcessor::parse_file_line(input).unwrap();
-        assert_eq!(remaining, "", "input: {input}");
-        assert_eq!(name, expected, "input: {input}");
-    }
-}
-#[test]
 fn parse_multi_file_cue_stamps_per_track_file_reference() {
     // One FILE per TRACK, the spec shape used by lossy-format rips
     // (rippers don't concatenate per-track files to avoid re-encoding).
