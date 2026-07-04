@@ -83,8 +83,8 @@ impl LibraryManager {
     /// Enqueue releases to pin for offline. Skips ids already in the queue (any
     /// state) or already pinned; for each new one, resolves its title /
     /// file_count / total_size from its storage summary so the Downloads pane
-    /// can render the row without a re-query. Spawns the single worker on the
-    /// first enqueue, then wakes it. Emits a fresh `DownloadQueueChanged`.
+    /// can render the row without a re-query. Wakes the parked worker and emits
+    /// a fresh `DownloadQueueChanged`.
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) {
         // One timestamp for the whole batch — read the clock once, not per row.
         let enqueued_at = self.clock.now().timestamp_millis();
@@ -125,7 +125,6 @@ impl LibraryManager {
         }
 
         if added_any {
-            self.ensure_download_worker();
             self.download_queue.wake();
             self.emit_download_queue_changed();
         }
@@ -170,22 +169,11 @@ impl LibraryManager {
         self.emit_download_queue_changed();
     }
 
-    /// Spawn the single serial download worker if it isn't running yet. Claimed
-    /// exactly once across all manager clones; safe to call on every enqueue.
-    fn ensure_download_worker(&self) {
-        if self.download_queue.claim_worker_spawn() {
-            let manager = self.clone();
-            self.runtime_handle.spawn(async move {
-                manager.run_download_worker().await;
-            });
-        }
-    }
-
     /// The serial download worker loop. Parks on the queue's `Notify` whenever
     /// the queue is paused or holds nothing queued; otherwise takes the next
     /// queued release, runs its pin, and repeats. Process strictly one release
     /// at a time.
-    async fn run_download_worker(&self) {
+    pub(super) async fn run_download_worker(&self) {
         loop {
             let Some(op) = self.download_queue.next_queued() else {
                 self.download_queue.wait().await;

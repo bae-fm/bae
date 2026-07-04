@@ -19,6 +19,7 @@
 //! module here.
 
 use std::collections::HashMap;
+use std::future::Future;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::path::Path;
 use std::path::PathBuf;
@@ -672,7 +673,7 @@ impl LibraryManager {
             cloudkit_ops,
         );
 
-        Ok(LibraryManager {
+        let manager = LibraryManager {
             database,
             library_dir,
             config_handle,
@@ -688,7 +689,9 @@ impl LibraryManager {
             export_queue: Arc::new(crate::library::ExportQueue::new()),
             #[cfg(any(test, feature = "test-utils"))]
             test_overrides: TestOverrides::default(),
-        })
+        };
+        manager.start_queue_workers();
+        Ok(manager)
     }
 
     /// Create a library manager over an already-open database handle. Production
@@ -720,7 +723,7 @@ impl LibraryManager {
             None,
         );
 
-        LibraryManager {
+        let manager = LibraryManager {
             database,
             library_dir,
             config_handle,
@@ -736,7 +739,27 @@ impl LibraryManager {
             export_queue: Arc::new(crate::library::ExportQueue::new()),
             #[cfg(any(test, feature = "test-utils"))]
             test_overrides: TestOverrides::default(),
-        }
+        };
+        manager.start_queue_workers();
+        manager
+    }
+
+    fn start_queue_workers(&self) {
+        self.spawn_queue_worker(|manager| async move {
+            manager.run_download_worker().await;
+        });
+        self.spawn_queue_worker(|manager| async move {
+            manager.run_export_worker().await;
+        });
+    }
+
+    fn spawn_queue_worker<F, Fut>(&self, worker: F)
+    where
+        F: FnOnce(Self) -> Fut + Send + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        let manager = self.clone();
+        self.runtime_handle.spawn(worker(manager));
     }
 
     /// Connect a real `SyncManager` over an injected cloud home for tests, so the

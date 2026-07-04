@@ -69,7 +69,6 @@ pub struct ReleaseQueue<Extra> {
 struct State<Extra> {
     ops: Vec<ReleaseQueueOp<Extra>>,
     paused: bool,
-    worker_spawned: bool,
     active_abort: Option<tokio::task::AbortHandle>,
 }
 
@@ -79,7 +78,6 @@ impl<Extra: Clone> ReleaseQueue<Extra> {
             state: Mutex::new(State {
                 ops: Vec::new(),
                 paused: false,
-                worker_spawned: false,
                 active_abort: None,
             }),
             notify: Notify::new(),
@@ -100,16 +98,6 @@ impl<Extra: Clone> ReleaseQueue<Extra> {
 
     pub fn is_paused(&self) -> bool {
         self.state.lock().unwrap().paused
-    }
-
-    pub fn claim_worker_spawn(&self) -> bool {
-        let mut state = self.state.lock().unwrap();
-        if state.worker_spawned {
-            false
-        } else {
-            state.worker_spawned = true;
-            true
-        }
     }
 
     pub fn enqueue(&self, op: ReleaseQueueOp<Extra>) -> bool {
@@ -316,13 +304,6 @@ mod tests {
         assert!(q.is_paused());
         assert!(q.set_paused(false));
         assert!(!q.is_paused());
-    }
-
-    #[test]
-    fn worker_spawn_claimed_exactly_once() {
-        let q: ReleaseQueue<()> = ReleaseQueue::new();
-        assert!(q.claim_worker_spawn());
-        assert!(!q.claim_worker_spawn());
     }
 
     #[test]

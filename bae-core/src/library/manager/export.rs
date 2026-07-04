@@ -16,8 +16,8 @@ impl LibraryManager {
     /// Enqueue a release to export its files verbatim to `target_dir`. Skips ids
     /// already in the queue (any state); otherwise resolves its title /
     /// file_count / total_size from its storage summary so the Exporting pane can
-    /// render the row without a re-query. Spawns the single worker on the first
-    /// enqueue, then wakes it. Emits a fresh `ExportQueueChanged`.
+    /// render the row without a re-query. Wakes the parked worker and emits a
+    /// fresh `ExportQueueChanged`.
     pub async fn enqueue_export(
         &self,
         release_id: &str,
@@ -55,7 +55,6 @@ impl LibraryManager {
             state: crate::library::ExportState::Queued,
         };
         if self.export_queue.enqueue(op) {
-            self.ensure_export_worker();
             self.export_queue.wake();
             self.emit_export_queue_changed();
         }
@@ -92,21 +91,10 @@ impl LibraryManager {
         self.emit_export_queue_changed();
     }
 
-    /// Spawn the single serial export worker if it isn't running yet. Claimed
-    /// exactly once across all manager clones; safe to call on every enqueue.
-    fn ensure_export_worker(&self) {
-        if self.export_queue.claim_worker_spawn() {
-            let manager = self.clone();
-            self.runtime_handle.spawn(async move {
-                manager.run_export_worker().await;
-            });
-        }
-    }
-
     /// The serial export worker loop. Parks on the queue's `Notify` whenever the
     /// queue is paused or holds nothing queued; otherwise takes the next queued
     /// release and copies it out. Processes strictly one release at a time.
-    async fn run_export_worker(&self) {
+    pub(super) async fn run_export_worker(&self) {
         loop {
             let Some(op) = self.export_queue.next_queued() else {
                 self.export_queue.wait().await;
