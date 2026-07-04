@@ -1,12 +1,10 @@
 use crate::import::handle::ImportServiceHandle;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::import::handle::{ScanEvent, WatcherCommand};
 use crate::import::types::{
     ImportCommand, ImportProgress, MetadataRef, MetadataSource, StorageMode,
 };
 use crate::library::LibraryManager;
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use {
     crate::db::{
         DbAlbum, DbAlbumArtist, DbFile, DbRelease, DbReleaseArtistRole, DbReleaseMetadata, DbTrack,
@@ -27,21 +25,14 @@ use {
     std::time::Duration,
 };
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use tokio::sync::{broadcast, mpsc};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use tracing::{error, info, warn};
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod cover_image;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod format_prep;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod progress;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod reconcile;
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use format_prep::resolve_file_content_type;
 
 /// Metadata-prep output for a folder import.
@@ -49,7 +40,6 @@ use format_prep::resolve_file_content_type;
 /// Resolves a release against MB/Discogs, matches it to an existing album,
 /// records the DbImport row, and remaps parsed artist IDs to their actual
 /// DB IDs. The caller takes what it needs.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 struct PreparedMetadata {
     db_album: DbAlbum,
     db_release: DbRelease,
@@ -70,7 +60,6 @@ struct PreparedMetadata {
     artist_name: String,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn storage_mode_label(mode: &StorageMode) -> &'static str {
     match mode {
         StorageMode::Remote => "remote",
@@ -89,7 +78,6 @@ pub struct ImportService {
 
 /// The watched roots that contain at least one of the `changed` paths, in
 /// `roots` order and without duplicates.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn affected_roots(changed: &[&Path], roots: &[PathBuf]) -> Vec<PathBuf> {
     roots
         .iter()
@@ -98,7 +86,6 @@ fn affected_roots(changed: &[&Path], roots: &[PathBuf]) -> Vec<PathBuf> {
         .collect()
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl ImportService {
     /// The folder watcher. Owns a debouncing filesystem watcher and, per watched
     /// folder, the set of candidate keys it last emitted. A `Watch` command
@@ -1171,7 +1158,6 @@ impl ImportService {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn import_trace_line(
     ts: String,
     import_id: &str,
@@ -1426,7 +1412,6 @@ fn names_equal(a: &[String], b: &[String]) -> bool {
             .all(|(x, y)| x.eq_ignore_ascii_case(y))
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn common_ancestor<'a>(a: &'a Path, b: &Path) -> &'a Path {
     let mut longest = a;
     loop {

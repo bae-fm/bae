@@ -46,7 +46,6 @@ pub enum ImportEvent {
     /// than the candidate row's coarse step. Separate from `ImportProgress` so
     /// it bypasses the release/import progress subscribers — it carries the
     /// candidate key, not a release/import id.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     ImportLoudnessProgress {
         candidate_key: String,
         tracks_done: u32,
@@ -59,7 +58,6 @@ pub enum ImportEvent {
     /// `identify` module; carries the full state payload plus the pre-shaped
     /// signals toolbar (the interactive badge row) projected from the same
     /// transition, so the UI renders both from one event.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     IdentifyStateChanged {
         candidate_key: String,
         state: crate::identify::IdentifyState,
@@ -69,7 +67,6 @@ pub enum ImportEvent {
     /// classified text). Core emits this on every transition — extraction
     /// start, each source/OCR completion, natural end, and cancellation. The
     /// reducer writes it wholesale; no partial-update logic needed.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     SignalsUpdated {
         candidate_key: String,
         signals: crate::signals::Signals,
