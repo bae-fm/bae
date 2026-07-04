@@ -40,32 +40,6 @@ pub enum UploadState {
     Failed { last_error: String },
 }
 
-/// One upload operation. Carries everything the UI needs to render a queue row
-/// and everything the snapshot needs to compute per-release and aggregate
-/// progress.
-#[derive(Debug, Clone)]
-pub struct UploadOp {
-    pub id: i64,
-    pub file_id: String,
-    /// Owning release. `None` for an orphaned file_id (release deleted but
-    /// outbox entry not yet drained).
-    pub release_id: Option<String>,
-    /// Album title. `None` for an orphaned file_id. Consumed by the Windows FFI
-    /// (`bae-windows-ffi`), whose upload rows label by album; the macOS/iOS/
-    /// Android bridge instead renders `display_name`.
-    pub title: Option<String>,
-    /// What to show as the row's primary label: the file's original on-disk
-    /// name, or the cloud key when the backing `release_files` row is gone
-    /// (orphaned file_id). Always populated so the UI renders it directly.
-    pub display_name: String,
-    pub cloud_key: String,
-    pub bytes_total: u64,
-    /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
-    pub created_at: i64,
-    pub attempt_count: i64,
-    pub state: UploadState,
-}
-
 /// One pending cloud delete. Deletes have no progress concept — they're a
 /// single DELETE call per entry.
 #[derive(Debug, Clone)]
@@ -125,6 +99,14 @@ impl UploadProgress {
             UploadState::Failed { .. } => self.failed += 1,
         }
     }
+
+    fn add_progress(&mut self, progress: &UploadProgress) {
+        self.queued += progress.queued;
+        self.active += progress.active;
+        self.failed += progress.failed;
+        self.bytes_done += progress.bytes_done;
+        self.bytes_total += progress.bytes_total;
+    }
 }
 
 /// A release's pending uploads, grouped for the queue pane so it renders one row
@@ -145,15 +127,10 @@ pub struct UploadReleaseGroup {
 /// upload-related the UI renders.
 #[derive(Debug, Clone, Default)]
 pub struct OutboxSnapshot {
-    pub uploads: Vec<UploadOp>,
-    /// `uploads` grouped by release, in first-seen order — the per-release rows
-    /// the queue pane renders.
+    /// Pending uploads grouped by release, in first-seen order — the rows the
+    /// queue pane renders.
     pub upload_groups: Vec<UploadReleaseGroup>,
     pub deletes: Vec<DeleteOp>,
-    /// Per-release aggregate, keyed by release id. Drives the "Uploading (N)"
-    /// badge on each storage row and gates per-release storage actions.
-    /// Releases with no pending work are absent from the map.
-    pub per_release: HashMap<String, UploadProgress>,
     /// Sum across all uploads — drives the queue counts, ETA, and summary band.
     pub total: UploadProgress,
     /// Total bytes of the files uploading *right now* (Active state). The master
@@ -162,7 +139,6 @@ pub struct OutboxSnapshot {
     /// completed files drain from the queue and shrink both numerator and
     /// denominator.
     pub active_bytes_total: u64,
-    pub pending_deletes: u32,
     /// True when the user has paused the upload pipeline. Drives the
     /// pause/resume toggle in the Storage Manager's bottom panel and
     /// suppresses the throughput display.
@@ -176,6 +152,24 @@ pub struct OutboxSnapshot {
     pub eta_seconds: Option<u64>,
 }
 
+impl OutboxSnapshot {
+    pub fn per_release_progress(&self) -> HashMap<String, UploadProgress> {
+        self.upload_groups
+            .iter()
+            .filter_map(|group| {
+                group
+                    .release_id
+                    .clone()
+                    .map(|release_id| (release_id, group.progress.clone()))
+            })
+            .collect()
+    }
+
+    pub fn pending_delete_count(&self) -> u32 {
+        self.deletes.len() as u32
+    }
+}
+
 /// Build the snapshot from the outbox rows, the in-flight upload map (file_id →
 /// live `bytes_done`), the rolling-window throughput tracker, and the
 /// user-driven pause flag.
@@ -187,11 +181,9 @@ pub(crate) async fn build_outbox_snapshot(
 ) -> Result<OutboxSnapshot, coven::DbError> {
     let rows = db.outbox_items().await?;
 
-    let mut uploads = Vec::new();
     let mut deletes = Vec::new();
     let mut upload_groups: Vec<UploadReleaseGroup> = Vec::new();
     let mut group_index: HashMap<Option<String>, usize> = HashMap::new();
-    let mut total = UploadProgress::default();
     let mut active_bytes_total = 0u64;
 
     for row in rows {
@@ -227,24 +219,19 @@ pub(crate) async fn build_outbox_snapshot(
                         cloud_key.clone()
                     }
                 };
-                let upload = UploadOp {
-                    id: row.id,
-                    file_id,
-                    release_id: row.release_id,
-                    title: row.title,
-                    display_name,
-                    cloud_key,
-                    bytes_total,
-                    created_at: row.created_at,
-                    attempt_count: row.attempt_count,
-                    state,
-                };
-                total.add_upload(&upload.state, upload.bytes_total);
-                if matches!(upload.state, UploadState::Active { .. }) {
-                    active_bytes_total += upload.bytes_total;
+                if matches!(state, UploadState::Active { .. }) {
+                    active_bytes_total += bytes_total;
                 }
-                add_upload_group(&upload, &mut upload_groups, &mut group_index);
-                uploads.push(upload);
+                add_upload_group(
+                    &file_id,
+                    row.release_id,
+                    row.title,
+                    display_name,
+                    &state,
+                    bytes_total,
+                    &mut upload_groups,
+                    &mut group_index,
+                );
             }
             DbOutboxOperation::Delete => {
                 deletes.push(DeleteOp {
@@ -256,7 +243,12 @@ pub(crate) async fn build_outbox_snapshot(
         }
     }
 
-    let pending_deletes = deletes.len() as u32;
+    let total = upload_groups
+        .iter()
+        .fold(UploadProgress::default(), |mut total, group| {
+            total.add_progress(&group.progress);
+            total
+        });
 
     // When paused, hide throughput/ETA — uploads aren't flowing so the rolling
     // window decays toward zero anyway, and rendering "2.3 MB/s" beside a
@@ -273,24 +265,11 @@ pub(crate) async fn build_outbox_snapshot(
         Some(bytes_remaining / throughput_bps)
     };
 
-    let per_release = upload_groups
-        .iter()
-        .filter_map(|group| {
-            group
-                .release_id
-                .clone()
-                .map(|release_id| (release_id, group.progress.clone()))
-        })
-        .collect();
-
     Ok(OutboxSnapshot {
-        uploads,
         upload_groups,
         deletes,
-        per_release,
         total,
         active_bytes_total,
-        pending_deletes,
         paused,
         throughput_bps,
         eta_seconds,
@@ -298,25 +277,30 @@ pub(crate) async fn build_outbox_snapshot(
 }
 
 fn add_upload_group(
-    op: &UploadOp,
+    file_id: &str,
+    release_id: Option<String>,
+    title: Option<String>,
+    display_name: String,
+    state: &UploadState,
+    bytes_total: u64,
     upload_groups: &mut Vec<UploadReleaseGroup>,
     group_index: &mut HashMap<Option<String>, usize>,
 ) {
-    let idx = *group_index.entry(op.release_id.clone()).or_insert_with(|| {
+    let idx = *group_index.entry(release_id.clone()).or_insert_with(|| {
         // The album title, or the file's own label for an orphan (a release
         // deleted mid-upload, so the row has no album to name it by).
-        let display_title = match &op.title {
-            Some(title) => title.clone(),
+        let display_title = match title {
+            Some(title) => title,
             None => {
                 debug!(
-                    file_id = %op.file_id,
+                    file_id = %file_id,
                     "outbox upload group has no album title (orphaned); labelling by file name"
                 );
-                op.display_name.clone()
+                display_name
             }
         };
         upload_groups.push(UploadReleaseGroup {
-            release_id: op.release_id.clone(),
+            release_id: release_id.clone(),
             display_title,
             file_count: 0,
             progress: UploadProgress::default(),
@@ -325,7 +309,7 @@ fn add_upload_group(
     });
     let group = &mut upload_groups[idx];
     group.file_count += 1;
-    group.progress.add_upload(&op.state, op.bytes_total);
+    group.progress.add_upload(state, bytes_total);
 }
 
 #[cfg(test)]
@@ -443,22 +427,6 @@ mod tests {
         }
 
         (db, "file-small".into(), "file-large".into(), tmp)
-    }
-
-    #[tokio::test]
-    async fn snapshot_labels_rows_with_per_file_names() {
-        let (db, _small, _large, _tmp) = seed_two_queued_uploads().await;
-        let snapshot = build_outbox_snapshot(&db, &HashMap::new(), &UploadThroughput::new(), false)
-            .await
-            .unwrap();
-
-        let mut names: Vec<_> = snapshot
-            .uploads
-            .iter()
-            .map(|u| u.display_name.clone())
-            .collect();
-        names.sort();
-        assert_eq!(names, ["01 Track Title.flac", "02 Track Title.flac"]);
     }
 
     #[tokio::test]

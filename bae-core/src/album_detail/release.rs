@@ -51,7 +51,7 @@ pub struct ReleaseSummary {
     /// The UI renders these (the album-detail "Storage…" sheet and the Storage
     /// Manager row context menu); it never re-derives availability. Empty with
     /// no cloud home. The in-flight-uploads gate lives in the UI: it consults
-    /// the outbox snapshot's `per_release` map before showing these actions.
+    /// the outbox snapshot's release groups before showing these actions.
     pub storage_actions: Vec<ReleaseStorageAction>,
     pub file_count: i64,
     pub total_size: i64,

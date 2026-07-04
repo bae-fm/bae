@@ -240,8 +240,8 @@ pub struct BridgeReleaseSummary {
     /// never conflates "in the cloud" with "kept offline".
     pub pinned: bool,
     /// Storage transitions available right now, gated on cloud-home by the
-    /// core. The in-flight-uploads gate lives in the UI: it consults the
-    /// outbox snapshot's `per_release` map before showing actions. The Storage
+    /// core. The in-flight-uploads gate lives in the UI: it consults
+    /// per-release outbox progress before showing actions. The Storage
     /// Manager row context menu renders these.
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
     pub file_count: i64,
@@ -269,8 +269,8 @@ pub struct BridgeRelease {
     /// device — the ORTHOGONAL coven-cache property, separate from `storage_state`.
     pub pinned: bool,
     /// Storage transitions available right now, gated on cloud-home by the
-    /// core. The in-flight-uploads gate lives in the UI: it consults the
-    /// outbox snapshot's `per_release` map before showing actions.
+    /// core. The in-flight-uploads gate lives in the UI: it consults
+    /// per-release outbox progress before showing actions.
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
     pub tracks: Vec<BridgeTrack>,
     pub track_groups: Vec<BridgeTrackGroup>,
@@ -1787,20 +1787,21 @@ pub struct BridgeUploadReleaseGroup {
 
 /// The cloud-outbox processing snapshot the Storage Manager renders. The
 /// counts, per-release aggregates, one-line `summary`, throughput, and ETA
-/// are computed in bae-core; the UI renders them verbatim.
+/// are computed from bae-core's grouped snapshot; the UI renders them verbatim.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeOutboxSnapshot {
     /// Pending uploads grouped by release for the queue pane's per-release rows.
     pub upload_groups: Vec<BridgeUploadReleaseGroup>,
     pub deletes: Vec<BridgeDeleteOp>,
-    /// Per-release aggregate, keyed by release id. Releases with no pending
-    /// work are absent from the map.
+    /// Per-release aggregate derived from `upload_groups`, keyed by release id.
+    /// Releases with no pending work are absent from the map.
     pub per_release: std::collections::HashMap<String, BridgeUploadProgress>,
     pub total: BridgeUploadProgress,
     /// Total bytes of the files uploading right now. The master progress bar
     /// shows `total.bytes_done` of this — the live transfer — rather than
     /// progress against the whole backlog.
     pub active_bytes_total: u64,
+    /// Derived from `deletes.len()`.
     pub pending_deletes: u32,
     /// True when the user has paused the upload pipeline. Drives the
     /// pause/resume toggle and suppresses throughput/ETA in the UI.

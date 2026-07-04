@@ -16,8 +16,7 @@ pub use export::ExportFormat;
 pub use export_snapshot::{ExportOp, ExportProgress, ExportSnapshot, ExportState};
 pub use manager::*;
 pub use outbox_snapshot::{
-    DeleteOp, OutboxSnapshot, UploadActivity, UploadOp, UploadProgress, UploadReleaseGroup,
-    UploadState,
+    DeleteOp, OutboxSnapshot, UploadActivity, UploadProgress, UploadReleaseGroup, UploadState,
 };
 pub use release_queue::ReleaseQueue;
 pub use upload_throughput::UploadThroughput;

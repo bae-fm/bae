@@ -1535,7 +1535,14 @@ fn convert_outbox_snapshot(
 ) -> crate::types::BridgeOutboxSnapshot {
     use crate::types::{BridgeDeleteOp, BridgeOutboxSnapshot, BridgeUploadReleaseGroup};
 
-    let upload_groups = snapshot
+    let per_release = snapshot
+        .per_release_progress()
+        .into_iter()
+        .map(|(release_id, progress)| (release_id, convert_upload_progress(progress)))
+        .collect();
+    let pending_deletes = snapshot.pending_delete_count();
+
+    let upload_groups: Vec<_> = snapshot
         .upload_groups
         .into_iter()
         .map(|g| BridgeUploadReleaseGroup {
@@ -1546,7 +1553,7 @@ fn convert_outbox_snapshot(
         })
         .collect();
 
-    let deletes = snapshot
+    let deletes: Vec<_> = snapshot
         .deletes
         .into_iter()
         .map(|op| BridgeDeleteOp {
@@ -1556,19 +1563,13 @@ fn convert_outbox_snapshot(
         })
         .collect();
 
-    let per_release = snapshot
-        .per_release
-        .into_iter()
-        .map(|(k, v)| (k, convert_upload_progress(v)))
-        .collect();
-
     BridgeOutboxSnapshot {
         upload_groups,
         deletes,
         per_release,
         total: convert_upload_progress(snapshot.total),
         active_bytes_total: snapshot.active_bytes_total,
-        pending_deletes: snapshot.pending_deletes,
+        pending_deletes,
         paused: snapshot.paused,
         throughput_bps: snapshot.throughput_bps,
         eta_seconds: snapshot.eta_seconds,

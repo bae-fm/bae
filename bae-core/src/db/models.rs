@@ -1466,7 +1466,7 @@ impl DbOutboxOperation {
 
 /// One row from the `cloud_outbox` join: the queue entry's own columns plus
 /// the joined release id, album title, and file size. The snapshot builder
-/// uses these to construct `UploadOp` / `DeleteOp`.
+/// uses these to construct grouped uploads and deletes.
 ///
 /// `file_id` is `None` for a delete (it carries no file id — the blob is named
 /// by `cloud_key`); only an upload has one. `release_id`, `title`, `file_name`,

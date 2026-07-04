@@ -1746,8 +1746,6 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
 
 #[tokio::test]
 async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
-    use crate::library::UploadState;
-
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
@@ -1775,16 +1773,14 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     assert_eq!(snap.total.failed, 0);
     assert_eq!(snap.total.bytes_total, 1000);
     assert_eq!(snap.total.bytes_done, 0);
-    assert_eq!(snap.uploads.len(), 1);
-    let item_id = snap.uploads[0].id;
-    assert_eq!(snap.uploads[0].title.as_deref(), Some("Test Album"));
-    assert_eq!(
-        snap.uploads[0].release_id.as_deref(),
-        Some(release.id.as_str())
-    );
-    assert_eq!(snap.uploads[0].bytes_total, 1000);
-    assert_eq!(snap.uploads[0].state, UploadState::Queued);
-    assert_eq!(snap.per_release.get(&release.id).map(|p| p.queued), Some(1));
+    assert_eq!(snap.upload_groups.len(), 1);
+    let group = &snap.upload_groups[0];
+    assert_eq!(group.display_title, "Test Album");
+    assert_eq!(group.release_id.as_deref(), Some(release.id.as_str()));
+    assert_eq!(group.file_count, 1);
+    assert_eq!(group.progress.queued, 1);
+    assert_eq!(group.progress.bytes_total, 1000);
+    let item_id = manager.database.get_pending_cloud_uploads().await.unwrap()[0].id;
 
     // In flight now: the in-memory map flips it to active, starting at zero
     // bytes done.
@@ -1797,7 +1793,7 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.total.active, 1);
     assert_eq!(snap.total.queued, 0);
-    assert_eq!(snap.uploads[0].state, UploadState::Active { bytes_done: 0 });
+    assert_eq!(snap.upload_groups[0].progress.active, 1);
     assert_eq!(snap.total.bytes_done, 0);
 
     // Mid-upload progress advances the live byte count: the snapshot's
@@ -1810,16 +1806,10 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
         .unwrap()
         .insert(file.id.clone(), 400);
     let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(
-        snap.uploads[0].state,
-        UploadState::Active { bytes_done: 400 }
-    );
+    assert_eq!(snap.upload_groups[0].progress.active, 1);
+    assert_eq!(snap.upload_groups[0].progress.bytes_done, 400);
     assert_eq!(snap.total.bytes_done, 400);
     assert_eq!(snap.total.bytes_total, 1000);
-    assert_eq!(
-        snap.per_release.get(&release.id).map(|p| p.bytes_done),
-        Some(400)
-    );
     manager
         .sync
         .outbox_in_flight()
@@ -1836,11 +1826,10 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.total.failed, 1);
     assert_eq!(snap.total.queued, 0);
-    assert_eq!(snap.uploads[0].attempt_count, 1);
-    match &snap.uploads[0].state {
-        UploadState::Failed { last_error } => assert_eq!(last_error, "boom"),
-        other => panic!("expected Failed, got {other:?}"),
-    }
+    assert_eq!(snap.upload_groups[0].progress.failed, 1);
+    let rows = manager.database.outbox_items().await.unwrap();
+    assert_eq!(rows[0].attempt_count, 1);
+    assert_eq!(rows[0].last_error.as_deref(), Some("boom"));
 
     // Reset backoff clears the timestamp but keeps the failure record.
     manager.database.reset_cloud_outbox_backoff().await.unwrap();
@@ -1853,9 +1842,8 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     // Cancel dequeues the entry; the snapshot empties.
     manager.cancel_outbox_item(item_id).await.unwrap();
     let snap = manager.outbox_snapshot().await.unwrap();
-    assert!(snap.uploads.is_empty());
+    assert!(snap.upload_groups.is_empty());
     assert_eq!(snap.total.failed, 0);
-    assert!(!snap.per_release.contains_key(&release.id));
 }
 
 /// The real `ReleaseUploadObserver` drives the snapshot's live byte count:
@@ -1863,7 +1851,6 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
 /// `bytes_done` so the aggregate and per-release bars move mid-file.
 #[tokio::test]
 async fn observer_progress_advances_snapshot_bytes_done() {
-    use crate::library::UploadState;
     use coven::BlobTransitionObserver;
 
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -1898,22 +1885,17 @@ async fn observer_progress_advances_snapshot_bytes_done() {
 
     observer.on_blob_upload_started(&file.id).await;
     let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(snap.uploads[0].state, UploadState::Active { bytes_done: 0 });
+    assert_eq!(snap.upload_groups[0].progress.active, 1);
+    assert_eq!(snap.upload_groups[0].progress.bytes_done, 0);
     assert_eq!(snap.total.bytes_done, 0);
 
     // A mid-upload progress report advances the live count without the file
     // completing.
     observer.on_blob_upload_progress(&file.id, 600, 1000).await;
     let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(
-        snap.uploads[0].state,
-        UploadState::Active { bytes_done: 600 }
-    );
+    assert_eq!(snap.upload_groups[0].progress.active, 1);
+    assert_eq!(snap.upload_groups[0].progress.bytes_done, 600);
     assert_eq!(snap.total.bytes_done, 600);
-    assert_eq!(
-        snap.per_release.get(&release.id).map(|p| p.bytes_done),
-        Some(600)
-    );
     // The rolling-window tracker saw the 600-byte delta, so the rate is
     // non-zero before the file even finishes.
     assert!(manager.sync.upload_throughput().bytes_per_sec() > 0);
@@ -1924,7 +1906,7 @@ async fn observer_progress_advances_snapshot_bytes_done() {
     observer.on_blob_uploaded(&file.id).await;
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.total.active, 0);
-    assert_eq!(snap.uploads[0].state, UploadState::Queued);
+    assert_eq!(snap.upload_groups[0].progress.queued, 1);
 }
 
 /// Insert a remote, not-pinned release with one file and return its id.

@@ -2001,8 +2001,8 @@ struct FfiStorageRow {
     pinned: bool,
     /// The storage transitions this release allows right now, gated on cloud
     /// home by the core. The in-flight-uploads gate lives in the UI: it reads
-    /// `OutboxSnapshot.per_release[release_id]` and suppresses these actions
-    /// when the release has uploads in flight.
+    /// per-release outbox progress and suppresses these actions when the release
+    /// has uploads in flight.
     actions: Vec<String>,
 }
 
@@ -2235,7 +2235,7 @@ fn upload_progress_to_ffi(p: &bae_core::library::UploadProgress) -> FfiUploadPro
 }
 
 fn outbox_snapshot_to_ffi(snapshot: &bae_core::library::OutboxSnapshot) -> FfiOutboxSnapshot {
-    let upload_groups = snapshot
+    let upload_groups: Vec<_> = snapshot
         .upload_groups
         .iter()
         .map(|g| FfiUploadReleaseGroup {
@@ -2245,7 +2245,12 @@ fn outbox_snapshot_to_ffi(snapshot: &bae_core::library::OutboxSnapshot) -> FfiOu
             progress: upload_progress_to_ffi(&g.progress),
         })
         .collect();
-    let deletes = snapshot
+    let per_release = snapshot
+        .per_release_progress()
+        .into_iter()
+        .map(|(release_id, progress)| (release_id, upload_progress_to_ffi(&progress)))
+        .collect();
+    let deletes: Vec<_> = snapshot
         .deletes
         .iter()
         .map(|op| FfiDeleteOp {
@@ -2253,17 +2258,12 @@ fn outbox_snapshot_to_ffi(snapshot: &bae_core::library::OutboxSnapshot) -> FfiOu
             cloud_key: op.cloud_key.clone(),
         })
         .collect();
-    let per_release = snapshot
-        .per_release
-        .iter()
-        .map(|(k, v)| (k.clone(), upload_progress_to_ffi(v)))
-        .collect();
     FfiOutboxSnapshot {
         upload_groups,
         deletes,
         per_release,
         total: upload_progress_to_ffi(&snapshot.total),
-        pending_deletes: snapshot.pending_deletes,
+        pending_deletes: snapshot.pending_delete_count(),
         paused: snapshot.paused,
         throughput_bps: snapshot.throughput_bps,
         eta_seconds: snapshot.eta_seconds,

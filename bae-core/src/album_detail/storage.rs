@@ -29,7 +29,7 @@ pub struct ReleaseStorageSummary {
     pub pinned: bool,
     /// The storage transitions this release allows now, gated on cloud-home
     /// only. The in-flight-uploads gate lives in the UI: it suppresses these
-    /// actions when `OutboxSnapshot.per_release[release_id]` is non-empty.
+    /// actions when the outbox snapshot has a group for this release.
     pub storage_actions: Vec<ReleaseStorageAction>,
     pub file_count: i64,
     pub total_size: i64,

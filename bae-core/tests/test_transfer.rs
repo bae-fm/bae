@@ -256,11 +256,12 @@ async fn make_remote_uploads_are_visible_in_snapshot_before_drain() {
         named.len() as u32,
         "every file is queued in the snapshot immediately after make-Remote"
     );
-    let per = snap
-        .per_release
-        .get(&release_id)
-        .expect("the uploading release is present in per_release");
-    assert_eq!(per.queued, named.len() as u32);
+    let group = snap
+        .upload_groups
+        .iter()
+        .find(|group| group.release_id.as_deref() == Some(release_id.as_str()))
+        .expect("the uploading release is present in upload_groups");
+    assert_eq!(group.progress.queued, named.len() as u32);
 }
 
 // ---------------------------------------------------------------------------

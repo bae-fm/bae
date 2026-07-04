@@ -40,6 +40,30 @@ fn set_keyring_credential(
     Ok(())
 }
 
+fn delete_keyring_credential(
+    ks: &KeyService,
+    account_base: &str,
+    deleted_message: &'static str,
+    missing_message: Option<&'static str>,
+) -> Result<(), KeyError> {
+    match keyring_core::Entry::new(keyring_service(), &account(ks, account_base))
+        .map_err(map_keyring_error)?
+        .delete_credential()
+    {
+        Ok(()) => {
+            info!("{deleted_message}");
+            Ok(())
+        }
+        Err(keyring_core::Error::NoEntry) => {
+            if let Some(message) = missing_message {
+                warn!("{message}");
+            }
+            Ok(())
+        }
+        Err(e) => Err(map_keyring_error(e)),
+    }
+}
+
 /// bae-domain credentials layered on coven's `KeyService`: the Discogs API key
 /// and the local MCP bearer token. Bring this trait into scope to call these on
 /// a `KeyService`.
@@ -77,20 +101,12 @@ impl BaeKeyServiceExt for KeyService {
     }
 
     fn delete_discogs_key(&self) -> Result<(), KeyError> {
-        match keyring_core::Entry::new(keyring_service(), &account(self, "discogs_api_key"))
-            .map_err(map_keyring_error)?
-            .delete_credential()
-        {
-            Ok(()) => {
-                info!("Discogs API key deleted from keyring");
-                Ok(())
-            }
-            Err(keyring_core::Error::NoEntry) => {
-                warn!("Tried to delete Discogs key but none was stored");
-                Ok(())
-            }
-            Err(e) => Err(map_keyring_error(e)),
-        }
+        delete_keyring_credential(
+            self,
+            "discogs_api_key",
+            "Discogs API key deleted from keyring",
+            Some("Tried to delete Discogs key but none was stored"),
+        )
     }
 
     fn get_mcp_token(&self) -> Result<Option<String>, KeyError> {
@@ -107,16 +123,11 @@ impl BaeKeyServiceExt for KeyService {
     }
 
     fn forget_encryption_key(&self) -> Result<(), KeyError> {
-        match keyring_core::Entry::new(keyring_service(), &account(self, "encryption_master_key"))
-            .map_err(map_keyring_error)?
-            .delete_credential()
-        {
-            Ok(()) => {
-                info!("Forgot encryption key for active library");
-                Ok(())
-            }
-            Err(keyring_core::Error::NoEntry) => Ok(()),
-            Err(e) => Err(map_keyring_error(e)),
-        }
+        delete_keyring_credential(
+            self,
+            "encryption_master_key",
+            "Forgot encryption key for active library",
+            None,
+        )
     }
 }
