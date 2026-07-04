@@ -6,9 +6,11 @@
 //! `unsafe extern "C"` read/write/seek callbacks FFmpeg invokes directly.
 
 use crate::playback::SharedSparseBuffer;
+use std::io::{Cursor, Seek, SeekFrom, Write};
 use std::os::raw::{c_int, c_void};
 use std::ptr;
 use std::sync::Arc;
+use tracing::warn;
 
 // --- AVIO custom I/O implementation ---
 
@@ -154,10 +156,7 @@ pub(crate) unsafe extern "C" fn streaming_avio_seek_callback(
 // --- AVIO write context for encoding to memory ---
 
 /// Context for AVIO write callbacks - accumulates encoded data
-pub(super) struct WriteAvioContext {
-    pub(super) data: Vec<u8>,
-    pub(super) pos: usize,
-}
+pub(super) type WriteAvioContext = Cursor<Vec<u8>>;
 
 /// AVIO write callback - writes bytes to our memory buffer
 pub(super) unsafe extern "C" fn avio_write_callback(
@@ -167,16 +166,15 @@ pub(super) unsafe extern "C" fn avio_write_callback(
 ) -> c_int {
     let ctx = &mut *(opaque as *mut WriteAvioContext);
     let size = buf_size as usize;
+    let input = std::slice::from_raw_parts(buf, size);
 
-    // Ensure buffer has enough capacity
-    let required_len = ctx.pos + size;
-    if required_len > ctx.data.len() {
-        ctx.data.resize(required_len, 0);
+    match ctx.write_all(input) {
+        Ok(()) => buf_size,
+        Err(e) => {
+            warn!("AVIO write callback failed for {size} byte(s): {e}");
+            -1
+        }
     }
-
-    ptr::copy_nonoverlapping(buf, ctx.data.as_mut_ptr().add(ctx.pos), size);
-    ctx.pos += size;
-    buf_size
 }
 
 /// AVIO seek callback for writing - allows encoder to seek back for headers
@@ -189,16 +187,42 @@ pub(super) unsafe extern "C" fn avio_write_seek_callback(
 
     // AVSEEK_SIZE returns the buffer size
     if whence == ffmpeg_sys_next::AVSEEK_SIZE as c_int {
-        return ctx.data.len() as i64;
+        let Ok(len) = i64::try_from(ctx.get_ref().len()) else {
+            warn!(
+                "AVIO write seek size exceeds i64: {} byte(s)",
+                ctx.get_ref().len()
+            );
+            return -1;
+        };
+        return len;
     }
 
-    let new_pos = match whence {
-        0 => offset as usize,                           // SEEK_SET
-        1 => (ctx.pos as i64 + offset) as usize,        // SEEK_CUR
-        2 => (ctx.data.len() as i64 + offset) as usize, // SEEK_END
+    let seek_from = match whence {
+        0 => match u64::try_from(offset) {
+            Ok(offset) => SeekFrom::Start(offset),
+            Err(e) => {
+                warn!("AVIO write seek rejected negative SEEK_SET offset {offset}: {e}");
+                return -1;
+            }
+        },
+        1 => SeekFrom::Current(offset),
+        2 => SeekFrom::End(offset),
         _ => return -1,
     };
 
-    ctx.pos = new_pos;
-    new_pos as i64
+    let pos = match ctx.seek(seek_from).and_then(|pos| {
+        i64::try_from(pos).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "seek position exceeds i64",
+            )
+        })
+    }) {
+        Ok(pos) => pos,
+        Err(e) => {
+            warn!("AVIO write seek failed for offset {offset}, whence {whence}: {e}");
+            return -1;
+        }
+    };
+    pos
 }

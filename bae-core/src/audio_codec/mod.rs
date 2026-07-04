@@ -430,11 +430,9 @@ unsafe fn encode_avio(
         ));
     }
 
-    let mut write_ctx = Box::new(WriteAvioContext {
-        data: Vec::with_capacity(format.output_capacity(samples.len())),
-        pos: 0,
-    });
-    let avio = allocate_write_avio(write_ctx.as_mut())?;
+    let mut write_ctx =
+        WriteAvioContext::new(Vec::with_capacity(format.output_capacity(samples.len())));
+    let avio = allocate_write_avio(&mut write_ctx)?;
 
     let mut fmt_ctx: *mut AVFormatContext = ptr::null_mut();
     let ret = avformat_alloc_output_context2(
@@ -562,7 +560,8 @@ unsafe fn encode_avio(
 
     avio_flush(muxer.avio);
 
-    let result = write_ctx.data[..write_ctx.pos].to_vec();
+    drop(muxer);
+    let result = write_ctx.into_inner();
 
     debug!("Encoded {} bytes of {} data", result.len(), format.label());
 
