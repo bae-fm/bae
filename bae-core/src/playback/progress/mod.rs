@@ -2,7 +2,6 @@ pub mod handle;
 use crate::playback::service::PlaybackState;
 use crate::playback::RepeatMode;
 pub use handle::PlaybackProgressHandle;
-use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
 use tracing::warn;
 
@@ -87,11 +86,6 @@ pub enum PlaybackProgress {
         duration_ms: u64,
         track_id: String,
         progress: f64,
-    },
-    /// Internal: seek skipped because position difference was < 100ms.
-    SeekSkipped {
-        requested_position: Duration,
-        current_position: Duration,
     },
     /// Internal: decode stats emitted when a track finishes or is stopped.
     DecodeStats {

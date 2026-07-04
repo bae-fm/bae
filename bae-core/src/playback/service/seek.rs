@@ -29,13 +29,6 @@ impl PlaybackService {
                 "Seek: Skipping seek to same position (difference: {:?} < 100ms)",
                 position_diff
             );
-            emit_progress(
-                &self.progress_tx,
-                PlaybackProgress::SeekSkipped {
-                    requested_position: position,
-                    current_position,
-                },
-            );
             return;
         }
 

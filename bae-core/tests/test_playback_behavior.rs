@@ -278,28 +278,6 @@ impl PlaybackTestFixture {
         }
         None
     }
-    /// Wait for a SeekSkipped event with timeout
-    async fn wait_for_seek_skipped(
-        &mut self,
-        timeout_duration: Duration,
-    ) -> Option<(Duration, Duration)> {
-        let deadline = Instant::now() + timeout_duration;
-        while Instant::now() < deadline {
-            match timeout(Duration::from_millis(100), self.progress_rx.recv()).await {
-                Ok(Some(PlaybackProgress::SeekSkipped {
-                    requested_position,
-                    current_position,
-                })) => {
-                    return Some((requested_position, current_position));
-                }
-                Ok(Some(_)) => continue,
-                Ok(None) => break,
-                Err(_) => continue,
-            }
-        }
-        None
-    }
-
     /// Collect every `StateChanged` state in arrival order until one satisfies
     /// `done` (that final state is included) or the timeout elapses.
     async fn collect_states_until<F>(
@@ -1998,7 +1976,7 @@ async fn test_previous_track_multiple_navigation() {
     );
 }
 #[tokio::test]
-async fn test_seek_to_same_position_sends_state_changed() {
+async fn test_same_position_seek_keeps_position_updates_flowing() {
     if should_skip_audio_tests() {
         debug!("Skipping audio test - no audio device available");
         return;
@@ -2038,19 +2016,6 @@ async fn test_seek_to_same_position_sends_state_changed() {
         .unwrap_or(2000);
     let same_position = Duration::from_millis(current_pos_ms + 50);
     fixture.playback_handle.seek(same_position);
-    let seek_skipped = fixture.wait_for_seek_skipped(Duration::from_secs(2)).await;
-    assert!(
-        seek_skipped.is_some(),
-        "Should receive SeekSkipped event when position difference < 100ms",
-    );
-    if let Some((requested, current)) = seek_skipped {
-        let diff = requested.abs_diff(current);
-        assert!(
-            diff < Duration::from_millis(100),
-            "Seek should only be skipped when difference < 100ms, got {:?}",
-            diff,
-        );
-    }
     tokio::time::sleep(Duration::from_millis(500)).await;
     let position_update = fixture
         .wait_for_position_update(Duration::from_secs(2))
