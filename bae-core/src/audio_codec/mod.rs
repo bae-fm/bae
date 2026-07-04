@@ -16,8 +16,7 @@ mod probe;
 mod tests;
 
 use avio::{
-    avio_write_callback, avio_write_seek_callback, free_custom_avio_context,
-    free_format_and_custom_avio, WriteAvioContext,
+    avio_write_callback, avio_write_seek_callback, free_custom_avio_context, WriteAvioContext,
 };
 
 pub use decode::{decode_audio, decode_audio_streaming, decode_audio_to_sink};
@@ -62,21 +61,6 @@ impl fmt::Display for StreamingDecodeError {
 }
 
 impl std::error::Error for StreamingDecodeError {}
-
-/// Free the FFmpeg encode resources on a post-header error path: the packet,
-/// the frame, then finalize and free the format + codec contexts. Used by the
-/// encode loops' failure returns. The cancel path deliberately does NOT use
-/// this — it must skip `av_write_trailer` on a partial stream.
-macro_rules! free_encode_resources {
-    ($packet:expr, $frame:expr, $fmt_ctx:expr, $avio:expr, $codec_ctx:expr) => {{
-        av_packet_free(&mut ($packet as *mut _));
-        av_frame_free(&mut ($frame as *mut _));
-        av_write_trailer($fmt_ctx);
-        avformat_free_context($fmt_ctx);
-        free_custom_avio_context($avio);
-        avcodec_free_context(&mut ($codec_ctx as *mut _));
-    }};
-}
 
 /// Decoded audio metadata and samples
 #[derive(Debug, Clone)]
@@ -148,284 +132,15 @@ pub fn encode_to_flac(
     bits_per_sample: u32,
     cancel: &std::sync::atomic::AtomicBool,
 ) -> Result<Vec<u8>, String> {
-    unsafe { encode_to_flac_avio(samples, sample_rate, channels, bits_per_sample, cancel) }
-}
-
-/// Internal AVIO-based FLAC encoding implementation
-unsafe fn encode_to_flac_avio(
-    samples: &[i32],
-    sample_rate: u32,
-    channels: u32,
-    bits_per_sample: u32,
-    cancel: &std::sync::atomic::AtomicBool,
-) -> Result<Vec<u8>, String> {
-    use ffmpeg_sys_next::*;
-
-    let sample_fmt = match bits_per_sample {
-        1..=16 => AVSampleFormat::AV_SAMPLE_FMT_S16,
-        17..=32 => AVSampleFormat::AV_SAMPLE_FMT_S32,
-        _ => return Err(format!("Unsupported FLAC bit depth: {bits_per_sample}")),
-    };
-
-    // Create write context
-    let mut write_ctx = Box::new(WriteAvioContext {
-        data: Vec::with_capacity(samples.len() * 2), // Rough estimate
-        pos: 0,
-    });
-
-    // Allocate AVIO buffer
-    let avio_buffer_size = AVIO_BUFFER_SIZE;
-    let avio_buffer = av_malloc(avio_buffer_size) as *mut u8;
-    if avio_buffer.is_null() {
-        return Err("Failed to allocate AVIO buffer".to_string());
+    unsafe {
+        encode_avio(
+            samples,
+            sample_rate,
+            channels,
+            EncodeFormat::Flac { bits_per_sample },
+            cancel,
+        )
     }
-
-    // Create custom AVIO context for writing
-    let avio = avio_alloc_context(
-        avio_buffer,
-        avio_buffer_size as c_int,
-        1, // write flag
-        write_ctx.as_mut() as *mut WriteAvioContext as *mut c_void,
-        None, // no read
-        Some(avio_write_callback),
-        Some(avio_write_seek_callback),
-    );
-    if avio.is_null() {
-        av_free(avio_buffer as *mut c_void);
-        return Err("Failed to create AVIO context".to_string());
-    }
-
-    // Find FLAC encoder
-    let codec = avcodec_find_encoder(AVCodecID::AV_CODEC_ID_FLAC);
-    if codec.is_null() {
-        free_custom_avio_context(avio);
-        return Err("FLAC encoder not found".to_string());
-    }
-
-    // Allocate codec context
-    let codec_ctx = avcodec_alloc_context3(codec);
-    if codec_ctx.is_null() {
-        free_custom_avio_context(avio);
-        return Err("Failed to allocate codec context".to_string());
-    }
-
-    // Configure encoder
-    (*codec_ctx).sample_rate = sample_rate as c_int;
-    (*codec_ctx).time_base = AVRational {
-        num: 1,
-        den: sample_rate as c_int,
-    };
-
-    (*codec_ctx).sample_fmt = sample_fmt;
-    (*codec_ctx).bits_per_raw_sample = bits_per_sample as c_int;
-
-    // Set channel layout
-    let mut ch_layout: AVChannelLayout = std::mem::zeroed();
-    av_channel_layout_default(&mut ch_layout, channels as c_int);
-    (*codec_ctx).ch_layout = ch_layout;
-
-    // Open encoder
-    let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
-    if ret < 0 {
-        avcodec_free_context(&mut (codec_ctx as *mut _));
-        free_custom_avio_context(avio);
-        return Err(format!("Failed to open encoder: {}", av_err_str(ret)));
-    }
-
-    // Create output format context
-    let mut fmt_ctx: *mut AVFormatContext = ptr::null_mut();
-    let ret =
-        avformat_alloc_output_context2(&mut fmt_ctx, ptr::null(), c"flac".as_ptr(), ptr::null());
-    if ret < 0 || fmt_ctx.is_null() {
-        avcodec_free_context(&mut (codec_ctx as *mut _));
-        free_custom_avio_context(avio);
-        return Err("Failed to create output context".to_string());
-    }
-
-    // Use our custom AVIO
-    (*fmt_ctx).pb = avio;
-    (*fmt_ctx).flags |= AVFMT_FLAG_CUSTOM_IO as c_int;
-
-    // Add audio stream
-    let stream = avformat_new_stream(fmt_ctx, ptr::null());
-    if stream.is_null() {
-        free_format_and_custom_avio(fmt_ctx, avio);
-        avcodec_free_context(&mut (codec_ctx as *mut _));
-        return Err("Failed to create stream".to_string());
-    }
-
-    // Copy codec parameters to stream
-    let ret = avcodec_parameters_from_context((*stream).codecpar, codec_ctx);
-    if ret < 0 {
-        free_format_and_custom_avio(fmt_ctx, avio);
-        avcodec_free_context(&mut (codec_ctx as *mut _));
-        return Err(format!("Failed to copy codec params: {}", av_err_str(ret)));
-    }
-
-    // Write header
-    let ret = avformat_write_header(fmt_ctx, ptr::null_mut());
-    if ret < 0 {
-        free_format_and_custom_avio(fmt_ctx, avio);
-        avcodec_free_context(&mut (codec_ctx as *mut _));
-        return Err(format!("Failed to write header: {}", av_err_str(ret)));
-    }
-
-    // Allocate frame
-    let frame = av_frame_alloc();
-    if frame.is_null() {
-        av_write_trailer(fmt_ctx);
-        free_format_and_custom_avio(fmt_ctx, avio);
-        avcodec_free_context(&mut (codec_ctx as *mut _));
-        return Err("Failed to allocate frame".to_string());
-    }
-
-    (*frame).format = (*codec_ctx).sample_fmt as c_int;
-    (*frame).ch_layout = (*codec_ctx).ch_layout;
-    (*frame).sample_rate = sample_rate as c_int;
-
-    // Allocate packet
-    let packet = av_packet_alloc();
-    if packet.is_null() {
-        av_frame_free(&mut (frame as *mut _));
-        av_write_trailer(fmt_ctx);
-        free_format_and_custom_avio(fmt_ctx, avio);
-        avcodec_free_context(&mut (codec_ctx as *mut _));
-        return Err("Failed to allocate packet".to_string());
-    }
-
-    // Process samples in chunks matching encoder's frame size
-    let frame_size = if (*codec_ctx).frame_size > 0 {
-        (*codec_ctx).frame_size as usize
-    } else {
-        4096 // Default for variable frame size codecs
-    };
-
-    let samples_per_frame = frame_size * channels as usize;
-    let mut sample_offset = 0;
-    let mut pts: i64 = 0;
-
-    while sample_offset < samples.len() {
-        // Skip av_write_trailer on cancel: muxers seek-back-patch trailer
-        // data (FLAC STREAMINFO, MP3 Xing) from frame state populated only
-        // by completed frames, so invoking it on a partial stream is
-        // unsafe. The output is discarded anyway.
-        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
-            av_packet_free(&mut (packet as *mut _));
-            av_frame_free(&mut (frame as *mut _));
-            free_format_and_custom_avio(fmt_ctx, avio);
-            avcodec_free_context(&mut (codec_ctx as *mut _));
-            return Err("encoding cancelled".to_string());
-        }
-
-        let remaining = samples.len() - sample_offset;
-        let chunk_samples = remaining.min(samples_per_frame);
-        let chunk_frames = chunk_samples / channels as usize;
-
-        (*frame).nb_samples = chunk_frames as c_int;
-
-        // Allocate frame buffer
-        let ret = av_frame_get_buffer(frame, 0);
-        if ret < 0 {
-            free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
-            return Err(format!(
-                "Failed to allocate frame buffer: {}",
-                av_err_str(ret)
-            ));
-        }
-
-        // Make frame writable
-        let ret = av_frame_make_writable(frame);
-        if ret < 0 {
-            free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
-            return Err(format!(
-                "Failed to make frame writable: {}",
-                av_err_str(ret)
-            ));
-        }
-
-        // Copy full-range samples to frame (interleaved format).
-        let frame_data = (*frame).data[0];
-        match bits_per_sample {
-            1..=16 => {
-                let dst = frame_data as *mut i16;
-                for i in 0..chunk_samples {
-                    *dst.add(i) = (samples[sample_offset + i] >> 16) as i16;
-                }
-            }
-            17..=32 => {
-                let dst = frame_data as *mut i32;
-                for i in 0..chunk_samples {
-                    *dst.add(i) = samples[sample_offset + i];
-                }
-            }
-            _ => unreachable!("FLAC bit depth was validated before encoding"),
-        }
-
-        (*frame).pts = pts;
-        pts += chunk_frames as i64;
-
-        // Send frame to encoder
-        let ret = avcodec_send_frame(codec_ctx, frame);
-        if ret < 0 {
-            free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
-            return Err(format!("Failed to send frame: {}", av_err_str(ret)));
-        }
-
-        // Receive and write packets
-        loop {
-            let ret = avcodec_receive_packet(codec_ctx, packet);
-            if ret == AVERROR(EAGAIN) || ret == AVERROR_EOF {
-                break;
-            }
-            if ret < 0 {
-                free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
-                return Err(format!("Failed to receive packet: {}", av_err_str(ret)));
-            }
-
-            (*packet).stream_index = 0;
-            let ret = av_interleaved_write_frame(fmt_ctx, packet);
-            if ret < 0 {
-                free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
-                return Err(format!("Failed to write packet: {}", av_err_str(ret)));
-            }
-        }
-
-        sample_offset += chunk_samples;
-    }
-
-    // Flush encoder
-    avcodec_send_frame(codec_ctx, ptr::null());
-    loop {
-        let ret = avcodec_receive_packet(codec_ctx, packet);
-        if ret == AVERROR(EAGAIN) || ret == AVERROR_EOF {
-            break;
-        }
-        if ret < 0 {
-            break;
-        }
-        (*packet).stream_index = 0;
-        av_interleaved_write_frame(fmt_ctx, packet);
-    }
-
-    // Write trailer
-    av_write_trailer(fmt_ctx);
-
-    // Flush AVIO buffer
-    avio_flush(avio);
-
-    // Cleanup
-    av_packet_free(&mut (packet as *mut _));
-    av_frame_free(&mut (frame as *mut _));
-    avcodec_free_context(&mut (codec_ctx as *mut _));
-
-    // Get the data before freeing format context
-    let result = write_ctx.data[..write_ctx.pos].to_vec();
-
-    free_format_and_custom_avio(fmt_ctx, avio);
-
-    debug!("Encoded {} bytes of FLAC data", result.len());
-
-    Ok(result)
 }
 
 /// Encode PCM samples to MP3 format (320kbps CBR via libmp3lame).
@@ -439,39 +154,207 @@ pub fn encode_to_mp3(
     bitrate: u32,
     cancel: &std::sync::atomic::AtomicBool,
 ) -> Result<Vec<u8>, String> {
-    unsafe { encode_to_mp3_avio(samples, sample_rate, channels, bitrate, cancel) }
+    unsafe {
+        encode_avio(
+            samples,
+            sample_rate,
+            channels,
+            EncodeFormat::Mp3 { bitrate },
+            cancel,
+        )
+    }
 }
 
-/// Internal AVIO-based MP3 encoding implementation
-unsafe fn encode_to_mp3_avio(
-    samples: &[i32],
-    sample_rate: u32,
-    channels: u32,
-    bitrate: u32,
-    cancel: &std::sync::atomic::AtomicBool,
-) -> Result<Vec<u8>, String> {
+#[derive(Clone, Copy)]
+enum EncodeFormat {
+    Flac { bits_per_sample: u32 },
+    Mp3 { bitrate: u32 },
+}
+
+struct EncodeCodecContext {
+    ptr: *mut ffmpeg_sys_next::AVCodecContext,
+}
+
+impl Drop for EncodeCodecContext {
+    fn drop(&mut self) {
+        unsafe {
+            ffmpeg_sys_next::avcodec_free_context(&mut self.ptr);
+        }
+    }
+}
+
+struct EncodeMuxer {
+    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
+    avio: *mut ffmpeg_sys_next::AVIOContext,
+    write_trailer_on_drop: bool,
+}
+
+impl Drop for EncodeMuxer {
+    fn drop(&mut self) {
+        unsafe {
+            if self.write_trailer_on_drop {
+                ffmpeg_sys_next::av_write_trailer(self.fmt_ctx);
+            }
+            ffmpeg_sys_next::avformat_free_context(self.fmt_ctx);
+            free_custom_avio_context(self.avio);
+        }
+    }
+}
+
+struct EncodeFramePacket {
+    frame: *mut ffmpeg_sys_next::AVFrame,
+    packet: *mut ffmpeg_sys_next::AVPacket,
+}
+
+impl Drop for EncodeFramePacket {
+    fn drop(&mut self) {
+        unsafe {
+            ffmpeg_sys_next::av_frame_free(&mut self.frame);
+            ffmpeg_sys_next::av_packet_free(&mut self.packet);
+        }
+    }
+}
+
+impl EncodeFormat {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Flac { .. } => "FLAC",
+            Self::Mp3 { .. } => "MP3",
+        }
+    }
+
+    fn format_name(self) -> *const std::ffi::c_char {
+        match self {
+            Self::Flac { .. } => c"flac".as_ptr(),
+            Self::Mp3 { .. } => c"mp3".as_ptr(),
+        }
+    }
+
+    fn codec_id(self) -> ffmpeg_sys_next::AVCodecID {
+        match self {
+            Self::Flac { .. } => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_FLAC,
+            Self::Mp3 { .. } => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_MP3,
+        }
+    }
+
+    fn sample_format(self) -> Result<ffmpeg_sys_next::AVSampleFormat, String> {
+        use ffmpeg_sys_next::AVSampleFormat;
+        match self {
+            Self::Flac { bits_per_sample } => match bits_per_sample {
+                1..=16 => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16),
+                17..=32 => Ok(AVSampleFormat::AV_SAMPLE_FMT_S32),
+                _ => Err(format!("Unsupported FLAC bit depth: {bits_per_sample}")),
+            },
+            Self::Mp3 { .. } => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16P),
+        }
+    }
+
+    fn output_capacity(self, samples_len: usize) -> usize {
+        match self {
+            Self::Flac { .. } => samples_len * 2,
+            Self::Mp3 { .. } => samples_len,
+        }
+    }
+
+    fn default_frame_size(self) -> usize {
+        match self {
+            Self::Flac { .. } => 4096,
+            Self::Mp3 { .. } => 1152,
+        }
+    }
+
+    fn encoder_missing_message(self) -> &'static str {
+        match self {
+            Self::Flac { .. } => "FLAC encoder not found",
+            Self::Mp3 { .. } => "MP3 encoder not found (libmp3lame)",
+        }
+    }
+
+    unsafe fn configure_codec_context(
+        self,
+        codec_ctx: *mut ffmpeg_sys_next::AVCodecContext,
+        sample_format: ffmpeg_sys_next::AVSampleFormat,
+        sample_rate: u32,
+        channels: u32,
+    ) {
+        use ffmpeg_sys_next::*;
+
+        (*codec_ctx).sample_rate = sample_rate as c_int;
+        (*codec_ctx).time_base = AVRational {
+            num: 1,
+            den: sample_rate as c_int,
+        };
+        (*codec_ctx).sample_fmt = sample_format;
+        match self {
+            Self::Flac { bits_per_sample } => {
+                (*codec_ctx).bits_per_raw_sample = bits_per_sample as c_int;
+            }
+            Self::Mp3 { bitrate } => {
+                (*codec_ctx).bit_rate = bitrate as i64;
+            }
+        }
+
+        let mut ch_layout: AVChannelLayout = std::mem::zeroed();
+        av_channel_layout_default(&mut ch_layout, channels as c_int);
+        (*codec_ctx).ch_layout = ch_layout;
+    }
+
+    unsafe fn write_samples(
+        self,
+        frame: *mut ffmpeg_sys_next::AVFrame,
+        samples: &[i32],
+        sample_offset: usize,
+        chunk_samples: usize,
+        chunk_frames: usize,
+        channels: usize,
+    ) {
+        match self {
+            Self::Flac { bits_per_sample } => {
+                let frame_data = (*frame).data[0];
+                match bits_per_sample {
+                    1..=16 => {
+                        let dst = frame_data as *mut i16;
+                        for i in 0..chunk_samples {
+                            *dst.add(i) = (samples[sample_offset + i] >> 16) as i16;
+                        }
+                    }
+                    17..=32 => {
+                        let dst = frame_data as *mut i32;
+                        for i in 0..chunk_samples {
+                            *dst.add(i) = samples[sample_offset + i];
+                        }
+                    }
+                    _ => unreachable!("FLAC bit depth was validated before encoding"),
+                }
+            }
+            Self::Mp3 { .. } => {
+                for ch in 0..channels {
+                    let dst = (*frame).data[ch] as *mut i16;
+                    for i in 0..chunk_frames {
+                        let src_idx = sample_offset + i * channels + ch;
+                        *dst.add(i) = (samples[src_idx] >> 16) as i16;
+                    }
+                }
+            }
+        }
+    }
+}
+
+unsafe fn allocate_write_avio(
+    write_ctx: &mut WriteAvioContext,
+) -> Result<*mut ffmpeg_sys_next::AVIOContext, String> {
     use ffmpeg_sys_next::*;
 
-    // Create write context
-    let mut write_ctx = Box::new(WriteAvioContext {
-        data: Vec::with_capacity(samples.len()), // Rough estimate
-        pos: 0,
-    });
-
-    // Allocate AVIO buffer
-    let avio_buffer_size = AVIO_BUFFER_SIZE;
-    let avio_buffer = av_malloc(avio_buffer_size) as *mut u8;
+    let avio_buffer = av_malloc(AVIO_BUFFER_SIZE) as *mut u8;
     if avio_buffer.is_null() {
         return Err("Failed to allocate AVIO buffer".to_string());
     }
-
-    // Create custom AVIO context for writing
     let avio = avio_alloc_context(
         avio_buffer,
-        avio_buffer_size as c_int,
-        1, // write flag
-        write_ctx.as_mut() as *mut WriteAvioContext as *mut c_void,
-        None, // no read
+        AVIO_BUFFER_SIZE as c_int,
+        1,
+        write_ctx as *mut WriteAvioContext as *mut c_void,
+        None,
         Some(avio_write_callback),
         Some(avio_write_seek_callback),
     );
@@ -479,115 +362,131 @@ unsafe fn encode_to_mp3_avio(
         av_free(avio_buffer as *mut c_void);
         return Err("Failed to create AVIO context".to_string());
     }
+    Ok(avio)
+}
 
-    // Find MP3 encoder (libmp3lame)
-    let codec = avcodec_find_encoder(AVCodecID::AV_CODEC_ID_MP3);
-    if codec.is_null() {
-        free_custom_avio_context(avio);
-        return Err("MP3 encoder not found (libmp3lame)".to_string());
+unsafe fn receive_and_write_packets(
+    codec_ctx: *mut ffmpeg_sys_next::AVCodecContext,
+    packet: *mut ffmpeg_sys_next::AVPacket,
+    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
+) -> Result<(), String> {
+    use ffmpeg_sys_next::*;
+
+    loop {
+        let ret = avcodec_receive_packet(codec_ctx, packet);
+        if ret == AVERROR(EAGAIN) || ret == AVERROR_EOF {
+            break;
+        }
+        if ret < 0 {
+            return Err(format!("Failed to receive packet: {}", av_err_str(ret)));
+        }
+
+        (*packet).stream_index = 0;
+        let ret = av_interleaved_write_frame(fmt_ctx, packet);
+        if ret < 0 {
+            return Err(format!("Failed to write packet: {}", av_err_str(ret)));
+        }
     }
 
-    // Allocate codec context
+    Ok(())
+}
+
+unsafe fn encode_avio(
+    samples: &[i32],
+    sample_rate: u32,
+    channels: u32,
+    format: EncodeFormat,
+    cancel: &std::sync::atomic::AtomicBool,
+) -> Result<Vec<u8>, String> {
+    use ffmpeg_sys_next::*;
+
+    if channels == 0 {
+        return Err("channel count must be greater than zero".to_string());
+    }
+    let channels_usize = channels as usize;
+    if !samples.len().is_multiple_of(channels_usize) {
+        return Err("sample count must be divisible by channel count".to_string());
+    }
+
+    let sample_format = format.sample_format()?;
+
+    let codec = avcodec_find_encoder(format.codec_id());
+    if codec.is_null() {
+        return Err(format.encoder_missing_message().to_string());
+    }
+
     let codec_ctx = avcodec_alloc_context3(codec);
     if codec_ctx.is_null() {
-        free_custom_avio_context(avio);
         return Err("Failed to allocate codec context".to_string());
     }
-
-    // Configure encoder
-    (*codec_ctx).sample_rate = sample_rate as c_int;
-    (*codec_ctx).time_base = AVRational {
-        num: 1,
-        den: sample_rate as c_int,
-    };
-    (*codec_ctx).bit_rate = bitrate as i64;
-
-    // libmp3lame requires S16P (planar signed 16-bit) or FLTP (planar float).
-    // S16P is simplest since our input is integer samples.
-    (*codec_ctx).sample_fmt = AVSampleFormat::AV_SAMPLE_FMT_S16P;
-
-    // Set channel layout
-    let mut ch_layout: AVChannelLayout = std::mem::zeroed();
-    av_channel_layout_default(&mut ch_layout, channels as c_int);
-    (*codec_ctx).ch_layout = ch_layout;
-
-    // Open encoder
-    let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
+    let codec_ctx = EncodeCodecContext { ptr: codec_ctx };
+    format.configure_codec_context(codec_ctx.ptr, sample_format, sample_rate, channels);
+    let ret = avcodec_open2(codec_ctx.ptr, codec, ptr::null_mut());
     if ret < 0 {
-        avcodec_free_context(&mut (codec_ctx as *mut _));
-        free_custom_avio_context(avio);
-        return Err(format!("Failed to open MP3 encoder: {}", av_err_str(ret)));
+        return Err(format!(
+            "Failed to open {} encoder: {}",
+            format.label(),
+            av_err_str(ret)
+        ));
     }
 
-    // Create output format context
+    let mut write_ctx = Box::new(WriteAvioContext {
+        data: Vec::with_capacity(format.output_capacity(samples.len())),
+        pos: 0,
+    });
+    let avio = allocate_write_avio(write_ctx.as_mut())?;
+
     let mut fmt_ctx: *mut AVFormatContext = ptr::null_mut();
-    let ret =
-        avformat_alloc_output_context2(&mut fmt_ctx, ptr::null(), c"mp3".as_ptr(), ptr::null());
+    let ret = avformat_alloc_output_context2(
+        &mut fmt_ctx,
+        ptr::null(),
+        format.format_name(),
+        ptr::null(),
+    );
     if ret < 0 || fmt_ctx.is_null() {
-        avcodec_free_context(&mut (codec_ctx as *mut _));
         free_custom_avio_context(avio);
         return Err("Failed to create output context".to_string());
     }
-
-    // Use our custom AVIO
     (*fmt_ctx).pb = avio;
     (*fmt_ctx).flags |= AVFMT_FLAG_CUSTOM_IO as c_int;
+    let mut muxer = EncodeMuxer {
+        fmt_ctx,
+        avio,
+        write_trailer_on_drop: false,
+    };
 
-    // Add audio stream
-    let stream = avformat_new_stream(fmt_ctx, ptr::null());
+    let stream = avformat_new_stream(muxer.fmt_ctx, ptr::null());
     if stream.is_null() {
-        free_format_and_custom_avio(fmt_ctx, avio);
-        avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err("Failed to create stream".to_string());
     }
-
-    // Copy codec parameters to stream
-    let ret = avcodec_parameters_from_context((*stream).codecpar, codec_ctx);
+    let ret = avcodec_parameters_from_context((*stream).codecpar, codec_ctx.ptr);
     if ret < 0 {
-        free_format_and_custom_avio(fmt_ctx, avio);
-        avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err(format!("Failed to copy codec params: {}", av_err_str(ret)));
     }
-
-    // Write header
-    let ret = avformat_write_header(fmt_ctx, ptr::null_mut());
+    let ret = avformat_write_header(muxer.fmt_ctx, ptr::null_mut());
     if ret < 0 {
-        free_format_and_custom_avio(fmt_ctx, avio);
-        avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err(format!("Failed to write header: {}", av_err_str(ret)));
     }
+    muxer.write_trailer_on_drop = true;
 
-    // Allocate frame
     let frame = av_frame_alloc();
     if frame.is_null() {
-        av_write_trailer(fmt_ctx);
-        free_format_and_custom_avio(fmt_ctx, avio);
-        avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err("Failed to allocate frame".to_string());
     }
 
-    (*frame).format = (*codec_ctx).sample_fmt as c_int;
-    (*frame).ch_layout = (*codec_ctx).ch_layout;
-    (*frame).sample_rate = sample_rate as c_int;
-
-    // Allocate packet
     let packet = av_packet_alloc();
     if packet.is_null() {
         av_frame_free(&mut (frame as *mut _));
-        av_write_trailer(fmt_ctx);
-        free_format_and_custom_avio(fmt_ctx, avio);
-        avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err("Failed to allocate packet".to_string());
     }
+    let frame_packet = EncodeFramePacket { frame, packet };
 
-    // Process samples in chunks matching encoder's frame size
-    let frame_size = if (*codec_ctx).frame_size > 0 {
-        (*codec_ctx).frame_size as usize
+    let frame_size = if (*codec_ctx.ptr).frame_size > 0 {
+        (*codec_ctx.ptr).frame_size as usize
     } else {
-        1152 // Standard MP3 frame size
+        format.default_frame_size()
     };
-
-    let samples_per_frame = frame_size * channels as usize;
+    let samples_per_frame = frame_size * channels_usize;
     let mut sample_offset = 0;
     let mut pts: i64 = 0;
 
@@ -597,113 +496,75 @@ unsafe fn encode_to_mp3_avio(
         // by completed frames, so invoking it on a partial stream is
         // unsafe. The output is discarded anyway.
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {
-            av_packet_free(&mut (packet as *mut _));
-            av_frame_free(&mut (frame as *mut _));
-            free_format_and_custom_avio(fmt_ctx, avio);
-            avcodec_free_context(&mut (codec_ctx as *mut _));
+            muxer.write_trailer_on_drop = false;
             return Err("encoding cancelled".to_string());
         }
 
         let remaining = samples.len() - sample_offset;
         let chunk_samples = remaining.min(samples_per_frame);
-        let chunk_frames = chunk_samples / channels as usize;
+        let chunk_frames = chunk_samples / channels_usize;
 
-        (*frame).nb_samples = chunk_frames as c_int;
+        (*frame_packet.frame).format = (*codec_ctx.ptr).sample_fmt as c_int;
+        (*frame_packet.frame).ch_layout = (*codec_ctx.ptr).ch_layout;
+        (*frame_packet.frame).sample_rate = sample_rate as c_int;
+        (*frame_packet.frame).nb_samples = chunk_frames as c_int;
 
-        // Allocate frame buffer
-        let ret = av_frame_get_buffer(frame, 0);
+        let ret = av_frame_get_buffer(frame_packet.frame, 0);
         if ret < 0 {
-            free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
             return Err(format!(
                 "Failed to allocate frame buffer: {}",
                 av_err_str(ret)
             ));
         }
 
-        // Make frame writable
-        let ret = av_frame_make_writable(frame);
+        let ret = av_frame_make_writable(frame_packet.frame);
         if ret < 0 {
-            free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
             return Err(format!(
                 "Failed to make frame writable: {}",
                 av_err_str(ret)
             ));
         }
 
-        // Copy samples to frame (planar format: deinterleave into per-channel planes).
-        for ch in 0..channels as usize {
-            let dst = (*frame).data[ch] as *mut i16;
-            for i in 0..chunk_frames {
-                let src_idx = sample_offset + i * channels as usize + ch;
-                if src_idx < samples.len() {
-                    *dst.add(i) = (samples[src_idx] >> 16) as i16;
-                }
-            }
-        }
+        format.write_samples(
+            frame_packet.frame,
+            samples,
+            sample_offset,
+            chunk_samples,
+            chunk_frames,
+            channels_usize,
+        );
 
-        (*frame).pts = pts;
+        (*frame_packet.frame).pts = pts;
         pts += chunk_frames as i64;
 
-        // Send frame to encoder
-        let ret = avcodec_send_frame(codec_ctx, frame);
+        let ret = avcodec_send_frame(codec_ctx.ptr, frame_packet.frame);
         if ret < 0 {
-            free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
             return Err(format!("Failed to send frame: {}", av_err_str(ret)));
         }
+        av_frame_unref(frame_packet.frame);
 
-        // Receive and write packets
-        loop {
-            let ret = avcodec_receive_packet(codec_ctx, packet);
-            if ret == AVERROR(EAGAIN) || ret == AVERROR_EOF {
-                break;
-            }
-            if ret < 0 {
-                free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
-                return Err(format!("Failed to receive packet: {}", av_err_str(ret)));
-            }
-
-            (*packet).stream_index = 0;
-            let ret = av_interleaved_write_frame(fmt_ctx, packet);
-            if ret < 0 {
-                free_encode_resources!(packet, frame, fmt_ctx, avio, codec_ctx);
-                return Err(format!("Failed to write packet: {}", av_err_str(ret)));
-            }
-        }
+        receive_and_write_packets(codec_ctx.ptr, frame_packet.packet, muxer.fmt_ctx)?;
 
         sample_offset += chunk_samples;
     }
 
-    // Flush encoder
-    avcodec_send_frame(codec_ctx, ptr::null());
-    loop {
-        let ret = avcodec_receive_packet(codec_ctx, packet);
-        if ret == AVERROR(EAGAIN) || ret == AVERROR_EOF {
-            break;
-        }
-        if ret < 0 {
-            break;
-        }
-        (*packet).stream_index = 0;
-        av_interleaved_write_frame(fmt_ctx, packet);
+    let ret = avcodec_send_frame(codec_ctx.ptr, ptr::null());
+    if ret < 0 {
+        return Err(format!("Failed to flush encoder: {}", av_err_str(ret)));
+    }
+    receive_and_write_packets(codec_ctx.ptr, frame_packet.packet, muxer.fmt_ctx)?;
+
+    let ret = av_write_trailer(muxer.fmt_ctx);
+    muxer.write_trailer_on_drop = false;
+    if ret < 0 {
+        return Err(format!("Failed to write trailer: {}", av_err_str(ret)));
     }
 
-    // Write trailer
-    av_write_trailer(fmt_ctx);
+    avio_flush(muxer.avio);
 
-    // Flush AVIO buffer
-    avio_flush(avio);
-
-    // Cleanup
-    av_packet_free(&mut (packet as *mut _));
-    av_frame_free(&mut (frame as *mut _));
-    avcodec_free_context(&mut (codec_ctx as *mut _));
-
-    // Get the data before freeing format context
     let result = write_ctx.data[..write_ctx.pos].to_vec();
 
-    free_format_and_custom_avio(fmt_ctx, avio);
-
-    debug!("Encoded {} bytes of MP3 data", result.len());
+    debug!("Encoded {} bytes of {} data", result.len(), format.label());
 
     Ok(result)
 }

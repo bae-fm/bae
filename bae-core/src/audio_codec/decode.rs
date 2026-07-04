@@ -98,6 +98,174 @@ impl Drop for StreamingDecodeResources {
     }
 }
 
+struct AudioStreamInfo {
+    stream_index: c_int,
+    stream: *mut ffmpeg_sys_next::AVStream,
+    codecpar: *mut ffmpeg_sys_next::AVCodecParameters,
+}
+
+enum DecodeCodecOpenError {
+    Missing(ffmpeg_sys_next::AVCodecID),
+    Allocate,
+    CopyParams(i32),
+    Open(i32),
+}
+
+impl DecodeCodecOpenError {
+    fn message(&self) -> String {
+        match self {
+            Self::Missing(codec_id) => format!("Decoder not found for {:?}", codec_id),
+            Self::Allocate => "Failed to allocate codec context".to_string(),
+            Self::CopyParams(ret) => format!("Failed to copy codec params: {}", av_err_str(*ret)),
+            Self::Open(ret) => format!("Failed to open codec: {}", av_err_str(*ret)),
+        }
+    }
+}
+
+unsafe fn find_audio_stream(
+    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
+) -> Result<AudioStreamInfo, String> {
+    use ffmpeg_sys_next::*;
+
+    let stream_index = av_find_best_stream(
+        fmt_ctx,
+        AVMediaType::AVMEDIA_TYPE_AUDIO,
+        -1,
+        -1,
+        ptr::null_mut(),
+        0,
+    );
+    if stream_index < 0 {
+        return Err("No audio stream found".to_string());
+    }
+
+    let stream = *(*fmt_ctx).streams.add(stream_index as usize);
+    let codecpar = (*stream).codecpar;
+    Ok(AudioStreamInfo {
+        stream_index,
+        stream,
+        codecpar,
+    })
+}
+
+unsafe fn open_audio_codec(
+    codecpar: *const ffmpeg_sys_next::AVCodecParameters,
+) -> Result<*mut ffmpeg_sys_next::AVCodecContext, DecodeCodecOpenError> {
+    use ffmpeg_sys_next::*;
+
+    let codec_id = (*codecpar).codec_id;
+    let codec = avcodec_find_decoder(codec_id);
+    if codec.is_null() {
+        return Err(DecodeCodecOpenError::Missing(codec_id));
+    }
+
+    let codec_ctx = avcodec_alloc_context3(codec);
+    if codec_ctx.is_null() {
+        return Err(DecodeCodecOpenError::Allocate);
+    }
+
+    let ret = avcodec_parameters_to_context(codec_ctx, codecpar);
+    if ret < 0 {
+        avcodec_free_context(&mut (codec_ctx as *mut _));
+        return Err(DecodeCodecOpenError::CopyParams(ret));
+    }
+
+    let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
+    if ret < 0 {
+        avcodec_free_context(&mut (codec_ctx as *mut _));
+        return Err(DecodeCodecOpenError::Open(ret));
+    }
+
+    Ok(codec_ctx)
+}
+
+enum FrameOutputWindow {
+    Skip,
+    Stop,
+    Emit {
+        skip_start: usize,
+        take_end: usize,
+        reached_end: bool,
+    },
+}
+
+fn pts_to_sample(pts: i64, time_base: ffmpeg_sys_next::AVRational, sample_rate: u32) -> i64 {
+    if time_base.num == 1 && time_base.den == sample_rate as c_int {
+        pts
+    } else {
+        (pts as f64 * time_base.num as f64 / time_base.den as f64 * sample_rate as f64) as i64
+    }
+}
+
+fn frame_sample_bounds(
+    pts: i64,
+    num_samples: usize,
+    time_base: ffmpeg_sys_next::AVRational,
+    sample_rate: u32,
+    tracked_sample_pos: &mut i64,
+) -> (i64, i64) {
+    let frame_start = if pts != ffmpeg_sys_next::AV_NOPTS_VALUE {
+        let sample_pos = pts_to_sample(pts, time_base, sample_rate);
+        *tracked_sample_pos = sample_pos;
+        sample_pos
+    } else if *tracked_sample_pos >= 0 {
+        *tracked_sample_pos
+    } else {
+        -1
+    };
+    let frame_end = frame_start + num_samples as i64;
+    if *tracked_sample_pos >= 0 {
+        *tracked_sample_pos = frame_end;
+    }
+    (frame_start, frame_end)
+}
+
+fn frame_output_window(
+    frame_start: i64,
+    frame_end: i64,
+    output_len: usize,
+    channels: usize,
+    start_sample: Option<u64>,
+    end_sample: Option<u64>,
+) -> FrameOutputWindow {
+    let mut skip_start = 0;
+    let mut take_end = output_len;
+
+    if let Some(start) = start_sample {
+        let start = start as i64;
+        if frame_start >= 0 && frame_end <= start {
+            return FrameOutputWindow::Skip;
+        }
+        if frame_start >= 0 && frame_start < start {
+            skip_start = ((start - frame_start) as usize * channels).min(output_len);
+        }
+    }
+
+    let mut reached_end = false;
+    if let Some(end) = end_sample {
+        let end = end as i64;
+        if frame_start >= 0 && frame_start >= end {
+            return FrameOutputWindow::Stop;
+        }
+        if frame_start >= 0 && frame_end > end {
+            take_end = ((end - frame_start) as usize * channels).min(output_len);
+            reached_end = true;
+        }
+    }
+
+    if skip_start < take_end {
+        FrameOutputWindow::Emit {
+            skip_start,
+            take_end,
+            reached_end,
+        }
+    } else if reached_end {
+        FrameOutputWindow::Stop
+    } else {
+        FrameOutputWindow::Skip
+    }
+}
+
 /// The `va_list` parameter type of FFmpeg's log callback, as bindgen renders it
 /// per target ABI. Linux and Android share calling conventions: SysV x86_64 ->
 /// pointer-to-`__va_list_tag`; AAPCS64 aarch64 -> a 32-byte register-save struct
@@ -272,35 +440,24 @@ unsafe fn decode_audio_avio(
     // cover during `find_stream_info` above may have logged its own.
     reset_ffmpeg_errors();
 
-    // Find best audio stream
-    let stream_index = av_find_best_stream(
-        fmt_ctx,
-        AVMediaType::AVMEDIA_TYPE_AUDIO,
-        -1,
-        -1,
-        ptr::null_mut(),
-        0,
-    );
-    if stream_index < 0 {
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        return Err("No audio stream found".to_string());
-    }
+    let audio = match find_audio_stream(fmt_ctx) {
+        Ok(audio) => audio,
+        Err(e) => {
+            close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+            return Err(e);
+        }
+    };
 
-    let stream = *(*fmt_ctx).streams.add(stream_index as usize);
-    let codecpar = (*stream).codecpar;
-
-    // Find decoder
-    let codec_id = (*codecpar).codec_id;
-    let codec = avcodec_find_decoder(codec_id);
-    if codec.is_null() {
-        if codec_id == AVCodecID::AV_CODEC_ID_PCM_S64LE {
+    let codec_ctx = match open_audio_codec(audio.codecpar) {
+        Ok(codec_ctx) => codec_ctx,
+        Err(DecodeCodecOpenError::Missing(AVCodecID::AV_CODEC_ID_PCM_S64LE)) => {
             let result = decode_packed_s64_packets_to_sink(
                 fmt_ctx,
-                stream_index,
-                stream,
-                codecpar,
-                (*codecpar).sample_rate as u32,
-                (*codecpar).ch_layout.nb_channels as u32,
+                audio.stream_index,
+                audio.stream,
+                audio.codecpar,
+                (*audio.codecpar).sample_rate as u32,
+                (*audio.codecpar).ch_layout.nb_channels as u32,
                 start_sample,
                 end_sample,
                 sink,
@@ -310,38 +467,18 @@ unsafe fn decode_audio_avio(
             sink.set_decode_error_count(get_ffmpeg_errors());
             return result;
         }
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        return Err(format!("Decoder not found for {:?}", codec_id));
-    }
-
-    // Allocate codec context
-    let codec_ctx = avcodec_alloc_context3(codec);
-    if codec_ctx.is_null() {
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        return Err("Failed to allocate codec context".to_string());
-    }
-
-    // Copy codec parameters
-    let ret = avcodec_parameters_to_context(codec_ctx, codecpar);
-    if ret < 0 {
-        avcodec_free_context(&mut (codec_ctx as *mut _));
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        return Err(format!("Failed to copy codec params: {}", av_err_str(ret)));
-    }
-    // Open codec
-    let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
-    if ret < 0 {
-        avcodec_free_context(&mut (codec_ctx as *mut _));
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        return Err(format!("Failed to open codec: {}", av_err_str(ret)));
-    }
+        Err(e) => {
+            close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+            return Err(e.message());
+        }
+    };
 
     let sample_rate = (*codec_ctx).sample_rate as u32;
-    let channels = (*codecpar).ch_layout.nb_channels as u32;
+    let channels = (*audio.codecpar).ch_layout.nb_channels as u32;
 
     sink.on_format(sample_rate, channels);
 
-    let in_ch_layout = (*codecpar).ch_layout;
+    let in_ch_layout = (*audio.codecpar).ch_layout;
     let mut swr_ctx = match allocate_swr_context(
         &in_ch_layout,
         AVSampleFormat::AV_SAMPLE_FMT_S32,
@@ -356,11 +493,11 @@ unsafe fn decode_audio_avio(
         }
     };
 
-    let time_base = (*stream).time_base;
+    let time_base = (*audio.stream).time_base;
 
     // Seek to start position if specified (using stream time_base for exact positioning)
     if let Some(sample_pos) = start_sample {
-        seek_to_sample_or_warn(fmt_ctx, stream_index, sample_pos);
+        seek_to_sample_or_warn(fmt_ctx, audio.stream_index, sample_pos);
     }
 
     // Allocate frame and packet
@@ -392,7 +529,7 @@ unsafe fn decode_audio_avio(
     // Read and decode packets, trimming by sample position
     let mut reached_end = false;
     while av_read_frame(resources.fmt_ctx, resources.packet) >= 0 {
-        if (*resources.packet).stream_index != stream_index {
+        if (*resources.packet).stream_index != audio.stream_index {
             av_packet_unref(resources.packet);
             continue;
         }
@@ -407,76 +544,39 @@ unsafe fn decode_audio_avio(
         while avcodec_receive_frame(resources.codec_ctx, resources.frame) >= 0 {
             let num_samples = (*resources.frame).nb_samples as usize;
             let pts = (*resources.frame).pts;
-
-            // Determine frame's sample position from PTS (with fallback tracking)
-            let frame_start = if pts != AV_NOPTS_VALUE {
-                let sample_pos = if time_base.num == 1 && time_base.den == sample_rate as c_int {
-                    pts
-                } else {
-                    (pts as f64 * time_base.num as f64 / time_base.den as f64 * sample_rate as f64)
-                        as i64
-                };
-                tracked_sample_pos = sample_pos;
-                sample_pos
-            } else if tracked_sample_pos >= 0 {
-                tracked_sample_pos
-            } else {
-                -1
-            };
-            let frame_end = frame_start + num_samples as i64;
-            if tracked_sample_pos >= 0 {
-                tracked_sample_pos = frame_end;
-            }
-
-            // Skip frames entirely before start
-            if let Some(start) = start_sample {
-                let start = start as i64;
-                if frame_start >= 0 && frame_end <= start {
-                    continue;
-                }
-            }
-
-            // Stop at end
-            if let Some(end) = end_sample {
-                let end = end as i64;
-                if frame_start >= 0 && frame_start >= end {
-                    reached_end = true;
-                    break;
-                }
-            }
+            let (frame_start, frame_end) = frame_sample_bounds(
+                pts,
+                num_samples,
+                time_base,
+                sample_rate,
+                &mut tracked_sample_pos,
+            );
 
             let frame_samples_vec =
                 convert_frame_to_i32(resources.swr_ctx, resources.frame, channels as usize)?;
-
-            // Trim start of frame
-            let skip_start = if let Some(start) = start_sample {
-                let start = start as i64;
-                if frame_start >= 0 && frame_start < start {
-                    let skip = (start - frame_start) as usize * channels as usize;
-                    skip.min(frame_samples_vec.len())
-                } else {
-                    0
-                }
-            } else {
-                0
-            };
-
-            // Trim end of frame
-            let take_end = if let Some(end) = end_sample {
-                let end = end as i64;
-                if frame_start >= 0 && frame_end > end {
-                    let keep = (end - frame_start) as usize * channels as usize;
+            match frame_output_window(
+                frame_start,
+                frame_end,
+                frame_samples_vec.len(),
+                channels as usize,
+                start_sample,
+                end_sample,
+            ) {
+                FrameOutputWindow::Skip => {}
+                FrameOutputWindow::Stop => {
                     reached_end = true;
-                    keep.min(frame_samples_vec.len())
-                } else {
-                    frame_samples_vec.len()
+                    break;
                 }
-            } else {
-                frame_samples_vec.len()
-            };
-
-            if skip_start < take_end {
-                sink.on_samples(&frame_samples_vec[skip_start..take_end]);
+                FrameOutputWindow::Emit {
+                    skip_start,
+                    take_end,
+                    reached_end: window_reached_end,
+                } => {
+                    sink.on_samples(&frame_samples_vec[skip_start..take_end]);
+                    if window_reached_end {
+                        reached_end = true;
+                    }
+                }
             }
         }
 
@@ -657,34 +757,13 @@ unsafe fn decode_packed_s64_packets_to_sink(
 
         let num_samples = (*packet).size as usize / bytes_per_frame;
         let pts = (*packet).pts;
-        let frame_start = if pts != AV_NOPTS_VALUE {
-            if time_base.num == 1 && time_base.den == sample_rate as c_int {
-                pts
-            } else {
-                (pts as f64 * time_base.num as f64 / time_base.den as f64 * sample_rate as f64)
-                    as i64
-            }
-        } else {
-            tracked_sample_pos
-        };
-        let frame_end = frame_start + num_samples as i64;
-        tracked_sample_pos = frame_end;
-
-        if let Some(start) = start_sample {
-            let start = start as i64;
-            if frame_end <= start {
-                av_packet_unref(packet);
-                continue;
-            }
-        }
-
-        if let Some(end) = end_sample {
-            let end = end as i64;
-            if frame_start >= end {
-                av_packet_unref(packet);
-                break;
-            }
-        }
+        let (frame_start, frame_end) = frame_sample_bounds(
+            pts,
+            num_samples,
+            time_base,
+            sample_rate,
+            &mut tracked_sample_pos,
+        );
 
         let input = (*packet).data as *const u8;
         let packet_samples =
@@ -698,31 +777,27 @@ unsafe fn decode_packed_s64_packets_to_sink(
                 }
             };
 
-        let skip_start = if let Some(start) = start_sample {
-            let start = start as i64;
-            if frame_start < start {
-                ((start - frame_start) as usize * channels_usize).min(packet_samples.len())
-            } else {
-                0
+        match frame_output_window(
+            frame_start,
+            frame_end,
+            packet_samples.len(),
+            channels_usize,
+            start_sample,
+            end_sample,
+        ) {
+            FrameOutputWindow::Skip => {}
+            FrameOutputWindow::Stop => {
+                av_packet_unref(packet);
+                break;
             }
-        } else {
-            0
-        };
-
-        let take_end = if let Some(end) = end_sample {
-            let end = end as i64;
-            if frame_end > end {
-                reached_end = true;
-                ((end - frame_start) as usize * channels_usize).min(packet_samples.len())
-            } else {
-                packet_samples.len()
+            FrameOutputWindow::Emit {
+                skip_start,
+                take_end,
+                reached_end: window_reached_end,
+            } => {
+                sink.on_samples(&packet_samples[skip_start..take_end]);
+                reached_end = window_reached_end;
             }
-        } else {
-            packet_samples.len()
-        };
-
-        if skip_start < take_end {
-            sink.on_samples(&packet_samples[skip_start..take_end]);
         }
 
         av_packet_unref(packet);
@@ -882,76 +957,31 @@ unsafe fn decode_audio_streaming_impl(
         ));
     }
 
-    // Find audio stream
-    let stream_index = av_find_best_stream(
-        fmt_ctx,
-        AVMediaType::AVMEDIA_TYPE_AUDIO,
-        -1,
-        -1,
-        ptr::null_mut(),
-        0,
-    );
-    if stream_index < 0 {
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::decode("No audio stream found"));
-    }
+    let audio = match find_audio_stream(fmt_ctx) {
+        Ok(audio) => audio,
+        Err(e) => {
+            close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+            let _ = Box::from_raw(avio_ctx_ptr);
+            return Err(StreamingDecodeError::decode(e));
+        }
+    };
 
-    let stream = *(*fmt_ctx).streams.add(stream_index as usize);
-    let codecpar = (*stream).codecpar;
-
-    // Find decoder
-    let codec_id = (*codecpar).codec_id;
-    let codec = avcodec_find_decoder(codec_id);
-    if codec.is_null() {
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::decode(format!(
-            "Decoder not found for {:?}",
-            codec_id
-        )));
-    }
-
-    // Allocate codec context
-    let codec_ctx = avcodec_alloc_context3(codec);
-    if codec_ctx.is_null() {
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::decode(
-            "Failed to allocate codec context",
-        ));
-    }
-
-    // Copy codec parameters
-    let ret = avcodec_parameters_to_context(codec_ctx, codecpar);
-    if ret < 0 {
-        avcodec_free_context(&mut (codec_ctx as *mut _));
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::decode(format!(
-            "Failed to copy codec params: {}",
-            av_err_str(ret)
-        )));
-    }
-    // Open codec
-    let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
-    if ret < 0 {
-        avcodec_free_context(&mut (codec_ctx as *mut _));
-        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-        let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::decode(format!(
-            "Failed to open codec: {}",
-            av_err_str(ret)
-        )));
-    }
+    let codec_ctx = match open_audio_codec(audio.codecpar) {
+        Ok(codec_ctx) => codec_ctx,
+        Err(e) => {
+            close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+            let _ = Box::from_raw(avio_ctx_ptr);
+            return Err(StreamingDecodeError::decode(e.message()));
+        }
+    };
 
     let sample_rate = (*codec_ctx).sample_rate as u32;
-    let channels = (*codecpar).ch_layout.nb_channels as u32;
+    let channels = (*audio.codecpar).ch_layout.nb_channels as u32;
 
     debug!("Streaming AVIO decoder: {}Hz, {}ch", sample_rate, channels);
 
     // Set up SwrContext to convert any input format to packed f32
-    let in_ch_layout = (*codecpar).ch_layout;
+    let in_ch_layout = (*audio.codecpar).ch_layout;
     let mut swr_ctx = allocate_swr_context(
         &in_ch_layout,
         AVSampleFormat::AV_SAMPLE_FMT_FLT,
@@ -982,7 +1012,7 @@ unsafe fn decode_audio_streaming_impl(
     if let Some(byte_pos) = seek_to_byte {
         let ret = av_seek_frame(
             fmt_ctx,
-            stream_index,
+            audio.stream_index,
             byte_pos as i64,
             AVSEEK_FLAG_BYTE as c_int,
         );
@@ -996,7 +1026,14 @@ unsafe fn decode_audio_streaming_impl(
         }
     } else if let Some(sample_pos) = seek_to_sample {
         let target_ts = sample_pos as i64;
-        let ret = avformat_seek_file(fmt_ctx, stream_index, i64::MIN, target_ts, target_ts, 0);
+        let ret = avformat_seek_file(
+            fmt_ctx,
+            audio.stream_index,
+            i64::MIN,
+            target_ts,
+            target_ts,
+            0,
+        );
         if ret < 0 {
             warn!(
                 "avformat_seek_file to sample {sample_pos} failed ({}); \
@@ -1065,7 +1102,7 @@ unsafe fn decode_audio_streaming_impl(
             break;
         }
 
-        if (*resources.core().packet).stream_index != stream_index {
+        if (*resources.core().packet).stream_index != audio.stream_index {
             av_packet_unref(resources.core().packet);
             continue;
         }
@@ -1089,65 +1126,35 @@ unsafe fn decode_audio_streaming_impl(
                 channels as usize,
             )
             .map_err(StreamingDecodeError::decode)?;
-
-            // Determine frame's sample position from PTS (with fallback tracking)
-            let time_base = (*stream).time_base;
             let pts = (*resources.core().frame).pts;
-            let frame_start_sample = if pts != ffmpeg_sys_next::AV_NOPTS_VALUE {
-                // PTS in stream time_base units — for audio this is typically sample number
-                let sample_pos = if time_base.num == 1 && time_base.den == sample_rate as c_int {
-                    pts
-                } else {
-                    // Convert PTS to sample position
-                    (pts as f64 * time_base.num as f64 / time_base.den as f64 * sample_rate as f64)
-                        as i64
-                };
-                tracked_sample_pos = sample_pos;
-                sample_pos
-            } else if tracked_sample_pos >= 0 {
-                tracked_sample_pos
-            } else {
-                -1
-            };
-            let frame_end_sample = frame_start_sample + num_samples as i64;
-            if tracked_sample_pos >= 0 {
-                tracked_sample_pos = frame_end_sample;
-            }
-
-            // Determine which portion of this frame to output
-            let mut skip_start: usize = 0;
-            let mut take_end: usize = output_buf.len();
-
-            // Trim start: skip samples before start_at_sample
-            if let Some(start) = start_at_sample {
-                let start = start as i64;
-                if frame_start_sample >= 0 && frame_end_sample <= start {
-                    continue;
-                }
-                if frame_start_sample >= 0 && frame_start_sample < start {
-                    let skip = (start - frame_start_sample) as usize * channels as usize;
-                    skip_start = skip.min(output_buf.len());
-                }
-            }
-
-            // Trim end: stop at stop_at_sample
-            if let Some(stop) = stop_at_sample {
-                let stop = stop as i64;
-                if frame_start_sample >= 0 && frame_start_sample >= stop {
+            let (frame_start_sample, frame_end_sample) = frame_sample_bounds(
+                pts,
+                num_samples,
+                (*audio.stream).time_base,
+                sample_rate,
+                &mut tracked_sample_pos,
+            );
+            let samples_to_output = match frame_output_window(
+                frame_start_sample,
+                frame_end_sample,
+                output_buf.len(),
+                channels as usize,
+                start_at_sample,
+                stop_at_sample,
+            ) {
+                FrameOutputWindow::Skip => continue,
+                FrameOutputWindow::Stop => {
                     reached_stop = true;
                     break;
                 }
-                if frame_start_sample >= 0 && frame_end_sample > stop {
-                    let keep = (stop - frame_start_sample) as usize * channels as usize;
-                    take_end = keep.min(output_buf.len());
-                    reached_stop = true;
+                FrameOutputWindow::Emit {
+                    skip_start,
+                    take_end,
+                    reached_end,
+                } => {
+                    reached_stop = reached_end;
+                    &output_buf[skip_start..take_end]
                 }
-            }
-
-            let samples_to_output = if skip_start < take_end {
-                &output_buf[skip_start..take_end]
-            } else {
-                continue;
             };
 
             samples_output += samples_to_output.len() as u64;
