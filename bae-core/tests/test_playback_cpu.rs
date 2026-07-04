@@ -321,7 +321,7 @@ impl PlaybackTestFixture {
         let import_id = uuid::Uuid::new_v4().to_string();
 
         import_handle
-            .send_command(ImportCommand::Folder {
+            .send_command(ImportCommand {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),

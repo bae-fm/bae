@@ -639,21 +639,19 @@ pub struct DiscoveredFile {
 /// editor. When present, fields override the seeded metadata after the
 /// choice transformation.
 #[derive(Debug)]
-pub enum ImportCommand {
-    Folder {
-        import_id: String,
-        candidate_key: String,
-        folder: PathBuf,
-        selected_cover: Option<CoverSelection>,
-        storage_mode: StorageMode,
-        /// The transient pin choice for a `Remote` import: whether coven keeps
-        /// the uploaded blobs in `storage/pinned/` (kept offline) vs the evictable
-        /// cache. Ignored for `Local`. Never persisted — it rides the upload
-        /// as the retain-pinned intent.
-        pin: bool,
-        identity_choice: IdentityChoice,
-        user_edit: Option<ReleaseUserEdit>,
-    },
+pub struct ImportCommand {
+    pub import_id: String,
+    pub candidate_key: String,
+    pub folder: PathBuf,
+    pub selected_cover: Option<CoverSelection>,
+    pub storage_mode: StorageMode,
+    /// The transient pin choice for a `Remote` import: whether coven keeps
+    /// the uploaded blobs in `storage/pinned/` (kept offline) vs the evictable
+    /// cache. Ignored for `Local`. Never persisted — it rides the upload
+    /// as the retain-pinned intent.
+    pub pin: bool,
+    pub identity_choice: IdentityChoice,
+    pub user_edit: Option<ReleaseUserEdit>,
 }
 
 #[cfg(test)]

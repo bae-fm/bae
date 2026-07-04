@@ -102,7 +102,7 @@ async fn test_local_import() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),
@@ -242,7 +242,7 @@ async fn test_local_delete_preserves_files() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),
@@ -361,7 +361,7 @@ async fn run_import_with_cover_test() {
     let selected_cover = "scans/back.jpg".to_string();
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),
@@ -798,7 +798,7 @@ async fn test_local_import_not_in_temp_dir() {
     let import_handle = start_test_import(runtime_handle, library_manager.clone());
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),

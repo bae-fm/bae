@@ -138,7 +138,7 @@ where
 
     let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: candidate_key.to_string(),
             folder: album_dir.clone(),
@@ -716,7 +716,7 @@ impl CueFlacTestFixture {
 
         // Import without storage (local CUE/FLAC playback)
         import_handle
-            .send_command(ImportCommand::Folder {
+            .send_command(ImportCommand {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
@@ -2964,7 +2964,7 @@ impl HighSampleRateTestFixture {
 
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
-            .send_command(ImportCommand::Folder {
+            .send_command(ImportCommand {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
@@ -4000,7 +4000,7 @@ async fn test_restore_populates_last_position_display() {
     let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -4107,7 +4107,7 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
     let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -4233,7 +4233,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -4342,7 +4342,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
     let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -4646,7 +4646,7 @@ impl CloudOnlyPlaybackFixture {
         let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
-            .send_command(ImportCommand::Folder {
+            .send_command(ImportCommand {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),

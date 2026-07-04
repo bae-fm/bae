@@ -420,7 +420,7 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
         start_test_import(tokio::runtime::Handle::current(), library_manager.clone());
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -495,7 +495,7 @@ impl CueFlacCaptureFixture {
         let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
-            .send_command(ImportCommand::Folder {
+            .send_command(ImportCommand {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),

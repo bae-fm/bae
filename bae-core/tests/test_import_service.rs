@@ -410,7 +410,7 @@ async fn local_folder_import() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),
@@ -487,7 +487,7 @@ async fn import_produces_audio_format_records() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -548,7 +548,7 @@ async fn loudness_pass_emits_within_track_progress() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -699,7 +699,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -852,7 +852,7 @@ async fn two_sequential_imports() {
 
         let import_id = uuid::Uuid::new_v4().to_string();
         f.handle
-            .send_command(ImportCommand::Folder {
+            .send_command(ImportCommand {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir,
@@ -916,7 +916,7 @@ async fn import_with_cover_art() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -967,7 +967,7 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -1030,7 +1030,7 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -1145,7 +1145,7 @@ async fn exact_import_writes_release_id_and_pressing_fields() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -1203,7 +1203,7 @@ async fn approximate_import_nulls_release_id_and_clears_pressing() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -1311,7 +1311,7 @@ async fn approximate_import_with_user_edit_overlay() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -1482,7 +1482,7 @@ async fn cross_source_exact_writes_both_release_ids() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -1544,7 +1544,7 @@ async fn cross_source_approximate_nulls_both_release_ids() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -1636,7 +1636,7 @@ async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -1706,7 +1706,7 @@ async fn unknown_import_seeds_from_file_tags_and_writes_no_identity() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -1772,7 +1772,7 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -1838,7 +1838,7 @@ async fn unknown_import_folder_image_wins_over_embedded_cover() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -1884,7 +1884,7 @@ async fn unknown_import_always_creates_a_fresh_album() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "identified".to_string(),
             folder: identified_dir,
@@ -1918,7 +1918,7 @@ async fn unknown_import_always_creates_a_fresh_album() {
 
     let import_id2 = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id2.clone(),
             candidate_key: "unknown".to_string(),
             folder: unknown_dir,
@@ -1983,7 +1983,7 @@ async fn unknown_import_with_user_edit_overlay() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -2044,7 +2044,7 @@ async fn unknown_import_with_no_tags_seeds_title_from_folder_name() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -2142,7 +2142,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
 
     let import_id = uuid::Uuid::new_v4().to_string();
     handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,

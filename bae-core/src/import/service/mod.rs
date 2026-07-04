@@ -381,27 +381,18 @@ impl ImportService {
     }
 
     async fn do_import(&self, command: ImportCommand) {
-        let ImportCommand::Folder {
-            import_id,
-            candidate_key,
-            folder,
-            selected_cover,
-            storage_mode,
-            pin,
-            identity_choice,
-            user_edit,
-        } = command;
-
+        let import_id = command.import_id.clone();
+        let candidate_key = command.candidate_key.clone();
         let result = self
             .prepare_and_run_folder_import(
                 import_id.clone(),
                 candidate_key.clone(),
-                folder,
-                selected_cover,
-                storage_mode,
-                pin,
-                identity_choice,
-                user_edit,
+                command.folder,
+                command.selected_cover,
+                command.storage_mode,
+                command.pin,
+                command.identity_choice,
+                command.user_edit,
             )
             .await;
 

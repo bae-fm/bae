@@ -74,7 +74,7 @@ impl ImportServiceHandle {
         user_edit: Option<crate::import::types::ReleaseUserEdit>,
     ) -> Result<String, String> {
         let import_id = self.library_manager.ids().new_id();
-        let command = ImportCommand::Folder {
+        let command = ImportCommand {
             import_id: import_id.clone(),
             candidate_key: candidate_key.to_string(),
             folder,
@@ -171,8 +171,7 @@ impl ImportServiceHandle {
     /// All heavy work (metadata resolution, file discovery, track mapping,
     /// DB insertion) happens in the service worker. This returns immediately.
     pub fn send_command(&self, command: ImportCommand) -> Result<String, String> {
-        let ImportCommand::Folder { import_id, .. } = &command;
-        let import_id = import_id.clone();
+        let import_id = command.import_id.clone();
         self.requests_tx
             .send(command)
             .map_err(|_| "Failed to queue import command".to_string())?;

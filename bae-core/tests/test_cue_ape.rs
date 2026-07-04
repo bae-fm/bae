@@ -153,7 +153,7 @@ async fn test_cue_ape_records_correct_durations() {
     let import_handle = start_test_import(runtime_handle, library_manager.clone());
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -339,7 +339,7 @@ async fn test_cue_ape_records_track_timing() {
     let import_handle = start_test_import(runtime_handle, library_manager.clone());
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -461,7 +461,7 @@ impl CueApeTestFixture {
         let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
-            .send_command(ImportCommand::Folder {
+            .send_command(ImportCommand {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
@@ -1492,7 +1492,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
 
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,

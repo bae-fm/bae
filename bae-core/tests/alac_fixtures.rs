@@ -115,7 +115,7 @@ async fn import_single_m4a_fixture(
         start_test_import(tokio::runtime::Handle::current(), library_manager.clone());
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
@@ -352,7 +352,7 @@ async fn import_cue_alac_pair() {
         start_test_import(tokio::runtime::Handle::current(), library_manager.clone());
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(ImportCommand::Folder {
+        .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
