@@ -10,7 +10,7 @@
 
 use std::{
     ffi::{c_char, CStr, CString},
-    sync::{OnceLock, RwLock},
+    sync::{Arc, OnceLock, RwLock},
 };
 
 use bae_core::album_detail::ReleaseStorageState;
@@ -358,8 +358,10 @@ pub unsafe extern "C" fn bae_configure_diagnostics(
             source,
             app,
         );
-        let diagnostics =
-            Diagnostics::configure(config).map_err(|e| format!("diagnostics setup failed: {e}"))?;
+        let clock: coven::ClockRef = Arc::new(coven::SystemClock);
+        let ids: coven::IdRef = Arc::new(coven::UuidProvider);
+        let diagnostics = Diagnostics::configure(config, clock, ids)
+            .map_err(|e| format!("diagnostics setup failed: {e}"))?;
         install_logging(diagnostics.clone())?;
         replace_diagnostics(diagnostics);
         Ok(())
@@ -2295,8 +2297,8 @@ pub unsafe extern "C" fn bae_outbox_snapshot(handle: *const BaeHandle) -> *mut c
 }
 
 /// One queued download (a whole release being pinned), as the Downloads pane
-/// renders it: title, file count and size, and the state — "queued", "active"
-/// (with `percent`), or "failed" (with `error`).
+/// renders it: title, file count and size, and the state — "queued", "active",
+/// or "failed" (with `error`).
 #[derive(Serialize)]
 struct FfiDownloadOp {
     release_id: String,
@@ -2305,8 +2307,6 @@ struct FfiDownloadOp {
     total_size: i64,
     /// "queued", "active", or "failed".
     state: String,
-    /// Overall release percent — present only while `state` is "active".
-    percent: Option<u8>,
     /// The failure message when `state` is "failed".
     error: Option<String>,
 }
@@ -2348,10 +2348,10 @@ pub unsafe extern "C" fn bae_download_snapshot(handle: *const BaeHandle) -> *mut
             .ops
             .iter()
             .map(|op| {
-                let (state, percent, error) = match &op.state {
-                    DownloadState::Queued => ("queued", None, None),
-                    DownloadState::Active { percent } => ("active", Some(*percent), None),
-                    DownloadState::Failed { error } => ("failed", None, Some(error.clone())),
+                let (state, error) = match &op.state {
+                    DownloadState::Queued => ("queued", None),
+                    DownloadState::Active { progress: () } => ("active", None),
+                    DownloadState::Failed { error } => ("failed", Some(error.clone())),
                 };
                 FfiDownloadOp {
                     release_id: op.release_id.clone(),
@@ -2359,7 +2359,6 @@ pub unsafe extern "C" fn bae_download_snapshot(handle: *const BaeHandle) -> *mut
                     file_count: op.file_count,
                     total_size: op.total_size,
                     state: state.to_string(),
-                    percent,
                     error,
                 }
             })

@@ -37,10 +37,6 @@ public sealed class DownloadOp
     /// <summary>"queued", "active", or "failed".</summary>
     public string State { get; set; } = string.Empty;
 
-    /// <summary>Overall release percent — present only while <see cref="State"/>
-    /// is "active".</summary>
-    public int? Percent { get; set; }
-
     /// <summary>The failure message when <see cref="State"/> is "failed".</summary>
     public string? Error { get; set; }
 }

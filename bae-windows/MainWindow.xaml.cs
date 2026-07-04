@@ -4539,7 +4539,7 @@ public sealed partial class MainWindow : Window
 
             string StateLabel(DownloadOp op) => op.State switch
             {
-                "active" => Loc.Chrome("download.state.downloading", "percent", op.Percent ?? 0),
+                "active" => Loc.Chrome("download.state.downloading"),
                 "failed" => Loc.Chrome("download.state.failed"),
                 _ => Loc.Chrome("download.state.queued"),
             };
