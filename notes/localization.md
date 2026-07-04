@@ -23,8 +23,8 @@ Examples:
   error. Rust supplies the entity kind; the UI renders the line.
 - `core.import.prepare.parsing_metadata` is selected from an import progress
   enum. Rust decides the step; the UI renders the step text.
-- `core.transfer.files` is selected by storage-transfer UI code, but its
-  arguments (`file_no`, `total`) are part of the shared transfer shape.
+- `core.outbox.pending_deletes` is selected from shared queue state, and its
+  argument (`count`) is part of the shared outbox shape.
 
 Each catalog value is an ICU MessageFormat 1 string. Arguments are declared in
 the `args` table so `loc-gen check` can verify that every placeholder is real
@@ -33,9 +33,9 @@ and every declared argument is used.
 Example:
 
 ```toml
-[messages."core.transfer.files"]
-args = { file_no = "Int", total = "Int" }
-value = "{file_no} of {total} files"
+[messages."core.outbox.pending_deletes"]
+args = { count = "Int" }
+value = "{count, plural, one {# pending delete} other {# pending deletes}}"
 ```
 
 The locale does not cross the bridge. Rust sends typed data, raw numbers, and

@@ -476,8 +476,8 @@ mod tests {
     }
 
     /// The structured-composition keys the C# resolves (side/disc headers,
-    /// queue counts, outbox/transfer args, lookup failures, pressings plural)
-    /// must all exist — these have no `*_key` fn (the C# hardcodes the dotted
+    /// queue counts, outbox args, lookup failures, pressings plural) must all
+    /// exist — these have no `*_key` fn (the C# hardcodes the dotted
     /// key for them), so this is their cross-check.
     #[test]
     fn composition_keys_exist() {
@@ -499,7 +499,6 @@ mod tests {
             "core.outbox.throughput",
             "core.outbox.eta",
             "core.outbox.pending_deletes",
-            "core.transfer.files",
         ] {
             assert_key(&cat, key);
         }
