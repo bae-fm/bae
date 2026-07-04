@@ -613,9 +613,8 @@ impl Config {
 
     fn from_env(ids: &dyn coven::IdProvider) -> Self {
         // Use the same active-library pointer file as production mode
-        let home_dir = dirs::home_dir().expect("Failed to get home directory");
-        let bae_dir = home_dir.join(".bae");
-        let mut config = Self::load_from_bae_dir(&bae_dir, ids);
+        let app_dir = bae_dir().expect("Failed to get bae directory");
+        let mut config = Self::load_from_bae_dir(&app_dir, ids);
 
         // Overlay dev-specific env vars on top of the config.yaml values
         if let Some(path) = dev_env_secret("BAE_LIBRARY_PATH") {
@@ -647,9 +646,8 @@ impl Config {
     }
 
     fn from_config_file(ids: &dyn coven::IdProvider) -> Self {
-        let home_dir = dirs::home_dir().expect("Failed to get home directory");
-        let bae_dir = home_dir.join(".bae");
-        Self::load_from_bae_dir(&bae_dir, ids)
+        let app_dir = bae_dir().expect("Failed to get bae directory");
+        Self::load_from_bae_dir(&app_dir, ids)
     }
 
     fn load_from_bae_dir(bae_dir: &std::path::Path, ids: &dyn coven::IdProvider) -> Self {
@@ -742,11 +740,9 @@ impl Config {
 
     /// Save the active library UUID to the global pointer file (~/.bae/active-library).
     pub fn save_active_library(&self) -> Result<(), ConfigError> {
-        let bae_dir = dirs::home_dir()
-            .expect("Failed to get home directory")
-            .join(".bae");
-        std::fs::create_dir_all(&bae_dir)?;
-        std::fs::write(bae_dir.join("active-library"), &self.library_id)?;
+        let app_dir = bae_dir()?;
+        std::fs::create_dir_all(&app_dir)?;
+        std::fs::write(app_dir.join("active-library"), &self.library_id)?;
         Ok(())
     }
 
@@ -782,14 +778,16 @@ impl Config {
 
     /// Discover all libraries under ~/.bae/libraries/.
     pub fn discover_libraries() -> Vec<LibraryInfo> {
-        let home_dir = match dirs::home_dir() {
-            Some(d) => d,
-            None => return vec![],
+        let app_dir = match bae_dir() {
+            Ok(app_dir) => app_dir,
+            Err(error) => {
+                warn!("Failed to discover libraries: {error}");
+                return vec![];
+            }
         };
-        let bae_dir = home_dir.join(".bae");
-        let active_id = read_active_library_id(&bae_dir);
+        let active_id = read_active_library_id(&app_dir);
 
-        let mut libraries: Vec<LibraryInfo> = discover_all_library_paths(&bae_dir)
+        let mut libraries: Vec<LibraryInfo> = discover_all_library_paths(&app_dir)
             .into_iter()
             .map(|(path, yaml)| {
                 let is_active = active_id.as_deref() == Some(&yaml.library_id);

@@ -110,16 +110,11 @@ fn bootstrap_inner(
     let clock: ClockRef = Arc::new(SystemClock);
     let ids: IdRef = Arc::new(UuidProvider);
 
-    let (config, active_library_id) = load_bootstrap_config(target, ids.as_ref())?;
-    if let Some(active_library_id) = active_library_id {
-        let home_dir = dirs::home_dir()
-            .ok_or_else(|| BootstrapError::Config("Failed to get home directory".to_string()))?;
-        let bae_dir = home_dir.join(".bae");
-        std::fs::create_dir_all(&bae_dir)
-            .map_err(|e| BootstrapError::Config(format!("Failed to create .bae directory: {e}")))?;
-        std::fs::write(bae_dir.join("active-library"), &active_library_id).map_err(|e| {
-            BootstrapError::Config(format!("Failed to write active-library pointer: {e}"))
-        })?;
+    let (config, save_active_library) = load_bootstrap_config(target, ids.as_ref())?;
+    if save_active_library {
+        config
+            .save_active_library()
+            .map_err(|e| BootstrapError::Config(e.to_string()))?;
     }
     let library_id = config.library_id.clone();
 
@@ -284,7 +279,7 @@ fn bootstrap_inner(
 fn load_bootstrap_config(
     target: BootstrapTarget,
     ids: &dyn coven::IdProvider,
-) -> Result<(Config, Option<String>), BootstrapError> {
+) -> Result<(Config, bool), BootstrapError> {
     match target {
         BootstrapTarget::RegisteredId(library_id) => {
             let config =
@@ -294,10 +289,10 @@ fn load_bootstrap_config(
                     }
                     other => BootstrapError::Config(other.to_string()),
                 })?;
-            Ok((config, Some(library_id)))
+            Ok((config, true))
         }
         BootstrapTarget::LibraryPath(path) => Config::load_from_library_path(path, ids)
-            .map(|config| (config, None))
+            .map(|config| (config, false))
             .map_err(|e| BootstrapError::Config(e.to_string())),
     }
 }
