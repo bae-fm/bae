@@ -1035,8 +1035,6 @@ impl Database {
         .await
     }
 
-    /// The album id of a release stored from the file structure that hashes to
-    /// `hash`, or `None` when no release carries that content hash. The import
     /// Whether some release in the library was imported from this exact file
     /// structure (its `content_hash` matches `hash`). The import view uses this
     /// to mark a scanned folder as already added.
