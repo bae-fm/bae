@@ -102,78 +102,7 @@ impl LibraryManager {
         let mut resolved = Vec::with_capacity(artists.len());
 
         for artist in artists {
-            // 0. Various Artists: match any known VA ID across sources so that
-            //    e.g. Discogs "Various" (ID 194) merges with MB "Various Artists".
-            let existing = if artist.is_various_artists() {
-                let va = &crate::db::VARIOUS_ARTISTS;
-                let by_discogs = self.database.get_artist_by_discogs_id(va.discogs).await?;
-
-                if by_discogs.is_some() {
-                    by_discogs
-                } else {
-                    self.database.get_artist_by_mb_id(va.musicbrainz).await?
-                }
-            } else {
-                None
-            };
-
-            // 1. Try discogs_artist_id
-            let existing = if existing.is_some() {
-                existing
-            } else if let Some(ref discogs_id) = artist.discogs_artist_id {
-                self.database.get_artist_by_discogs_id(discogs_id).await?
-            } else {
-                None
-            };
-
-            // 2. Try musicbrainz_artist_id
-            let existing = match existing {
-                Some(e) => Some(e),
-                None => {
-                    if let Some(ref mb_id) = artist.musicbrainz_artist_id {
-                        self.database.get_artist_by_mb_id(mb_id).await?
-                    } else {
-                        None
-                    }
-                }
-            };
-
-            // 3. Try name (case-insensitive) with conflict check
-            let existing = match existing {
-                Some(e) => Some(e),
-                None => {
-                    let name_match = self.database.get_artist_by_name(&artist.name).await?;
-
-                    match name_match {
-                        Some(ref matched) => {
-                            let discogs_conflict =
-                                match (&matched.discogs_artist_id, &artist.discogs_artist_id) {
-                                    (Some(a), Some(b)) => a != b,
-                                    _ => false,
-                                };
-                            let mb_conflict = match (
-                                &matched.musicbrainz_artist_id,
-                                &artist.musicbrainz_artist_id,
-                            ) {
-                                (Some(a), Some(b)) => a != b,
-                                _ => false,
-                            };
-
-                            if discogs_conflict || mb_conflict {
-                                debug!(
-                                    "Name match for '{}' has conflicting source IDs, inserting new artist",
-                                    artist.name
-                                );
-                                None
-                            } else {
-                                name_match
-                            }
-                        }
-                        None => None,
-                    }
-                }
-            };
-
+            let existing = self.find_existing_artist_for_import(artist).await?;
             let actual_id = if let Some(existing_artist) = existing {
                 self.database
                     .update_artist_external_ids(
@@ -194,4 +123,64 @@ impl LibraryManager {
 
         Ok(resolved)
     }
+
+    async fn find_existing_artist_for_import(
+        &self,
+        artist: &DbArtist,
+    ) -> Result<Option<DbArtist>, LibraryError> {
+        // Various Artists: match any known VA ID across sources so that
+        // Discogs "Various" merges with MusicBrainz "Various Artists".
+        if artist.is_various_artists() {
+            let va = &crate::db::VARIOUS_ARTISTS;
+            if let Some(existing) = self.database.get_artist_by_discogs_id(va.discogs).await? {
+                return Ok(Some(existing));
+            }
+            if let Some(existing) = self.database.get_artist_by_mb_id(va.musicbrainz).await? {
+                return Ok(Some(existing));
+            }
+        }
+
+        if let Some(discogs_id) = artist.discogs_artist_id.as_deref() {
+            if let Some(existing) = self.database.get_artist_by_discogs_id(discogs_id).await? {
+                return Ok(Some(existing));
+            }
+        }
+
+        if let Some(mb_id) = artist.musicbrainz_artist_id.as_deref() {
+            if let Some(existing) = self.database.get_artist_by_mb_id(mb_id).await? {
+                return Ok(Some(existing));
+            }
+        }
+
+        self.find_name_match_for_import(artist).await
+    }
+
+    async fn find_name_match_for_import(
+        &self,
+        artist: &DbArtist,
+    ) -> Result<Option<DbArtist>, LibraryError> {
+        let Some(matched) = self.database.get_artist_by_name(&artist.name).await? else {
+            return Ok(None);
+        };
+
+        if source_id_conflicts(
+            matched.discogs_artist_id.as_deref(),
+            artist.discogs_artist_id.as_deref(),
+        ) || source_id_conflicts(
+            matched.musicbrainz_artist_id.as_deref(),
+            artist.musicbrainz_artist_id.as_deref(),
+        ) {
+            debug!(
+                "Name match for '{}' has conflicting source IDs, inserting new artist",
+                artist.name
+            );
+            Ok(None)
+        } else {
+            Ok(Some(matched))
+        }
+    }
+}
+
+fn source_id_conflicts(existing: Option<&str>, incoming: Option<&str>) -> bool {
+    matches!((existing, incoming), (Some(a), Some(b)) if a != b)
 }
