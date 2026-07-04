@@ -703,90 +703,202 @@ impl Database {
             None,
         )
     }
+}
 
-    /// Shared SQL assembly for `find_album_detail` / `find_release_detail`.
-    /// Returns the raw per-release aggregate.
-    async fn build_release_detail(&self, release: DbRelease) -> Result<DbReleaseDetail, DbError> {
-        let tracks = self
-            .get_tracks_with_artists_for_release(&release.id)
-            .await?;
-        let files = self.get_files_for_release(&release.id).await?;
-        let audio_formats = self.get_audio_formats_for_release(&release.id).await?;
-        let identities = self.get_release_identities(&release.id).await?;
+fn find_album_by_id_on(conn: &Connection, album_id: &str) -> Result<Option<DbAlbum>, DbError> {
+    conn.query_row(
+        r#"
+            SELECT
+                id, title, artist_id, year, primary_release_id,
+                is_compilation,
+                created_at
+            FROM albums
+            WHERE id = ?
+            "#,
+        params![album_id],
+        row_to_album,
+    )
+    .optional()
+    .map_err(DbError::from)
+}
 
-        Ok(DbReleaseDetail {
-            release,
-            tracks,
-            files,
-            audio_formats,
-            identities,
-        })
-    }
+fn get_artists_for_album_on(conn: &Connection, album_id: &str) -> Result<Vec<DbArtist>, DbError> {
+    // Primary artist from FK (sort_key = -1 so it's first), then additional
+    // artists from the junction table ordered by position.
+    let mut stmt = conn.prepare(
+        r#"
+            SELECT a.*, -1 AS sort_key FROM artists a
+            JOIN albums alb ON alb.artist_id = a.id
+            WHERE alb.id = ?
+            UNION ALL
+            SELECT a.*, aa.position AS sort_key FROM artists a
+            JOIN album_artists aa ON a.id = aa.artist_id
+            WHERE aa.album_id = ?
+            ORDER BY sort_key
+            "#,
+    )?;
+    let rows = stmt.query_map(params![album_id, album_id], row_to_artist)?;
+    rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+        .map_err(DbError::from)
+}
 
-    async fn get_tracks_with_artists_for_release(
-        &self,
-        release_id: &str,
-    ) -> Result<Vec<DbTrackWithArtists>, DbError> {
-        let release_id = release_id.to_string();
-        self.call(move |conn| {
-            let mut stmt = conn.prepare(
-                "SELECT
-                    track.id AS track_id,
-                    track.release_id AS track_release_id,
-                    track.title AS track_title,
-                    track.side AS track_side,
-                    track.track_number AS track_track_number,
-                    track.duration_ms AS track_duration_ms,
-                    track.discogs_position AS track_discogs_position,
-                    track.created_at AS track_created_at,
-                    artist.id AS artist_id,
-                    artist.name AS artist_name,
-                    artist.sort_name AS artist_sort_name,
-                    artist.discogs_artist_id AS artist_discogs_artist_id,
-                    artist.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
-                    artist.created_at AS artist_created_at
-                 FROM tracks track
-                 LEFT JOIN track_artists ta ON ta.track_id = track.id
-                 LEFT JOIN artists artist ON artist.id = ta.artist_id
-                 WHERE track.release_id = ?
-                 ORDER BY track.side, track.track_number, track.id, ta.position",
-            )?;
-            let mut rows = stmt.query(params![release_id])?;
-            let mut tracks = Vec::new();
-            let mut current_track: Option<DbTrackWithArtists> = None;
-            let mut current_track_id: Option<String> = None;
+fn find_release_by_id_on(
+    conn: &Connection,
+    release_id: &str,
+) -> Result<Option<DbRelease>, DbError> {
+    conn.query_row(
+        "SELECT * FROM releases WHERE id = ?",
+        params![release_id],
+        row_to_release,
+    )
+    .optional()
+    .map_err(DbError::from)
+}
 
-            while let Some(row) = rows.next()? {
-                let track = row_to_joined_track(row)?;
-                if current_track_id.as_deref() != Some(track.id.as_str()) {
-                    if let Some(track) = current_track.take() {
-                        tracks.push(track);
-                    }
-                    current_track_id = Some(track.id.clone());
-                    current_track = Some(DbTrackWithArtists {
-                        track,
-                        artists: Vec::new(),
-                    });
-                }
+fn get_releases_for_album_on(conn: &Connection, album_id: &str) -> Result<Vec<DbRelease>, DbError> {
+    let mut stmt = conn.prepare("SELECT * FROM releases WHERE album_id = ? ORDER BY created_at")?;
+    let rows = stmt.query_map(params![album_id], row_to_release)?;
+    rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+        .map_err(DbError::from)
+}
 
-                let artist_id: Option<String> = row.get("artist_id")?;
-                if artist_id.is_some() {
-                    current_track
-                        .as_mut()
-                        .expect("joined release row has a current track")
-                        .artists
-                        .push(row_to_joined_artist(row)?);
-                }
-            }
+fn build_release_detail_on(
+    conn: &Connection,
+    release: DbRelease,
+) -> Result<DbReleaseDetail, DbError> {
+    let tracks = get_tracks_with_artists_for_release_on(conn, &release.id)?;
+    let files = get_files_for_release_on(conn, &release.id)?;
+    let audio_formats = get_audio_formats_for_release_on(conn, &release.id)?;
+    let identities = get_release_identities_on(conn, &release.id)?;
 
-            if let Some(track) = current_track {
+    Ok(DbReleaseDetail {
+        release,
+        tracks,
+        files,
+        audio_formats,
+        identities,
+    })
+}
+
+fn get_tracks_with_artists_for_release_on(
+    conn: &Connection,
+    release_id: &str,
+) -> Result<Vec<DbTrackWithArtists>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT
+            track.id AS track_id,
+            track.release_id AS track_release_id,
+            track.title AS track_title,
+            track.side AS track_side,
+            track.track_number AS track_track_number,
+            track.duration_ms AS track_duration_ms,
+            track.discogs_position AS track_discogs_position,
+            track.created_at AS track_created_at,
+            artist.id AS artist_id,
+            artist.name AS artist_name,
+            artist.sort_name AS artist_sort_name,
+            artist.discogs_artist_id AS artist_discogs_artist_id,
+            artist.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
+            artist.created_at AS artist_created_at
+         FROM tracks track
+         LEFT JOIN track_artists ta ON ta.track_id = track.id
+         LEFT JOIN artists artist ON artist.id = ta.artist_id
+         WHERE track.release_id = ?
+         ORDER BY track.side, track.track_number, track.id, ta.position",
+    )?;
+    let mut rows = stmt.query(params![release_id])?;
+    let mut tracks = Vec::new();
+    let mut current_track: Option<DbTrackWithArtists> = None;
+    let mut current_track_id: Option<String> = None;
+
+    while let Some(row) = rows.next()? {
+        let track = row_to_joined_track(row)?;
+        if current_track_id.as_deref() != Some(track.id.as_str()) {
+            if let Some(track) = current_track.take() {
                 tracks.push(track);
             }
+            current_track_id = Some(track.id.clone());
+            current_track = Some(DbTrackWithArtists {
+                track,
+                artists: Vec::new(),
+            });
+        }
 
-            Ok(tracks)
-        })
-        .await
+        let artist_id: Option<String> = row.get("artist_id")?;
+        if artist_id.is_some() {
+            current_track
+                .as_mut()
+                .expect("joined release row has a current track")
+                .artists
+                .push(row_to_joined_artist(row)?);
+        }
     }
+
+    if let Some(track) = current_track {
+        tracks.push(track);
+    }
+
+    Ok(tracks)
+}
+
+fn get_files_for_release_on(conn: &Connection, release_id: &str) -> Result<Vec<DbFile>, DbError> {
+    let mut stmt = conn.prepare("SELECT * FROM release_files WHERE release_id = ?")?;
+    let rows = stmt.query_map(params![release_id], row_to_file)?;
+    rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+        .map_err(DbError::from)
+}
+
+fn get_audio_formats_for_release_on(
+    conn: &Connection,
+    release_id: &str,
+) -> Result<Vec<DbAudioFormat>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT af.* FROM audio_formats af \
+             JOIN tracks t ON t.id = af.track_id \
+             WHERE t.release_id = ?",
+    )?;
+    let rows = stmt.query_map(params![release_id], row_to_audio_format)?;
+    rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+        .map_err(DbError::from)
+}
+
+fn get_release_identities_on(
+    conn: &Connection,
+    release_id: &str,
+) -> Result<Vec<crate::import::ReleaseIdentity>, DbError> {
+    let mut stmt = conn.prepare(
+        r#"
+            SELECT source, source_group_id, source_release_id
+            FROM release_identities
+            WHERE release_id = ?
+            "#,
+    )?;
+    let raw = stmt
+        .query_map(params![release_id], |row| {
+            Ok((
+                row.get::<_, String>("source")?,
+                row.get::<_, String>("source_group_id")?,
+                row.get::<_, Option<String>>("source_release_id")?,
+            ))
+        })?
+        .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+
+    let mut identities = Vec::with_capacity(raw.len());
+    for (source_str, source_group_id, source_release_id) in raw {
+        let Ok(source) = crate::import::MetadataSource::from_str(&source_str) else {
+            tracing::warn!(
+                %release_id, source = %source_str,
+                "skipping release_identities row with unknown source"
+            );
+            continue;
+        };
+        identities.push(crate::import::ReleaseIdentity {
+            source,
+            source_group_id,
+            source_release_id,
+        });
+    }
+    Ok(identities)
 }
 
 // ─── Row-map helpers (free functions; take `&Row`) ──────────────────────────

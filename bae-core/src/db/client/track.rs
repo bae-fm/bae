@@ -105,17 +105,8 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<DbAudioFormat>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| {
-            let mut stmt = conn.prepare(
-                "SELECT af.* FROM audio_formats af \
-                     JOIN tracks t ON t.id = af.track_id \
-                     WHERE t.release_id = ?",
-            )?;
-            let rows = stmt.query_map(params![release_id], row_to_audio_format)?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
-        })
-        .await
+        self.call(move |conn| get_audio_formats_for_release_on(conn, &release_id))
+            .await
     }
     /// Find audio format by track ID. Caller-provided ID — may not exist.
     pub async fn find_audio_format_by_track_id(

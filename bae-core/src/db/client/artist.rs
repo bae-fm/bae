@@ -132,26 +132,8 @@ impl Database {
     /// Get artists for an album (ordered by position)
     pub async fn get_artists_for_album(&self, album_id: &str) -> Result<Vec<DbArtist>, DbError> {
         let album_id = album_id.to_string();
-        self.call(move |conn| {
-            // Primary artist from FK (sort_key = -1 so it's first),
-            // then additional artists from junction table ordered by position.
-            let mut stmt = conn.prepare(
-                r#"
-                        SELECT a.*, -1 AS sort_key FROM artists a
-                        JOIN albums alb ON alb.artist_id = a.id
-                        WHERE alb.id = ?
-                        UNION ALL
-                        SELECT a.*, aa.position AS sort_key FROM artists a
-                        JOIN album_artists aa ON a.id = aa.artist_id
-                        WHERE aa.album_id = ?
-                        ORDER BY sort_key
-                        "#,
-            )?;
-            let rows = stmt.query_map(params![album_id, album_id], row_to_artist)?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
-        })
-        .await
+        self.call(move |conn| get_artists_for_album_on(conn, &album_id))
+            .await
     }
     /// Get artists for a track (ordered by position)
     pub async fn get_artists_for_track(&self, track_id: &str) -> Result<Vec<DbArtist>, DbError> {

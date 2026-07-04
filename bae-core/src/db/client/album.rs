@@ -290,23 +290,8 @@ impl Database {
     /// Find album by ID. Caller-provided ID — may not exist.
     pub async fn find_album_by_id(&self, album_id: &str) -> Result<Option<DbAlbum>, DbError> {
         let album_id = album_id.to_string();
-        self.call(move |conn| {
-            conn.query_row(
-                r#"
-                    SELECT
-                        id, title, artist_id, year, primary_release_id,
-                        is_compilation,
-                        created_at
-                    FROM albums
-                    WHERE id = ?
-                    "#,
-                params![album_id],
-                row_to_album,
-            )
-            .optional()
-            .map_err(DbError::from)
-        })
-        .await
+        self.call(move |conn| find_album_by_id_on(conn, &album_id))
+            .await
     }
 
     /// Follow DbRelease.album_id -> DbAlbum.
@@ -338,23 +323,27 @@ impl Database {
         &self,
         album_id: &str,
     ) -> Result<Option<DbAlbumDetail>, DbError> {
-        let Some(album) = self.find_album_by_id(album_id).await? else {
-            return Ok(None);
-        };
+        let album_id = album_id.to_string();
+        self.call(move |conn| {
+            let Some(album) = find_album_by_id_on(conn, &album_id)? else {
+                return Ok(None);
+            };
 
-        let artists = self.get_artists_for_album(album_id).await?;
-        let db_releases = self.get_releases_for_album(album_id).await?;
+            let artists = get_artists_for_album_on(conn, &album_id)?;
+            let db_releases = get_releases_for_album_on(conn, &album_id)?;
 
-        let mut releases = Vec::with_capacity(db_releases.len());
-        for release in db_releases {
-            releases.push(self.build_release_detail(release).await?);
-        }
+            let mut releases = Vec::with_capacity(db_releases.len());
+            for release in db_releases {
+                releases.push(build_release_detail_on(conn, release)?);
+            }
 
-        Ok(Some(DbAlbumDetail {
-            album,
-            artists,
-            releases,
-        }))
+            Ok(Some(DbAlbumDetail {
+                album,
+                artists,
+                releases,
+            }))
+        })
+        .await
     }
     /// Find album_id for a release. Caller-provided ID — may not exist.
     pub async fn find_album_id_for_release(

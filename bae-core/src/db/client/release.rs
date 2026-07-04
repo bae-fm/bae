@@ -374,23 +374,21 @@ impl Database {
         &self,
         release_id: &str,
     ) -> Result<Option<DbReleaseDetail>, DbError> {
-        let Some(release) = self.find_release_by_id(release_id).await? else {
-            return Ok(None);
-        };
-        Ok(Some(self.build_release_detail(release).await?))
+        let release_id = release_id.to_string();
+        self.call(move |conn| {
+            let Some(release) = find_release_by_id_on(conn, &release_id)? else {
+                return Ok(None);
+            };
+            Ok(Some(build_release_detail_on(conn, release)?))
+        })
+        .await
     }
 
     /// Get all releases for an album
     pub async fn get_releases_for_album(&self, album_id: &str) -> Result<Vec<DbRelease>, DbError> {
         let album_id = album_id.to_string();
-        self.call(move |conn| {
-            let mut stmt =
-                conn.prepare("SELECT * FROM releases WHERE album_id = ? ORDER BY created_at")?;
-            let rows = stmt.query_map(params![album_id], row_to_release)?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
-        })
-        .await
+        self.call(move |conn| get_releases_for_album_on(conn, &album_id))
+            .await
     }
     /// Insert a new file record
     pub async fn insert_file(&self, file: &DbFile) -> Result<(), DbError> {
@@ -405,13 +403,8 @@ impl Database {
     /// Get files for a release
     pub async fn get_files_for_release(&self, release_id: &str) -> Result<Vec<DbFile>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| {
-            let mut stmt = conn.prepare("SELECT * FROM release_files WHERE release_id = ?")?;
-            let rows = stmt.query_map(params![release_id], row_to_file)?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
-        })
-        .await
+        self.call(move |conn| get_files_for_release_on(conn, &release_id))
+            .await
     }
     /// Find file by ID. Caller-provided ID — may not exist.
     pub async fn find_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, DbError> {
@@ -787,16 +780,8 @@ impl Database {
     /// Find release by ID. Caller-provided ID — may not exist.
     pub async fn find_release_by_id(&self, release_id: &str) -> Result<Option<DbRelease>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| {
-            conn.query_row(
-                "SELECT * FROM releases WHERE id = ?",
-                params![release_id],
-                row_to_release,
-            )
-            .optional()
-            .map_err(DbError::from)
-        })
-        .await
+        self.call(move |conn| find_release_by_id_on(conn, &release_id))
+            .await
     }
 
     /// Test-only: flip a release's `remote` gate column directly (bumping

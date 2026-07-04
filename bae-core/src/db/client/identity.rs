@@ -31,42 +31,8 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<crate::import::ReleaseIdentity>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| {
-            let mut stmt = conn.prepare(
-                r#"
-                        SELECT source, source_group_id, source_release_id
-                        FROM release_identities
-                        WHERE release_id = ?
-                        "#,
-            )?;
-            let raw = stmt
-                .query_map(params![release_id], |row| {
-                    Ok((
-                        row.get::<_, String>("source")?,
-                        row.get::<_, String>("source_group_id")?,
-                        row.get::<_, Option<String>>("source_release_id")?,
-                    ))
-                })?
-                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
-
-            let mut identities = Vec::with_capacity(raw.len());
-            for (source_str, source_group_id, source_release_id) in raw {
-                let Ok(source) = crate::import::MetadataSource::from_str(&source_str) else {
-                    tracing::warn!(
-                        %release_id, source = %source_str,
-                        "skipping release_identities row with unknown source"
-                    );
-                    continue;
-                };
-                identities.push(crate::import::ReleaseIdentity {
-                    source,
-                    source_group_id,
-                    source_release_id,
-                });
-            }
-            Ok(identities)
-        })
-        .await
+        self.call(move |conn| get_release_identities_on(conn, &release_id))
+            .await
     }
 
     /// Look up an album by Exact `release_identities` rows. Returns the
