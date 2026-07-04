@@ -512,10 +512,7 @@ pub fn compute_discid_from_categorized(
 
     if let AudioContent::CueFlacPairs { pairs, .. } = &categorized.audio {
         for pair in pairs {
-            let Some(sheet) = &pair.cue_sheet else {
-                continue;
-            };
-            if let Some(id) = discid_from_cue_audio(sheet, &pair.audio_file.path) {
+            if let Some(id) = discid_from_cue_audio(&pair.cue_sheet, &pair.audio_file.path) {
                 return Some(id);
             }
         }

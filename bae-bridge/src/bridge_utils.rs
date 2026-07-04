@@ -125,7 +125,7 @@ fn bridge_sync_provider(
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn extract_track_count(
     files: &bae_core::import::folder_scanner::CategorizedFiles,
-) -> Option<u32> {
+) -> u32 {
     files.audio.track_count()
 }
 

@@ -57,8 +57,7 @@ struct CueFlacPair: Equatable {
     let flacLocalPath: String
     /// Combined CUE + audio size in bytes. The UI formats it.
     let totalSize: UInt64
-    /// `nil` when the CUE hasn't been parsed yet.
-    let trackCount: UInt32?
+    let trackCount: UInt32
 
     /// CUE file size formatted for the current locale, e.g. "1 KB".
     var cueSizeText: String {

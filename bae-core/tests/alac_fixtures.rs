@@ -292,12 +292,7 @@ fn scanner_recognizes_cue_alac_pair() {
         } => {
             assert_eq!(pairs.len(), 1, "one CUE pair");
             assert_eq!(
-                pairs[0]
-                    .cue_sheet
-                    .as_ref()
-                    .expect("folder scan parses the CUE")
-                    .tracks
-                    .len(),
+                pairs[0].cue_sheet.tracks.len(),
                 3,
                 "three tracks in the CUE sheet"
             );
@@ -444,7 +439,7 @@ fn cue_alac_disc_id_is_stable() {
     let track_count = categorized.audio.track_count();
     let disc_id = compute_discid_from_categorized(&categorized);
 
-    assert_eq!(track_count, Some(3), "three tracks in the CUE sheet");
+    assert_eq!(track_count, 3, "three tracks in the CUE sheet");
     let disc_id = disc_id.expect("CUE+ALAC pair must produce a disc ID");
     assert_eq!(
         disc_id.len(),

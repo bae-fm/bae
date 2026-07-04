@@ -523,10 +523,7 @@ impl ImportService {
                         let mut owned: Vec<(crate::cue_flac::CueSheet, PathBuf)> =
                             Vec::with_capacity(sorted.len());
                         for p in sorted {
-                            let sheet = p.cue_sheet.clone().ok_or_else(|| {
-                                format!("CUE sheet not parsed for pair {:?}", p.cue_file.path)
-                            })?;
-                            owned.push((sheet, p.audio_file.path.clone()));
+                            owned.push((p.cue_sheet.clone(), p.audio_file.path.clone()));
                         }
                         tokio::task::spawn_blocking(move || {
                             let sheets: Vec<&crate::cue_flac::CueSheet> =

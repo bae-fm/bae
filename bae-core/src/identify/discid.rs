@@ -258,8 +258,7 @@ mod tests {
 
         assert!(disc_id.is_some(), "LOG fixture should produce a disc ID");
         assert_eq!(
-            track_count,
-            Some(2),
+            track_count, 2,
             "track_count must equal the number of audio files, not 0"
         );
     }

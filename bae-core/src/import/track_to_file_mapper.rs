@@ -45,17 +45,7 @@ fn map_tracks_to_cue_flacs(
     let mut sorted: Vec<&ScannedCueFlacPair> = pairs.iter().collect();
     sorted.sort_by(|a, b| natord::compare(&a.cue_file.relative_path, &b.cue_file.relative_path));
 
-    // Pre-parsed CUE sheets per pair. The folder scan populates these; a
-    // `None` here means a pair reached the mapper with its CUE unparsed,
-    // which is a bug — the mapper needs the parsed sheet to align tracks.
-    let sheets: Vec<&CueSheet> = sorted
-        .iter()
-        .map(|p| {
-            p.cue_sheet
-                .as_ref()
-                .ok_or_else(|| format!("CUE sheet not parsed for pair {:?}", p.cue_file.path))
-        })
-        .collect::<Result<_, _>>()?;
+    let sheets: Vec<&CueSheet> = sorted.iter().map(|p| &p.cue_sheet).collect();
 
     let per_pair_counts: Vec<usize> = sheets.iter().map(|s| s.tracks.len()).collect();
     let total_cue_tracks: usize = per_pair_counts.iter().sum();
@@ -89,10 +79,7 @@ fn map_tracks_to_cue_flac(
     pair: &ScannedCueFlacPair,
     tracks: Vec<DbTrack>,
 ) -> Result<Vec<TrackFile>, String> {
-    let cue_sheet = pair
-        .cue_sheet
-        .clone()
-        .expect("map_tracks_to_cue_flacs already verified cue_sheet is Some");
+    let cue_sheet = pair.cue_sheet.clone();
     debug!(
         "Processing CUE/FLAC pair: {} + {} ({} tracks)",
         pair.audio_file.path.display(),
@@ -586,33 +573,5 @@ mod tests {
                 _ => panic!("expected TrackFile::CueBacked"),
             }
         }
-    }
-
-    /// Guard against a `CategorizedFiles` with an unparsed CUE reaching the
-    /// mapper: without the parsed sheet the mapper can't align tracks, so it
-    /// must error rather than proceed.
-    #[test]
-    fn test_map_tracks_to_files_unparsed_cue_errors() {
-        let tracks = create_test_tracks(3);
-        let files = CategorizedFiles {
-            audio: AudioContent::CueFlacPairs {
-                pairs: vec![crate::import::folder_scanner::ScannedCueFlacPair {
-                    cue_file: scanned("/album/Album.cue"),
-                    audio_file: scanned("/album/Album.flac"),
-                    cue_sheet: None,
-                    total_size: 2048,
-                }],
-                format_label: "CUE+FLAC".to_string(),
-            },
-            artwork: Vec::new(),
-            documents: Vec::new(),
-            unpaired_cue_sheets: Vec::new(),
-        };
-        let result = map_tracks_to_files(tracks, &files);
-        assert!(result.is_err());
-        assert!(
-            result.unwrap_err().contains("CUE sheet not parsed"),
-            "Expected unparsed-CUE error",
-        );
     }
 }

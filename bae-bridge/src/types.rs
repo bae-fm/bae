@@ -794,8 +794,7 @@ pub struct BridgeCueFlacPair {
     /// Absolute filesystem path of the audio file on disk.
     pub flac_local_path: String,
     pub total_size: u64,
-    /// `None` when the CUE hasn't been parsed yet.
-    pub track_count: Option<u32>,
+    pub track_count: u32,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -3355,7 +3354,7 @@ pub(crate) fn categorized_files_to_bridge(
                     flac_name: p.audio_file.relative_path,
                     flac_local_path: p.audio_file.path.to_string_lossy().to_string(),
                     total_size: p.total_size,
-                    track_count: p.cue_sheet.as_ref().map(|s| s.tracks.len() as u32),
+                    track_count: p.cue_sheet.tracks.len() as u32,
                 })
                 .collect(),
         },

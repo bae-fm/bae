@@ -1894,8 +1894,7 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
         }
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         UiBusEvent::FolderCandidateAdded { candidate } => {
-            let track_count = crate::bridge_utils::extract_track_count(&candidate.files)
-                .expect("folder candidate must have a known track count");
+            let track_count = crate::bridge_utils::extract_track_count(&candidate.files);
             Some(BridgeUiEvent::FolderCandidateAdded {
                 candidate: BridgeFolderCandidate {
                     folder_path: candidate.path.to_string_lossy().to_string(),

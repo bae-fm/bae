@@ -58,9 +58,7 @@ fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
     };
     if let AudioContent::CueFlacPairs { pairs, .. } = &categorized.audio {
         for pair in pairs {
-            if let Some(sheet) = &pair.cue_sheet {
-                consider(&sheet.catalog);
-            }
+            consider(&pair.cue_sheet.catalog);
         }
     }
     for (_, sheet) in &categorized.unpaired_cue_sheets {
@@ -121,7 +119,7 @@ pub(super) fn gather_non_ocr_sources(folder: &Path) -> FastPass {
 
     // Disc ID from LOG/CUE and CUE-CATALOG barcodes — derived from the same
     // parsed scan, no re-read.
-    let track_count = categorized.audio.track_count().unwrap_or(0);
+    let track_count = categorized.audio.track_count();
     pass.disc_id = match compute_discid_from_categorized(&categorized) {
         Some(disc_id) => DiscIdSignal::Computed {
             disc_id,
@@ -149,13 +147,11 @@ pub(super) fn gather_non_ocr_sources(folder: &Path) -> FastPass {
     // CUEs land in `unpaired_cue_sheets`. No re-reading, no second parser.
     if let AudioContent::CueFlacPairs { pairs, .. } = &categorized.audio {
         for pair in pairs {
-            if let Some(sheet) = &pair.cue_sheet {
-                for name in cue_sheet_names(sheet) {
-                    pass.lines.push(SourcedLine {
-                        source: Source::CueField,
-                        text: name,
-                    });
-                }
+            for name in cue_sheet_names(&pair.cue_sheet) {
+                pass.lines.push(SourcedLine {
+                    source: Source::CueField,
+                    text: name,
+                });
             }
         }
     }
@@ -307,7 +303,13 @@ mod tests {
         let pair = ScannedCueFlacPair {
             cue_file: cue.clone(),
             audio_file: flac.clone(),
-            cue_sheet: None,
+            cue_sheet: crate::cue_flac::CueSheet {
+                title: None,
+                performer: None,
+                catalog: None,
+                date: None,
+                tracks: Vec::new(),
+            },
             total_size: 5_000_100,
         };
         let categorized = CategorizedFiles {

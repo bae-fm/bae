@@ -203,19 +203,17 @@ extension ImportFilePane {
                     }
                     .buttonStyle(.plain)
                     cueFileRow(pair)
-                    if let trackCount = pair.trackCount {
-                        Text("\(Int(trackCount)) tracks")
-                            .font(.caption2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Theme.accent)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 1)
-                            .background(
-                                Theme.accentSoft,
-                                in: Capsule()
-                            )
-                            .padding(.top, 4)
-                    }
+                    Text("\(Int(pair.trackCount)) tracks")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 1)
+                        .background(
+                            Theme.accentSoft,
+                            in: Capsule()
+                        )
+                        .padding(.top, 4)
                 }
             }
         }

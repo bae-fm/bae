@@ -62,8 +62,7 @@ impl ScannedFile {
 
 /// A CUE/audio pair detected during folder scanning.
 ///
-/// The CUE is on disk and parsed during the scan, so `cue_sheet` is `Some`.
-/// Consumers that need parsed CUE data — the import mapper — require `Some`.
+/// The CUE is on disk and parsed during the scan.
 #[derive(Debug, Clone)]
 pub struct ScannedCueFlacPair {
     /// The CUE sheet file
@@ -71,7 +70,7 @@ pub struct ScannedCueFlacPair {
     /// The audio file
     pub audio_file: ScannedFile,
     /// Parsed CUE sheet.
-    pub cue_sheet: Option<crate::cue_flac::CueSheet>,
+    pub cue_sheet: crate::cue_flac::CueSheet,
     /// Combined size of CUE + audio file.
     pub total_size: u64,
 }
@@ -94,17 +93,14 @@ pub enum AudioContent {
 }
 
 impl AudioContent {
-    /// Total track count across the release, or `None` if any CUE pair has
-    /// no parsed sheet. Callers that render a count must handle the `None`
-    /// case directly rather than substitute a placeholder.
-    pub fn track_count(&self) -> Option<u32> {
+    /// Total track count across the release.
+    pub fn track_count(&self) -> u32 {
         match self {
             Self::CueFlacPairs { pairs, .. } => pairs
                 .iter()
-                .map(|p| p.cue_sheet.as_ref().map(|s| s.tracks.len()))
-                .sum::<Option<usize>>()
-                .map(|n| n as u32),
-            Self::TrackFiles { tracks, .. } => Some(tracks.len() as u32),
+                .map(|p| p.cue_sheet.tracks.len() as u32)
+                .sum::<u32>(),
+            Self::TrackFiles { tracks, .. } => tracks.len() as u32,
         }
     }
 
@@ -866,7 +862,9 @@ fn categorize_files_from_tree(
                 .cloned()
                 .ok_or_else(|| format!("Audio file not found: {:?}", pair.audio_path))?;
 
-            let cue_sheet = parsed_cues.remove(&pair.cue_path);
+            let cue_sheet = parsed_cues
+                .remove(&pair.cue_path)
+                .expect("detected CUE pair has a parsed CUE sheet");
 
             used_audio_paths.insert(pair.audio_path);
             used_cue_paths.insert(pair.cue_path);

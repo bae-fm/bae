@@ -911,15 +911,7 @@ fn test_collect_release_candidate_files_cue_alac_format_label() {
         } => {
             assert_eq!(format_label, "CUE+ALAC");
             assert_eq!(pairs.len(), 1);
-            assert_eq!(
-                pairs[0]
-                    .cue_sheet
-                    .as_ref()
-                    .expect("folder scan parses the CUE")
-                    .tracks
-                    .len(),
-                8
-            );
+            assert_eq!(pairs[0].cue_sheet.tracks.len(), 8);
         }
         AudioContent::TrackFiles { .. } => {
             panic!("Expected CueFlacPairs for CUE+ALAC, got TrackFiles");
@@ -1005,12 +997,7 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
         } => {
             assert_eq!(format_label, "CUE+APE");
             assert_eq!(pairs.len(), 1);
-            let track_count = pairs[0]
-                .cue_sheet
-                .as_ref()
-                .expect("folder scan parses the CUE")
-                .tracks
-                .len();
+            let track_count = pairs[0].cue_sheet.tracks.len();
             assert_eq!(
                 track_count, 15,
                 "CUE with 15 TRACK entries should parse to 15 tracks, got {track_count}",
@@ -1021,7 +1008,7 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
         }
     }
 
-    assert_eq!(files.audio.track_count(), Some(15));
+    assert_eq!(files.audio.track_count(), 15);
 }
 
 // ── Folder-scanner shape fixture ────────────────────────────────────────

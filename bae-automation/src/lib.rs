@@ -88,7 +88,7 @@ pub enum AutomationCandidate {
     Valid {
         #[serde(flatten)]
         common: AutomationCandidateCommon,
-        track_count: Option<u32>,
+        track_count: u32,
         format_label: String,
         content_hash: String,
     },
