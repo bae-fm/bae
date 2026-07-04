@@ -628,12 +628,7 @@ impl ImportService {
                             .to_string(),
                     );
                 }
-                Some((
-                    std::sync::Arc::new(bytes),
-                    content_type,
-                    url.clone(),
-                    source,
-                ))
+                Some((bytes, content_type, url.clone(), source))
             } else {
                 None
             };
@@ -719,7 +714,6 @@ impl ImportService {
         let remote_cover_image: Option<(crate::db::DbLibraryImage, Vec<u8>)> =
             if let Some((bytes, content_type, url, source)) = remote_cover_data {
                 let now = library_manager.clock().now();
-                let bytes = bytes.to_vec();
                 Some((
                     crate::db::DbLibraryImage {
                         id: db_release.id.clone(),
