@@ -92,6 +92,11 @@ resolve_rpath() {
     return 1
 }
 
+is_framework_binary_ref() {
+    local path="$1"
+    [[ "$path" == *".framework/"* ]]
+}
+
 process_dylib() {
     local dylib_path="$1"
     local dylib_name
@@ -107,6 +112,11 @@ process_dylib() {
     local real_path
     real_path=$(realpath "$dylib_path")
 
+    if is_framework_binary_ref "$dylib_path" || is_framework_binary_ref "$real_path"; then
+        echo "  Skipping framework binary: $dylib_path"
+        return
+    fi
+
     echo "  Processing: $dylib_name"
 
     # Copy to Frameworks
@@ -121,6 +131,10 @@ process_dylib() {
     deps=$(otool -L "$real_path" | tail -n +2 | awk '{print $1}' | grep -v "/System" | grep -v "/usr/lib" | grep -v "$dylib_name") || true
 
     for dep in $deps; do
+        if is_framework_binary_ref "$dep"; then
+            continue
+        fi
+
         local resolved_dep="$dep"
 
         # Resolve @rpath references
@@ -145,6 +159,10 @@ DYLIB_PATHS=$(otool -L "$BINARY" | tail -n +2 | awk '{print $1}' | grep -v "/Sys
 
 # Process all dylibs recursively
 for dylib in $DYLIB_PATHS; do
+    if is_framework_binary_ref "$dylib"; then
+        continue
+    fi
+
     if [[ -f "$dylib" ]]; then
         process_dylib "$dylib"
     elif [[ "$dylib" == "@rpath"* ]]; then
