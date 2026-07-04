@@ -88,7 +88,7 @@ impl TransferService {
         mpsc::UnboundedReceiver<TransferProgress>,
         tokio::task::JoinHandle<()>,
     ) {
-        self.blob_transfer(
+        self.spawn_transfer(
             release_id,
             ReleaseStorageAction::Pin,
             |release_id, library_manager| async move {
@@ -101,7 +101,7 @@ impl TransferService {
     /// Unpin a release: move its blobs from `storage/pinned/` to the evictable
     /// `storage/cache/`. Returns a receiver for progress updates.
     pub fn unpin_release(&self, release_id: String) -> mpsc::UnboundedReceiver<TransferProgress> {
-        let (rx, _) = self.blob_transfer(
+        let (rx, _) = self.spawn_transfer(
             release_id,
             ReleaseStorageAction::Unpin,
             |release_id, library_manager| async move {
@@ -121,7 +121,7 @@ impl TransferService {
         release_id: String,
         pin: bool,
     ) -> mpsc::UnboundedReceiver<TransferProgress> {
-        let (rx, _) = self.blob_transfer(
+        let (rx, _) = self.spawn_transfer(
             release_id,
             ReleaseStorageAction::MakeRemote,
             move |release_id, library_manager| async move {
@@ -158,7 +158,7 @@ impl TransferService {
         new_path: String,
         cancel: crate::library::CancellationToken,
     ) -> mpsc::UnboundedReceiver<TransferProgress> {
-        let (rx, _) = self.blob_transfer(
+        let (rx, _) = self.spawn_transfer(
             release_id,
             ReleaseStorageAction::MakeLocal,
             move |release_id, library_manager| async move {
@@ -177,7 +177,7 @@ impl TransferService {
         rx
     }
 
-    fn blob_transfer<Run, Fut>(
+    fn spawn_transfer<Run, Fut>(
         &self,
         release_id: String,
         action: ReleaseStorageAction,
@@ -190,34 +190,13 @@ impl TransferService {
         Run: FnOnce(String, LibraryManager) -> Fut + Send + 'static,
         Fut: Future<Output = TransferResult> + Send + 'static,
     {
-        self.spawn_transfer(
-            release_id,
-            action,
-            move |release_id, library_manager, tx| {
-                run_transfer(release_id, action, library_manager, tx, run)
-            },
-        )
-    }
-
-    fn spawn_transfer<Run, Fut>(
-        &self,
-        release_id: String,
-        action: ReleaseStorageAction,
-        run: Run,
-    ) -> (
-        mpsc::UnboundedReceiver<TransferProgress>,
-        tokio::task::JoinHandle<()>,
-    )
-    where
-        Run: FnOnce(String, LibraryManager, ProgressTx) -> Fut + Send + 'static,
-        Fut: Future<Output = TransferResult> + Send + 'static,
-    {
         let (tx, rx) = mpsc::unbounded_channel();
         let library_manager = self.library_manager.clone();
 
         let task = tokio::spawn(async move {
             let label = transfer_label(action);
-            let result = run(release_id.clone(), library_manager, tx.clone()).await;
+            let result =
+                run_transfer(release_id.clone(), action, library_manager, tx.clone(), run).await;
             if let Err(e) = result {
                 error!("{} failed for release {}: {}", label, release_id, e);
                 send_progress(
