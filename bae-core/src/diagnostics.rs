@@ -30,10 +30,12 @@ use tracing::{field::Visit, Event, Subscriber};
 use tracing_subscriber::{layer::Context, Layer};
 use uuid::Uuid;
 
+use crate::retry::retry_with_backoff_if;
+
 const BATCH_SIZE: usize = 50;
 const MAX_BUFFERED_EVENTS: usize = 1_000;
 const FLUSH_INTERVAL: Duration = Duration::from_secs(2);
-const RETRY_ATTEMPTS: usize = 3;
+const RETRY_ATTEMPTS: u32 = 3;
 const RETRY_DELAY: Duration = Duration::from_millis(250);
 const DATADOG_ORIGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -561,23 +563,14 @@ async fn send_with_retry(
     transport: &dyn DiagnosticsTransport,
     request: DatadogRequest,
 ) -> Result<(), DiagnosticsError> {
-    let mut last_error = None;
-    for attempt in 0..RETRY_ATTEMPTS {
-        match transport.send(request.clone()).await {
-            Ok(()) => return Ok(()),
-            Err(e) if should_retry(&e) => {
-                last_error = Some(e);
-                if attempt + 1 < RETRY_ATTEMPTS {
-                    tokio::time::sleep(RETRY_DELAY).await;
-                }
-            }
-            Err(e) => return Err(e),
-        }
-    }
-    match last_error {
-        Some(e) => Err(e),
-        None => Ok(()),
-    }
+    retry_with_backoff_if(
+        RETRY_ATTEMPTS,
+        "diagnostics send",
+        should_retry,
+        |_| RETRY_DELAY,
+        || transport.send(request.clone()),
+    )
+    .await
 }
 
 pub fn should_retry(error: &DiagnosticsError) -> bool {

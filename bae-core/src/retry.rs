@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::time::Duration;
 use tracing::warn;
 
 /// Retry an async operation, backing off linearly between attempts.
@@ -11,24 +12,101 @@ where
     Fut: std::future::Future<Output = Result<T, E>>,
     E: Display,
 {
-    let mut last_err = None;
+    retry_with_backoff_if(
+        max_attempts,
+        label,
+        |_| true,
+        |attempt| Duration::from_millis(500 * attempt as u64),
+        f,
+    )
+    .await
+}
+
+pub async fn retry_with_backoff_if<F, Fut, T, E, ShouldRetry, Delay>(
+    max_attempts: u32,
+    label: &str,
+    should_retry: ShouldRetry,
+    retry_delay: Delay,
+    f: F,
+) -> Result<T, E>
+where
+    F: Fn() -> Fut,
+    Fut: std::future::Future<Output = Result<T, E>>,
+    E: Display,
+    ShouldRetry: Fn(&E) -> bool,
+    Delay: Fn(u32) -> Duration,
+{
+    assert!(max_attempts > 0, "max_attempts must be greater than zero");
+
     for attempt in 1..=max_attempts {
         match f().await {
             Ok(result) => return Ok(result),
-            Err(e) => {
-                if attempt < max_attempts {
-                    warn!(
-                        "{} failed (attempt {}/{}): {}",
-                        label, attempt, max_attempts, e
-                    );
-                    tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64))
-                        .await;
+            Err(error) if !should_retry(&error) => return Err(error),
+            Err(error) => {
+                if attempt == max_attempts {
+                    warn!("{} failed after {} attempts", label, max_attempts);
+                    return Err(error);
                 }
-                last_err = Some(e);
+                warn!(
+                    "{} failed (attempt {}/{}): {}",
+                    label, attempt, max_attempts, error
+                );
+                tokio::time::sleep(retry_delay(attempt)).await;
             }
         }
     }
 
-    warn!("{} failed after {} attempts", label, max_attempts);
-    Err(last_err.unwrap())
+    unreachable!("max_attempts is greater than zero")
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::Duration;
+
+    use super::retry_with_backoff_if;
+
+    #[tokio::test]
+    async fn retry_with_backoff_if_stops_on_non_retryable_error() {
+        let attempts = AtomicUsize::new(0);
+
+        let result = retry_with_backoff_if(
+            3,
+            "test operation",
+            |_| false,
+            |_| Duration::from_millis(1),
+            || async {
+                attempts.fetch_add(1, Ordering::SeqCst);
+                Err::<(), _>("permanent")
+            },
+        )
+        .await;
+
+        assert_eq!(result, Err("permanent"));
+        assert_eq!(attempts.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn retry_with_backoff_if_retries_until_success() {
+        let attempts = AtomicUsize::new(0);
+
+        let result = retry_with_backoff_if(
+            3,
+            "test operation",
+            |_| true,
+            |_| Duration::from_millis(1),
+            || async {
+                let attempt = attempts.fetch_add(1, Ordering::SeqCst);
+                if attempt < 2 {
+                    Err("transient")
+                } else {
+                    Ok("sent")
+                }
+            },
+        )
+        .await;
+
+        assert_eq!(result, Ok("sent"));
+        assert_eq!(attempts.load(Ordering::SeqCst), 3);
+    }
 }
