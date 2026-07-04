@@ -67,16 +67,18 @@ impl LibraryManager {
     pub async fn resolve_to_track_ids(&self, ids: &[String]) -> Result<Vec<String>, LibraryError> {
         let mut track_ids = Vec::new();
         for id in ids {
-            if let Some(detail) = self.find_album_detail(id).await? {
-                if let Some(release) = detail
-                    .releases
-                    .iter()
-                    .find(|r| r.summary.id == detail.primary_release_id)
-                {
-                    track_ids.extend(release.tracks.iter().map(|t| t.id.clone()));
-                }
-            } else {
+            if let Some(album_track_ids) = self
+                .database
+                .get_primary_release_track_ids_for_album(id)
+                .await?
+            {
+                track_ids.extend(album_track_ids);
+            } else if self.database.find_track_by_id(id).await?.is_some() {
                 track_ids.push(id.clone());
+            } else {
+                return Err(LibraryError::TrackMapping(format!(
+                    "ID not found as album or track: {id}"
+                )));
             }
         }
         Ok(track_ids)

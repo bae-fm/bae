@@ -196,6 +196,18 @@ pub struct DbAlbum {
     pub is_compilation: bool,
     pub created_at: DateTime<Utc>,
 }
+
+pub(crate) fn resolve_primary_release_id<'a>(
+    stored_primary_release_id: Option<&str>,
+    release_ids: impl IntoIterator<Item = &'a str>,
+) -> Option<String> {
+    let release_ids: Vec<&str> = release_ids.into_iter().collect();
+    stored_primary_release_id
+        .filter(|id| release_ids.iter().any(|release_id| release_id == id))
+        .or_else(|| release_ids.first().copied())
+        .map(str::to_string)
+}
+
 /// Raw album-summary aggregate: artist names, release IDs, and album
 /// artist IDs joined in SQL (via `json_group_array`) to avoid N+1 lookups.
 /// The resolver in `LibraryManager` produces the display-ready

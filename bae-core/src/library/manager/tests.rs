@@ -969,6 +969,19 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
 }
 
 #[tokio::test]
+async fn resolve_to_track_ids_rejects_unknown_id() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let err = manager
+        .resolve_to_track_ids(&["missing-id".to_string()])
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, LibraryError::TrackMapping(message) if message.contains("missing-id")),
+        "unknown ids must fail instead of being treated as track ids"
+    );
+}
+
+#[tokio::test]
 async fn find_release_detail_display_name_uses_year_format_fallback() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();

@@ -141,15 +141,13 @@ impl LibraryManager {
         raw: crate::db::DbAlbumDetail,
     ) -> Result<AlbumDetail, LibraryError> {
         let artist_names = join_artist_names(&raw.artists);
-        // The primary is the stored value when it's still present, otherwise
-        // the album's first release.
-        let primary_release_id = raw
-            .album
-            .primary_release_id
-            .clone()
-            .filter(|id| raw.releases.iter().any(|r| &r.release.id == id))
-            .or_else(|| raw.releases.first().map(|r| r.release.id.clone()))
-            .expect("album has at least one release");
+        let primary_release_id = crate::db::resolve_primary_release_id(
+            raw.album.primary_release_id.as_deref(),
+            raw.releases
+                .iter()
+                .map(|release| release.release.id.as_str()),
+        )
+        .expect("album has at least one release");
 
         let has_cloud_home = self.has_cloud_home();
         // One cover lookup for the whole album: the album's cover is the primary

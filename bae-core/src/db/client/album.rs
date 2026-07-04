@@ -1,6 +1,30 @@
 use super::*;
 
 impl Database {
+    /// Track ids for an album's primary release. `None` means no album carries
+    /// this id; `Some(vec![])` means the album exists but its primary release has
+    /// no tracks.
+    pub async fn get_primary_release_track_ids_for_album(
+        &self,
+        album_id: &str,
+    ) -> Result<Option<Vec<String>>, DbError> {
+        let Some(album) = self.find_album_by_id(album_id).await? else {
+            return Ok(None);
+        };
+
+        let releases = self.get_releases_for_album(album_id).await?;
+        let release_id = resolve_primary_release_id(
+            album.primary_release_id.as_deref(),
+            releases.iter().map(|release| release.id.as_str()),
+        );
+
+        let Some(release_id) = release_id else {
+            return Ok(Some(Vec::new()));
+        };
+
+        self.get_track_ids_for_release(&release_id).await.map(Some)
+    }
+
     /// Resolve track IDs to their album IDs (track -> release -> album).
     /// Returns a map from track_id to album_id for all tracks that were found.
     pub async fn get_album_ids_for_tracks(
