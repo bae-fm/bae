@@ -10,7 +10,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::warn;
 
 mod album;
 mod artist;
@@ -677,14 +677,11 @@ impl Database {
         Ok(Self::from_handle(handle, clock))
     }
 
-    /// Open a test database using a coven library directory derived from `path`.
-    pub async fn new(
-        database_path: &str,
-        clock: ClockRef,
-        device_id: String,
-        synced_tables: Vec<coven::SyncedTable>,
-    ) -> Result<Self, DbError> {
-        info!("Opening database at {}", database_path);
+    /// Test convenience: open over `path` with a fresh device id and bae's real
+    /// synced-table set, so unit/integration tests don't repeat the wiring.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn new_test(database_path: &str, clock: ClockRef) -> Result<Self, DbError> {
+        tracing::info!("Opening database at {}", database_path);
         let path = Path::new(database_path);
         let library_root = path
             .parent()
@@ -693,25 +690,18 @@ impl Database {
         let library_dir = coven::LibraryDir::new(library_root);
         let config = coven::Config::with_defaults(
             "test-library".to_string(),
-            device_id,
+            "test-device".to_string(),
             library_dir,
             "Test Library".to_string(),
         );
         let key_service = coven::KeyService::new(config.library_id.clone());
-        Self::open(config, clock, key_service, synced_tables, None)
-    }
-
-    /// Test convenience: open over `path` with a fresh device id and bae's real
-    /// synced-table set, so unit/integration tests don't repeat the wiring.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn new_test(database_path: &str, clock: ClockRef) -> Result<Self, DbError> {
-        Self::new(
-            database_path,
+        Self::open(
+            config,
             clock,
-            "test-device".to_string(),
+            key_service,
             crate::sync::synced_tables(),
+            None,
         )
-        .await
     }
 
     /// Shared SQL assembly for `find_album_detail` / `find_release_detail`.
