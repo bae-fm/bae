@@ -302,6 +302,7 @@ impl Database {
     /// primary-artist sort table; both halves of the returned row are the
     /// raw aggregates the resolver maps to `ReleaseSummary` / `AlbumSummary`.
     fn storage_page_query(order_by: &str, artist_sort_join: &str, where_clause: &str) -> String {
+        let album_columns = album_summary_columns();
         format!(
             "SELECT \
                 r.id AS release_id, \
@@ -315,18 +316,13 @@ impl Database {
                 COALESCE(( \
                     SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = r.id \
                 ), 0) AS total_size, \
-                a.id AS album_id_out, a.title, a.year, a.is_compilation, \
-                a.primary_release_id, \
-                {artist_names} AS artist_names, \
-                {release_ids} AS release_ids_json \
+                {album_columns} \
             FROM releases r \
             JOIN albums a ON a.id = r.album_id \
             {artist_sort_join} \
             {where_clause} \
             ORDER BY {order_by} \
-            LIMIT ? OFFSET ?",
-            artist_names = album_artist_names_sql(),
-            release_ids = album_release_ids_json_sql(),
+            LIMIT ? OFFSET ?"
         )
     }
 
@@ -338,11 +334,7 @@ impl Database {
         limit: u64,
     ) -> Result<Vec<DbStorageRow>, DbError> {
         let (order_by, needs_artist_sort_join) = storage_order_by(sort);
-        let artist_sort_join = if needs_artist_sort_join {
-            "JOIN artists art_sort ON a.artist_id = art_sort.id"
-        } else {
-            ""
-        };
+        let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
         let where_clause = storage_filter_where(filter);
 
         let query = Self::storage_page_query(&order_by, artist_sort_join, where_clause);
@@ -353,21 +345,7 @@ impl Database {
             let mut storage_rows = Vec::new();
             while let Some(row) = rows.next()? {
                 let release = row_to_release_summary(row)?;
-
-                let release_ids_json: String = row.get("release_ids_json")?;
-                let release_ids: Vec<String> =
-                    serde_json::from_str(&release_ids_json).map_err(|e| DbError(e.to_string()))?;
-
-                let album = DbAlbumSummary {
-                    id: row.get("album_id_out")?,
-                    title: row.get("title")?,
-                    year: row.get("year")?,
-                    is_compilation: row.get("is_compilation")?,
-                    artist_names: row.get("artist_names")?,
-                    release_ids,
-                    primary_release_id: row.get("primary_release_id")?,
-                };
-
+                let album = parse_album_summary_row(row)?;
                 storage_rows.push(DbStorageRow { release, album });
             }
             Ok(storage_rows)

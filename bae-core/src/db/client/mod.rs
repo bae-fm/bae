@@ -499,20 +499,24 @@ fn album_release_ids_json_sql() -> &'static str {
     ), '[]')"
 }
 
-/// Shared SELECT list for album-summary queries. Emits `artist_names`
+/// Shared column list for album-summary queries. Emits `artist_names`
 /// (primary artist + album_artists, comma-joined) and `release_ids_json`
-/// (releases in created_at order). Callers append `FROM albums a`, any
-/// `art_sort` join (see `album_summary_artist_join`), and their own
-/// `ORDER BY` / `WHERE` / `LIMIT`.
-fn album_summary_select() -> String {
+/// (releases in created_at order).
+fn album_summary_columns() -> String {
     format!(
-        "SELECT \
-            a.id, a.title, a.year, a.is_compilation, a.primary_release_id, \
+        "a.id, a.title, a.year, a.is_compilation, a.primary_release_id, \
             {artist_names} AS artist_names, \
             {release_ids} AS release_ids_json",
         artist_names = album_artist_names_sql(),
         release_ids = album_release_ids_json_sql()
     )
+}
+
+/// Shared SELECT list for album-summary queries. Callers append
+/// `FROM albums a`, any `art_sort` join (see `album_summary_artist_join`),
+/// and their own `ORDER BY` / `WHERE` / `LIMIT`.
+fn album_summary_select() -> String {
+    format!("SELECT {}", album_summary_columns())
 }
 
 /// The `art_sort` join clause for album-summary queries that sort by an

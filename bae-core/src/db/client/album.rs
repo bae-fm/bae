@@ -169,12 +169,7 @@ impl Database {
     /// If `sort` is empty, defaults to `created_at DESC` (newest first).
     pub async fn get_albums(&self, sort: &[AlbumSortCriterion]) -> Result<Vec<DbAlbum>, DbError> {
         let (order_by, needs_artist_join) = build_order_by(sort, "a.created_at DESC");
-
-        let artist_join = if needs_artist_join {
-            "JOIN artists art_sort ON a.artist_id = art_sort.id"
-        } else {
-            ""
-        };
+        let artist_join = album_summary_artist_join(needs_artist_join);
 
         let query = format!(
             "SELECT \
