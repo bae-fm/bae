@@ -27,6 +27,7 @@ use crate::config::{Config, ConfigError, ConfigYaml};
 use crate::keys::KeyService;
 use coven::LibraryDir;
 use coven::{EncryptionError, EncryptionService};
+use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{debug, warn};
@@ -50,6 +51,12 @@ fn library_dir_path(app_dir: &Path, library_id: &str) -> PathBuf {
 
 fn restore_error(error: impl ToString) -> RestoreFromCodeError {
     RestoreFromCodeError::Restore(error.to_string())
+}
+
+struct CodeOperationCancel {
+    token: CancellationToken,
+    library_dir: PathBuf,
+    library_dir_existed: bool,
 }
 
 /// Create a new library with an optional name, and set it as active.
@@ -157,14 +164,17 @@ async fn restore_from_code_with_cancel(
     on_status: impl Fn(&str),
 ) -> Result<Config, RestoreFromCodeError> {
     let app_dir = crate::config::bae_dir().map_err(restore_error)?;
-    let cancel = if let Some(cancel) = cancel {
-        let info = crate::sync::decode_restore_code_info(code).map_err(restore_error)?;
-        let library_dir = library_dir_path(&app_dir, &info.library_id);
-        let library_dir_existed = library_dir.try_exists().map_err(restore_error)?;
-        Some((cancel, library_dir, library_dir_existed))
-    } else {
-        None
-    };
+    let cancel = prepare_code_operation_cancel(
+        code,
+        &app_dir,
+        cancel,
+        |code| {
+            crate::sync::decode_restore_code_info(code)
+                .map(|info| info.library_id)
+                .map_err(|e| e.to_string())
+        },
+        restore_error,
+    )?;
     let synced_tables = crate::sync::synced_tables();
     let migrations = crate::migrations::all();
 
@@ -179,30 +189,14 @@ async fn restore_from_code_with_cancel(
         std::sync::Arc::new(coven::UuidProvider),
         on_status,
     );
-    let coven_config = if let Some((cancel, library_dir, library_dir_existed)) = cancel {
-        if cancel.is_cancelled() {
-            return Err(cancelled_restore(&library_dir, library_dir_existed));
-        }
-        tokio::pin!(restore);
-        tokio::select! {
-            result = &mut restore => result.map_err(restore_error)?,
-            _ = cancel.cancelled() => return Err(cancelled_restore(&library_dir, library_dir_existed)),
-        }
-    } else {
-        restore.await.map_err(restore_error)?
-    };
-
-    save_coven_library(coven_config).map_err(RestoreFromCodeError::Restore)
-}
-
-fn cancelled_restore(
-    library_dir: &std::path::Path,
-    library_dir_existed: bool,
-) -> RestoreFromCodeError {
-    if !library_dir_existed {
-        remove_cancelled_library_dir(library_dir);
-    }
-    RestoreFromCodeError::Cancelled
+    run_code_operation(
+        restore,
+        cancel,
+        restore_error,
+        RestoreFromCodeError::Restore,
+        || RestoreFromCodeError::Cancelled,
+    )
+    .await
 }
 
 /// Remove the library directory a cancelled restore/join left partially built.
@@ -267,14 +261,17 @@ async fn join_from_code_with_cancel(
     on_status: impl Fn(&str),
 ) -> Result<Config, JoinFromCodeError> {
     let app_dir = crate::config::bae_dir().map_err(join_error)?;
-    let cancel = if let Some(cancel) = cancel {
-        let info = crate::sync::decode_invite_code_info(code).map_err(join_error)?;
-        let library_dir = library_dir_path(&app_dir, &info.library_id);
-        let library_dir_existed = library_dir.try_exists().map_err(join_error)?;
-        Some((cancel, library_dir, library_dir_existed))
-    } else {
-        None
-    };
+    let cancel = prepare_code_operation_cancel(
+        code,
+        &app_dir,
+        cancel,
+        |code| {
+            crate::sync::decode_invite_code_info(code)
+                .map(|info| info.library_id)
+                .map_err(|e| e.to_string())
+        },
+        join_error,
+    )?;
     let synced_tables = crate::sync::synced_tables();
     let migrations = crate::migrations::all();
 
@@ -289,27 +286,64 @@ async fn join_from_code_with_cancel(
         std::sync::Arc::new(coven::UuidProvider),
         on_status,
     );
-    let coven_config = if let Some((cancel, library_dir, library_dir_existed)) = cancel {
-        if cancel.is_cancelled() {
-            return Err(cancelled_join(&library_dir, library_dir_existed));
-        }
-        tokio::pin!(join);
-        tokio::select! {
-            result = &mut join => result.map_err(join_error)?,
-            _ = cancel.cancelled() => return Err(cancelled_join(&library_dir, library_dir_existed)),
-        }
-    } else {
-        join.await.map_err(join_error)?
-    };
-
-    save_coven_library(coven_config).map_err(JoinFromCodeError::Join)
+    run_code_operation(join, cancel, join_error, JoinFromCodeError::Join, || {
+        JoinFromCodeError::Cancelled
+    })
+    .await
 }
 
-fn cancelled_join(library_dir: &std::path::Path, library_dir_existed: bool) -> JoinFromCodeError {
-    if !library_dir_existed {
-        remove_cancelled_library_dir(library_dir);
+fn prepare_code_operation_cancel<E>(
+    code: &str,
+    app_dir: &Path,
+    cancel: Option<CancellationToken>,
+    decode_library_id: impl FnOnce(&str) -> Result<String, String>,
+    error: impl Fn(String) -> E,
+) -> Result<Option<CodeOperationCancel>, E> {
+    let Some(token) = cancel else {
+        return Ok(None);
+    };
+
+    let library_id = decode_library_id(code).map_err(&error)?;
+    let library_dir = library_dir_path(app_dir, &library_id);
+    let library_dir_existed = library_dir.try_exists().map_err(|e| error(e.to_string()))?;
+    Ok(Some(CodeOperationCancel {
+        token,
+        library_dir,
+        library_dir_existed,
+    }))
+}
+
+async fn run_code_operation<E, OpError, Operation>(
+    operation: Operation,
+    cancel: Option<CodeOperationCancel>,
+    operation_error: impl Fn(OpError) -> E,
+    save_error: impl Fn(String) -> E,
+    cancelled: impl Fn() -> E,
+) -> Result<Config, E>
+where
+    Operation: Future<Output = Result<coven::Config, OpError>>,
+{
+    let coven_config = if let Some(cancel) = cancel {
+        if cancel.token.is_cancelled() {
+            return Err(cancel_code_operation(cancel, cancelled));
+        }
+        tokio::pin!(operation);
+        tokio::select! {
+            result = &mut operation => result.map_err(operation_error)?,
+            _ = cancel.token.cancelled() => return Err(cancel_code_operation(cancel, cancelled)),
+        }
+    } else {
+        operation.await.map_err(operation_error)?
+    };
+
+    save_coven_library(coven_config).map_err(save_error)
+}
+
+fn cancel_code_operation<E>(cancel: CodeOperationCancel, error: impl FnOnce() -> E) -> E {
+    if !cancel.library_dir_existed {
+        remove_cancelled_library_dir(&cancel.library_dir);
     }
-    JoinFromCodeError::Cancelled
+    error()
 }
 
 #[derive(Debug, thiserror::Error)]
