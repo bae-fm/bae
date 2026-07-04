@@ -310,7 +310,7 @@ fn test_encode_mp3() {
         .collect();
 
     let cancel = std::sync::atomic::AtomicBool::new(false);
-    let mp3_data = encode_to_mp3(&samples, sample_rate, 2, 320_000, &cancel).unwrap();
+    let mp3_data = encode_to_mp3(&samples, sample_rate, 2, &cancel).unwrap();
 
     // MP3 files start with either ID3 tag (0x49 0x44 0x33) or sync word (0xFF 0xFB)
     assert!(

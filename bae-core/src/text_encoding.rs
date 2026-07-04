@@ -18,29 +18,11 @@ pub struct DecodedText {
 /// 2. No BOM: try UTF-8
 /// 3. Not valid UTF-8: chardetng detection, decode via encoding_rs
 pub fn decode_text(bytes: &[u8]) -> DecodedText {
-    // UTF-8 BOM
-    if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
-        return DecodedText {
-            text: String::from_utf8_lossy(&bytes[3..]).into_owned(),
-            encoding: "UTF-8".to_string(),
-        };
-    }
-
-    // UTF-16 LE BOM
-    if bytes.starts_with(&[0xFF, 0xFE]) {
-        let (decoded, _, _) = encoding_rs::UTF_16LE.decode(&bytes[2..]);
+    if let Some((encoding, bom_len)) = encoding_rs::Encoding::for_bom(bytes) {
+        let (decoded, _, _) = encoding.decode(&bytes[bom_len..]);
         return DecodedText {
             text: decoded.into_owned(),
-            encoding: "UTF-16LE".to_string(),
-        };
-    }
-
-    // UTF-16 BE BOM
-    if bytes.starts_with(&[0xFE, 0xFF]) {
-        let (decoded, _, _) = encoding_rs::UTF_16BE.decode(&bytes[2..]);
-        return DecodedText {
-            text: decoded.into_owned(),
-            encoding: "UTF-16BE".to_string(),
+            encoding: encoding.name().to_string(),
         };
     }
 

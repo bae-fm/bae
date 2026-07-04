@@ -7,11 +7,10 @@ use tracing::{debug, info};
 /// Output format for track export.
 pub enum ExportFormat {
     Flac,
-    Mp3 { bitrate: u32 },
+    Mp3,
 }
 
-/// Standard bitrate for MP3 track export, in bits per second (320 kbit/s).
-pub const MP3_EXPORT_BITRATE: u32 = 320_000;
+pub use crate::audio_codec::MP3_EXPORT_BITRATE;
 
 /// Render a single-track export's suggested filename stem (no extension) from a
 /// template and the track's tag data. Supported tokens:
@@ -197,11 +196,10 @@ impl ExportService {
                     &cancel_for_blocking,
                 )
                 .map_err(|e| format!("Failed to encode FLAC: {e}"))?,
-                ExportFormat::Mp3 { bitrate } => crate::audio_codec::encode_to_mp3(
+                ExportFormat::Mp3 => crate::audio_codec::encode_to_mp3(
                     decoded_pcm.raw_samples(),
                     decoded_pcm.sample_rate(),
                     decoded_pcm.channels(),
-                    bitrate,
                     &cancel_for_blocking,
                 )
                 .map_err(|e| format!("Failed to encode MP3: {e}"))?,
@@ -226,7 +224,7 @@ impl ExportService {
 
             let tag_type = match format {
                 ExportFormat::Flac => lofty::tag::TagType::VorbisComments,
-                ExportFormat::Mp3 { .. } => lofty::tag::TagType::Id3v2,
+                ExportFormat::Mp3 => lofty::tag::TagType::Id3v2,
             };
 
             write_tags(

@@ -1458,9 +1458,7 @@ impl AppHandle {
 
         let core_format = match format {
             BridgeExportFormat::Flac => bae_core::library::ExportFormat::Flac,
-            BridgeExportFormat::Mp3 => bae_core::library::ExportFormat::Mp3 {
-                bitrate: bae_core::library::MP3_EXPORT_BITRATE,
-            },
+            BridgeExportFormat::Mp3 => bae_core::library::ExportFormat::Mp3,
         };
 
         self.services

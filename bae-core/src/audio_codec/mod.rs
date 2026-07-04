@@ -28,6 +28,9 @@ pub use probe::{probe_audio_from_path, ProbeResult};
 /// FFmpeg uses for its own file IO.
 const AVIO_BUFFER_SIZE: usize = 32768;
 
+/// Standard bitrate for MP3 track export, in bits per second (320 kbit/s).
+pub const MP3_EXPORT_BITRATE: u32 = 320_000;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StreamingDecodeError {
     InputCancelled,
@@ -151,24 +154,15 @@ pub fn encode_to_mp3(
     samples: &[i32],
     sample_rate: u32,
     channels: u32,
-    bitrate: u32,
     cancel: &std::sync::atomic::AtomicBool,
 ) -> Result<Vec<u8>, String> {
-    unsafe {
-        encode_avio(
-            samples,
-            sample_rate,
-            channels,
-            EncodeFormat::Mp3 { bitrate },
-            cancel,
-        )
-    }
+    unsafe { encode_avio(samples, sample_rate, channels, EncodeFormat::Mp3, cancel) }
 }
 
 #[derive(Clone, Copy)]
 enum EncodeFormat {
     Flac { bits_per_sample: u32 },
-    Mp3 { bitrate: u32 },
+    Mp3,
 }
 
 struct EncodeCodecContext {
@@ -219,21 +213,21 @@ impl EncodeFormat {
     fn label(self) -> &'static str {
         match self {
             Self::Flac { .. } => "FLAC",
-            Self::Mp3 { .. } => "MP3",
+            Self::Mp3 => "MP3",
         }
     }
 
     fn format_name(self) -> *const std::ffi::c_char {
         match self {
             Self::Flac { .. } => c"flac".as_ptr(),
-            Self::Mp3 { .. } => c"mp3".as_ptr(),
+            Self::Mp3 => c"mp3".as_ptr(),
         }
     }
 
     fn codec_id(self) -> ffmpeg_sys_next::AVCodecID {
         match self {
             Self::Flac { .. } => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_FLAC,
-            Self::Mp3 { .. } => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_MP3,
+            Self::Mp3 => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_MP3,
         }
     }
 
@@ -245,28 +239,28 @@ impl EncodeFormat {
                 17..=32 => Ok(AVSampleFormat::AV_SAMPLE_FMT_S32),
                 _ => Err(format!("Unsupported FLAC bit depth: {bits_per_sample}")),
             },
-            Self::Mp3 { .. } => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16P),
+            Self::Mp3 => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16P),
         }
     }
 
     fn output_capacity(self, samples_len: usize) -> usize {
         match self {
             Self::Flac { .. } => samples_len * 2,
-            Self::Mp3 { .. } => samples_len,
+            Self::Mp3 => samples_len,
         }
     }
 
     fn default_frame_size(self) -> usize {
         match self {
             Self::Flac { .. } => 4096,
-            Self::Mp3 { .. } => 1152,
+            Self::Mp3 => 1152,
         }
     }
 
     fn encoder_missing_message(self) -> &'static str {
         match self {
             Self::Flac { .. } => "FLAC encoder not found",
-            Self::Mp3 { .. } => "MP3 encoder not found (libmp3lame)",
+            Self::Mp3 => "MP3 encoder not found (libmp3lame)",
         }
     }
 
@@ -289,8 +283,8 @@ impl EncodeFormat {
             Self::Flac { bits_per_sample } => {
                 (*codec_ctx).bits_per_raw_sample = bits_per_sample as c_int;
             }
-            Self::Mp3 { bitrate } => {
-                (*codec_ctx).bit_rate = bitrate as i64;
+            Self::Mp3 => {
+                (*codec_ctx).bit_rate = MP3_EXPORT_BITRATE as i64;
             }
         }
 
@@ -327,7 +321,7 @@ impl EncodeFormat {
                     _ => unreachable!("FLAC bit depth was validated before encoding"),
                 }
             }
-            Self::Mp3 { .. } => {
+            Self::Mp3 => {
                 for ch in 0..channels {
                     let dst = (*frame).data[ch] as *mut i16;
                     for i in 0..chunk_frames {
