@@ -746,55 +746,20 @@ fn apply_signals(
     context.refresh_inputs(&signals);
 
     let discid = match (discid, &signals.disc_id) {
-        (
-            DiscidProgress::Computing,
-            DiscIdSignal::Computed {
-                disc_id,
-                track_count,
-            },
-        ) => {
-            effects.push(Effect::LookupDiscid {
-                disc_id: disc_id.clone(),
-                track_count: *track_count,
-            });
-            DiscidProgress::LookingUp
-        }
-        (DiscidProgress::Computing, DiscIdSignal::Absent { track_count }) => {
-            DiscidProgress::Skipped {
-                track_count: *track_count,
-            }
-        }
-        (DiscidProgress::Computing, DiscIdSignal::Failed { failure, .. }) => {
-            DiscidProgress::Failed {
-                failure: failure.clone(),
-            }
-        }
+        (DiscidProgress::Computing, signal) => start_discid_progress(signal, &mut effects),
         // Already past Computing — the disc-ID lookup is in flight or settled.
         (discid, _) => discid,
     };
 
     let barcode = match (barcode, &signals.barcode) {
-        (BarcodeProgress::Scanning, BarcodeSignal::Settled { codes }) => {
-            if codes.is_empty() {
-                BarcodeProgress::Done {
-                    matched: None,
-                    results: Vec::new(),
-                }
-            } else {
-                let mut values: Vec<String> = codes.iter().map(|c| c.value.clone()).collect();
-                let total = values.len() as u32;
-                let current = values.remove(0);
-                effects.push(Effect::LookupBarcode {
-                    barcode: current.clone(),
-                });
-                BarcodeProgress::LookingUp {
-                    current,
-                    position: 1,
-                    total,
-                    remaining: values,
-                }
-            }
-        }
+        (BarcodeProgress::Scanning, BarcodeSignal::Settled { codes }) => start_barcode_progress(
+            codes,
+            BarcodeProgress::Done {
+                matched: None,
+                results: Vec::new(),
+            },
+            &mut effects,
+        ),
         (BarcodeProgress::Scanning, BarcodeSignal::Absent) => BarcodeProgress::Skipped,
         // Still scanning (codes not settled), or already iterating/settled.
         (barcode, _) => barcode,
@@ -812,6 +777,50 @@ fn apply_signals(
         settle_if_ready(next)
     } else {
         (next, effects)
+    }
+}
+
+fn start_discid_progress(signal: &DiscIdSignal, effects: &mut Vec<Effect>) -> DiscidProgress {
+    match signal {
+        DiscIdSignal::Computed {
+            disc_id,
+            track_count,
+        } => {
+            effects.push(Effect::LookupDiscid {
+                disc_id: disc_id.clone(),
+                track_count: *track_count,
+            });
+            DiscidProgress::LookingUp
+        }
+        DiscIdSignal::Absent { track_count } => DiscidProgress::Skipped {
+            track_count: *track_count,
+        },
+        DiscIdSignal::Failed { failure, .. } => DiscidProgress::Failed {
+            failure: failure.clone(),
+        },
+    }
+}
+
+fn start_barcode_progress(
+    codes: &[SourcedValue],
+    empty_progress: BarcodeProgress,
+    effects: &mut Vec<Effect>,
+) -> BarcodeProgress {
+    if codes.is_empty() {
+        return empty_progress;
+    }
+
+    let mut values: Vec<String> = codes.iter().map(|c| c.value.clone()).collect();
+    let total = values.len() as u32;
+    let current = values.remove(0);
+    effects.push(Effect::LookupBarcode {
+        barcode: current.clone(),
+    });
+    BarcodeProgress::LookingUp {
+        current,
+        position: 1,
+        total,
+        remaining: values,
     }
 }
 
@@ -904,9 +913,7 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
 }
 
 /// Reset to `Triangulating` and re-dispatch the lookups from the retained
-/// signals, preserving the user's exclusions. Disc-ID dispatches when computed
-/// (else skips); the barcode queue re-seeds from the retained codes. Mirrors
-/// `apply_signals`' dispatch shape but starts from the known-settled inputs.
+/// signals, preserving the user's exclusions.
 fn rerun(mut context: SignalsContext) -> (IdentifyState, Vec<Effect>) {
     // A fresh run discards prior results; they're recomputed as lookups land.
     context.discid_results = Vec::new();
@@ -915,45 +922,12 @@ fn rerun(mut context: SignalsContext) -> (IdentifyState, Vec<Effect>) {
 
     let mut effects = Vec::new();
 
-    let discid = match &context.disc_id {
-        DiscIdSignal::Computed {
-            disc_id,
-            track_count,
-        } => {
-            effects.push(Effect::LookupDiscid {
-                disc_id: disc_id.clone(),
-                track_count: *track_count,
-            });
-            DiscidProgress::LookingUp
-        }
-        DiscIdSignal::Absent { track_count } => DiscidProgress::Skipped {
-            track_count: *track_count,
-        },
-        DiscIdSignal::Failed { failure, .. } => DiscidProgress::Failed {
-            failure: failure.clone(),
-        },
-    };
-
-    let barcode = if context.barcode_codes.is_empty() {
-        BarcodeProgress::Skipped
-    } else {
-        let mut values: Vec<String> = context
-            .barcode_codes
-            .iter()
-            .map(|c| c.value.clone())
-            .collect();
-        let total = values.len() as u32;
-        let current = values.remove(0);
-        effects.push(Effect::LookupBarcode {
-            barcode: current.clone(),
-        });
-        BarcodeProgress::LookingUp {
-            current,
-            position: 1,
-            total,
-            remaining: values,
-        }
-    };
+    let discid = start_discid_progress(&context.disc_id, &mut effects);
+    let barcode = start_barcode_progress(
+        &context.barcode_codes,
+        BarcodeProgress::Skipped,
+        &mut effects,
+    );
 
     let next = IdentifyState::Triangulating {
         discid,
