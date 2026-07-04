@@ -532,7 +532,6 @@ pub enum IdentifyEvent {
     },
     BarcodeLookupFailed {
         for_barcode: String,
-        message: String,
     },
 
     /// User toggled a signal in the toolbar — included or excluded it from
@@ -675,6 +674,8 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             context,
         }),
 
+        // A miss or per-barcode failure advances the queue. The barcode phase
+        // only settles empty once every candidate code has been tried.
         (
             IdentifyState::Triangulating {
                 discid,
@@ -687,54 +688,8 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                     },
                 context,
             },
-            IdentifyEvent::BarcodeLookupMissed { for_barcode },
-        ) if for_barcode == current => {
-            if remaining.is_empty() {
-                settle_if_ready(IdentifyState::Triangulating {
-                    discid,
-                    barcode: BarcodeProgress::Done {
-                        matched: None,
-                        results: vec![],
-                    },
-                    context,
-                })
-            } else {
-                let next = remaining.remove(0);
-                (
-                    IdentifyState::Triangulating {
-                        discid,
-                        barcode: BarcodeProgress::LookingUp {
-                            current: next.clone(),
-                            position: position + 1,
-                            total,
-                            remaining,
-                        },
-                        context,
-                    },
-                    vec![Effect::LookupBarcode { barcode: next }],
-                )
-            }
-        }
-
-        // Per-barcode failure behaves as a miss — a single provider outage
-        // shouldn't kill the iteration. Terminal failure only when the
-        // queue runs out (settled as `Done { results: [] }`).
-        (
-            IdentifyState::Triangulating {
-                discid,
-                barcode:
-                    BarcodeProgress::LookingUp {
-                        current,
-                        position,
-                        total,
-                        mut remaining,
-                    },
-                context,
-            },
-            IdentifyEvent::BarcodeLookupFailed {
-                for_barcode,
-                message: _,
-            },
+            IdentifyEvent::BarcodeLookupMissed { for_barcode }
+            | IdentifyEvent::BarcodeLookupFailed { for_barcode },
         ) if for_barcode == current => {
             if remaining.is_empty() {
                 settle_if_ready(IdentifyState::Triangulating {

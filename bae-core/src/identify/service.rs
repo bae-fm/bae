@@ -36,6 +36,13 @@ fn broadcast_state_change(tx: &broadcast::Sender<ImportEvent>, event: ImportEven
     }
 }
 
+fn barcode_lookup_failed(barcode: String, message: String) -> IdentifyEvent {
+    debug!("Barcode lookup failed for {barcode}: {message}");
+    IdentifyEvent::BarcodeLookupFailed {
+        for_barcode: barcode,
+    }
+}
+
 /// Thread-safe handle to the running identify service.
 #[derive(Clone)]
 pub struct IdentifyServiceHandle {
@@ -321,10 +328,13 @@ fn dispatch_effect(
                 let discogs = match library_manager.discogs_client() {
                     Ok(c) => c,
                     Err(e) => {
-                        let _ = event_tx.send(IdentifyEvent::BarcodeLookupFailed {
-                            for_barcode: barcode,
-                            message: format!("Failed to read Discogs key: {e}"),
-                        });
+                        emit_step(
+                            &event_tx,
+                            barcode_lookup_failed(
+                                barcode,
+                                format!("Failed to read Discogs key: {e}"),
+                            ),
+                        );
                         return;
                     }
                 };
@@ -333,19 +343,13 @@ fn dispatch_effect(
                     return;
                 }
                 let event = match lookup {
-                    Err(message) => IdentifyEvent::BarcodeLookupFailed {
-                        for_barcode: barcode,
-                        message,
-                    },
+                    Err(message) => barcode_lookup_failed(barcode, message),
                     Ok(results) if results.is_empty() => IdentifyEvent::BarcodeLookupMissed {
                         for_barcode: barcode,
                     },
                     Ok(results) => {
                         match annotate_with_library_status(results, &library_manager).await {
-                            Err(message) => IdentifyEvent::BarcodeLookupFailed {
-                                for_barcode: barcode,
-                                message,
-                            },
+                            Err(message) => barcode_lookup_failed(barcode, message),
                             Ok((matches, library_statuses)) => {
                                 let results: Vec<_> =
                                     matches.into_iter().zip(library_statuses).collect();

@@ -373,7 +373,6 @@ fn barcode_lookup_failure_advances_like_a_miss() {
         state,
         IdentifyEvent::BarcodeLookupFailed {
             for_barcode: "A".to_string(),
-            message: "provider 503".to_string(),
         },
     );
     assert!(effects
@@ -393,7 +392,6 @@ fn barcode_lookup_failure_advances_like_a_miss() {
         state,
         IdentifyEvent::BarcodeLookupFailed {
             for_barcode: "B".to_string(),
-            message: "provider 503".to_string(),
         },
     );
     assert!(
