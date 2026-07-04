@@ -416,7 +416,7 @@ impl ImportService {
                     progress: ImportProgress::Failed {
                         id: import_id.clone(),
                         error: e,
-                        import_id: Some(import_id),
+                        import_id,
                     },
                 },
             );

@@ -490,7 +490,7 @@ pub enum ImportProgress {
     },
     Started {
         id: String,
-        import_id: Option<String>,
+        import_id: String,
     },
     Progress {
         id: String,
@@ -498,7 +498,7 @@ pub enum ImportProgress {
         /// Which running phase this progress belongs to. The phases run in order:
         /// reference the files in place, measure loudness, finalize.
         phase: ImportPhase,
-        import_id: Option<String>,
+        import_id: String,
     },
     Complete {
         id: String,
@@ -513,7 +513,7 @@ pub enum ImportProgress {
     Failed {
         id: String,
         error: String,
-        import_id: Option<String>,
+        import_id: String,
     },
 }
 

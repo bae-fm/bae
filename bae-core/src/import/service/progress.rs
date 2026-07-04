@@ -16,7 +16,7 @@ impl ImportService {
                 candidate_key: candidate_key.to_string(),
                 progress: ImportProgress::Started {
                     id: release_id.to_string(),
-                    import_id: Some(import_id.to_string()),
+                    import_id: import_id.to_string(),
                 },
             },
         );
@@ -41,7 +41,7 @@ impl ImportService {
                     id: id.to_string(),
                     percent,
                     phase,
-                    import_id: Some(import_id.to_string()),
+                    import_id: import_id.to_string(),
                 },
             },
         );

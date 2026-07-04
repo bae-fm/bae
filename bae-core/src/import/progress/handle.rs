@@ -33,20 +33,13 @@ impl SubscriptionFilter {
             },
             SubscriptionFilter::Import { import_id } => match progress {
                 ImportProgress::Preparing { import_id: iid, .. } => iid == import_id,
-                ImportProgress::Started { import_id: iid, .. } => iid.as_ref() == Some(import_id),
-                ImportProgress::Progress { import_id: iid, .. } => iid.as_ref() == Some(import_id),
+                ImportProgress::Started { import_id: iid, .. } => iid == import_id,
+                ImportProgress::Progress { import_id: iid, .. } => iid == import_id,
                 ImportProgress::Complete { import_id: iid, .. } => iid == import_id,
                 ImportProgress::RemoteUploadQueued { import_id: iid, .. } => iid == import_id,
-                ImportProgress::Failed { import_id: iid, .. } => iid.as_ref() == Some(import_id),
+                ImportProgress::Failed { import_id: iid, .. } => iid == import_id,
             },
-            SubscriptionFilter::AllImports => match progress {
-                ImportProgress::Preparing { .. } => true,
-                ImportProgress::Started { import_id, .. } => import_id.is_some(),
-                ImportProgress::Progress { import_id, .. } => import_id.is_some(),
-                ImportProgress::Complete { .. } => true,
-                ImportProgress::RemoteUploadQueued { .. } => true,
-                ImportProgress::Failed { import_id, .. } => import_id.is_some(),
-            },
+            SubscriptionFilter::AllImports => true,
         }
     }
 }
@@ -161,13 +154,13 @@ mod tests {
         };
         assert!(filter.matches(&ImportProgress::Started {
             id: "release-1".to_string(),
-            import_id: None,
+            import_id: "import-1".to_string(),
         },),);
         assert!(filter.matches(&ImportProgress::Progress {
             id: "release-1".to_string(),
             percent: 50,
             phase: ImportPhase::ReferencingFiles,
-            import_id: None,
+            import_id: "import-1".to_string(),
         },),);
         assert!(filter.matches(&ImportProgress::Complete {
             id: "release-1".to_string(),
@@ -183,7 +176,7 @@ mod tests {
             id: "release-2".to_string(),
             percent: 50,
             phase: ImportPhase::ReferencingFiles,
-            import_id: None,
+            import_id: "import-1".to_string(),
         },),);
         assert!(!filter.matches(&ImportProgress::Preparing {
             import_id: "import-1".to_string(),
@@ -223,13 +216,13 @@ mod tests {
         };
         assert!(filter.matches(&ImportProgress::Started {
             id: "release-1".to_string(),
-            import_id: Some("import-1".to_string()),
+            import_id: "import-1".to_string(),
         },),);
         assert!(filter.matches(&ImportProgress::Progress {
             id: "release-1".to_string(),
             percent: 50,
             phase: ImportPhase::ReferencingFiles,
-            import_id: Some("import-1".to_string()),
+            import_id: "import-1".to_string(),
         },),);
         assert!(filter.matches(&ImportProgress::Complete {
             id: "release-1".to_string(),
@@ -244,19 +237,13 @@ mod tests {
         assert!(filter.matches(&ImportProgress::Failed {
             id: "release-1".to_string(),
             error: "error".to_string(),
-            import_id: Some("import-1".to_string()),
+            import_id: "import-1".to_string(),
         },),);
         assert!(!filter.matches(&ImportProgress::Progress {
             id: "release-1".to_string(),
             percent: 50,
             phase: ImportPhase::ReferencingFiles,
-            import_id: Some("import-2".to_string()),
-        },),);
-        assert!(!filter.matches(&ImportProgress::Progress {
-            id: "release-1".to_string(),
-            percent: 50,
-            phase: ImportPhase::ReferencingFiles,
-            import_id: None,
+            import_id: "import-2".to_string(),
         },),);
     }
     #[test]
@@ -276,13 +263,13 @@ mod tests {
         },),);
         assert!(filter.matches(&ImportProgress::Started {
             id: "release-1".to_string(),
-            import_id: Some("import-1".to_string()),
+            import_id: "import-1".to_string(),
         },),);
         assert!(filter.matches(&ImportProgress::Progress {
             id: "release-1".to_string(),
             percent: 50,
             phase: ImportPhase::ReferencingFiles,
-            import_id: Some("import-2".to_string()),
+            import_id: "import-2".to_string(),
         },),);
         assert!(filter.matches(&ImportProgress::Complete {
             id: "release-1".to_string(),
@@ -297,17 +284,7 @@ mod tests {
         assert!(filter.matches(&ImportProgress::Failed {
             id: "release-1".to_string(),
             error: "error".to_string(),
-            import_id: Some("import-4".to_string()),
-        },),);
-        assert!(!filter.matches(&ImportProgress::Started {
-            id: "release-1".to_string(),
-            import_id: None,
-        },),);
-        assert!(!filter.matches(&ImportProgress::Progress {
-            id: "release-1".to_string(),
-            percent: 50,
-            phase: ImportPhase::ReferencingFiles,
-            import_id: None,
+            import_id: "import-4".to_string(),
         },),);
     }
     #[test]
