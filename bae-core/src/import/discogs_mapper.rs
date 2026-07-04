@@ -1,7 +1,6 @@
-use super::{find_or_push_artist, ParsedAlbum, ParsedWorkGraph};
+use super::{album_artist_links, find_or_push_artist, ParsedAlbum, ParsedWorkGraph};
 use crate::db::{
-    DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
-    DbTrackArtistRole,
+    DbAlbum, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist, DbTrackArtistRole,
 };
 use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist};
 use crate::import::types::ReleaseIdentity;
@@ -132,15 +131,7 @@ pub fn map_discogs_to_db(
         DbAlbum::from_discogs_release(release, master_year, primary_artist_id, ids.new_id(), now);
     let db_release = DbRelease::from_discogs_release(&album.id, release, ids.new_id(), now);
 
-    // Additional artists (position > 0) go in the junction table
-    let album_artists: Vec<DbAlbumArtist> = artists
-        .iter()
-        .enumerate()
-        .skip(1)
-        .map(|(position, artist)| {
-            DbAlbumArtist::new(&album.id, &artist.id, position as i32, ids.new_id(), now)
-        })
-        .collect();
+    let album_artists = album_artist_links(&album.id, &artists, ids, now);
 
     let processed = process_tracklist(&release.tracklist);
 

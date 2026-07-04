@@ -14,10 +14,10 @@
 //! produce only a Discogs identity row at first; the reverse cross-link
 //! is resolved via MB's URL endpoint.
 
-use super::{ParsedAlbum, ParsedWorkGraph};
+use super::{album_artist_links, ParsedAlbum, ParsedWorkGraph};
 use crate::db::{
-    DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbTrack, DbTrackArtist, DbTrackArtistRole,
-    DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
+    DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackArtist, DbTrackArtistRole, DbTrackWork, DbWork,
+    DbWorkArtist, DbWorkPart,
 };
 use crate::import::types::ReleaseIdentity;
 use crate::import::MetadataSource;
@@ -365,15 +365,7 @@ pub fn map_mb_response_to_db(
         }
     }
 
-    // Additional artists (position > 0) go in the junction table
-    let album_artists: Vec<DbAlbumArtist> = artists
-        .iter()
-        .enumerate()
-        .skip(1)
-        .map(|(position, artist)| {
-            DbAlbumArtist::new(&album.id, &artist.id, position as i32, ids.new_id(), now)
-        })
-        .collect();
+    let album_artists = album_artist_links(&album.id, &artists, ids, now);
 
     let mut tracks = Vec::new();
     let mut track_artists = Vec::new();

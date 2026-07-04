@@ -20,10 +20,10 @@
 //! from any tag carrying a date. Both stay `None` if not determinable
 //! rather than being defaulted.
 
-use super::{find_or_push_artist, ParsedAlbum, ParsedWorkGraph};
+use super::{album_artist_links, find_or_push_artist, ParsedAlbum, ParsedWorkGraph};
 use crate::cue_flac::CueSheet;
 use crate::db::ReleaseMetadataSource;
-use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbTrack, DbTrackArtist};
+use crate::db::{DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackArtist};
 use crate::util::content_type::ContentType;
 use coven::Clock;
 use coven::IdProvider;
@@ -310,14 +310,7 @@ fn assemble_parsed_album(seed: AlbumSeed, clock: &dyn Clock, ids: &dyn IdProvide
     // Additional artists (beyond the primary) go in the album-artists
     // junction. Seeds don't carry positional album artists the way MB does;
     // the junction stays empty unless a per-track artist introduced one.
-    let album_artists: Vec<DbAlbumArtist> = artists
-        .iter()
-        .enumerate()
-        .skip(1)
-        .map(|(position, artist)| {
-            DbAlbumArtist::new(&album.id, &artist.id, position as i32, ids.new_id(), now)
-        })
-        .collect();
+    let album_artists = album_artist_links(&album.id, &artists, ids, now);
 
     ParsedAlbum {
         album,

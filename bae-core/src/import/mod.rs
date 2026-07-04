@@ -61,6 +61,22 @@ pub(crate) fn find_or_push_artist(
     id
 }
 
+pub(crate) fn album_artist_links(
+    album_id: &str,
+    artists: &[DbArtist],
+    ids: &dyn IdProvider,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Vec<DbAlbumArtist> {
+    artists
+        .iter()
+        .enumerate()
+        .skip(1)
+        .map(|(position, artist)| {
+            DbAlbumArtist::new(album_id, &artist.id, position as i32, ids.new_id(), now)
+        })
+        .collect()
+}
+
 #[derive(Debug, Clone)]
 pub struct ParsedWorkGraph {
     pub works: Vec<DbWork>,
