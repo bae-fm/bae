@@ -311,8 +311,7 @@ impl PlaybackService {
     pub(super) async fn resume(&mut self) {
         // Stop preview when user explicitly resumes main playback
         if self.preview.is_active() {
-            self.main_was_playing_before_preview = false;
-            self.preview.stop();
+            self.stop_preview_for_main_playback();
         }
 
         if self.pending_side_pause.is_some() {

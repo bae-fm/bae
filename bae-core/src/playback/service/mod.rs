@@ -1102,8 +1102,7 @@ impl PlaybackService {
                 Some(command) = self.command_rx.recv() => {
             match command {
                 PlaybackCommand::Play(track_id) => {
-                    self.preview.stop();
-                    self.main_was_playing_before_preview = false;
+                    self.stop_preview_for_main_playback();
                     // Direct selection: the track's release becomes the playing
                     // context, with the cursor at the chosen track.
                     match self.library_manager.get_play_context(&track_id).await {
@@ -1139,8 +1138,7 @@ impl PlaybackService {
                         continue;
                     }
 
-                    self.preview.stop();
-                    self.main_was_playing_before_preview = false;
+                    self.stop_preview_for_main_playback();
                     let start = if shuffle {
                         // The shuffle seed is read once here, at the command
                         // boundary, and carried into the context so the order is
@@ -1185,8 +1183,7 @@ impl PlaybackService {
                         warn!("PlayLibraryShuffled: the library has no tracks; nothing to play");
                         continue;
                     }
-                    self.preview.stop();
-                    self.main_was_playing_before_preview = false;
+                    self.stop_preview_for_main_playback();
                     // A fresh seed minted at the command boundary so the shuffled
                     // order is reproducible and `Context` repeat can re-derive it.
                     let first_track = self.playback_queue.play_release(

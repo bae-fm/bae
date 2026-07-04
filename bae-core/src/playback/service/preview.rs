@@ -43,6 +43,13 @@ impl PlaybackService {
         }
     }
 
+    /// Stop preview because main playback is taking over, without resuming main
+    /// from the preview pause marker.
+    pub(super) fn stop_preview_for_main_playback(&mut self) {
+        self.main_was_playing_before_preview = false;
+        self.preview.stop();
+    }
+
     /// Preview a local file. Same path toggles off (and resumes main); a
     /// different path switches; a fresh path starts and pauses the main player.
     pub(super) async fn preview_play(&mut self, path: String) {
