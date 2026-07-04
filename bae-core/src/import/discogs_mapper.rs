@@ -342,6 +342,28 @@ pub(crate) fn process_tracklist(tracklist: &[crate::discogs::DiscogsTrack]) -> V
         original_positions: Vec<String>,
     }
 
+    let flush_accumulated_sub_tracks =
+        |collapsed: &mut Vec<CollapsedTrack>,
+         current_heading: Option<&str>,
+         sub_tracks: &mut Vec<String>,
+         sub_track_positions: &mut Vec<String>,
+         heading_position: &mut Option<String>| {
+            if sub_tracks.is_empty() {
+                return;
+            }
+
+            let heading = current_heading.expect("sub-tracks are accumulated under a heading");
+            let title = format!("{}: {}", heading, sub_tracks.join(" \u{2013} "));
+            collapsed.push(CollapsedTrack {
+                title,
+                position: heading_position
+                    .take()
+                    .expect("sub-tracks have a base heading position"),
+                original_positions: std::mem::take(sub_track_positions),
+            });
+            sub_tracks.clear();
+        };
+
     let mut collapsed: Vec<CollapsedTrack> = Vec::new();
     let mut current_heading: Option<String> = None;
     let mut sub_tracks: Vec<String> = Vec::new();
@@ -350,18 +372,13 @@ pub(crate) fn process_tracklist(tracklist: &[crate::discogs::DiscogsTrack]) -> V
 
     for entry in &filtered {
         if entry.type_ == "heading" {
-            // Flush any accumulated sub-tracks
-            if let Some(ref heading) = current_heading {
-                if !sub_tracks.is_empty() {
-                    let title = format!("{}: {}", heading, sub_tracks.join(" \u{2013} "));
-                    collapsed.push(CollapsedTrack {
-                        title,
-                        position: heading_position.take().unwrap_or_default(),
-                        original_positions: std::mem::take(&mut sub_track_positions),
-                    });
-                    sub_tracks.clear();
-                }
-            }
+            flush_accumulated_sub_tracks(
+                &mut collapsed,
+                current_heading.as_deref(),
+                &mut sub_tracks,
+                &mut sub_track_positions,
+                &mut heading_position,
+            );
 
             if entry.title == "-" {
                 // A heading with title "-" clears the current heading
@@ -383,18 +400,13 @@ pub(crate) fn process_tracklist(tracklist: &[crate::discogs::DiscogsTrack]) -> V
             sub_tracks.push(entry.title.clone());
             sub_track_positions.push(entry.position.clone());
         } else {
-            // Flush any accumulated sub-tracks before this non-sub track
-            if let Some(ref heading) = current_heading {
-                if !sub_tracks.is_empty() {
-                    let title = format!("{}: {}", heading, sub_tracks.join(" \u{2013} "));
-                    collapsed.push(CollapsedTrack {
-                        title,
-                        position: heading_position.take().unwrap_or_default(),
-                        original_positions: std::mem::take(&mut sub_track_positions),
-                    });
-                    sub_tracks.clear();
-                }
-            }
+            flush_accumulated_sub_tracks(
+                &mut collapsed,
+                current_heading.as_deref(),
+                &mut sub_tracks,
+                &mut sub_track_positions,
+                &mut heading_position,
+            );
             current_heading = None;
             heading_position = None;
 
@@ -406,17 +418,13 @@ pub(crate) fn process_tracklist(tracklist: &[crate::discogs::DiscogsTrack]) -> V
         }
     }
 
-    // Flush remaining sub-tracks
-    if let Some(ref heading) = current_heading {
-        if !sub_tracks.is_empty() {
-            let title = format!("{}: {}", heading, sub_tracks.join(" \u{2013} "));
-            collapsed.push(CollapsedTrack {
-                title,
-                position: heading_position.unwrap_or_default(),
-                original_positions: sub_track_positions,
-            });
-        }
-    }
+    flush_accumulated_sub_tracks(
+        &mut collapsed,
+        current_heading.as_deref(),
+        &mut sub_tracks,
+        &mut sub_track_positions,
+        &mut heading_position,
+    );
 
     // Phase 3: Assign sides and compute track numbers
     let mut result = Vec::new();
