@@ -260,6 +260,23 @@ fn empty_external_urls() -> ExternalUrls {
     }
 }
 
+#[test]
+fn release_group_fallback_error_is_logged_with_group_id() {
+    let mut urls = empty_external_urls();
+
+    let logs = crate::test_logs::capture_warn_logs(|| {
+        merge_release_group_external_urls(
+            "rg-error",
+            Err(MusicBrainzError::Other("transient fetch".to_string())),
+            &mut urls,
+        );
+    });
+
+    assert!(logs.contains("rg-error"));
+    assert!(logs.contains("transient fetch"));
+    assert!(urls.discogs_release_url.is_none());
+}
+
 #[tokio::test]
 async fn test_fetch_mb_xref_with_backlink_returns_response_and_metadata() {
     let discogs_id = "fetch-mb-xref-hit-1";
