@@ -32,6 +32,8 @@ mod serde_helpers;
 pub mod signals;
 pub mod storage;
 pub mod sync;
+#[cfg(test)]
+pub(crate) mod test_logs;
 pub mod text_encoding;
 pub mod ui;
 pub mod util;

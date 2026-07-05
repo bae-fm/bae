@@ -233,48 +233,9 @@ pub async fn lookup_and_resolve(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::future::Future;
-    use std::io::{self, Write};
-    use std::sync::{Arc, Mutex as StdMutex};
+    use crate::test_logs::capture_warn_logs_async;
+    use std::sync::Arc;
     use tempfile::TempDir;
-
-    struct LogWriter {
-        bytes: Arc<StdMutex<Vec<u8>>>,
-    }
-
-    impl Write for LogWriter {
-        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-            self.bytes.lock().unwrap().extend_from_slice(buf);
-            Ok(buf.len())
-        }
-
-        fn flush(&mut self) -> io::Result<()> {
-            Ok(())
-        }
-    }
-
-    async fn capture_warn_logs<F, Fut>(run: F) -> String
-    where
-        F: FnOnce() -> Fut,
-        Fut: Future<Output = ()>,
-    {
-        let bytes = Arc::new(StdMutex::new(Vec::new()));
-        let writer_bytes = bytes.clone();
-        let subscriber = tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::WARN)
-            .with_ansi(false)
-            .with_writer(move || LogWriter {
-                bytes: writer_bytes.clone(),
-            })
-            .finish();
-
-        let guard = tracing::subscriber::set_default(subscriber);
-        run().await;
-        drop(guard);
-
-        let bytes = bytes.lock().unwrap().clone();
-        String::from_utf8(bytes).unwrap()
-    }
 
     /// Regression: one categorize yields both the disc ID (from the LOG here)
     /// and the real track count — the pair the service's folder identify reads.
@@ -406,7 +367,7 @@ mod tests {
             .await
             .unwrap();
 
-        let logs = capture_warn_logs(|| async {
+        let logs = capture_warn_logs_async(|| async {
             let (paths, cover_staging) = resolve_release_artwork_paths(&manager, &release.id)
                 .await
                 .unwrap();

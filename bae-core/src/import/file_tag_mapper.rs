@@ -443,17 +443,33 @@ fn probe_content_type(path: &Path) -> Option<ContentType> {
 /// only feeds the cover pipeline when neither an explicit selection nor a
 /// folder image provides one (the caller enforces that ordering). Prefers
 /// a `PictureType::CoverFront` picture; falls back to the first embedded
-/// picture of any type. Returns `None` when no file carries a picture or
-/// the picture's MIME isn't a supported image type (e.g. lofty's `Tiff`,
-/// which the library doesn't store as a cover) — a missing or unsupported
-/// embedded picture simply means there's nothing to seed.
-pub fn read_embedded_cover(audio_files: &[PathBuf]) -> Option<(Vec<u8>, ContentType)> {
+/// picture of any type. Returns `Ok(None)` when no file carries a picture
+/// or the picture's MIME isn't a supported image type (e.g. lofty's
+/// `Tiff`, which the library doesn't store as a cover) — a missing or
+/// unsupported embedded picture simply means there's nothing to seed.
+/// Returns `Err` when an audio file can't be opened or its tags can't be
+/// read.
+pub fn read_embedded_cover(
+    audio_files: &[PathBuf],
+) -> Result<Option<(Vec<u8>, ContentType)>, String> {
     for path in audio_files {
-        let Ok(probe) = Probe::open(path) else {
-            continue;
+        let probe = match Probe::open(path) {
+            Ok(probe) => probe,
+            Err(e) => {
+                return Err(format!(
+                    "failed to open {} for embedded cover read: {e}",
+                    path.display()
+                ));
+            }
         };
-        let Ok(tagged) = probe.read() else {
-            continue;
+        let tagged = match probe.read() {
+            Ok(tagged) => tagged,
+            Err(e) => {
+                return Err(format!(
+                    "failed to read embedded cover tags from {}: {e}",
+                    path.display()
+                ));
+            }
         };
         let Some(tag) = tagged.primary_tag().or_else(|| tagged.first_tag()) else {
             continue;
@@ -469,13 +485,13 @@ pub fn read_embedded_cover(audio_files: &[PathBuf]) -> Option<(Vec<u8>, ContentT
         };
 
         match picture.mime_type().and_then(image_content_type) {
-            Some(content_type) => return Some((picture.data().to_vec(), content_type)),
+            Some(content_type) => return Ok(Some((picture.data().to_vec(), content_type))),
             // A picture in a MIME type the library can't store as a cover
             // (e.g. TIFF) — skip this file and try the next.
             None => continue,
         }
     }
-    None
+    Ok(None)
 }
 
 /// Map a lofty picture MIME to the library's [`ContentType`], for the
@@ -1328,7 +1344,7 @@ mod tests {
             lofty::picture::MimeType::Jpeg,
             JPEG_BYTES,
         );
-        let (bytes, content_type) = read_embedded_cover(&[f]).expect("cover present");
+        let (bytes, content_type) = read_embedded_cover(&[f]).unwrap().expect("cover present");
         assert_eq!(bytes, JPEG_BYTES);
         assert_eq!(content_type, ContentType::Jpeg);
     }
@@ -1340,7 +1356,7 @@ mod tests {
         let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
         let dest = temp.path().join("01.flac");
         fs::copy(&src, &dest).unwrap();
-        assert!(read_embedded_cover(&[dest]).is_none());
+        assert!(read_embedded_cover(&[dest]).unwrap().is_none());
     }
 
     /// When a file carries both a back and a front cover, the front cover
@@ -1373,7 +1389,9 @@ mod tests {
         tagged.insert_tag(tag);
         tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
 
-        let (bytes, content_type) = read_embedded_cover(&[dest]).expect("cover present");
+        let (bytes, content_type) = read_embedded_cover(&[dest])
+            .unwrap()
+            .expect("cover present");
         assert_eq!(bytes, JPEG_BYTES, "front cover wins over back");
         assert_eq!(content_type, ContentType::Jpeg);
     }
@@ -1390,7 +1408,38 @@ mod tests {
             lofty::picture::MimeType::Tiff,
             &[0x49, 0x49, 0x2A, 0x00],
         );
-        assert!(read_embedded_cover(&[f]).is_none());
+        assert!(read_embedded_cover(&[f]).unwrap().is_none());
+    }
+
+    #[test]
+    fn read_embedded_cover_returns_err_when_audio_file_cannot_open() {
+        let temp = TempDir::new().unwrap();
+        let missing = temp.path().join("missing.flac");
+
+        let err = read_embedded_cover(std::slice::from_ref(&missing)).unwrap_err();
+
+        assert!(
+            err.contains("failed to open")
+                && err.contains("for embedded cover read")
+                && err.contains(&missing.display().to_string()),
+            "expected embedded-cover open error, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn read_embedded_cover_returns_err_when_audio_tags_cannot_be_read() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("test-fixtures")
+            .join("audio-format")
+            .join("placeholder-dsd.dsf");
+
+        let err = read_embedded_cover(std::slice::from_ref(&path)).unwrap_err();
+
+        assert!(
+            err.contains("failed to read embedded cover tags")
+                && err.contains(&path.display().to_string()),
+            "expected embedded-cover tag-read error, got {err:?}"
+        );
     }
 
     #[test]

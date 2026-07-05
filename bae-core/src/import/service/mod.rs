@@ -681,7 +681,7 @@ impl ImportService {
                 crate::import::file_tag_mapper::read_embedded_cover(&audio_paths)
             })
             .await
-            .map_err(|e| format!("embedded-cover read task failed: {e}"))?
+            .map_err(|e| format!("embedded-cover read task failed: {e}"))??
         } else {
             None
         };
