@@ -669,6 +669,51 @@ impl Database {
         .await
     }
 
+    pub async fn delete_release_with_cleanup(
+        &self,
+        release_id: &str,
+        album_id: &str,
+        cleanup: DeleteCleanupPlan,
+    ) -> Result<bool, DbError> {
+        let release_id = release_id.to_string();
+        let album_id = album_id.to_string();
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            let conn = sql.connection();
+            apply_delete_cleanup_on(conn, &cleanup, &reg)?;
+            conn.execute(
+                "UPDATE imports SET release_id = NULL WHERE release_id = ?",
+                params![release_id],
+            )?;
+            conn.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
+
+            let remaining_release_count: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM releases WHERE album_id = ?",
+                params![album_id],
+                |row| row.get(0),
+            )?;
+            let album_deleted = remaining_release_count == 0;
+            if album_deleted {
+                conn.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
+            } else {
+                let primary_release_id: Option<String> = conn.query_row(
+                    "SELECT primary_release_id FROM albums WHERE id = ?",
+                    params![album_id],
+                    |row| row.get(0),
+                )?;
+                if primary_release_id.as_deref() == Some(&release_id) {
+                    conn.execute(
+                        "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
+                        params![reg, album_id],
+                    )?;
+                }
+            }
+
+            Ok(album_deleted)
+        })
+        .await
+    }
+
     /// Mark an import failed and remove the release it finalized in the same DB
     /// operation. Used when remote import upload setup fails after finalize: the
     /// release was never announced to the library, and its audio files are the

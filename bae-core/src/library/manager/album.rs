@@ -105,16 +105,21 @@ impl LibraryManager {
 
         // Collect track IDs from all releases before deletion for playback cleanup
         let mut all_track_ids = Vec::new();
+        let mut db_cleanups = Vec::new();
+        let mut evict_blobs = Vec::new();
         for release in &releases {
-            if let Ok(tracks) = self.get_tracks(&release.id).await {
-                all_track_ids.extend(tracks.into_iter().map(|t| t.id));
-            }
-            self.queue_release_files_for_deletion(&release.id).await;
-            self.queue_release_cover_for_deletion(&release.id, release.remote)
-                .await;
+            let tracks = self.get_tracks(&release.id).await?;
+            all_track_ids.extend(tracks.into_iter().map(|t| t.id));
+            let delete_plan = self.release_delete_plan(release).await?;
+            db_cleanups.push(delete_plan.db_cleanup);
+            evict_blobs.extend(delete_plan.evict_blobs);
         }
 
-        self.database.delete_album(album_id).await?;
+        self.database
+            .delete_album_with_cleanup(album_id, db_cleanups)
+            .await?;
+        self.emit_outbox_changed().await;
+        self.evict_delete_blobs(evict_blobs).await;
 
         if !all_track_ids.is_empty() {
             self.emit(LibraryEvent::TracksDeleted {

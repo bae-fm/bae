@@ -385,6 +385,28 @@ impl Database {
             .await
     }
 
+    pub async fn delete_album_with_cleanup(
+        &self,
+        album_id: &str,
+        cleanups: Vec<DeleteCleanupPlan>,
+    ) -> Result<(), DbError> {
+        let album_id = album_id.to_string();
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            let conn = sql.connection();
+            for cleanup in &cleanups {
+                apply_delete_cleanup_on(conn, cleanup, &reg)?;
+            }
+            conn.execute(
+                "UPDATE imports SET release_id = NULL WHERE release_id IN (SELECT id FROM releases WHERE album_id = ?)",
+                params![album_id],
+            )?;
+            conn.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
+            Ok(())
+        })
+        .await
+    }
+
     /// Update album's primary_release_id
     pub async fn set_album_primary_release(
         &self,

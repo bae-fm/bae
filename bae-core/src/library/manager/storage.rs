@@ -187,65 +187,6 @@ impl LibraryManager {
         let db_filter = to_db_storage_filter(filter);
         Ok(self.database.get_storage_count(db_filter).await?)
     }
-
-    /// Tombstone every file's cloud blob (cancelling any pending upload first) and
-    /// drop coven's local cache copies, for a Remote release that is being deleted.
-    ///
-    /// SAFETY: the cloud copies are the only ones, so this is only safe when the
-    /// release is genuinely being removed. Its sole caller is
-    /// `queue_release_files_for_deletion` (the delete path); make-Local
-    /// tombstoning is coven's (it enqueues the deletes inside `make_local`'s
-    /// atomic commit). `files` are precomputed by the caller, so the cloud keys are
-    /// correct.
-    pub(crate) async fn queue_storage_deletions(&self, files: &[DbFile]) {
-        // Queue cloud outbox deletes and cancel pending uploads. The delete key
-        // must match the key the blob was uploaded under, derived through coven
-        // for the home's scheme (the row's readable `cloud_path` on a browsable
-        // home, the hashed-by-id default on an opaque one).
-        for file in files {
-            let cloud_key = match self.release_file_cloud_key(file) {
-                Ok(key) => key,
-                Err(e) => {
-                    warn!("Failed to derive delete key for {}: {e}", file.id);
-                    continue;
-                }
-            };
-
-            // Cancel any pending upload for this file
-            if let Err(e) = self
-                .database
-                .remove_cloud_outbox_uploads_for_key(&cloud_key)
-                .await
-            {
-                warn!("Failed to cancel outbox upload for {}: {e}", cloud_key);
-            }
-
-            // Queue cloud delete
-            if let Err(e) = self.database.add_cloud_outbox_delete(&cloud_key).await {
-                warn!("Failed to add outbox delete for {}: {e}", cloud_key);
-            }
-        }
-
-        // Drop coven's local cache copies (both pinned and evictable folders) so a
-        // deleted release leaks nothing on disk. The release is Remote here, so its
-        // blobs are cache copies, not external refs. Dropping the on-device cache
-        // for a deleted blob is bae's delete-path responsibility. Best-effort: each
-        // drop logs and continues so a cleanup hiccup never aborts the delete.
-        for file in files {
-            if let Err(e) = self
-                .handle
-                .evict_blob(&Self::release_file_blob_ref(file))
-                .await
-            {
-                warn!(
-                    "Failed to drop on-device copies of {} during deletion: {e}",
-                    file.id
-                );
-            }
-        }
-
-        self.emit_outbox_changed().await;
-    }
 }
 
 /// Translate a UI-facing `StorageSort` to the DB-layer sort criterion.

@@ -285,21 +285,7 @@ impl Database {
         let cloud_key = cloud_key.to_string();
         self.call_sql(move |sql| {
             let created_at = sql.stamp();
-            let conn = sql.connection();
-            conn.execute(
-                "DELETE FROM cloud_outbox \
-                 WHERE operation IN ('upload', 'cancel') AND cloud_key = ?1",
-                [&cloud_key],
-            )
-            .map_err(DbError::from)?;
-            conn.execute(
-                "INSERT OR IGNORE INTO cloud_outbox \
-                 (operation, cloud_key, scope, created_at) \
-                 VALUES ('delete', ?1, NULL, ?2)",
-                (&cloud_key, &created_at),
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
+            add_cloud_outbox_delete_on(sql.connection(), &cloud_key, &created_at)
         })
         .await
     }

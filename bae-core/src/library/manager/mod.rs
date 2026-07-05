@@ -41,8 +41,8 @@ use crate::config::CloudProvider;
 use crate::config::ConfigHandle;
 use crate::db::{
     Database, DbAlbum, DbAlbumArtist, DbArtist, DbAudioFormat, DbFile, DbImport, DbLibraryImage,
-    DbRelease, DbTrack, DbTrackArtist, ImportOperationStatus, LibraryImageType, Pressing,
-    SortDirection as DbSortDirection, StorageFilter as DbStorageFilter,
+    DbRelease, DbTrack, DbTrackArtist, DeleteCleanupPlan, ImportOperationStatus, LibraryImageType,
+    Pressing, SortDirection as DbSortDirection, StorageFilter as DbStorageFilter,
     StorageSortCriterion as DbStorageSortCriterion, StorageSortField as DbStorageSortField,
 };
 use crate::keys::BaeKeyServiceExt;
@@ -105,6 +105,11 @@ pub enum LibraryError {
     Encryption(#[from] coven::EncryptionError),
     #[error("Storage error: {0}")]
     Storage(String),
+}
+
+struct ReleaseDeletePlan {
+    db_cleanup: DeleteCleanupPlan,
+    evict_blobs: Vec<coven::BlobRef>,
 }
 
 /// All DB data needed to play or serve a track.
@@ -1235,95 +1240,69 @@ impl LibraryManager {
             .map_err(|e| LibraryError::Storage(format!("cloud key for cover {release_id}: {e}")))
     }
 
-    /// Queue files for a release for deletion (local + cloud).
-    ///
-    /// Skips local releases -- those are the user's original files. For
-    /// remote releases:
-    /// - Queues local file deletion if this device pins them
-    /// - Adds cloud outbox delete entries for each file
-    /// - Cancels any pending uploads for the same files
-    async fn queue_release_files_for_deletion(&self, release_id: &str) {
-        let release = match self.database.find_release_by_id(release_id).await {
-            Ok(Some(r)) => r,
-            _ => return,
-        };
-
-        let files = match self.get_files_for_release(release_id).await {
-            Ok(files) => files,
-            Err(e) => {
-                warn!("Failed to get files for release {}: {}", release_id, e);
-                return;
-            }
-        };
+    /// Build the database cleanup writes and cache blob refs for a release delete
+    /// without mutating durable state. The caller commits `db_cleanup` in the same
+    /// DB transaction as the row deletion, then evicts the cache blobs afterward.
+    async fn release_delete_plan(
+        &self,
+        release: &DbRelease,
+    ) -> Result<ReleaseDeletePlan, LibraryError> {
+        let release_id = &release.id;
+        let files = self.get_files_for_release(release_id).await?;
+        let mut evict_blobs = Vec::new();
+        let mut cloud_delete_keys = Vec::new();
+        let mut external_blob_ids_to_clear = Vec::new();
 
         if release.remote {
-            // Remote: tombstone the cloud blobs and drop coven's cache copies.
-            self.queue_storage_deletions(&files).await;
+            evict_blobs.extend(files.iter().map(Self::release_file_blob_ref));
+            cloud_delete_keys.extend(
+                files
+                    .iter()
+                    .map(|file| self.release_file_cloud_key(file))
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
         } else {
             // Local: the files are the user's own files in place — never delete
-            // them. Just clear coven's external refs so no orphan ref outlives the
-            // release row.
-            for file in &files {
-                if let Err(e) = self.database.clear_external_blob(&file.id).await {
-                    warn!(
-                        "Failed to clear external ref for {} on delete: {e}",
-                        file.id
-                    );
-                }
-            }
+            // them. Just clear coven's external refs in the delete transaction so
+            // no orphan ref outlives the release row.
+            external_blob_ids_to_clear.extend(files.iter().map(|file| file.id.clone()));
         }
-    }
 
-    /// Clean up a release's cover blob when the release is deleted. The `covers`
-    /// row itself is cascade-deleted with the release (its FK to `releases`), and
-    /// that DELETE changeset replicates the removal — and on peers coven's
-    /// apply-side cache drop removes their cover copy. This handles the owner's
-    /// blob bytes: a Remote release's cover is in the cloud + cache (tombstone the
-    /// cloud blob + drop the cache copy), a Local release's cover is in coven's
-    /// local store (drop it). Best-effort: each step logs and continues so a
-    /// cleanup hiccup never aborts the delete.
-    async fn queue_release_cover_for_deletion(&self, release_id: &str, was_remote: bool) {
-        let cover = match self
+        let cover = self
             .database
             .find_library_image(release_id, &LibraryImageType::Cover)
-            .await
-        {
-            Ok(Some(cover)) => cover,
-            // No cover: nothing to clean up.
-            Ok(None) => return,
-            Err(e) => {
-                warn!("Failed to look up cover for release {release_id}: {e}");
-                return;
-            }
-        };
+            .await?;
 
-        if was_remote {
-            // Remote: tombstone the cloud cover blob (its on-device cache copy is
-            // dropped below, alongside the Local case).
-            match self.cover_cloud_key(release_id, cover.cloud_path.as_deref()) {
-                Ok(cloud_key) => {
-                    if let Err(e) = self.database.add_cloud_outbox_delete(&cloud_key).await {
-                        warn!("Failed to enqueue cover blob delete for {release_id}: {e}");
-                    }
-                }
-                Err(e) => warn!("Failed to derive cover blob key for {release_id}: {e}"),
-            }
+        if let Some(cover) = cover.as_ref().filter(|_| release.remote) {
+            cloud_delete_keys.push(self.cover_cloud_key(release_id, cover.cloud_path.as_deref())?);
         }
-        // Drop every on-device copy of the cover blob — a Remote release's cache
-        // copy or a Local release's local-store copy (it lived in at most one).
-        if let Err(e) = self
-            .handle
-            .evict_blob(&Self::image_blob_ref(
+
+        if let Some(cover) = cover {
+            evict_blobs.push(Self::image_blob_ref(
                 crate::sync::COVERS_NAMESPACE,
                 release_id,
                 cover.cloud_path.clone(),
-            ))
-            .await
-        {
-            warn!("Failed to drop on-device cover copies for {release_id}: {e}");
+            ));
         }
 
-        self.emit_outbox_changed().await;
+        Ok(ReleaseDeletePlan {
+            db_cleanup: DeleteCleanupPlan {
+                cloud_delete_keys,
+                external_blob_ids_to_clear,
+            },
+            evict_blobs,
+        })
+    }
+
+    async fn evict_delete_blobs(&self, blobs: Vec<coven::BlobRef>) {
+        for blob in blobs {
+            if let Err(e) = self.handle.evict_blob(&blob).await {
+                warn!(
+                    "Failed to drop on-device copies during deletion for {}/{} ({:?}): {e}",
+                    blob.namespace, blob.id, blob.cloud_path
+                );
+            }
+        }
     }
 }
 

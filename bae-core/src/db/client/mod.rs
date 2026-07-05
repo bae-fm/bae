@@ -64,6 +64,47 @@ fn clear_external_blob_on(conn: &Connection, blob_id: &str) -> Result<(), DbErro
         .map_err(DbError::from)
 }
 
+#[derive(Clone, Debug)]
+pub struct DeleteCleanupPlan {
+    pub cloud_delete_keys: Vec<String>,
+    pub external_blob_ids_to_clear: Vec<String>,
+}
+
+fn add_cloud_outbox_delete_on(
+    conn: &Connection,
+    cloud_key: &str,
+    created_at: &str,
+) -> Result<(), DbError> {
+    conn.execute(
+        "DELETE FROM cloud_outbox \
+         WHERE operation IN ('upload', 'cancel') AND cloud_key = ?1",
+        [cloud_key],
+    )
+    .map_err(DbError::from)?;
+    conn.execute(
+        "INSERT OR IGNORE INTO cloud_outbox \
+         (operation, cloud_key, scope, created_at) \
+         VALUES ('delete', ?1, NULL, ?2)",
+        (cloud_key, created_at),
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
+fn apply_delete_cleanup_on(
+    conn: &Connection,
+    cleanup: &DeleteCleanupPlan,
+    created_at: &str,
+) -> Result<(), DbError> {
+    for cloud_key in &cleanup.cloud_delete_keys {
+        add_cloud_outbox_delete_on(conn, cloud_key, created_at)?;
+    }
+    for blob_id in &cleanup.external_blob_ids_to_clear {
+        clear_external_blob_on(conn, blob_id)?;
+    }
+    Ok(())
+}
+
 fn composer_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
     let release_unlinked = unlinked_release_composer_role_predicate("rar");
     let track_unlinked = unlinked_track_composer_role_predicate("tar");

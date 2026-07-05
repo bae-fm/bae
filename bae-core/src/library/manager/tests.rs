@@ -1,6 +1,8 @@
 use super::*;
 use crate::config::Config;
-use crate::db::{DbAlbum, DbLibraryImage, DbRelease, DbTrackWork, DbWork, LibraryImageType};
+use crate::db::{
+    DbAlbum, DbFile, DbLibraryImage, DbRelease, DbTrackWork, DbWork, LibraryImageType,
+};
 use crate::import::MetadataSource;
 #[cfg(feature = "test-utils")]
 use crate::sync::CloudCipher;
@@ -59,6 +61,40 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
         tokio::runtime::Handle::current(),
     );
     (manager, temp_dir)
+}
+
+async fn rename_table_for_test(manager: &LibraryManager, from: &str, to: &str) {
+    let statement = format!("ALTER TABLE {from} RENAME TO {to}");
+    manager
+        .database
+        .handle()
+        .sql(move |sql| {
+            sql.connection().execute(&statement, [])?;
+            Ok::<(), coven::CovenError>(())
+        })
+        .await
+        .unwrap();
+}
+
+async fn store_test_cover_image(manager: &LibraryManager, release_id: &str) {
+    manager
+        .store_library_image_blob(
+            &DbLibraryImage {
+                id: release_id.to_string(),
+                image_type: LibraryImageType::Cover,
+                content_type: crate::util::content_type::ContentType::Jpeg,
+                file_size: 5,
+                width: None,
+                height: None,
+                source: "local".to_string(),
+                source_url: None,
+                cloud_path: None,
+                created_at: manager.clock.now(),
+            },
+            b"image",
+        )
+        .await
+        .unwrap();
 }
 
 async fn setup_forget_library_manager(library_id: &str, home: &std::path::Path) -> LibraryManager {
@@ -499,10 +535,191 @@ async fn delete_release_tombstones_remote_cloud_blobs() {
     );
 }
 
+#[tokio::test]
+async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_fails() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+
+    let file = DbFile::new(
+        &release.id,
+        "track1.flac",
+        5,
+        crate::util::content_type::ContentType::Flac,
+        Uuid::new_v4().to_string(),
+        Utc::now(),
+    );
+    manager.add_file(&file).await.unwrap();
+
+    rename_table_for_test(&manager, "release_files", "release_files_unavailable").await;
+
+    let error = manager.delete_release(&release.id).await.unwrap_err();
+    assert!(matches!(error, LibraryError::Database(_)));
+    assert!(manager
+        .database
+        .find_release_by_id(&release.id)
+        .await
+        .unwrap()
+        .is_some());
+}
+
+#[tokio::test]
+async fn delete_release_fails_before_rows_are_deleted_when_file_tombstone_enqueue_fails() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+
+    let file = DbFile::new(
+        &release.id,
+        "track1.flac",
+        5,
+        crate::util::content_type::ContentType::Flac,
+        Uuid::new_v4().to_string(),
+        Utc::now(),
+    );
+    manager.add_file(&file).await.unwrap();
+
+    rename_table_for_test(&manager, "cloud_outbox", "cloud_outbox_unavailable").await;
+
+    let error = manager.delete_release(&release.id).await.unwrap_err();
+    assert!(matches!(error, LibraryError::Database(_)));
+    assert!(manager
+        .database
+        .find_release_by_id(&release.id)
+        .await
+        .unwrap()
+        .is_some());
+}
+
+#[tokio::test]
+async fn delete_release_fails_before_rows_are_deleted_when_local_external_ref_cleanup_fails() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    manager
+        .database
+        .set_remote_for_test(&release.id, false)
+        .await
+        .unwrap();
+
+    let file = DbFile::new(
+        &release.id,
+        "track1.flac",
+        5,
+        crate::util::content_type::ContentType::Flac,
+        Uuid::new_v4().to_string(),
+        Utc::now(),
+    );
+    manager.add_file(&file).await.unwrap();
+    manager
+        .database
+        .register_release_external_refs_for_test(&release.id, temp_dir.path().to_str().unwrap())
+        .await
+        .unwrap();
+
+    rename_table_for_test(&manager, "local_blob_refs", "local_blob_refs_unavailable").await;
+
+    let error = manager.delete_release(&release.id).await.unwrap_err();
+    assert!(matches!(error, LibraryError::Database(_)));
+    assert!(manager
+        .database
+        .find_release_by_id(&release.id)
+        .await
+        .unwrap()
+        .is_some());
+}
+
+#[tokio::test]
+async fn delete_album_fails_before_rows_are_deleted_when_track_lookup_fails() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+
+    rename_table_for_test(&manager, "tracks", "tracks_unavailable").await;
+
+    let error = manager.delete_album(&album.id).await.unwrap_err();
+    assert!(matches!(error, LibraryError::Database(_)));
+    assert!(manager
+        .database
+        .find_album_by_id(&album.id)
+        .await
+        .unwrap()
+        .is_some());
+}
+
+#[tokio::test]
+async fn delete_album_fails_before_rows_are_deleted_when_file_cleanup_lookup_fails() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+
+    rename_table_for_test(&manager, "release_files", "release_files_unavailable").await;
+
+    let error = manager.delete_album(&album.id).await.unwrap_err();
+    assert!(matches!(error, LibraryError::Database(_)));
+    assert!(manager
+        .database
+        .find_album_by_id(&album.id)
+        .await
+        .unwrap()
+        .is_some());
+}
+
+#[tokio::test]
+async fn delete_release_fails_before_rows_are_deleted_when_cover_lookup_fails() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    store_test_cover_image(&manager, &release.id).await;
+
+    rename_table_for_test(&manager, "covers", "covers_unavailable").await;
+
+    let error = manager.delete_release(&release.id).await.unwrap_err();
+    assert!(matches!(error, LibraryError::Database(_)));
+    assert!(manager
+        .database
+        .find_release_by_id(&release.id)
+        .await
+        .unwrap()
+        .is_some());
+}
+
+#[tokio::test]
+async fn delete_release_fails_before_rows_are_deleted_when_cover_tombstone_enqueue_fails() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    store_test_cover_image(&manager, &release.id).await;
+
+    rename_table_for_test(&manager, "cloud_outbox", "cloud_outbox_unavailable").await;
+
+    let error = manager.delete_release(&release.id).await.unwrap_err();
+    assert!(matches!(error, LibraryError::Database(_)));
+    assert!(manager
+        .database
+        .find_release_by_id(&release.id)
+        .await
+        .unwrap()
+        .is_some());
+}
+
 /// Deleting a release cascade-deletes its `covers` row (the FK on `covers.id`
-/// to `releases`), and `queue_release_cover_for_deletion` cleans up the cover
-/// blob: a Remote release's cover is tombstoned in the cloud and dropped from
-/// the cache.
+/// to `releases`), and the delete path cleans up the cover blob: a Remote
+/// release's cover is tombstoned in the cloud and dropped from the cache.
 #[tokio::test]
 async fn delete_release_removes_its_cover_image() {
     let (mut manager, _temp_dir) = setup_test_manager().await;

@@ -731,21 +731,13 @@ impl LibraryManager {
             .map(|t| t.id)
             .collect();
 
-        // Queue files for deferred deletion before removing DB records
-        self.queue_release_files_for_deletion(release_id).await;
-        self.queue_release_cover_for_deletion(release_id, release.remote)
-            .await;
-
-        self.database.delete_release(release_id).await?;
-        let remaining_releases = self.get_releases_for_album(&album_id).await?;
-        let album_deleted = remaining_releases.is_empty();
-        if album_deleted {
-            self.database.delete_album(&album_id).await?;
-        } else if let Some(album) = self.database.find_album_by_id(&album_id).await? {
-            if album.primary_release_id.as_deref() == Some(release_id) {
-                self.database.clear_album_primary_release(&album_id).await?;
-            }
-        }
+        let delete_plan = self.release_delete_plan(&release).await?;
+        let album_deleted = self
+            .database
+            .delete_release_with_cleanup(release_id, &album_id, delete_plan.db_cleanup)
+            .await?;
+        self.emit_outbox_changed().await;
+        self.evict_delete_blobs(delete_plan.evict_blobs).await;
 
         if !track_ids.is_empty() {
             self.emit(LibraryEvent::TracksDeleted { track_ids });
