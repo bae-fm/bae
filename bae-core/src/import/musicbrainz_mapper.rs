@@ -290,9 +290,12 @@ pub fn map_mb_response_to_db(
 
     for credit in &response.artist_credit {
         if let Some(artist_obj) = &credit.artist {
-            let Some(artist_name) = artist_obj.name.clone() else {
-                continue;
-            };
+            let artist_name = mb_artist_name(artist_obj, Some(&credit.name)).ok_or_else(|| {
+                format!(
+                    "MusicBrainz release {} artist credit {:?} has no artist name",
+                    response.id, artist_obj.id
+                )
+            })?;
 
             let mb_artist_id = artist_obj.id.clone();
 
@@ -472,14 +475,13 @@ pub fn map_mb_response_to_db(
 
             for (credit_pos, credit) in track.artist_credit.iter().enumerate() {
                 if let Some(artist_obj) = &credit.artist {
-                    let Some(artist_name) = artist_obj.name.clone() else {
-                        warn!(
-                            track_id = %db_track.id,
-                            musicbrainz_artist_id = ?artist_obj.id,
-                            "Skipping MusicBrainz track artist credit without artist name"
-                        );
-                        continue;
-                    };
+                    let artist_name =
+                        mb_artist_name(artist_obj, Some(&credit.name)).ok_or_else(|| {
+                            format!(
+                                "MusicBrainz release {} track {:?} artist credit {:?} has no artist name",
+                                response.id, track.number, artist_obj.id
+                            )
+                        })?;
                     let Some(artist_id) = find_or_push_mb_artist(
                         &mut artists,
                         artist_obj,
@@ -1102,6 +1104,29 @@ mod tests {
     }
 
     #[test]
+    fn release_artist_credit_name_is_used_when_artist_payload_name_is_missing() {
+        let mut response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![make_mb_track("1", "Track 1")],
+        }]);
+        let mut name_only_credit = credit("artist-credit-name-only", "Credit Artist Name");
+        name_only_credit.artist.as_mut().unwrap().name = None;
+        response.artist_credit = vec![name_only_credit];
+
+        let parsed = map(&response, Some(2024), None).unwrap();
+
+        let artist = parsed
+            .artists
+            .iter()
+            .find(|artist| {
+                artist.musicbrainz_artist_id.as_deref() == Some("artist-credit-name-only")
+            })
+            .expect("release artist imported from credit name");
+        assert_eq!(artist.name, "Credit Artist Name");
+        assert_eq!(parsed.album.artist_id, artist.id);
+    }
+
+    #[test]
     fn missing_mb_sort_names_remain_absent() {
         let mut response = make_response(vec![{
             let mut track = make_mb_track("1", "Track 1");
@@ -1347,6 +1372,32 @@ mod tests {
                 .any(|ta| ta.track_id == track1.id),
             "a track with no credits gets no track-artist rows"
         );
+    }
+
+    #[test]
+    fn track_artist_credit_name_is_used_when_artist_payload_name_is_missing() {
+        let mut track = make_mb_track("1", "Track 1");
+        let mut name_only_credit = credit("track-credit-name-only", "Track Credit Artist Name");
+        name_only_credit.artist.as_mut().unwrap().name = None;
+        track.artist_credit = vec![name_only_credit];
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![track],
+        }]);
+
+        let parsed = map(&response, Some(2024), None).unwrap();
+
+        let artist = parsed
+            .artists
+            .iter()
+            .find(|artist| {
+                artist.musicbrainz_artist_id.as_deref() == Some("track-credit-name-only")
+            })
+            .expect("track artist imported from credit name");
+        assert_eq!(artist.name, "Track Credit Artist Name");
+        assert!(parsed.track_artists.iter().any(|track_artist| {
+            track_artist.track_id == parsed.tracks[0].id && track_artist.artist_id == artist.id
+        }));
     }
 
     #[test]
