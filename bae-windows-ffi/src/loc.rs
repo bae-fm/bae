@@ -143,6 +143,8 @@ pub enum FfiLookupFailure {
     Provider { status: Option<u16> },
     /// The request timed out before a response arrived.
     Timeout,
+    /// Artwork analysis failed before barcode/text extraction finished.
+    ArtworkAnalysis,
     /// A local error. `detail` is the opaque error chain — log-only.
     Diagnostic { detail: String },
 }
@@ -154,10 +156,24 @@ impl FfiLookupFailure {
             LookupFailure::Network => Self::Network,
             LookupFailure::Provider { status } => Self::Provider { status: *status },
             LookupFailure::Timeout => Self::Timeout,
+            LookupFailure::ArtworkAnalysis => Self::ArtworkAnalysis,
             LookupFailure::Diagnostic { detail } => Self::Diagnostic {
                 detail: detail.clone(),
             },
         }
+    }
+}
+
+/// Catalog key for a lookup failure's user-facing line, or `None` for
+/// `diagnostic` / unknown tags. Mirrors `bridge_lookup_failure_key`.
+pub fn lookup_failure_key(kind: &str, has_status: bool) -> Option<&'static str> {
+    match kind {
+        "network" => Some("core.lookup.failure.network"),
+        "provider" if has_status => Some("core.lookup.failure.provider"),
+        "provider" => Some("core.lookup.failure.provider_unknown"),
+        "timeout" => Some("core.lookup.failure.timeout"),
+        "artwork_analysis" => Some("core.lookup.failure.artwork_analysis"),
+        _ => None,
     }
 }
 
@@ -475,10 +491,8 @@ mod tests {
         }
     }
 
-    /// The structured-composition keys the C# resolves (side/disc headers,
-    /// queue counts, outbox args, lookup failures, pressings plural) must all
-    /// exist — these have no `*_key` fn (the C# hardcodes the dotted
-    /// key for them), so this is their cross-check.
+    /// The structured-composition keys the C# resolves directly (side/disc
+    /// headers, queue counts, outbox args, pressings plural) must all exist.
     #[test]
     fn composition_keys_exist() {
         let cat = catalog();
@@ -486,11 +500,6 @@ mod tests {
             "core.track.side",
             "core.track.disc",
             "core.import.pressings",
-            "core.lookup.failure.network",
-            "core.lookup.failure.provider",
-            "core.lookup.failure.provider_unknown",
-            "core.lookup.failure.timeout",
-            "core.lookup.failure.diagnostic",
             "core.queue.uploading",
             "core.queue.downloading",
             "core.queue.failed",
@@ -503,5 +512,24 @@ mod tests {
         ] {
             assert_key(&cat, key);
         }
+    }
+
+    #[test]
+    fn lookup_failure_keys_exist() {
+        let cat = catalog();
+        for (kind, has_status) in [
+            ("network", false),
+            ("provider", true),
+            ("provider", false),
+            ("timeout", false),
+            ("artwork_analysis", false),
+        ] {
+            assert_key(
+                &cat,
+                lookup_failure_key(kind, has_status).expect("lookup failure keyed"),
+            );
+        }
+        assert!(lookup_failure_key("diagnostic", false).is_none());
+        assert!(lookup_failure_key("nope", false).is_none());
     }
 }

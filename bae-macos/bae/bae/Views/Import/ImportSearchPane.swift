@@ -55,6 +55,10 @@ struct ImportSearchFormView: View {
         signals?.text.isScanning ?? false
     }
 
+    private var signalFailure: LookupFailure? {
+        signals?.text.failure
+    }
+
     var body: some View {
         VStack(spacing: 8) {
             HStack {
@@ -108,6 +112,16 @@ struct ImportSearchFormView: View {
                         .disabled(isSearchDisabled)
                 }
                 .onSubmit { onSearch() }
+            }
+
+            if let signalFailure {
+                Label(
+                    signalFailure.badgeLine,
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(.system(size: 11.5))
+                .foregroundStyle(.orange)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding()

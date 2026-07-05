@@ -63,6 +63,14 @@ impl ArtworkAnalyzer for StubAnalyzer {
     }
 }
 
+struct PanicAnalyzer;
+
+impl ArtworkAnalyzer for PanicAnalyzer {
+    fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
+        panic!("OCR analyzer panicked");
+    }
+}
+
 /// Drain events until we've seen the target count, or timeout. Filters
 /// to `SignalsUpdated` only, returning each snapshot's `Signals`.
 async fn collect_signals(
@@ -319,13 +327,49 @@ async fn missing_folder_settles_gracefully() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn fast_pass_join_error_aborts_without_empty_snapshot() {
-    let fast_pass =
-        run_fast_pass_blocking(|| -> FastPass { panic!("fast-pass blocking task panicked") }).await;
+    let fast_pass = run_fast_pass_blocking(&tokio::runtime::Handle::current(), || -> FastPass {
+        panic!("fast-pass blocking task panicked")
+    })
+    .await;
 
     assert!(
         fast_pass.is_none(),
         "fast-pass JoinError must abort the extraction run",
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn ocr_join_error_aborts_without_settled_snapshot() {
+    let tmp = TempDir::new().unwrap();
+    let folder = build_release(&tmp, "Some Folder", &["cover.jpg"], &[]);
+
+    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(PanicAnalyzer);
+    let (handle, mut rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(analyzer);
+
+    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+
+    let signals = collect_signals(&mut rx, 2).await;
+    assert!(matches!(signals[0].text, TextSignal::Scanning { .. }));
+
+    match &signals[1].text {
+        TextSignal::Failed { failure, .. } => {
+            assert!(
+                matches!(failure, LookupFailure::ArtworkAnalysis),
+                "OCR JoinError must emit an artwork-analysis text failure, got {failure:?}",
+            );
+        }
+        other => panic!("OCR JoinError must emit a failed text signal, got {other:?}"),
+    }
+    match &signals[1].barcode {
+        BarcodeSignal::Failed { failure, .. } => {
+            assert!(
+                matches!(failure, LookupFailure::ArtworkAnalysis),
+                "OCR JoinError must emit an artwork-analysis barcode failure, got {failure:?}",
+            );
+        }
+        other => panic!("OCR JoinError must emit a failed barcode signal, got {other:?}"),
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]

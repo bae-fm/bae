@@ -70,6 +70,7 @@ enum LookupFailure: Equatable {
     case network
     case provider(status: UInt16?)
     case timeout
+    case artworkAnalysis
     case diagnostic(detail: String)
 
     init(bridge: BridgeLookupFailure) {
@@ -77,6 +78,7 @@ enum LookupFailure: Equatable {
         case .network: self = .network
         case .provider(let status): self = .provider(status: status)
         case .timeout: self = .timeout
+        case .artworkAnalysis: self = .artworkAnalysis
         case .diagnostic(let detail): self = .diagnostic(detail: detail)
         }
     }
@@ -87,6 +89,7 @@ enum LookupFailure: Equatable {
         case .network: .network
         case .provider(let status): .provider(status: status)
         case .timeout: .timeout
+        case .artworkAnalysis: .artworkAnalysis
         case .diagnostic(let detail): .diagnostic(detail: detail)
         }
     }
@@ -100,7 +103,7 @@ enum LookupFailure: Equatable {
         case .diagnostic:
             // No translated copy — the opaque detail is shown separately.
             return localizedCore("core.lookup.failure.diagnostic")
-        case .network, .timeout, .provider:
+        case .network, .timeout, .provider, .artworkAnalysis:
             // Core owns the key for every typed variant (including the
             // status-vs-no-status split for `provider`); the UI never picks it.
             guard let key = bridgeLookupFailureKey(failure: bridge) else {

@@ -146,6 +146,24 @@ pub unsafe extern "C" fn bae_entity_not_found_key(entity: *const c_char) -> *mut
     key_cstring(loc::entity_not_found_key(&entity))
 }
 
+/// Catalog key for a lookup failure's user-facing line, or null for the
+/// `diagnostic` failure (which renders through the generic diagnostic line) and
+/// unknown tags. `kind` is the wire tag carried by an `FfiLookupFailure`.
+/// Mirrors `bridge_lookup_failure_key`. Free with [`bae_string_free`].
+///
+/// # Safety
+/// `kind` must be null or a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_lookup_failure_key(
+    kind: *const c_char,
+    has_status: bool,
+) -> *mut c_char {
+    let Some(kind) = cstr(kind) else {
+        return std::ptr::null_mut();
+    };
+    key_cstring(loc::lookup_failure_key(&kind, has_status))
+}
+
 /// Catalog key for an actionable playback-error reason, or null for the
 /// `diagnostic` reason (which renders through the error-category path) and
 /// unknown tags. `kind` is the wire tag carried by an `FfiPlaybackErrorReason`.

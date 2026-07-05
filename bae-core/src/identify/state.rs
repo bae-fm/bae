@@ -789,6 +789,11 @@ fn apply_signals(
             &mut effects,
         ),
         (BarcodeProgress::Scanning, BarcodeSignal::Absent) => BarcodeProgress::Skipped,
+        (BarcodeProgress::Scanning, BarcodeSignal::Failed { failure, .. }) => {
+            BarcodeProgress::Failed {
+                failure: failure.clone(),
+            }
+        }
         // Still scanning (codes not settled), or already iterating/settled.
         (barcode, _) => barcode,
     };

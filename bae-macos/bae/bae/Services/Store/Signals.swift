@@ -13,6 +13,7 @@ import Foundation
 enum TextSignal: Equatable {
     case scanning(catalogs: [String], freeText: [String])
     case settled(catalogs: [String], freeText: [String])
+    case failed(failure: LookupFailure, catalogs: [String], freeText: [String])
 
     init(bridge: BridgeTextSignal) {
         switch bridge {
@@ -23,20 +24,39 @@ enum TextSignal: Equatable {
             )
         case .settled(let catalogs, let freeText):
             self = .settled(catalogs: catalogs.map(\.value), freeText: freeText)
+        case .failed(let failure, let catalogs, let freeText):
+            self = .failed(
+                failure: LookupFailure(bridge: failure),
+                catalogs: catalogs.map(\.value),
+                freeText: freeText
+            )
         }
     }
 
     /// The catalog-number strings — for the catalog-search autocomplete.
     var catalogValues: [String] {
         switch self {
-        case .scanning(let catalogs, _), .settled(let catalogs, _): catalogs
+        case .scanning(let catalogs, _),
+            .settled(let catalogs, _),
+            .failed(_, let catalogs, _):
+            catalogs
         }
     }
 
     var freeText: [String] {
         switch self {
-        case .scanning(_, let freeText), .settled(_, let freeText): freeText
+        case .scanning(_, let freeText),
+            .settled(_, let freeText),
+            .failed(_, _, let freeText):
+            freeText
         }
+    }
+
+    var failure: LookupFailure? {
+        if case .failed(let failure, _, _) = self {
+            return failure
+        }
+        return nil
     }
 
     var isScanning: Bool {

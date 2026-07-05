@@ -95,7 +95,7 @@ public sealed class PlaybackErrorReason
 /// </summary>
 public sealed class LookupFailure
 {
-    /// <summary>"network" / "provider" / "timeout" / "diagnostic".</summary>
+    /// <summary>"network" / "provider" / "timeout" / "artwork_analysis" / "diagnostic".</summary>
     public string Kind { get; set; } = "diagnostic";
 
     /// <summary>The HTTP status code for the "provider" case, when one was
@@ -107,15 +107,20 @@ public sealed class LookupFailure
 
     /// <summary>The localized failure line for the current locale.</summary>
     [JsonIgnore]
-    public string LocalizedLine => Kind switch
+    public string LocalizedLine
     {
-        "network" => Loc.Core("core.lookup.failure.network"),
-        "timeout" => Loc.Core("core.lookup.failure.timeout"),
-        "provider" => Status is { } status
-            ? Loc.Core("core.lookup.failure.provider", "status", status)
-            : Loc.Core("core.lookup.failure.provider_unknown"),
-        // Diagnostic carries no translated copy — show the generic line; Detail
-        // is surfaced separately (log / copyable disclosure).
-        _ => Loc.Core("core.lookup.failure.diagnostic"),
-    };
+        get
+        {
+            var key = NativeBae.LookupFailureKey(Kind, Status is not null);
+            if (key is null)
+            {
+                // Diagnostic carries no translated copy — show the generic line; Detail
+                // is surfaced separately (log / copyable disclosure).
+                return Loc.Core("core.lookup.failure.diagnostic");
+            }
+            return Status is { } status
+                ? Loc.Core(key, "status", status)
+                : Loc.Core(key);
+        }
+    }
 }

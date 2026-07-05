@@ -1,7 +1,7 @@
 //! The barcode signal: UPC/EAN code payloads found on a candidate's artwork
 //! (via OCR) or in a CUE `CATALOG` field.
 
-use super::SourcedValue;
+use super::{LookupFailure, SourcedValue};
 
 /// The barcode signal extracted from a candidate's files. Carries the code
 /// payloads (deduped, in discovery order) with their [`SignalOrigin`];
@@ -15,6 +15,11 @@ pub enum BarcodeSignal {
     /// Scanning finished. An empty `codes` means artwork was scanned but no
     /// codes were found — distinct from `Absent`.
     Settled { codes: Vec<SourcedValue> },
+    /// Artwork OCR failed before barcode extraction finished.
+    Failed {
+        failure: LookupFailure,
+        codes: Vec<SourcedValue>,
+    },
     /// No barcode source at all — no artwork to scan and no CUE `CATALOG`.
     Absent,
 }
@@ -24,7 +29,9 @@ impl BarcodeSignal {
     /// (`Settled`); empty for `Absent`.
     pub fn codes(&self) -> &[SourcedValue] {
         match self {
-            BarcodeSignal::Scanning { codes } | BarcodeSignal::Settled { codes } => codes,
+            BarcodeSignal::Scanning { codes }
+            | BarcodeSignal::Settled { codes }
+            | BarcodeSignal::Failed { codes, .. } => codes,
             BarcodeSignal::Absent => &[],
         }
     }

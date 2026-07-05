@@ -24,19 +24,20 @@ use super::cancellation::CancellationRegistry;
 use super::dump::dump_scan;
 use super::fast_pass::{gather_non_ocr_sources, FastPass};
 use super::pool::Pool;
-use crate::identify::analyzer::{ArtworkAnalyzer, NoopAnalyzer};
+use crate::identify::analyzer::{ArtworkAnalysis, ArtworkAnalyzer, NoopAnalyzer};
 use crate::identify::candidate_text::{Source, SourcedLine};
 use crate::identify::discid::{resolve_release_artwork_paths, resolve_release_identity};
 use crate::import::ImportEvent;
 use crate::library::LibraryManager;
 use crate::signals::{
-    BarcodeSignal, DiscIdSignal, SignalOrigin, Signals, SourcedValue, TextSignal,
+    BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
 };
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use tokio::runtime::Handle;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, warn};
+use tracing::{debug, error};
 
 /// Where a candidate's signals come from: a folder on disk, or an existing
 /// library release being re-identified.
@@ -152,8 +153,10 @@ async fn run_extraction(
         // artwork OCR.
         ExtractionSource::Folder(folder) => {
             let fast_folder = folder.clone();
-            let Some(fast) =
-                run_fast_pass_blocking(move || gather_non_ocr_sources(&fast_folder)).await
+            let Some(fast) = run_fast_pass_blocking(&inner.runtime_handle, move || {
+                gather_non_ocr_sources(&fast_folder)
+            })
+            .await
             else {
                 return;
             };
@@ -233,14 +236,36 @@ async fn run_extraction(
     }
 }
 
-async fn run_fast_pass_blocking<F>(task: F) -> Option<FastPass>
+async fn run_fast_pass_blocking<F>(runtime_handle: &Handle, task: F) -> Option<FastPass>
 where
     F: FnOnce() -> FastPass + Send + 'static,
 {
-    match tokio::task::spawn_blocking(task).await {
-        Ok(fast) => Some(fast),
+    run_blocking(runtime_handle, "fast-pass spawn_blocking failed", task).await
+}
+
+async fn run_ocr_blocking(
+    runtime_handle: &Handle,
+    analyzer: Arc<dyn ArtworkAnalyzer>,
+    path: PathBuf,
+) -> Result<ArtworkAnalysis, LookupFailure> {
+    let log_path = path.clone();
+    let failure_context = format!("OCR worker failed for {log_path:?}");
+    run_blocking(runtime_handle, &failure_context, move || {
+        analyzer.analyze(&path)
+    })
+    .await
+    .ok_or(LookupFailure::ArtworkAnalysis)
+}
+
+async fn run_blocking<T, F>(runtime_handle: &Handle, failure_context: &str, task: F) -> Option<T>
+where
+    T: Send + 'static,
+    F: FnOnce() -> T + Send + 'static,
+{
+    match runtime_handle.spawn_blocking(task).await {
+        Ok(value) => Some(value),
         Err(e) => {
-            error!("signals: fast-pass spawn_blocking failed: {e}; aborting extraction");
+            error!("signals: {failure_context}: {e}; aborting extraction");
             None
         }
     }
@@ -305,15 +330,13 @@ async fn stream_extraction(
         }
 
         let analyzer = inner.analyzer.lock().unwrap().clone();
-        let path_clone = path.clone();
-        let analysis =
-            match tokio::task::spawn_blocking(move || analyzer.analyze(&path_clone)).await {
-                Ok(v) => v,
-                Err(e) => {
-                    warn!("signals: OCR spawn_blocking failed for {path:?}: {e}");
-                    continue;
-                }
-            };
+        let analysis = match run_ocr_blocking(&inner.runtime_handle, analyzer, path.clone()).await {
+            Ok(analysis) => analysis,
+            Err(failure) => {
+                emit_failed_ocr_signals(&inner, &key, disc_id, &barcodes, &mut pool, failure);
+                return;
+            }
+        };
 
         if token.is_cancelled() {
             return;
@@ -412,6 +435,34 @@ async fn stream_extraction(
             }
         });
     }
+}
+
+fn emit_failed_ocr_signals(
+    inner: &ExtractionServiceInner,
+    key: &str,
+    disc_id: DiscIdSignal,
+    barcodes: &[SourcedValue],
+    pool: &mut Pool,
+    failure: LookupFailure,
+) {
+    let classification = pool.classify();
+    let barcode = BarcodeSignal::Failed {
+        failure: failure.clone(),
+        codes: barcodes.to_vec(),
+    };
+    emit_signals(
+        inner,
+        key,
+        Signals {
+            disc_id,
+            barcode,
+            text: TextSignal::Failed {
+                failure,
+                catalogs: classification.catalogs,
+                free_text: classification.free_text,
+            },
+        },
+    );
 }
 
 /// Build a `Scanning`-phase `Signals` snapshot. The barcode signal is

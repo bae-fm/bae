@@ -24,6 +24,9 @@ pub enum LookupFailure {
     Provider { status: Option<u16> },
     /// The request timed out before a response arrived.
     Timeout,
+    /// Artwork analysis failed before it could finish extracting barcode/text
+    /// signals.
+    ArtworkAnalysis,
     /// A local error (DB load, "release not found", a disc-ID compute task
     /// panic). `detail` is the opaque error chain — log-only, never
     /// translated, never shown as primary user-facing copy.

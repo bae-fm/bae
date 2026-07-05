@@ -167,6 +167,16 @@ internal static class NativeBae
     internal static string? EntityNotFoundKey(string entity) =>
         CopyAndFree(EntityNotFoundKeyPtr(entity));
 
+    [DllImport(Dll, EntryPoint = "bae_lookup_failure_key", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr LookupFailureKeyPtr(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string kind,
+        [MarshalAs(UnmanagedType.I1)] bool hasStatus);
+
+    /// <summary>The catalog key for a lookup-failure line (the wire tag an
+    /// FfiLookupFailure carries), or null for diagnostic/unknown tags.</summary>
+    internal static string? LookupFailureKey(string kind, bool hasStatus) =>
+        CopyAndFree(LookupFailureKeyPtr(kind, hasStatus));
+
     [DllImport(Dll, EntryPoint = "bae_playback_error_reason_key", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr PlaybackErrorReasonKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string kind);
 

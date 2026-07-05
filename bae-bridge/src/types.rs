@@ -1052,6 +1052,8 @@ pub enum BridgeLookupFailure {
     Provider { status: Option<u16> },
     /// The request timed out before a response arrived.
     Timeout,
+    /// Artwork analysis failed before barcode/text extraction finished.
+    ArtworkAnalysis,
     /// A local error (DB load, "not found", a compute task panic). `detail`
     /// is the opaque error chain — log-only, never translated.
     Diagnostic { detail: String },
@@ -1064,6 +1066,7 @@ fn lookup_failure_to_bridge(f: bae_core::signals::LookupFailure) -> BridgeLookup
         LookupFailure::Network => BridgeLookupFailure::Network,
         LookupFailure::Provider { status } => BridgeLookupFailure::Provider { status },
         LookupFailure::Timeout => BridgeLookupFailure::Timeout,
+        LookupFailure::ArtworkAnalysis => BridgeLookupFailure::ArtworkAnalysis,
         LookupFailure::Diagnostic { detail } => BridgeLookupFailure::Diagnostic { detail },
     }
 }
@@ -1086,6 +1089,9 @@ pub fn bridge_lookup_failure_key(failure: BridgeLookupFailure) -> Option<String>
             Some("core.lookup.failure.provider_unknown".to_string())
         }
         BridgeLookupFailure::Timeout => Some("core.lookup.failure.timeout".to_string()),
+        BridgeLookupFailure::ArtworkAnalysis => {
+            Some("core.lookup.failure.artwork_analysis".to_string())
+        }
         BridgeLookupFailure::Diagnostic { .. } => None,
     }
 }
@@ -1246,8 +1252,16 @@ pub enum BridgeDiscIdSignal {
 /// `bae_core::signals::BarcodeSignal`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeBarcodeSignal {
-    Scanning { codes: Vec<BridgeSourcedValue> },
-    Settled { codes: Vec<BridgeSourcedValue> },
+    Scanning {
+        codes: Vec<BridgeSourcedValue>,
+    },
+    Settled {
+        codes: Vec<BridgeSourcedValue>,
+    },
+    Failed {
+        failure: BridgeLookupFailure,
+        codes: Vec<BridgeSourcedValue>,
+    },
     Absent,
 }
 
@@ -1261,6 +1275,11 @@ pub enum BridgeTextSignal {
         free_text: Vec<String>,
     },
     Settled {
+        catalogs: Vec<BridgeSourcedValue>,
+        free_text: Vec<String>,
+    },
+    Failed {
+        failure: BridgeLookupFailure,
         catalogs: Vec<BridgeSourcedValue>,
         free_text: Vec<String>,
     },
@@ -3180,6 +3199,10 @@ pub(crate) fn signals_to_bridge(s: bae_core::signals::Signals) -> BridgeSignals 
         BarcodeSignal::Settled { codes } => BridgeBarcodeSignal::Settled {
             codes: codes.into_iter().map(sourced_value_to_bridge).collect(),
         },
+        BarcodeSignal::Failed { failure, codes } => BridgeBarcodeSignal::Failed {
+            failure: lookup_failure_to_bridge(failure),
+            codes: codes.into_iter().map(sourced_value_to_bridge).collect(),
+        },
         BarcodeSignal::Absent => BridgeBarcodeSignal::Absent,
     };
 
@@ -3195,6 +3218,15 @@ pub(crate) fn signals_to_bridge(s: bae_core::signals::Signals) -> BridgeSignals 
             catalogs,
             free_text,
         } => BridgeTextSignal::Settled {
+            catalogs: catalogs.into_iter().map(sourced_value_to_bridge).collect(),
+            free_text,
+        },
+        TextSignal::Failed {
+            failure,
+            catalogs,
+            free_text,
+        } => BridgeTextSignal::Failed {
+            failure: lookup_failure_to_bridge(failure),
             catalogs: catalogs.into_iter().map(sourced_value_to_bridge).collect(),
             free_text,
         },
@@ -3684,33 +3716,25 @@ mod loc_key_coverage {
             keys.push(expected.to_string());
         }
 
-        // bridge_lookup_failure_key — Diagnostic carries no key (None);
-        // Provider splits on whether a status code was observed.
+        // bridge_lookup_failure_key — all keyed variants must produce catalog
+        // keys; Diagnostic carries no key.
         for f in [
             BridgeLookupFailure::Network,
             BridgeLookupFailure::Provider { status: Some(503) },
             BridgeLookupFailure::Provider { status: None },
             BridgeLookupFailure::Timeout,
-            BridgeLookupFailure::Diagnostic {
-                detail: String::new(),
-            },
+            BridgeLookupFailure::ArtworkAnalysis,
         ] {
-            let expected: Option<&str> = match f {
-                BridgeLookupFailure::Network => Some("core.lookup.failure.network"),
-                BridgeLookupFailure::Provider { status: Some(_) } => {
-                    Some("core.lookup.failure.provider")
-                }
-                BridgeLookupFailure::Provider { status: None } => {
-                    Some("core.lookup.failure.provider_unknown")
-                }
-                BridgeLookupFailure::Timeout => Some("core.lookup.failure.timeout"),
-                BridgeLookupFailure::Diagnostic { .. } => None,
-            };
-            assert_eq!(bridge_lookup_failure_key(f.clone()).as_deref(), expected);
-            if let Some(k) = expected {
-                keys.push(k.to_string());
-            }
+            keys.push(
+                bridge_lookup_failure_key(f)
+                    .expect("typed lookup failure is keyed")
+                    .to_string(),
+            );
         }
+        assert!(bridge_lookup_failure_key(BridgeLookupFailure::Diagnostic {
+            detail: String::new(),
+        })
+        .is_none());
 
         // bridge_error_category_key — every variant carries a key.
         for c in [
