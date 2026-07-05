@@ -24,6 +24,7 @@ use super::{album_artist_links, find_or_push_artist, ParsedAlbum, ParsedWorkGrap
 use crate::cue_flac::CueSheet;
 use crate::db::ReleaseMetadataSource;
 use crate::db::{DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackArtist};
+use crate::import::folder_scanner::{AudioContent, CategorizedFiles};
 use crate::util::content_type::ContentType;
 use coven::Clock;
 use coven::IdProvider;
@@ -179,6 +180,35 @@ pub fn map_file_tags_to_db(
         clock,
         ids,
     ))
+}
+
+/// Map an Unknown import candidate to the metadata seed used by preview and
+/// commit. CUE-backed candidates take track layout and names from the parsed
+/// CUE; per-track-file candidates take them from embedded file tags.
+pub fn map_unknown_candidate_to_db(
+    categorized: &CategorizedFiles,
+    folder_name: Option<&str>,
+    clock: &dyn Clock,
+    ids: &dyn IdProvider,
+) -> Result<ParsedAlbum, String> {
+    match &categorized.audio {
+        AudioContent::CueFlacPairs { pairs, .. } => {
+            let mut sorted = pairs.iter().collect::<Vec<_>>();
+            sorted.sort_by(|a, b| {
+                natord::compare(&a.cue_file.relative_path, &b.cue_file.relative_path)
+            });
+            let sheets = sorted.iter().map(|p| &p.cue_sheet).collect::<Vec<_>>();
+            let audio = sorted
+                .iter()
+                .map(|p| p.audio_file.path.as_path())
+                .collect::<Vec<_>>();
+            map_cue_sheets_to_db(&sheets, &audio, folder_name, clock, ids)
+        }
+        AudioContent::TrackFiles { tracks, .. } => {
+            let audio_files = tracks.iter().map(|f| f.path.clone()).collect::<Vec<_>>();
+            map_file_tags_to_db(&audio_files, folder_name, clock, ids)
+        }
+    }
 }
 
 /// One track's source-agnostic seed. Produced from embedded file tags

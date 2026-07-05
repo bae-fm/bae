@@ -438,11 +438,11 @@ impl ImportService {
     /// For Exact / Approximate calls `prepare_release` to fetch and map
     /// the release — this hits the network LRU caches that the UI's
     /// prefetch warmed, so the normal case is a cache hit. For Unknown
-    /// reads embedded tags via `map_file_tags_to_db` from the
-    /// candidate's audio files instead. Either way: walks the folder
-    /// to discover files, then runs track mapping, storage, and the
-    /// atomic DB transaction. Remote cover bytes are pulled through
-    /// `download_cover_art_bytes`, which has its own LRU cache.
+    /// reads the candidate's local evidence through
+    /// `map_unknown_candidate_to_db`. Either way: walks the folder to discover
+    /// files, then runs track mapping, storage, and the atomic DB transaction.
+    /// Remote cover bytes are pulled through `download_cover_art_bytes`, which
+    /// has its own LRU cache.
     async fn prepare_and_run_folder_import(
         &self,
         import_id: String,
@@ -491,9 +491,9 @@ impl ImportService {
         );
 
         // Source the parsed album. Exact / Approximate fetch from
-        // MB / Discogs; Unknown reads embedded tags. The UI's prefetch
-        // warmed the network LRU cache for the source-release path,
-        // so that case is a cache-hit; cold cache costs one round-trip.
+        // MB / Discogs; Unknown maps local evidence from the scan. The UI's
+        // prefetch warmed the network LRU cache for the source-release path, so
+        // that case is a cache-hit; cold cache costs one round-trip.
         let (parsed, metadata_pairs) = match &identity_choice {
             crate::import::IdentityChoice::Exact { release_ref }
             | crate::import::IdentityChoice::Approximate { release_ref } => {
@@ -507,56 +507,17 @@ impl ImportService {
                     .map(|s| s.to_string());
                 let clock = library_manager.clock().clone();
                 let ids = library_manager.ids().clone();
-                // Track structure for a CUE image comes from the CUE, not the
-                // single audio file: one DbTrack per CUE TRACK, titles from the
-                // sheet. Per-track rips seed one DbTrack per file. Both feed the
-                // same assembly in file_tag_mapper.
-                let parsed = match &categorized.audio {
-                    crate::import::folder_scanner::AudioContent::CueFlacPairs { pairs, .. } => {
-                        // Sort pairs the same way `map_tracks_to_files` slices
-                        // them so seed order lines up, then hand the parsed
-                        // sheets + audio paths to the blocking task.
-                        let mut sorted: Vec<&crate::import::folder_scanner::ScannedCueFlacPair> =
-                            pairs.iter().collect();
-                        sorted.sort_by(|a, b| {
-                            natord::compare(&a.cue_file.relative_path, &b.cue_file.relative_path)
-                        });
-                        let mut owned: Vec<(crate::cue_flac::CueSheet, PathBuf)> =
-                            Vec::with_capacity(sorted.len());
-                        for p in sorted {
-                            owned.push((p.cue_sheet.clone(), p.audio_file.path.clone()));
-                        }
-                        tokio::task::spawn_blocking(move || {
-                            let sheets: Vec<&crate::cue_flac::CueSheet> =
-                                owned.iter().map(|(s, _)| s).collect();
-                            let audio: Vec<&Path> =
-                                owned.iter().map(|(_, p)| p.as_path()).collect();
-                            crate::import::file_tag_mapper::map_cue_sheets_to_db(
-                                &sheets,
-                                &audio,
-                                folder_name.as_deref(),
-                                clock.as_ref(),
-                                ids.as_ref(),
-                            )
-                        })
-                        .await
-                        .map_err(|e| format!("cue-seed mapping task failed: {e}"))??
-                    }
-                    crate::import::folder_scanner::AudioContent::TrackFiles { .. } => {
-                        let audio_paths =
-                            crate::import::handle::categorized_audio_paths(&categorized);
-                        tokio::task::spawn_blocking(move || {
-                            crate::import::file_tag_mapper::map_file_tags_to_db(
-                                &audio_paths,
-                                folder_name.as_deref(),
-                                clock.as_ref(),
-                                ids.as_ref(),
-                            )
-                        })
-                        .await
-                        .map_err(|e| format!("file-tag mapping task failed: {e}"))??
-                    }
-                };
+                let categorized_for_seed = categorized.clone();
+                let parsed = tokio::task::spawn_blocking(move || {
+                    crate::import::file_tag_mapper::map_unknown_candidate_to_db(
+                        &categorized_for_seed,
+                        folder_name.as_deref(),
+                        clock.as_ref(),
+                        ids.as_ref(),
+                    )
+                })
+                .await
+                .map_err(|e| format!("unknown-seed mapping task failed: {e}"))??;
                 (parsed, Vec::new())
             }
         };

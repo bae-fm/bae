@@ -22,7 +22,7 @@ impl ImportService {
     /// Input is the already-mapped `ParsedAlbum` plus the raw metadata
     /// pairs (empty for Unknown). The caller chooses the mapper based
     /// on identity choice — `prepare_release` for Exact / Approximate,
-    /// `map_file_tags_to_db` for Unknown. This function does pure DB
+    /// `map_unknown_candidate_to_db` for Unknown. This function does pure DB
     /// work and string remapping, no network.
     ///
     /// Applies the user's `identity_choice` post-process on top of the
@@ -48,7 +48,7 @@ impl ImportService {
     /// `metadata_source_release_id` are kept pointing at the picked
     /// release — the release records which source release seeded it
     /// regardless of identity claim. For Unknown those columns
-    /// already arrive set by `map_file_tags_to_db`.
+    /// already arrive set by the Unknown mapper.
     ///
     /// `user_edit` is an optional overlay from the confirmation-page
     /// editor. Applied after the choice transformation so the user's

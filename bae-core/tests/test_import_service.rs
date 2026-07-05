@@ -85,6 +85,13 @@ fn generate_album_files(dir: &Path, filenames: &[&str]) {
     }
 }
 
+fn copy_cue_flac_fixture(dir: &Path) {
+    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
+    for name in ["Test Album.cue", "Test Album.flac"] {
+        fs::copy(fixture.join(name), dir.join(name)).expect("copy CUE fixture");
+    }
+}
+
 /// Per-track tag values for `generate_tagged_album_files` — covers the
 /// fields the file-tag projection reads at import time. `track_artist`
 /// empty rolls up to the album artist in the editor's convention.
@@ -1817,6 +1824,103 @@ async fn unknown_import_seeds_from_file_tags_and_writes_no_identity() {
     assert_eq!(tracks.len(), 2);
     assert_eq!(tracks[0].title, "Track One");
     assert_eq!(tracks[1].title, "Track Two");
+}
+
+#[tokio::test]
+#[serial]
+async fn unknown_preview_for_cue_matches_unknown_commit_layout() {
+    support::tracing_init();
+
+    let f = ImportFixture::new().await;
+    let album_dir = f.temp_path().join("cue-album");
+    fs::create_dir_all(&album_dir).unwrap();
+    copy_cue_flac_fixture(&album_dir);
+
+    let preview = f
+        .handle
+        .preview_file_tags_for_folder(album_dir.clone())
+        .await
+        .unwrap();
+
+    assert_eq!(preview.album_title, "Test Album");
+    assert_eq!(preview.album_artist_names, vec!["Test Artist".to_string()]);
+    assert_eq!(preview.pressing.year, None);
+    assert_eq!(preview.pressing.format.as_deref(), Some("FLAC"));
+
+    let preview_tracks: Vec<(String, Vec<String>)> = preview
+        .tracks
+        .iter()
+        .map(|t| (t.title.clone(), t.artist_names.clone()))
+        .collect();
+    assert_eq!(
+        preview_tracks,
+        vec![
+            (
+                "Track One (Silence)".to_string(),
+                vec!["Test Artist".to_string()],
+            ),
+            (
+                "Track Two (White Noise)".to_string(),
+                vec!["Test Artist".to_string()],
+            ),
+            (
+                "Track Three (Brown Noise)".to_string(),
+                vec!["Test Artist".to_string()],
+            ),
+        ],
+    );
+
+    let import_id = uuid::Uuid::new_v4().to_string();
+    f.handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key: "cue".to_string(),
+            folder: album_dir,
+            selected_cover: None,
+            storage_mode: StorageMode::Local,
+            pin: false,
+            identity_choice: IdentityChoice::Unknown,
+            user_edit: None,
+        })
+        .unwrap();
+
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let album = f.db.find_album_by_id(&album_id).await.unwrap().unwrap();
+    assert_eq!(preview.album_title, album.title);
+
+    let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
+    assert_eq!(preview.pressing.year, release.pressing.year);
+    assert_eq!(preview.pressing.format, release.pressing.format);
+
+    let album_detail =
+        f.db.find_album_detail(&album_id)
+            .await
+            .unwrap()
+            .expect("album detail");
+    let committed_album_artist_names: Vec<String> = album_detail
+        .artists
+        .iter()
+        .map(|a| a.name.clone())
+        .collect();
+    assert_eq!(preview.album_artist_names, committed_album_artist_names);
+
+    let release_detail =
+        f.db.find_release_detail(&release_id)
+            .await
+            .unwrap()
+            .expect("release detail");
+    let committed_tracks: Vec<(String, Vec<String>)> = release_detail
+        .tracks
+        .iter()
+        .map(|track| {
+            (
+                track.track.title.clone(),
+                track.artists.iter().map(|a| a.name.clone()).collect(),
+            )
+        })
+        .collect();
+    assert_eq!(preview_tracks, committed_tracks);
 }
 
 /// A tagged rip whose only artwork is embedded in the audio (no folder

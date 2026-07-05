@@ -1,16 +1,17 @@
 use super::*;
 
 impl ImportServiceHandle {
-    /// Project the embedded tags of a folder's audio files into a
+    /// Project an Unknown import candidate into a
     /// `ReleaseUserEdit` shape so the edit-metadata form can seed itself
-    /// from what's on disk. Used by the "Add as Unknown" affordance:
-    /// the user clicks the link, the UI calls this to preview, then
-    /// shows the editor for verification before commit.
+    /// from what's on disk. CUE-backed candidates use the parsed CUE track
+    /// layout; per-track-file candidates use embedded tags. Used by the
+    /// "Add as Unknown" affordance: the user clicks the link, the UI calls this
+    /// to preview, then shows the editor for verification before commit.
     ///
-    /// The commit-side worker re-reads tags from the same files at
-    /// commit time, so the user's edits — applied via the
-    /// `user_edit` overlay on the import command — are the source of
-    /// truth for fields they touched. This preview is the seed only.
+    /// The commit-side worker re-scans the same folder and runs the same
+    /// Unknown mapper at commit time, so the user's edits — applied via the
+    /// `user_edit` overlay on the import command — are the source of truth for
+    /// fields they touched. This preview is the seed only.
     pub async fn preview_file_tags_for_folder(
         &self,
         folder: std::path::PathBuf,
@@ -28,16 +29,11 @@ impl ImportServiceHandle {
         .await
         .map_err(|e| format!("folder scan task failed: {e}"))??;
 
-        let audio_paths = categorized_audio_paths(&categorized);
-        if audio_paths.is_empty() {
-            return Err("folder contains no audio files".to_string());
-        }
-
         let clock = self.library_manager.clock().clone();
         let ids = self.library_manager.ids().clone();
         tokio::task::spawn_blocking(move || {
-            let parsed = crate::import::file_tag_mapper::map_file_tags_to_db(
-                &audio_paths,
+            let parsed = crate::import::file_tag_mapper::map_unknown_candidate_to_db(
+                &categorized,
                 folder_name.as_deref(),
                 clock.as_ref(),
                 ids.as_ref(),
@@ -45,16 +41,17 @@ impl ImportServiceHandle {
             Ok(parsed_album_to_user_edit(&parsed))
         })
         .await
-        .map_err(|e| format!("file-tag projection task failed: {e}"))?
+        .map_err(|e| format!("unknown preview projection task failed: {e}"))?
     }
 
     /// Build an import command and enqueue it. For Exact / Approximate
     /// the worker calls `prepare_release` itself to fetch and map the
     /// release — reading from the same LRU caches the UI's prefetch
-    /// warmed up. For Unknown the worker reads embedded tags from the
-    /// candidate's audio files instead. Remote cover bytes are not
-    /// threaded through the command; `download_cover_art_bytes`
-    /// consults the URL cache when the worker writes the cover.
+    /// warmed up. For Unknown the worker reads the candidate's local evidence:
+    /// CUE sheets for CUE-backed candidates, embedded tags for per-track-file
+    /// candidates. Remote cover bytes are not threaded through the command;
+    /// `download_cover_art_bytes` consults the URL cache when the worker writes
+    /// the cover.
     ///
     /// `identity_choice` carries both the user's claim shape and the
     /// release reference (when applicable): Exact preserves the

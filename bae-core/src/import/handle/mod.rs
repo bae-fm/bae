@@ -324,7 +324,7 @@ pub(crate) async fn fetch_artist_images(
 
 /// Project a parsed album (mapper output) into the editor's
 /// `ReleaseUserEdit` shape. Used by the Unknown preview path so the
-/// edit-metadata form can seed itself from the file-tag projection
+/// edit-metadata form can seed itself from the local-evidence projection
 /// without going through a wire-shape `ImportSearchReleaseDetail` that
 /// would require a synthetic release id. Also used by the reset-to-source
 /// path to project cached source data back into the editor.
@@ -484,7 +484,8 @@ pub fn shape_user_edit_from_search_detail(
 /// audio file from each pair (the CUE itself carries no embedded
 /// tags); per-track releases yield each track in scan order.
 ///
-/// Used by the Unknown import path to feed `map_file_tags_to_db`.
+/// Used by the Unknown import path to read embedded cover art from the backing
+/// audio files.
 pub fn categorized_audio_paths(
     categorized: &crate::import::folder_scanner::CategorizedFiles,
 ) -> Vec<std::path::PathBuf> {

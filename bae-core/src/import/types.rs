@@ -632,8 +632,8 @@ pub struct DiscoveredFile {
 ///
 /// `identity_choice` carries both the user's claim shape and the
 /// release reference (when applicable). For Unknown, the worker
-/// sources the release shape by reading embedded tags from the
-/// candidate's audio files via `map_file_tags_to_db`.
+/// sources the release shape from the scanned candidate: CUE sheets for
+/// CUE-backed candidates, embedded tags for per-track-file candidates.
 ///
 /// `user_edit` is an optional overlay from the confirmation-page
 /// editor. When present, fields override the seeded metadata after the
