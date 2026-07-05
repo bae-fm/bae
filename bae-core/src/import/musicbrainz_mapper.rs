@@ -418,8 +418,16 @@ pub fn map_mb_response_to_db(
             let title = track
                 .recording
                 .as_ref()
-                .and_then(|r| r.title.clone())
-                .unwrap_or_else(|| "Unknown Track".to_string());
+                .and_then(|r| r.title.as_deref())
+                .or(track.title.as_deref())
+                .filter(|title| !title.trim().is_empty())
+                .ok_or_else(|| {
+                    format!(
+                        "MusicBrainz release {} track {:?} has no track title",
+                        response.id, track.number
+                    )
+                })?
+                .to_string();
 
             let (side_offset, track_number) = if is_multi_side_medium {
                 // Derive side offset relative to this medium's first letter.
@@ -886,6 +894,58 @@ mod tests {
         let result = map(&response, Some(2024), None);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("no tracks"));
+    }
+
+    #[test]
+    fn track_title_is_used_when_recording_title_is_missing() {
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![MbTrack {
+                position: None,
+                number: Some("1".to_string()),
+                title: Some("Track Title From Track".to_string()),
+                length: None,
+                recording: Some(MbRecording {
+                    id: None,
+                    title: None,
+                    artist_credit: vec![],
+                    relations: vec![],
+                }),
+                artist_credit: vec![],
+            }],
+        }]);
+
+        let parsed = map(&response, Some(2024), None).unwrap();
+
+        assert_eq!(parsed.tracks[0].title, "Track Title From Track");
+    }
+
+    #[test]
+    fn track_without_recording_or_track_title_returns_err() {
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![MbTrack {
+                position: None,
+                number: Some("1".to_string()),
+                title: None,
+                length: None,
+                recording: Some(MbRecording {
+                    id: None,
+                    title: None,
+                    artist_credit: vec![],
+                    relations: vec![],
+                }),
+                artist_credit: vec![],
+            }],
+        }]);
+
+        let err = map(&response, Some(2024), None)
+            .expect_err("expected missing MusicBrainz track title to return an error");
+
+        assert!(
+            err.contains("has no track title"),
+            "unexpected error message: {err}"
+        );
     }
 
     #[test]
