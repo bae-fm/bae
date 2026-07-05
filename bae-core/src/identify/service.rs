@@ -321,7 +321,13 @@ fn dispatch_effect(
                         );
                     }
                     Err(failure) => {
-                        emit_step(&event_tx, IdentifyEvent::DiscidLookupFailed { failure });
+                        emit_step(
+                            &event_tx,
+                            IdentifyEvent::DiscidLookupFailed {
+                                failure,
+                                track_count,
+                            },
+                        );
                     }
                 }
             });

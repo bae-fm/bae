@@ -394,6 +394,32 @@ fn barcode_lookup_failure_settles_failed() {
 }
 
 #[test]
+fn failed_discid_lookup_preserves_track_count() {
+    let (state, _) = update(
+        started(),
+        signals(
+            DiscIdSignal::Computed {
+                disc_id: "d".to_string(),
+                track_count: 5,
+            },
+            BarcodeSignal::Absent,
+            &[],
+        ),
+    );
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupFailed {
+            failure: LookupFailure::Provider { status: Some(503) },
+            track_count: 5,
+        },
+    );
+    match state {
+        IdentifyState::NotFoundAnywhere { context } => assert_eq!(context.track_count, 5),
+        other => panic!("expected NotFoundAnywhere, got {other:?}"),
+    }
+}
+
+#[test]
 fn catalog_filter_narrows_and_flags_provenance() {
     let (state, _) = update(
         started(),
@@ -876,6 +902,7 @@ fn toolbar_shows_failed_disc_id_lookup() {
         state,
         IdentifyEvent::DiscidLookupFailed {
             failure: LookupFailure::Provider { status: Some(503) },
+            track_count: 5,
         },
     );
     let disc = state

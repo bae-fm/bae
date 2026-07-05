@@ -43,6 +43,7 @@ pub enum DiscidProgress {
     },
     Failed {
         failure: LookupFailure,
+        track_count: u32,
     },
 }
 
@@ -443,7 +444,7 @@ fn discid_progress_state(progress: &DiscidProgress) -> SignalState {
         DiscidProgress::Computing | DiscidProgress::LookingUp => SignalState::LookingUp,
         DiscidProgress::Done { results, .. } => found_or_no_match(results.len() as u32),
         DiscidProgress::Skipped { .. } => SignalState::Skipped,
-        DiscidProgress::Failed { failure } => SignalState::Failed {
+        DiscidProgress::Failed { failure, .. } => SignalState::Failed {
             failure: failure.clone(),
         },
     }
@@ -530,6 +531,7 @@ pub enum IdentifyEvent {
     },
     DiscidLookupFailed {
         failure: LookupFailure,
+        track_count: u32,
     },
 
     // ── Barcode lookup completion ───────────────────────────────────
@@ -626,9 +628,15 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 barcode,
                 context,
             },
-            IdentifyEvent::DiscidLookupFailed { failure },
+            IdentifyEvent::DiscidLookupFailed {
+                failure,
+                track_count,
+            },
         ) => settle_if_ready(IdentifyState::Triangulating {
-            discid: DiscidProgress::Failed { failure },
+            discid: DiscidProgress::Failed {
+                failure,
+                track_count,
+            },
             barcode,
             context,
         }),
@@ -828,8 +836,12 @@ fn start_discid_progress(signal: &DiscIdSignal, effects: &mut Vec<Effect>) -> Di
         DiscIdSignal::Absent { track_count } => DiscidProgress::Skipped {
             track_count: *track_count,
         },
-        DiscIdSignal::Failed { failure, .. } => DiscidProgress::Failed {
+        DiscIdSignal::Failed {
+            failure,
+            track_count,
+        } => DiscidProgress::Failed {
             failure: failure.clone(),
+            track_count: *track_count,
         },
     }
 }
@@ -987,7 +999,8 @@ fn settled_track_count(discid: &DiscidProgress) -> u32 {
     match discid {
         DiscidProgress::Done { track_count, .. } => *track_count,
         DiscidProgress::Skipped { track_count } => *track_count,
-        _ => 0,
+        DiscidProgress::Failed { track_count, .. } => *track_count,
+        DiscidProgress::Computing | DiscidProgress::LookingUp => 0,
     }
 }
 

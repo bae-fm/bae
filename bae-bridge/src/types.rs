@@ -3118,7 +3118,7 @@ fn discid_progress_to_bridge(p: bae_core::identify::DiscidProgress) -> BridgeDis
             n_results: results.len() as u32,
         },
         DiscidProgress::Skipped { .. } => BridgeDiscidProgress::Skipped,
-        DiscidProgress::Failed { failure } => BridgeDiscidProgress::Failed {
+        DiscidProgress::Failed { failure, .. } => BridgeDiscidProgress::Failed {
             failure: lookup_failure_to_bridge(failure),
         },
     }
