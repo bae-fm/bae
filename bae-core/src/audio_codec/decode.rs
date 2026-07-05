@@ -591,7 +591,10 @@ unsafe fn decode_audio_avio(
         av_packet_unref(resources.packet);
 
         if ret < 0 {
-            continue;
+            return Err(format!(
+                "Failed to send packet to decoder: {}",
+                av_err_str(ret)
+            ));
         }
 
         while avcodec_receive_frame(resources.codec_ctx, resources.frame) >= 0 {
@@ -640,7 +643,10 @@ unsafe fn decode_audio_avio(
 
     // Flush decoder — only if we haven't reached end
     if !reached_end {
-        avcodec_send_packet(resources.codec_ctx, ptr::null());
+        let ret = avcodec_send_packet(resources.codec_ctx, ptr::null());
+        if ret < 0 {
+            return Err(format!("Failed to flush decoder: {}", av_err_str(ret)));
+        }
         while avcodec_receive_frame(resources.codec_ctx, resources.frame) >= 0 {
             let frame_samples_vec =
                 convert_frame_to_i32(resources.swr_ctx, resources.frame, channels as usize)?;
@@ -1156,7 +1162,10 @@ unsafe fn decode_audio_streaming_impl(
         av_packet_unref(resources.core().packet);
 
         if ret < 0 {
-            continue;
+            return Err(StreamingDecodeError::decode(format!(
+                "Failed to send packet to decoder: {}",
+                av_err_str(ret)
+            )));
         }
 
         while avcodec_receive_frame(resources.core().codec_ctx, resources.core().frame) >= 0 {
@@ -1223,7 +1232,13 @@ unsafe fn decode_audio_streaming_impl(
 
     // Flush decoder — only if we haven't reached stop_at
     if !reached_stop {
-        avcodec_send_packet(resources.core().codec_ctx, ptr::null());
+        let ret = avcodec_send_packet(resources.core().codec_ctx, ptr::null());
+        if ret < 0 {
+            return Err(StreamingDecodeError::decode(format!(
+                "Failed to flush decoder: {}",
+                av_err_str(ret)
+            )));
+        }
         while avcodec_receive_frame(resources.core().codec_ctx, resources.core().frame) >= 0 {
             if sink.is_cancelled() {
                 break;

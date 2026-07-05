@@ -66,6 +66,16 @@ fn wav_extensible_pcm(
     wav
 }
 
+fn truncated_flac_packet_stream() -> Vec<u8> {
+    let original_samples: Vec<i32> = (0..44100)
+        .map(|i| ((i as f64 * 0.01).sin() * 0.5 * i32::MAX as f64) as i32)
+        .collect();
+    let cancel = std::sync::atomic::AtomicBool::new(false);
+    let mut flac_data = encode_to_flac(&original_samples, 44100, 1, 16, &cancel).unwrap();
+    flac_data.truncate(flac_data.len() / 2);
+    flac_data
+}
+
 #[test]
 fn decode_audio_decodes_unsigned_8_bit_wav_as_full_range_pcm() {
     init();
@@ -378,6 +388,19 @@ fn test_decode_encode_roundtrip() {
 }
 
 #[test]
+fn decode_audio_rejects_truncated_flac_packet_stream() {
+    init();
+
+    let flac_data = truncated_flac_packet_stream();
+
+    let err = decode_audio(&flac_data, None, None).expect_err("truncated FLAC must fail");
+    assert!(
+        err.contains("Failed to send packet"),
+        "unexpected decode error: {err}"
+    );
+}
+
+#[test]
 fn test_encode_mp3() {
     init();
 
@@ -549,6 +572,35 @@ fn test_streaming_decode_treats_cancelled_input_as_normal_stop() {
     assert_eq!(result, Err(StreamingDecodeError::InputCancelled));
     assert!(!source.producer_finished());
     assert_eq!(source.samples_decoded(), 0);
+}
+
+#[test]
+fn streaming_decode_rejects_truncated_flac_packet_stream() {
+    use crate::playback::create_track_stream_pair_with_capacity;
+    use crate::playback::sparse_buffer::create_sparse_buffer;
+
+    init();
+
+    let flac_data = truncated_flac_packet_stream();
+
+    let buffer = create_sparse_buffer(flac_data.len() as u64);
+    buffer.append_at(0, &flac_data);
+    let (mut sink, source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 100000);
+    let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
+
+    let err = decode_audio_streaming(buffer, &mut sink, None, None, None, None, None, token)
+        .expect_err("truncated FLAC must fail");
+
+    match err {
+        StreamingDecodeError::Decode(message) => {
+            assert!(
+                message.contains("Failed to send packet"),
+                "unexpected decode error: {message}"
+            );
+        }
+        StreamingDecodeError::InputCancelled => panic!("truncation is not cancellation"),
+    }
+    assert!(!source.producer_finished());
 }
 
 /// Helper: test that seek_to via avformat_seek_file produces correct samples.
