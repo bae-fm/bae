@@ -166,11 +166,10 @@ pub(crate) async fn playback_info_from_track_release(
     let album_title = match database.find_album_by_id(&album_id).await? {
         Some(album) => album.title,
         None => {
-            warn!(
-                "Album not found for track {} (album_id {})",
+            return Err(LibraryError::TrackMapping(format!(
+                "album not found for track {} album {}",
                 track.id, album_id
-            );
-            String::new()
+            )));
         }
     };
 

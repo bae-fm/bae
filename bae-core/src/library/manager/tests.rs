@@ -1,3 +1,4 @@
+use super::track::playback_info_from_track_release;
 use super::*;
 use crate::config::Config;
 use crate::db::{
@@ -673,6 +674,39 @@ async fn delete_album_fails_before_rows_are_deleted_when_file_cleanup_lookup_fai
         .await
         .unwrap()
         .is_some());
+}
+
+#[tokio::test]
+async fn playback_info_from_track_release_rejects_missing_album() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    let track = crate::db::DbTrack::new_test(&release.id, "track-a", "Track Title", Some(1));
+    let track_artist = crate::db::DbTrackArtist::new(
+        &track.id,
+        "test-artist-id",
+        0,
+        Uuid::new_v4().to_string(),
+        Utc::now(),
+    );
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    manager.database.insert_track(&track).await.unwrap();
+    manager
+        .database
+        .insert_track_artist(&track_artist)
+        .await
+        .unwrap();
+
+    let mut broken_release = release.clone();
+    broken_release.album_id = "missing-album".to_string();
+
+    let error = playback_info_from_track_release(&manager.database, &track, &broken_release)
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(error, LibraryError::TrackMapping(message) if message.contains("missing-album"))
+    );
 }
 
 #[tokio::test]
