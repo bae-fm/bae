@@ -37,7 +37,7 @@ use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 
 /// Where a candidate's signals come from: a folder on disk, or an existing
 /// library release being re-identified.
@@ -498,10 +498,12 @@ fn scanning_signals(
 
 /// Send a `Signals` snapshot on the import event bus.
 fn emit_signals(inner: &ExtractionServiceInner, key: &str, signals: Signals) {
-    let _ = inner.event_tx.send(ImportEvent::SignalsUpdated {
+    if let Err(err) = inner.event_tx.send(ImportEvent::SignalsUpdated {
         candidate_key: key.to_string(),
         signals,
-    });
+    }) {
+        warn!("signals: SignalsUpdated broadcast had no subscribers for {key}: {err}");
+    }
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────────

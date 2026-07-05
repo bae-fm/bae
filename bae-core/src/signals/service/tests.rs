@@ -3,11 +3,44 @@ use crate::identify::analyzer::ArtworkAnalyzer;
 use crate::identify::ArtworkAnalysis;
 use std::collections::HashMap;
 use std::fs;
+use std::io::{self, Write};
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 use std::time::Duration;
 use tempfile::TempDir;
+
+struct LogWriter {
+    bytes: Arc<StdMutex<Vec<u8>>>,
+}
+
+impl Write for LogWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.bytes.lock().unwrap().extend_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+fn capture_warn_logs(run: impl FnOnce()) -> String {
+    let bytes = Arc::new(StdMutex::new(Vec::new()));
+    let writer_bytes = bytes.clone();
+    let subscriber = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::WARN)
+        .with_ansi(false)
+        .with_writer(move || LogWriter {
+            bytes: writer_bytes.clone(),
+        })
+        .finish();
+
+    tracing::subscriber::with_default(subscriber, run);
+
+    let bytes = bytes.lock().unwrap().clone();
+    String::from_utf8(bytes).unwrap()
+}
 
 /// Test analyzer: returns canned text lines keyed by filename (not full
 /// path, to stay portable across temp-dir paths). Optionally delays
@@ -323,6 +356,32 @@ async fn missing_folder_settles_gracefully() {
         signals[signals.len() - 1].text,
         TextSignal::Settled { .. }
     ));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
+    let (handle, rx, _lib_tmp) = make_service().await;
+    drop(rx);
+
+    let logs = capture_warn_logs(|| {
+        emit_signals(
+            &handle.inner,
+            "cand-1",
+            Signals {
+                disc_id: DiscIdSignal::Absent { track_count: 0 },
+                barcode: BarcodeSignal::Absent,
+                text: TextSignal::Settled {
+                    catalogs: Vec::new(),
+                    free_text: Vec::new(),
+                },
+            },
+        );
+    });
+
+    assert!(
+        logs.contains("signals: SignalsUpdated broadcast had no subscribers"),
+        "expected no-subscriber warning, got {logs:?}",
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
