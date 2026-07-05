@@ -159,6 +159,12 @@ pub async fn resolve_release_artwork_paths(
         {
             if p.exists() {
                 paths.push(p);
+            } else {
+                warn!(
+                    "artwork OCR: registered image file {} resolved to missing path {}; skipping image",
+                    file.id,
+                    p.display()
+                );
             }
         }
     }
@@ -227,7 +233,48 @@ pub async fn lookup_and_resolve(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::future::Future;
+    use std::io::{self, Write};
+    use std::sync::{Arc, Mutex as StdMutex};
     use tempfile::TempDir;
+
+    struct LogWriter {
+        bytes: Arc<StdMutex<Vec<u8>>>,
+    }
+
+    impl Write for LogWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.bytes.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    async fn capture_warn_logs<F, Fut>(run: F) -> String
+    where
+        F: FnOnce() -> Fut,
+        Fut: Future<Output = ()>,
+    {
+        let bytes = Arc::new(StdMutex::new(Vec::new()));
+        let writer_bytes = bytes.clone();
+        let subscriber = tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::WARN)
+            .with_ansi(false)
+            .with_writer(move || LogWriter {
+                bytes: writer_bytes.clone(),
+            })
+            .finish();
+
+        let guard = tracing::subscriber::set_default(subscriber);
+        run().await;
+        drop(guard);
+
+        let bytes = bytes.lock().unwrap().clone();
+        String::from_utf8(bytes).unwrap()
+    }
 
     /// Regression: one categorize yields both the disc ID (from the LOG here)
     /// and the real track count — the pair the service's folder identify reads.
@@ -260,6 +307,121 @@ mod tests {
         assert_eq!(
             track_count, 2,
             "track_count must equal the number of audio files, not 0"
+        );
+    }
+
+    #[tokio::test]
+    async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() {
+        use crate::config::{Config, ConfigHandle};
+        use crate::db::{Database, DbAlbum, DbArtist, DbFile, DbRelease};
+        use crate::keys::KeyService;
+        use crate::library::LibraryManager;
+        use crate::util::content_type::ContentType;
+        use chrono::Utc;
+        use coven::LibraryDir;
+        use uuid::Uuid;
+
+        let temp = tempfile::TempDir::new().unwrap();
+        let library_root = temp.path().join("library");
+        std::fs::create_dir_all(&library_root).unwrap();
+
+        let database = Database::new_test(
+            library_root.join("test.db").to_str().unwrap(),
+            Arc::new(coven::SystemClock),
+        )
+        .await
+        .unwrap();
+        let artist = DbArtist {
+            id: "artist-1".to_string(),
+            name: "Artist Name".to_string(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: Utc::now(),
+        };
+        database.insert_artist(&artist).await.unwrap();
+
+        let library_dir = LibraryDir::new(library_root.clone());
+        let library_id = format!("test-{}", uuid::Uuid::new_v4());
+        let config = Config::with_defaults(
+            library_id.clone(),
+            "test-device".to_string(),
+            library_dir.clone(),
+            "Test Library".to_string(),
+        );
+        let config_handle = Arc::new(ConfigHandle::new(config));
+        crate::config::install_test_keyring();
+        let key_service = KeyService::new(library_id);
+        let manager = LibraryManager::new(
+            database.clone(),
+            library_dir,
+            config_handle,
+            key_service,
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::UuidProvider),
+            tokio::runtime::Handle::current(),
+        );
+
+        let album = DbAlbum {
+            id: Uuid::new_v4().to_string(),
+            title: "Album Title".to_string(),
+            artist_id: "artist-1".to_string(),
+            year: None,
+            primary_release_id: None,
+            is_compilation: false,
+            created_at: Utc::now(),
+        };
+        database.insert_album(&album).await.unwrap();
+
+        let release = DbRelease {
+            id: Uuid::new_v4().to_string(),
+            album_id: album.id.clone(),
+            release_name: None,
+            pressing: crate::db::Pressing::blank(),
+            disc_id: None,
+            metadata_source: crate::db::ReleaseMetadataSource::FileTags,
+            metadata_source_release_id: None,
+            remote: false,
+            source_folder_name: None,
+            content_hash: None,
+            album_loudness_lufs: None,
+            album_peak_linear: None,
+            created_at: Utc::now(),
+        };
+        database.insert_release(&release).await.unwrap();
+
+        let file = DbFile {
+            id: "image-file-1".to_string(),
+            release_id: release.id.clone(),
+            original_filename: "cover.jpg".to_string(),
+            file_size: 5,
+            content_type: ContentType::Jpeg,
+            cloud_path: None,
+            created_at: Utc::now(),
+        };
+        database.insert_file(&file).await.unwrap();
+        let missing_dir = temp.path().join("missing-image-dir");
+        database
+            .register_release_external_refs_for_test(&release.id, &missing_dir.to_string_lossy())
+            .await
+            .unwrap();
+
+        let logs = capture_warn_logs(|| async {
+            let (paths, cover_staging) = resolve_release_artwork_paths(&manager, &release.id)
+                .await
+                .unwrap();
+            assert!(paths.is_empty());
+            assert!(cover_staging.is_none());
+        })
+        .await;
+
+        assert!(
+            logs.contains("artwork OCR: registered image file image-file-1"),
+            "expected missing image-file warning, got {logs:?}",
+        );
+        assert!(
+            logs.contains(&missing_dir.join("cover.jpg").display().to_string()),
+            "expected missing image path in warning, got {logs:?}",
         );
     }
 
