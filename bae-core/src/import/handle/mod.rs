@@ -300,11 +300,16 @@ pub(crate) async fn fetch_artist_images(
         };
 
         // Check if artist already has an image in DB
-        if let Ok(Some(_)) = library_manager
+        match library_manager
             .get_library_image(actual_id, &crate::db::LibraryImageType::Artist)
             .await
         {
-            continue;
+            Ok(Some(_)) => continue,
+            Ok(None) => {}
+            Err(e) => {
+                warn!("failed to check existing artist image for artist {actual_id}: {e}");
+                continue;
+            }
         }
 
         crate::import::artist_image::fetch_and_save_artist_image(

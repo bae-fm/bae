@@ -1,5 +1,6 @@
 use super::*;
 use crate::db::{Database, DbArtist};
+use crate::test_logs::capture_warn_logs_async;
 use chrono::Utc;
 use tempfile::TempDir;
 use uuid::Uuid;
@@ -104,6 +105,43 @@ async fn test_same_name_no_ids_reuses_existing() {
         .unwrap();
 
     assert_eq!(resolved[0], existing.id);
+}
+
+#[tokio::test]
+async fn fetch_artist_images_warns_and_skips_when_existing_image_check_fails() {
+    let (manager, _tmp) = setup_test_manager().await;
+    let database = manager.database_for_test();
+    database
+        .handle()
+        .sql(|sql| {
+            sql.connection().execute("DROP TABLE artist_images", [])?;
+            Ok::<(), coven::CovenError>(())
+        })
+        .await
+        .unwrap();
+
+    let parsed_artist = make_artist("Artist Name", Some("discogs-artist-1"), None);
+    let actual_artist_id = "artist-actual-1".to_string();
+    let artist_id_map = HashMap::from([(parsed_artist.id.clone(), actual_artist_id.clone())]);
+    let discogs_client = DiscogsClient::new("token".to_string());
+
+    let logs = capture_warn_logs_async(|| async {
+        fetch_artist_images(
+            &manager,
+            &discogs_client,
+            std::slice::from_ref(&parsed_artist),
+            &artist_id_map,
+        )
+        .await;
+    })
+    .await;
+
+    assert!(
+        logs.contains("failed to check existing artist image")
+            && logs.contains(&actual_artist_id)
+            && logs.contains("artist_images"),
+        "expected existing artist image check warning, got {logs:?}",
+    );
 }
 
 #[tokio::test]
