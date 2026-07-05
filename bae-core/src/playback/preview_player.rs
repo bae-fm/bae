@@ -26,7 +26,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::task::JoinHandle;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 /// A second audio player dedicated to previewing a local file. Holds all preview
 /// state; the main player coordinates pause/resume around it but never reaches
@@ -128,23 +128,18 @@ impl PreviewPlayer {
             }
         };
 
+        // Probe duration and sample rate from file
+        let Some(probe) = probe_preview_audio(&path).await else {
+            return false;
+        };
+        let probed_duration = probe.duration;
+        let sample_rate = probe.sample_rate;
+        let channels = probe.channels;
+
         // Create sparse buffer and start local file reader
         let buffer = create_sparse_buffer(source_size);
         let reader: Box<dyn AudioDataReader> = Box::new(LocalReader::new(path.clone()));
         reader.start_reading(buffer.clone(), self.progress_tx.clone());
-
-        // Probe duration and sample rate from file
-        let probe = {
-            let probe_path = path.clone();
-            tokio::task::spawn_blocking(move || {
-                crate::audio_codec::probe_audio_from_path(&probe_path)
-            })
-            .await
-            .unwrap_or(None)
-        };
-        let probed_duration = probe.as_ref().map(|p| p.duration).unwrap_or(Duration::ZERO);
-        let sample_rate = probe.as_ref().map(|p| p.sample_rate).unwrap_or(44100);
-        let channels = probe.as_ref().map(|p| p.channels).unwrap_or(2);
 
         self.buffer = Some(buffer.clone());
         self.sample_rate = sample_rate;
@@ -485,5 +480,71 @@ impl PreviewPlayer {
         self.listener_handle = Some(h3);
 
         true
+    }
+}
+
+async fn probe_preview_audio(path: &str) -> Option<crate::audio_codec::ProbeResult> {
+    let probe_path = path.to_string();
+    let result =
+        tokio::task::spawn_blocking(move || crate::audio_codec::probe_audio_from_path(&probe_path))
+            .await;
+    resolve_preview_probe(path, result)
+}
+
+fn resolve_preview_probe(
+    path: &str,
+    result: Result<Option<crate::audio_codec::ProbeResult>, tokio::task::JoinError>,
+) -> Option<crate::audio_codec::ProbeResult> {
+    match result {
+        Ok(Some(probe)) if probe.sample_rate > 0 && probe.channels > 0 => Some(probe),
+        Ok(Some(probe)) => {
+            error!(
+                "Preview probe returned unusable audio format for {}: sample_rate={}, channels={}",
+                path, probe.sample_rate, probe.channels
+            );
+            None
+        }
+        Ok(None) => {
+            warn!("Failed to probe preview file {}", path);
+            None
+        }
+        Err(e) => {
+            error!("Preview probe task failed for {}: {}", path, e);
+            None
+        }
+    }
+}
+
+#[cfg(all(test, feature = "test-utils"))]
+mod tests {
+    use super::*;
+    use crate::playback::audio_output::CaptureAudioOutput;
+
+    #[tokio::test]
+    async fn preview_play_rejects_unprobeable_file() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let path = temp_dir.path().join("not-audio.bin");
+        std::fs::write(&path, b"not audio").unwrap();
+        let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
+        let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+        let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+        let (output, _capture_rx) = CaptureAudioOutput::new();
+        player.audio_output = Some(Box::new(output));
+
+        let started = player.play(path.display().to_string()).await;
+        if started {
+            player.stop();
+        }
+
+        assert!(!started);
+    }
+
+    #[tokio::test]
+    async fn preview_probe_join_error_does_not_use_format_defaults() {
+        let result = tokio::spawn(async { panic!("preview probe panic") })
+            .await
+            .map(|()| Option::<crate::audio_codec::ProbeResult>::None);
+
+        assert!(resolve_preview_probe("path", result).is_none());
     }
 }
