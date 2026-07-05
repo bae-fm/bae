@@ -386,6 +386,17 @@ internal static class NativeBae
     internal static string? ExportTrack(IntPtr handle, string trackId, string outputPath, string selectionJson) =>
         ResultMessage(ExportTrackPtr(handle, trackId, outputPath, selectionJson));
 
+    [DllImport(Dll, EntryPoint = "bae_export_release", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ExportReleasePtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string targetDir,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectionJson);
+
+    /// <summary>Export one release into targetDir using an export selection JSON; null on success, else the error.</summary>
+    internal static string? ExportRelease(IntPtr handle, string releaseId, string targetDir, string selectionJson) =>
+        ResultMessage(ExportReleasePtr(handle, releaseId, targetDir, selectionJson));
+
     [DllImport(Dll, EntryPoint = "bae_export_track_suggested_name", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr ExportTrackSuggestedNamePtr(
         IntPtr handle,

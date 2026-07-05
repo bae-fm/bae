@@ -54,8 +54,13 @@ final class StorageActionRunner {
     /// via the Exporting pane.
     func export(releaseIds: [String]) {
         guard
-            let targetDir = ExportTarget.resolve(
-                configStore.config.exportLocation
+            let target = ExportTarget.resolveRelease(
+                configStore.config.exportLocation,
+                choices: ExportFormatChoice.releaseChoices(
+                    presets: configStore.config.exportPresets
+                ),
+                defaultSelection: configStore.config
+                    .defaultReleaseExportSelection
             )
         else {
             return
@@ -63,8 +68,8 @@ final class StorageActionRunner {
         for releaseId in releaseIds {
             exports.enqueueExport(
                 releaseId,
-                targetDir,
-                configStore.config.defaultReleaseExportSelection
+                target.targetDir,
+                target.selection
             )
         }
     }

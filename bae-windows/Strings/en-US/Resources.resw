@@ -301,6 +301,7 @@
   <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>Append except HTOA</value></data>
   <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>Append including HTOA</value></data>
   <data name="settings.export.pregap.exclude" xml:space="preserve"><value>Exclude</value></data>
+  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>Single file + CUE</value></data>
   <data name="action.remove" xml:space="preserve"><value>Remove</value></data>
   <data name="settings.export.filename_format" xml:space="preserve"><value>Filename format</value></data>
   <data name="settings.export.tokens_help" xml:space="preserve"><value>Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
@@ -318,4 +319,5 @@
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
   <data name="settings.export.metadata_label" xml:space="preserve"><value>Metadata</value></data>
+  <data name="settings.export.save_failed" xml:space="preserve"><value>Export settings could not be saved</value></data>
 </root>

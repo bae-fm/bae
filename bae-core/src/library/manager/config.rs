@@ -85,14 +85,20 @@ impl LibraryManager {
                 )));
             }
         }
-        let config = self.config_handle.config();
+        let (default_track_export_selection, default_release_export_selection) = {
+            let config = self.config_handle.config();
+            (
+                config.default_track_export_selection.clone(),
+                config.default_release_export_selection.clone(),
+            )
+        };
         Self::validate_export_selection_against_presets(
-            &config.default_track_export_selection,
+            &default_track_export_selection,
             &presets,
             true,
         )?;
         Self::validate_export_selection_against_presets(
-            &config.default_release_export_selection,
+            &default_release_export_selection,
             &presets,
             false,
         )?;

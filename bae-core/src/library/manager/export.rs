@@ -213,11 +213,16 @@ impl LibraryManager {
         )?;
 
         let files = self.database.get_files_for_release(release_id).await?;
+        let selection_kind = match &request.selection {
+            crate::config::ExportSelection::Original => "original",
+            crate::config::ExportSelection::Preset { .. } => "preset",
+        };
         info!(
             release_id,
             folder = folder.as_str(),
             file_count = files.len(),
-            "Exporting release files verbatim"
+            selection = selection_kind,
+            "Exporting release"
         );
 
         match request.selection {
@@ -226,8 +231,7 @@ impl LibraryManager {
                 for (index, file) in files.iter().enumerate() {
                     self.export_one_file(file, staging.path()).await?;
                     let percent = (((index + 1) * 100) / total.max(1)) as u8;
-                    self.export_queue.set_active_percent(release_id, percent);
-                    self.emit_export_queue_changed();
+                    self.set_export_progress(release_id, percent);
                 }
             }
             crate::config::ExportSelection::Preset { preset_id } => {
@@ -236,14 +240,7 @@ impl LibraryManager {
             }
         }
 
-        // Every file landed. Re-export replaces any prior copy: remove the existing
-        // final dir immediately before the rename. This leaves an unavoidable window
-        // where the final path is briefly absent, kept minimal by doing all the slow
-        // work (cloud reads, writes) into staging first so only the rename remains.
-        if final_dir.exists() {
-            std::fs::remove_dir_all(&final_dir)?;
-        }
-        std::fs::rename(staging.path(), &final_dir)?;
+        replace_export_dir(staging.path(), &final_dir, &folder, release_id)?;
         staging.disarm();
         Ok(())
     }
@@ -528,6 +525,12 @@ impl LibraryManager {
             })?;
         let tracks = self.database.get_tracks_for_release(release_id).await?;
         let total = tracks.len();
+        if preset.pregap_placement == crate::config::ExportPregapPlacement::SingleFileWithCue {
+            self.export_release_image_with_cue_to_dir(release_id, preset, &tracks, staging_dir)
+                .await?;
+            self.set_export_progress(release_id, 100);
+            return Ok(());
+        }
         let mut used_paths = std::collections::HashSet::new();
 
         for (index, track) in tracks.iter().enumerate() {
@@ -559,11 +562,64 @@ impl LibraryManager {
                 .await
                 .map_err(LibraryError::Import)?;
             let percent = (((index + 1) * 100) / total.max(1)) as u8;
-            self.export_queue.set_active_percent(release_id, percent);
-            self.emit_export_queue_changed();
+            self.set_export_progress(release_id, percent);
         }
 
         Ok(())
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    fn set_export_progress(&self, release_id: &str, percent: u8) {
+        if self.export_queue.contains(release_id) {
+            self.export_queue.set_active_percent(release_id, percent);
+            self.emit_export_queue_changed();
+        }
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    async fn export_release_image_with_cue_to_dir(
+        &self,
+        release_id: &str,
+        preset: crate::config::ExportPreset,
+        tracks: &[DbTrack],
+        staging_dir: &std::path::Path,
+    ) -> Result<(), LibraryError> {
+        let mut plans = Vec::with_capacity(tracks.len());
+        for track in tracks {
+            let mut plan = self.get_export_track_plan(&track.id).await?;
+            plan.metadata = preset.metadata;
+            plan.audio_window =
+                export_window_for_single_file_cue_audio_format(&plan.audio_meta.audio_format);
+            plans.push(plan);
+        }
+
+        let release = self
+            .get_release_by_id(release_id)
+            .await?
+            .ok_or_else(|| LibraryError::Import(format!("release not found: {release_id}")))?;
+        let folder = release.source_folder_name.ok_or_else(|| {
+            LibraryError::Import(format!(
+                "release {release_id} has no source folder name; cannot name its CUE image"
+            ))
+        })?;
+        let stem = crate::library::export::sanitize_filename_stem(&folder);
+        if stem.is_empty() {
+            return Err(LibraryError::Import(format!(
+                "release {release_id} source folder name has no usable filename characters"
+            )));
+        }
+        let output_audio_path = staging_dir.join(format!("{stem}.{}", preset.codec.extension()));
+        let output_cue_path = staging_dir.join(format!("{stem}.cue"));
+
+        ExportService::export_release_image_with_cue(
+            plans,
+            &output_audio_path,
+            &output_cue_path,
+            release.pressing.barcode,
+            preset,
+        )
+        .await
+        .map_err(LibraryError::Import)
     }
 }
 
@@ -636,6 +692,22 @@ fn export_window_for_track_file(
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn export_window_for_single_file_cue_audio_format(
+    audio_format: &crate::db::DbAudioFormat,
+) -> super::ExportAudioWindow {
+    super::ExportAudioWindow {
+        source_start_sample: u64::try_from(audio_format.start_sample)
+            .expect("audio_format.start_sample is a non-negative sample position"),
+        source_end_sample: audio_format.end_sample.map(|sample| {
+            u64::try_from(sample)
+                .expect("audio_format.end_sample is a non-negative sample position")
+        }),
+        leading_silence_samples: non_negative_samples(audio_format.generated_pregap_samples),
+        trailing_silence_samples: 0,
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn non_negative_samples(samples: Option<i64>) -> u64 {
     samples.map_or(0, |sample| {
         u64::try_from(sample).expect("audio_format pregap samples are non-negative")
@@ -678,6 +750,64 @@ fn unique_export_path(
             return path;
         }
         index += 1;
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn replace_export_dir(
+    staging_dir: &std::path::Path,
+    final_dir: &std::path::Path,
+    folder: &str,
+    release_id: &str,
+) -> Result<(), LibraryError> {
+    let backup_dir = final_dir.with_file_name(format!(".{folder}.replace-{release_id}"));
+    if backup_dir.exists() {
+        return Err(LibraryError::Import(format!(
+            "export replacement backup already exists: {}",
+            backup_dir.display()
+        )));
+    }
+
+    let had_existing = final_dir.exists();
+    if had_existing {
+        std::fs::rename(final_dir, &backup_dir)?;
+    }
+
+    match std::fs::rename(staging_dir, final_dir) {
+        Ok(()) => {
+            if had_existing {
+                if let Err(cleanup_error) = std::fs::remove_dir_all(&backup_dir) {
+                    if let Err(move_new_error) = std::fs::rename(final_dir, staging_dir) {
+                        return Err(LibraryError::Import(format!(
+                            "failed to remove prior export backup {} ({cleanup_error}); also failed to move new export back to staging ({move_new_error})",
+                            backup_dir.display()
+                        )));
+                    }
+                    if let Err(restore_error) = std::fs::rename(&backup_dir, final_dir) {
+                        return Err(LibraryError::Import(format!(
+                            "failed to remove prior export backup {} ({cleanup_error}); moved new export back to staging but failed to restore prior export ({restore_error})",
+                            backup_dir.display()
+                        )));
+                    }
+                    return Err(LibraryError::Import(format!(
+                        "failed to remove prior export backup {}: {cleanup_error}",
+                        backup_dir.display()
+                    )));
+                }
+            }
+            Ok(())
+        }
+        Err(rename_error) => {
+            if had_existing {
+                if let Err(restore_error) = std::fs::rename(&backup_dir, final_dir) {
+                    return Err(LibraryError::Import(format!(
+                        "failed to move export into place ({rename_error}); also failed to restore prior export from {} ({restore_error})",
+                        backup_dir.display()
+                    )));
+                }
+            }
+            Err(rename_error.into())
+        }
     }
 }
 
@@ -731,5 +861,54 @@ impl Drop for StagingDir {
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::DbAudioFormat;
+    use crate::util::content_type::ContentType;
+
+    #[test]
+    fn single_file_cue_window_includes_source_and_generated_pregap() {
+        let mut audio_format = DbAudioFormat::new(
+            "track-1",
+            ContentType::Flac,
+            44_100,
+            Some(16),
+            2,
+            10_000,
+            Some(30_000),
+            "audio-format-1".to_string(),
+            chrono::DateTime::from_timestamp(0, 0).expect("valid Unix epoch timestamp"),
+        );
+        audio_format.pregap_samples = Some(2_000);
+        audio_format.generated_pregap_samples = Some(3_000);
+
+        let window = export_window_for_single_file_cue_audio_format(&audio_format);
+
+        assert_eq!(window.source_start_sample, 10_000);
+        assert_eq!(window.source_end_sample, Some(30_000));
+        assert_eq!(window.leading_silence_samples, 3_000);
+        assert_eq!(window.trailing_silence_samples, 0);
+    }
+
+    #[test]
+    fn replace_export_dir_restores_prior_export_when_staging_rename_fails() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let final_dir = temp.path().join("album");
+        std::fs::create_dir(&final_dir).expect("create prior export dir");
+        std::fs::write(final_dir.join("prior.txt"), b"prior").expect("write prior export");
+
+        let missing_staging = temp.path().join("missing-staging");
+        replace_export_dir(&missing_staging, &final_dir, "album", "release-1")
+            .expect_err("missing staging fails");
+
+        assert_eq!(
+            std::fs::read(final_dir.join("prior.txt")).expect("read prior export"),
+            b"prior"
+        );
+        assert!(!temp.path().join(".album.replace-release-1").exists());
     }
 }

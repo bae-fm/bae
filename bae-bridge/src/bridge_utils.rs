@@ -138,6 +138,9 @@ pub(crate) fn bridge_export_pregap_placement(
             BridgeExportPregapPlacement::AppendToPreviousIncludingHtoa
         }
         bae_core::config::ExportPregapPlacement::Exclude => BridgeExportPregapPlacement::Exclude,
+        bae_core::config::ExportPregapPlacement::SingleFileWithCue => {
+            BridgeExportPregapPlacement::SingleFileWithCue
+        }
     }
 }
 
@@ -152,6 +155,9 @@ pub(crate) fn core_export_pregap_placement(
             bae_core::config::ExportPregapPlacement::AppendToPreviousIncludingHtoa
         }
         BridgeExportPregapPlacement::Exclude => bae_core::config::ExportPregapPlacement::Exclude,
+        BridgeExportPregapPlacement::SingleFileWithCue => {
+            bae_core::config::ExportPregapPlacement::SingleFileWithCue
+        }
     }
 }
 

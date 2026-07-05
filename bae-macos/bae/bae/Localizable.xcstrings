@@ -88251,6 +88251,196 @@
         }
       }
     },
+    "Single file + CUE": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Single file + CUE"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Single file + CUE"
+          }
+        }
+      }
+    },
     "Save presets": {
       "localizations": {
         "ar": {

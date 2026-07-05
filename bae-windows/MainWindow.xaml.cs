@@ -3673,6 +3673,7 @@ public sealed partial class MainWindow : Window
             StatusText.Text = error ?? Loc.Chrome("menu.set_primary_done");
         };
         var changeCoverItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.change_cover") };
+        var exportReleaseItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.export") };
         var deleteItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.delete") };
         moreMenu.Items.Add(playNextItem);
         moreMenu.Items.Add(addQueueItem);
@@ -3680,6 +3681,7 @@ public sealed partial class MainWindow : Window
         {
             moreMenu.Items.Add(setPrimaryItem);
         }
+        moreMenu.Items.Add(exportReleaseItem);
         moreMenu.Items.Add(changeCoverItem);
         moreMenu.Items.Add(deleteItem);
         moreButton.Flyout = moreMenu;
@@ -3766,8 +3768,13 @@ public sealed partial class MainWindow : Window
                     exportStatus.Visibility = Visibility.Visible;
                     return;
                 }
-                var settings = JsonSerializer.Deserialize<Settings>(settingsJson, JsonOptions)
-                    ?? new Settings();
+                var settings = JsonSerializer.Deserialize<Settings>(settingsJson, JsonOptions);
+                if (settings is null)
+                {
+                    exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
+                    exportStatus.Visibility = Visibility.Visible;
+                    return;
+                }
                 var trackPresets = settings.ExportPresets
                     .Where(preset => preset.AppliesToTrack)
                     .ToList();
@@ -3789,10 +3796,54 @@ public sealed partial class MainWindow : Window
                     preset.TrackPickerLabel,
                     preset.FileExtension,
                     ExportSelection.Preset(preset.Id))));
-                foreach (var choice in choices)
+                var formatPicker = new ComboBox
                 {
-                    picker.FileTypeChoices.Add(choice.Label, new List<string> { choice.Extension });
+                    Header = Loc.Chrome("settings.export.default_track_format"),
+                    MinWidth = 260,
+                };
+                var defaultIndex = -1;
+                for (var index = 0; index < choices.Count; index++)
+                {
+                    var choice = choices[index];
+                    if (ExportSelectionsEqual(choice.Selection, settings.DefaultTrackExportSelection))
+                    {
+                        defaultIndex = index;
+                    }
+                    formatPicker.Items.Add(new ComboBoxItem
+                    {
+                        Content = choice.Label,
+                    });
                 }
+                if (defaultIndex < 0)
+                {
+                    exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
+                    exportStatus.Visibility = Visibility.Visible;
+                    return;
+                }
+                formatPicker.SelectedIndex = defaultIndex;
+                var formatDialog = new ContentDialog
+                {
+                    Title = Loc.Chrome("settings.export.label"),
+                    Content = formatPicker,
+                    PrimaryButtonText = Loc.Chrome("settings.export.label"),
+                    CloseButtonText = Loc.Chrome("action.cancel"),
+                    XamlRoot = Content.XamlRoot,
+                };
+                var formatResult = await formatDialog.ShowAsync();
+                if (formatResult != ContentDialogResult.Primary)
+                {
+                    return;
+                }
+                if (formatPicker.SelectedIndex < 0)
+                {
+                    exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
+                    exportStatus.Visibility = Visibility.Visible;
+                    return;
+                }
+                var selectedChoice = choices[formatPicker.SelectedIndex];
+                picker.FileTypeChoices.Add(
+                    selectedChoice.Label,
+                    new List<string> { selectedChoice.Extension });
                 // Seed the suggested name from the configured filename template,
                 // which the core renders and sanitizes from this track's metadata
                 // (falling back to the title, then a fixed stem, on its own). A
@@ -3823,11 +3874,7 @@ public sealed partial class MainWindow : Window
                     return;
                 }
 
-                var selection = choices
-                    .Where(choice => file.FileType.Equals(choice.Extension, StringComparison.OrdinalIgnoreCase))
-                    .Select(choice => choice.Selection)
-                    .FirstOrDefault() ?? ExportSelection.Original();
-                var selectionJson = JsonSerializer.Serialize(selection, JsonOptions);
+                var selectionJson = JsonSerializer.Serialize(selectedChoice.Selection, JsonOptions);
                 var path = file.Path;
                 var error = await System.Threading.Tasks.Task.Run(
                     () => NativeBae.ExportTrack(_handle, track.TrackId, path, selectionJson));
@@ -3904,9 +3951,15 @@ public sealed partial class MainWindow : Window
         // can't open over this one, so close it first and open the gallery after
         // ShowAsync returns (the gallery/edit/re-identify pattern).
         var changeCoverRequested = false;
+        var exportReleaseRequested = false;
         changeCoverItem.Click += (_, _) =>
         {
             changeCoverRequested = true;
+            dialog.Hide();
+        };
+        exportReleaseItem.Click += (_, _) =>
+        {
+            exportReleaseRequested = true;
             dialog.Hide();
         };
         deleteItem.Click += (_, _) =>
@@ -3934,6 +3987,10 @@ public sealed partial class MainWindow : Window
         else if (changeCoverRequested)
         {
             await ShowChangeCover(detail.Id, selectedRelease.ReleaseId);
+        }
+        else if (exportReleaseRequested && !string.IsNullOrEmpty(selectedRelease.ReleaseId))
+        {
+            await ShowExportRelease(selectedRelease.ReleaseId);
         }
         else if (deleteRequested)
         {
@@ -3990,6 +4047,96 @@ public sealed partial class MainWindow : Window
         storyboard.Children.Add(fade);
         storyboard.Begin();
     }
+
+    private async System.Threading.Tasks.Task ShowExportRelease(string releaseId)
+    {
+        var settingsJson = await System.Threading.Tasks.Task.Run(() => NativeBae.SettingsJson(_handle));
+        if (settingsJson is null)
+        {
+            StatusText.Text = Loc.Chrome("track.export.prepare_failed");
+            return;
+        }
+        var settings = JsonSerializer.Deserialize<Settings>(settingsJson, JsonOptions);
+        if (settings is null)
+        {
+            StatusText.Text = Loc.Chrome("track.export.prepare_failed");
+            return;
+        }
+        var choices = new List<(string Label, ExportSelection Selection)>
+        {
+            (Loc.Chrome("track.export.original"), ExportSelection.Original()),
+        };
+        choices.AddRange(settings.ExportPresets
+            .Where(preset => preset.AppliesToRelease)
+            .Select(preset => (preset.Name, ExportSelection.Preset(preset.Id))));
+
+        var formatPicker = new ComboBox
+        {
+            Header = Loc.Chrome("settings.export.default_release_format"),
+            MinWidth = 260,
+        };
+        var defaultIndex = -1;
+        for (var index = 0; index < choices.Count; index++)
+        {
+            var choice = choices[index];
+            if (ExportSelectionsEqual(choice.Selection, settings.DefaultReleaseExportSelection))
+            {
+                defaultIndex = index;
+            }
+            formatPicker.Items.Add(new ComboBoxItem
+            {
+                Content = choice.Label,
+                Tag = choice.Selection,
+            });
+        }
+        if (defaultIndex < 0)
+        {
+            StatusText.Text = Loc.Chrome("track.export.prepare_failed");
+            return;
+        }
+        formatPicker.SelectedIndex = defaultIndex;
+
+        var dialog = new ContentDialog
+        {
+            Title = Loc.Chrome("settings.export.label"),
+            Content = formatPicker,
+            PrimaryButtonText = Loc.Chrome("settings.export.label"),
+            CloseButtonText = Loc.Chrome("action.cancel"),
+            XamlRoot = Content.XamlRoot,
+        };
+        var result = await dialog.ShowAsync();
+        if (result != ContentDialogResult.Primary)
+        {
+            return;
+        }
+        if (formatPicker.SelectedItem is not ComboBoxItem selectedItem
+            || selectedItem.Tag is not ExportSelection selection)
+        {
+            StatusText.Text = Loc.Chrome("track.export.prepare_failed");
+            return;
+        }
+
+        var picker = new global::Windows.Storage.Pickers.FolderPicker();
+        picker.FileTypeFilter.Add("*");
+        WinRT.Interop.InitializeWithWindow.Initialize(
+            picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder is null)
+        {
+            return;
+        }
+
+        var selectionJson = JsonSerializer.Serialize(selection, JsonOptions);
+        var error = await System.Threading.Tasks.Task.Run(
+            () => NativeBae.ExportRelease(_handle, releaseId, folder.Path, selectionJson));
+        if (error is not null)
+        {
+            StatusText.Text = error;
+        }
+    }
+
+    private static bool ExportSelectionsEqual(ExportSelection a, ExportSelection b) =>
+        a.Kind == b.Kind && a.PresetId == b.PresetId;
 
     private async System.Threading.Tasks.Task ConfirmDeleteRelease(string releaseId)
     {
@@ -5536,6 +5683,11 @@ public sealed partial class MainWindow : Window
                     Header = Loc.Chrome("settings.export.preset_name"),
                     Text = preset.Name,
                 };
+                var filenameTemplate = new TextBox
+                {
+                    Header = Loc.Chrome("settings.export.filename_format"),
+                    Text = preset.FilenameTemplate,
+                };
                 var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
                 var codec = new TextBlock
                 {
@@ -5559,7 +5711,7 @@ public sealed partial class MainWindow : Window
                 var codecEditor = BuildPresetCodecEditor(preset);
 
                 var pregap = new ComboBox { Header = Loc.Chrome("settings.export.preset_pregap") };
-                foreach (var item in ExportPregapChoices())
+                foreach (var item in ExportPregapChoices(preset.Codec))
                 {
                     pregap.Items.Add(new ComboBoxItem
                     {
@@ -5568,11 +5720,27 @@ public sealed partial class MainWindow : Window
                         IsSelected = preset.PregapPlacement == item.Value,
                     });
                 }
+                void ApplyPregapApplicability()
+                {
+                    var singleFileCue = pregap.SelectedItem is ComboBoxItem selected
+                        && selected.Tag is string placement
+                        && placement == "single_file_with_cue";
+                    if (singleFileCue)
+                    {
+                        track.IsChecked = false;
+                        release.IsChecked = true;
+                    }
+                    track.IsEnabled = !singleFileCue;
+                    release.IsEnabled = !singleFileCue;
+                }
+                pregap.SelectionChanged += (_, _) => ApplyPregapApplicability();
+                ApplyPregapApplicability();
                 var metadataEditor = BuildPresetMetadataEditor(preset.Metadata);
                 var save = new Button { Content = Loc.Chrome("action.save") };
                 var remove = new Button { Content = Loc.Chrome("action.remove") };
                 var editor = new StackPanel { Spacing = 6 };
                 editor.Children.Add(name);
+                editor.Children.Add(filenameTemplate);
                 editor.Children.Add(row);
                 editor.Children.Add(codecEditor.View);
                 editor.Children.Add(pregap);
@@ -5586,6 +5754,12 @@ public sealed partial class MainWindow : Window
                 save.Click += async (_, _) =>
                 {
                     preset.Name = name.Text ?? string.Empty;
+                    if (filenameTemplate.Text is not string template)
+                    {
+                        ShowSettingsError(Loc.Chrome("settings.export.save_failed"));
+                        return;
+                    }
+                    preset.FilenameTemplate = template;
                     preset.AppliesToTrack = track.IsChecked == true;
                     preset.AppliesToRelease = release.IsChecked == true;
                     if (pregap.SelectedItem is ComboBoxItem selected && selected.Tag is string placement)
@@ -5726,12 +5900,34 @@ public sealed partial class MainWindow : Window
             };
         }
 
-        List<(string Label, string Value)> ExportPregapChoices() => new()
+        List<(string Label, string Value)> ExportPregapChoices(ExportPresetCodec codec)
         {
-            (Loc.Chrome("settings.export.pregap.append_except_htoa"), "append_to_previous_except_htoa"),
-            (Loc.Chrome("settings.export.pregap.append_including_htoa"), "append_to_previous_including_htoa"),
-            (Loc.Chrome("settings.export.pregap.exclude"), "exclude"),
-        };
+            var choices = new List<(string Label, string Value)>
+            {
+                (
+                    Loc.Chrome("settings.export.pregap.append_except_htoa"),
+                    "append_to_previous_except_htoa"
+                ),
+                (
+                    Loc.Chrome("settings.export.pregap.append_including_htoa"),
+                    "append_to_previous_including_htoa"
+                ),
+                (Loc.Chrome("settings.export.pregap.exclude"), "exclude"),
+            };
+
+            if (ExportCodecSupportsSingleFileCue(codec))
+            {
+                choices.Add((
+                    Loc.Chrome("settings.export.pregap.single_file_with_cue"),
+                    "single_file_with_cue"
+                ));
+            }
+
+            return choices;
+        }
+
+        static bool ExportCodecSupportsSingleFileCue(ExportPresetCodec codec) =>
+            codec.Kind != "opus_ogg";
 
         List<(string Label, string Value)> ExportBitDepthChoices() => new()
         {

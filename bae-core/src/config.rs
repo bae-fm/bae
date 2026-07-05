@@ -322,6 +322,13 @@ impl ExportPresetCodec {
             Self::Aiff { .. } => "aiff",
         }
     }
+
+    pub fn supports_single_file_cue(&self) -> bool {
+        match self {
+            Self::OpusOgg { .. } => false,
+            Self::Flac { .. } | Self::Mp3 { .. } | Self::Wav { .. } | Self::Aiff { .. } => true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -329,6 +336,7 @@ pub enum ExportPregapPlacement {
     AppendToPreviousExceptHtoa,
     AppendToPreviousIncludingHtoa,
     Exclude,
+    SingleFileWithCue,
 }
 
 fn default_export_pregap_placement() -> ExportPregapPlacement {
@@ -372,6 +380,22 @@ impl ExportPreset {
         if !self.applies_to_track && !self.applies_to_release {
             return Err(ConfigError::Config(format!(
                 "export preset {} does not apply to any export level",
+                self.id
+            )));
+        }
+        if self.pregap_placement == ExportPregapPlacement::SingleFileWithCue
+            && self.applies_to_track
+        {
+            return Err(ConfigError::Config(format!(
+                "export preset {} uses single-file CUE and cannot apply to track export",
+                self.id
+            )));
+        }
+        if self.pregap_placement == ExportPregapPlacement::SingleFileWithCue
+            && !self.codec.supports_single_file_cue()
+        {
+            return Err(ConfigError::Config(format!(
+                "export preset {} uses single-file CUE with an unsupported codec",
                 self.id
             )));
         }
@@ -1296,6 +1320,48 @@ mod tests {
             config.default_release_export_selection,
             default_export_selection()
         );
+    }
+
+    #[test]
+    fn single_file_cue_preset_is_release_only() {
+        let preset = ExportPreset {
+            id: "flac-image".to_string(),
+            name: "FLAC image".to_string(),
+            codec: ExportPresetCodec::Flac {
+                bit_depth: ExportBitDepth::Source,
+            },
+            filename_template: default_export_filename_template(),
+            metadata: default_export_metadata(),
+            pregap_placement: ExportPregapPlacement::SingleFileWithCue,
+            applies_to_track: true,
+            applies_to_release: true,
+        };
+
+        let err = preset
+            .validate()
+            .expect_err("single-file CUE cannot be a track export preset");
+        assert!(err.to_string().contains("cannot apply to track export"));
+
+        let release_only = ExportPreset {
+            applies_to_track: false,
+            ..preset
+        };
+        release_only.validate().unwrap();
+
+        let opus_image = ExportPreset {
+            id: "opus-image".to_string(),
+            name: "Opus image".to_string(),
+            codec: ExportPresetCodec::OpusOgg { bitrate_kbps: 192 },
+            filename_template: default_export_filename_template(),
+            metadata: default_export_metadata(),
+            pregap_placement: ExportPregapPlacement::SingleFileWithCue,
+            applies_to_track: false,
+            applies_to_release: true,
+        };
+        let err = opus_image
+            .validate()
+            .expect_err("single-file CUE requires a CUE-compatible codec");
+        assert!(err.to_string().contains("unsupported codec"));
     }
 
     #[test]

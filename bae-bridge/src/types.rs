@@ -2583,6 +2583,7 @@ pub enum BridgeExportPregapPlacement {
     AppendToPreviousExceptHtoa,
     AppendToPreviousIncludingHtoa,
     Exclude,
+    SingleFileWithCue,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

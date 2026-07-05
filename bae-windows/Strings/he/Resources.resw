@@ -250,4 +250,6 @@
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
   <data name="settings.export.metadata_label" xml:space="preserve"><value>Metadata</value></data>
+  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>קובץ יחיד + CUE</value></data>
+  <data name="settings.export.save_failed" xml:space="preserve"><value>לא ניתן היה לשמור את הגדרות הייצוא</value></data>
 </root>

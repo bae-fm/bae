@@ -7,7 +7,10 @@
 
 mod support;
 
-use bae_core::config::ExportSelection;
+use bae_core::config::{
+    ExportBitDepth, ExportMetadata, ExportPregapPlacement, ExportPreset, ExportPresetCodec,
+    ExportSelection,
+};
 use bae_core::db::Database;
 use bae_core::import::{IdentityChoice, ImportCommand, StorageMode};
 use bae_core::library::LibraryManager;
@@ -92,7 +95,7 @@ impl ExportFixture {
 /// originals deleted. This is the state export must handle: no local bytes,
 /// audio only in the cloud.
 async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (String, Vec<u8>) {
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let import_id = "import-then-strand-in-cloud".to_string();
     f.handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
@@ -135,6 +138,25 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     fs::remove_dir_all(album_dir).unwrap();
 
     (release_id, original_bytes)
+}
+
+async fn import_unknown_local(f: &ExportFixture, album_dir: &Path) -> String {
+    let import_id = "import-unknown-local".to_string();
+    f.handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir.to_path_buf(),
+            selected_cover: None,
+            storage_mode: StorageMode::Local,
+            pin: false,
+            identity_choice: IdentityChoice::Unknown,
+            user_edit: None,
+        })
+        .unwrap();
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    release_id
 }
 
 /// Exporting a single track of a cloud-only release downloads + decrypts the
@@ -198,6 +220,84 @@ async fn export_release_from_cloud_only_release() {
         .path();
     let written = fs::read(subdir.join("01.flac")).unwrap();
     assert_eq!(written, original_bytes);
+}
+
+#[tokio::test]
+async fn export_release_single_file_with_cue_writes_image_and_cue() {
+    support::tracing_init();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    let first_bytes = support::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    let second_bytes = support::write_tagged_flac(&album_dir, "02.flac", "Track Two");
+    let release_id = import_unknown_local(&f, &album_dir).await;
+
+    let mut presets = f.mgr.export_presets();
+    presets.push(ExportPreset {
+        id: "flac-image".to_string(),
+        name: "FLAC image".to_string(),
+        codec: ExportPresetCodec::Flac {
+            bit_depth: ExportBitDepth::Source,
+        },
+        filename_template: "{track_number} - {title}".to_string(),
+        metadata: ExportMetadata {
+            title: true,
+            artist: true,
+            album: true,
+            year: true,
+            track_number: true,
+            disc_number: true,
+            cover_art: true,
+        },
+        pregap_placement: ExportPregapPlacement::SingleFileWithCue,
+        applies_to_track: false,
+        applies_to_release: true,
+    });
+    f.mgr.set_export_presets(presets).unwrap();
+
+    let target = f.temp_path().join("export-target");
+    fs::create_dir_all(&target).unwrap();
+    f.mgr
+        .export_release(
+            &release_id,
+            &target,
+            ExportSelection::Preset {
+                preset_id: "flac-image".to_string(),
+            },
+        )
+        .await
+        .expect("single-file CUE release export must succeed");
+
+    let subdir = fs::read_dir(&target)
+        .unwrap()
+        .next()
+        .expect("export wrote a release folder")
+        .unwrap()
+        .path();
+    let mut exported_files: Vec<_> = fs::read_dir(&subdir)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().to_string())
+        .collect();
+    exported_files.sort();
+    assert_eq!(exported_files, vec!["album.cue", "album.flac"]);
+
+    let cue = fs::read_to_string(subdir.join("album.cue")).unwrap();
+    assert!(cue.contains("FILE \"album.flac\" WAVE"));
+    assert!(cue.contains("  TRACK 01 AUDIO"));
+    assert!(cue.contains("  TRACK 02 AUDIO"));
+
+    let image_pcm = bae_core::audio_codec::decode_audio(
+        &fs::read(subdir.join("album.flac")).unwrap(),
+        None,
+        None,
+    )
+    .unwrap();
+    let first_pcm = bae_core::audio_codec::decode_audio(&first_bytes, None, None).unwrap();
+    let second_pcm = bae_core::audio_codec::decode_audio(&second_bytes, None, None).unwrap();
+    assert_eq!(
+        image_pcm.samples.len(),
+        first_pcm.samples.len() + second_pcm.samples.len()
+    );
 }
 
 /// A cloud-only release whose blob is missing exports nothing and errors —

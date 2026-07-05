@@ -87,50 +87,8 @@ struct ExportSettingsTab: View {
 
             Section("Presets") {
                 ForEach($presetDrafts, id: \.id) { $preset in
-                    VStack(alignment: .leading, spacing: 8) {
-                        TextField("Name", text: $preset.name)
-                        TextField(
-                            "Filename format",
-                            text: $preset.filenameTemplate
-                        )
-                        HStack {
-                            Text(preset.codec.label)
-                            Spacer()
-                            Toggle(
-                                "Track",
-                                isOn: $preset.appliesToTrack
-                            )
-                            Toggle(
-                                "Release",
-                                isOn: $preset.appliesToRelease
-                            )
-                        }
-                        PresetCodecEditor(preset: $preset)
-                        Picker(
-                            "Pregap",
-                            selection: $preset.pregapPlacement
-                        ) {
-                            Text("Append except HTOA")
-                                .tag(
-                                    BridgeExportPregapPlacement
-                                        .appendToPreviousExceptHtoa
-                                )
-                            Text("Append including HTOA")
-                                .tag(
-                                    BridgeExportPregapPlacement
-                                        .appendToPreviousIncludingHtoa
-                                )
-                            Text("Exclude")
-                                .tag(
-                                    BridgeExportPregapPlacement.exclude
-                                )
-                        }
-                        PresetMetadataEditor(preset: $preset)
-                        HStack {
-                            Button("Delete", role: .destructive) {
-                                presetDrafts.removeAll { $0.id == preset.id }
-                            }
-                        }
+                    ExportPresetRow(preset: $preset) {
+                        presetDrafts.removeAll { $0.id == preset.id }
                     }
                 }
                 Menu("Add preset") {
@@ -232,6 +190,98 @@ struct ExportSettingsTab: View {
         }
         catch {
             uiStore.showError(DisplayError(line: error.localizedDescription))
+        }
+    }
+}
+
+private struct ExportPresetRow: View {
+    @Binding
+    var preset: BridgeExportPreset
+    var delete: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TextField("Name", text: $preset.name)
+            TextField("Filename format", text: $preset.filenameTemplate)
+            HStack {
+                Text(preset.codec.label)
+                Spacer()
+                Toggle("Track", isOn: appliesToTrackBinding)
+                    .disabled(preset.pregapPlacement == .singleFileWithCue)
+                Toggle("Release", isOn: appliesToReleaseBinding)
+                    .disabled(preset.pregapPlacement == .singleFileWithCue)
+            }
+            PresetCodecEditor(preset: $preset)
+            Picker("Pregap", selection: pregapPlacementBinding) {
+                Text("Append except HTOA")
+                    .tag(
+                        BridgeExportPregapPlacement.appendToPreviousExceptHtoa
+                    )
+                Text("Append including HTOA")
+                    .tag(
+                        BridgeExportPregapPlacement
+                            .appendToPreviousIncludingHtoa
+                    )
+                Text("Exclude")
+                    .tag(BridgeExportPregapPlacement.exclude)
+                Text("Single file + CUE")
+                    .tag(BridgeExportPregapPlacement.singleFileWithCue)
+                    .disabled(!preset.codec.supportsSingleFileCue)
+            }
+            PresetMetadataEditor(preset: $preset)
+            HStack {
+                Button("Delete", role: .destructive, action: delete)
+            }
+        }
+    }
+
+    private var appliesToTrackBinding: Binding<Bool> {
+        Binding(
+            get: {
+                preset.pregapPlacement != .singleFileWithCue
+                    && preset.appliesToTrack
+            },
+            set: { enabled in
+                preset.appliesToTrack =
+                    enabled && preset.pregapPlacement != .singleFileWithCue
+            }
+        )
+    }
+
+    private var appliesToReleaseBinding: Binding<Bool> {
+        Binding(
+            get: {
+                preset.pregapPlacement == .singleFileWithCue
+                    || preset.appliesToRelease
+            },
+            set: { enabled in
+                preset.appliesToRelease =
+                    enabled || preset.pregapPlacement == .singleFileWithCue
+            }
+        )
+    }
+
+    private var pregapPlacementBinding: Binding<BridgeExportPregapPlacement> {
+        Binding(
+            get: { preset.pregapPlacement },
+            set: { placement in
+                preset.pregapPlacement = placement
+                if placement == .singleFileWithCue {
+                    preset.appliesToTrack = false
+                    preset.appliesToRelease = true
+                }
+            }
+        )
+    }
+}
+
+extension BridgeExportPresetCodec {
+    fileprivate var supportsSingleFileCue: Bool {
+        switch self {
+        case .opusOgg:
+            false
+        case .flac, .mp3, .wav, .aiff:
+            true
         }
     }
 }

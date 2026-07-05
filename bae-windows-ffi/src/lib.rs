@@ -737,6 +737,45 @@ pub unsafe extern "C" fn bae_export_track(
     }
 }
 
+/// Export one release to `target_dir` using an export selection JSON. Returns
+/// null on success, or an error-message C string (free with [`bae_string_free`]).
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
+/// `release_id`, `target_dir`, and `selection_json` must be valid
+/// NUL-terminated UTF-8 C strings.
+#[no_mangle]
+pub unsafe extern "C" fn bae_export_release(
+    handle: *const BaeHandle,
+    release_id: *const c_char,
+    target_dir: *const c_char,
+    selection_json: *const c_char,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        return error_cstring("no app handle");
+    };
+    let (Some(release_id), Some(target_dir), Some(selection_json)) =
+        (cstr(release_id), cstr(target_dir), cstr(selection_json))
+    else {
+        return error_cstring("invalid release export argument");
+    };
+    let selection = match serde_json::from_str::<FfiExportSelection>(&selection_json) {
+        Ok(selection) => selection.into_core(),
+        Err(error) => return error_cstring(&format!("invalid export selection: {error}")),
+    };
+    let app = &handle.0;
+    match app
+        .runtime
+        .block_on(app.services.library_manager().export_release(
+            &release_id,
+            std::path::Path::new(&target_dir),
+            selection,
+        )) {
+        Ok(()) => std::ptr::null_mut(),
+        Err(e) => error_cstring(&e.to_string()),
+    }
+}
+
 /// The default filename stem (no extension) a single-track export suggests for
 /// `track_id`, rendered from the configured template. Returns the stem as a C
 /// string (free with [`bae_string_free`]), or null on error (logged).
@@ -4228,6 +4267,7 @@ enum FfiExportPregapPlacement {
     AppendToPreviousExceptHtoa,
     AppendToPreviousIncludingHtoa,
     Exclude,
+    SingleFileWithCue,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -4328,6 +4368,9 @@ fn ffi_export_pregap_placement(
             FfiExportPregapPlacement::AppendToPreviousIncludingHtoa
         }
         bae_core::config::ExportPregapPlacement::Exclude => FfiExportPregapPlacement::Exclude,
+        bae_core::config::ExportPregapPlacement::SingleFileWithCue => {
+            FfiExportPregapPlacement::SingleFileWithCue
+        }
     }
 }
 
@@ -4341,6 +4384,7 @@ impl FfiExportPregapPlacement {
                 bae_core::config::ExportPregapPlacement::AppendToPreviousIncludingHtoa
             }
             Self::Exclude => bae_core::config::ExportPregapPlacement::Exclude,
+            Self::SingleFileWithCue => bae_core::config::ExportPregapPlacement::SingleFileWithCue,
         }
     }
 }

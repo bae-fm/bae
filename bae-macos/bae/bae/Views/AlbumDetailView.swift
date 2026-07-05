@@ -18,13 +18,7 @@ private struct ExportSavePanel {
     let formatDelegate: ExportFormatDelegate
 }
 
-private struct ExportPanelChoice: Equatable {
-    let title: String
-    let extensionName: String
-    let selection: BridgeExportSelection
-}
-
-// MARK: - AlbumDetailView (smart wiring view)
+// MARK: - AlbumDetailView (wiring view)
 
 struct AlbumDetailView: View {
     let albumId: String
@@ -412,16 +406,21 @@ extension AlbumDetailView {
     /// queue and surfaces in the Storage Manager's Exporting pane.
     private func exportRelease(releaseId: String) {
         guard
-            let targetDir = ExportTarget.resolve(
-                configStore.config.exportLocation
+            let target = ExportTarget.resolveRelease(
+                configStore.config.exportLocation,
+                choices: ExportFormatChoice.releaseChoices(
+                    presets: configStore.config.exportPresets
+                ),
+                defaultSelection: configStore.config
+                    .defaultReleaseExportSelection
             )
         else {
             return
         }
         exports.enqueueExport(
             releaseId,
-            targetDir,
-            configStore.config.defaultReleaseExportSelection
+            target.targetDir,
+            target.selection
         )
     }
 
@@ -599,7 +598,11 @@ extension AlbumDetailView {
                 return
             }
             let choices = exportChoices(originalExtension: originalExtension)
-            let panel = makeExportSavePanel(stem: stem, choices: choices)
+            guard let panel = makeExportSavePanel(stem: stem, choices: choices)
+            else {
+                exportError = String(localized: "Default format")
+                return
+            }
             let formatPopup = panel.formatPopup
             let response = panel.savePanel.runModal()
             _ = panel.formatDelegate  // prevent deallocation during modal
@@ -628,10 +631,11 @@ extension AlbumDetailView {
         }
     }
 
-    private func exportChoices(originalExtension: String) -> [ExportPanelChoice]
+    private func exportChoices(originalExtension: String)
+        -> [ExportFormatChoice]
     {
         var choices = [
-            ExportPanelChoice(
+            ExportFormatChoice(
                 title: String(localized: "Original"),
                 extensionName: originalExtension,
                 selection: .original
@@ -641,7 +645,7 @@ extension AlbumDetailView {
             contentsOf: configStore.config.exportPresets
                 .filter(\.appliesToTrack)
                 .map {
-                    ExportPanelChoice(
+                    ExportFormatChoice(
                         title: $0.name,
                         extensionName: $0.extension,
                         selection: .preset(presetId: $0.id)
@@ -657,13 +661,20 @@ extension AlbumDetailView {
     /// the delegate must be retained for the modal's lifetime.
     private func makeExportSavePanel(
         stem: String,
-        choices: [ExportPanelChoice]
-    ) -> ExportSavePanel {
-        let selectedIndex =
-            choices.firstIndex {
+        choices: [ExportFormatChoice]
+    ) -> ExportSavePanel? {
+        guard
+            let selectedIndex = choices.firstIndex(where: {
                 $0.selection == configStore.config.defaultTrackExportSelection
-            } ?? 0
-        let defaultExt = choices[selectedIndex].extensionName
+            })
+        else {
+            return nil
+        }
+        guard let defaultExt = choices[selectedIndex].extensionName else {
+            preconditionFailure(
+                "track export choices must carry file extensions"
+            )
+        }
 
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "\(stem).\(defaultExt)"
@@ -1345,9 +1356,9 @@ struct ManageConfirmSheet: View {
 @MainActor
 private class ExportFormatDelegate: NSObject {
     weak var panel: NSSavePanel?
-    let choices: [ExportPanelChoice]
+    let choices: [ExportFormatChoice]
 
-    init(panel: NSSavePanel, choices: [ExportPanelChoice]) {
+    init(panel: NSSavePanel, choices: [ExportFormatChoice]) {
         self.panel = panel
         self.choices = choices
     }
@@ -1357,7 +1368,11 @@ private class ExportFormatDelegate: NSObject {
         guard let panel else {
             return
         }
-        let ext = choices[sender.indexOfSelectedItem].extensionName
+        guard let ext = choices[sender.indexOfSelectedItem].extensionName else {
+            preconditionFailure(
+                "track export choices must carry file extensions"
+            )
+        }
         let currentName = panel.nameFieldStringValue
         let stem = (currentName as NSString).deletingPathExtension
 
