@@ -152,16 +152,11 @@ async fn run_extraction(
         // artwork OCR.
         ExtractionSource::Folder(folder) => {
             let fast_folder = folder.clone();
-            let fast =
-                match tokio::task::spawn_blocking(move || gather_non_ocr_sources(&fast_folder))
-                    .await
-                {
-                    Ok(v) => v,
-                    Err(e) => {
-                        warn!("signals: fast-pass spawn_blocking failed: {e}");
-                        FastPass::empty()
-                    }
-                };
+            let Some(fast) =
+                run_fast_pass_blocking(move || gather_non_ocr_sources(&fast_folder)).await
+            else {
+                return;
+            };
             let mut pool = Pool::default();
             for line in fast.lines {
                 pool.push(line);
@@ -234,6 +229,19 @@ async fn run_extraction(
                 },
             )
             .await;
+        }
+    }
+}
+
+async fn run_fast_pass_blocking<F>(task: F) -> Option<FastPass>
+where
+    F: FnOnce() -> FastPass + Send + 'static,
+{
+    match tokio::task::spawn_blocking(task).await {
+        Ok(fast) => Some(fast),
+        Err(e) => {
+            error!("signals: fast-pass spawn_blocking failed: {e}; aborting extraction");
+            None
         }
     }
 }

@@ -318,6 +318,17 @@ async fn missing_folder_settles_gracefully() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn fast_pass_join_error_aborts_without_empty_snapshot() {
+    let fast_pass =
+        run_fast_pass_blocking(|| -> FastPass { panic!("fast-pass blocking task panicked") }).await;
+
+    assert!(
+        fast_pass.is_none(),
+        "fast-pass JoinError must abort the extraction run",
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn cue_fields_land_in_fast_pass() {
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path().join("Some Folder");
