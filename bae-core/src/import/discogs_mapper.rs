@@ -102,7 +102,15 @@ pub fn map_discogs_to_db(
     let now = clock.now();
     let mut artists = Vec::new();
     if release.artists.is_empty() {
-        let artist_name = extract_artist_name(&release.title);
+        let artist_name = crate::discogs::split_title(&release.title)
+            .and_then(|(artist, _)| artist)
+            .ok_or_else(|| {
+                format!(
+                    "Discogs release {} has no release artist in artists list or title",
+                    release.id
+                )
+            })?
+            .to_string();
         let artist = DbArtist {
             id: ids.new_id(),
             name: artist_name.clone(),
@@ -478,16 +486,6 @@ pub fn parse_side_from_position(position: &str) -> i32 {
     1
 }
 
-/// Extract artist name from album title (fallback when artists array is empty).
-///
-/// Discogs album titles often follow "Artist - Album" format.
-/// Splits on " - " to extract the artist. Falls back to "Unknown Artist".
-fn extract_artist_name(title: &str) -> String {
-    crate::discogs::split_title(title)
-        .map(|(artist, _)| artist.to_string())
-        .unwrap_or_else(|| "Unknown Artist".to_string())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -572,6 +570,36 @@ mod tests {
             extraartists: Some(vec![]),
             master_id: None,
         }
+    }
+
+    #[test]
+    fn release_without_artists_or_title_artist_returns_err() {
+        let mut release = make_release(vec![]);
+        release.artists = vec![];
+        release.title = "Album Title Without Artist".to_string();
+
+        let err = map(&release, Some(2024), None)
+            .expect_err("expected unattributed Discogs release to return an error");
+
+        assert!(
+            err.contains("has no release artist"),
+            "unexpected error message: {err}"
+        );
+    }
+
+    #[test]
+    fn release_without_artists_or_empty_title_artist_returns_err() {
+        let mut release = make_release(vec![]);
+        release.artists = vec![];
+        release.title = " - Album Title".to_string();
+
+        let err = map(&release, Some(2024), None)
+            .expect_err("expected unattributed Discogs release to return an error");
+
+        assert!(
+            err.contains("has no release artist"),
+            "unexpected error message: {err}"
+        );
     }
 
     #[test]

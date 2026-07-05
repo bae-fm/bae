@@ -7,11 +7,22 @@ pub use models::*;
 use std::fmt::Display;
 use tracing::debug;
 
-/// Split a Discogs "Artist - Album" title into its trimmed `(artist, album)`
-/// halves. Discogs packs both into one title field separated by " - ". Returns
-/// `None` when there's no separator; callers pick their own fallback.
-pub(crate) fn split_title(title: &str) -> Option<(&str, &str)> {
-    title.split_once(" - ").map(|(a, b)| (a.trim(), b.trim()))
+/// Split a Discogs "Artist - Album" title into trimmed `(artist, album)`
+/// parts. Discogs packs both into one title field separated by " - ". Returns
+/// `None` when there's no separator; an empty artist half is represented as
+/// `None`.
+pub(crate) fn split_title(title: &str) -> Option<(Option<&str>, &str)> {
+    title
+        .split_once(" - ")
+        .map(|(a, b)| (a.trim(), b.trim()))
+        .map(|(artist, album)| {
+            let artist = if artist.is_empty() {
+                None
+            } else {
+                Some(artist)
+            };
+            (artist, album)
+        })
 }
 
 pub(crate) fn remote_cover_from_urls<I>(

@@ -233,7 +233,10 @@ fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
         cover_image: None,
         thumb: None,
         catno: None,
-        artists: vec![],
+        artists: vec![DiscogsArtist {
+            id: "discogs-artist-1".to_string(),
+            name: "Artist Name".to_string(),
+        }],
         extraartists: Some(vec![]),
         tracklist: tracks
             .iter()
@@ -1175,7 +1178,10 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
         cover_image: None,
         thumb: None,
         catno: Some("CAT-001".to_string()),
-        artists: vec![],
+        artists: vec![DiscogsArtist {
+            id: "discogs-artist-1".to_string(),
+            name: "Artist Name".to_string(),
+        }],
         extraartists: Some(vec![]),
         tracklist: tracks
             .iter()

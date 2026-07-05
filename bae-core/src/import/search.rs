@@ -127,14 +127,7 @@ pub fn discogs_search_result_to_metadata(
     // Search titles use "Artist - Album"; split once. No separator means the
     // whole title is the album and the artist is unknown.
     let (artist, album) = match crate::discogs::split_title(&r.title) {
-        Some((artist, album)) => {
-            let artist = if artist.is_empty() {
-                None
-            } else {
-                Some(artist.to_string())
-            };
-            (artist, album.to_string())
-        }
+        Some((artist, album)) => (artist.map(str::to_string), album.to_string()),
         None => (None, r.title.clone()),
     };
     let year = r.year.as_ref().and_then(|y| y.parse::<i32>().ok());

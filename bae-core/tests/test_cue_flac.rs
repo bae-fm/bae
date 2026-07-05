@@ -13,7 +13,7 @@ use crate::support::{
     seed_discogs_test_release, test_config_and_keys, tracing_init, wait_for_import_complete,
 };
 use bae_core::db::Database;
-use bae_core::discogs::models::{DiscogsRelease, DiscogsTrack};
+use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{
     IdentityChoice, ImportCommand, ImportService, MetadataRef, MetadataSource, StorageMode,
 };
@@ -685,7 +685,10 @@ fn create_test_discogs_release() -> DiscogsRelease {
         cover_image: None,
         thumb: None,
         catno: None,
-        artists: vec![],
+        artists: vec![DiscogsArtist {
+            id: "discogs-artist-1".to_string(),
+            name: "Artist Name".to_string(),
+        }],
         extraartists: Some(vec![]),
         tracklist: vec![
             DiscogsTrack {

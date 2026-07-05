@@ -13,7 +13,7 @@ use crate::support::{
 use bae_core::audio_codec::{decode_audio, probe_audio_from_path};
 use bae_core::cue_flac::CueFlacProcessor;
 use bae_core::db::Database;
-use bae_core::discogs::models::{DiscogsRelease, DiscogsTrack};
+use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::discid::compute_discid_from_categorized;
 use bae_core::import::folder_scanner::{
     collect_release_candidate_files, scan_for_candidates_with_callback, AudioContent, ScanItem,
@@ -58,7 +58,10 @@ fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsReleas
         cover_image: None,
         thumb: None,
         catno: None,
-        artists: vec![],
+        artists: vec![DiscogsArtist {
+            id: "discogs-artist-1".to_string(),
+            name: "Artist Name".to_string(),
+        }],
         extraartists: Some(vec![]),
         tracklist: tracks
             .iter()
