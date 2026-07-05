@@ -13,7 +13,7 @@ impl PlaybackService {
             return;
         };
         let raw_dur_ms = prepared.duration.as_millis() as u64;
-        let pregap_ms = prepared.pregap_ms;
+        let pregap_ms = prepared.total_pregap_ms();
         let (adjusted_pos_ms, adjusted_dur_ms) =
             crate::playback::format::adjust_for_pregap(position_ms, raw_dur_ms, pregap_ms);
         let progress =

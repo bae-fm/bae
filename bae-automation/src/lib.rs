@@ -1131,7 +1131,11 @@ impl Automation {
     ) -> Result<AutomationReleaseExport, AutomationError> {
         self.services
             .library_manager()
-            .enqueue_export(&release_id, PathBuf::from(target_dir))
+            .enqueue_export(
+                &release_id,
+                PathBuf::from(target_dir),
+                bae_core::config::ExportSelection::Original,
+            )
             .await?;
         Ok(AutomationReleaseExport { release_id })
     }
@@ -1591,7 +1595,7 @@ fn automation_export_snapshot(
             };
             AutomationExportOp {
                 release_id: op.release_id,
-                target_dir: op.payload.to_string_lossy().to_string(),
+                target_dir: op.payload.target_dir.to_string_lossy().to_string(),
                 title: op.title,
                 file_count: op.file_count,
                 total_size: op.total_size,

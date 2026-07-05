@@ -95,14 +95,27 @@ fn cue_backed_audio_format(
         )
     })?;
 
-    let pregap_ms = cue_track
+    let fmt = cue_analysis_format(cue_pair);
+    let audio_pregap_ms = cue_track
         .pregap_duration_ms()
         .filter(|&ms| ms > 0)
         .map(|ms| ms as i64);
+    let generated_pregap_ms = cue_track
+        .generated_pregap_duration_ms()
+        .filter(|&ms| ms > 0)
+        .map(|ms| ms as i64);
+    let audio_pregap_samples = cue_track
+        .pregap_cue_frames
+        .map(|pregap| cue_track.start_cue_frames.saturating_sub(pregap))
+        .filter(|&frames| frames > 0)
+        .map(|frames| (frames * fmt.sample_rate as u64 / 75) as i64);
+    let generated_pregap_samples = cue_track
+        .generated_pregap_frames
+        .filter(|&frames| frames > 0)
+        .map(|frames| (frames * fmt.sample_rate as u64 / 75) as i64);
 
     // Every CUE codec decodes its shared file natively and is trimmed to the
     // track's sample window -- one shape across FLAC, APE and ALAC.
-    let fmt = cue_analysis_format(cue_pair);
     let start_sample = cue_track.audio_start_sample(fmt.sample_rate);
     let end_sample = cue_track.end_sample(fmt.sample_rate);
     Ok(DbAudioFormat::new(
@@ -116,7 +129,10 @@ fn cue_backed_audio_format(
         id,
         now,
     )
-    .with_pregap(pregap_ms))
+    .with_pregap(audio_pregap_ms)
+    .with_generated_pregap(generated_pregap_ms)
+    .with_pregap_samples(audio_pregap_samples)
+    .with_generated_pregap_samples(generated_pregap_samples))
 }
 
 /// Build an audio format for a per-track file (FLAC, MP3, APE, etc.) via FFmpeg probe.

@@ -46,7 +46,7 @@ final class StorageActionRunner {
         self.uiStore = uiStore
     }
 
-    /// Export each release's files verbatim to a folder. The destination comes
+    /// Export each release to a folder. The destination comes
     /// from the export-location setting: a fixed folder enqueues straight away;
     /// "ask each time" opens one `NSOpenPanel` and exports the whole batch into
     /// the chosen folder. No folder chosen → nothing enqueued. Each enqueue joins
@@ -61,7 +61,11 @@ final class StorageActionRunner {
             return
         }
         for releaseId in releaseIds {
-            exports.enqueueExport(releaseId, targetDir)
+            exports.enqueueExport(
+                releaseId,
+                targetDir,
+                configStore.config.defaultReleaseExportSelection
+            )
         }
     }
 

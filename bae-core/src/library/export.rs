@@ -1,14 +1,9 @@
 use crate::library::manager::ExportTrackPlan;
 use crate::playback::{DecodedPcm, PlaybackError};
+use crate::util::content_type::ContentType;
 use std::path::Path;
 use std::sync::Arc;
 use tracing::{debug, info};
-
-/// Output format for track export.
-pub enum ExportFormat {
-    Flac,
-    Mp3,
-}
 
 /// Render a single-track export's suggested filename stem (no extension) from a
 /// template and the track's tag data. Supported tokens:
@@ -128,6 +123,64 @@ fn sanitize_filename_stem(input: &str) -> String {
 pub struct ExportService;
 
 impl ExportService {
+    pub async fn export_original_track(
+        mut plan: ExportTrackPlan,
+        output_path: &Path,
+    ) -> Result<(), String> {
+        struct OutputFileGuard {
+            path: std::path::PathBuf,
+            committed: bool,
+        }
+        impl Drop for OutputFileGuard {
+            fn drop(&mut self) {
+                if !self.committed {
+                    let _ = std::fs::remove_file(&self.path);
+                }
+            }
+        }
+
+        let format = &plan.audio_meta.audio_format;
+        let is_whole_source = format.start_sample == 0
+            && format.end_sample.is_none()
+            && format.start_byte.is_none()
+            && format.end_byte.is_none();
+        let output_path_owned = output_path.to_path_buf();
+        if is_whole_source {
+            let audio_bytes = std::mem::take(&mut plan.audio_bytes);
+            tokio::task::spawn_blocking(move || -> Result<(), String> {
+                let mut output_guard = OutputFileGuard {
+                    path: output_path_owned.clone(),
+                    committed: false,
+                };
+                std::fs::write(&output_path_owned, &audio_bytes)
+                    .map_err(|e| format!("Failed to write original track file: {e}"))?;
+                output_guard.committed = true;
+                Ok(())
+            })
+            .await
+            .map_err(|e| format!("original export task join error: {e}"))??;
+            return Ok(());
+        }
+
+        if !is_lossless_original_source(&format.content_type) {
+            return Err(format!(
+                "Original export cannot split {} without transcoding",
+                format.content_type.display_name()
+            ));
+        }
+
+        let metadata = plan.metadata;
+        Self::export_track_with_codec(
+            plan,
+            output_path,
+            crate::config::ExportPresetCodec::Flac {
+                bit_depth: crate::config::ExportBitDepth::Source,
+            },
+            metadata,
+        )
+        .await
+    }
+
     /// Export a single track to the given format.
     ///
     /// For one-file-per-track: decodes and re-encodes to the target format.
@@ -137,9 +190,18 @@ impl ExportService {
     /// On future-drop the cancel flag flips, the encoder loop exits between
     /// frames, and any partially-written output file is removed.
     pub async fn export_track(
+        plan: ExportTrackPlan,
+        output_path: &Path,
+        preset: crate::config::ExportPreset,
+    ) -> Result<(), String> {
+        Self::export_track_with_codec(plan, output_path, preset.codec, preset.metadata).await
+    }
+
+    async fn export_track_with_codec(
         mut plan: ExportTrackPlan,
         output_path: &Path,
-        format: ExportFormat,
+        codec: crate::config::ExportPresetCodec,
+        metadata: crate::config::ExportMetadata,
     ) -> Result<(), String> {
         use std::sync::atomic::{AtomicBool, Ordering};
         use std::sync::Arc;
@@ -181,26 +243,57 @@ impl ExportService {
                 committed: false,
             };
 
-            let encoded_data = match format {
-                ExportFormat::Flac => crate::audio_codec::encode_to_flac(
-                    decoded_pcm.raw_samples(),
-                    decoded_pcm.sample_rate(),
-                    decoded_pcm.channels(),
-                    plan.audio_meta
-                        .audio_format
-                        .bits_per_sample
-                        .map(|bits| bits as u32)
-                        .unwrap_or(32),
-                    &cancel_for_blocking,
-                )
-                .map_err(|e| format!("Failed to encode FLAC: {e}"))?,
-                ExportFormat::Mp3 => crate::audio_codec::encode_to_mp3(
-                    decoded_pcm.raw_samples(),
-                    decoded_pcm.sample_rate(),
-                    decoded_pcm.channels(),
-                    &cancel_for_blocking,
-                )
-                .map_err(|e| format!("Failed to encode MP3: {e}"))?,
+            let encoded_data = match codec {
+                crate::config::ExportPresetCodec::Flac { bit_depth } => {
+                    crate::audio_codec::encode_to_flac(
+                        decoded_pcm.raw_samples(),
+                        decoded_pcm.sample_rate(),
+                        decoded_pcm.channels(),
+                        bit_depth.resolve(plan.audio_meta.audio_format.bits_per_sample),
+                        &cancel_for_blocking,
+                    )
+                    .map_err(|e| format!("Failed to encode FLAC: {e}"))?
+                }
+                crate::config::ExportPresetCodec::Mp3 { bitrate_kbps } => {
+                    crate::audio_codec::encode_to_mp3_with_bitrate(
+                        decoded_pcm.raw_samples(),
+                        decoded_pcm.sample_rate(),
+                        decoded_pcm.channels(),
+                        bitrate_kbps,
+                        &cancel_for_blocking,
+                    )
+                    .map_err(|e| format!("Failed to encode MP3: {e}"))?
+                }
+                crate::config::ExportPresetCodec::OpusOgg { bitrate_kbps } => {
+                    crate::audio_codec::encode_to_opus_ogg(
+                        decoded_pcm.raw_samples(),
+                        decoded_pcm.sample_rate(),
+                        decoded_pcm.channels(),
+                        bitrate_kbps,
+                        &cancel_for_blocking,
+                    )
+                    .map_err(|e| format!("Failed to encode Opus/Ogg: {e}"))?
+                }
+                crate::config::ExportPresetCodec::Wav { bit_depth } => {
+                    crate::audio_codec::encode_to_wav(
+                        decoded_pcm.raw_samples(),
+                        decoded_pcm.sample_rate(),
+                        decoded_pcm.channels(),
+                        bit_depth.resolve(plan.audio_meta.audio_format.bits_per_sample),
+                        &cancel_for_blocking,
+                    )
+                    .map_err(|e| format!("Failed to encode WAV: {e}"))?
+                }
+                crate::config::ExportPresetCodec::Aiff { bit_depth } => {
+                    crate::audio_codec::encode_to_aiff(
+                        decoded_pcm.raw_samples(),
+                        decoded_pcm.sample_rate(),
+                        decoded_pcm.channels(),
+                        bit_depth.resolve(plan.audio_meta.audio_format.bits_per_sample),
+                        &cancel_for_blocking,
+                    )
+                    .map_err(|e| format!("Failed to encode AIFF: {e}"))?
+                }
             };
 
             // Cancel check at every blocking boundary. Each fs::write /
@@ -220,9 +313,16 @@ impl ExportService {
 
             let cover_data = plan.cover_image_bytes.as_deref();
 
-            let tag_type = match format {
-                ExportFormat::Flac => lofty::tag::TagType::VorbisComments,
-                ExportFormat::Mp3 => lofty::tag::TagType::Id3v2,
+            let tag_type = match codec {
+                crate::config::ExportPresetCodec::Flac { .. } => {
+                    lofty::tag::TagType::VorbisComments
+                }
+                crate::config::ExportPresetCodec::Mp3 { .. } => lofty::tag::TagType::Id3v2,
+                crate::config::ExportPresetCodec::OpusOgg { .. } => {
+                    lofty::tag::TagType::VorbisComments
+                }
+                crate::config::ExportPresetCodec::Wav { .. } => lofty::tag::TagType::RiffInfo,
+                crate::config::ExportPresetCodec::Aiff { .. } => lofty::tag::TagType::AiffText,
             };
 
             write_tags(
@@ -233,7 +333,7 @@ impl ExportService {
                 plan.total_tracks as u32,
                 plan.is_digital,
                 cover_data,
-                &plan.metadata,
+                &metadata,
             )?;
 
             if cancel_for_blocking.load(Ordering::Relaxed) {
@@ -252,6 +352,18 @@ impl ExportService {
         );
         Ok(())
     }
+}
+
+fn is_lossless_original_source(content_type: &ContentType) -> bool {
+    matches!(
+        content_type,
+        ContentType::Flac
+            | ContentType::Ape
+            | ContentType::Alac
+            | ContentType::Pcm
+            | ContentType::WavPack
+            | ContentType::Dsd
+    )
 }
 
 /// Write metadata tags to an encoded audio file. Each tag is written only when
@@ -349,21 +461,17 @@ async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<Arc<DecodedPcm>,
         audio_data_owned.len()
     );
 
-    // Every track decodes its whole backing file; the sample window trims it to
-    // just this track. A per-track source (start 0 / end None) decodes whole.
-    // start_sample is a non-negative sample position; a negative one is corrupt
-    // metadata, surfaced rather than silently decoded from the start. 0 means the
-    // track begins at the file start, so no start trim is needed.
-    let start_sample = u64::try_from(plan.audio_meta.audio_format.start_sample)
-        .expect("audio_format.start_sample is a non-negative sample position");
-    let start_sample = (start_sample > 0).then_some(start_sample);
-    let end_sample = plan.audio_meta.audio_format.end_sample.map(|s| s as u64);
+    // Export uses its own window so CUE pregaps can be excluded or appended to
+    // the previous track without changing playback's raw track window.
+    let window = plan.audio_window;
+    let start_sample = (window.source_start_sample > 0).then_some(window.source_start_sample);
+    let end_sample = window.source_end_sample;
 
     debug!(
         "Decoding {} bytes of audio data to PCM",
         audio_data_owned.len()
     );
-    let decoded = tokio::task::spawn_blocking(move || {
+    let mut decoded = tokio::task::spawn_blocking(move || {
         crate::audio_codec::decode_audio(&audio_data_owned, start_sample, end_sample)
     })
     .await
@@ -377,6 +485,23 @@ async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<Arc<DecodedPcm>,
         decoded.sample_rate,
         decoded.channels
     );
+
+    if window.leading_silence_samples > 0 || window.trailing_silence_samples > 0 {
+        let channels = decoded.channels as usize;
+        let leading = usize::try_from(window.leading_silence_samples)
+            .map_err(|_| PlaybackError::flac("leading silence exceeds addressable memory"))?
+            .checked_mul(channels)
+            .ok_or_else(|| PlaybackError::flac("leading silence sample count overflow"))?;
+        let trailing = usize::try_from(window.trailing_silence_samples)
+            .map_err(|_| PlaybackError::flac("trailing silence exceeds addressable memory"))?
+            .checked_mul(channels)
+            .ok_or_else(|| PlaybackError::flac("trailing silence sample count overflow"))?;
+        let mut samples = Vec::with_capacity(leading + decoded.samples.len() + trailing);
+        samples.resize(leading, 0);
+        samples.extend_from_slice(&decoded.samples);
+        samples.resize(samples.len() + trailing, 0);
+        decoded.samples = samples;
+    }
 
     Ok(Arc::new(DecodedPcm::new(
         decoded.samples,

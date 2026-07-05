@@ -697,35 +697,32 @@ pub unsafe extern "C" fn bae_set_primary_release(
     }
 }
 
-/// Export one track's audio to `output_path`. `format` is "flac" (lossless) or
-/// "mp3" (320 kbps). Returns null on success, or an error-message C string (free
-/// with [`bae_string_free`]).
+/// Export one track's audio to `output_path`. `selection_json` is
+/// `{"kind":"original"}` or `{"kind":"preset","preset_id":"..."}`. Returns null
+/// on success, or an error-message C string (free with [`bae_string_free`]).
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
-/// `track_id`, `output_path`, and `format` must be valid NUL-terminated UTF-8 C
-/// strings.
+/// `track_id`, `output_path`, and `selection_json` must be valid
+/// NUL-terminated UTF-8 C strings.
 #[no_mangle]
 pub unsafe extern "C" fn bae_export_track(
     handle: *const BaeHandle,
     track_id: *const c_char,
     output_path: *const c_char,
-    format: *const c_char,
+    selection_json: *const c_char,
 ) -> *mut c_char {
-    use bae_core::library::ExportFormat;
-
     let Some(handle) = handle.as_ref() else {
         return error_cstring("no app handle");
     };
-    let (Some(track_id), Some(output_path), Some(format)) =
-        (cstr(track_id), cstr(output_path), cstr(format))
+    let (Some(track_id), Some(output_path), Some(selection_json)) =
+        (cstr(track_id), cstr(output_path), cstr(selection_json))
     else {
         return error_cstring("invalid export argument");
     };
-    let format = match format.as_str() {
-        "flac" => ExportFormat::Flac,
-        "mp3" => ExportFormat::Mp3,
-        other => return error_cstring(&format!("unknown export format: {other}")),
+    let selection = match serde_json::from_str::<FfiExportSelection>(&selection_json) {
+        Ok(selection) => selection.into_core(),
+        Err(error) => return error_cstring(&format!("invalid export selection: {error}")),
     };
     let app = &handle.0;
     match app
@@ -733,7 +730,7 @@ pub unsafe extern "C" fn bae_export_track(
         .block_on(app.services.library_manager().export_track(
             &track_id,
             std::path::Path::new(&output_path),
-            format,
+            selection,
         )) {
         Ok(()) => std::ptr::null_mut(),
         Err(e) => error_cstring(&e.to_string()),
@@ -769,6 +766,48 @@ pub unsafe extern "C" fn bae_export_track_suggested_name(
         Ok(stem) => error_cstring(&stem),
         Err(e) => {
             tracing::error!("bae_export_track_suggested_name failed: {e}");
+            std::ptr::null_mut()
+        }
+    }
+}
+
+/// The filename extension for a track export selection, without a leading dot.
+/// Returns null on error (logged). Free with [`bae_string_free`].
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
+/// `track_id` and `selection_json` must be valid NUL-terminated UTF-8 C strings.
+#[no_mangle]
+pub unsafe extern "C" fn bae_export_track_extension(
+    handle: *const BaeHandle,
+    track_id: *const c_char,
+    selection_json: *const c_char,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_export_track_extension: null handle");
+        return std::ptr::null_mut();
+    };
+    let (Some(track_id), Some(selection_json)) = (cstr(track_id), cstr(selection_json)) else {
+        tracing::error!("bae_export_track_extension: null or non-UTF-8 argument");
+        return std::ptr::null_mut();
+    };
+    let selection = match serde_json::from_str::<FfiExportSelection>(&selection_json) {
+        Ok(selection) => selection.into_core(),
+        Err(error) => {
+            tracing::error!("bae_export_track_extension: invalid selection: {error}");
+            return std::ptr::null_mut();
+        }
+    };
+    match handle.0.runtime.block_on(
+        handle
+            .0
+            .services
+            .library_manager()
+            .export_track_extension(&track_id, selection),
+    ) {
+        Ok(extension) => owned_cstring(&extension),
+        Err(error) => {
+            tracing::error!("bae_export_track_extension failed: {error}");
             std::ptr::null_mut()
         }
     }
@@ -4055,6 +4094,10 @@ pub unsafe extern "C" fn bae_delete_release(
 /// Allocate an owned error-message C string (for command results: null = success,
 /// non-null = the error). Null if allocation fails.
 fn error_cstring(msg: &str) -> *mut c_char {
+    owned_cstring(msg)
+}
+
+fn owned_cstring(msg: &str) -> *mut c_char {
     CString::new(msg)
         .map(CString::into_raw)
         .unwrap_or_else(|e| {
@@ -4133,12 +4176,202 @@ struct FfiSettings {
     /// Which metadata tags a single-track export embeds — the seven booleans
     /// serialized straight from core's `ExportMetadata`.
     export_metadata: bae_core::config::ExportMetadata,
+    /// Configured export presets offered by release and track export.
+    export_presets: Vec<FfiExportPreset>,
+    /// Default selected option in the track export picker.
+    default_track_export_selection: FfiExportSelection,
+    /// Default selected option in the release export picker.
+    default_release_export_selection: FfiExportSelection,
     /// Whether the local MCP server is enabled in persisted config.
     mcp_enabled: bool,
     /// The configured local MCP server port.
     mcp_port: u16,
     /// Runtime MCP server status.
     mcp_status: bae_desktop::McpServerStatus,
+}
+
+#[derive(Serialize, Deserialize)]
+struct FfiExportPreset {
+    id: String,
+    name: String,
+    codec: FfiExportPresetCodec,
+    extension: String,
+    filename_template: String,
+    metadata: bae_core::config::ExportMetadata,
+    pregap_placement: FfiExportPregapPlacement,
+    applies_to_track: bool,
+    applies_to_release: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum FfiExportPresetCodec {
+    Flac { bit_depth: FfiExportBitDepth },
+    Mp3 { bitrate_kbps: u32 },
+    OpusOgg { bitrate_kbps: u32 },
+    Wav { bit_depth: FfiExportBitDepth },
+    Aiff { bit_depth: FfiExportBitDepth },
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum FfiExportBitDepth {
+    Source,
+    Bits16,
+    Bits24,
+    Bits32,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum FfiExportPregapPlacement {
+    AppendToPreviousExceptHtoa,
+    AppendToPreviousIncludingHtoa,
+    Exclude,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum FfiExportSelection {
+    Original,
+    Preset { preset_id: String },
+}
+
+impl FfiExportSelection {
+    fn from_core(selection: &bae_core::config::ExportSelection) -> Self {
+        match selection {
+            bae_core::config::ExportSelection::Original => Self::Original,
+            bae_core::config::ExportSelection::Preset { preset_id } => Self::Preset {
+                preset_id: preset_id.clone(),
+            },
+        }
+    }
+
+    fn into_core(self) -> bae_core::config::ExportSelection {
+        match self {
+            Self::Original => bae_core::config::ExportSelection::Original,
+            Self::Preset { preset_id } => bae_core::config::ExportSelection::Preset { preset_id },
+        }
+    }
+}
+
+fn ffi_export_bit_depth(bit_depth: bae_core::config::ExportBitDepth) -> FfiExportBitDepth {
+    match bit_depth {
+        bae_core::config::ExportBitDepth::Source => FfiExportBitDepth::Source,
+        bae_core::config::ExportBitDepth::Bits16 => FfiExportBitDepth::Bits16,
+        bae_core::config::ExportBitDepth::Bits24 => FfiExportBitDepth::Bits24,
+        bae_core::config::ExportBitDepth::Bits32 => FfiExportBitDepth::Bits32,
+    }
+}
+
+impl FfiExportBitDepth {
+    fn into_core(self) -> bae_core::config::ExportBitDepth {
+        match self {
+            Self::Source => bae_core::config::ExportBitDepth::Source,
+            Self::Bits16 => bae_core::config::ExportBitDepth::Bits16,
+            Self::Bits24 => bae_core::config::ExportBitDepth::Bits24,
+            Self::Bits32 => bae_core::config::ExportBitDepth::Bits32,
+        }
+    }
+}
+
+fn ffi_export_preset_codec(codec: &bae_core::config::ExportPresetCodec) -> FfiExportPresetCodec {
+    match codec {
+        bae_core::config::ExportPresetCodec::Flac { bit_depth } => FfiExportPresetCodec::Flac {
+            bit_depth: ffi_export_bit_depth(*bit_depth),
+        },
+        bae_core::config::ExportPresetCodec::Mp3 { bitrate_kbps } => FfiExportPresetCodec::Mp3 {
+            bitrate_kbps: *bitrate_kbps,
+        },
+        bae_core::config::ExportPresetCodec::OpusOgg { bitrate_kbps } => {
+            FfiExportPresetCodec::OpusOgg {
+                bitrate_kbps: *bitrate_kbps,
+            }
+        }
+        bae_core::config::ExportPresetCodec::Wav { bit_depth } => FfiExportPresetCodec::Wav {
+            bit_depth: ffi_export_bit_depth(*bit_depth),
+        },
+        bae_core::config::ExportPresetCodec::Aiff { bit_depth } => FfiExportPresetCodec::Aiff {
+            bit_depth: ffi_export_bit_depth(*bit_depth),
+        },
+    }
+}
+
+impl FfiExportPresetCodec {
+    fn into_core(self) -> bae_core::config::ExportPresetCodec {
+        match self {
+            Self::Flac { bit_depth } => bae_core::config::ExportPresetCodec::Flac {
+                bit_depth: bit_depth.into_core(),
+            },
+            Self::Mp3 { bitrate_kbps } => bae_core::config::ExportPresetCodec::Mp3 { bitrate_kbps },
+            Self::OpusOgg { bitrate_kbps } => {
+                bae_core::config::ExportPresetCodec::OpusOgg { bitrate_kbps }
+            }
+            Self::Wav { bit_depth } => bae_core::config::ExportPresetCodec::Wav {
+                bit_depth: bit_depth.into_core(),
+            },
+            Self::Aiff { bit_depth } => bae_core::config::ExportPresetCodec::Aiff {
+                bit_depth: bit_depth.into_core(),
+            },
+        }
+    }
+}
+
+fn ffi_export_pregap_placement(
+    placement: bae_core::config::ExportPregapPlacement,
+) -> FfiExportPregapPlacement {
+    match placement {
+        bae_core::config::ExportPregapPlacement::AppendToPreviousExceptHtoa => {
+            FfiExportPregapPlacement::AppendToPreviousExceptHtoa
+        }
+        bae_core::config::ExportPregapPlacement::AppendToPreviousIncludingHtoa => {
+            FfiExportPregapPlacement::AppendToPreviousIncludingHtoa
+        }
+        bae_core::config::ExportPregapPlacement::Exclude => FfiExportPregapPlacement::Exclude,
+    }
+}
+
+impl FfiExportPregapPlacement {
+    fn into_core(self) -> bae_core::config::ExportPregapPlacement {
+        match self {
+            Self::AppendToPreviousExceptHtoa => {
+                bae_core::config::ExportPregapPlacement::AppendToPreviousExceptHtoa
+            }
+            Self::AppendToPreviousIncludingHtoa => {
+                bae_core::config::ExportPregapPlacement::AppendToPreviousIncludingHtoa
+            }
+            Self::Exclude => bae_core::config::ExportPregapPlacement::Exclude,
+        }
+    }
+}
+
+fn ffi_export_preset(preset: &bae_core::config::ExportPreset) -> FfiExportPreset {
+    FfiExportPreset {
+        id: preset.id.clone(),
+        name: preset.name.clone(),
+        codec: ffi_export_preset_codec(&preset.codec),
+        extension: preset.codec.extension().to_string(),
+        filename_template: preset.filename_template.clone(),
+        metadata: preset.metadata,
+        pregap_placement: ffi_export_pregap_placement(preset.pregap_placement),
+        applies_to_track: preset.applies_to_track,
+        applies_to_release: preset.applies_to_release,
+    }
+}
+
+impl FfiExportPreset {
+    fn into_core(self) -> bae_core::config::ExportPreset {
+        bae_core::config::ExportPreset {
+            id: self.id,
+            name: self.name,
+            codec: self.codec.into_core(),
+            filename_template: self.filename_template,
+            metadata: self.metadata,
+            pregap_placement: self.pregap_placement.into_core(),
+            applies_to_track: self.applies_to_track,
+            applies_to_release: self.applies_to_release,
+        }
+    }
 }
 
 /// Current settings as JSON, or null on error. Free with [`bae_string_free`].
@@ -4176,6 +4409,17 @@ pub unsafe extern "C" fn bae_settings(handle: *const BaeHandle) -> *mut c_char {
         pause_between_sides: config.pause_between_sides,
         export_filename_template: config.export_filename_template.clone(),
         export_metadata: config.export_metadata,
+        export_presets: config
+            .export_presets
+            .iter()
+            .map(ffi_export_preset)
+            .collect(),
+        default_track_export_selection: FfiExportSelection::from_core(
+            &config.default_track_export_selection,
+        ),
+        default_release_export_selection: FfiExportSelection::from_core(
+            &config.default_release_export_selection,
+        ),
         mcp_enabled: config.mcp.enabled,
         mcp_port: config.mcp.port,
         mcp_status: handle.0.mcp_server_status(),
@@ -4265,6 +4509,96 @@ pub unsafe extern "C" fn bae_set_export_metadata(
         .library_manager()
         .set_export_metadata(metadata)
     {
+        Ok(()) => std::ptr::null_mut(),
+        Err(error) => error_cstring(&error.to_string()),
+    }
+}
+
+/// Replace the export presets. `presets_json` is a JSON array of export preset
+/// records. Returns null on success, or an error-message C string (free with
+/// [`bae_string_free`]).
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
+/// `presets_json` must be a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_set_export_presets(
+    handle: *const BaeHandle,
+    presets_json: *const c_char,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        return error_cstring("no app handle");
+    };
+    let Some(presets_json) = cstr(presets_json) else {
+        return error_cstring("invalid export presets JSON");
+    };
+    let presets: Vec<FfiExportPreset> = match serde_json::from_str(&presets_json) {
+        Ok(presets) => presets,
+        Err(e) => return error_cstring(&format!("invalid export presets JSON: {e}")),
+    };
+    match handle.0.services.library_manager().set_export_presets(
+        presets
+            .into_iter()
+            .map(FfiExportPreset::into_core)
+            .collect(),
+    ) {
+        Ok(()) => std::ptr::null_mut(),
+        Err(error) => error_cstring(&error.to_string()),
+    }
+}
+
+/// Set the default selection for track-level export. `selection_json` is an
+/// export selection JSON object. Returns null on success, or an error-message C
+/// string (free with [`bae_string_free`]).
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
+/// `selection_json` must be a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_set_default_track_export_selection(
+    handle: *const BaeHandle,
+    selection_json: *const c_char,
+) -> *mut c_char {
+    set_default_export_selection(handle, selection_json, true)
+}
+
+/// Set the default selection for release-level export. `selection_json` is an
+/// export selection JSON object. Returns null on success, or an error-message C
+/// string (free with [`bae_string_free`]).
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
+/// `selection_json` must be a valid NUL-terminated UTF-8 C string.
+#[no_mangle]
+pub unsafe extern "C" fn bae_set_default_release_export_selection(
+    handle: *const BaeHandle,
+    selection_json: *const c_char,
+) -> *mut c_char {
+    set_default_export_selection(handle, selection_json, false)
+}
+
+unsafe fn set_default_export_selection(
+    handle: *const BaeHandle,
+    selection_json: *const c_char,
+    track: bool,
+) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        return error_cstring("no app handle");
+    };
+    let Some(selection_json) = cstr(selection_json) else {
+        return error_cstring("invalid export selection JSON");
+    };
+    let selection: FfiExportSelection = match serde_json::from_str(&selection_json) {
+        Ok(selection) => selection,
+        Err(e) => return error_cstring(&format!("invalid export selection JSON: {e}")),
+    };
+    let manager = handle.0.services.library_manager();
+    let result = if track {
+        manager.set_default_track_export_selection(selection.into_core())
+    } else {
+        manager.set_default_release_export_selection(selection.into_core())
+    };
+    match result {
         Ok(()) => std::ptr::null_mut(),
         Err(error) => error_cstring(&error.to_string()),
     }

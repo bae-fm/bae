@@ -6,7 +6,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-  FFMPEG_VERSION: v8.1.2-bae4
+  FFMPEG_VERSION: v8.1.2-bae5
 
 jobs:
   macos:
@@ -116,7 +116,7 @@ jobs:
       - name: Provision ffmpeg's mingw runtime deps (msys2)
         shell: pwsh
         run: |
-          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-lame mingw-w64-x86_64-libiconv mingw-w64-x86_64-zlib mingw-w64-x86_64-gcc-libs"
+          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-lame mingw-w64-x86_64-opus mingw-w64-x86_64-libiconv mingw-w64-x86_64-zlib mingw-w64-x86_64-gcc-libs"
           echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
       - name: Build bae CLI

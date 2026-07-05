@@ -642,7 +642,7 @@ mod tests {
 
     #[test]
     fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
-        use crate::cue_flac::{CueSheet, CueTrack};
+        use crate::cue_flac::{CuePregap, CueSheet, CueTrack};
         let mk = |number: u32, title: &str| CueTrack {
             number,
             title: Some(title.to_string()),
@@ -650,7 +650,9 @@ mod tests {
             isrc: None,
             file_reference: "image.flac".to_string(),
             start_cue_frames: 0,
+            pregap: CuePregap::None,
             pregap_cue_frames: None,
+            generated_pregap_frames: None,
             end_cue_frames: None,
         };
         let sheet = CueSheet {

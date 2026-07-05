@@ -440,7 +440,7 @@ impl PlaybackHandle {
 fn pregap_adjusted_duration(prepared: &PlaybackPreparedTrack) -> u64 {
     let raw_dur = prepared.duration.as_millis() as u64;
     let (_, adjusted_dur) =
-        crate::playback::format::adjust_for_pregap(0, raw_dur, prepared.pregap_ms);
+        crate::playback::format::adjust_for_pregap(0, raw_dur, prepared.total_pregap_ms());
     adjusted_dur
 }
 
@@ -452,7 +452,7 @@ impl PlaybackPreparedTrack {
         TrackFmt {
             track_id: self.track_info.track_id.clone(),
             duration_ms: self.duration.as_millis() as u64,
-            pregap_ms: self.pregap_ms,
+            pregap_ms: self.total_pregap_ms(),
             position_offset,
             replay_gain_linear: self.replay_gain_linear,
         }
@@ -476,12 +476,29 @@ impl PlaybackPreparedTrack {
         } else {
             None
         };
+        let generated_pregap_samples = self.generated_pregap_samples();
+        let source_offset = offset.saturating_sub(generated_pregap_samples);
         StreamDecodeParams {
             seek_to_byte,
-            target_sample: self.start_sample + offset,
+            target_sample: self.start_sample + source_offset,
             stop_at_sample: self.end_sample,
             end_byte: self.end_byte,
+            leading_silence_frames: generated_pregap_samples.saturating_sub(offset),
         }
+    }
+
+    fn total_pregap_ms(&self) -> Option<i64> {
+        self.pregap_ms.or(self.generated_pregap_ms)
+    }
+
+    fn generated_pregap_samples(&self) -> u64 {
+        let samples = self.generated_pregap_samples.unwrap_or_else(|| {
+            self.generated_pregap_ms.map_or(0, |ms| {
+                assert!(ms >= 0, "audio_format generated_pregap_ms is non-negative");
+                ((ms as f64 / 1000.0) * self.sample_rate as f64) as i64
+            })
+        });
+        u64::try_from(samples).expect("audio_format generated_pregap_samples is non-negative")
     }
 }
 
@@ -503,6 +520,10 @@ struct PlaybackPreparedTrack {
     channels: u32,
     /// Pre-gap duration in ms (for CUE/FLAC tracks)
     pregap_ms: Option<i64>,
+    /// Generated silent pregap duration in ms from a CUE `PREGAP` directive.
+    generated_pregap_ms: Option<i64>,
+    /// Generated silent pregap duration in exact samples.
+    generated_pregap_samples: Option<i64>,
     /// Track duration from metadata
     duration: std::time::Duration,
     /// This track's sample window in its backing file (start 0 / end None = whole file).
@@ -632,6 +653,8 @@ fn finalize_playback_track(
         sample_rate: resolved.sample_rate,
         channels: resolved.channels,
         pregap_ms: resolved.pregap_ms,
+        generated_pregap_ms: resolved.generated_pregap_ms,
+        generated_pregap_samples: resolved.generated_pregap_samples,
         duration,
         start_sample: resolved.start_sample,
         end_sample: resolved.end_sample,
@@ -908,6 +931,7 @@ struct StreamDecodeParams {
     stop_at_sample: Option<u64>,
     /// The track's end byte offset -- the read-ahead ceiling. `None` = whole file.
     end_byte: Option<u64>,
+    leading_silence_frames: u64,
 }
 
 impl StreamDecodeParams {
@@ -921,6 +945,13 @@ impl StreamDecodeParams {
         sink: &mut crate::playback::track_stream::TrackSink,
         cancel: Arc<std::sync::atomic::AtomicBool>,
     ) -> Result<(), StreamingDecodeError> {
+        if self.leading_silence_frames > 0 {
+            sink.push_silence_frames_blocking(self.leading_silence_frames);
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) || sink.is_cancelled() {
+                return Err(StreamingDecodeError::InputCancelled);
+            }
+        }
+
         // Byte seek and sample seek are mutually exclusive: with a byte landing we
         // jump to it, else we sample-seek. `start_at_sample` trims lead-in either
         // way so the first output sample is exactly `target_sample`.

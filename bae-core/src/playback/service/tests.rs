@@ -27,6 +27,8 @@ fn test_prepared_track(
         sample_rate: 44_100,
         channels: 2,
         pregap_ms: None,
+        generated_pregap_ms: None,
+        generated_pregap_samples: None,
         duration: std::time::Duration::from_secs(1),
         start_sample: 0,
         end_sample: None,

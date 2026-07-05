@@ -440,6 +440,36 @@ fn test_encode_mp3() {
     assert!(decoded.samples.len() > 40000, "Too few decoded samples");
 }
 
+#[test]
+fn test_encode_opus_ogg() {
+    init();
+
+    let sample_rate = 44100u32;
+    let duration_samples = sample_rate as usize;
+    let amplitude = 0.5 * i32::MAX as f64;
+    let samples: Vec<i32> = (0..duration_samples * 2)
+        .map(|i| {
+            let t = (i / 2) as f64 / sample_rate as f64;
+            (amplitude * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
+        })
+        .collect();
+
+    let cancel = std::sync::atomic::AtomicBool::new(false);
+    let opus_data = encode_to_opus_ogg(&samples, sample_rate, 2, 192, &cancel).unwrap();
+
+    assert!(
+        opus_data.len() > 100,
+        "Opus/Ogg data too small: {}",
+        opus_data.len()
+    );
+    assert_eq!(&opus_data[0..4], b"OggS");
+
+    let decoded = decode_audio(&opus_data, None, None).unwrap();
+    assert_eq!(decoded.sample_rate, 48_000);
+    assert_eq!(decoded.channels, 2);
+    assert!(!decoded.samples.is_empty());
+}
+
 /// Test that FLAC encode/decode is lossless - samples should match exactly.
 ///
 /// This catches any sample conversion bugs: wrong byte order, wrong scaling,

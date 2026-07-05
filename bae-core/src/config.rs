@@ -281,6 +281,125 @@ fn default_export_filename_template() -> String {
     "{track_number} - {title}".to_string()
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ExportBitDepth {
+    Source,
+    Bits16,
+    Bits24,
+    Bits32,
+}
+
+impl ExportBitDepth {
+    pub fn resolve(self, source_bits: Option<i64>) -> u32 {
+        match self {
+            Self::Source => source_bits
+                .and_then(|bits| u32::try_from(bits).ok())
+                .filter(|bits| (1..=32).contains(bits))
+                .unwrap_or(32),
+            Self::Bits16 => 16,
+            Self::Bits24 => 24,
+            Self::Bits32 => 32,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ExportPresetCodec {
+    Flac { bit_depth: ExportBitDepth },
+    Mp3 { bitrate_kbps: u32 },
+    OpusOgg { bitrate_kbps: u32 },
+    Wav { bit_depth: ExportBitDepth },
+    Aiff { bit_depth: ExportBitDepth },
+}
+
+impl ExportPresetCodec {
+    pub fn extension(&self) -> &'static str {
+        match self {
+            Self::Flac { .. } => "flac",
+            Self::Mp3 { .. } => "mp3",
+            Self::OpusOgg { .. } => "ogg",
+            Self::Wav { .. } => "wav",
+            Self::Aiff { .. } => "aiff",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ExportPregapPlacement {
+    AppendToPreviousExceptHtoa,
+    AppendToPreviousIncludingHtoa,
+    Exclude,
+}
+
+fn default_export_pregap_placement() -> ExportPregapPlacement {
+    ExportPregapPlacement::AppendToPreviousExceptHtoa
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ExportSelection {
+    Original,
+    Preset { preset_id: String },
+}
+
+fn default_export_selection() -> ExportSelection {
+    ExportSelection::Original
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExportPreset {
+    pub id: String,
+    pub name: String,
+    pub codec: ExportPresetCodec,
+    pub filename_template: String,
+    pub metadata: ExportMetadata,
+    #[serde(default = "default_export_pregap_placement")]
+    pub pregap_placement: ExportPregapPlacement,
+    pub applies_to_track: bool,
+    pub applies_to_release: bool,
+}
+
+impl ExportPreset {
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        if self.id.trim().is_empty() {
+            return Err(ConfigError::Config("export preset id is empty".to_string()));
+        }
+        if self.name.trim().is_empty() {
+            return Err(ConfigError::Config(format!(
+                "export preset {} has an empty name",
+                self.id
+            )));
+        }
+        if !self.applies_to_track && !self.applies_to_release {
+            return Err(ConfigError::Config(format!(
+                "export preset {} does not apply to any export level",
+                self.id
+            )));
+        }
+        match self.codec {
+            ExportPresetCodec::Mp3 { bitrate_kbps } => {
+                if !(32..=320).contains(&bitrate_kbps) {
+                    return Err(ConfigError::Config(format!(
+                        "export preset {} has unsupported MP3 bitrate {}",
+                        self.id, bitrate_kbps
+                    )));
+                }
+            }
+            ExportPresetCodec::OpusOgg { bitrate_kbps } => {
+                if !(32..=512).contains(&bitrate_kbps) {
+                    return Err(ConfigError::Config(format!(
+                        "export preset {} has unsupported Opus bitrate {}",
+                        self.id, bitrate_kbps
+                    )));
+                }
+            }
+            ExportPresetCodec::Flac { .. }
+            | ExportPresetCodec::Wav { .. }
+            | ExportPresetCodec::Aiff { .. } => {}
+        }
+        Ok(())
+    }
+}
+
 /// Which metadata tags a single-track export embeds. All default on. Track
 /// total rides `track_number`; the disc tag is additionally gated on digital
 /// media inside `write_tags`.
@@ -308,6 +427,33 @@ fn default_export_metadata() -> ExportMetadata {
         disc_number: true,
         cover_art: true,
     }
+}
+
+fn default_export_presets() -> Vec<ExportPreset> {
+    vec![
+        ExportPreset {
+            id: "flac".to_string(),
+            name: "FLAC".to_string(),
+            codec: ExportPresetCodec::Flac {
+                bit_depth: ExportBitDepth::Source,
+            },
+            filename_template: default_export_filename_template(),
+            metadata: default_export_metadata(),
+            pregap_placement: default_export_pregap_placement(),
+            applies_to_track: true,
+            applies_to_release: true,
+        },
+        ExportPreset {
+            id: "mp3".to_string(),
+            name: "MP3".to_string(),
+            codec: ExportPresetCodec::Mp3 { bitrate_kbps: 320 },
+            filename_template: default_export_filename_template(),
+            metadata: default_export_metadata(),
+            pregap_placement: default_export_pregap_placement(),
+            applies_to_track: true,
+            applies_to_release: true,
+        },
+    ]
 }
 
 /// The serde default for `ConfigYaml.verify_decode_on_import`: on. Import fully
@@ -464,6 +610,15 @@ pub struct ConfigYaml {
     /// Which metadata tags a single-track export embeds. All default on.
     #[serde(default = "default_export_metadata")]
     pub export_metadata: ExportMetadata,
+    /// Configured export presets offered by release and track export.
+    #[serde(default = "default_export_presets")]
+    pub export_presets: Vec<ExportPreset>,
+    /// Default selected option in the track export picker.
+    #[serde(default = "default_export_selection")]
+    pub default_track_export_selection: ExportSelection,
+    /// Default selected option in the release export picker.
+    #[serde(default = "default_export_selection")]
+    pub default_release_export_selection: ExportSelection,
     /// Whether playback pauses between vinyl/cassette sides.
     #[serde(default)]
     pub pause_between_sides: bool,
@@ -501,6 +656,9 @@ impl ConfigYaml {
             export_location: self.export_location,
             export_filename_template: self.export_filename_template,
             export_metadata: self.export_metadata,
+            export_presets: self.export_presets,
+            default_track_export_selection: self.default_track_export_selection,
+            default_release_export_selection: self.default_release_export_selection,
             pause_between_sides: self.pause_between_sides,
             verify_decode_on_import: self.verify_decode_on_import,
             mcp: self.mcp,
@@ -521,6 +679,9 @@ impl From<&Config> for ConfigYaml {
             export_location: config.export_location.clone(),
             export_filename_template: config.export_filename_template.clone(),
             export_metadata: config.export_metadata,
+            export_presets: config.export_presets.clone(),
+            default_track_export_selection: config.default_track_export_selection.clone(),
+            default_release_export_selection: config.default_release_export_selection.clone(),
             pause_between_sides: config.pause_between_sides,
             verify_decode_on_import: config.verify_decode_on_import,
             mcp: config.mcp,
@@ -561,6 +722,12 @@ pub struct Config {
     pub export_filename_template: String,
     /// Which metadata tags a single-track export embeds. All default on.
     pub export_metadata: ExportMetadata,
+    /// Configured export presets offered by release and track export.
+    pub export_presets: Vec<ExportPreset>,
+    /// Default selected option in the track export picker.
+    pub default_track_export_selection: ExportSelection,
+    /// Default selected option in the release export picker.
+    pub default_release_export_selection: ExportSelection,
     /// Whether playback pauses between vinyl/cassette sides.
     pub pause_between_sides: bool,
     /// Whether import verifies each track by fully decoding it, failing the import
@@ -768,6 +935,9 @@ impl Config {
             export_location: default_export_location(),
             export_filename_template: default_export_filename_template(),
             export_metadata: default_export_metadata(),
+            export_presets: default_export_presets(),
+            default_track_export_selection: default_export_selection(),
+            default_release_export_selection: default_export_selection(),
             pause_between_sides: false,
             verify_decode_on_import: default_verify_decode_on_import(),
             mcp: McpConfig::disabled_default(),
@@ -1094,6 +1264,15 @@ mod tests {
                 .unwrap();
         assert_eq!(yaml.export_filename_template, "{artist} - {title}");
         assert_eq!(yaml.export_metadata, config.export_metadata);
+        assert_eq!(yaml.export_presets, config.export_presets);
+        assert_eq!(
+            yaml.default_track_export_selection,
+            config.default_track_export_selection
+        );
+        assert_eq!(
+            yaml.default_release_export_selection,
+            config.default_release_export_selection
+        );
     }
 
     #[test]
@@ -1108,6 +1287,15 @@ mod tests {
             default_export_filename_template()
         );
         assert_eq!(config.export_metadata, default_export_metadata());
+        assert_eq!(config.export_presets, default_export_presets());
+        assert_eq!(
+            config.default_track_export_selection,
+            default_export_selection()
+        );
+        assert_eq!(
+            config.default_release_export_selection,
+            default_export_selection()
+        );
     }
 
     #[test]

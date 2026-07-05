@@ -187,6 +187,9 @@ pub struct ResolvedTrackAudio {
     pub file_size: u64,
     pub duration_ms: Option<i64>,
     pub pregap_ms: Option<i64>,
+    pub generated_pregap_ms: Option<i64>,
+    pub pregap_samples: Option<i64>,
+    pub generated_pregap_samples: Option<i64>,
     pub sample_rate: u32,
     pub channels: u32,
     /// This track's sample window in its backing file: `start_sample` is 0 for a
@@ -230,6 +233,9 @@ impl ResolvedTrackAudio {
             file_size: meta.audio_file.file_size as u64,
             duration_ms: meta.track.duration_ms,
             pregap_ms: meta.audio_format.pregap_ms,
+            generated_pregap_ms: meta.audio_format.generated_pregap_ms,
+            pregap_samples: meta.audio_format.pregap_samples,
+            generated_pregap_samples: meta.audio_format.generated_pregap_samples,
             sample_rate: meta.audio_format.sample_rate as u32,
             channels: meta.audio_format.channels as u32,
             start_sample: meta.audio_format.start_sample as u64,
@@ -354,9 +360,21 @@ pub struct ExportTrackPlan {
     /// applies it per field; cover art is already reflected in
     /// `cover_image_bytes` being `None` when deselected.
     pub metadata: crate::config::ExportMetadata,
+    /// The source/silence window to encode for this export. Playback uses the
+    /// stored audio format directly; export can exclude or move CUE pregaps.
+    pub(crate) audio_window: ExportAudioWindow,
     /// Raw audio-format aggregate. Held internally so `ExportService::export_track`
     /// can decode CUE-split byte ranges / APE sample bounds without re-resolving.
     pub(crate) audio_meta: TrackAudioMeta,
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct ExportAudioWindow {
+    pub source_start_sample: u64,
+    pub source_end_sample: Option<u64>,
+    pub leading_silence_samples: u64,
+    pub trailing_silence_samples: u64,
 }
 
 /// Which image to use when changing an album's cover art.
@@ -728,6 +746,7 @@ impl LibraryManager {
         self.spawn_queue_worker(|manager| async move {
             manager.run_download_worker().await;
         });
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
         self.spawn_queue_worker(|manager| async move {
             manager.run_export_worker().await;
         });

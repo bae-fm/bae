@@ -555,7 +555,7 @@ mod tests {
     /// wrappers produce the same disc ID.
     #[test]
     fn test_cue_duration_discid_matches_across_codecs() {
-        use crate::cue_flac::{CueSheet, CueTrack};
+        use crate::cue_flac::{CuePregap, CueSheet, CueTrack};
 
         // Three tracks, 75 CUE frames/sec → minute 0, minute 3, minute 6.
         let sheet = CueSheet {
@@ -571,7 +571,9 @@ mod tests {
                     isrc: None,
                     file_reference: "Album.flac".to_string(),
                     start_cue_frames: 0,
+                    pregap: CuePregap::None,
                     pregap_cue_frames: None,
+                    generated_pregap_frames: None,
                     end_cue_frames: Some(3 * 60 * 75),
                 },
                 CueTrack {
@@ -581,7 +583,9 @@ mod tests {
                     isrc: None,
                     file_reference: "Album.flac".to_string(),
                     start_cue_frames: 3 * 60 * 75,
+                    pregap: CuePregap::None,
                     pregap_cue_frames: None,
+                    generated_pregap_frames: None,
                     end_cue_frames: Some(6 * 60 * 75),
                 },
                 CueTrack {
@@ -591,7 +595,9 @@ mod tests {
                     isrc: None,
                     file_reference: "Album.flac".to_string(),
                     start_cue_frames: 6 * 60 * 75,
+                    pregap: CuePregap::None,
                     pregap_cue_frames: None,
+                    generated_pregap_frames: None,
                     end_cue_frames: None,
                 },
             ],

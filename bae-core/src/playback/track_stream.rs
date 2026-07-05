@@ -170,6 +170,33 @@ impl TrackSink {
         offset
     }
 
+    /// Push generated silent frames before decoded source audio.
+    pub fn push_silence_frames_blocking(&mut self, frames: u64) -> u64 {
+        let channels = self.state.channels() as usize;
+        if channels == 0 {
+            return 0;
+        }
+
+        let chunk_frames = 4096usize;
+        let chunk = vec![0.0; chunk_frames * channels];
+        let mut frames_pushed = 0;
+        while frames_pushed < frames {
+            if self.state.is_cancelled() {
+                return frames_pushed;
+            }
+
+            let remaining_frames = (frames - frames_pushed) as usize;
+            let this_chunk_frames = remaining_frames.min(chunk_frames);
+            let samples = this_chunk_frames * channels;
+            let pushed = self.push_samples_blocking(&chunk[..samples]);
+            frames_pushed += (pushed / channels) as u64;
+            if pushed == 0 {
+                return frames_pushed;
+            }
+        }
+        frames_pushed
+    }
+
     /// Signal that all samples have been pushed (EOF).
     /// Also signals ready if we haven't already (for short files).
     pub fn mark_finished(&mut self) {

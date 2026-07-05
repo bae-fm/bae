@@ -380,11 +380,11 @@ internal static class NativeBae
         IntPtr handle,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string trackId,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string outputPath,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string format);
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectionJson);
 
-    /// <summary>Export one track to outputPath as "flac" or "mp3"; null on success, else the error.</summary>
-    internal static string? ExportTrack(IntPtr handle, string trackId, string outputPath, string format) =>
-        ResultMessage(ExportTrackPtr(handle, trackId, outputPath, format));
+    /// <summary>Export one track to outputPath using an export selection JSON; null on success, else the error.</summary>
+    internal static string? ExportTrack(IntPtr handle, string trackId, string outputPath, string selectionJson) =>
+        ResultMessage(ExportTrackPtr(handle, trackId, outputPath, selectionJson));
 
     [DllImport(Dll, EntryPoint = "bae_export_track_suggested_name", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr ExportTrackSuggestedNamePtr(
@@ -398,6 +398,16 @@ internal static class NativeBae
     /// </summary>
     internal static string? ExportTrackSuggestedName(IntPtr handle, string trackId) =>
         CopyAndFree(ExportTrackSuggestedNamePtr(handle, trackId));
+
+    [DllImport(Dll, EntryPoint = "bae_export_track_extension", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ExportTrackExtensionPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string trackId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectionJson);
+
+    /// <summary>The filename extension for a track export selection, without a leading dot.</summary>
+    internal static string? ExportTrackExtension(IntPtr handle, string trackId, string selectionJson) =>
+        CopyAndFree(ExportTrackExtensionPtr(handle, trackId, selectionJson));
 
     [DllImport(Dll, EntryPoint = "bae_get_release_images", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr GetReleaseImagesPtr(
@@ -677,6 +687,30 @@ internal static class NativeBae
     /// </summary>
     internal static string? SetExportMetadata(IntPtr handle, string metadataJson) =>
         ResultMessage(SetExportMetadataPtr(handle, metadataJson));
+
+    [DllImport(Dll, EntryPoint = "bae_set_export_presets", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SetExportPresetsPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string presetsJson);
+
+    internal static string? SetExportPresets(IntPtr handle, string presetsJson) =>
+        ResultMessage(SetExportPresetsPtr(handle, presetsJson));
+
+    [DllImport(Dll, EntryPoint = "bae_set_default_track_export_selection", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SetDefaultTrackExportSelectionPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectionJson);
+
+    internal static string? SetDefaultTrackExportSelection(IntPtr handle, string selectionJson) =>
+        ResultMessage(SetDefaultTrackExportSelectionPtr(handle, selectionJson));
+
+    [DllImport(Dll, EntryPoint = "bae_set_default_release_export_selection", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SetDefaultReleaseExportSelectionPtr(
+        IntPtr handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectionJson);
+
+    internal static string? SetDefaultReleaseExportSelection(IntPtr handle, string selectionJson) =>
+        ResultMessage(SetDefaultReleaseExportSelectionPtr(handle, selectionJson));
 
     [DllImport(Dll, EntryPoint = "bae_set_mcp_server_config", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr SetMcpServerConfigPtr(

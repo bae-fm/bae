@@ -28,9 +28,6 @@ pub use probe::{probe_audio_from_path, ProbeResult};
 /// FFmpeg uses for its own file IO.
 const AVIO_BUFFER_SIZE: usize = 32768;
 
-/// Standard bitrate for MP3 track export, in bits per second (320 kbit/s).
-pub const MP3_EXPORT_BITRATE: u32 = 320_000;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StreamingDecodeError {
     InputCancelled,
@@ -156,13 +153,96 @@ pub fn encode_to_mp3(
     channels: u32,
     cancel: &std::sync::atomic::AtomicBool,
 ) -> Result<Vec<u8>, String> {
-    unsafe { encode_avio(samples, sample_rate, channels, EncodeFormat::Mp3, cancel) }
+    encode_to_mp3_with_bitrate(samples, sample_rate, channels, 320, cancel)
+}
+
+pub fn encode_to_mp3_with_bitrate(
+    samples: &[i32],
+    sample_rate: u32,
+    channels: u32,
+    bitrate_kbps: u32,
+    cancel: &std::sync::atomic::AtomicBool,
+) -> Result<Vec<u8>, String> {
+    unsafe {
+        encode_avio(
+            samples,
+            sample_rate,
+            channels,
+            EncodeFormat::Mp3 { bitrate_kbps },
+            cancel,
+        )
+    }
+}
+
+pub fn encode_to_wav(
+    samples: &[i32],
+    sample_rate: u32,
+    channels: u32,
+    bits_per_sample: u32,
+    cancel: &std::sync::atomic::AtomicBool,
+) -> Result<Vec<u8>, String> {
+    unsafe {
+        encode_avio(
+            samples,
+            sample_rate,
+            channels,
+            EncodeFormat::PcmWav { bits_per_sample },
+            cancel,
+        )
+    }
+}
+
+pub fn encode_to_aiff(
+    samples: &[i32],
+    sample_rate: u32,
+    channels: u32,
+    bits_per_sample: u32,
+    cancel: &std::sync::atomic::AtomicBool,
+) -> Result<Vec<u8>, String> {
+    unsafe {
+        encode_avio(
+            samples,
+            sample_rate,
+            channels,
+            EncodeFormat::PcmAiff { bits_per_sample },
+            cancel,
+        )
+    }
+}
+
+pub fn encode_to_opus_ogg(
+    samples: &[i32],
+    sample_rate: u32,
+    channels: u32,
+    bitrate_kbps: u32,
+    cancel: &std::sync::atomic::AtomicBool,
+) -> Result<Vec<u8>, String> {
+    unsafe {
+        let output_rate = 48_000;
+        let resampled;
+        let encode_samples = if sample_rate == output_rate {
+            samples
+        } else {
+            resampled = resample_i32_packed(samples, sample_rate, output_rate, channels)?;
+            &resampled
+        };
+        encode_avio(
+            encode_samples,
+            output_rate,
+            channels,
+            EncodeFormat::OpusOgg { bitrate_kbps },
+            cancel,
+        )
+    }
 }
 
 #[derive(Clone, Copy)]
 enum EncodeFormat {
     Flac { bits_per_sample: u32 },
-    Mp3,
+    Mp3 { bitrate_kbps: u32 },
+    OpusOgg { bitrate_kbps: u32 },
+    PcmWav { bits_per_sample: u32 },
+    PcmAiff { bits_per_sample: u32 },
 }
 
 struct EncodeCodecContext {
@@ -213,54 +293,73 @@ impl EncodeFormat {
     fn label(self) -> &'static str {
         match self {
             Self::Flac { .. } => "FLAC",
-            Self::Mp3 => "MP3",
+            Self::Mp3 { .. } => "MP3",
+            Self::OpusOgg { .. } => "Opus/Ogg",
+            Self::PcmWav { .. } => "WAV",
+            Self::PcmAiff { .. } => "AIFF",
         }
     }
 
     fn format_name(self) -> *const std::ffi::c_char {
         match self {
             Self::Flac { .. } => c"flac".as_ptr(),
-            Self::Mp3 => c"mp3".as_ptr(),
+            Self::Mp3 { .. } => c"mp3".as_ptr(),
+            Self::OpusOgg { .. } => c"ogg".as_ptr(),
+            Self::PcmWav { .. } => c"wav".as_ptr(),
+            Self::PcmAiff { .. } => c"aiff".as_ptr(),
         }
     }
 
     fn codec_id(self) -> ffmpeg_sys_next::AVCodecID {
         match self {
             Self::Flac { .. } => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_FLAC,
-            Self::Mp3 => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_MP3,
+            Self::Mp3 { .. } => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_MP3,
+            Self::OpusOgg { .. } => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_OPUS,
+            Self::PcmWav { bits_per_sample } => pcm_codec_id(bits_per_sample, false),
+            Self::PcmAiff { bits_per_sample } => pcm_codec_id(bits_per_sample, true),
         }
     }
 
     fn sample_format(self) -> Result<ffmpeg_sys_next::AVSampleFormat, String> {
         use ffmpeg_sys_next::AVSampleFormat;
         match self {
-            Self::Flac { bits_per_sample } => match bits_per_sample {
+            Self::Flac { bits_per_sample }
+            | Self::PcmWav { bits_per_sample }
+            | Self::PcmAiff { bits_per_sample } => match bits_per_sample {
                 1..=16 => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16),
                 17..=32 => Ok(AVSampleFormat::AV_SAMPLE_FMT_S32),
-                _ => Err(format!("Unsupported FLAC bit depth: {bits_per_sample}")),
+                _ => Err(format!("Unsupported PCM bit depth: {bits_per_sample}")),
             },
-            Self::Mp3 => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16P),
+            Self::Mp3 { .. } => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16P),
+            Self::OpusOgg { .. } => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16),
         }
     }
 
     fn output_capacity(self, samples_len: usize) -> usize {
         match self {
             Self::Flac { .. } => samples_len * 2,
-            Self::Mp3 => samples_len,
+            Self::Mp3 { .. } => samples_len,
+            Self::OpusOgg { .. } => samples_len,
+            Self::PcmWav { .. } | Self::PcmAiff { .. } => samples_len * 4,
         }
     }
 
     fn default_frame_size(self) -> usize {
         match self {
             Self::Flac { .. } => 4096,
-            Self::Mp3 => 1152,
+            Self::Mp3 { .. } => 1152,
+            Self::OpusOgg { .. } => 960,
+            Self::PcmWav { .. } | Self::PcmAiff { .. } => 4096,
         }
     }
 
     fn encoder_missing_message(self) -> &'static str {
         match self {
             Self::Flac { .. } => "FLAC encoder not found",
-            Self::Mp3 => "MP3 encoder not found (libmp3lame)",
+            Self::Mp3 { .. } => "MP3 encoder not found (libmp3lame)",
+            Self::OpusOgg { .. } => "Opus encoder not found (libopus)",
+            Self::PcmWav { .. } => "WAV PCM encoder not found",
+            Self::PcmAiff { .. } => "AIFF PCM encoder not found",
         }
     }
 
@@ -283,8 +382,14 @@ impl EncodeFormat {
             Self::Flac { bits_per_sample } => {
                 (*codec_ctx).bits_per_raw_sample = bits_per_sample as c_int;
             }
-            Self::Mp3 => {
-                (*codec_ctx).bit_rate = MP3_EXPORT_BITRATE as i64;
+            Self::Mp3 { bitrate_kbps } => {
+                (*codec_ctx).bit_rate = bitrate_kbps as i64 * 1000;
+            }
+            Self::OpusOgg { bitrate_kbps } => {
+                (*codec_ctx).bit_rate = bitrate_kbps as i64 * 1000;
+            }
+            Self::PcmWav { bits_per_sample } | Self::PcmAiff { bits_per_sample } => {
+                (*codec_ctx).bits_per_raw_sample = bits_per_sample as c_int;
             }
         }
 
@@ -303,7 +408,9 @@ impl EncodeFormat {
         channels: usize,
     ) {
         match self {
-            Self::Flac { bits_per_sample } => {
+            Self::Flac { bits_per_sample }
+            | Self::PcmWav { bits_per_sample }
+            | Self::PcmAiff { bits_per_sample } => {
                 let frame_data = (*frame).data[0];
                 match bits_per_sample {
                     1..=16 => {
@@ -321,7 +428,7 @@ impl EncodeFormat {
                     _ => unreachable!("FLAC bit depth was validated before encoding"),
                 }
             }
-            Self::Mp3 => {
+            Self::Mp3 { .. } => {
                 for ch in 0..channels {
                     let dst = (*frame).data[ch] as *mut i16;
                     for i in 0..chunk_frames {
@@ -330,7 +437,101 @@ impl EncodeFormat {
                     }
                 }
             }
+            Self::OpusOgg { .. } => {
+                let dst = (*frame).data[0] as *mut i16;
+                for i in 0..chunk_samples {
+                    *dst.add(i) = (samples[sample_offset + i] >> 16) as i16;
+                }
+            }
         }
+    }
+}
+
+unsafe fn resample_i32_packed(
+    samples: &[i32],
+    input_rate: u32,
+    output_rate: u32,
+    channels: u32,
+) -> Result<Vec<i32>, String> {
+    use ffmpeg_sys_next::*;
+
+    if channels == 0 {
+        return Err("channel count must be greater than zero".to_string());
+    }
+    let channels_usize = channels as usize;
+    if !samples.len().is_multiple_of(channels_usize) {
+        return Err("sample count must be divisible by channel count".to_string());
+    }
+
+    let input_frames = samples.len() / channels_usize;
+    let mut ch_layout: AVChannelLayout = std::mem::zeroed();
+    av_channel_layout_default(&mut ch_layout, channels as c_int);
+
+    let mut swr_ctx: *mut SwrContext = ptr::null_mut();
+    let ret = swr_alloc_set_opts2(
+        &mut swr_ctx,
+        &ch_layout,
+        AVSampleFormat::AV_SAMPLE_FMT_S32,
+        output_rate as c_int,
+        &ch_layout,
+        AVSampleFormat::AV_SAMPLE_FMT_S32,
+        input_rate as c_int,
+        0,
+        ptr::null_mut(),
+    );
+    if ret < 0 || swr_ctx.is_null() {
+        return Err(format!(
+            "Failed to allocate Opus resampler: {}",
+            av_err_str(ret)
+        ));
+    }
+    let ret = swr_init(swr_ctx);
+    if ret < 0 {
+        swr_free(&mut swr_ctx);
+        return Err(format!(
+            "Failed to init Opus resampler: {}",
+            av_err_str(ret)
+        ));
+    }
+
+    let capacity_frames = swr_get_out_samples(swr_ctx, input_frames as c_int);
+    if capacity_frames < 0 {
+        swr_free(&mut swr_ctx);
+        return Err(format!(
+            "Failed to size Opus resampler output: {}",
+            av_err_str(capacity_frames)
+        ));
+    }
+    let mut output = vec![0i32; capacity_frames as usize * channels_usize];
+    let input_ptr = samples.as_ptr() as *const u8;
+    let output_ptr = output.as_mut_ptr() as *mut u8;
+    let converted = swr_convert(
+        swr_ctx,
+        &output_ptr,
+        capacity_frames,
+        &input_ptr,
+        input_frames as c_int,
+    );
+    swr_free(&mut swr_ctx);
+    if converted < 0 {
+        return Err(format!(
+            "Failed to resample for Opus: {}",
+            av_err_str(converted)
+        ));
+    }
+    output.truncate(converted as usize * channels_usize);
+    Ok(output)
+}
+
+fn pcm_codec_id(bits_per_sample: u32, big_endian: bool) -> ffmpeg_sys_next::AVCodecID {
+    match (bits_per_sample, big_endian) {
+        (1..=16, false) => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_PCM_S16LE,
+        (1..=16, true) => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_PCM_S16BE,
+        (17..=24, false) => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_PCM_S24LE,
+        (17..=24, true) => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_PCM_S24BE,
+        (25..=32, false) => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_PCM_S32LE,
+        (25..=32, true) => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_PCM_S32BE,
+        _ => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_NONE,
     }
 }
 

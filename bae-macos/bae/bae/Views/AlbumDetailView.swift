@@ -18,6 +18,12 @@ private struct ExportSavePanel {
     let formatDelegate: ExportFormatDelegate
 }
 
+private struct ExportPanelChoice: Equatable {
+    let title: String
+    let extensionName: String
+    let selection: BridgeExportSelection
+}
+
 // MARK: - AlbumDetailView (smart wiring view)
 
 struct AlbumDetailView: View {
@@ -399,7 +405,7 @@ extension AlbumDetailView {
         }
     }
 
-    /// Export a release's files verbatim to a folder — a pure copy-out that
+    /// Export a release to a folder — a pure copy-out when Original is selected.
     /// changes no state, so it's offered regardless of the release's locality.
     /// The destination comes from the export-location setting (a fixed folder, or
     /// an `NSOpenPanel` when set to ask each time); the copy runs on the export
@@ -412,7 +418,11 @@ extension AlbumDetailView {
         else {
             return
         }
-        exports.enqueueExport(releaseId, targetDir)
+        exports.enqueueExport(
+            releaseId,
+            targetDir,
+            configStore.config.defaultReleaseExportSelection
+        )
     }
 
     private func presentManageConfirmSheet(releaseId: String) {
@@ -574,7 +584,22 @@ extension AlbumDetailView {
                 return
             }
 
-            let panel = makeExportSavePanel(stem: stem)
+            let originalExtension: String
+            do {
+                originalExtension = try await export.extensionForSelection(
+                    trackId,
+                    .original
+                )
+            }
+            catch is CancellationError {
+                return
+            }
+            catch {
+                exportError = error.localizedDescription
+                return
+            }
+            let choices = exportChoices(originalExtension: originalExtension)
+            let panel = makeExportSavePanel(stem: stem, choices: choices)
             let formatPopup = panel.formatPopup
             let response = panel.savePanel.runModal()
             _ = panel.formatDelegate  // prevent deallocation during modal
@@ -589,12 +614,10 @@ extension AlbumDetailView {
                 return
             }
 
-            let formatIndex = formatPopup.indexOfSelectedItem
-            UserDefaults.standard.set(formatIndex, forKey: "exportFormat")
-            let format: BridgeExportFormat = formatIndex == 0 ? .flac : .mp3
+            let selection = choices[formatPopup.indexOfSelectedItem].selection
             let outputPath = url.path(percentEncoded: false)
             do {
-                try await export.exportTrack(trackId, outputPath, format)
+                try await export.exportTrack(trackId, outputPath, selection)
             }
             catch is CancellationError {
                 // view dismissed mid-export; OutputFileGuard cleaned up
@@ -605,33 +628,58 @@ extension AlbumDetailView {
         }
     }
 
+    private func exportChoices(originalExtension: String) -> [ExportPanelChoice]
+    {
+        var choices = [
+            ExportPanelChoice(
+                title: String(localized: "Original"),
+                extensionName: originalExtension,
+                selection: .original
+            )
+        ]
+        choices.append(
+            contentsOf: configStore.config.exportPresets
+                .filter(\.appliesToTrack)
+                .map {
+                    ExportPanelChoice(
+                        title: $0.name,
+                        extensionName: $0.extension,
+                        selection: .preset(presetId: $0.id)
+                    )
+                }
+        )
+        return choices
+    }
+
     /// Build the save panel for a track export, with its format-picker accessory
     /// view wired to a delegate that keeps the filename extension in sync. The
-    /// caller runs the panel and reads `formatPopup` for the chosen format; the
-    /// delegate must be retained for the modal's lifetime.
+    /// caller runs the panel and reads `formatPopup` for the chosen selection;
+    /// the delegate must be retained for the modal's lifetime.
     private func makeExportSavePanel(
-        stem: String
+        stem: String,
+        choices: [ExportPanelChoice]
     ) -> ExportSavePanel {
-        let lastFormatIndex = UserDefaults.standard.integer(
-            forKey: "exportFormat"
-        )
-        let defaultExt = lastFormatIndex == 1 ? "mp3" : "flac"
+        let selectedIndex =
+            choices.firstIndex {
+                $0.selection == configStore.config.defaultTrackExportSelection
+            } ?? 0
+        let defaultExt = choices[selectedIndex].extensionName
 
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "\(stem).\(defaultExt)"
         panel.canCreateDirectories = true
 
         // Format picker accessory view with target-action to update extension
-        let formatDelegate = ExportFormatDelegate(panel: panel)
+        let formatDelegate = ExportFormatDelegate(
+            panel: panel,
+            choices: choices
+        )
         let formatPopup = NSPopUpButton(
             frame: NSRect(x: 0, y: 0, width: 200, height: 24),
             pullsDown: false
         )
-        formatPopup.addItems(withTitles: [
-            String(localized: "FLAC (Lossless)"),
-            String(localized: "MP3 (320 kbps)"),
-        ])
-        formatPopup.selectItem(at: lastFormatIndex)
+        formatPopup.addItems(withTitles: choices.map(\.title))
+        formatPopup.selectItem(at: selectedIndex)
         formatPopup.target = formatDelegate
         formatPopup.action = #selector(ExportFormatDelegate.formatChanged(_:))
 
@@ -1297,9 +1345,11 @@ struct ManageConfirmSheet: View {
 @MainActor
 private class ExportFormatDelegate: NSObject {
     weak var panel: NSSavePanel?
+    let choices: [ExportPanelChoice]
 
-    init(panel: NSSavePanel) {
+    init(panel: NSSavePanel, choices: [ExportPanelChoice]) {
         self.panel = panel
+        self.choices = choices
     }
 
     @objc
@@ -1307,7 +1357,7 @@ private class ExportFormatDelegate: NSObject {
         guard let panel else {
             return
         }
-        let ext = sender.indexOfSelectedItem == 0 ? "flac" : "mp3"
+        let ext = choices[sender.indexOfSelectedItem].extensionName
         let currentName = panel.nameFieldStringValue
         let stem = (currentName as NSString).deletingPathExtension
 

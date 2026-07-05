@@ -195,8 +195,7 @@
   <data name="sync.reconnect" xml:space="preserve"><value>دوبارہ جوڑیں</value></data>
   <data name="sync.synced" xml:space="preserve"><value>مطابقت پذیریed {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>مطابقت پذیریing…</value></data>
-  <data name="track.export.flac" xml:space="preserve"><value>FLAC (lossless)</value></data>
-  <data name="track.export.mp3" xml:space="preserve"><value>MP3 (320 kbps)</value></data>
+  <data name="track.export.original" xml:space="preserve"><value>Original</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>choose a لائبریری</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>create لائبریری</value></data>
   <data name="welcome.no_library" xml:space="preserve"><value>no لائبریری yet</value></data>
@@ -244,4 +243,11 @@
   <data name="composer.open_failed" xml:space="preserve"><value>Could not open composer detail</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
+  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Bit depth</value></data>
+  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Source</value></data>
+  <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
+  <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
+  <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
+  <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
+  <data name="settings.export.metadata_label" xml:space="preserve"><value>Metadata</value></data>
 </root>

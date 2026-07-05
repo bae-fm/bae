@@ -1101,6 +1101,9 @@ fn row_to_audio_format(row: &Row) -> coven::rusqlite::Result<DbAudioFormat> {
         track_id: row.get("track_id")?,
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
         pregap_ms: row.get("pregap_ms")?,
+        generated_pregap_ms: row.get("generated_pregap_ms")?,
+        pregap_samples: row.get("pregap_samples")?,
+        generated_pregap_samples: row.get("generated_pregap_samples")?,
         sample_rate: row.get("sample_rate")?,
         bits_per_sample: row.get("bits_per_sample")?,
         channels: row.get("channels")?,
@@ -1470,14 +1473,17 @@ fn insert_audio_format_row(
     conn.execute(
         r#"
         INSERT INTO audio_formats (
-            id, track_id, content_type, pregap_ms, sample_rate, bits_per_sample, channels, file_id, start_sample, end_sample, end_byte, start_byte, track_loudness_lufs, track_peak_linear, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, track_id, content_type, pregap_ms, generated_pregap_ms, pregap_samples, generated_pregap_samples, sample_rate, bits_per_sample, channels, file_id, start_sample, end_sample, end_byte, start_byte, track_loudness_lufs, track_peak_linear, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             af.id,
             af.track_id,
             af.content_type.as_str(),
             af.pregap_ms,
+            af.generated_pregap_ms,
+            af.pregap_samples,
+            af.generated_pregap_samples,
             af.sample_rate,
             af.bits_per_sample,
             af.channels,

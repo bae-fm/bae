@@ -10,6 +10,7 @@ import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeExportLocation
 import uniffi.bae_bridge.BridgeExportMetadata
+import uniffi.bae_bridge.BridgeExportSelection
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeRelease
@@ -182,6 +183,9 @@ object BridgeFixtures {
                     discNumber = true,
                     coverArt = true,
                 ),
+            exportPresets = emptyList(),
+            defaultTrackExportSelection = BridgeExportSelection.Original,
+            defaultReleaseExportSelection = BridgeExportSelection.Original,
             mcp = BridgeMcpConfig(enabled = false, port = 47777u),
             discogsTokenStatus = BridgeDiscogsTokenStatus.NOT_CONFIGURED,
             discogsUsable = false,

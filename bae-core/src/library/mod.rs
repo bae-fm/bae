@@ -14,7 +14,7 @@ pub use download_snapshot::{
     DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState, DownloadTransferProgress,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use export::ExportFormat;
+pub use export::ExportService;
 pub use export_snapshot::{ExportOp, ExportProgress, ExportSnapshot, ExportState};
 pub use manager::*;
 pub use outbox_snapshot::{
@@ -35,7 +35,7 @@ use tracing::{debug, warn};
 pub use tokio_util::sync::CancellationToken;
 
 pub type DownloadQueue = ReleaseQueue<(), DownloadTransferProgress>;
-pub type ExportQueue = ReleaseQueue<PathBuf, u8>;
+pub type ExportQueue = ReleaseQueue<export_snapshot::ExportRequest, u8>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RestoreFromCodeError {

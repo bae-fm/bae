@@ -57,7 +57,7 @@ jobs:
     runs-on: windows-latest
     needs: calculate-version
     env:
-      FFMPEG_VERSION: v8.1.2-bae4
+      FFMPEG_VERSION: v8.1.2-bae5
       BAE_ENVIRONMENT: production
       BAE_DATADOG_SITE: ${{ secrets.BAE_DATADOG_SITE }}
       BAE_DATADOG_CLIENT_TOKEN: ${{ secrets.BAE_DATADOG_CLIENT_TOKEN }}
@@ -125,7 +125,7 @@ jobs:
       - name: Provision ffmpeg's mingw runtime deps (msys2)
         shell: pwsh
         run: |
-          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-lame mingw-w64-x86_64-libiconv mingw-w64-x86_64-zlib mingw-w64-x86_64-gcc-libs"
+          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-lame mingw-w64-x86_64-opus mingw-w64-x86_64-libiconv mingw-w64-x86_64-zlib mingw-w64-x86_64-gcc-libs"
           echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
       - name: Build the Windows FFI cdylib (release, per edition)
@@ -187,7 +187,7 @@ jobs:
 
           # FFmpeg DLLs (the FFI links them) + their mingw runtime deps + libdiscid.
           Copy-Item "$env:FFMPEG_DIR\bin\*.dll" $stage -Force
-          foreach ($d in @("libiconv-2.dll","libmp3lame-0.dll","zlib1.dll","libwinpthread-1.dll","libgcc_s_seh-1.dll","libstdc++-6.dll")) {
+          foreach ($d in @("libiconv-2.dll","libmp3lame-0.dll","libopus-0.dll","zlib1.dll","libwinpthread-1.dll","libgcc_s_seh-1.dll","libstdc++-6.dll")) {
             $src = "C:\msys64\mingw64\bin\$d"
             if (Test-Path $src) { Copy-Item $src $stage -Force }
           }

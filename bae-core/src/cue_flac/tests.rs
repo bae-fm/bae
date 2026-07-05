@@ -86,13 +86,10 @@ FILE "02.m4a" WAVE
 }
 
 #[test]
-fn parse_per_track_rip_with_file_intruding_mid_track_body() {
-    // Per-track rip convention: each track "owns" the pregap-tail of the
-    // previous file. Track 2's INDEX 00 (pregap start) sits at the end of
-    // file 1; FILE for file 2 appears mid-track-body; track 2's INDEX 01
-    // (start) sits at the beginning of file 2. The track's
-    // `file_reference` must be the file where INDEX 01 lives (the one
-    // we'd actually play), not the file where INDEX 00 lives.
+fn parse_per_track_rip_with_cross_file_pregap_fails_loud() {
+    // Track 2's INDEX 00 is in file 1 and INDEX 01 is in file 2. That shape
+    // requires guessing whether the previous file's tail belongs to track 1,
+    // track 2, or export-only gap handling, so the parser rejects it.
     let cue_content = r#"TITLE "Album Title"
 PERFORMER "Artist Name"
 FILE "01.wav" WAVE
@@ -110,29 +107,7 @@ FILE "02.wav" WAVE
 FILE "03.wav" WAVE
     INDEX 01 00:00:00
 "#;
-    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
-    assert_eq!(sheet.tracks.len(), 3);
-    assert_eq!(sheet.tracks[0].file_reference, "01.wav");
-    assert_eq!(sheet.tracks[0].title.as_deref(), Some("Track One"));
-    // Track 2 has pregap in file 1 (INDEX 00 at 2:55:33), start in
-    // file 2 (INDEX 01 at 00:00:00). `file_reference` is the start file.
-    assert_eq!(sheet.tracks[1].file_reference, "02.wav");
-    assert_eq!(sheet.tracks[1].title.as_deref(), Some("Track Two"));
-    assert_eq!(
-        sheet.tracks[1].pregap_cue_frames,
-        Some((2 * 60 + 55) * 75 + 33),
-    );
-    assert_eq!(sheet.tracks[1].start_cue_frames, 0);
-    // Track 3 same shape: pregap in file 2, start in file 3.
-    assert_eq!(sheet.tracks[2].file_reference, "03.wav");
-    assert_eq!(sheet.tracks[2].title.as_deref(), Some("Track Three"));
-    assert_eq!(
-        sheet.tracks[2].pregap_cue_frames,
-        Some((2 * 60 + 17) * 75 + 46),
-    );
-    assert_eq!(sheet.tracks[2].start_cue_frames, 0);
-    // Multi-FILE — no single playback file.
-    assert!(sheet.single_file().is_none());
+    assert!(CueFlacProcessor::parse_cue_content(cue_content).is_err());
 }
 
 #[test]
@@ -428,6 +403,23 @@ FILE "Artist Name - Album Title.flac" WAVE
     assert_eq!(sheet.tracks.len(), 2);
     assert_eq!(sheet.tracks[0].title.as_deref(), Some("Track One"));
     assert_eq!(sheet.tracks[1].title.as_deref(), Some("Track Two"));
+}
+
+#[test]
+fn parse_track_rejects_audio_and_generated_pregap_together() {
+    let cue_content = r#"PERFORMER "Artist Name"
+TITLE "Album Title"
+FILE "Artist Name - Album Title.flac" WAVE
+  TRACK 01 AUDIO
+    TITLE "Track One"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track Two"
+    INDEX 00 03:43:00
+    PREGAP 00:02:00
+    INDEX 01 03:45:00
+"#;
+    assert!(CueFlacProcessor::parse_cue_content(cue_content).is_err());
 }
 
 #[test]

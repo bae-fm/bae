@@ -29,6 +29,15 @@ public sealed class Settings
     /// <summary>Which metadata tags a single-track export embeds.</summary>
     public ExportMetadata ExportMetadata { get; set; } = new();
 
+    /// <summary>Configured export presets offered by release and track export.</summary>
+    public List<ExportPreset> ExportPresets { get; set; } = new();
+
+    /// <summary>Default selected option in the track export picker.</summary>
+    public ExportSelection DefaultTrackExportSelection { get; set; } = ExportSelection.Original();
+
+    /// <summary>Default selected option in the release export picker.</summary>
+    public ExportSelection DefaultReleaseExportSelection { get; set; } = ExportSelection.Original();
+
     public bool McpEnabled { get; set; }
     public ushort McpPort { get; set; }
     public McpServerStatus McpStatus { get; set; } = new();
@@ -145,6 +154,49 @@ public sealed class ExportMetadata
     public bool TrackNumber { get; set; } = true;
     public bool DiscNumber { get; set; } = true;
     public bool CoverArt { get; set; } = true;
+}
+
+public sealed class ExportPreset
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public ExportPresetCodec Codec { get; set; } = new();
+    public string Extension { get; set; } = string.Empty;
+    public string FilenameTemplate { get; set; } = string.Empty;
+    public ExportMetadata Metadata { get; set; } = new();
+    public string PregapPlacement { get; set; } = "append_to_previous_except_htoa";
+    public bool AppliesToTrack { get; set; }
+    public bool AppliesToRelease { get; set; }
+
+    [JsonIgnore]
+    public string FileExtension => Extension.StartsWith(".", StringComparison.Ordinal) ? Extension : $".{Extension}";
+
+    [JsonIgnore]
+    public string TrackPickerLabel => Name;
+}
+
+public sealed class ExportPresetCodec
+{
+    public string Kind { get; set; } = string.Empty;
+    public string BitDepth { get; set; } = "source";
+    public uint BitrateKbps { get; set; }
+}
+
+public sealed class ExportSelection
+{
+    public string Kind { get; set; } = "original";
+    public string? PresetId { get; set; }
+
+    public static ExportSelection Original() => new() { Kind = "original" };
+
+    public static ExportSelection Preset(string presetId) => new()
+    {
+        Kind = "preset",
+        PresetId = presetId,
+    };
+
+    [JsonIgnore]
+    public bool IsOriginal => Kind == "original";
 }
 
 public sealed class McpServerStatus

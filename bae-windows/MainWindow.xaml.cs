@@ -1639,8 +1639,8 @@ public sealed partial class MainWindow : Window
             case "PlaybackPlaying":
             case "PlaybackPaused":
                 NowPlayingBar.Visibility = Visibility.Visible;
-                var positionState = _nowPlaying?.TrackId == evt.TrackId
-                    ? _nowPlaying.Position
+                var positionState = _nowPlaying is { } nowPlaying && nowPlaying.TrackId == evt.TrackId
+                    ? nowPlaying.Position
                     : null;
                 _nowPlaying = new NowPlayingState(evt.AlbumId, evt.TrackId, positionState);
                 NpTitle.Text = evt.TrackTitle ?? string.Empty;
@@ -3759,10 +3759,40 @@ public sealed partial class MainWindow : Window
                 var picker = new global::Windows.Storage.Pickers.FileSavePicker();
                 WinRT.Interop.InitializeWithWindow.Initialize(
                     picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
-                // The chosen file type decides the export format; its extension
-                // round-trips back to the format string the FFI expects.
-                picker.FileTypeChoices.Add(Loc.Chrome("track.export.flac"), new List<string> { ".flac" });
-                picker.FileTypeChoices.Add(Loc.Chrome("track.export.mp3"), new List<string> { ".mp3" });
+                var settingsJson = await System.Threading.Tasks.Task.Run(() => NativeBae.SettingsJson(_handle));
+                if (settingsJson is null)
+                {
+                    exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
+                    exportStatus.Visibility = Visibility.Visible;
+                    return;
+                }
+                var settings = JsonSerializer.Deserialize<Settings>(settingsJson, JsonOptions)
+                    ?? new Settings();
+                var trackPresets = settings.ExportPresets
+                    .Where(preset => preset.AppliesToTrack)
+                    .ToList();
+                var originalSelection = ExportSelection.Original();
+                var originalSelectionJson = JsonSerializer.Serialize(originalSelection, JsonOptions);
+                var originalExtension = await System.Threading.Tasks.Task.Run(
+                    () => NativeBae.ExportTrackExtension(_handle, track.TrackId, originalSelectionJson));
+                if (originalExtension is null)
+                {
+                    exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
+                    exportStatus.Visibility = Visibility.Visible;
+                    return;
+                }
+                var choices = new List<(string Label, string Extension, ExportSelection Selection)>
+                {
+                    (Loc.Chrome("track.export.original"), $".{originalExtension}", originalSelection),
+                };
+                choices.AddRange(trackPresets.Select(preset => (
+                    preset.TrackPickerLabel,
+                    preset.FileExtension,
+                    ExportSelection.Preset(preset.Id))));
+                foreach (var choice in choices)
+                {
+                    picker.FileTypeChoices.Add(choice.Label, new List<string> { choice.Extension });
+                }
                 // Seed the suggested name from the configured filename template,
                 // which the core renders and sanitizes from this track's metadata
                 // (falling back to the title, then a fixed stem, on its own). A
@@ -3793,10 +3823,14 @@ public sealed partial class MainWindow : Window
                     return;
                 }
 
-                var format = file.FileType.Equals(".mp3", StringComparison.OrdinalIgnoreCase) ? "mp3" : "flac";
+                var selection = choices
+                    .Where(choice => file.FileType.Equals(choice.Extension, StringComparison.OrdinalIgnoreCase))
+                    .Select(choice => choice.Selection)
+                    .FirstOrDefault() ?? ExportSelection.Original();
+                var selectionJson = JsonSerializer.Serialize(selection, JsonOptions);
                 var path = file.Path;
                 var error = await System.Threading.Tasks.Task.Run(
-                    () => NativeBae.ExportTrack(_handle, track.TrackId, path, format));
+                    () => NativeBae.ExportTrack(_handle, track.TrackId, path, selectionJson));
                 if (error is not null)
                 {
                     exportStatus.Text = error;
@@ -5419,6 +5453,20 @@ public sealed partial class MainWindow : Window
         var exportTrackNumber = new CheckBox { Content = Loc.Chrome("settings.export.metadata.track_number"), IsChecked = s.ExportMetadata.TrackNumber };
         var exportDiscNumber = new CheckBox { Content = Loc.Chrome("settings.export.metadata.disc_number"), IsChecked = s.ExportMetadata.DiscNumber };
         var exportCoverArt = new CheckBox { Content = Loc.Chrome("settings.export.metadata.cover_art"), IsChecked = s.ExportMetadata.CoverArt };
+        var defaultTrackExport = new ComboBox { Header = Loc.Chrome("settings.export.default_track_format") };
+        var defaultReleaseExport = new ComboBox { Header = Loc.Chrome("settings.export.default_release_format") };
+        var presetPanel = new StackPanel { Spacing = 8 };
+        var addPresetButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        var addFlacPreset = new Button { Content = Loc.Chrome("settings.export.add_flac") };
+        var addMp3Preset = new Button { Content = Loc.Chrome("settings.export.add_mp3") };
+        var addOpusPreset = new Button { Content = Loc.Chrome("settings.export.add_opus") };
+        var addWavPreset = new Button { Content = Loc.Chrome("settings.export.add_wav") };
+        var addAiffPreset = new Button { Content = Loc.Chrome("settings.export.add_aiff") };
+        addPresetButtons.Children.Add(addFlacPreset);
+        addPresetButtons.Children.Add(addMp3Preset);
+        addPresetButtons.Children.Add(addOpusPreset);
+        addPresetButtons.Children.Add(addWavPreset);
+        addPresetButtons.Children.Add(addAiffPreset);
 
         void RenderExport(Settings settings)
         {
@@ -5436,8 +5484,262 @@ public sealed partial class MainWindow : Window
             exportTrackNumber.IsChecked = settings.ExportMetadata.TrackNumber;
             exportDiscNumber.IsChecked = settings.ExportMetadata.DiscNumber;
             exportCoverArt.IsChecked = settings.ExportMetadata.CoverArt;
+            PopulateExportSelection(defaultTrackExport, settings, release: false);
+            PopulateExportSelection(defaultReleaseExport, settings, release: true);
+            RenderExportPresets(settings);
             refreshingSettings = false;
         }
+
+        void PopulateExportSelection(ComboBox combo, Settings settings, bool release)
+        {
+            combo.Items.Clear();
+            var original = ExportSelection.Original();
+            var selected = release ? settings.DefaultReleaseExportSelection : settings.DefaultTrackExportSelection;
+            combo.Items.Add(new ComboBoxItem
+            {
+                Content = Loc.Chrome("track.export.original"),
+                Tag = original,
+                IsSelected = SameExportSelection(selected, original),
+            });
+            foreach (var preset in settings.ExportPresets.Where(p => release ? p.AppliesToRelease : p.AppliesToTrack))
+            {
+                var selection = ExportSelection.Preset(preset.Id);
+                combo.Items.Add(new ComboBoxItem
+                {
+                    Content = preset.Name,
+                    Tag = selection,
+                    IsSelected = SameExportSelection(selected, selection),
+                });
+            }
+        }
+
+        bool SameExportSelection(ExportSelection a, ExportSelection b) =>
+            a.Kind == b.Kind && a.PresetId == b.PresetId;
+
+        string CodecLabel(ExportPresetCodec codec) => codec.Kind switch
+        {
+            "flac" => "FLAC",
+            "mp3" => $"MP3 {codec.BitrateKbps} kbps",
+            "opus_ogg" => $"Opus {codec.BitrateKbps} kbps",
+            "wav" => "WAV",
+            "aiff" => "AIFF",
+            _ => codec.Kind,
+        };
+
+        void RenderExportPresets(Settings settings)
+        {
+            presetPanel.Children.Clear();
+            foreach (var preset in settings.ExportPresets)
+            {
+                var name = new TextBox
+                {
+                    Header = Loc.Chrome("settings.export.preset_name"),
+                    Text = preset.Name,
+                };
+                var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+                var codec = new TextBlock
+                {
+                    Text = CodecLabel(preset.Codec),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    MinWidth = 120,
+                };
+                var track = new CheckBox
+                {
+                    Content = Loc.Chrome("settings.export.preset_track"),
+                    IsChecked = preset.AppliesToTrack,
+                };
+                var release = new CheckBox
+                {
+                    Content = Loc.Chrome("settings.export.preset_release"),
+                    IsChecked = preset.AppliesToRelease,
+                };
+                row.Children.Add(codec);
+                row.Children.Add(track);
+                row.Children.Add(release);
+                var codecEditor = BuildPresetCodecEditor(preset);
+
+                var pregap = new ComboBox { Header = Loc.Chrome("settings.export.preset_pregap") };
+                foreach (var item in ExportPregapChoices())
+                {
+                    pregap.Items.Add(new ComboBoxItem
+                    {
+                        Content = item.Label,
+                        Tag = item.Value,
+                        IsSelected = preset.PregapPlacement == item.Value,
+                    });
+                }
+                var metadataEditor = BuildPresetMetadataEditor(preset.Metadata);
+                var save = new Button { Content = Loc.Chrome("action.save") };
+                var remove = new Button { Content = Loc.Chrome("action.remove") };
+                var editor = new StackPanel { Spacing = 6 };
+                editor.Children.Add(name);
+                editor.Children.Add(row);
+                editor.Children.Add(codecEditor.View);
+                editor.Children.Add(pregap);
+                editor.Children.Add(metadataEditor);
+                var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+                buttons.Children.Add(save);
+                buttons.Children.Add(remove);
+                editor.Children.Add(buttons);
+                presetPanel.Children.Add(editor);
+
+                save.Click += async (_, _) =>
+                {
+                    preset.Name = name.Text ?? string.Empty;
+                    preset.AppliesToTrack = track.IsChecked == true;
+                    preset.AppliesToRelease = release.IsChecked == true;
+                    if (pregap.SelectedItem is ComboBoxItem selected && selected.Tag is string placement)
+                    {
+                        preset.PregapPlacement = placement;
+                    }
+                    codecEditor.Apply();
+                    preset.Metadata = ReadPresetMetadata(metadataEditor);
+                    await SaveExportPresets(settings.ExportPresets);
+                };
+                remove.Click += async (_, _) =>
+                {
+                    settings.ExportPresets.Remove(preset);
+                    await SaveExportPresets(settings.ExportPresets);
+                };
+            }
+        }
+
+        (StackPanel View, Action Apply) BuildPresetCodecEditor(ExportPreset preset)
+        {
+            var panel = new StackPanel { Spacing = 6 };
+            switch (preset.Codec.Kind)
+            {
+                case "flac":
+                case "wav":
+                case "aiff":
+                    var bitDepth = new ComboBox { Header = Loc.Chrome("settings.export.bit_depth_label") };
+                    foreach (var item in ExportBitDepthChoices())
+                    {
+                        bitDepth.Items.Add(new ComboBoxItem
+                        {
+                            Content = item.Label,
+                            Tag = item.Value,
+                            IsSelected = preset.Codec.BitDepth == item.Value,
+                        });
+                    }
+                    panel.Children.Add(bitDepth);
+                    return (
+                        panel,
+                        () =>
+                        {
+                            if (bitDepth.SelectedItem is ComboBoxItem selected && selected.Tag is string selectedBitDepth)
+                            {
+                                preset.Codec.BitDepth = selectedBitDepth;
+                            }
+                        }
+                    );
+                case "mp3":
+                case "opus_ogg":
+                    var bitrate = new TextBox
+                    {
+                        Header = Loc.Chrome("settings.export.bitrate"),
+                        Text = preset.Codec.BitrateKbps.ToString(CultureInfo.InvariantCulture),
+                    };
+                    panel.Children.Add(bitrate);
+                    return (
+                        panel,
+                        () =>
+                        {
+                            if (uint.TryParse(bitrate.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var bitrateKbps))
+                            {
+                                preset.Codec.BitrateKbps = bitrateKbps;
+                                return;
+                            }
+                            preset.Codec.BitrateKbps = 0;
+                        }
+                    );
+                default:
+                    return (panel, () => { });
+            }
+        }
+
+        StackPanel BuildPresetMetadataEditor(ExportMetadata metadata)
+        {
+            var panel = new StackPanel { Spacing = 4 };
+            panel.Children.Add(new TextBlock { Text = Loc.Chrome("settings.export.metadata_label") });
+            panel.Children.Add(new CheckBox
+            {
+                Content = Loc.Chrome("settings.export.metadata.title"),
+                IsChecked = metadata.Title,
+                Tag = "title",
+            });
+            panel.Children.Add(new CheckBox
+            {
+                Content = Loc.Chrome("settings.export.metadata.artist"),
+                IsChecked = metadata.Artist,
+                Tag = "artist",
+            });
+            panel.Children.Add(new CheckBox
+            {
+                Content = Loc.Chrome("settings.export.metadata.album"),
+                IsChecked = metadata.Album,
+                Tag = "album",
+            });
+            panel.Children.Add(new CheckBox
+            {
+                Content = Loc.Chrome("settings.export.metadata.year"),
+                IsChecked = metadata.Year,
+                Tag = "year",
+            });
+            panel.Children.Add(new CheckBox
+            {
+                Content = Loc.Chrome("settings.export.metadata.track_number"),
+                IsChecked = metadata.TrackNumber,
+                Tag = "track_number",
+            });
+            panel.Children.Add(new CheckBox
+            {
+                Content = Loc.Chrome("settings.export.metadata.disc_number"),
+                IsChecked = metadata.DiscNumber,
+                Tag = "disc_number",
+            });
+            panel.Children.Add(new CheckBox
+            {
+                Content = Loc.Chrome("settings.export.metadata.cover_art"),
+                IsChecked = metadata.CoverArt,
+                Tag = "cover_art",
+            });
+            return panel;
+        }
+
+        ExportMetadata ReadPresetMetadata(StackPanel panel)
+        {
+            bool Checked(string tag) => panel.Children
+                .OfType<CheckBox>()
+                .First(box => box.Tag is string value && value == tag)
+                .IsChecked == true;
+
+            return new ExportMetadata
+            {
+                Title = Checked("title"),
+                Artist = Checked("artist"),
+                Album = Checked("album"),
+                Year = Checked("year"),
+                TrackNumber = Checked("track_number"),
+                DiscNumber = Checked("disc_number"),
+                CoverArt = Checked("cover_art"),
+            };
+        }
+
+        List<(string Label, string Value)> ExportPregapChoices() => new()
+        {
+            (Loc.Chrome("settings.export.pregap.append_except_htoa"), "append_to_previous_except_htoa"),
+            (Loc.Chrome("settings.export.pregap.append_including_htoa"), "append_to_previous_including_htoa"),
+            (Loc.Chrome("settings.export.pregap.exclude"), "exclude"),
+        };
+
+        List<(string Label, string Value)> ExportBitDepthChoices() => new()
+        {
+            (Loc.Chrome("settings.export.bit_depth.source"), "source"),
+            (Loc.Chrome("settings.export.bit_depth.bits16"), "bits16"),
+            (Loc.Chrome("settings.export.bit_depth.bits24"), "bits24"),
+            (Loc.Chrome("settings.export.bit_depth.bits32"), "bits32"),
+        };
 
         async System.Threading.Tasks.Task SaveExportTemplate()
         {
@@ -5489,6 +5791,92 @@ public sealed partial class MainWindow : Window
             // On success a ConfigChanged re-read settles the checkboxes via RenderExport.
         }
 
+        async System.Threading.Tasks.Task SaveExportPresets(List<ExportPreset> presets)
+        {
+            if (refreshingSettings)
+            {
+                return;
+            }
+
+            ClearSettingsError();
+            var json = JsonSerializer.Serialize(presets, JsonOptions);
+            var error = await System.Threading.Tasks.Task.Run(
+                () => NativeBae.SetExportPresets(_handle, json));
+            if (error is not null)
+            {
+                ShowSettingsError(error);
+                _refreshSettings?.Invoke();
+            }
+        }
+
+        async System.Threading.Tasks.Task SaveDefaultExportSelection(ComboBox combo, bool release)
+        {
+            if (refreshingSettings || combo.SelectedItem is not ComboBoxItem item || item.Tag is not ExportSelection selection)
+            {
+                return;
+            }
+
+            ClearSettingsError();
+            var json = JsonSerializer.Serialize(selection, JsonOptions);
+            var error = await System.Threading.Tasks.Task.Run(() => release
+                ? NativeBae.SetDefaultReleaseExportSelection(_handle, json)
+                : NativeBae.SetDefaultTrackExportSelection(_handle, json));
+            if (error is not null)
+            {
+                ShowSettingsError(error);
+                _refreshSettings?.Invoke();
+            }
+        }
+
+        ExportPreset MakeExportPreset(string kind)
+        {
+            var codec = kind switch
+            {
+                "mp3" => new ExportPresetCodec { Kind = "mp3", BitrateKbps = 320 },
+                "opus_ogg" => new ExportPresetCodec { Kind = "opus_ogg", BitrateKbps = 192 },
+                "wav" => new ExportPresetCodec { Kind = "wav", BitDepth = "source" },
+                "aiff" => new ExportPresetCodec { Kind = "aiff", BitDepth = "source" },
+                _ => new ExportPresetCodec { Kind = "flac", BitDepth = "source" },
+            };
+            var extension = kind switch
+            {
+                "mp3" => "mp3",
+                "opus_ogg" => "ogg",
+                "wav" => "wav",
+                "aiff" => "aiff",
+                _ => "flac",
+            };
+            var label = kind switch
+            {
+                "mp3" => "MP3",
+                "opus_ogg" => "Opus",
+                "wav" => "WAV",
+                "aiff" => "AIFF",
+                _ => "FLAC",
+            };
+            return new ExportPreset
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Name = label,
+                Codec = codec,
+                Extension = extension,
+                FilenameTemplate = exportTemplate.Text ?? string.Empty,
+                Metadata = new ExportMetadata
+                {
+                    Title = exportTitle.IsChecked == true,
+                    Artist = exportArtist.IsChecked == true,
+                    Album = exportAlbum.IsChecked == true,
+                    Year = exportYear.IsChecked == true,
+                    TrackNumber = exportTrackNumber.IsChecked == true,
+                    DiscNumber = exportDiscNumber.IsChecked == true,
+                    CoverArt = exportCoverArt.IsChecked == true,
+                },
+                PregapPlacement = "append_to_previous_except_htoa",
+                AppliesToTrack = true,
+                AppliesToRelease = true,
+            };
+        }
+
         exportTemplate.LostFocus += async (_, _) => await SaveExportTemplate();
         exportTemplate.KeyDown += async (_, args) =>
         {
@@ -5512,6 +5900,35 @@ public sealed partial class MainWindow : Window
         exportDiscNumber.Unchecked += async (_, _) => await SaveExportMetadata();
         exportCoverArt.Checked += async (_, _) => await SaveExportMetadata();
         exportCoverArt.Unchecked += async (_, _) => await SaveExportMetadata();
+        defaultTrackExport.SelectionChanged += async (_, _) =>
+            await SaveDefaultExportSelection(defaultTrackExport, release: false);
+        defaultReleaseExport.SelectionChanged += async (_, _) =>
+            await SaveDefaultExportSelection(defaultReleaseExport, release: true);
+        addFlacPreset.Click += async (_, _) =>
+        {
+            s.ExportPresets.Add(MakeExportPreset("flac"));
+            await SaveExportPresets(s.ExportPresets);
+        };
+        addMp3Preset.Click += async (_, _) =>
+        {
+            s.ExportPresets.Add(MakeExportPreset("mp3"));
+            await SaveExportPresets(s.ExportPresets);
+        };
+        addOpusPreset.Click += async (_, _) =>
+        {
+            s.ExportPresets.Add(MakeExportPreset("opus_ogg"));
+            await SaveExportPresets(s.ExportPresets);
+        };
+        addWavPreset.Click += async (_, _) =>
+        {
+            s.ExportPresets.Add(MakeExportPreset("wav"));
+            await SaveExportPresets(s.ExportPresets);
+        };
+        addAiffPreset.Click += async (_, _) =>
+        {
+            s.ExportPresets.Add(MakeExportPreset("aiff"));
+            await SaveExportPresets(s.ExportPresets);
+        };
 
         var automationLabel = new TextBlock
         {
@@ -5641,6 +6058,8 @@ public sealed partial class MainWindow : Window
         content.Children.Add(exportLabel);
         content.Children.Add(exportTemplate);
         content.Children.Add(exportTokensHelp);
+        content.Children.Add(defaultTrackExport);
+        content.Children.Add(defaultReleaseExport);
         content.Children.Add(exportTitle);
         content.Children.Add(exportArtist);
         content.Children.Add(exportAlbum);
@@ -5648,6 +6067,9 @@ public sealed partial class MainWindow : Window
         content.Children.Add(exportTrackNumber);
         content.Children.Add(exportDiscNumber);
         content.Children.Add(exportCoverArt);
+        content.Children.Add(new TextBlock { Text = Loc.Chrome("settings.export.presets"), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        content.Children.Add(addPresetButtons);
+        content.Children.Add(presetPanel);
         content.Children.Add(automationLabel);
         content.Children.Add(mcpEnabled);
         content.Children.Add(mcpPort);

@@ -65,6 +65,95 @@ impl LibraryManager {
         self.config_handle.update(|c| c.export_metadata = metadata)
     }
 
+    /// Configured export presets for track and release export.
+    pub fn export_presets(&self) -> Vec<crate::config::ExportPreset> {
+        self.config_handle.config().export_presets.clone()
+    }
+
+    /// Replace the configured export presets. Persisted in the config file.
+    pub fn set_export_presets(
+        &self,
+        presets: Vec<crate::config::ExportPreset>,
+    ) -> Result<(), crate::config::ConfigError> {
+        let mut ids = std::collections::HashSet::new();
+        for preset in &presets {
+            preset.validate()?;
+            if !ids.insert(preset.id.clone()) {
+                return Err(crate::config::ConfigError::Config(format!(
+                    "duplicate export preset id {}",
+                    preset.id
+                )));
+            }
+        }
+        let config = self.config_handle.config();
+        Self::validate_export_selection_against_presets(
+            &config.default_track_export_selection,
+            &presets,
+            true,
+        )?;
+        Self::validate_export_selection_against_presets(
+            &config.default_release_export_selection,
+            &presets,
+            false,
+        )?;
+        self.config_handle.update(|c| c.export_presets = presets)
+    }
+
+    pub fn set_default_track_export_selection(
+        &self,
+        selection: crate::config::ExportSelection,
+    ) -> Result<(), crate::config::ConfigError> {
+        Self::validate_export_selection_against_presets(
+            &selection,
+            &self.config_handle.config().export_presets,
+            true,
+        )?;
+        self.config_handle
+            .update(|c| c.default_track_export_selection = selection)
+    }
+
+    pub fn set_default_release_export_selection(
+        &self,
+        selection: crate::config::ExportSelection,
+    ) -> Result<(), crate::config::ConfigError> {
+        Self::validate_export_selection_against_presets(
+            &selection,
+            &self.config_handle.config().export_presets,
+            false,
+        )?;
+        self.config_handle
+            .update(|c| c.default_release_export_selection = selection)
+    }
+
+    fn validate_export_selection_against_presets(
+        selection: &crate::config::ExportSelection,
+        presets: &[crate::config::ExportPreset],
+        track_level: bool,
+    ) -> Result<(), crate::config::ConfigError> {
+        let crate::config::ExportSelection::Preset { preset_id } = selection else {
+            return Ok(());
+        };
+        let Some(preset) = presets.iter().find(|preset| preset.id == *preset_id) else {
+            return Err(crate::config::ConfigError::Config(format!(
+                "unknown export preset {}",
+                preset_id
+            )));
+        };
+        let allowed = if track_level {
+            preset.applies_to_track
+        } else {
+            preset.applies_to_release
+        };
+        if allowed {
+            Ok(())
+        } else {
+            Err(crate::config::ConfigError::Config(format!(
+                "export preset {} does not apply to this export level",
+                preset_id
+            )))
+        }
+    }
+
     /// Set the local MCP server config. Port 0 means "ask the OS for any port",
     /// which would make the configured endpoint false, so reject it before
     /// persisting.

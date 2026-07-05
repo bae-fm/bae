@@ -496,6 +496,15 @@ pub struct DbAudioFormat {
     /// Pre-gap duration in milliseconds (CUE tracks with INDEX 00). When present,
     /// playback starts at INDEX 00 and shows negative time until INDEX 01.
     pub pregap_ms: Option<i64>,
+    /// Generated silence before INDEX 01 from a CUE `PREGAP` directive. This is
+    /// not bytes in the source file: natural playback emits zero samples for
+    /// this duration before decoding the source audio; direct starts skip it.
+    pub generated_pregap_ms: Option<i64>,
+    /// Exact audio pregap length in source samples. Millisecond fields are for
+    /// display/progress; export uses sample counts to place CUE gaps.
+    pub pregap_samples: Option<i64>,
+    /// Exact generated-silence pregap length in source samples.
+    pub generated_pregap_samples: Option<i64>,
     /// Sample rate in Hz (for time-to-sample conversion during seek).
     pub sample_rate: i64,
     /// Bits per sample (16, 24, etc.). None for lossy codecs where FFmpeg can't determine it.
@@ -975,6 +984,9 @@ impl DbAudioFormat {
             track_id: track_id.to_string(),
             content_type,
             pregap_ms: None,
+            generated_pregap_ms: None,
+            pregap_samples: None,
+            generated_pregap_samples: None,
             sample_rate,
             bits_per_sample,
             channels,
@@ -1016,6 +1028,21 @@ impl DbAudioFormat {
     /// Set pregap duration (CUE tracks with INDEX 00).
     pub fn with_pregap(mut self, pregap_ms: Option<i64>) -> Self {
         self.pregap_ms = pregap_ms;
+        self
+    }
+
+    pub fn with_generated_pregap(mut self, pregap_ms: Option<i64>) -> Self {
+        self.generated_pregap_ms = pregap_ms;
+        self
+    }
+
+    pub fn with_pregap_samples(mut self, pregap_samples: Option<i64>) -> Self {
+        self.pregap_samples = pregap_samples;
+        self
+    }
+
+    pub fn with_generated_pregap_samples(mut self, pregap_samples: Option<i64>) -> Self {
+        self.generated_pregap_samples = pregap_samples;
         self
     }
 }

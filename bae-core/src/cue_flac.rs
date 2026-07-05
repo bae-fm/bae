@@ -16,6 +16,18 @@ pub enum CueFlacError {
 /// Convert to samples with `cue_frames * sample_rate / 75` (exact for all standard rates).
 /// Convert to ms with `cue_frames * 1000 / 75` (lossy, for UI display only).
 #[derive(Debug, Clone)]
+pub struct CueIndex {
+    pub frames: u64,
+}
+
+#[derive(Debug, Clone)]
+pub enum CuePregap {
+    None,
+    Audio(CueIndex),
+    Silence { frames: u64 },
+}
+
+#[derive(Debug, Clone)]
 pub struct CueTrack {
     pub number: u32,
     pub title: Option<String>,
@@ -30,8 +42,12 @@ pub struct CueTrack {
     pub file_reference: String,
     /// INDEX 01 position in CUE frames
     pub start_cue_frames: u64,
+    /// Pregap source for this track.
+    pub pregap: CuePregap,
     /// INDEX 00 position in CUE frames (pregap start)
     pub pregap_cue_frames: Option<u64>,
+    /// Generated silent pregap from a CUE `PREGAP` directive, in CUE frames.
+    pub generated_pregap_frames: Option<u64>,
     /// Next track's boundary in CUE frames (None for last track)
     pub end_cue_frames: Option<u64>,
 }
@@ -39,7 +55,10 @@ pub struct CueTrack {
 impl CueTrack {
     /// Where audio bytes begin (CUE frames): INDEX 00 if pregap exists, else INDEX 01
     pub fn audio_start_cue_frames(&self) -> u64 {
-        self.pregap_cue_frames.unwrap_or(self.start_cue_frames)
+        match &self.pregap {
+            CuePregap::Audio(index) => index.frames,
+            CuePregap::None | CuePregap::Silence { .. } => self.start_cue_frames,
+        }
     }
 
     /// Where audio bytes begin, as sample position
@@ -78,6 +97,13 @@ impl CueTrack {
     pub fn pregap_duration_ms(&self) -> Option<u64> {
         self.pregap_cue_frames
             .map(|pregap| self.start_time_ms().saturating_sub(pregap * 1000 / 75))
+    }
+
+    pub fn generated_pregap_duration_ms(&self) -> Option<u64> {
+        match self.pregap {
+            CuePregap::Silence { frames } => Some(frames * 1000 / 75),
+            CuePregap::None | CuePregap::Audio(_) => None,
+        }
     }
 }
 
@@ -121,7 +147,8 @@ struct PendingCueTrack {
     title: Option<String>,
     performer: Option<String>,
     isrc: Option<String>,
-    pregap_cue_frames: Option<u64>,
+    pregap: Option<(u64, String)>,
+    generated_pregap_frames: Option<u64>,
     start: Option<(u64, String)>,
 }
 
@@ -132,7 +159,8 @@ impl PendingCueTrack {
             title: None,
             performer: None,
             isrc: None,
-            pregap_cue_frames: None,
+            pregap: None,
+            generated_pregap_frames: None,
             start: None,
         }
     }
@@ -141,6 +169,35 @@ impl PendingCueTrack {
         let (start_cue_frames, file_reference) = self.start.ok_or_else(|| {
             nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Tag))
         })?;
+        let pregap = match (self.pregap, self.generated_pregap_frames) {
+            (Some(_), Some(_)) => {
+                return Err(nom::Err::Failure(nom::error::Error::new(
+                    input,
+                    nom::error::ErrorKind::Tag,
+                )));
+            }
+            (Some((frames, pregap_file_reference)), None)
+                if pregap_file_reference == file_reference =>
+            {
+                CuePregap::Audio(CueIndex { frames })
+            }
+            (Some(_), None) => {
+                return Err(nom::Err::Failure(nom::error::Error::new(
+                    input,
+                    nom::error::ErrorKind::Tag,
+                )));
+            }
+            (None, Some(frames)) => CuePregap::Silence { frames },
+            (None, None) => CuePregap::None,
+        };
+        let pregap_cue_frames = match &pregap {
+            CuePregap::Audio(index) => Some(index.frames),
+            CuePregap::None | CuePregap::Silence { .. } => None,
+        };
+        let generated_pregap_frames = match pregap {
+            CuePregap::Silence { frames } => Some(frames),
+            CuePregap::None | CuePregap::Audio(_) => None,
+        };
         Ok(CueTrack {
             number: self.number,
             title: self.title,
@@ -148,7 +205,9 @@ impl PendingCueTrack {
             isrc: self.isrc,
             file_reference,
             start_cue_frames,
-            pregap_cue_frames: self.pregap_cue_frames,
+            pregap,
+            pregap_cue_frames,
+            generated_pregap_frames,
             end_cue_frames: None,
         })
     }
@@ -316,6 +375,7 @@ impl CueFlacProcessor {
             if let Some(pregap) = tracks[i].pregap_cue_frames {
                 if pregap <= tracks[i - 1].start_cue_frames {
                     tracks[i].pregap_cue_frames = None;
+                    tracks[i].pregap = CuePregap::None;
                 }
             }
         }
@@ -403,12 +463,18 @@ impl CueFlacProcessor {
             Some(("INDEX", rest)) => {
                 let (index_number, cue_frames) = Self::parse_index_values(input, rest)?;
                 match index_number {
-                    0 => track.pregap_cue_frames = Some(cue_frames),
+                    0 => track.pregap = Some((cue_frames, current_file.to_string())),
                     1 => {
                         track.start = Some((cue_frames, current_file.to_string()));
                     }
                     _ => {}
                 }
+            }
+            Some(("PREGAP", rest)) => {
+                let (_, cue_frames) = Self::parse_time(rest).map_err(|_| {
+                    nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+                })?;
+                track.generated_pregap_frames = Some(cue_frames);
             }
             Some((keyword, _)) if Self::track_keyword_is_known_skipped(keyword) => {}
             _ => warn!(
@@ -476,7 +542,6 @@ impl CueFlacProcessor {
     fn track_keyword_is_known_skipped(keyword: &str) -> bool {
         const TRACK_BODY_SKIPPED: &[&str] = &[
             "FLAGS",
-            "PREGAP",
             "POSTGAP",
             "CDTEXTFILE",
             "SONGWRITER",

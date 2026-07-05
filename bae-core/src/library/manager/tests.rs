@@ -64,6 +64,31 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
     (manager, temp_dir)
 }
 
+#[tokio::test]
+async fn set_export_presets_rejects_removing_selected_default() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    manager
+        .set_default_track_export_selection(crate::config::ExportSelection::Preset {
+            preset_id: "mp3".to_string(),
+        })
+        .unwrap();
+
+    let presets_without_mp3: Vec<_> = manager
+        .export_presets()
+        .into_iter()
+        .filter(|preset| preset.id != "mp3")
+        .collect();
+    let err = manager
+        .set_export_presets(presets_without_mp3)
+        .expect_err("selected default preset cannot be removed");
+
+    assert!(err.to_string().contains("unknown export preset mp3"));
+    assert!(manager
+        .export_presets()
+        .iter()
+        .any(|preset| preset.id == "mp3"));
+}
+
 async fn rename_table_for_test(manager: &LibraryManager, from: &str, to: &str) {
     let statement = format!("ALTER TABLE {from} RENAME TO {to}");
     manager
@@ -2615,7 +2640,11 @@ async fn export_queue_enqueue_dedups_and_cancels_while_paused() {
 
     let target = temp_dir.path().join("export-out");
     manager
-        .enqueue_export(&release_id, target.clone())
+        .enqueue_export(
+            &release_id,
+            target.clone(),
+            crate::config::ExportSelection::Original,
+        )
         .await
         .unwrap();
     let snap = manager.export_snapshot();
@@ -2623,13 +2652,17 @@ async fn export_queue_enqueue_dedups_and_cancels_while_paused() {
     assert_eq!(snap.ops.len(), 1);
     assert_eq!(snap.ops[0].title, "Test Album");
     assert_eq!(snap.ops[0].file_count, 1);
-    assert_eq!(snap.ops[0].payload, target);
+    assert_eq!(snap.ops[0].payload.target_dir, target);
     assert_eq!(snap.ops[0].state, crate::library::ExportState::Queued);
     assert!(snap.paused);
 
     // Re-enqueuing the same release is a no-op: still one entry.
     manager
-        .enqueue_export(&release_id, target.clone())
+        .enqueue_export(
+            &release_id,
+            target.clone(),
+            crate::config::ExportSelection::Original,
+        )
         .await
         .unwrap();
     assert_eq!(manager.export_snapshot().ops.len(), 1);
@@ -2672,7 +2705,11 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
 
     let target = temp_dir.path().join("export-out");
     manager
-        .enqueue_export(&release_id, target.clone())
+        .enqueue_export(
+            &release_id,
+            target.clone(),
+            crate::config::ExportSelection::Original,
+        )
         .await
         .unwrap();
 
@@ -2738,7 +2775,11 @@ async fn export_write_error_marks_failed_and_retries() {
     std::fs::write(&blocker, b"a file, not a directory").unwrap();
 
     manager
-        .enqueue_export(&release_id, blocker.clone())
+        .enqueue_export(
+            &release_id,
+            blocker.clone(),
+            crate::config::ExportSelection::Original,
+        )
         .await
         .unwrap();
 
@@ -2817,7 +2858,11 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     let target = temp_dir.path().join("export-out");
     std::fs::create_dir_all(&target).unwrap();
     manager
-        .enqueue_export(&release.id, target.clone())
+        .enqueue_export(
+            &release.id,
+            target.clone(),
+            crate::config::ExportSelection::Original,
+        )
         .await
         .unwrap();
     std::fs::remove_file(source_dir.join("02.flac")).unwrap();

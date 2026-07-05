@@ -236,8 +236,7 @@
   <data name="sync.reconnect" xml:space="preserve"><value>Reconnect</value></data>
   <data name="sync.synced" xml:space="preserve"><value>synced {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>syncing…</value></data>
-  <data name="track.export.flac" xml:space="preserve"><value>FLAC (lossless)</value></data>
-  <data name="track.export.mp3" xml:space="preserve"><value>MP3 (320 kbps)</value></data>
+  <data name="track.export.original" xml:space="preserve"><value>Original</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Couldn't prepare the export.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>choose a library</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>join a library</value></data>
@@ -287,6 +286,22 @@
   <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>Export</value></data>
+  <data name="settings.export.default_track_format" xml:space="preserve"><value>Default track format</value></data>
+  <data name="settings.export.default_release_format" xml:space="preserve"><value>Default release format</value></data>
+  <data name="settings.export.presets" xml:space="preserve"><value>Presets</value></data>
+  <data name="settings.export.preset_name" xml:space="preserve"><value>Name</value></data>
+  <data name="settings.export.preset_track" xml:space="preserve"><value>Track</value></data>
+  <data name="settings.export.preset_release" xml:space="preserve"><value>Release</value></data>
+  <data name="settings.export.preset_pregap" xml:space="preserve"><value>Pregap</value></data>
+  <data name="settings.export.add_flac" xml:space="preserve"><value>Add FLAC</value></data>
+  <data name="settings.export.add_mp3" xml:space="preserve"><value>Add MP3</value></data>
+  <data name="settings.export.add_opus" xml:space="preserve"><value>Add Opus</value></data>
+  <data name="settings.export.add_wav" xml:space="preserve"><value>Add WAV</value></data>
+  <data name="settings.export.add_aiff" xml:space="preserve"><value>Add AIFF</value></data>
+  <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>Append except HTOA</value></data>
+  <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>Append including HTOA</value></data>
+  <data name="settings.export.pregap.exclude" xml:space="preserve"><value>Exclude</value></data>
+  <data name="action.remove" xml:space="preserve"><value>Remove</value></data>
   <data name="settings.export.filename_format" xml:space="preserve"><value>Filename format</value></data>
   <data name="settings.export.tokens_help" xml:space="preserve"><value>Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
   <data name="settings.export.metadata.title" xml:space="preserve"><value>Title</value></data>
@@ -296,4 +311,11 @@
   <data name="settings.export.metadata.track_number" xml:space="preserve"><value>Track number</value></data>
   <data name="settings.export.metadata.disc_number" xml:space="preserve"><value>Disc number</value></data>
   <data name="settings.export.metadata.cover_art" xml:space="preserve"><value>Cover art</value></data>
+  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Bit depth</value></data>
+  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Source</value></data>
+  <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
+  <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
+  <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
+  <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
+  <data name="settings.export.metadata_label" xml:space="preserve"><value>Metadata</value></data>
 </root>

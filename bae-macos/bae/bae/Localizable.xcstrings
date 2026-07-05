@@ -26712,197 +26712,6 @@
         }
       }
     },
-    "FLAC (Lossless)": {
-      "comment": "Export format choice: FLAC lossless audio",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (sin pérdida)"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (sans perte)"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (verlustfrei)"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (sem perdas)"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC（ロスレス）"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC（无损）"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (بلا فقدان)"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (ללא אובדן)"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (без втрат)"
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (без загуба)"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (bezstratny)"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (bezeztrátový)"
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (bez gubitaka)"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC(무손실)"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLAC (Lossless)"
-          }
-        }
-      }
-    },
     "Failed": {
       "comment": "Download state badge: failed",
       "localizations": {
@@ -37784,197 +37593,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Looking up…"
-          }
-        }
-      }
-    },
-    "MP3 (320 kbps)": {
-      "comment": "Export format choice: MP3 at 320 kbps",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3（320 kbps）"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3（320 kbps）"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 кбіт/с)"
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kb/s)"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3(320 kbps)"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MP3 (320 kbps)"
           }
         }
       }
@@ -87109,6 +86727,3806 @@
           "stringUnit": {
             "state": "translated",
             "value": "No folder chosen"
+          }
+        }
+      }
+    },
+    "Default format": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default format"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Default format"
+          }
+        }
+      }
+    },
+    "Original": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Original"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Original"
+          }
+        }
+      }
+    },
+    "Presets": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presets"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Presets"
+          }
+        }
+      }
+    },
+    "Add preset": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add preset"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Add preset"
+          }
+        }
+      }
+    },
+    "Opus": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Opus"
+          }
+        }
+      }
+    },
+    "Append except HTOA": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Append except HTOA"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append except HTOA"
+          }
+        }
+      }
+    },
+    "Append including HTOA": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Append including HTOA"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Append including HTOA"
+          }
+        }
+      }
+    },
+    "Exclude": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exclude"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Exclude"
+          }
+        }
+      }
+    },
+    "Save presets": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save presets"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Save presets"
+          }
+        }
+      }
+    },
+    "FLAC": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FLAC"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "FLAC"
+          }
+        }
+      }
+    },
+    "MP3": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MP3"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MP3"
+          }
+        }
+      }
+    },
+    "WAV": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WAV"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "WAV"
+          }
+        }
+      }
+    },
+    "AIFF": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AIFF"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "AIFF"
+          }
+        }
+      }
+    },
+    "Bit depth": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bit depth"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bit depth"
+          }
+        }
+      }
+    },
+    "Source": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Source"
+          }
+        }
+      }
+    },
+    "16-bit": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "16-bit"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "16-bit"
+          }
+        }
+      }
+    },
+    "24-bit": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24-bit"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "24-bit"
+          }
+        }
+      }
+    },
+    "32-bit": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "32-bit"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "32-bit"
+          }
+        }
+      }
+    },
+    "Bitrate": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bitrate"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Bitrate"
+          }
+        }
+      }
+    },
+    "Metadata": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metadata"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Metadata"
           }
         }
       }

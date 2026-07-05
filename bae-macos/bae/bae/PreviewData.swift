@@ -717,6 +717,30 @@ enum PreviewData {
     /// Default single-track export filename template, for seeding preview
     /// configs (mirrors bae-core's `default_export_filename_template`).
     static let exportFilenameTemplate = "{track_number} - {title}"
+    static let exportPresets: [BridgeExportPreset] = [
+        BridgeExportPreset(
+            id: "flac",
+            name: "FLAC",
+            codec: .flac(bitDepth: .source),
+            extension: "flac",
+            filenameTemplate: exportFilenameTemplate,
+            metadata: .allEnabled,
+            pregapPlacement: .appendToPreviousExceptHtoa,
+            appliesToTrack: true,
+            appliesToRelease: true
+        ),
+        BridgeExportPreset(
+            id: "mp3",
+            name: "MP3",
+            codec: .mp3(bitrateKbps: 320),
+            extension: "mp3",
+            filenameTemplate: exportFilenameTemplate,
+            metadata: .allEnabled,
+            pregapPlacement: .appendToPreviousExceptHtoa,
+            appliesToTrack: true,
+            appliesToRelease: true
+        ),
+    ]
 
     /// Shared preview ConfigStore. ConfigStore is a non-Sendable `@Observable`,
     /// so it needs `@MainActor` isolation to hold as a static.
@@ -733,6 +757,9 @@ enum PreviewData {
                 exportLocation: .askEachTime,
                 exportFilenameTemplate: exportFilenameTemplate,
                 exportMetadata: .allEnabled,
+                exportPresets: exportPresets,
+                defaultTrackExportSelection: .original,
+                defaultReleaseExportSelection: .original,
                 mcp: BridgeMcpConfig(enabled: false, port: 47777),
                 discogsTokenStatus: .notConfigured,
                 discogsUsable: false,

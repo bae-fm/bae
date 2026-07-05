@@ -321,7 +321,7 @@ impl PlaybackService {
             },
         );
 
-        let start_position = start.position(prepared.pregap_ms);
+        let start_position = start.position(prepared.total_pregap_ms());
         let start_sample_offset =
             (start_position.as_secs_f64() * prepared.sample_rate as f64) as u64;
         let decode = prepared.decode_params(start_sample_offset);

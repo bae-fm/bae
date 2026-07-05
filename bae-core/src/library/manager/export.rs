@@ -22,6 +22,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
         target_dir: std::path::PathBuf,
+        selection: crate::config::ExportSelection,
     ) -> Result<(), LibraryError> {
         // The target dir round-trips back to the Exporting pane as a string (the
         // snapshot renders `target_dir` for each row), so it must be valid UTF-8.
@@ -51,7 +52,10 @@ impl LibraryManager {
             file_count: summary.file_count,
             total_size: summary.total_size,
             created_at: self.clock.now().timestamp_millis(),
-            payload: target_dir,
+            payload: crate::library::export_snapshot::ExportRequest {
+                target_dir,
+                selection,
+            },
             state: crate::library::ExportState::Queued,
         };
         if self.export_queue.enqueue(op) {
@@ -94,6 +98,7 @@ impl LibraryManager {
     /// The serial export worker loop. Parks on the queue's `Notify` whenever the
     /// queue is paused or holds nothing queued; otherwise takes the next queued
     /// release and copies it out. Processes strictly one release at a time.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(super) async fn run_export_worker(&self) {
         loop {
             let Some(op) = self.export_queue.next_queued() else {
@@ -113,15 +118,16 @@ impl LibraryManager {
     /// `cancel_export` aborts the in-flight task via the registered handle and
     /// removes the queue entry; on its way out we check whether the entry is still
     /// present before recording a failure — a cancelled export isn't a failure.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     async fn run_queued_export(&self, op: crate::library::ExportOp) {
         let release_id = op.release_id.clone();
-        let target_dir = op.payload.clone();
+        let request = op.payload.clone();
 
         let worker = self.clone();
         let task_release_id = release_id.clone();
         let task = self.runtime_handle.spawn(async move {
             worker
-                .export_release_to_dir(&task_release_id, &target_dir)
+                .export_release_to_dir(&task_release_id, request)
                 .await
         });
         let abort = task.abort_handle();
@@ -180,10 +186,11 @@ impl LibraryManager {
     /// partial output at the final path. Updates the queue's per-release percent (by
     /// file index) and re-emits the snapshot after each file. Fails loudly when the
     /// release has no source folder name.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     async fn export_release_to_dir(
         &self,
         release_id: &str,
-        target_dir: &std::path::Path,
+        request: crate::library::export_snapshot::ExportRequest,
     ) -> Result<(), LibraryError> {
         let release = self
             .get_release_by_id(release_id)
@@ -195,12 +202,15 @@ impl LibraryManager {
             ))
         })?;
 
-        let final_dir = target_dir.join(&folder);
+        let final_dir = request.target_dir.join(&folder);
         // Stage under the target dir (not a temp dir elsewhere) so the final rename
         // stays on one filesystem and is atomic. The name is hidden and carries the
         // release id so a concurrent export of a different release can't collide.
-        let staging =
-            StagingDir::create(target_dir.join(format!(".{folder}.export-{release_id}")))?;
+        let staging = StagingDir::create(
+            request
+                .target_dir
+                .join(format!(".{folder}.export-{release_id}")),
+        )?;
 
         let files = self.database.get_files_for_release(release_id).await?;
         info!(
@@ -210,12 +220,20 @@ impl LibraryManager {
             "Exporting release files verbatim"
         );
 
-        let total = files.len();
-        for (index, file) in files.iter().enumerate() {
-            self.export_one_file(file, staging.path()).await?;
-            let percent = (((index + 1) * 100) / total.max(1)) as u8;
-            self.export_queue.set_active_percent(release_id, percent);
-            self.emit_export_queue_changed();
+        match request.selection {
+            crate::config::ExportSelection::Original => {
+                let total = files.len();
+                for (index, file) in files.iter().enumerate() {
+                    self.export_one_file(file, staging.path()).await?;
+                    let percent = (((index + 1) * 100) / total.max(1)) as u8;
+                    self.export_queue.set_active_percent(release_id, percent);
+                    self.emit_export_queue_changed();
+                }
+            }
+            crate::config::ExportSelection::Preset { preset_id } => {
+                self.export_release_tracks_to_dir(release_id, &preset_id, staging.path())
+                    .await?;
+            }
         }
 
         // Every file landed. Re-export replaces any prior copy: remove the existing
@@ -235,6 +253,7 @@ impl LibraryManager {
     /// parent is created first. No per-file temp is needed: the whole staging
     /// directory is the atomic unit, renamed into place only once every file is
     /// written.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     async fn export_one_file(
         &self,
         file: &DbFile,
@@ -254,8 +273,16 @@ impl LibraryManager {
         &self,
         release_id: &str,
         target_dir: &Path,
+        selection: crate::config::ExportSelection,
     ) -> Result<(), LibraryError> {
-        self.export_release_to_dir(release_id, target_dir).await
+        self.export_release_to_dir(
+            release_id,
+            crate::library::export_snapshot::ExportRequest {
+                target_dir: target_dir.to_path_buf(),
+                selection,
+            },
+        )
+        .await
     }
 
     /// Resolve one track's tag data from the database alone — the tag fields, its
@@ -366,6 +393,7 @@ impl LibraryManager {
             total_tracks,
             is_digital,
             metadata: selection,
+            audio_window: export_window_from_meta(&meta),
             audio_meta: meta,
         })
     }
@@ -388,16 +416,268 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn export_track_extension(
+        &self,
+        track_id: &str,
+        selection: crate::config::ExportSelection,
+    ) -> Result<String, LibraryError> {
+        match selection {
+            crate::config::ExportSelection::Original => {
+                let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
+                Ok(meta.audio_format.content_type.file_extension().to_string())
+            }
+            crate::config::ExportSelection::Preset { preset_id } => {
+                let preset = self
+                    .export_presets()
+                    .into_iter()
+                    .find(|preset| preset.id == preset_id && preset.applies_to_track)
+                    .ok_or_else(|| {
+                        LibraryError::Import(format!(
+                            "export preset {preset_id} is not available for track export"
+                        ))
+                    })?;
+                Ok(preset.codec.extension().to_string())
+            }
+        }
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn export_track(
         &self,
         track_id: &str,
         output_path: &Path,
-        format: crate::library::ExportFormat,
+        selection: crate::config::ExportSelection,
     ) -> Result<(), LibraryError> {
-        let plan = self.get_export_track_plan(track_id).await?;
-        ExportService::export_track(plan, output_path, format)
-            .await
-            .map_err(LibraryError::Import)
+        match selection {
+            crate::config::ExportSelection::Original => {
+                let mut plan = self.get_export_track_plan(track_id).await?;
+                plan.audio_window = export_window_for_track_file(
+                    &plan.audio_meta,
+                    None,
+                    crate::config::ExportPregapPlacement::Exclude,
+                    false,
+                );
+                ExportService::export_original_track(plan, output_path)
+                    .await
+                    .map_err(LibraryError::Import)
+            }
+            crate::config::ExportSelection::Preset { preset_id } => {
+                let preset = self
+                    .export_presets()
+                    .into_iter()
+                    .find(|preset| preset.id == preset_id && preset.applies_to_track)
+                    .ok_or_else(|| {
+                        LibraryError::Import(format!(
+                            "export preset {preset_id} is not available for track export"
+                        ))
+                    })?;
+                let mut plan = self.get_export_track_plan(track_id).await?;
+                plan.metadata = preset.metadata;
+                let release_tracks = self
+                    .database
+                    .get_tracks_for_release(&plan.audio_meta.release.id)
+                    .await?;
+                let track_index = release_tracks
+                    .iter()
+                    .position(|track| track.id == plan.audio_meta.track.id)
+                    .ok_or_else(|| {
+                        LibraryError::Import(format!(
+                            "track {} is not ordered in release {}",
+                            plan.audio_meta.track.id, plan.audio_meta.release.id
+                        ))
+                    })?;
+                let next_meta = if track_index + 1 < release_tracks.len() {
+                    Some(
+                        TrackAudioMeta::resolve(
+                            &self.database,
+                            &release_tracks[track_index + 1].id,
+                        )
+                        .await?,
+                    )
+                } else {
+                    None
+                };
+                plan.audio_window = export_window_for_track_file(
+                    &plan.audio_meta,
+                    next_meta.as_ref(),
+                    preset.pregap_placement,
+                    track_index == 0,
+                );
+                ExportService::export_track(plan, output_path, preset)
+                    .await
+                    .map_err(LibraryError::Import)
+            }
+        }
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    async fn export_release_tracks_to_dir(
+        &self,
+        release_id: &str,
+        preset_id: &str,
+        staging_dir: &std::path::Path,
+    ) -> Result<(), LibraryError> {
+        let preset = self
+            .export_presets()
+            .into_iter()
+            .find(|preset| preset.id == preset_id && preset.applies_to_release)
+            .ok_or_else(|| {
+                LibraryError::Import(format!(
+                    "export preset {preset_id} is not available for release export"
+                ))
+            })?;
+        let tracks = self.database.get_tracks_for_release(release_id).await?;
+        let total = tracks.len();
+        let mut used_paths = std::collections::HashSet::new();
+
+        for (index, track) in tracks.iter().enumerate() {
+            let mut plan = self.get_export_track_plan(&track.id).await?;
+            plan.metadata = preset.metadata;
+            let next_meta = if index + 1 < tracks.len() {
+                Some(TrackAudioMeta::resolve(&self.database, &tracks[index + 1].id).await?)
+            } else {
+                None
+            };
+            plan.audio_window = export_window_for_track_file(
+                &plan.audio_meta,
+                next_meta.as_ref(),
+                preset.pregap_placement,
+                index == 0,
+            );
+
+            let stem = crate::library::export::render_export_filename(
+                &preset.filename_template,
+                &resolved_tags_from_plan(&plan),
+            );
+            let output_path = unique_export_path(
+                staging_dir,
+                &stem,
+                preset.codec.extension(),
+                &mut used_paths,
+            );
+            ExportService::export_track(plan, &output_path, preset.clone())
+                .await
+                .map_err(LibraryError::Import)?;
+            let percent = (((index + 1) * 100) / total.max(1)) as u8;
+            self.export_queue.set_active_percent(release_id, percent);
+            self.emit_export_queue_changed();
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn export_window_from_meta(meta: &TrackAudioMeta) -> super::ExportAudioWindow {
+    super::ExportAudioWindow {
+        source_start_sample: u64::try_from(meta.audio_format.start_sample)
+            .expect("audio_format.start_sample is a non-negative sample position"),
+        source_end_sample: meta.audio_format.end_sample.map(|sample| {
+            u64::try_from(sample)
+                .expect("audio_format.end_sample is a non-negative sample position")
+        }),
+        leading_silence_samples: 0,
+        trailing_silence_samples: 0,
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn export_window_for_track_file(
+    meta: &TrackAudioMeta,
+    next_meta: Option<&TrackAudioMeta>,
+    placement: crate::config::ExportPregapPlacement,
+    is_first_track: bool,
+) -> super::ExportAudioWindow {
+    let source_start = u64::try_from(meta.audio_format.start_sample)
+        .expect("audio_format.start_sample is a non-negative sample position");
+    let source_end = meta.audio_format.end_sample.map(|sample| {
+        u64::try_from(sample).expect("audio_format.end_sample is a non-negative sample position")
+    });
+    let own_audio_pregap = non_negative_samples(meta.audio_format.pregap_samples);
+    let own_generated_pregap = non_negative_samples(meta.audio_format.generated_pregap_samples);
+    let includes_htoa = is_first_track
+        && placement == crate::config::ExportPregapPlacement::AppendToPreviousIncludingHtoa;
+    let source_start_sample = if includes_htoa {
+        source_start
+    } else {
+        source_start.saturating_add(own_audio_pregap)
+    };
+    let leading_silence_samples = if includes_htoa {
+        own_generated_pregap
+    } else {
+        0
+    };
+
+    let mut source_end_sample = source_end;
+    let mut trailing_silence_samples = 0;
+    if matches!(
+        placement,
+        crate::config::ExportPregapPlacement::AppendToPreviousExceptHtoa
+            | crate::config::ExportPregapPlacement::AppendToPreviousIncludingHtoa
+    ) {
+        if let Some(next) = next_meta {
+            let next_audio_pregap = non_negative_samples(next.audio_format.pregap_samples);
+            if next_audio_pregap > 0 {
+                let next_audio_start = u64::try_from(next.audio_format.start_sample)
+                    .expect("audio_format.start_sample is a non-negative sample position");
+                source_end_sample = Some(next_audio_start.saturating_add(next_audio_pregap));
+            }
+            trailing_silence_samples =
+                non_negative_samples(next.audio_format.generated_pregap_samples);
+        }
+    }
+
+    super::ExportAudioWindow {
+        source_start_sample,
+        source_end_sample,
+        leading_silence_samples,
+        trailing_silence_samples,
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn non_negative_samples(samples: Option<i64>) -> u64 {
+    samples.map_or(0, |sample| {
+        u64::try_from(sample).expect("audio_format pregap samples are non-negative")
+    })
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn resolved_tags_from_plan(plan: &ExportTrackPlan) -> ResolvedExportTags {
+    ResolvedExportTags {
+        tags: ExportTags {
+            title: plan.tags.title.clone(),
+            artist: plan.tags.artist.clone(),
+            album: plan.tags.album.clone(),
+            year: plan.tags.year,
+            disc: plan.tags.disc,
+        },
+        track_number: plan.track_number,
+        total_tracks: plan.total_tracks,
+        is_digital: plan.is_digital,
+        primary_release_id: None,
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn unique_export_path(
+    dir: &std::path::Path,
+    stem: &str,
+    extension: &str,
+    used_paths: &mut std::collections::HashSet<std::path::PathBuf>,
+) -> std::path::PathBuf {
+    let mut index = 1usize;
+    loop {
+        let candidate_stem = if index == 1 {
+            stem.to_string()
+        } else {
+            format!("{stem} ({index})")
+        };
+        let path = dir.join(format!("{candidate_stem}.{extension}"));
+        if used_paths.insert(path.clone()) {
+            return path;
+        }
+        index += 1;
     }
 }
 
@@ -407,11 +687,13 @@ impl LibraryManager {
 /// a read/write error (`?`), a panic, or the worker task being aborted on cancel
 /// (which drops this future) — drops the guard, which removes the directory. That
 /// is what keeps a failed or cancelled export from leaving partial output behind.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 struct StagingDir {
     path: std::path::PathBuf,
     armed: bool,
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl StagingDir {
     /// Create the staging directory fresh. A leftover directory at this path (from
     /// a prior crash that skipped the drop cleanup) is removed first so the export
@@ -435,6 +717,7 @@ impl StagingDir {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl Drop for StagingDir {
     fn drop(&mut self) {
         if !self.armed {

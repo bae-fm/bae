@@ -2030,6 +2030,12 @@ pub struct BridgeConfig {
     pub export_filename_template: String,
     /// Which metadata tags a single-track export embeds.
     pub export_metadata: BridgeExportMetadata,
+    /// Configured export presets offered by release and track export.
+    pub export_presets: Vec<BridgeExportPreset>,
+    /// Default selected option in the track export picker.
+    pub default_track_export_selection: BridgeExportSelection,
+    /// Default selected option in the release export picker.
+    pub default_release_export_selection: BridgeExportSelection,
     pub mcp: BridgeMcpConfig,
     pub discogs_token_status: BridgeDiscogsTokenStatus,
     /// Whether Discogs can be used as a metadata source (a stored key that
@@ -2556,9 +2562,46 @@ impl BridgeRestoreFormFields {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeExportFormat {
-    Flac,
-    Mp3,
+pub enum BridgeExportBitDepth {
+    Source,
+    Bits16,
+    Bits24,
+    Bits32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeExportPresetCodec {
+    Flac { bit_depth: BridgeExportBitDepth },
+    Mp3 { bitrate_kbps: u32 },
+    OpusOgg { bitrate_kbps: u32 },
+    Wav { bit_depth: BridgeExportBitDepth },
+    Aiff { bit_depth: BridgeExportBitDepth },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeExportPregapPlacement {
+    AppendToPreviousExceptHtoa,
+    AppendToPreviousIncludingHtoa,
+    Exclude,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeExportSelection {
+    Original,
+    Preset { preset_id: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeExportPreset {
+    pub id: String,
+    pub name: String,
+    pub codec: BridgeExportPresetCodec,
+    pub extension: String,
+    pub filename_template: String,
+    pub metadata: BridgeExportMetadata,
+    pub pregap_placement: BridgeExportPregapPlacement,
+    pub applies_to_track: bool,
+    pub applies_to_release: bool,
 }
 
 /// The kind of diagnostic failure. The UI shows one generic localized line per

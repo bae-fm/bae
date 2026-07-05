@@ -66,14 +66,14 @@ impl PlaybackService {
         };
 
         // Create decoder sink/source and start decoder eagerly for gapless playback
-        let (mut sink, source, _ready) =
-            create_track_stream_pair(prepared.sample_rate, prepared.channels);
         let decoder_buffer = prepared.buffer.clone();
         let cancel_token = prepared.cancel_token.clone();
 
         // Preload params (natural transition: no pregap skip): seek to the
         // track's first sample, trim there, stop at its end.
         let decode = prepared.decode_params(0);
+        let (mut sink, source, _ready) =
+            create_track_stream_pair(prepared.sample_rate, prepared.channels);
 
         let decoder_handle = std::thread::spawn(move || {
             if let Err(e) = decode.run_decoder(decoder_buffer, &mut sink, cancel_token) {
@@ -440,7 +440,7 @@ impl PlaybackService {
             source: preloaded_source,
         } = preloaded;
 
-        let pregap_ms = next_prepared.pregap_ms;
+        let pregap_ms = next_prepared.total_pregap_ms();
         let track_id = next_prepared.track_info.track_id.clone();
 
         // If we need to skip pregap (direct selection), the preloaded state won't work

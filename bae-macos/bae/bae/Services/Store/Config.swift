@@ -47,6 +47,12 @@ struct Config: Equatable {
     let exportFilenameTemplate: String
     /// Which metadata tags a single-track export embeds.
     let exportMetadata: BridgeExportMetadata
+    /// Configured export presets offered by release and track export.
+    let exportPresets: [BridgeExportPreset]
+    /// Default selected option in the track export picker.
+    let defaultTrackExportSelection: BridgeExportSelection
+    /// Default selected option in the release export picker.
+    let defaultReleaseExportSelection: BridgeExportSelection
     let mcp: BridgeMcpConfig
 
     var hasCloudHome: Bool { sync != nil }
@@ -64,6 +70,9 @@ struct Config: Equatable {
         exportLocation = bridge.exportLocation
         exportFilenameTemplate = bridge.exportFilenameTemplate
         exportMetadata = bridge.exportMetadata
+        exportPresets = bridge.exportPresets
+        defaultTrackExportSelection = bridge.defaultTrackExportSelection
+        defaultReleaseExportSelection = bridge.defaultReleaseExportSelection
         mcp = bridge.mcp
     }
 

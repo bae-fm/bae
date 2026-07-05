@@ -7,9 +7,10 @@
 
 mod support;
 
+use bae_core::config::ExportSelection;
 use bae_core::db::Database;
 use bae_core::import::{IdentityChoice, ImportCommand, StorageMode};
-use bae_core::library::{ExportFormat, LibraryManager};
+use bae_core::library::LibraryManager;
 use coven::EncryptionService;
 use coven::LibraryDir;
 use std::fs;
@@ -152,7 +153,13 @@ async fn export_track_from_cloud_only_release() {
 
     let out = f.temp_path().join("exported.flac");
     f.mgr
-        .export_track(&tracks[0].id, &out, ExportFormat::Flac)
+        .export_track(
+            &tracks[0].id,
+            &out,
+            ExportSelection::Preset {
+                preset_id: "flac".to_string(),
+            },
+        )
         .await
         .expect("cloud-only track must export");
 
@@ -178,7 +185,7 @@ async fn export_release_from_cloud_only_release() {
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();
     f.mgr
-        .export_release(&release_id, &target)
+        .export_release(&release_id, &target, ExportSelection::Original)
         .await
         .expect("cloud-only release must export");
 
@@ -210,6 +217,9 @@ async fn export_release_missing_blob_is_hard_error() {
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();
-    let result = f.mgr.export_release(&release_id, &target).await;
+    let result = f
+        .mgr
+        .export_release(&release_id, &target, ExportSelection::Original)
+        .await;
     assert!(result.is_err(), "missing blob must fail the export");
 }

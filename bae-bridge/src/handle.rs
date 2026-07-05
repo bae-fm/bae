@@ -520,6 +520,45 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
+    pub fn set_export_presets(
+        &self,
+        presets: Vec<crate::types::BridgeExportPreset>,
+    ) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .set_export_presets(
+                presets
+                    .into_iter()
+                    .map(crate::bridge_utils::core_export_preset)
+                    .collect(),
+            )
+            .map_err(BridgeError::config)
+    }
+
+    pub fn set_default_track_export_selection(
+        &self,
+        selection: crate::types::BridgeExportSelection,
+    ) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .set_default_track_export_selection(crate::bridge_utils::core_export_selection(
+                selection,
+            ))
+            .map_err(BridgeError::config)
+    }
+
+    pub fn set_default_release_export_selection(
+        &self,
+        selection: crate::types::BridgeExportSelection,
+    ) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .set_default_release_export_selection(crate::bridge_utils::core_export_selection(
+                selection,
+            ))
+            .map_err(BridgeError::config)
+    }
+
     /// Whether the encryption key is loaded — `init` successfully read it from
     /// the keyring and built the sync manager. Reflects the cached init-time
     /// result, not a fresh keyring read. `false` here for an
@@ -850,21 +889,26 @@ impl AppHandle {
         convert_export_snapshot(self.services.library_manager().export_snapshot())
     }
 
-    /// Enqueue a release to export its files verbatim to `target_dir`. It joins
+    /// Enqueue a release export to `target_dir`. It joins
     /// the in-memory serial export queue; the worker drains it one release at a
     /// time. The storage-summary lookup (resolving the pane row's title/size) is
     /// shallow, so this polls inline via block_on — the deep cloud read + copy
     /// runs on the queue worker, not here.
-    pub fn enqueue_export(&self, release_id: String, target_dir: String) {
+    pub fn enqueue_export(
+        &self,
+        release_id: String,
+        target_dir: String,
+        selection: crate::types::BridgeExportSelection,
+    ) {
         // `target_dir` crosses uniffi as a String, so it is always valid UTF-8 and
         // the core's UTF-8 validation cannot fail here — assert that rather than
         // route an impossible error back through the (non-throwing) Swift binding.
         self.runtime
-            .block_on(
-                self.services
-                    .library_manager()
-                    .enqueue_export(&release_id, std::path::PathBuf::from(target_dir)),
-            )
+            .block_on(self.services.library_manager().enqueue_export(
+                &release_id,
+                std::path::PathBuf::from(target_dir),
+                crate::bridge_utils::core_export_selection(selection),
+            ))
             .expect("bridge export target_dir is valid UTF-8");
     }
 
@@ -1450,18 +1494,15 @@ impl AppHandle {
         &self,
         track_id: String,
         output_path: String,
-        format: crate::types::BridgeExportFormat,
+        selection: crate::types::BridgeExportSelection,
     ) -> Result<(), BridgeError> {
-        use crate::types::BridgeExportFormat;
-
-        let core_format = match format {
-            BridgeExportFormat::Flac => bae_core::library::ExportFormat::Flac,
-            BridgeExportFormat::Mp3 => bae_core::library::ExportFormat::Mp3,
-        };
-
         self.services
             .library_manager()
-            .export_track(&track_id, std::path::Path::new(&output_path), core_format)
+            .export_track(
+                &track_id,
+                std::path::Path::new(&output_path),
+                crate::bridge_utils::core_export_selection(selection),
+            )
             .await
             .map_err(|e| BridgeError::export(format!("{e}")))
     }
@@ -1476,6 +1517,21 @@ impl AppHandle {
         self.services
             .library_manager()
             .export_track_suggested_name(&track_id)
+            .await
+            .map_err(|e| BridgeError::export(format!("{e}")))
+    }
+
+    pub async fn export_track_extension(
+        &self,
+        track_id: String,
+        selection: crate::types::BridgeExportSelection,
+    ) -> Result<String, BridgeError> {
+        self.services
+            .library_manager()
+            .export_track_extension(
+                &track_id,
+                crate::bridge_utils::core_export_selection(selection),
+            )
             .await
             .map_err(|e| BridgeError::export(format!("{e}")))
     }
@@ -1670,7 +1726,7 @@ fn convert_export_snapshot(
             };
             BridgeExportOp {
                 release_id: op.release_id,
-                target_dir: op.payload.to_string_lossy().to_string(),
+                target_dir: op.payload.target_dir.to_string_lossy().to_string(),
                 title: op.title,
                 file_count: op.file_count,
                 total_size: op.total_size,
