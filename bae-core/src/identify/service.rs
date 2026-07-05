@@ -8,6 +8,7 @@ use super::state::{step, Effect, ExcludedSignal, IdentifyEvent, IdentifyState};
 use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::ImportEvent;
 use crate::library::LibraryManager;
+use crate::signals::LookupFailure;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
@@ -39,6 +40,7 @@ fn barcode_lookup_failed(barcode: String, message: String) -> IdentifyEvent {
     debug!("Barcode lookup failed for {barcode}: {message}");
     IdentifyEvent::BarcodeLookupFailed {
         for_barcode: barcode,
+        failure: LookupFailure::Diagnostic { detail: message },
     }
 }
 

@@ -1194,6 +1194,9 @@ pub enum BridgeBarcodeProgress {
     Done {
         n_results: u32,
     },
+    Failed {
+        failure: BridgeLookupFailure,
+    },
     /// No artwork to scan.
     Skipped,
 }
@@ -3120,6 +3123,9 @@ fn barcode_progress_to_bridge(p: bae_core::identify::BarcodeProgress) -> BridgeB
         BarcodeProgress::Done { results, .. } => BridgeBarcodeProgress::Done {
             n_results: results.len() as u32,
         },
+        BarcodeProgress::Failed { failure } => BridgeBarcodeProgress::Failed {
+            failure: lookup_failure_to_bridge(failure),
+        },
         BarcodeProgress::Skipped => BridgeBarcodeProgress::Skipped,
     }
 }
@@ -3819,6 +3825,27 @@ mod loc_key_coverage {
                 "catalog key `{key}` has no producer — delete it or add a producer \
                  (a bridge_*_key fn) or list it in DIRECT_KEYS"
             );
+        }
+    }
+}
+
+#[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
+mod identify_progress_tests {
+    use super::*;
+
+    #[test]
+    fn barcode_progress_failure_crosses_bridge() {
+        let progress = bae_core::identify::BarcodeProgress::Failed {
+            failure: bae_core::signals::LookupFailure::Diagnostic {
+                detail: "provider lookup failed".to_string(),
+            },
+        };
+
+        match barcode_progress_to_bridge(progress) {
+            BridgeBarcodeProgress::Failed {
+                failure: BridgeLookupFailure::Diagnostic { detail },
+            } => assert_eq!(detail, "provider lookup failed"),
+            other => panic!("expected failed barcode progress, got {other:?}"),
         }
     }
 }

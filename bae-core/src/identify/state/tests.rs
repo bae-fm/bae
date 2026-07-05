@@ -334,11 +334,14 @@ fn stale_barcode_response_is_ignored() {
             for_barcode: "A".to_string(),
         },
     );
-    // A late duplicate "A" arrives; current is "B", so it's dropped.
+    // A late failed "A" arrives; current is "B", so it's dropped.
     let (state, effects) = step(
         state,
-        IdentifyEvent::BarcodeLookupMissed {
+        IdentifyEvent::BarcodeLookupFailed {
             for_barcode: "A".to_string(),
+            failure: LookupFailure::Diagnostic {
+                detail: "provider lookup failed".to_string(),
+            },
         },
     );
     assert!(effects.is_empty());
@@ -352,11 +355,14 @@ fn stale_barcode_response_is_ignored() {
 }
 
 #[test]
-fn barcode_lookup_failure_advances_like_a_miss() {
+fn barcode_lookup_failure_settles_failed() {
     let (state, effects) = update(
         started(),
         signals(
-            DiscIdSignal::Absent { track_count: 0 },
+            DiscIdSignal::Computed {
+                disc_id: "d".to_string(),
+                track_count: 0,
+            },
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["A", "B"]),
             },
@@ -367,37 +373,24 @@ fn barcode_lookup_failure_advances_like_a_miss() {
         .iter()
         .any(|e| matches!(e, Effect::LookupBarcode { barcode } if barcode == "A")));
 
-    // The first code's lookup fails (a provider outage) — iteration should
-    // continue to "B" exactly as a miss would, not abort the whole pipe.
+    let failure = LookupFailure::Diagnostic {
+        detail: "provider lookup failed".to_string(),
+    };
     let (state, effects) = step(
         state,
         IdentifyEvent::BarcodeLookupFailed {
             for_barcode: "A".to_string(),
+            failure: failure.clone(),
         },
     );
-    assert!(effects
-        .iter()
-        .any(|e| matches!(e, Effect::LookupBarcode { barcode } if barcode == "B")));
+    assert!(effects.is_empty());
     match &state {
         IdentifyState::Triangulating {
-            barcode: BarcodeProgress::LookingUp { current, .. },
+            barcode: BarcodeProgress::Failed { failure: actual },
             ..
-        } => assert_eq!(current, "B"),
-        other => panic!("expected LookingUp B, got {other:?}"),
+        } => assert_eq!(actual, &failure),
+        other => panic!("expected failed barcode progress, got {other:?}"),
     }
-
-    // The last code also fails with nothing left in the queue — the barcode
-    // pipe settles as a clean miss rather than stranding the pipeline.
-    let (state, _) = step(
-        state,
-        IdentifyEvent::BarcodeLookupFailed {
-            for_barcode: "B".to_string(),
-        },
-    );
-    assert!(
-        !matches!(state, IdentifyState::Triangulating { .. }),
-        "pipeline should have settled after the last barcode failed, got {state:?}"
-    );
 }
 
 #[test]
@@ -896,6 +889,70 @@ fn toolbar_shows_failed_disc_id_lookup() {
             failure: LookupFailure::Provider { status: Some(503) }
         }
     );
+}
+
+#[test]
+fn toolbar_shows_failed_barcode_lookup() {
+    let (state, _) = update(
+        started(),
+        signals(
+            DiscIdSignal::Computed {
+                disc_id: "disc-hash".to_string(),
+                track_count: 5,
+            },
+            BarcodeSignal::Settled {
+                codes: artwork_codes(&["012345678905"]),
+            },
+            &[],
+        ),
+    );
+    let failure = LookupFailure::Diagnostic {
+        detail: "provider lookup failed".to_string(),
+    };
+    let (state, _) = step(
+        state,
+        IdentifyEvent::BarcodeLookupFailed {
+            for_barcode: "012345678905".to_string(),
+            failure: failure.clone(),
+        },
+    );
+    let barcode = state
+        .toolbar()
+        .into_iter()
+        .find(|s| s.kind == SignalKind::Barcode)
+        .expect("barcode badge");
+    assert_eq!(barcode.state, SignalState::Failed { failure });
+}
+
+#[test]
+fn toolbar_keeps_failed_barcode_lookup_after_settle() {
+    let (state, _) = update(
+        started(),
+        signals(
+            DiscIdSignal::Absent { track_count: 5 },
+            BarcodeSignal::Settled {
+                codes: artwork_codes(&["012345678905"]),
+            },
+            &[],
+        ),
+    );
+    let failure = LookupFailure::Diagnostic {
+        detail: "provider lookup failed".to_string(),
+    };
+    let (state, _) = step(
+        state,
+        IdentifyEvent::BarcodeLookupFailed {
+            for_barcode: "012345678905".to_string(),
+            failure: failure.clone(),
+        },
+    );
+    assert!(matches!(state, IdentifyState::NotFoundAnywhere { .. }));
+    let barcode = state
+        .toolbar()
+        .into_iter()
+        .find(|s| s.kind == SignalKind::Barcode)
+        .expect("barcode badge");
+    assert_eq!(barcode.state, SignalState::Failed { failure });
 }
 
 #[test]

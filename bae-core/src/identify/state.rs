@@ -83,6 +83,9 @@ pub enum BarcodeProgress {
         matched: Option<String>,
         results: Vec<(MetadataResult, LibraryStatus)>,
     },
+    Failed {
+        failure: LookupFailure,
+    },
     /// No artwork to scan. The signal pipe is "absent" rather than empty —
     /// combine treats it the same as `Done { results: [] }`.
     Skipped,
@@ -92,7 +95,9 @@ impl BarcodeProgress {
     pub fn is_settled(&self) -> bool {
         matches!(
             self,
-            BarcodeProgress::Done { .. } | BarcodeProgress::Skipped
+            BarcodeProgress::Done { .. }
+                | BarcodeProgress::Failed { .. }
+                | BarcodeProgress::Skipped
         )
     }
 
@@ -157,6 +162,8 @@ pub struct SignalsContext {
     pub discid_results: Vec<(MetadataResult, LibraryStatus)>,
     /// The barcode lookup's results, once settled.
     pub barcode_results: Vec<(MetadataResult, LibraryStatus)>,
+    /// The barcode lookup failure, once settled by an error.
+    pub barcode_failure: Option<LookupFailure>,
     /// Which barcode produced `barcode_results`. `None` until matched.
     pub matched_barcode: Option<String>,
     /// The candidate's local track count.
@@ -174,6 +181,7 @@ impl SignalsContext {
             excluded: HashSet::new(),
             discid_results: Vec::new(),
             barcode_results: Vec::new(),
+            barcode_failure: None,
             matched_barcode: None,
             track_count: 0,
         }
@@ -194,10 +202,12 @@ impl SignalsContext {
         &mut self,
         discid_results: Vec<(MetadataResult, LibraryStatus)>,
         barcode_results: Vec<(MetadataResult, LibraryStatus)>,
+        barcode_failure: Option<LookupFailure>,
         matched_barcode: Option<String>,
     ) {
         self.discid_results = discid_results;
         self.barcode_results = barcode_results;
+        self.barcode_failure = barcode_failure;
         self.matched_barcode = matched_barcode;
     }
 
@@ -444,6 +454,9 @@ fn barcode_progress_state(progress: &BarcodeProgress) -> SignalState {
     match progress {
         BarcodeProgress::Scanning | BarcodeProgress::LookingUp { .. } => SignalState::LookingUp,
         BarcodeProgress::Done { results, .. } => found_or_no_match(results.len() as u32),
+        BarcodeProgress::Failed { failure } => SignalState::Failed {
+            failure: failure.clone(),
+        },
         BarcodeProgress::Skipped => SignalState::Skipped,
     }
 }
@@ -465,7 +478,11 @@ fn settled_identity_state(
 
 /// Settled barcode badge state from the context's recorded barcode results.
 fn barcode_settled_state(context: &SignalsContext) -> SignalState {
-    if context.barcode_codes.is_empty() {
+    if let Some(failure) = &context.barcode_failure {
+        SignalState::Failed {
+            failure: failure.clone(),
+        }
+    } else if context.barcode_codes.is_empty() {
         SignalState::Skipped
     } else {
         found_or_no_match(context.barcode_results.len() as u32)
@@ -525,6 +542,7 @@ pub enum IdentifyEvent {
     },
     BarcodeLookupFailed {
         for_barcode: String,
+        failure: LookupFailure,
     },
 
     /// User toggled a signal in the toolbar — included or excluded it from
@@ -663,8 +681,8 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             context,
         }),
 
-        // A miss or per-barcode failure advances the queue. The barcode phase
-        // only settles empty once every candidate code has been tried.
+        // A miss advances the queue. The barcode phase only settles empty
+        // once every candidate code has been tried.
         (
             IdentifyState::Triangulating {
                 discid,
@@ -677,8 +695,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                     },
                 context,
             },
-            IdentifyEvent::BarcodeLookupMissed { for_barcode }
-            | IdentifyEvent::BarcodeLookupFailed { for_barcode },
+            IdentifyEvent::BarcodeLookupMissed { for_barcode },
         ) if for_barcode == current => {
             if remaining.is_empty() {
                 settle_if_ready(IdentifyState::Triangulating {
@@ -706,6 +723,28 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 )
             }
         }
+
+        (
+            IdentifyState::Triangulating {
+                discid,
+                barcode:
+                    BarcodeProgress::LookingUp {
+                        current,
+                        position: _,
+                        total: _,
+                        remaining: _,
+                    },
+                context,
+            },
+            IdentifyEvent::BarcodeLookupFailed {
+                for_barcode,
+                failure,
+            },
+        ) if for_barcode == current => settle_if_ready(IdentifyState::Triangulating {
+            discid,
+            barcode: BarcodeProgress::Failed { failure },
+            context,
+        }),
 
         // Unhandled event in Triangulating (stale barcode response, or an
         // event this state doesn't act on) — keep state.
@@ -838,9 +877,14 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
 
     let track_count = settled_track_count(&discid);
     context.track_count = track_count;
+    let barcode_failure = match &barcode {
+        BarcodeProgress::Failed { failure } => Some(failure.clone()),
+        _ => None,
+    };
     context.record_results(
         discid.results(),
         barcode.results(),
+        barcode_failure,
         barcode.matched_barcode().map(str::to_string),
     );
 
@@ -907,6 +951,7 @@ fn rerun(mut context: SignalsContext) -> (IdentifyState, Vec<Effect>) {
     // A fresh run discards prior results; they're recomputed as lookups land.
     context.discid_results = Vec::new();
     context.barcode_results = Vec::new();
+    context.barcode_failure = None;
     context.matched_barcode = None;
 
     let mut effects = Vec::new();

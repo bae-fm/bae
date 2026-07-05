@@ -42,6 +42,7 @@ enum BarcodeProgress: Equatable {
     case scanning
     case lookingUp(current: String, position: UInt32, total: UInt32)
     case done(nResults: UInt32)
+    case failed(failure: LookupFailure)
     case skipped
 
     init(bridge: BridgeBarcodeProgress) {
@@ -54,6 +55,8 @@ enum BarcodeProgress: Equatable {
                 total: total,
             )
         case .done(let n): self = .done(nResults: n)
+        case .failed(let failure):
+            self = .failed(failure: LookupFailure(bridge: failure))
         case .skipped: self = .skipped
         }
     }
