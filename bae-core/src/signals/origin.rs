@@ -36,6 +36,10 @@ impl SignalOrigin {
             Source::TextFile(_) => SignalOrigin::TextFile,
         }
     }
+
+    pub fn can_confirm_catalog(self) -> bool {
+        !matches!(self, SignalOrigin::Artwork)
+    }
 }
 
 /// A signal value (a catalog number or a barcode) paired with where it was

@@ -54,14 +54,26 @@ fn artwork_codes(values: &[&str]) -> Vec<SourcedValue> {
 }
 
 fn signals(disc_id: DiscIdSignal, barcode: BarcodeSignal, catalogs: &[&str]) -> Signals {
+    signals_with_catalogs(
+        disc_id,
+        barcode,
+        catalogs
+            .iter()
+            .map(|s| SourcedValue::new(s.to_string(), SignalOrigin::FolderName))
+            .collect(),
+    )
+}
+
+fn signals_with_catalogs(
+    disc_id: DiscIdSignal,
+    barcode: BarcodeSignal,
+    catalogs: Vec<SourcedValue>,
+) -> Signals {
     Signals {
         disc_id,
         barcode,
         text: TextSignal::Settled {
-            catalogs: catalogs
-                .iter()
-                .map(|s| SourcedValue::new(s.to_string(), SignalOrigin::FolderName))
-                .collect(),
+            catalogs,
             free_text: vec![],
         },
     }
@@ -452,6 +464,46 @@ fn catalog_filter_narrows_and_flags_provenance() {
             assert_eq!(matches.len(), 1);
             assert_eq!(matches[0].release_id, "rel-a");
             assert!(provenance[0].matches_catalog);
+        }
+        other => panic!("expected Found, got {other:?}"),
+    }
+}
+
+#[test]
+fn artwork_catalog_does_not_narrow_or_flag_provenance() {
+    let (state, _) = update(
+        started(),
+        signals_with_catalogs(
+            DiscIdSignal::Computed {
+                disc_id: "d".to_string(),
+                track_count: 5,
+            },
+            BarcodeSignal::Absent,
+            vec![SourcedValue::new(
+                "LBL 002".to_string(),
+                SignalOrigin::Artwork,
+            )],
+        ),
+    );
+    let mut r_a = mk_result("rel-a", Some("g-x"));
+    r_a.catalog_number = Some("LBL-001".to_string());
+    let mut r_b = mk_result("rel-b", Some("g-x"));
+    r_b.catalog_number = Some("LBL-002".to_string());
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupCompleted {
+            results: vec![(r_a, mk_status("rel-a")), (r_b, mk_status("rel-b"))],
+            track_count: 5,
+        },
+    );
+    match state {
+        IdentifyState::Found {
+            matches,
+            provenance,
+            ..
+        } => {
+            assert_eq!(matches.len(), 2);
+            assert!(provenance.iter().all(|p| !p.matches_catalog));
         }
         other => panic!("expected Found, got {other:?}"),
     }
@@ -878,6 +930,44 @@ fn toolbar_found_reports_counts_and_catalog_confirms() {
         .find(|c| c.value.as_deref() == Some("LBL 999"))
         .expect("noise catalog");
     assert_eq!(noise.state, SignalState::Confirms { count: 0 });
+}
+
+#[test]
+fn toolbar_artwork_catalog_does_not_confirm() {
+    let (state, _) = update(
+        started(),
+        signals_with_catalogs(
+            DiscIdSignal::Computed {
+                disc_id: "disc-hash".to_string(),
+                track_count: 5,
+            },
+            BarcodeSignal::Absent,
+            vec![SourcedValue::new(
+                "LBL 001".to_string(),
+                SignalOrigin::Artwork,
+            )],
+        ),
+    );
+    let mut r_a = mk_result("rel-a", Some("g-x"));
+    r_a.catalog_number = Some("LBL-001".to_string());
+    let mut r_b = mk_result("rel-b", Some("g-x"));
+    r_b.catalog_number = Some("LBL-002".to_string());
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupCompleted {
+            results: vec![(r_a, mk_status("rel-a")), (r_b, mk_status("rel-b"))],
+            track_count: 5,
+        },
+    );
+    assert!(matches!(state, IdentifyState::Found { .. }));
+
+    let toolbar = state.toolbar();
+    let catalog = toolbar
+        .iter()
+        .find(|s| s.kind == SignalKind::Catalog)
+        .expect("catalog badge");
+    assert_eq!(catalog.origin, SignalOrigin::Artwork);
+    assert_eq!(catalog.state, SignalState::Confirms { count: 0 });
 }
 
 #[test]

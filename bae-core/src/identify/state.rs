@@ -212,9 +212,9 @@ impl SignalsContext {
         self.matched_barcode = matched_barcode;
     }
 
-    /// Catalog-candidate values minus the ones the user excluded — the filter
+    /// Catalog candidates minus the ones the user excluded — the filter
     /// `combine_results` applies.
-    fn active_catalog_values(&self) -> Vec<String> {
+    fn active_catalogs(&self) -> Vec<SourcedValue> {
         self.catalogs
             .iter()
             .filter(|c| {
@@ -222,7 +222,7 @@ impl SignalsContext {
                     .excluded
                     .contains(&ExcludedSignal::Catalog(c.value.clone()))
             })
-            .map(|c| c.value.clone())
+            .cloned()
             .collect()
     }
 
@@ -421,7 +421,7 @@ impl IdentifyState {
         let count = match self {
             IdentifyState::Found { matches, .. } => matches
                 .iter()
-                .filter(|m| catalog_matches_value(m.catalog_number.as_deref(), &catalog.value))
+                .filter(|m| catalog_matches_value(m.catalog_number.as_deref(), catalog))
                 .count() as u32,
             _ => 0,
         };
@@ -500,8 +500,10 @@ fn found_or_no_match(count: u32) -> SignalState {
 
 /// Whether a release's catalog number matches a candidate's value, after
 /// `normalize_catalog`. The per-badge confirm test.
-fn catalog_matches_value(catalog_number: Option<&str>, candidate: &str) -> bool {
-    catalog_number.is_some_and(|c| normalize_catalog(c) == normalize_catalog(candidate))
+fn catalog_matches_value(catalog_number: Option<&str>, candidate: &SourcedValue) -> bool {
+    candidate.origin.can_confirm_catalog()
+        && catalog_number
+            .is_some_and(|c| normalize_catalog(c) == normalize_catalog(&candidate.value))
 }
 
 /// Events feeding the reducer. External triggers (`Started`, `Cancelled`,
@@ -935,11 +937,7 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
 
     let discid_had_results = !discid_results.is_empty();
     let barcode_had_results = !barcode_results.is_empty();
-    let outcome = combine_results(
-        discid_results,
-        barcode_results,
-        &context.active_catalog_values(),
-    );
+    let outcome = combine_results(discid_results, barcode_results, &context.active_catalogs());
     let track_count = context.track_count;
     match outcome {
         CombineOutcome::Found {

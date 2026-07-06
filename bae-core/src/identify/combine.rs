@@ -1,11 +1,11 @@
 //! Combine logic for the triangulation pipeline.
 //!
 //! After both disc-ID and barcode signals settle, the reducer hands their
-//! per-signal result vecs and the candidate's catalog-string candidates to
+//! per-signal result vecs and the candidate's sourced catalog candidates to
 //! `combine_results`. This module produces the final outcome:
 //!
 //! * intersect or fall-through to whichever signal had results,
-//! * narrow by catalog-string match against MB / Discogs canonical catnos,
+//! * narrow by sourced catalog match against MB / Discogs canonical catnos,
 //! * branch on cardinality and per-group agreement.
 //!
 //! Pure functions: no I/O, no state. The caller (reducer) maps the
@@ -19,6 +19,7 @@
 use crate::db::LibraryStatus;
 use crate::import::search::MetadataResult;
 use crate::import::MetadataSource;
+use crate::signals::SourcedValue;
 
 /// Which signals produced or confirmed one result, for the per-row badges in
 /// the UI. `by_disc_id` / `by_barcode`: the result came back from that signal's
@@ -87,7 +88,7 @@ pub struct GroupKey {
 pub fn combine_results(
     discid_results: Vec<(MetadataResult, LibraryStatus)>,
     barcode_results: Vec<(MetadataResult, LibraryStatus)>,
-    catalog_candidates: &[String],
+    catalog_candidates: &[SourcedValue],
 ) -> CombineOutcome {
     use std::collections::HashSet;
 
@@ -176,7 +177,7 @@ fn intersect_by_release(
         .collect()
 }
 
-/// Apply the catalog-string filter. Returns the narrowed set if at least one
+/// Apply the catalog filter. Returns the narrowed set if at least one
 /// result matches a candidate; otherwise returns the input unchanged.
 ///
 /// Match rule: a result matches when its `catalog_number` (after
@@ -184,13 +185,19 @@ fn intersect_by_release(
 /// `candidates` is empty or when no result has a `catalog_number`.
 fn apply_catalog_filter(
     combined: Vec<(MetadataResult, LibraryStatus)>,
-    candidates: &[String],
+    candidates: &[SourcedValue],
 ) -> Vec<(MetadataResult, LibraryStatus)> {
     if candidates.is_empty() {
         return combined;
     }
-    let normalized_candidates: Vec<String> =
-        candidates.iter().map(|c| normalize_catalog(c)).collect();
+    let normalized_candidates: Vec<String> = candidates
+        .iter()
+        .filter(|c| c.origin.can_confirm_catalog())
+        .map(|c| normalize_catalog(&c.value))
+        .collect();
+    if normalized_candidates.is_empty() {
+        return combined;
+    }
     let filtered: Vec<(MetadataResult, LibraryStatus)> = combined
         .iter()
         .filter(|(r, _)| {
@@ -212,7 +219,7 @@ fn apply_catalog_filter(
 /// Whether a result's catalog number matches any catalog candidate (after
 /// `normalize_catalog`). Used for the per-result "catalog confirmed" badge —
 /// independent of whether the filter narrowed the set.
-fn catalog_matches(catalog_number: Option<&str>, candidates: &[String]) -> bool {
+fn catalog_matches(catalog_number: Option<&str>, candidates: &[SourcedValue]) -> bool {
     let Some(cat) = catalog_number else {
         return false;
     };
@@ -222,7 +229,8 @@ fn catalog_matches(catalog_number: Option<&str>, candidates: &[String]) -> bool 
     let normalized = normalize_catalog(cat);
     candidates
         .iter()
-        .any(|c| normalize_catalog(c) == normalized)
+        .filter(|c| c.origin.can_confirm_catalog())
+        .any(|c| normalize_catalog(&c.value) == normalized)
 }
 
 /// Lowercase, strip everything that isn't `[a-z0-9]`. Aligns OCR variants
@@ -263,6 +271,7 @@ fn unzip_results(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::signals::SignalOrigin;
 
     fn mk_result(
         release_id: &str,
@@ -303,6 +312,10 @@ mod tests {
             mk_result(release_id, group_id, catalog),
             mk_status(release_id),
         )
+    }
+
+    fn catalog(value: &str, origin: SignalOrigin) -> SourcedValue {
+        SourcedValue::new(value.to_string(), origin)
     }
 
     #[test]
@@ -430,7 +443,7 @@ mod tests {
 
     #[test]
     fn catalog_filter_narrows_intersection() {
-        // Two pressings share group; only one matches the OCR catalog.
+        // Two pressings share group; only one matches the catalog.
         let discid = vec![
             pair("rel-a", Some("group-x"), Some("WPCR-80001")),
             pair("rel-b", Some("group-x"), Some("WPCR-80002")),
@@ -439,7 +452,7 @@ mod tests {
             pair("rel-a", Some("group-x"), Some("WPCR-80001")),
             pair("rel-b", Some("group-x"), Some("WPCR-80002")),
         ];
-        let candidates = vec!["WPCR 80001".to_string()];
+        let candidates = vec![catalog("WPCR 80001", SignalOrigin::CueSheet)];
         let outcome = combine_results(discid, barcode, &candidates);
         match outcome {
             CombineOutcome::Found { matches, .. } => {
@@ -457,7 +470,7 @@ mod tests {
             pair("rel-a", Some("group-x"), Some("LBL-001")),
             pair("rel-b", Some("group-y"), Some("LBL-002")),
         ];
-        let candidates = vec!["LBL-001".to_string()];
+        let candidates = vec![catalog("LBL-001", SignalOrigin::CueSheet)];
         let outcome = combine_results(results, vec![], &candidates);
         match outcome {
             CombineOutcome::Found { matches, group, .. } => {
@@ -470,13 +483,13 @@ mod tests {
 
     #[test]
     fn catalog_filter_with_no_matches_keeps_combined_set() {
-        // OCR candidate doesn't match any result's catnos — fall back to
+        // Candidate doesn't match any result's catnos — fall back to
         // unfiltered set rather than collapse to empty.
         let results = vec![
             pair("rel-a", Some("group-x"), Some("LBL-001")),
             pair("rel-b", Some("group-x"), Some("LBL-002")),
         ];
-        let candidates = vec!["XXX-999".to_string()];
+        let candidates = vec![catalog("XXX-999", SignalOrigin::CueSheet)];
         let outcome = combine_results(results, vec![], &candidates);
         match outcome {
             CombineOutcome::Found { matches, .. } => {
@@ -492,6 +505,27 @@ mod tests {
         assert_eq!(normalize_catalog("WPCR 80001"), "wpcr80001");
         assert_eq!(normalize_catalog("wpcr-80001"), "wpcr80001");
         assert_eq!(normalize_catalog("WPCR/80001"), "wpcr80001");
+    }
+
+    #[test]
+    fn artwork_catalog_candidate_does_not_narrow_or_confirm() {
+        let results = vec![
+            pair("rel-a", Some("group-x"), Some("LBL-001")),
+            pair("rel-b", Some("group-x"), Some("LBL-002")),
+        ];
+        let candidates = vec![catalog("LBL-002", SignalOrigin::Artwork)];
+        let outcome = combine_results(results, vec![], &candidates);
+        match outcome {
+            CombineOutcome::Found {
+                matches,
+                provenance,
+                ..
+            } => {
+                assert_eq!(matches.len(), 2);
+                assert!(provenance.iter().all(|p| !p.matches_catalog));
+            }
+            other => panic!("expected Found, got {other:?}"),
+        }
     }
 
     #[test]
