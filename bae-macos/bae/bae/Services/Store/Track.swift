@@ -29,24 +29,20 @@ extension BridgeTrackPosition {
     var positionText: String {
         switch self {
         case .sided(let sideLetter, let number):
-            guard let number else {
-                preconditionFailure("track position has no track number")
-            }
-            return "\(sideLetter)\(number.formatted())"
+            return positionText(prefix: sideLetter, number: number)
         case .disc(let disc, let number):
-            guard let number else {
-                preconditionFailure("track position has no track number")
-            }
-            return "\(disc.formatted())-\(number.formatted())"
+            return positionText(prefix: "\(disc.formatted())-", number: number)
         case .flat(let number):
-            guard let number else {
-                preconditionFailure("track position has no track number")
-            }
-            return number.formatted()
+            return positionText(prefix: "", number: number)
         @unknown default:
             preconditionFailure(
                 "unhandled BridgeTrackPosition case in positionText"
             )
         }
+    }
+
+    private func positionText(prefix: String, number: Int32?) -> String {
+        guard let number else { return prefix }
+        return "\(prefix)\(number.formatted())"
     }
 }
