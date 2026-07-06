@@ -3,11 +3,22 @@ use crate::util::content_type_hint::ContentTypeHint;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tracing::{debug, trace, warn};
+
+const CD_PREGAP_SECTORS: i32 = 150;
+
 #[derive(Debug, Error)]
 pub enum MetadataDetectionError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }
+
+fn invalid_discid_data(message: impl Into<String>) -> MetadataDetectionError {
+    MetadataDetectionError::Io(std::io::Error::new(
+        std::io::ErrorKind::InvalidData,
+        message.into(),
+    ))
+}
+
 /// Find a matching audio file for a CUE file (for CUE-pair DiscID calculation).
 /// Accepts any extension `ContentTypeHint::is_audio()` recognises so the
 /// downstream dispatcher can route by container, not by hardcoded list.
@@ -164,9 +175,17 @@ fn discid_from_raw_offsets(
 ) -> Result<String, MetadataDetectionError> {
     let track_offsets: Vec<i32> = raw_track_sectors
         .iter()
-        .map(|sector| sector + 150)
-        .collect();
-    let lead_out_sectors = raw_leadout_sector + 150;
+        .map(|sector| {
+            sector.checked_add(CD_PREGAP_SECTORS).ok_or_else(|| {
+                invalid_discid_data("track start sector out of range for DiscID calculation")
+            })
+        })
+        .collect::<Result<_, _>>()?;
+    let lead_out_sectors = raw_leadout_sector
+        .checked_add(CD_PREGAP_SECTORS)
+        .ok_or_else(|| {
+            invalid_discid_data("lead-out sector out of range for DiscID calculation")
+        })?;
     debug!(
         "{method_label} raw track start sectors before adding 150: {:?}",
         raw_track_sectors
@@ -207,11 +226,13 @@ pub fn calculate_mb_discid_from_log(log_path: &Path) -> Result<String, MetadataD
     trace!("LOG file decoded, length: {} chars", log_content.len());
     let toc_sectors = extract_log_toc_sectors(&log_content)?;
     let raw_track_sectors: Vec<i32> = toc_sectors.iter().map(|(start, _)| *start).collect();
-    let raw_leadout_sector = toc_sectors
+    let last_end_sector = toc_sectors
         .last()
         .expect("LOG TOC parser returned at least one row")
-        .1
-        + 1;
+        .1;
+    let raw_leadout_sector = last_end_sector
+        .checked_add(1)
+        .ok_or_else(|| invalid_discid_data("lead-out sector out of range in LOG TOC"))?;
     debug!("Found {} track(s) in LOG file", raw_track_sectors.len());
     discid_from_raw_offsets(
         "LOG",
@@ -412,6 +433,58 @@ pub fn compute_discid_from_categorized(
 mod tests {
     use super::*;
     use std::path::PathBuf;
+
+    fn assert_invalid_data(result: Result<String, MetadataDetectionError>) {
+        let error = result.expect_err("out-of-range sector should return an error");
+        match error {
+            MetadataDetectionError::Io(error) => {
+                assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
+            }
+        }
+    }
+
+    fn write_log_with_toc(end_sector: i32) -> tempfile::NamedTempFile {
+        let file = tempfile::NamedTempFile::new().expect("test LOG file should be created");
+        let content = format!(
+            "TOC of the extracted CD\n\
+             \n\
+             Track | Start | Length | Start sector | End sector\n\
+             ---------------------------------------------------\n\
+             1 | 0:00.00 | 1:00.00 | 0 | {end_sector}\n\
+             \n\
+             Range status and errors\n"
+        );
+        std::fs::write(file.path(), content).expect("test LOG file should be written");
+        file
+    }
+
+    #[test]
+    fn discid_rejects_track_start_sector_that_overflows_pregap_offset() {
+        assert_invalid_data(discid_from_raw_offsets(
+            "LOG",
+            &[i32::MAX],
+            100,
+            "from test lead-out",
+        ));
+    }
+
+    #[test]
+    fn discid_rejects_leadout_sector_that_overflows_pregap_offset() {
+        assert_invalid_data(discid_from_raw_offsets(
+            "LOG",
+            &[0],
+            i32::MAX,
+            "from test lead-out",
+        ));
+    }
+
+    #[test]
+    fn discid_from_log_rejects_end_sector_that_overflows_leadout_derivation() {
+        let log_file = write_log_with_toc(i32::MAX);
+
+        assert_invalid_data(calculate_mb_discid_from_log(log_file.path()));
+    }
+
     #[test]
     fn test_extract_leadout_from_log() {
         let log_path = PathBuf::from("tests/fixtures/test_album.log");
