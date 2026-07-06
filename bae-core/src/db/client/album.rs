@@ -331,6 +331,9 @@ impl Database {
 
             let artists = get_artists_for_album_on(conn, &album_id)?;
             let db_releases = get_releases_for_album_on(conn, &album_id)?;
+            if db_releases.is_empty() {
+                return Ok(None);
+            }
 
             let mut releases = Vec::with_capacity(db_releases.len());
             for release in db_releases {

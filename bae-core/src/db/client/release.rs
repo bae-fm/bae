@@ -384,6 +384,32 @@ impl Database {
         .await
     }
 
+    /// Get the raw release-detail aggregate, the release's album artists, and
+    /// the release's 0-based position among sibling releases from one database
+    /// call. `LibraryManager` resolves this into `ReleaseDetail`.
+    pub async fn find_release_detail_context(
+        &self,
+        release_id: &str,
+    ) -> Result<Option<(DbReleaseDetail, Vec<DbArtist>, usize)>, DbError> {
+        let release_id = release_id.to_string();
+        self.call(move |conn| {
+            let Some(release) = find_release_by_id_on(conn, &release_id)? else {
+                return Ok(None);
+            };
+            let album_artists = get_artists_for_album_on(conn, &release.album_id)?;
+            let releases = get_releases_for_album_on(conn, &release.album_id)?;
+            let Some(release_index) = releases.iter().position(|r| r.id == release_id) else {
+                return Ok(None);
+            };
+            Ok(Some((
+                build_release_detail_on(conn, release)?,
+                album_artists,
+                release_index,
+            )))
+        })
+        .await
+    }
+
     /// Get all releases for an album
     pub async fn get_releases_for_album(&self, album_id: &str) -> Result<Vec<DbRelease>, DbError> {
         let album_id = album_id.to_string();

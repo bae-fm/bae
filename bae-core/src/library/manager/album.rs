@@ -139,8 +139,8 @@ impl LibraryManager {
     /// Resolve a raw `DbAlbumDetail` into the display-ready `AlbumDetail`.
     /// Joins artist names, formats labels, groups tracks by side, builds
     /// galleries, and applies the `primary_release_id` fallback. The
-    /// fallback always succeeds: every album has at least one release
-    /// (enforced by `delete_release`).
+    /// fallback always succeeds: `Database::find_album_detail` does not emit
+    /// empty-release aggregates.
     pub(super) async fn resolve_album_detail(
         &self,
         raw: crate::db::DbAlbumDetail,
@@ -152,7 +152,7 @@ impl LibraryManager {
                 .iter()
                 .map(|release| release.release.id.as_str()),
         )
-        .expect("album has at least one release");
+        .expect("album detail contains at least one release");
 
         let has_cloud_home = self.has_cloud_home();
         // One cover lookup for the whole album: the album's cover is the primary

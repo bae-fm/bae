@@ -1213,6 +1213,20 @@ async fn album_detail_cover_is_versioned_and_moves_on_overwrite() {
 }
 
 #[tokio::test]
+async fn find_album_detail_returns_none_when_releases_vanish() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    manager.database.insert_album(&album).await.unwrap();
+
+    let detail = manager
+        .find_album_detail(&album.id)
+        .await
+        .expect("empty album aggregate must resolve without an error");
+
+    assert!(detail.is_none());
+}
+
+#[tokio::test]
 async fn find_release_detail_returns_some_for_known_id() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();

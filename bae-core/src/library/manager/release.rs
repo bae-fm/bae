@@ -633,17 +633,14 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<Option<ReleaseDetail>, LibraryError> {
-        let Some(raw) = self.database.find_release_detail(release_id).await? else {
+        let Some((raw, album_artists, release_index)) = self
+            .database
+            .find_release_detail_context(release_id)
+            .await?
+        else {
             return Ok(None);
         };
         let has_cloud_home = self.has_cloud_home();
-        let album_id = raw.release.album_id.clone();
-        let album_artists = self.database.get_artists_for_album(&album_id).await?;
-        let releases = self.database.get_releases_for_album(&album_id).await?;
-        let release_index = releases
-            .iter()
-            .position(|r| r.id == release_id)
-            .expect("release belongs to its album");
         let pinned = self
             .release_pinned(raw.files.first().map(|f| f.id.as_str()))
             .await?;
@@ -1014,16 +1011,11 @@ pub(crate) async fn find_release_detail_with(
     has_cloud_home: bool,
     release_id: &str,
 ) -> Result<Option<ReleaseDetail>, LibraryError> {
-    let Some(raw) = database.find_release_detail(release_id).await? else {
+    let Some((raw, album_artists, release_index)) =
+        database.find_release_detail_context(release_id).await?
+    else {
         return Ok(None);
     };
-    let album_id = raw.release.album_id.clone();
-    let album_artists = database.get_artists_for_album(&album_id).await?;
-    let releases = database.get_releases_for_album(&album_id).await?;
-    let release_index = releases
-        .iter()
-        .position(|r| r.id == release_id)
-        .expect("release belongs to its album");
     let pinned = match raw.files.first() {
         Some(file) => release_file_pinned(handle, &file.id).await?,
         None => false,
