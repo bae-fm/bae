@@ -2,6 +2,12 @@ import CoreGraphics
 import Foundation
 import os.log
 
+#if canImport(AppKit)
+    import AppKit
+#elseif canImport(UIKit)
+    import UIKit
+#endif
+
 private let logger = Logger.bae("MediaPaths")
 
 /// Which library image to fetch and how. A `cover` is a release cover addressed
@@ -172,19 +178,73 @@ struct MediaPathsUnavailable: Error {}
 /// (so replacing a cover reloads) and the pixel size (so the now-playing bar's
 /// 48pt decode never serves the detail view's 400pt slot, and vice versa).
 ///
-/// `@unchecked Sendable` over a lock-guarded dictionary: `PlatformImage`
-/// (NSImage/UIImage) is documented thread-safe for reads after construction, so
-/// caching and handing back the same instance across tasks is safe — the lock
-/// only guards the dictionary itself.
-private final class LibraryImageCache: @unchecked Sendable {
-    private let lock = NSLock()
-    private var entries: [String: PlatformImage] = [:]
+/// `@unchecked Sendable` over `NSCache`: `PlatformImage` (NSImage/UIImage) is
+/// documented thread-safe for reads after construction, and `NSCache` is
+/// synchronized internally.
+final class LibraryImageCache: @unchecked Sendable {
+    private static let bytesPerPixel = 4
+
+    #if os(iOS)
+        private static let defaultTotalCostLimit = 64 * 1024 * 1024
+    #else
+        private static let defaultTotalCostLimit = 256 * 1024 * 1024
+    #endif
+
+    private let cache: NSCache<NSString, PlatformImage>
+
+    init(totalCostLimit: Int = LibraryImageCache.defaultTotalCostLimit) {
+        let cache = NSCache<NSString, PlatformImage>()
+        cache.totalCostLimit = totalCostLimit
+        self.cache = cache
+    }
 
     func image(for key: String) -> PlatformImage? {
-        lock.withLock { entries[key] }
+        cache.object(forKey: key as NSString)
     }
 
     func store(_ image: PlatformImage, for key: String) {
-        lock.withLock { entries[key] = image }
+        cache.setObject(
+            image,
+            forKey: key as NSString,
+            cost: Self.decodedByteCost(of: image)
+        )
+    }
+
+    static func decodedByteCost(of image: PlatformImage) -> Int {
+        #if canImport(AppKit)
+            var proposedRect = CGRect(origin: .zero, size: image.size)
+            if let cgImage = image.cgImage(
+                forProposedRect: &proposedRect,
+                context: nil,
+                hints: nil
+            ) {
+                return decodedByteCost(of: cgImage)
+            }
+        #elseif canImport(UIKit)
+            if let cgImage = image.cgImage {
+                return decodedByteCost(of: cgImage)
+            }
+        #endif
+
+        preconditionFailure("library image cache stores decoded images")
+    }
+
+    private static func decodedByteCost(of cgImage: CGImage) -> Int {
+        decodedByteCost(width: cgImage.width, height: cgImage.height)
+    }
+
+    private static func decodedByteCost(width: Int, height: Int) -> Int {
+        guard width > 0, height > 0 else {
+            preconditionFailure("decoded image dimensions must be positive")
+        }
+
+        let (pixels, pixelsOverflow) =
+            width.multipliedReportingOverflow(by: height)
+        let (bytes, bytesOverflow) =
+            pixels.multipliedReportingOverflow(by: bytesPerPixel)
+        if pixelsOverflow || bytesOverflow {
+            preconditionFailure("decoded image byte cost overflow")
+        }
+        return bytes
     }
 }
