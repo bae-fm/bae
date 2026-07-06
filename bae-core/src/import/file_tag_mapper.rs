@@ -122,7 +122,11 @@ pub fn map_file_tags_to_db(
     // with the real tag values (e.g. an untagged file getting position 1 next
     // to a TRACKNUMBER=1 file). On a partially-tagged side the untagged files
     // stay `None` for the user to assign in the editor.
-    let side_of = |t: &FileTags| t.disc_number.map(|d| d.max(1) as i32).unwrap_or(1);
+    let side_of = |t: &FileTags| match t.disc_number {
+        Some(0) | None => 1,
+        Some(d) if d > i32::MAX as u32 => i32::MAX,
+        Some(d) => d as i32,
+    };
     let mut side_has_tagged_track: std::collections::HashMap<i32, bool> =
         std::collections::HashMap::new();
     for t in extracted.iter() {
@@ -152,6 +156,8 @@ pub fn map_file_tags_to_db(
             *count += 1;
             let side_partially_tagged = side_has_tagged_track.get(&side).copied().unwrap_or(false);
             let track_number = match t.track_number {
+                Some(0) => None,
+                Some(n) if n > i32::MAX as u32 => None,
                 Some(n) => Some(n as i32),
                 // Untagged file on a side that has tagged siblings — leave it
                 // for the user rather than backfill a colliding position.
@@ -903,6 +909,31 @@ mod tests {
         assert_eq!(parsed.tracks[2].track_number, Some(1));
         assert_eq!(parsed.tracks[3].side, 2);
         assert_eq!(parsed.tracks[3].track_number, Some(2));
+    }
+
+    #[test]
+    fn out_of_range_tag_numbers_do_not_wrap_negative() {
+        let temp = TempDir::new().unwrap();
+        let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
+
+        let file = copy_and_tag(
+            &src,
+            temp.path(),
+            "wrapped-tag-numbers.flac",
+            TagType::VorbisComments,
+            Some("Track Title"),
+            Some("Artist Name"),
+            Some("Album Title"),
+            Some("Artist Name"),
+            None,
+            Some(u32::MAX),
+            Some(u32::MAX),
+        );
+
+        let parsed = map_tags(&[file]).unwrap();
+
+        assert_eq!(parsed.tracks[0].side, i32::MAX);
+        assert_eq!(parsed.tracks[0].track_number, None);
     }
 
     /// Per-track artist different from album artist → adds an extra
