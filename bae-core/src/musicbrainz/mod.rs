@@ -558,7 +558,10 @@ impl QueryValueFormat {
     fn render(self, key: &str, value: &str) -> String {
         match self {
             Self::Bare => format!("{}:{}", key, value),
-            Self::Quoted => format!("{}:\"{}\"", key, value),
+            Self::Quoted => {
+                let escaped = value.replace('\\', "\\\\").replace('"', "\\\"");
+                format!("{}:\"{}\"", key, escaped)
+            }
         }
     }
 }

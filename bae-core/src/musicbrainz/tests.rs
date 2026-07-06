@@ -42,6 +42,36 @@ fn release_search_params_ignore_blank_fields() {
     assert_eq!(params.build_query(), "artist:\"Artist Name\" AND date:2000");
 }
 
+#[test]
+fn release_search_params_escape_quoted_lucene_values() {
+    assert_eq!(
+        QueryValueFormat::Quoted.render("release", r#"Quoted "Middle" Phrase"#),
+        r#"release:"Quoted \"Middle\" Phrase""#,
+    );
+    assert_eq!(
+        QueryValueFormat::Quoted.render("release", r#"Backslash at end\"#),
+        r#"release:"Backslash at end\\""#,
+    );
+    assert_eq!(
+        QueryValueFormat::Quoted.render("artist", "Artist Name"),
+        r#"artist:"Artist Name""#,
+    );
+}
+
+#[test]
+fn release_search_params_build_query_with_escaped_phrase() {
+    let params = ReleaseSearchParams {
+        artist: Some("Artist Name".to_string()),
+        album: Some(r#"Quoted "Middle" Phrase"#.to_string()),
+        ..Default::default()
+    };
+
+    assert_eq!(
+        params.build_query(),
+        r#"artist:"Artist Name" AND release:"Quoted \"Middle\" Phrase""#,
+    );
+}
+
 #[tokio::test(start_paused = true)]
 async fn test_rate_limiter_enforces_spacing() {
     // First call should return immediately
