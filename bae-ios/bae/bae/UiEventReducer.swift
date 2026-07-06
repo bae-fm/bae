@@ -41,7 +41,6 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
         let libraryStore = libraryStore
         let downloadStore = downloadStore
         let mediaControlService = mediaControlService
-        let appHandle = appHandle
         Task { @MainActor in
             let context = ReducerContext(
                 playbackStore: playbackStore,
