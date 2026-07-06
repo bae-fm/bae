@@ -61,6 +61,7 @@ object BridgeFixtures {
             storageState = BridgeReleaseStorageState.LOCAL,
             pinned = false,
             storageActions = emptyList(),
+            transferAction = null,
             tracks = trackGroups.flatMap { it.tracks },
             trackGroups = trackGroups,
             files = emptyList(),

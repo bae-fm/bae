@@ -95,9 +95,9 @@ data class QueueProjection(
 }
 
 /**
- * The playback-state intake [BaeCorePlayer] exposes to [fm.bae.app.data.UiEventReducer].
- * The reducer depends on this contract, not the concrete player (which needs a
- * live [AppHandle]), so reducer routing is unit-testable against a fake sink.
+ * The playback-state intake [BaeCorePlayer] exposes to [fm.bae.app.data.UiEventAdapter].
+ * Event routing depends on this contract, not the concrete player, so playback
+ * handling can be exercised against a fake sink.
  */
 interface PlaybackEventSink {
     fun onLoading(
@@ -644,7 +644,7 @@ class BaeCorePlayer(
         if (_isPlaying.value) pause() else play()
     }
 
-    // ── Event intake (called from UiEventReducer on the application looper) ──
+    // ── Event intake (called from UiEventAdapter on the application looper) ──
 
     override fun onLoading(
         trackId: String,

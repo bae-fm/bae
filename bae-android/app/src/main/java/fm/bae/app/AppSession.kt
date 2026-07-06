@@ -10,13 +10,15 @@ import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.OpenLibraryStores
-import fm.bae.app.data.UiEventReducer
+import fm.bae.app.data.UiEventAdapter
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
@@ -56,6 +58,8 @@ class OpenLibrary(
     val libraryStore: LibraryStore get() = stores.library
     val configStore: ConfigStore get() = stores.config
     val downloadStore: DownloadStore get() = stores.downloads
+    private var eventChannel: Channel<BridgeUiEvent>? = null
+    private var eventJob: Job? = null
 
     /**
      * Subscribe to the live event stream, routing playback variants into the
@@ -69,17 +73,24 @@ class OpenLibrary(
      * before the first track plays).
      */
     fun wireUp(scope: CoroutineScope) {
+        val channel = Channel<BridgeUiEvent>(Channel.UNLIMITED)
+        eventChannel = channel
+        eventJob =
+            scope.launch(Dispatchers.Main.immediate) {
+                for (event in channel) {
+                    UiEventAdapter.handle(
+                        event = event,
+                        appHandle = appHandle,
+                        stores = stores,
+                        player = playback,
+                        errors = LocaleErrorLines(appContext),
+                    )
+                }
+            }
         appHandle.subscribeUiEvents(
             object : UiEventCallback {
                 override fun onEvent(event: BridgeUiEvent) {
-                    scope.launch(Dispatchers.Main) {
-                        UiEventReducer.reduce(
-                            event,
-                            stores,
-                            playback,
-                            LocaleErrorLines(appContext),
-                        )
-                    }
+                    channel.trySend(event)
                 }
             },
         )
@@ -99,6 +110,10 @@ class OpenLibrary(
         // player outlives the service), so this is the only place the player's
         // system hooks come off — do it before close().
         playback.detachSystemHooks()
+        eventJob?.cancel()
+        eventChannel?.close()
+        eventJob = null
+        eventChannel = null
         appContext.stopService(Intent(appContext, PlaybackService::class.java))
         appHandle.close()
     }

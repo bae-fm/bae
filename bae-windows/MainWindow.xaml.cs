@@ -117,24 +117,20 @@ public sealed partial class MainWindow : Window
     private TextBlock? _scanStatus;
 
     // Reloads the storage dialog's outbox panel and storage rows; set while that
-    // dialog is open so OutboxChanged refreshes them live, null when closed.
+    // dialog is open so outbox invalidations refresh them live, null when closed.
     private Action? _refreshOutbox;
     private Action? _refreshDownloads;
 
     // Re-reads bae_settings into the open settings dialog's labels; set while that
-    // dialog is open so ConfigChanged (provider connect/disconnect, sync readiness,
-    // rename, Discogs token) refreshes it live, null when closed.
+    // dialog is open so config invalidations refresh it live, null when closed.
     private Action? _refreshSettings;
 
-    // Reloads the storage dialog's release rows; set while that dialog is open so a
-    // ReleaseUpdated (mapped to LibraryChanged) — a storage-state change pulled in
-    // by sync, or an async manage→cloud-only that finishes when its uploads land —
-    // refreshes each row's state badge and actions, not just the album grid.
+    // Reloads the storage dialog's release rows; set while that dialog is open so
+    // album/release invalidations refresh each row's state badge and actions, not
+    // just the album grid.
     private Action? _refreshStorageRows;
 
-    // Toolbar sync indicator state, accumulated from sync events. The last-sync time
-    // and syncing flag arrive only via events (as on macOS), so the indicator stays
-    // blank until the first sync activity after a library opens.
+    // Toolbar sync indicator state, refreshed from the sync-status snapshot.
     private bool _syncing;
     private string? _lastSyncTime;
     private string? _syncErrorText;
@@ -378,22 +374,64 @@ public sealed partial class MainWindow : Window
         NpVolume.Value = NativeBae.GetVolume(_handle);
         _suppressVolume = false;
 
-        // Reset the toolbar sync indicator for the newly-opened library; it
-        // repopulates from this library's own sync events.
-        ResetSyncIndicator();
+        RefreshSyncStatus();
 
         _eventCallback = OnNativeEvent;
         NativeBae.Subscribe(_handle, _eventCallback);
     }
 
-    // Clear the toolbar sync indicator back to blank — on library open (the
-    // next library repopulates it from its own sync events) and on teardown
-    // (no library, nothing to report).
+    // Clear the toolbar sync indicator back to blank — no current status to
+    // report.
     private void ResetSyncIndicator()
     {
         _syncing = false;
         _lastSyncTime = null;
         _syncErrorText = null;
+        UpdateSyncIndicator();
+    }
+
+    private void RefreshSyncStatus()
+    {
+        var json = NativeBae.SyncStatusJson(_handle);
+        if (json is null)
+        {
+            BaeDiagnostics.Logger.Error("Failed to read sync status snapshot.");
+            ResetSyncIndicator();
+            return;
+        }
+
+        var status = JsonSerializer.Deserialize<SyncStatus>(json, JsonOptions);
+        if (status is null)
+        {
+            BaeDiagnostics.Logger.Error("Failed to decode sync status snapshot.");
+            ResetSyncIndicator();
+            return;
+        }
+
+        RenderSyncStatus(status);
+    }
+
+    private void RenderSyncStatus(SyncStatus status)
+    {
+        var syncLine = status.Error?.LocalizedLine;
+        if (syncLine is null)
+        {
+            SyncBanner.IsOpen = false;
+        }
+        else
+        {
+            var reconnect = new Button { Content = Loc.Chrome("sync.reconnect") };
+            reconnect.Click += (_, _) => NativeBae.TriggerSync(_handle);
+            SyncBanner.Severity = InfoBarSeverity.Error;
+            SyncBanner.Title = Loc.Chrome("sync.error_title");
+            SyncBanner.Message = syncLine;
+            SyncBanner.ActionButton = reconnect;
+            SyncBanner.IsOpen = true;
+        }
+
+        _syncErrorText = syncLine;
+        _syncing = status.Syncing;
+        _lastSyncTime = FormatSyncTime(status.LastSyncTime);
         UpdateSyncIndicator();
     }
 
@@ -1687,29 +1725,6 @@ public sealed partial class MainWindow : Window
                     _ => "↻",
                 };
                 break;
-            case "SyncError":
-                // Sync uses its own banner so a general ErrorCleared can't dismiss a
-                // still-broken sync (and vice versa), matching the macOS slot split.
-                // evt.Error is null when a prior failure cleared; otherwise it's the
-                // structured diagnostic whose generic line we render for the locale.
-                var syncLine = evt.Error?.LocalizedLine;
-                if (syncLine is null)
-                {
-                    SyncBanner.IsOpen = false;
-                }
-                else
-                {
-                    var reconnect = new Button { Content = Loc.Chrome("sync.reconnect") };
-                    reconnect.Click += (_, _) => NativeBae.TriggerSync(_handle);
-                    SyncBanner.Severity = InfoBarSeverity.Error;
-                    SyncBanner.Title = Loc.Chrome("sync.error_title");
-                    SyncBanner.Message = syncLine;
-                    SyncBanner.ActionButton = reconnect;
-                    SyncBanner.IsOpen = true;
-                }
-                _syncErrorText = syncLine;
-                UpdateSyncIndicator();
-                break;
             case "PreviewProgress":
                 if (_previewElapsed is not null)
                 {
@@ -1731,13 +1746,8 @@ public sealed partial class MainWindow : Window
                     _previewElapsed.Text = string.Empty;
                 }
                 break;
-            case "SyncingChanged":
-                _syncing = evt.Syncing;
-                UpdateSyncIndicator();
-                break;
-            case "SyncTimeChanged":
-                _lastSyncTime = FormatSyncTime(evt.SyncTime);
-                UpdateSyncIndicator();
+            case "Invalidated":
+                HandleInvalidation(evt.Invalidation);
                 break;
             case "PlaybackError":
                 Banner.Severity = InfoBarSeverity.Error;
@@ -1773,22 +1783,6 @@ public sealed partial class MainWindow : Window
                 NpPlayPause.Visibility = Visibility.Collapsed;
                 NpLoading.IsActive = true;
                 NpLoading.Visibility = Visibility.Visible;
-                break;
-            case "LibraryChanged":
-                if (string.IsNullOrEmpty(SearchBox.Text))
-                {
-                    LoadCurrentBrowserMode();
-                }
-                _refreshStorageRows?.Invoke();
-                break;
-            case "OutboxChanged":
-                _refreshOutbox?.Invoke();
-                break;
-            case "DownloadQueueChanged":
-                _refreshDownloads?.Invoke();
-                break;
-            case "ConfigChanged":
-                _refreshSettings?.Invoke();
                 break;
             case "QueueUpdated":
                 _queueManual = evt.Manual ?? new List<QueueItem>();
@@ -1865,6 +1859,42 @@ public sealed partial class MainWindow : Window
                     failLine is null
                         ? Loc.Chrome("import.failed")
                         : $"{Loc.Chrome("import.failed")}: {failLine}");
+                break;
+        }
+    }
+
+    private void HandleInvalidation(BaeInvalidation? invalidation)
+    {
+        if (invalidation is null)
+        {
+            BaeDiagnostics.Logger.Warning("Ignoring invalidation event with no invalidation payload.");
+            return;
+        }
+
+        switch (invalidation.Kind)
+        {
+            case "album_list":
+            case "composer_list":
+                if (string.IsNullOrEmpty(SearchBox.Text))
+                {
+                    LoadCurrentBrowserMode();
+                }
+                break;
+            case "album":
+            case "release":
+                _refreshStorageRows?.Invoke();
+                break;
+            case "config":
+                _refreshSettings?.Invoke();
+                break;
+            case "sync_status":
+                RefreshSyncStatus();
+                break;
+            case "outbox":
+                _refreshOutbox?.Invoke();
+                break;
+            case "download_queue":
+                _refreshDownloads?.Invoke();
                 break;
         }
     }
@@ -2654,7 +2684,7 @@ public sealed partial class MainWindow : Window
         }
 
         // The import runs in the background; its result updates the candidate row
-        // via CandidateImport* events and refreshes the grid via LibraryChanged.
+        // via CandidateImport* events and refreshes the grid via invalidation.
         // Shape (validation) of the edit happens in Rust — on failure keep the
         // dialog open and show the reason.
         dialog.PrimaryButtonClick += async (_, args) =>
@@ -4158,7 +4188,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        // On success the LibraryChanged event refreshes the grid.
+        // On success an invalidation refreshes the grid.
         var error = await System.Threading.Tasks.Task.Run(() => NativeBae.DeleteRelease(_handle, releaseId));
         if (error is not null)
         {
@@ -4413,7 +4443,7 @@ public sealed partial class MainWindow : Window
     /// Pick a new cover for <paramref name="releaseId"/>: the release's own image
     /// files plus remote candidates fetched from MusicBrainz / Discogs. Selecting
     /// one writes it as the release's cover; the album grid refreshes via the
-    /// LibraryChanged event the change emits. Errors surface inside this dialog,
+    /// invalidation the change emits. Errors surface inside this dialog,
     /// since the window banner is occluded by the modal.
     /// </summary>
     private async System.Threading.Tasks.Task ShowChangeCover(string albumId, string releaseId)
@@ -5047,8 +5077,8 @@ public sealed partial class MainWindow : Window
             _ = LoadDownloads();
             _ = LoadStorageRows();
         };
-        // A library change (ReleaseUpdated → LibraryChanged) that isn't an outbox
-        // change still alters a release's storage state — refresh the rows for it too.
+        // An album/release invalidation that isn't an outbox change can still
+        // alter a release's storage state — refresh the rows for it too.
         _refreshStorageRows = () => _ = LoadStorageRows();
         try
         {
@@ -5327,7 +5357,7 @@ public sealed partial class MainWindow : Window
 
         // Discogs key state machine. The token input is the only local draft state;
         // the configured/valid state comes from bae_settings, re-read on
-        // ConfigChanged. not_configured/rejected → editable input + Save; valid →
+        // a config invalidation. not_configured/rejected → editable input + Save; valid →
         // "connected" + Remove; unvalidated → that label + Re-check + Remove. Save
         // and Re-check validate over the network, so they run off the UI thread and
         // show "Validating…" while in flight.
@@ -5337,7 +5367,7 @@ public sealed partial class MainWindow : Window
         // `settingsErrorText` is local feedback for an action — a rejected key,
         // a settings write failure, a re-check / remove failure — cleared when
         // the next action starts. Keeping them apart means an unrelated
-        // ConfigChanged re-render can't wipe the rejection note.
+        // a config-invalidation re-render can't wipe the rejection note.
         var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray) };
         var settingsErrorText = new TextBlock
         {
@@ -5365,7 +5395,7 @@ public sealed partial class MainWindow : Window
 
         // Drive the controls from the persisted status: which buttons show, whether
         // the input is editable, and the status line. Called on open and on every
-        // ConfigChanged re-read. The draft text and the local error line are left
+        // config-invalidation re-read. The draft text and the local error line are left
         // alone — they belong to the user's in-progress input, not the stored state.
         void RenderDiscogs(Settings settings)
         {
@@ -5399,11 +5429,11 @@ public sealed partial class MainWindow : Window
             {
                 case "valid":
                 case "unvalidated":
-                    // Stored: a ConfigChanged re-read settles the controls and label.
+                    // Stored: a config-invalidation re-read settles the controls and label.
                     status.Text = string.Empty;
                     break;
                 case "rejected":
-                    // Nothing stored, so no ConfigChanged fires — keep the draft and
+                    // Nothing stored, so no config invalidation fires — keep the draft and
                     // surface the rejection.
                     status.Text = string.Empty;
                     ShowSettingsError(Loc.Chrome("settings.discogs.rejected"));
@@ -5431,7 +5461,7 @@ public sealed partial class MainWindow : Window
             {
                 ShowSettingsError(error);
             }
-            // On success a ConfigChanged re-read settles the controls and label.
+            // On success a config-invalidation re-read settles the controls and label.
         };
         remove.Click += async (_, _) =>
         {
@@ -5441,7 +5471,7 @@ public sealed partial class MainWindow : Window
             }
 
             ClearSettingsError();
-            // Removing clears the config flag, firing ConfigChanged — the re-read
+            // Removing clears the config flag, firing a config invalidation — the re-read
             // restores the editable input. Nothing is patched inline here.
             var error = await System.Threading.Tasks.Task.Run(
                 () => NativeBae.DeleteDiscogsToken(_handle));
@@ -5574,7 +5604,7 @@ public sealed partial class MainWindow : Window
 
         // Export: the single-track "Save As…" suggested-filename template and the
         // metadata tags an export embeds. Windows has no release export, so this is
-        // the per-track section only. Writes round-trip through ConfigChanged into
+        // the per-track section only. Writes round-trip through config invalidation into
         // the settings re-read (RenderExport); the checkboxes send the whole seven-
         // bool set (set-state), never one mutated field.
         var exportLabel = new TextBlock
@@ -5867,7 +5897,7 @@ public sealed partial class MainWindow : Window
             {
                 ShowSettingsError(error);
             }
-            // On success a ConfigChanged re-read settles the field via RenderExport.
+            // On success a config-invalidation re-read settles the field via RenderExport.
         }
 
         async System.Threading.Tasks.Task SaveExportPresets(List<ExportPreset> presets)
@@ -6251,7 +6281,7 @@ public sealed partial class MainWindow : Window
         });
 
         // Re-read the (FFI-pre-computed) settings into the live labels so a
-        // ConfigChanged event — or a connect/disconnect in this dialog — updates
+        // config invalidation — or a connect/disconnect in this dialog — updates
         // them in place instead of requiring a reopen.
         _refreshSettings = () =>
         {
@@ -6280,7 +6310,7 @@ public sealed partial class MainWindow : Window
         // A key saved while offline lands "unvalidated"; opening settings is a
         // chance to settle it now that there may be connectivity. The core no-ops
         // unless the stored key is actually unvalidated, so call unconditionally;
-        // on a result it changes the status, firing ConfigChanged → RenderDiscogs.
+        // on a result it changes the status, firing a config invalidation.
         _ = System.Threading.Tasks.Task.Run(() => NativeBae.RevalidateDiscogsToken(_handle));
 
         await dialog.ShowAsync();

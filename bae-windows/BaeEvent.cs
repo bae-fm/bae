@@ -14,6 +14,7 @@ namespace Bae.Windows;
 public sealed class BaeEvent
 {
     public string Type { get; set; } = string.Empty;
+    public BaeInvalidation? Invalidation { get; set; }
 
     // Identify the playing track and its album, so "go to now playing" can open
     // that album and reveal the track. Carried by PlaybackPlaying /
@@ -83,8 +84,7 @@ public sealed class BaeEvent
     /// the first step is known. The handler resolves its localized verb.</summary>
     public ImportStep? Step { get; set; }
 
-    /// <summary>The structured diagnostic for Error / SyncError /
-    /// CandidateImportError; null when SyncError clears a prior failure.</summary>
+    /// <summary>The structured diagnostic for Error / CandidateImportError.</summary>
     public DiagnosticError? Error { get; set; }
 
     /// <summary>The structured playback-failure reason (PlaybackError).</summary>
@@ -93,11 +93,15 @@ public sealed class BaeEvent
     /// <summary>The structured pause reason (PlaybackPaused).</summary>
     public PlaybackPauseReason? PauseReason { get; set; }
 
-    // Sync status (SyncingChanged / SyncTimeChanged) for the toolbar indicator.
-    // SyncTime is Unix epoch milliseconds of the last successful sync, or null
-    // when never synced.
-    public bool Syncing { get; set; }
-    public long? SyncTime { get; set; }
+}
+
+public sealed class BaeInvalidation
+{
+    public string Kind { get; set; } = string.Empty;
+    public string? AlbumId { get; set; }
+    public string? ReleaseId { get; set; }
+    public string? ComposerId { get; set; }
+    public string? Key { get; set; }
 }
 
 /// <summary>

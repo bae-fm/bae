@@ -573,6 +573,13 @@ internal static class NativeBae
     /// error. Copies into managed memory and frees the native string.</summary>
     internal static string? DownloadSnapshotJson(IntPtr handle) => CopyAndFree(DownloadSnapshotPtr(handle));
 
+    [DllImport(Dll, EntryPoint = "bae_sync_status", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SyncStatusPtr(IntPtr handle);
+
+    /// <summary>The current cloud-sync status as a JSON string, or null on
+    /// error. Copies into managed memory and frees the native string.</summary>
+    internal static string? SyncStatusJson(IntPtr handle) => CopyAndFree(SyncStatusPtr(handle));
+
     [DllImport(Dll, EntryPoint = "bae_set_downloads_paused", CallingConvention = CallingConvention.Cdecl)]
     private static extern void SetDownloadsPausedNative(IntPtr handle, [MarshalAs(UnmanagedType.I1)] bool paused);
 
@@ -761,7 +768,7 @@ internal static class NativeBae
     /// (couldn't reach Discogs, stored anyway and re-validated later), or "rejected"
     /// (Discogs rejected it, nothing stored) — or null on an internal error (logged
     /// in the core). Validates over the network — call off the UI thread. On
-    /// "valid"/"unvalidated" a ConfigChanged event follows; "rejected" persists
+    /// "valid"/"unvalidated" a config invalidation follows; "rejected" persists
     /// nothing, so the caller surfaces it from this return value. Copies and frees.
     /// </summary>
     internal static string? SaveDiscogsToken(IntPtr handle, string token) =>
@@ -770,7 +777,7 @@ internal static class NativeBae
     /// <summary>
     /// Re-validate a stored-but-unvalidated Discogs token against Discogs (e.g. one
     /// saved while offline); no-op unless a key is stored with "unvalidated" status.
-    /// On a result the status changes, so a ConfigChanged event follows. Validates
+    /// On a result the status changes, so a config invalidation follows. Validates
     /// over the network — call off the UI thread. Null on success, else the error.
     /// </summary>
     internal static string? RevalidateDiscogsToken(IntPtr handle) =>

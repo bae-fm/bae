@@ -3033,11 +3033,61 @@ fn playback_pause_reason_to_ffi(
     }
 }
 
+#[derive(Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum FfiInvalidation {
+    AlbumList,
+    Album { album_id: String },
+    Release { release_id: String },
+    ComposerList,
+    Composer { composer_id: String },
+    Queue,
+    Config,
+    SyncStatus,
+    Outbox,
+    DownloadQueue,
+    ExportQueue,
+    ImportCandidateList,
+    ImportCandidate { key: String },
+    WatchedFolders,
+}
+
+fn invalidation_to_ffi(invalidation: &bae_core::ui::Invalidation) -> FfiInvalidation {
+    use bae_core::ui::Invalidation;
+    match invalidation {
+        Invalidation::AlbumList => FfiInvalidation::AlbumList,
+        Invalidation::Album { album_id } => FfiInvalidation::Album {
+            album_id: album_id.clone(),
+        },
+        Invalidation::Release { release_id } => FfiInvalidation::Release {
+            release_id: release_id.clone(),
+        },
+        Invalidation::ComposerList => FfiInvalidation::ComposerList,
+        Invalidation::Composer { composer_id } => FfiInvalidation::Composer {
+            composer_id: composer_id.clone(),
+        },
+        Invalidation::Queue => FfiInvalidation::Queue,
+        Invalidation::Config => FfiInvalidation::Config,
+        Invalidation::SyncStatus => FfiInvalidation::SyncStatus,
+        Invalidation::Outbox => FfiInvalidation::Outbox,
+        Invalidation::DownloadQueue => FfiInvalidation::DownloadQueue,
+        Invalidation::ExportQueue => FfiInvalidation::ExportQueue,
+        Invalidation::ImportCandidateList => FfiInvalidation::ImportCandidateList,
+        Invalidation::ImportCandidate { key } => {
+            FfiInvalidation::ImportCandidate { key: key.clone() }
+        }
+        Invalidation::WatchedFolders => FfiInvalidation::WatchedFolders,
+    }
+}
+
 /// A UI event pushed to the native app, as JSON `{type, ...}`. Only the events
 /// the WinUI app reacts to are mapped; the rest are dropped.
 #[derive(Serialize)]
 #[serde(tag = "type")]
 enum FfiEvent {
+    Invalidated {
+        invalidation: FfiInvalidation,
+    },
     PlaybackPlaying {
         track_id: String,
         album_id: String,
@@ -3341,6 +3391,9 @@ fn source_kind_name(source: &bae_core::playback::ContextSource) -> &'static str 
 /// Map a core `UiBusEvent` to the subset the WinUI app handles, or `None`.
 fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
     Some(match event {
+        UiBusEvent::Invalidated(invalidation) => FfiEvent::Invalidated {
+            invalidation: invalidation_to_ffi(invalidation),
+        },
         UiBusEvent::PlaybackPlaying {
             track_id,
             album_id,
@@ -4409,6 +4462,33 @@ impl FfiExportPreset {
             applies_to_release: self.applies_to_release,
         }
     }
+}
+
+#[derive(Serialize)]
+struct FfiSyncStatus {
+    error: Option<loc::FfiError>,
+    last_sync_time: Option<i64>,
+    syncing: bool,
+    sync_ready: bool,
+}
+
+/// Current sync status as JSON, or null on error. Free with [`bae_string_free`].
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+#[no_mangle]
+pub unsafe extern "C" fn bae_sync_status(handle: *const BaeHandle) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_sync_status: null handle");
+        return std::ptr::null_mut();
+    };
+    let snapshot = handle.0.services.get_sync_status();
+    json_cstring(&FfiSyncStatus {
+        error: snapshot.error.as_ref().map(loc::FfiError::from_core),
+        last_sync_time: snapshot.last_sync_time,
+        syncing: snapshot.syncing,
+        sync_ready: snapshot.sync_ready,
+    })
 }
 
 /// Current settings as JSON, or null on error. Free with [`bae_string_free`].

@@ -1,15 +1,17 @@
 package fm.bae.app.data
 
+import fm.bae.app.ErrorLines
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import uniffi.bae_bridge.BridgeConfig
+import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 
 /**
  * Library configuration mirror. Holds the latest [BridgeConfig] plus the
  * sync-loop run status, the sync-loop error state, and a transient app-level
- * error. The [fm.bae.app.data.UiEventReducer] is the sole writer; views observe
- * the flows.
+ * error. The event adapter refreshes query-backed fields from core; views
+ * observe the flows.
  */
 class ConfigStore(
     initialConfig: BridgeConfig,
@@ -20,9 +22,9 @@ class ConfigStore(
 
     /**
      * Whether the sync loop is running right now. Runtime status, not
-     * configuration: it rides the `configChanged` event alongside `config` but
-     * lands here, not on the [BridgeConfig] mirror, since it changes
-     * independently of any persisted setting.
+     * configuration: it is refreshed from the sync-status snapshot, not from
+     * the [BridgeConfig] mirror, since it changes independently of any persisted
+     * setting.
      */
     private val _syncReady = MutableStateFlow(initialSyncReady)
     val syncReady: StateFlow<Boolean> = _syncReady.asStateFlow()
@@ -31,8 +33,7 @@ class ConfigStore(
      * Whether the sync loop is currently mid-cycle. Distinct from [syncReady]
      * (the loop being alive): this is true only while a cycle is actively
      * pulling, from a sync kick through to the cycle finishing. The library
-     * screen shows its progress indicator while this holds. Mirrors the macOS
-     * `ConfigStore.syncing`; populated by the `SyncingChanged` event.
+     * screen shows its progress indicator while this holds.
      */
     private val _syncing = MutableStateFlow(false)
     val syncing: StateFlow<Boolean> = _syncing.asStateFlow()
@@ -49,16 +50,13 @@ class ConfigStore(
         _config.value = config
     }
 
-    fun setSyncReady(ready: Boolean) {
-        _syncReady.value = ready
-    }
-
-    fun setSyncing(syncing: Boolean) {
-        _syncing.value = syncing
-    }
-
-    fun setSyncError(message: String?) {
-        _syncError.value = message
+    fun setSyncStatus(
+        status: BridgeSyncStatusSnapshot,
+        errors: ErrorLines,
+    ) {
+        _syncReady.value = status.syncReady
+        _syncing.value = status.syncing
+        _syncError.value = status.error?.let { errors.line(it) }
     }
 
     fun showError(message: String) {
