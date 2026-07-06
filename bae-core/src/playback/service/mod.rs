@@ -35,7 +35,9 @@ use crate::playback::audio_output::{AudioOutput, AudioStream, CompletionEvent, P
 use crate::playback::data_source::{create_audio_reader, FetchArbiter};
 use crate::playback::error::PlaybackError;
 use crate::playback::progress::emit_progress;
-use crate::playback::progress::{PlaybackProgress, PlaybackProgressHandle};
+use crate::playback::progress::{
+    PlaybackProgress, PlaybackProgressHandle, PlaybackQueueProjection,
+};
 // The `source` module is imported by path so the audio sample feed reads
 // `source::PlaybackSource` — distinct from the queue's `ContextSource`.
 use crate::playback::preview_player::PreviewPlayer;
@@ -215,6 +217,8 @@ pub enum PlaybackCommand {
     ToggleMute,
     /// Query current volume. Response sent via oneshot.
     GetVolume(oneshot::Sender<f32>),
+    /// Query the queue shape owned by the playback loop.
+    GetQueueProjection(oneshot::Sender<PlaybackQueueProjection>),
     /// Graceful shutdown: save state to disk, reply, then stop.
     Shutdown(oneshot::Sender<()>),
     /// Persist the current playback state without tearing down playback. Mobile
@@ -388,6 +392,13 @@ impl PlaybackHandle {
             warn!("get_volume: playback loop dropped the response channel: {e}");
             1.0
         })
+    }
+
+    pub async fn queue_projection(&self) -> Result<PlaybackQueueProjection, String> {
+        let (tx, rx) = oneshot::channel();
+        dispatch_command(&self.command_tx, PlaybackCommand::GetQueueProjection(tx));
+        rx.await
+            .map_err(|e| format!("playback loop dropped the queue response channel: {e}"))
     }
 
     /// Graceful shutdown: saves playback state to disk, then stops the service.
@@ -1631,6 +1642,11 @@ impl PlaybackService {
                 }
                 PlaybackCommand::GetVolume(reply) => {
                     let _ = reply.send(self.audio_output.get_volume());
+                }
+                PlaybackCommand::GetQueueProjection(reply) => {
+                    if reply.send(self.queue_projection()).is_err() {
+                        warn!("get queue projection receiver dropped before reply");
+                    }
                 }
                 PlaybackCommand::Shutdown(reply) => {
                     self.persist_playback_state().await;

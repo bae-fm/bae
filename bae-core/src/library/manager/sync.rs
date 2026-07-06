@@ -52,6 +52,16 @@ impl LibraryManager {
         self.handle.is_syncing()
     }
 
+    pub fn get_sync_status(&self) -> SyncStatusSnapshot {
+        let state = self.sync_status.lock().unwrap().clone();
+        SyncStatusSnapshot {
+            error: state.error.map(crate::ui::UiError::internal),
+            last_sync_time: state.last_sync_time,
+            syncing: state.syncing,
+            sync_ready: self.is_sync_ready(),
+        }
+    }
+
     pub fn trigger_sync(&self) {
         self.handle.sync_now();
     }

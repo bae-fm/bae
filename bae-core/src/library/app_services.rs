@@ -66,6 +66,35 @@ impl AppServices {
         &self.inner.manager
     }
 
+    pub async fn get_queue_snapshot(
+        &self,
+    ) -> Result<crate::queue::ResolvedQueueSnapshot, crate::library::LibraryError> {
+        let projection = self
+            .inner
+            .playback
+            .queue_projection()
+            .await
+            .map_err(crate::library::LibraryError::Playback)?;
+        self.inner
+            .manager
+            .resolve_queue_projection(projection)
+            .await
+    }
+
+    pub fn get_sync_status(&self) -> crate::library::SyncStatusSnapshot {
+        self.inner.manager.get_sync_status()
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub fn get_import_candidates(&self) -> crate::import::ImportCandidatesSnapshot {
+        self.inner.import.get_import_candidates()
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub fn get_candidate(&self, key: &str) -> Option<crate::import::ImportCandidateSnapshot> {
+        self.inner.import.get_candidate(key)
+    }
+
     pub fn playback(&self) -> &PlaybackHandle {
         &self.inner.playback
     }

@@ -250,11 +250,3 @@ fn bridge_sync_provider(
         CloudProvider::CloudKit => BridgeSyncProvider::CloudKit,
     }
 }
-
-/// Track count derived from categorized files.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn extract_track_count(
-    files: &bae_core::import::folder_scanner::CategorizedFiles,
-) -> u32 {
-    files.audio.track_count()
-}

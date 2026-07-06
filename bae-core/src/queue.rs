@@ -30,3 +30,14 @@ pub struct ResolvedContext {
     pub shuffled: bool,
     pub upcoming: Vec<QueueItem>,
 }
+
+/// The display-ready playback queue: manual entries, the current context lane,
+/// and whether the transport can step forward/back. Produced by resolving the
+/// playback loop's queue projection through the library metadata layer.
+#[derive(Debug, Clone)]
+pub struct ResolvedQueueSnapshot {
+    pub manual: Vec<QueueItem>,
+    pub context: Option<ResolvedContext>,
+    pub has_next: bool,
+    pub has_previous: bool,
+}

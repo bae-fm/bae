@@ -110,6 +110,37 @@ pub enum LibraryError {
     Encryption(#[from] coven::EncryptionError),
     #[error("Storage error: {0}")]
     Storage(String),
+    #[error("Playback error: {0}")]
+    Playback(String),
+}
+
+/// Current sync status for query callers. Event subscribers receive the same
+/// fields as transition events; this snapshot is the current value.
+#[derive(Debug, Clone)]
+pub struct SyncStatusSnapshot {
+    pub error: Option<crate::ui::UiError>,
+    pub last_sync_time: Option<i64>,
+    pub syncing: bool,
+    pub sync_ready: bool,
+}
+
+#[derive(Debug, Clone)]
+struct SyncStatusState {
+    error: Option<String>,
+    last_sync_time_raw: Option<String>,
+    last_sync_time: Option<i64>,
+    syncing: bool,
+}
+
+impl SyncStatusState {
+    fn initial(handle: &CovenHandle) -> Self {
+        Self {
+            error: None,
+            last_sync_time_raw: None,
+            last_sync_time: None,
+            syncing: handle.is_syncing(),
+        }
+    }
 }
 
 struct ReleaseDeletePlan {
@@ -601,6 +632,7 @@ pub struct LibraryManager {
     /// throughput, pause), provider connection, membership, and the coven
     /// make-Remote/make-Local primitives.
     sync: SyncController,
+    sync_status: Arc<Mutex<SyncStatusState>>,
     /// Cancellation tokens for in-progress foreground transfers (unmanage),
     /// keyed by release id. `cancel_release_transition` fires the token; the
     /// transfer observes it between files, deletes the partial copies it wrote,
@@ -693,6 +725,7 @@ impl LibraryManager {
         observer.set_database(Arc::new(database.clone()));
         observer.set_handle(handle.clone());
         let library_dir = config_handle.config().library_dir.clone();
+        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&handle)));
 
         let sync = SyncController::new(
             handle.clone(),
@@ -717,6 +750,7 @@ impl LibraryManager {
             handle,
             event_tx,
             sync,
+            sync_status,
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             export_queue: Arc::new(crate::library::ExportQueue::new()),
@@ -755,6 +789,7 @@ impl LibraryManager {
             Arc::new(std::sync::atomic::AtomicBool::new(false)),
             None,
         );
+        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&handle)));
 
         let manager = LibraryManager {
             database,
@@ -767,6 +802,7 @@ impl LibraryManager {
             handle,
             event_tx,
             sync,
+            sync_status,
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             export_queue: Arc::new(crate::library::ExportQueue::new()),
@@ -910,46 +946,59 @@ impl LibraryManager {
         if let Ok(mut rx) = self.handle.subscribe_sync_status() {
             let lm = self.clone();
             self.runtime_handle.spawn(async move {
-                let mut last_error: Option<String> = None;
-                let mut last_sync_time: Option<String> = None;
-                let mut last_syncing: bool = false;
                 while let Ok(status) = rx.recv().await {
                     if let Some(row_changes) = status.row_changes {
                         let changes =
                             crate::library::sync_events::changes_from_row_changes(&row_changes);
                         lm.emit_sync_entity_changes(changes).await;
                     }
-                    if status.error != last_error {
-                        last_error = status.error.clone();
+                    let mut emit_error = None;
+                    let mut emit_syncing = None;
+                    let mut emit_time = None;
+                    {
+                        let mut state = lm.sync_status.lock().unwrap();
+                        if status.error != state.error {
+                            state.error = status.error.clone();
+                            emit_error = Some(status.error.map(crate::ui::UiError::internal));
+                        }
+                        if status.syncing != state.syncing {
+                            state.syncing = status.syncing;
+                            emit_syncing = Some(status.syncing);
+                        }
+                        if status.last_sync_time != state.last_sync_time_raw {
+                            match status.last_sync_time.as_deref() {
+                                Some(s) => match crate::config::rfc3339_to_epoch_millis(s) {
+                                    Ok(ms) => {
+                                        state.last_sync_time_raw = status.last_sync_time.clone();
+                                        state.last_sync_time = Some(ms);
+                                        emit_time = Some(state.last_sync_time);
+                                    }
+                                    Err(e) => {
+                                        let message =
+                                            format!("unparseable last_sync_time {s:?}: {e}");
+                                        warn!("{message}");
+                                        emit_error =
+                                            Some(Some(crate::ui::UiError::internal(message)));
+                                    }
+                                },
+                                None => {
+                                    state.last_sync_time_raw = None;
+                                    state.last_sync_time = None;
+                                    emit_time = Some(None);
+                                }
+                            }
+                        }
+                    }
+                    if let Some(error) = emit_error {
                         // Coven hands back an opaque error string (connectivity,
                         // auth, storage); the UI shows a generic line plus this
                         // as copyable, log-only detail. `None` clears the banner.
-                        lm.emit(LibraryEvent::SyncError {
-                            error: status.error.map(crate::ui::UiError::internal),
-                        });
+                        lm.emit(LibraryEvent::SyncError { error });
                     }
-                    if status.syncing != last_syncing {
-                        last_syncing = status.syncing;
-                        lm.emit(LibraryEvent::SyncingChanged {
-                            syncing: status.syncing,
-                        });
+                    if let Some(syncing) = emit_syncing {
+                        lm.emit(LibraryEvent::SyncingChanged { syncing });
                     }
-                    if status.last_sync_time != last_sync_time {
-                        last_sync_time = status.last_sync_time.clone();
-                        // coven reports the time as an RFC 3339 string;
-                        // the UI only needs an instant, so emit epoch
-                        // millis. A value that won't parse is a bug (coven
-                        // writes valid RFC 3339), so log it and emit `None`
-                        // rather than masking it as "never synced".
-                        let time = status.last_sync_time.as_deref().and_then(|s| {
-                            match crate::config::rfc3339_to_epoch_millis(s) {
-                                Ok(ms) => Some(ms),
-                                Err(e) => {
-                                    warn!("unparseable last_sync_time {s:?}: {e}");
-                                    None
-                                }
-                            }
-                        });
+                    if let Some(time) = emit_time {
                         lm.emit(LibraryEvent::SyncTimeChanged { time });
                     }
                     // coven gives no per-item drain signal in the status,

@@ -265,6 +265,12 @@ pub struct FolderCandidate {
     pub is_added: bool,
 }
 
+impl FolderCandidate {
+    pub fn track_count(&self) -> u32 {
+        self.files.audio.track_count()
+    }
+}
+
 // ── FileTree: indexed file source ───────────────────────────────────────────
 
 /// A single file entry in a `FileTree`.

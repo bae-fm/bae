@@ -176,54 +176,26 @@ impl UiEventBus {
                             progress,
                         });
                     }
-                    PlaybackProgress::QueueUpdated {
-                        manual,
-                        context,
-                        has_next,
-                        has_previous,
-                    } => {
-                        // Resolve both lanes to display-ready items in core so the
-                        // event payload is fully populated, each row carrying its
-                        // per-instance entry id. Consumers map it straight through
-                        // instead of each re-querying the DB. Resolve manual and
-                        // the context tail in ONE query (so a single failure path
-                        // covers both), then split the resolved rows back into the
-                        // two lanes by entry id — not by length, since resolution
-                        // drops any entry whose track has no metadata, which would
-                        // otherwise shift the lane boundary.
-                        // No context (nothing playing from a release) yields no
-                        // context entries — a normal domain state, expressed by
-                        // iterating the Option rather than defaulting an absence.
-                        let context_entries: Vec<_> = context
+                    PlaybackProgress::QueueUpdated(projection) => {
+                        let entry_ids: Vec<_> = projection
+                            .manual
                             .iter()
-                            .flat_map(|c| c.upcoming.iter().cloned())
-                            .collect();
-                        let combined: Vec<_> =
-                            manual.iter().chain(context_entries.iter()).cloned().collect();
-                        match lm.get_queue_items(&combined).await {
-                            Ok(items) => {
-                                let context_ids: std::collections::HashSet<&str> = context_entries
+                            .chain(
+                                projection
+                                    .context
                                     .iter()
-                                    .map(|e| e.id.0.as_str())
-                                    .collect();
-                                let (context_items, manual_items): (Vec<_>, Vec<_>) = items
-                                    .into_iter()
-                                    .partition(|i| context_ids.contains(i.entry_id.as_str()));
-                                bus.emit(UiBusEvent::QueueUpdated {
-                                    manual: manual_items,
-                                    context: context.map(|c| crate::queue::ResolvedContext {
-                                        source: c.source,
-                                        shuffled: c.shuffled,
-                                        upcoming: context_items,
-                                    }),
-                                    has_next,
-                                    has_previous,
-                                });
+                                    .flat_map(|context| context.upcoming.iter()),
+                            )
+                            .map(|entry| entry.id.0.clone())
+                            .collect();
+                        match lm.resolve_queue_projection(projection).await {
+                            Ok(snapshot) => {
+                                bus.emit(UiBusEvent::QueueUpdated(snapshot));
                             }
                             Err(e) => {
                                 tracing::warn!(
-                                    "skipping QueueUpdated: failed to resolve {} queue entry(ies): {e}",
-                                    combined.len()
+                                    "skipping QueueUpdated for entries {:?}: failed to resolve queue projection: {e}",
+                                    entry_ids
                                 );
                             }
                         }
@@ -243,20 +215,18 @@ impl UiEventBus {
                     PlaybackProgress::PreviewStateChanged(state) => {
                         let bus_event = match &state {
                             crate::playback::PreviewState::Idle => UiBusEvent::PreviewIdle,
-                            crate::playback::PreviewState::Playing {
-                                path,
-                                duration_ms,
-                            } => UiBusEvent::PreviewPlaying {
-                                path: path.clone(),
-                                duration_ms: *duration_ms,
-                            },
-                            crate::playback::PreviewState::Paused {
-                                path,
-                                duration_ms,
-                            } => UiBusEvent::PreviewPaused {
-                                path: path.clone(),
-                                duration_ms: *duration_ms,
-                            },
+                            crate::playback::PreviewState::Playing { path, duration_ms } => {
+                                UiBusEvent::PreviewPlaying {
+                                    path: path.clone(),
+                                    duration_ms: *duration_ms,
+                                }
+                            }
+                            crate::playback::PreviewState::Paused { path, duration_ms } => {
+                                UiBusEvent::PreviewPaused {
+                                    path: path.clone(),
+                                    duration_ms: *duration_ms,
+                                }
+                            }
                         };
                         bus.emit(bus_event);
                     }

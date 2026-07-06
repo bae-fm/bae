@@ -91,6 +91,39 @@ impl LibraryManager {
         Ok(self.database.get_queue_items(entries).await?)
     }
 
+    pub async fn resolve_queue_projection(
+        &self,
+        projection: crate::playback::PlaybackQueueProjection,
+    ) -> Result<crate::queue::ResolvedQueueSnapshot, LibraryError> {
+        let context_entries: Vec<_> = projection
+            .context
+            .iter()
+            .flat_map(|c| c.upcoming.iter().cloned())
+            .collect();
+        let combined: Vec<_> = projection
+            .manual
+            .iter()
+            .chain(context_entries.iter())
+            .cloned()
+            .collect();
+        let items = self.get_queue_items(&combined).await?;
+        let context_ids: std::collections::HashSet<&str> =
+            context_entries.iter().map(|e| e.id.0.as_str()).collect();
+        let (context_items, manual_items): (Vec<_>, Vec<_>) = items
+            .into_iter()
+            .partition(|i| context_ids.contains(i.entry_id.as_str()));
+        Ok(crate::queue::ResolvedQueueSnapshot {
+            manual: manual_items,
+            context: projection.context.map(|c| crate::queue::ResolvedContext {
+                source: c.source,
+                shuffled: c.shuffled,
+                upcoming: context_items,
+            }),
+            has_next: projection.has_next,
+            has_previous: projection.has_previous,
+        })
+    }
+
     /// Get a specific file by ID
     ///
     /// Used during streaming to retrieve the file record after looking up

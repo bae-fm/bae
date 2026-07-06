@@ -757,6 +757,19 @@ pub struct BridgeInvalidCandidate {
     pub reason: BridgeInvalidReason,
 }
 
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeImportCandidateSnapshot {
+    Folder { candidate: BridgeFolderCandidate },
+    Invalid { candidate: BridgeInvalidCandidate },
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeImportCandidatesSnapshot {
+    pub watched_folders: Vec<BridgeWatchedFolder>,
+    pub folder_candidates: Vec<BridgeFolderCandidate>,
+    pub invalid_candidates: Vec<BridgeInvalidCandidate>,
+}
+
 /// A folder the user watches for imports — one candidate-list group.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeWatchedFolder {
@@ -1523,10 +1536,7 @@ pub enum BridgeUiEvent {
         mode: BridgeRepeatMode,
     },
     QueueUpdated {
-        manual: Vec<BridgeQueueEntry>,
-        context: Option<BridgePlaybackContext>,
-        has_next: bool,
-        has_previous: bool,
+        snapshot: BridgeQueueSnapshot,
     },
     /// Tracks were appended/inserted into the queue. Carries the count for
     /// a transient "+N" badge in the UI. Suppressed when count is zero.
@@ -2348,6 +2358,14 @@ pub struct BridgeQueueEntry {
     pub cover_image_id: Option<String>,
 }
 
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeQueueSnapshot {
+    pub manual: Vec<BridgeQueueEntry>,
+    pub context: Option<BridgePlaybackContext>,
+    pub has_next: bool,
+    pub has_previous: bool,
+}
+
 /// Which kind of source the context plays from, so the UI labels the section
 /// (a release's "Playing From" vs the whole library). The discriminant of
 /// `bae_core::playback::ContextSource`; the release id stays in core (the UI
@@ -2377,6 +2395,14 @@ pub struct BridgePlaybackContext {
     pub kind: BridgePlaybackSourceKind,
     pub shuffled: bool,
     pub upcoming: Vec<BridgeQueueEntry>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeSyncStatusSnapshot {
+    pub error: Option<BridgeError>,
+    pub last_sync_time: Option<i64>,
+    pub syncing: bool,
+    pub sync_ready: bool,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]

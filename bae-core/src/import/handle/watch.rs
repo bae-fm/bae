@@ -40,6 +40,10 @@ impl ImportServiceHandle {
         let folders = registry.watched_folders();
         drop(registry);
         if removed {
+            self.candidate_state
+                .lock()
+                .unwrap()
+                .remove_root(std::path::Path::new(&path));
             send_event(
                 &self.event_tx,
                 ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }),

@@ -29,7 +29,7 @@ pub use context::{ContextSource, ContextStart, Traversal};
 pub use decoded_pcm::DecodedPcm;
 pub use error::PlaybackError;
 pub use persisted::{repeat_to_str, source_to_str, PersistedPlayback};
-pub use progress::{PlaybackProgress, PreviewState};
+pub use progress::{PlaybackProgress, PlaybackQueueProjection, PreviewState};
 pub use queue::{
     ContextProjection, ContextSnapshot, NextEntry, PlaybackQueue, PreviousAction, QueueEntry,
     QueueEntryId, QueueSnapshot,

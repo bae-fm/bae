@@ -307,6 +307,7 @@ async fn rescan_seeded_root(
 ) -> (
     HashMap<PathBuf, HashSet<String>>,
     tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
+    Arc<Mutex<crate::import::handle::ImportCandidateState>>,
 ) {
     let mut last_keys =
         HashMap::from([(root.to_path_buf(), HashSet::from(["old-key".to_string()]))]);
@@ -316,6 +317,19 @@ async fn rescan_seeded_root(
             service.library_manager.library_dir(),
         ),
     ));
+    let candidate_state = Arc::new(Mutex::new(
+        crate::import::handle::ImportCandidateState::default(),
+    ));
+    candidate_state.lock().unwrap().replace_root(
+        root,
+        Vec::new(),
+        vec![crate::import::InvalidCandidate {
+            path: root.join("old-key"),
+            name: "Old Candidate".to_string(),
+            watched_folder_path: root.to_string_lossy().into_owned(),
+            reason: crate::import::InvalidReason::NoValidAudio,
+        }],
+    );
 
     ImportService::rescan_and_reconcile(
         root,
@@ -323,17 +337,18 @@ async fn rescan_seeded_root(
         &event_tx,
         &service.library_manager,
         &folder_registry,
+        &candidate_state,
     )
     .await;
 
-    (last_keys, events)
+    (last_keys, events, candidate_state)
 }
 
 #[tokio::test]
 async fn rescan_missing_root_removes_previous_candidates() {
     let (service, tmp) = setup_import_service().await;
     let root = tmp.path().join("missing-root");
-    let (last_keys, mut events) = rescan_seeded_root(&service, &root).await;
+    let (last_keys, mut events, candidate_state) = rescan_seeded_root(&service, &root).await;
 
     match events.recv().await.unwrap() {
         crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
@@ -346,6 +361,12 @@ async fn rescan_missing_root_removes_previous_candidates() {
         crate::import::handle::ImportEvent::Scan(ScanEvent::Finished)
     ));
     assert!(last_keys.get(&root).unwrap().is_empty());
+    assert!(candidate_state
+        .lock()
+        .unwrap()
+        .snapshot(Vec::new())
+        .invalid_candidates
+        .is_empty());
 }
 
 #[tokio::test]
@@ -353,7 +374,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
     let (service, tmp) = setup_import_service().await;
     let root = tmp.path().join("not-a-directory");
     std::fs::write(&root, b"not a directory").unwrap();
-    let (last_keys, mut events) = rescan_seeded_root(&service, &root).await;
+    let (last_keys, mut events, candidate_state) = rescan_seeded_root(&service, &root).await;
 
     match events.recv().await.unwrap() {
         crate::import::handle::ImportEvent::Scan(ScanEvent::Failed { error }) => {
@@ -366,6 +387,15 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
     }
     assert_eq!(last_keys.get(&root).unwrap().len(), 1);
     assert!(last_keys.get(&root).unwrap().contains("old-key"));
+    assert_eq!(
+        candidate_state
+            .lock()
+            .unwrap()
+            .snapshot(Vec::new())
+            .invalid_candidates
+            .len(),
+        1
+    );
 }
 
 #[test]

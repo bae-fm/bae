@@ -10,18 +10,21 @@ impl PlaybackService {
     }
 
     pub(super) fn emit_queue_update(&self) {
-        let has_next = self.playback_queue.has_upcoming()
-            || self.playback_queue.repeat_mode() != RepeatMode::Off;
-        let has_previous = self.playback_queue.has_previous();
+        let projection = self.queue_projection();
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::QueueUpdated {
-                manual: self.playback_queue.manual_entries(),
-                context: self.playback_queue.context_projection(),
-                has_next,
-                has_previous,
-            },
+            PlaybackProgress::QueueUpdated(projection),
         );
+    }
+
+    pub(super) fn queue_projection(&self) -> PlaybackQueueProjection {
+        PlaybackQueueProjection {
+            manual: self.playback_queue.manual_entries(),
+            context: self.playback_queue.context_projection(),
+            has_next: self.playback_queue.has_upcoming()
+                || self.playback_queue.repeat_mode() != RepeatMode::Off,
+            has_previous: self.playback_queue.has_previous(),
+        }
     }
 
     pub(super) fn emit_queue_items_added(&self, count: u32) {

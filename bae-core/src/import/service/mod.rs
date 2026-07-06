@@ -1,4 +1,4 @@
-use crate::import::handle::ImportServiceHandle;
+use crate::import::handle::{ImportCandidateState, ImportServiceHandle};
 use crate::import::handle::{ScanEvent, WatcherCommand};
 use crate::import::types::{
     ImportCommand, ImportProgress, MetadataRef, MetadataSource, StorageMode,
@@ -104,6 +104,7 @@ impl ImportService {
         event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: LibraryManager,
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
+        candidate_state: Arc<Mutex<ImportCandidateState>>,
     ) {
         runtime_handle.spawn(async move {
             let (fs_tx, mut fs_rx) = mpsc::unbounded_channel::<DebounceEventResult>();
@@ -150,6 +151,7 @@ impl ImportService {
                                     &event_tx,
                                     &library_manager,
                                     &folder_registry,
+                                    &candidate_state,
                                 )
                                 .await;
                             }
@@ -159,6 +161,7 @@ impl ImportService {
                                 }
                                 roots.retain(|p| p != &path);
                                 last_keys.remove(&path);
+                                candidate_state.lock().unwrap().remove_root(&path);
                             }
                         }
                     }
@@ -183,6 +186,7 @@ impl ImportService {
                                 &event_tx,
                                 &library_manager,
                                 &folder_registry,
+                                &candidate_state,
                             )
                             .await;
                         }
@@ -204,6 +208,7 @@ impl ImportService {
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: &LibraryManager,
         folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
+        candidate_state: &Arc<Mutex<ImportCandidateState>>,
     ) {
         let root_buf = root.to_path_buf();
         let scanned = tokio::task::spawn_blocking(move || {
@@ -291,6 +296,12 @@ impl ImportService {
             )
             .collect();
 
+        candidate_state.lock().unwrap().replace_root(
+            root,
+            candidates.clone(),
+            invalid_candidates.clone(),
+        );
+
         for candidate in candidates {
             send_event(
                 event_tx,
@@ -346,6 +357,7 @@ impl ImportService {
         let folder_registry = Arc::new(Mutex::new(ImportFolderRegistry::load(
             library_manager_for_handle.library_dir(),
         )));
+        let candidate_state = Arc::new(Mutex::new(ImportCandidateState::default()));
 
         ImportService::start_watcher(
             &runtime_handle,
@@ -353,6 +365,7 @@ impl ImportService {
             event_tx.clone(),
             library_manager_for_handle.clone(),
             folder_registry.clone(),
+            candidate_state.clone(),
         );
 
         std::thread::spawn(move || {
@@ -389,6 +402,7 @@ impl ImportService {
             watcher_tx,
             event_tx,
             folder_registry,
+            candidate_state,
             cover_art_archive,
         )
     }

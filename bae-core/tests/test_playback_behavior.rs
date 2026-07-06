@@ -226,13 +226,11 @@ impl PlaybackTestFixture {
         let mut entries = Vec::new();
         while Instant::now() < deadline {
             match timeout(Duration::from_millis(100), self.progress_rx.recv()).await {
-                Ok(Some(PlaybackProgress::QueueUpdated {
-                    manual, context, ..
-                })) => {
+                Ok(Some(PlaybackProgress::QueueUpdated(projection))) => {
                     // The mutation targets entries in either lane, so flatten the
                     // two lanes into one play-order list for id lookup.
-                    entries = manual;
-                    if let Some(ctx) = context {
+                    entries = projection.manual;
+                    if let Some(ctx) = projection.context {
                         entries.extend(ctx.upcoming);
                     }
                 }
@@ -4158,13 +4156,12 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
     let mut queue_update = None;
     while Instant::now() < deadline {
         match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::QueueUpdated {
-                manual,
-                context,
-                has_previous,
-                ..
-            })) => {
-                queue_update = Some((manual, context, has_previous));
+            Ok(Some(PlaybackProgress::QueueUpdated(projection))) => {
+                queue_update = Some((
+                    projection.manual,
+                    projection.context,
+                    projection.has_previous,
+                ));
                 break;
             }
             Ok(Some(_)) => continue,

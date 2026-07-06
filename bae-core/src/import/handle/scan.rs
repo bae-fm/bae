@@ -11,6 +11,10 @@ impl ImportServiceHandle {
         let changed = registry.set_skipped(library_dir, path.clone(), skipped)?;
         drop(registry);
         if changed {
+            self.candidate_state
+                .lock()
+                .unwrap()
+                .set_skipped(&path, skipped);
             send_event(
                 &self.event_tx,
                 ImportEvent::Scan(ScanEvent::CandidateSkipChanged {

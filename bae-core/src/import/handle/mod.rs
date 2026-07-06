@@ -8,6 +8,7 @@ use crate::import::types::{
 };
 use crate::library::LibraryManager;
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, warn};
@@ -29,6 +30,132 @@ pub(super) fn send_event(sender: &broadcast::Sender<ImportEvent>, ev: ImportEven
         warn!("import event send failed: {}", e);
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct ImportCandidatesSnapshot {
+    pub watched_folders: Vec<WatchedFolder>,
+    pub folder_candidates: Vec<FolderCandidate>,
+    pub invalid_candidates: Vec<InvalidCandidate>,
+}
+
+#[derive(Debug, Clone)]
+pub enum ImportCandidateSnapshot {
+    Folder(FolderCandidate),
+    Invalid(InvalidCandidate),
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct ImportCandidateState {
+    candidates: HashMap<String, ImportCandidateSnapshot>,
+}
+
+impl ImportCandidateState {
+    fn candidate_watched_folder_path(candidate: &ImportCandidateSnapshot) -> &str {
+        match candidate {
+            ImportCandidateSnapshot::Folder(candidate) => &candidate.watched_folder_path,
+            ImportCandidateSnapshot::Invalid(candidate) => &candidate.watched_folder_path,
+        }
+    }
+
+    pub(super) fn replace_root(
+        &mut self,
+        root: &Path,
+        folder_candidates: Vec<FolderCandidate>,
+        invalid_candidates: Vec<InvalidCandidate>,
+    ) {
+        self.remove_root(root);
+        for candidate in folder_candidates {
+            self.candidates.insert(
+                candidate.path.to_string_lossy().into_owned(),
+                ImportCandidateSnapshot::Folder(candidate),
+            );
+        }
+        for candidate in invalid_candidates {
+            self.candidates.insert(
+                candidate.path.to_string_lossy().into_owned(),
+                ImportCandidateSnapshot::Invalid(candidate),
+            );
+        }
+    }
+
+    pub(super) fn remove_root(&mut self, root: &Path) {
+        let root_key = root.to_string_lossy();
+        self.candidates.retain(|_, candidate| {
+            Self::candidate_watched_folder_path(candidate) != root_key.as_ref()
+        });
+    }
+
+    pub(super) fn set_skipped(&mut self, key: &str, skipped: bool) {
+        if let Some(ImportCandidateSnapshot::Folder(candidate)) = self.candidates.get_mut(key) {
+            candidate.skipped = skipped;
+        }
+    }
+
+    pub(super) fn snapshot(&self, watched_folders: Vec<WatchedFolder>) -> ImportCandidatesSnapshot {
+        let mut watched_order = HashMap::new();
+        for (index, folder) in watched_folders.iter().enumerate() {
+            watched_order.insert(folder.path.as_str(), index);
+        }
+        let order_for = |path: &str| match watched_order.get(path) {
+            Some(index) => *index,
+            None => usize::MAX,
+        };
+
+        let mut folder_candidates = Vec::new();
+        let mut invalid_candidates = Vec::new();
+        for (key, candidate) in &self.candidates {
+            match candidate {
+                ImportCandidateSnapshot::Folder(candidate) => {
+                    folder_candidates.push((key.as_str(), candidate.clone()))
+                }
+                ImportCandidateSnapshot::Invalid(candidate) => {
+                    invalid_candidates.push((key.as_str(), candidate.clone()))
+                }
+            }
+        }
+        fn sort_by_watched_folder<T, F, G>(
+            candidates: &mut [(&str, T)],
+            order_for: &F,
+            watched_folder_path: G,
+        ) where
+            F: Fn(&str) -> usize,
+            G: Fn(&T) -> &str,
+        {
+            candidates.sort_by(|(left_key, left), (right_key, right)| {
+                order_for(watched_folder_path(left))
+                    .cmp(&order_for(watched_folder_path(right)))
+                    .then_with(|| left_key.cmp(right_key))
+            });
+        }
+        sort_by_watched_folder(
+            &mut folder_candidates,
+            &order_for,
+            |candidate: &FolderCandidate| &candidate.watched_folder_path,
+        );
+        sort_by_watched_folder(
+            &mut invalid_candidates,
+            &order_for,
+            |candidate: &InvalidCandidate| &candidate.watched_folder_path,
+        );
+
+        ImportCandidatesSnapshot {
+            watched_folders,
+            folder_candidates: folder_candidates
+                .into_iter()
+                .map(|(_, candidate)| candidate)
+                .collect(),
+            invalid_candidates: invalid_candidates
+                .into_iter()
+                .map(|(_, candidate)| candidate)
+                .collect(),
+        }
+    }
+
+    pub(super) fn get(&self, key: &str) -> Option<ImportCandidateSnapshot> {
+        self.candidates.get(key).cloned()
+    }
+}
+
 /// All events emitted by the import service. One channel, one subscriber (the bus).
 #[derive(Debug, Clone)]
 pub enum ImportEvent {
@@ -155,6 +282,7 @@ pub struct ImportServiceHandle {
     /// services at startup.
     pub(crate) event_tx: broadcast::Sender<ImportEvent>,
     folder_registry: Arc<Mutex<ImportFolderRegistry>>,
+    candidate_state: Arc<Mutex<ImportCandidateState>>,
     watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
     runtime_handle: tokio::runtime::Handle,
     cover_art_archive: CoverArtArchiveClient,
@@ -203,13 +331,14 @@ pub enum WatcherCommand {
 
 impl ImportServiceHandle {
     /// Create a new ImportHandle with the given dependencies
-    pub fn new(
+    pub(crate) fn new(
         requests_tx: mpsc::UnboundedSender<ImportCommand>,
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
         watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
         event_tx: broadcast::Sender<ImportEvent>,
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
+        candidate_state: Arc<Mutex<ImportCandidateState>>,
         cover_art_archive: CoverArtArchiveClient,
     ) -> Self {
         let progress_handle = ImportProgressHandle::new(event_tx.clone(), runtime_handle.clone());
@@ -219,6 +348,7 @@ impl ImportServiceHandle {
             library_manager,
             event_tx,
             folder_registry,
+            candidate_state,
             watcher_tx,
             runtime_handle,
             cover_art_archive,
@@ -228,6 +358,18 @@ impl ImportServiceHandle {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn event_sender_for_test(&self) -> broadcast::Sender<ImportEvent> {
         self.event_tx.clone()
+    }
+
+    pub fn get_import_candidates(&self) -> ImportCandidatesSnapshot {
+        let watched_folders = self.watched_folders();
+        self.candidate_state
+            .lock()
+            .unwrap()
+            .snapshot(watched_folders)
+    }
+
+    pub fn get_candidate(&self, key: &str) -> Option<ImportCandidateSnapshot> {
+        self.candidate_state.lock().unwrap().get(key)
     }
 }
 

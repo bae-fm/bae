@@ -18,6 +18,17 @@ pub enum PreviewState {
     Paused { path: String, duration_ms: u64 },
 }
 
+/// The queue shape owned by the playback loop: per-instance queue entries,
+/// context metadata, and navigation affordances. The library layer resolves the
+/// entries to display rows because it owns track metadata.
+#[derive(Debug, Clone)]
+pub struct PlaybackQueueProjection {
+    pub manual: Vec<crate::playback::QueueEntry>,
+    pub context: Option<crate::playback::ContextProjection>,
+    pub has_next: bool,
+    pub has_previous: bool,
+}
+
 /// Progress updates during playback.
 ///
 /// Some variants are **internal** — consumed by PlaybackService itself
@@ -41,12 +52,7 @@ pub enum PlaybackProgress {
     /// not-yet-played tail plus its shuffled flag, or `None` when nothing plays
     /// from a release. Each entry is a per-instance id + track id; the event bus
     /// resolves them to display items.
-    QueueUpdated {
-        manual: Vec<crate::playback::QueueEntry>,
-        context: Option<crate::playback::ContextProjection>,
-        has_next: bool,
-        has_previous: bool,
-    },
+    QueueUpdated(PlaybackQueueProjection),
     /// Tracks were appended/inserted into the queue. Fired only by add
     /// operations; never by remove/reorder/clear. The UI surfaces this as
     /// a transient "+N" badge.

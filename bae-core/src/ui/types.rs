@@ -182,12 +182,7 @@ pub enum UiBusEvent {
     /// sections: the manual lane ("Up Next") in order, and the context (the
     /// release being played from) as its not-yet-played tail plus its shuffled
     /// flag, or `None` when nothing plays from a release.
-    QueueUpdated {
-        manual: Vec<crate::queue::QueueItem>,
-        context: Option<crate::queue::ResolvedContext>,
-        has_next: bool,
-        has_previous: bool,
-    },
+    QueueUpdated(crate::queue::ResolvedQueueSnapshot),
     /// Tracks were just appended/inserted into the queue. Carries the count
     /// for a transient "+N" UI indicator. Fires only on add operations
     /// (AddToQueue, AddNext, AddReleaseToQueue, AddReleaseNext, InsertInQueue),

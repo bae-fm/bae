@@ -25,14 +25,18 @@ use crate::types::{
     BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeComposerDetail, BridgeComposerSortCriterion,
     BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig, BridgeCoverSelection,
     BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource, BridgeMetadataSource,
-    BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode,
-    BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter,
-    BridgeStoragePage, BridgeStorageRow, BridgeStorageSort, BridgeTrack, BridgeTrackGroup,
-    BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary,
-    BridgeWorkSummary, BridgeWorkTrackSummary,
+    BridgeQueueSnapshot, BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary,
+    BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion,
+    BridgeStorageFilter, BridgeStoragePage, BridgeStorageRow, BridgeStorageSort,
+    BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
+    BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary, BridgeWorkSummary,
+    BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
-use crate::types::{bridge_storage_mode_to_core, BridgeMcpServerStatus, BridgeStorageMode};
+use crate::types::{
+    bridge_storage_mode_to_core, BridgeImportCandidateSnapshot, BridgeImportCandidatesSnapshot,
+    BridgeMcpServerStatus, BridgeStorageMode,
+};
 
 #[derive(uniffi::Object)]
 #[cfg(feature = "desktop")]
@@ -433,6 +437,14 @@ impl AppHandle {
         self.services.playback().add_release_next(release_id);
     }
 
+    pub fn get_queue_snapshot(&self) -> Result<BridgeQueueSnapshot, BridgeError> {
+        let snapshot = self
+            .runtime
+            .block_on(self.services.get_queue_snapshot())
+            .map_err(BridgeError::internal)?;
+        Ok(convert_queue_snapshot(snapshot))
+    }
+
     /// Resolve a list of IDs (album or track) to track IDs.
     /// Album IDs are expanded to the primary release's tracks.
     pub fn resolve_to_track_ids(&self, ids: Vec<String>) -> Result<Vec<String>, BridgeError> {
@@ -785,6 +797,10 @@ impl AppHandle {
 
     pub fn is_sync_ready(&self) -> bool {
         self.services.library_manager().is_sync_ready()
+    }
+
+    pub fn get_sync_status(&self) -> BridgeSyncStatusSnapshot {
+        convert_sync_status_snapshot(self.services.get_sync_status())
     }
 
     /// The current cloud outbox processing snapshot. Seeds the Storage Manager
@@ -1207,6 +1223,16 @@ impl AppHandle {
             .into_iter()
             .map(crate::types::BridgeWatchedFolder::from_core)
             .collect()
+    }
+
+    pub fn get_import_candidates(&self) -> BridgeImportCandidatesSnapshot {
+        convert_import_candidates_snapshot(self.services.get_import_candidates())
+    }
+
+    pub fn get_candidate(&self, key: String) -> Option<BridgeImportCandidateSnapshot> {
+        self.services
+            .get_candidate(&key)
+            .map(convert_import_candidate_snapshot)
     }
 
     pub fn add_watched_folder(&self, path: String) -> Result<(), BridgeError> {
@@ -1739,6 +1765,127 @@ fn convert_export_progress(
     }
 }
 
+fn convert_queue_entry(i: bae_core::queue::QueueItem) -> crate::types::BridgeQueueEntry {
+    crate::types::BridgeQueueEntry {
+        entry_id: i.entry_id,
+        track_id: i.track_id,
+        title: i.title,
+        artist_names: i.artist_names,
+        duration_ms: i.duration_ms,
+        album_title: i.album_title,
+        cover_image_id: i.cover_image_id,
+    }
+}
+
+fn convert_playback_context(
+    context: bae_core::queue::ResolvedContext,
+) -> crate::types::BridgePlaybackContext {
+    crate::types::BridgePlaybackContext {
+        kind: crate::types::BridgePlaybackSourceKind::from_core(&context.source),
+        shuffled: context.shuffled,
+        upcoming: context
+            .upcoming
+            .into_iter()
+            .map(convert_queue_entry)
+            .collect(),
+    }
+}
+
+fn convert_queue_snapshot(
+    snapshot: bae_core::queue::ResolvedQueueSnapshot,
+) -> crate::types::BridgeQueueSnapshot {
+    crate::types::BridgeQueueSnapshot {
+        manual: snapshot
+            .manual
+            .into_iter()
+            .map(convert_queue_entry)
+            .collect(),
+        context: snapshot.context.map(convert_playback_context),
+        has_next: snapshot.has_next,
+        has_previous: snapshot.has_previous,
+    }
+}
+
+fn convert_sync_status_snapshot(
+    snapshot: bae_core::library::SyncStatusSnapshot,
+) -> crate::types::BridgeSyncStatusSnapshot {
+    crate::types::BridgeSyncStatusSnapshot {
+        error: snapshot.error.map(crate::types::bridge_error),
+        last_sync_time: snapshot.last_sync_time,
+        syncing: snapshot.syncing,
+        sync_ready: snapshot.sync_ready,
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn convert_folder_candidate(
+    candidate: bae_core::import::FolderCandidate,
+) -> crate::types::BridgeFolderCandidate {
+    let track_count = candidate.track_count();
+    crate::types::BridgeFolderCandidate {
+        folder_path: candidate.path.to_string_lossy().to_string(),
+        source_folder_name: candidate.name,
+        watched_folder_path: candidate.watched_folder_path,
+        files: crate::types::categorized_files_to_bridge(candidate.files),
+        track_count,
+        skipped: candidate.skipped,
+        is_added: candidate.is_added,
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn convert_invalid_candidate(
+    candidate: bae_core::import::InvalidCandidate,
+) -> crate::types::BridgeInvalidCandidate {
+    crate::types::BridgeInvalidCandidate {
+        folder_path: candidate.path.to_string_lossy().to_string(),
+        source_folder_name: candidate.name,
+        watched_folder_path: candidate.watched_folder_path,
+        reason: crate::types::invalid_reason_to_bridge(candidate.reason),
+    }
+}
+
+#[cfg(feature = "desktop")]
+fn convert_import_candidate_snapshot(
+    candidate: bae_core::import::ImportCandidateSnapshot,
+) -> crate::types::BridgeImportCandidateSnapshot {
+    match candidate {
+        bae_core::import::ImportCandidateSnapshot::Folder(candidate) => {
+            crate::types::BridgeImportCandidateSnapshot::Folder {
+                candidate: convert_folder_candidate(candidate),
+            }
+        }
+        bae_core::import::ImportCandidateSnapshot::Invalid(candidate) => {
+            crate::types::BridgeImportCandidateSnapshot::Invalid {
+                candidate: convert_invalid_candidate(candidate),
+            }
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+fn convert_import_candidates_snapshot(
+    snapshot: bae_core::import::ImportCandidatesSnapshot,
+) -> crate::types::BridgeImportCandidatesSnapshot {
+    crate::types::BridgeImportCandidatesSnapshot {
+        watched_folders: snapshot
+            .watched_folders
+            .into_iter()
+            .map(crate::types::BridgeWatchedFolder::from_core)
+            .collect(),
+        folder_candidates: snapshot
+            .folder_candidates
+            .into_iter()
+            .map(convert_folder_candidate)
+            .collect(),
+        invalid_candidates: snapshot
+            .invalid_candidates
+            .into_iter()
+            .map(convert_invalid_candidate)
+            .collect(),
+    }
+}
+
 /// Convert a core UiBusEvent to a bridge BridgeUiEvent.
 /// Returns None for events we don't need to forward (or can't convert yet).
 fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::BridgeUiEvent> {
@@ -1833,32 +1980,9 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
         UiBusEvent::RepeatModeChanged { mode } => Some(BridgeUiEvent::RepeatModeChanged {
             mode: BridgeRepeatMode::from_core(mode),
         }),
-        UiBusEvent::QueueUpdated {
-            manual,
-            context,
-            has_next,
-            has_previous,
-        } => {
-            let to_entry = |i: bae_core::queue::QueueItem| BridgeQueueEntry {
-                entry_id: i.entry_id,
-                track_id: i.track_id,
-                title: i.title,
-                artist_names: i.artist_names,
-                duration_ms: i.duration_ms,
-                album_title: i.album_title,
-                cover_image_id: i.cover_image_id,
-            };
-            Some(BridgeUiEvent::QueueUpdated {
-                manual: manual.into_iter().map(to_entry).collect(),
-                context: context.map(|c| BridgePlaybackContext {
-                    kind: BridgePlaybackSourceKind::from_core(&c.source),
-                    shuffled: c.shuffled,
-                    upcoming: c.upcoming.into_iter().map(to_entry).collect(),
-                }),
-                has_next,
-                has_previous,
-            })
-        }
+        UiBusEvent::QueueUpdated(snapshot) => Some(BridgeUiEvent::QueueUpdated {
+            snapshot: convert_queue_snapshot(snapshot),
+        }),
         UiBusEvent::QueueItemsAdded { count } => Some(BridgeUiEvent::QueueItemsAdded { count }),
 
         // ── Preview ────────────────────────────────────────────────
@@ -1944,27 +2068,13 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
         }
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         UiBusEvent::FolderCandidateAdded { candidate } => {
-            let track_count = crate::bridge_utils::extract_track_count(&candidate.files);
             Some(BridgeUiEvent::FolderCandidateAdded {
-                candidate: BridgeFolderCandidate {
-                    folder_path: candidate.path.to_string_lossy().to_string(),
-                    source_folder_name: candidate.name,
-                    watched_folder_path: candidate.watched_folder_path,
-                    files: categorized_files_to_bridge(candidate.files),
-                    track_count,
-                    skipped: candidate.skipped,
-                    is_added: candidate.is_added,
-                },
+                candidate: convert_folder_candidate(candidate),
             })
         }
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         UiBusEvent::InvalidCandidate { candidate } => Some(BridgeUiEvent::InvalidCandidate {
-            candidate: BridgeInvalidCandidate {
-                folder_path: candidate.path.to_string_lossy().to_string(),
-                source_folder_name: candidate.name,
-                watched_folder_path: candidate.watched_folder_path,
-                reason: crate::types::invalid_reason_to_bridge(candidate.reason),
-            },
+            candidate: convert_invalid_candidate(candidate),
         }),
         UiBusEvent::ScanCandidateRemoved { key } => {
             Some(BridgeUiEvent::ScanCandidateRemoved { key })

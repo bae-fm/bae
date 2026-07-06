@@ -686,6 +686,7 @@ impl From<LibraryError> for AutomationError {
             LibraryError::TrackMapping(e) => Self::Import(e),
             LibraryError::Encryption(e) => Self::Unavailable(e.to_string()),
             LibraryError::Storage(e) => Self::Unavailable(e),
+            LibraryError::Playback(e) => Self::Unavailable(e),
         }
     }
 }
