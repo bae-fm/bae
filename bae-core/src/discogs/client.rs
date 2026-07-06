@@ -4,7 +4,6 @@ use crate::import::cover_art::RemoteCover;
 use crate::util::session_cache::SessionCache;
 use reqwest::{Client, Error as ReqwestError, Response, StatusCode};
 use serde::Deserialize;
-use std::collections::HashMap;
 use thiserror::Error;
 use tracing::{debug, warn};
 
@@ -383,15 +382,17 @@ impl DiscogsClient {
         result
     }
 
+    fn get(&self, url: &str) -> reqwest::RequestBuilder {
+        self.client
+            .get(url)
+            .header("Authorization", format!("Discogs token={}", self.api_key))
+            .timeout(crate::util::http::API_TIMEOUT)
+    }
+
     /// Validate the API token by making a lightweight request.
     pub async fn validate_token(&self) -> Result<(), DiscogsError> {
         let url = format!("{}/database/search", self.base_url);
-        let response = self
-            .client
-            .get(&url)
-            .query(&[("token", &self.api_key), ("per_page", &"1".to_string())])
-            .send()
-            .await?;
+        let response = self.get(&url).query(&[("per_page", "1")]).send().await?;
 
         classify_discogs_response(response).map(|_| ())
     }
@@ -410,8 +411,7 @@ impl DiscogsClient {
     ) -> Result<Vec<DiscogsSearchResult>, DiscogsError> {
         use tracing::{debug, info, warn};
         let url = format!("{}/database/search", self.base_url);
-        let mut query_params: Vec<(&str, &str)> =
-            vec![("type", "release"), ("token", &self.api_key)];
+        let mut query_params: Vec<(&str, &str)> = vec![("type", "release")];
         if let Some(ref artist) = params.artist {
             query_params.push(("artist", artist));
         }
@@ -431,7 +431,7 @@ impl DiscogsClient {
             query_params.push(("barcode", barcode));
         }
         info!("Discogs API: GET {} with params: {:?}", url, params);
-        let response = self.client.get(&url).query(&query_params).send().await?;
+        let response = self.get(&url).query(&query_params).send().await?;
         let status = response.status();
         debug!("Response status: {}", status);
         let response = classify_discogs_response(response).inspect_err(|error| match error {
@@ -478,9 +478,7 @@ impl DiscogsClient {
         }
 
         let url = format!("{}/releases/{}", self.base_url, id);
-        let mut params = HashMap::new();
-        params.insert("token", &self.api_key);
-        let response = self.client.get(&url).query(&params).send().await?;
+        let response = self.get(&url).send().await?;
         let response = classify_discogs_response(response)?;
         let raw_json = response.text().await.map_err(DiscogsError::Request)?;
         let release = parse_discogs_release_json(&raw_json)?;
@@ -507,9 +505,7 @@ impl DiscogsClient {
         }
 
         let url = format!("{}/masters/{}", self.base_url, master_id);
-        let mut params = HashMap::new();
-        params.insert("token", &self.api_key);
-        let response = self.client.get(&url).query(&params).send().await?;
+        let response = self.get(&url).send().await?;
 
         let response = classify_discogs_response(response)?;
         let raw_json = response.text().await.map_err(DiscogsError::Request)?;
@@ -529,9 +525,7 @@ impl DiscogsClient {
         artist_id: &str,
     ) -> Result<Option<String>, DiscogsError> {
         let url = format!("{}/artists/{}", self.base_url, artist_id);
-        let mut params = std::collections::HashMap::new();
-        params.insert("token", &self.api_key);
-        let response = self.client.get(&url).query(&params).send().await?;
+        let response = self.get(&url).send().await?;
         let response = match classify_discogs_response(response) {
             Ok(response) => response,
             Err(DiscogsError::NotFound) => return Ok(None),
@@ -629,6 +623,8 @@ pub async fn fetch_discogs_xref(
 mod tests {
     use super::*;
     use crate::import::MetadataSource;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
     use std::sync::{Arc, Mutex};
 
     fn search_result_with_cover_fields(
@@ -705,5 +701,55 @@ mod tests {
         client.observe::<()>(&Err(DiscogsError::RateLimit));
 
         assert_eq!(*signals.lock().unwrap(), vec!["accepted", "rejected"]);
+    }
+
+    #[tokio::test]
+    async fn transport_error_display_does_not_include_discogs_token() {
+        let token = "secret-discogs-token";
+        let mut client = DiscogsClient::new(token.to_string());
+        client.base_url = "http://127.0.0.1:1".to_string();
+
+        let error = client.validate_token().await.unwrap_err();
+
+        assert!(!error.to_string().contains(token));
+    }
+
+    #[tokio::test]
+    async fn validate_token_sends_token_in_authorization_header() {
+        let token = "secret-discogs-token";
+        let listener = TcpListener::bind("127.0.0.1:0").expect("test listener should bind");
+        let url = format!(
+            "http://{}",
+            listener
+                .local_addr()
+                .expect("test listener should have an address")
+        );
+        let request = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("test request should connect");
+            let mut buffer = [0; 4096];
+            let read = stream
+                .read(&mut buffer)
+                .expect("test request should be readable");
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
+                .expect("test response should write");
+            String::from_utf8(buffer[..read].to_vec()).expect("request should be UTF-8")
+        });
+        let mut client = DiscogsClient::new(token.to_string());
+        client.base_url = url;
+
+        client
+            .validate_token()
+            .await
+            .expect("token validation should accept 200 response");
+
+        let request = request.join().expect("test listener should finish");
+        let request_line = request
+            .lines()
+            .next()
+            .expect("test request should include a request line");
+        assert_eq!(request_line, "GET /database/search?per_page=1 HTTP/1.1");
+        assert!(request.contains("authorization: Discogs token=secret-discogs-token\r\n"));
+        assert!(!request_line.contains("token=secret-discogs-token"));
     }
 }
