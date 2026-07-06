@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Size
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -35,11 +36,13 @@ import com.google.zxing.MultiFormatReader
 import com.google.zxing.NotFoundException
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
+import fm.bae.app.BaeLogger
 import fm.bae.app.R
 import java.util.concurrent.ExecutorService
 
 private const val ANALYSIS_WIDTH = 1280
 private const val ANALYSIS_HEIGHT = 720
+private const val TAG = "QRScannerScreen"
 
 @Composable
 fun QRScannerScreen(
@@ -67,7 +70,12 @@ fun QRScannerScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { ctx ->
-                createQRPreviewView(ctx, cameraProviderFuture, analysisExecutor, reader) {
+                createQRPreviewView(
+                    context = ctx,
+                    cameraProviderFuture = cameraProviderFuture,
+                    analysisExecutor = analysisExecutor,
+                    reader = reader,
+                ) {
                     if (!scanned) {
                         scanned = true
                         onScanned(it)
@@ -103,6 +111,7 @@ private fun createQRPreviewView(
 ): PreviewView {
     val previewView = PreviewView(context)
     val mainExecutor = ContextCompat.getMainExecutor(context)
+    val logger = BaeLogger(TAG)
 
     cameraProviderFuture.addListener({
         val cameraProvider = cameraProviderFuture.get()
@@ -115,32 +124,18 @@ private fun createQRPreviewView(
                 .build()
                 .also { analysis ->
                     analysis.setAnalyzer(analysisExecutor) { imageProxy ->
-                        val plane = imageProxy.planes[0]
-                        val data = ByteArray(plane.buffer.remaining())
-                        plane.buffer.get(data)
-                        val source =
-                            PlanarYUVLuminanceSource(
-                                data,
-                                plane.rowStride,
-                                imageProxy.height,
-                                0,
-                                0,
-                                imageProxy.width,
-                                imageProxy.height,
-                                false,
-                            )
-                        val bitmap = BinaryBitmap(HybridBinarizer(source))
-                        try {
-                            val text = reader.decode(bitmap).text
-                            // Dispatch back to main before calling onScanned, which
-                            // touches Compose state (the scanned latch in the caller).
-                            mainExecutor.execute { onScanned(text) }
-                        } catch (_: NotFoundException) {
-                            // No QR code in this frame; keep scanning.
-                        } finally {
-                            reader.reset()
-                        }
-                        imageProxy.close()
+                        analyzeQrFrame(
+                            reader = reader,
+                            imageProxy = imageProxy,
+                            onScanned = { text ->
+                                // Dispatch back to main before calling onScanned, which
+                                // touches Compose state (the scanned latch in the caller).
+                                mainExecutor.execute { onScanned(text) }
+                            },
+                            onDecodeFailure = { e ->
+                                logger.warning("QR analyzer failed to decode frame", e)
+                            },
+                        )
                     }
                 }
         cameraProvider.unbindAll()
@@ -153,6 +148,49 @@ private fun createQRPreviewView(
     }, mainExecutor)
 
     return previewView
+}
+
+internal fun analyzeQrFrame(
+    reader: MultiFormatReader,
+    imageProxy: ImageProxy,
+    onScanned: (String) -> Unit,
+    onDecodeFailure: (Exception) -> Unit,
+) {
+    try {
+        onScanned(decodeQrFrame(reader, imageProxy))
+    } catch (_: NotFoundException) {
+        // No QR code in this frame; keep scanning.
+    } catch (e: Exception) {
+        onDecodeFailure(e)
+    } finally {
+        try {
+            reader.reset()
+        } finally {
+            imageProxy.close()
+        }
+    }
+}
+
+private fun decodeQrFrame(
+    reader: MultiFormatReader,
+    imageProxy: ImageProxy,
+): String {
+    val plane = imageProxy.planes[0]
+    val data = ByteArray(plane.buffer.remaining())
+    plane.buffer.get(data)
+    val source =
+        PlanarYUVLuminanceSource(
+            data,
+            plane.rowStride,
+            imageProxy.height,
+            0,
+            0,
+            imageProxy.width,
+            imageProxy.height,
+            false,
+        )
+    val bitmap = BinaryBitmap(HybridBinarizer(source))
+    return reader.decode(bitmap).text
 }
 
 @Composable
