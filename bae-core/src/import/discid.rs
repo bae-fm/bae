@@ -287,15 +287,14 @@ fn calculate_mb_discid_from_cue_duration(
     duration_seconds: f64,
     method_label: &str,
 ) -> Result<String, MetadataDetectionError> {
-    if sheet.tracks.is_empty() {
+    if sheet.playable_tracks().next().is_none() {
         return Err(MetadataDetectionError::Io(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            "CUE has no tracks",
+            "CUE has no playable audio tracks",
         )));
     }
     let raw_track_sectors: Vec<i32> = sheet
-        .tracks
-        .iter()
+        .playable_tracks()
         .map(|t| t.start_cue_frames as i32)
         .collect();
     let raw_leadout_sector = (duration_seconds * 75.0).round() as i32;
@@ -720,6 +719,76 @@ mod tests {
              must produce the same disc ID regardless of which method label is logged"
         );
         assert_eq!(id_a.len(), 28, "MusicBrainz disc IDs are 28 chars");
+    }
+
+    #[test]
+    fn cue_duration_discid_ignores_non_audio_tracks() {
+        use crate::cue_flac::{CueIndex, CuePregap, CueSheet, CueTrack, CueTrackMode};
+
+        fn track(number: u32, mode: CueTrackMode, start_cue_frames: u64) -> CueTrack {
+            CueTrack {
+                number,
+                mode,
+                title: Some(format!("Track {number:02}")),
+                performer: None,
+                composer: None,
+                songwriter: None,
+                isrc: None,
+                flags: Vec::new(),
+                indexes: vec![CueIndex {
+                    number: 1,
+                    frames: start_cue_frames,
+                    file_reference: "disc-image.bin".to_string(),
+                }],
+                postgap_frames: None,
+                file_reference: "disc-image.bin".to_string(),
+                start_cue_frames,
+                pregap: CuePregap::None,
+                pregap_cue_frames: None,
+                generated_pregap_frames: None,
+                end_cue_frames: None,
+            }
+        }
+
+        let audio_tracks = vec![
+            track(1, CueTrackMode::Audio, 0),
+            track(2, CueTrackMode::Audio, 3 * 60 * 75),
+        ];
+        let audio_only = CueSheet {
+            title: Some("Album Title".to_string()),
+            performer: Some("Artist Name".to_string()),
+            composer: None,
+            songwriter: None,
+            catalog: None,
+            date: None,
+            tracks: audio_tracks.clone(),
+        };
+        let with_data_track = CueSheet {
+            title: Some("Album Title".to_string()),
+            performer: Some("Artist Name".to_string()),
+            composer: None,
+            songwriter: None,
+            catalog: None,
+            date: None,
+            tracks: audio_tracks
+                .into_iter()
+                .chain(std::iter::once(track(
+                    3,
+                    CueTrackMode::Other("MODE1/2352".to_string()),
+                    6 * 60 * 75,
+                )))
+                .collect(),
+        };
+
+        let duration_seconds = 6.0 * 60.0;
+        let audio_only_id =
+            calculate_mb_discid_from_cue_duration(&audio_only, duration_seconds, "CUE/probe")
+                .expect("audio-only CUE should compute a disc ID");
+        let with_data_track_id =
+            calculate_mb_discid_from_cue_duration(&with_data_track, duration_seconds, "CUE/probe")
+                .expect("CUE with a data track should compute a disc ID");
+
+        assert_eq!(with_data_track_id, audio_only_id);
     }
 
     #[test]
