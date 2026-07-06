@@ -1,15 +1,18 @@
 import SwiftUI
 
 /// Mirror of core's in-memory export queue snapshot, rendered by the Storage
-/// Manager's Exporting pane. The reducer is the sole writer: it lands the whole
-/// `BridgeExportSnapshot` on every `exportQueueChanged` event; views read it at
-/// the leaf. The snapshot is swapped wholesale (no per-item interning) because
-/// core re-pushes it in full on every change.
+/// Manager's Exporting pane. UI event and projection paths land the whole
+/// `BridgeExportSnapshot`; views read it at the leaf. The snapshot is swapped
+/// wholesale (no per-item interning) because core exposes it in full.
 @Observable
 class ExportStore {
     var snapshot: BridgeExportSnapshot
 
     init(snapshot: BridgeExportSnapshot) {
+        self.snapshot = snapshot
+    }
+
+    func applySnapshot(_ snapshot: BridgeExportSnapshot) {
         self.snapshot = snapshot
     }
 }

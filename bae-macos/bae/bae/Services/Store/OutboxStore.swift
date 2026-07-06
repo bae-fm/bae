@@ -3,15 +3,18 @@ import SwiftUI
 /// Mirror of core's cloud outbox processing snapshot, rendered by the Storage
 /// Manager's queue panel and used by every storage row to read its
 /// per-release upload count (no cached `pendingUploads` field on
-/// `ReleaseSummary`). The reducer is the sole writer: it lands the whole
-/// `BridgeOutboxSnapshot` on every `outboxChanged` event; views read it at
-/// the leaf. The snapshot is swapped wholesale (no per-item interning)
-/// because core re-pushes it in full on every change.
+/// `ReleaseSummary`). UI event and projection paths land the whole
+/// `BridgeOutboxSnapshot`; views read it at the leaf. The snapshot is swapped
+/// wholesale (no per-item interning) because core exposes it in full.
 @Observable
 class OutboxStore {
     var snapshot: BridgeOutboxSnapshot
 
     init(snapshot: BridgeOutboxSnapshot) {
+        self.snapshot = snapshot
+    }
+
+    func applySnapshot(_ snapshot: BridgeOutboxSnapshot) {
         self.snapshot = snapshot
     }
 

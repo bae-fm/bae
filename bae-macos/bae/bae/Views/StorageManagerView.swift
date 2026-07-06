@@ -22,6 +22,8 @@ struct StorageManagerView: View {
     // other error alert).
     @Environment(UiStore.self)
     private var uiStore
+    @Environment(ProjectionRegistry.self)
+    private var projectionRegistry
 
     @State
     private var filter: BridgeStorageFilter = .all
@@ -34,6 +36,10 @@ struct StorageManagerView: View {
     private var selection: Set<String> = []
     @State
     private var list: StorageList?
+    @State
+    private var listRegistration: ProjectionRegistration?
+    @State
+    private var rebuildTask: Task<Void, Never>?
     /// Runs row context-menu transitions; built lazily once the services are
     /// available from the environment.
     @State
@@ -115,9 +121,13 @@ struct StorageManagerView: View {
             // visible shape, so invalidate unconditionally.
             list?.invalidate()
         }
+        .onDisappear {
+            rebuildTask?.cancel()
+        }
     }
 
     private func rebuildList() {
+        rebuildTask?.cancel()
         let newList = StorageList(
             pageSource: StoragePageSource(
                 library: library,
@@ -134,8 +144,15 @@ struct StorageManagerView: View {
                 uiStore.showError(error)
             },
         )
-        Task {
+        rebuildTask = Task {
             await newList.loadInitial()
+            guard !Task.isCancelled else {
+                return
+            }
+            listRegistration = projectionRegistry.register(
+                domains: [.albumList, .album, .release],
+                invalidate: { [newList] _ in newList.invalidate() }
+            )
             list = newList
         }
     }

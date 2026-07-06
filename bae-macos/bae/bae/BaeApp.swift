@@ -287,6 +287,7 @@ extension BaeApp {
             .environment(appDelegate.appService?.configStore)
             .environment(appDelegate.appService?.importStore)
             .environment(appDelegate.appService?.libraryStore)
+            .environment(appDelegate.appService?.projectionRegistry)
             .environment(appDelegate.appService?.mediaPaths)
             .environment(appDelegate.appService?.playback)
             .environment(appDelegate.appService?.queue)
@@ -322,6 +323,7 @@ extension BaeApp {
             if let appService = appDelegate.appService {
                 StorageManagerView()
                     .environment(appService.libraryStore)
+                    .environment(appService.projectionRegistry)
                     .environment(appService.mediaPaths)
                     .environment(appService.releaseEditor)
                     .environment(appService.library)

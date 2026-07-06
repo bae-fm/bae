@@ -9,6 +9,7 @@ private let logger = Logger.bae("AppService")
 ///
 /// One `AppService` per unlocked library: when the user switches libraries,
 /// a fresh instance (with fresh stores and `uiStore`) is built.
+@MainActor
 final class AppService: @unchecked Sendable, Observable {
     /// Handle to bae-core via the uniffi bridge. All library, playback,
     /// import, and sync requests go through this.
@@ -57,6 +58,10 @@ final class AppService: @unchecked Sendable, Observable {
     /// In-memory export queue mirror — per-release state and summary. Reducer is
     /// the sole writer; the Storage Manager's Exporting pane reads it.
     let exportStore: ExportStore
+
+    /// Query-backed projections refreshed by scoped invalidation events.
+    let projectionRegistry = ProjectionRegistry()
+    private var projectionRegistrations: [ProjectionRegistration] = []
 
     // MARK: - Domain services
     //
@@ -137,12 +142,14 @@ final class AppService: @unchecked Sendable, Observable {
     /// remote-control bindings. Called once by `BaeApp.openLibrary`
     /// after construction; previews skip it.
     func wireUp() {
+        registerRootProjections()
         appHandle.subscribeUiEvents(
             callback: UiEventHandler(
                 playbackStore: playbackStore,
                 configStore: configStore,
                 importStore: importStore,
                 libraryStore: libraryStore,
+                projectionRegistry: projectionRegistry,
                 appService: self,
                 uiStore: uiStore,
                 outboxStore: outboxStore,
@@ -157,6 +164,166 @@ final class AppService: @unchecked Sendable, Observable {
             playbackStore: playbackStore
         )
         revalidateDiscogsToken()
+    }
+
+    private func registerRootProjections() {
+        precondition(projectionRegistrations.isEmpty)
+        projectionRegistrations = [
+            projectionRegistry.register(makeQueueProjection()),
+            projectionRegistry.register(makeConfigProjection()),
+            projectionRegistry.register(makeSyncStatusProjection()),
+            projectionRegistry.register(makeOutboxProjection()),
+            projectionRegistry.register(makeDownloadProjection()),
+            projectionRegistry.register(makeExportProjection()),
+            projectionRegistry.register(makeReleaseDetailProjection()),
+        ]
+    }
+
+    private func makeQueueProjection() -> Projection<BridgeQueueSnapshot> {
+        Projection(
+            domain: .queue,
+            query: { [appHandle] _ in
+                try await DetachedWork.run {
+                    try appHandle.getQueueSnapshot()
+                }
+            },
+            apply: { [self] snapshot in
+                applyQueueSnapshot(snapshot)
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
+    }
+
+    private struct ConfigProjectionValue: Sendable {
+        let config: BridgeConfig
+        let syncReady: Bool
+    }
+
+    private func makeConfigProjection() -> Projection<ConfigProjectionValue> {
+        Projection(
+            domain: .config,
+            query: { [appHandle] _ in
+                try await DetachedWork.run {
+                    ConfigProjectionValue(
+                        config: appHandle.getConfig(),
+                        syncReady: appHandle.isSyncReady()
+                    )
+                }
+            },
+            apply: { [configStore] value in
+                configStore.applyConfigSnapshot(
+                    value.config,
+                    syncReady: value.syncReady
+                )
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
+    }
+
+    private func makeSyncStatusProjection()
+        -> Projection<BridgeSyncStatusSnapshot>
+    {
+        Projection(
+            domain: .syncStatus,
+            query: { [appHandle] _ in
+                try await DetachedWork.run {
+                    appHandle.getSyncStatus()
+                }
+            },
+            apply: { [configStore] snapshot in
+                configStore.applySyncStatusSnapshot(snapshot)
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
+    }
+
+    private func makeOutboxProjection() -> Projection<BridgeOutboxSnapshot> {
+        Projection(
+            domain: .outbox,
+            query: { [appHandle] _ in
+                try await DetachedWork.run {
+                    try appHandle.getOutboxSnapshot()
+                }
+            },
+            apply: { [outboxStore] snapshot in
+                outboxStore.applySnapshot(snapshot)
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
+    }
+
+    private func makeDownloadProjection()
+        -> Projection<BridgeDownloadSnapshot>
+    {
+        Projection(
+            domain: .downloadQueue,
+            query: { [appHandle] _ in
+                try await DetachedWork.run {
+                    appHandle.getDownloadSnapshot()
+                }
+            },
+            apply: { [downloadStore] snapshot in
+                downloadStore.applySnapshot(snapshot)
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
+    }
+
+    private func makeExportProjection() -> Projection<BridgeExportSnapshot> {
+        Projection(
+            domain: .exportQueue,
+            query: { [appHandle] _ in
+                try await DetachedWork.run {
+                    appHandle.getExportSnapshot()
+                }
+            },
+            apply: { [exportStore] snapshot in
+                exportStore.applySnapshot(snapshot)
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
+    }
+
+    private struct ReleaseDetailProjectionValue: Sendable {
+        let releaseId: String
+        let release: BridgeRelease?
+    }
+
+    private func makeReleaseDetailProjection()
+        -> Projection<ReleaseDetailProjectionValue>
+    {
+        Projection(
+            domain: .release,
+            query: { [appHandle] invalidation in
+                guard case .release(let releaseId) = invalidation else {
+                    preconditionFailure(
+                        "Release projection received \(invalidation)"
+                    )
+                }
+                let release = try await DetachedWork.run {
+                    try appHandle.findReleaseDetail(releaseId: releaseId)
+                }
+                return ReleaseDetailProjectionValue(
+                    releaseId: releaseId,
+                    release: release
+                )
+            },
+            apply: { [libraryStore] value in
+                libraryStore.applyReleaseDetailSnapshot(
+                    releaseId: value.releaseId,
+                    bridge: value.release
+                )
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
+    }
+
+    func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
+        playbackStore.applyQueueSnapshot(snapshot)
+        mediaControlService.updateCommandAvailability(
+            hasNext: snapshot.hasNext,
+            hasPrevious: snapshot.hasPrevious
+        )
     }
 
     /// Re-check a Discogs key that was saved while offline. App-launch half of

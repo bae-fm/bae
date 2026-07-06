@@ -39,6 +39,11 @@ class PlaybackStore {
     @ObservationIgnored
     let queueItemsAddedSubject = PassthroughSubject<Int, Never>()
 
+    func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
+        manualQueue = snapshot.manual.map(QueueItem.init(bridge:))
+        queueContext = snapshot.context.map(QueuePlaybackContext.init(bridge:))
+    }
+
     /// Enter the loading transition for `trackId`, retaining the currently
     /// displayed track. Core's first `PlaybackLoading` carries only a track id
     /// (before it resolves metadata); without carrying the prior track forward,

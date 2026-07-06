@@ -11,6 +11,7 @@ struct ReducerContext {
     let configStore: ConfigStore
     let importStore: ImportStore
     let libraryStore: LibraryStore
+    let projectionRegistry: ProjectionRegistry
     let appService: AppService
     let uiStore: UiStore
     let outboxStore: OutboxStore
@@ -117,8 +118,8 @@ enum UiEventReducer {
     @MainActor
     static func reduce(_ event: BridgeUiEvent, into context: ReducerContext) {
         switch event {
-        case .invalidated:
-            break
+        case .invalidated(let invalidation):
+            context.projectionRegistry.invalidate(invalidation)
 
         case .playbackPlaying, .playbackPaused, .playbackLoading,
             .playbackStopped, .playbackError, .playbackProgress,
@@ -352,16 +353,7 @@ enum UiEventReducer {
             // them before emitting), so map them straight through — no DB
             // re-query here. The manual lane and the context render as distinct
             // sections.
-            playbackStore.manualQueue = snapshot.manual.map(
-                QueueItem.init(bridge:)
-            )
-            playbackStore.queueContext = snapshot.context.map(
-                QueuePlaybackContext.init(bridge:)
-            )
-            context.appService.mediaControlService.updateCommandAvailability(
-                hasNext: snapshot.hasNext,
-                hasPrevious: snapshot.hasPrevious
-            )
+            context.appService.applyQueueSnapshot(snapshot)
 
         case .queueItemsAdded(let count):
             playbackStore.queueItemsAddedSubject.send(Int(count))
@@ -661,8 +653,7 @@ extension UiEventReducer {
         let configStore = context.configStore
         switch event {
         case .configChanged(let config, let syncReady):
-            configStore.config = Config(bridge: config)
-            configStore.syncReady = syncReady
+            configStore.applyConfigSnapshot(config, syncReady: syncReady)
 
         case .syncError(let error):
             // `nil` error clears the banner (sync recovered). Otherwise show the
@@ -680,13 +671,13 @@ extension UiEventReducer {
             configStore.syncing = syncing
 
         case .outboxChanged(let snapshot):
-            context.outboxStore.snapshot = snapshot
+            context.outboxStore.applySnapshot(snapshot)
 
         case .downloadQueueChanged(let snapshot):
-            context.downloadStore.snapshot = snapshot
+            context.downloadStore.applySnapshot(snapshot)
 
         case .exportQueueChanged(let snapshot):
-            context.exportStore.snapshot = snapshot
+            context.exportStore.applySnapshot(snapshot)
 
         default:
             break

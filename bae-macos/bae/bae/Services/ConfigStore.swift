@@ -56,4 +56,18 @@ class ConfigStore {
         self.config = config
         self.syncReady = syncReady
     }
+
+    func applyConfigSnapshot(_ config: BridgeConfig, syncReady: Bool) {
+        self.config = Config(bridge: config)
+        self.syncReady = syncReady
+    }
+
+    func applySyncStatusSnapshot(_ snapshot: BridgeSyncStatusSnapshot) {
+        syncError = snapshot.error.map(DisplayError.init)
+        lastSyncTime = snapshot.lastSyncTime.map {
+            Date(timeIntervalSince1970: TimeInterval($0) / 1000)
+        }
+        syncing = snapshot.syncing
+        syncReady = snapshot.syncReady
+    }
 }

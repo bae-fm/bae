@@ -43,11 +43,17 @@ struct LibraryView: View {
     var libraryStore
     @Environment(UiStore.self)
     var uiStore
+    @Environment(ProjectionRegistry.self)
+    var projectionRegistry
 
     @State
     private var albumList: AlbumList?
     @State
     private var composerList: ComposerList?
+    @State
+    private var albumListRegistration: ProjectionRegistration?
+    @State
+    private var composerListRegistration: ProjectionRegistration?
     @State
     private var sortCriteria: [BridgeSortCriterion] = Self.loadSortCriteria()
     @State
@@ -558,12 +564,26 @@ extension LibraryView {
     private func reloadComposerList(sort: BridgeComposerSortCriterion) async {
         let newList = makeComposerList(sort: sort)
         await newList.loadInitial()
+        guard !Task.isCancelled else {
+            return
+        }
+        composerListRegistration = projectionRegistry.registerList(
+            newList,
+            domain: .composerList
+        )
         composerList = newList
     }
 
     private func reloadAlbumList(sort: [BridgeSortCriterion]) async {
         let newList = makeAlbumList(sort: sort)
         await newList.loadInitial()
+        guard !Task.isCancelled else {
+            return
+        }
+        albumListRegistration = projectionRegistry.registerList(
+            newList,
+            domain: .albumList
+        )
         albumList = newList
     }
 

@@ -7,6 +7,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
     private let configStore: ConfigStore
     private let importStore: ImportStore
     private let libraryStore: LibraryStore
+    private let projectionRegistry: ProjectionRegistry
     /// Weak so the handler doesn't retain the `AppService` it dispatches to.
     /// The handler is owned by the Rust subscribe task (held alive by the
     /// `AppHandle`'s runtime), and `AppService` owns the `AppHandle`; a strong
@@ -25,6 +26,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
         configStore: ConfigStore,
         importStore: ImportStore,
         libraryStore: LibraryStore,
+        projectionRegistry: ProjectionRegistry,
         appService: AppService,
         uiStore: UiStore,
         outboxStore: OutboxStore,
@@ -35,6 +37,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
         self.configStore = configStore
         self.importStore = importStore
         self.libraryStore = libraryStore
+        self.projectionRegistry = projectionRegistry
         self.appService = appService
         self.uiStore = uiStore
         self.outboxStore = outboxStore
@@ -50,6 +53,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
         let configStore = configStore
         let importStore = importStore
         let libraryStore = libraryStore
+        let projectionRegistry = projectionRegistry
         let uiStore = uiStore
         let outboxStore = outboxStore
         let downloadStore = downloadStore
@@ -60,6 +64,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
                 configStore: configStore,
                 importStore: importStore,
                 libraryStore: libraryStore,
+                projectionRegistry: projectionRegistry,
                 appService: appService,
                 uiStore: uiStore,
                 outboxStore: outboxStore,

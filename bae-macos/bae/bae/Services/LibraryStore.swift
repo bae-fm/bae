@@ -334,6 +334,19 @@ final class LibraryStore {
         return detail
     }
 
+    func applyReleaseDetailSnapshot(
+        releaseId: String,
+        bridge: BridgeRelease?
+    ) {
+        guard let bridge else {
+            releaseSummaries.removeValue(forKey: releaseId)
+            releaseDetails.removeValue(forKey: releaseId)
+            composerSummaries.removeAll()
+            return
+        }
+        _ = internReleaseDetail(bridge)
+    }
+
     // MARK: - Detail loading
 
     /// Load fat detail for one release from the bridge. Called when the
@@ -490,8 +503,7 @@ final class LibraryStore {
         releaseId: String,
         album: BridgeAlbum?
     ) {
-        releaseSummaries.removeValue(forKey: releaseId)
-        releaseDetails.removeValue(forKey: releaseId)
+        applyReleaseDetailSnapshot(releaseId: releaseId, bridge: nil)
         composerSummaries.removeAll()
         if let album {
             _ = internAlbumSummary(album)
