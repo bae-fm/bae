@@ -258,6 +258,26 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
     assert_eq!(decode.segments[0].seek_to_byte, Some(100));
 }
 
+#[test]
+fn generated_pregap_samples_clamps_negative_sample_value() {
+    let buffer = create_sparse_buffer(1_024);
+    let mut prepared = test_prepared_track("track", buffer, false);
+    prepared.generated_pregap_samples = Some(-1);
+    prepared.generated_pregap_ms = Some(10);
+
+    assert_eq!(prepared.generated_pregap_samples(), 0);
+}
+
+#[test]
+fn generated_pregap_samples_clamps_negative_millisecond_value() {
+    let buffer = create_sparse_buffer(1_024);
+    let mut prepared = test_prepared_track("track", buffer, false);
+    prepared.generated_pregap_samples = None;
+    prepared.generated_pregap_ms = Some(-10);
+
+    assert_eq!(prepared.generated_pregap_samples(), 0);
+}
+
 // Seek tests for SparseStreamingBuffer integration
 use crate::playback::sparse_buffer::SparseStreamingBuffer;
 

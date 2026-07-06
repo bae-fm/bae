@@ -513,13 +513,31 @@ impl PlaybackPreparedTrack {
     }
 
     fn generated_pregap_samples(&self) -> u64 {
-        let samples = self.generated_pregap_samples.unwrap_or_else(|| {
-            self.generated_pregap_ms.map_or(0, |ms| {
-                assert!(ms >= 0, "audio_format generated_pregap_ms is non-negative");
-                ((ms as f64 / 1000.0) * self.sample_rate as f64) as i64
-            })
-        });
-        u64::try_from(samples).expect("audio_format generated_pregap_samples is non-negative")
+        if let Some(samples) = self.generated_pregap_samples {
+            if samples < 0 {
+                warn!(
+                    track_id = %self.track_info.track_id,
+                    generated_pregap_samples = samples,
+                    "Ignoring negative generated pregap samples"
+                );
+                return 0;
+            }
+            return samples as u64;
+        }
+
+        let Some(ms) = self.generated_pregap_ms else {
+            return 0;
+        };
+        if ms < 0 {
+            warn!(
+                track_id = %self.track_info.track_id,
+                generated_pregap_ms = ms,
+                "Ignoring negative generated pregap duration"
+            );
+            return 0;
+        }
+
+        ((ms as f64 / 1000.0) * self.sample_rate as f64) as u64
     }
 
     fn cancel_unshared_buffers(&self) {
