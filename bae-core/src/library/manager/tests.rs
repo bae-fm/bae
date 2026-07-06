@@ -2750,26 +2750,12 @@ async fn make_exportable_release(
     folder_name: &str,
     files: &[(&str, &[u8])],
 ) -> String {
-    let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.remote = false;
-    release.source_folder_name = Some(folder_name.to_string());
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    let (release, db_files) = insert_export_release_rows(manager, folder_name, files).await;
     std::fs::create_dir_all(source_dir).unwrap();
-    for (name, bytes) in files {
-        let path = source_dir.join(name);
+    for (file, (_, bytes)) in db_files.iter().zip(files) {
+        let path = source_dir.join(&file.original_filename);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(&path, bytes).unwrap();
-        let file = DbFile::new(
-            &release.id,
-            name,
-            bytes.len() as i64,
-            crate::util::content_type::ContentType::Flac,
-            Uuid::new_v4().to_string(),
-            Utc::now(),
-        );
-        manager.add_file(&file).await.unwrap();
     }
     manager
         .database
@@ -2779,6 +2765,61 @@ async fn make_exportable_release(
     manager.coven_make_remote(&release.id, true).await.unwrap();
     let n = manager.drain_uploads_for_test().await.unwrap();
     assert_eq!(n as usize, files.len(), "each release blob uploaded");
+    release.id
+}
+
+#[cfg(feature = "test-utils")]
+async fn insert_export_release_rows(
+    manager: &LibraryManager,
+    folder_name: &str,
+    files: &[(&str, &[u8])],
+) -> (DbRelease, Vec<DbFile>) {
+    let album = create_test_album();
+    let mut release = create_test_release(&album.id);
+    release.remote = false;
+    release.source_folder_name = Some(folder_name.to_string());
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    let created_at = Utc::now();
+    let mut inserted_files = Vec::with_capacity(files.len());
+    for (index, (name, bytes)) in files.iter().enumerate() {
+        let file = DbFile::new(
+            &release.id,
+            name,
+            bytes.len() as i64,
+            crate::util::content_type::ContentType::Flac,
+            format!("{}-export-file-{index}", release.id),
+            created_at,
+        );
+        manager.add_file(&file).await.unwrap();
+        inserted_files.push(file);
+    }
+    (release, inserted_files)
+}
+
+#[cfg(feature = "test-utils")]
+async fn insert_local_export_release_with_safe_source(
+    manager: &LibraryManager,
+    source_dir: &std::path::Path,
+    folder_name: &str,
+    file_name: &str,
+    bytes: &[u8],
+) -> String {
+    let (release, db_files) =
+        insert_export_release_rows(manager, folder_name, &[(file_name, bytes)]).await;
+    std::fs::create_dir_all(source_dir).unwrap();
+    let source_path = source_dir.join("source.flac");
+    std::fs::write(&source_path, bytes).unwrap();
+    manager
+        .database
+        .register_external_blob(
+            &db_files[0].id,
+            crate::sync::RELEASE_FILES_NAMESPACE,
+            &source_path,
+            bytes.len() as u64,
+        )
+        .await
+        .unwrap();
     release.id
 }
 
@@ -2904,6 +2945,107 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
             .unwrap(),
         "export enqueues no cloud uploads"
     );
+}
+
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn export_rejects_parent_component_original_filename() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let release_id = insert_local_export_release_with_safe_source(
+        &manager,
+        &temp_dir.path().join("source"),
+        "Album Title",
+        "../escape.flac",
+        b"escape-bytes",
+    )
+    .await;
+
+    assert_export_rejects_invalid_path(
+        &manager,
+        &release_id,
+        temp_dir.path(),
+        "parent component in original_filename is rejected",
+        &["export-out/escape.flac", "export-out/Album Title"],
+    )
+    .await;
+}
+
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn export_rejects_absolute_original_filename() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let absolute_escape = temp_dir.path().join("absolute-escape.flac");
+    let release_id = insert_local_export_release_with_safe_source(
+        &manager,
+        &temp_dir.path().join("source"),
+        "Album Title",
+        absolute_escape.to_str().unwrap(),
+        b"escape-bytes",
+    )
+    .await;
+
+    assert_export_rejects_invalid_path(
+        &manager,
+        &release_id,
+        temp_dir.path(),
+        "absolute original_filename is rejected",
+        &["absolute-escape.flac", "export-out/Album Title"],
+    )
+    .await;
+}
+
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn export_rejects_parent_component_source_folder_name() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let release_id = insert_local_export_release_with_safe_source(
+        &manager,
+        &temp_dir.path().join("source"),
+        "../escape-folder",
+        "track.flac",
+        b"track-bytes",
+    )
+    .await;
+
+    assert_export_rejects_invalid_path(
+        &manager,
+        &release_id,
+        temp_dir.path(),
+        "parent component in source_folder_name is rejected",
+        &["escape-folder", "export-out"],
+    )
+    .await;
+}
+
+#[cfg(feature = "test-utils")]
+async fn assert_export_rejects_invalid_path(
+    manager: &LibraryManager,
+    release_id: &str,
+    temp_dir: &std::path::Path,
+    message: &str,
+    absent_paths: &[&str],
+) {
+    let target = temp_dir.join("export-out");
+    let error = manager
+        .export_release(
+            release_id,
+            &target,
+            crate::config::ExportSelection::Original,
+        )
+        .await
+        .expect_err(message);
+
+    assert!(
+        error.to_string().contains("invalid export path"),
+        "unexpected error: {error}"
+    );
+    for path in absent_paths {
+        assert!(
+            !temp_dir.join(path).exists(),
+            "invalid export wrote {}",
+            temp_dir.join(path).display()
+        );
+    }
 }
 
 /// A write error (an unwritable target) marks the export `Failed` with a message

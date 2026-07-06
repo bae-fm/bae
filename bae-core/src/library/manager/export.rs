@@ -204,6 +204,7 @@ impl LibraryManager {
                 "release {release_id} has no source folder name; cannot reconstruct its folder"
             ))
         })?;
+        validate_export_path(release_id, "source_folder_name", &folder)?;
 
         let final_dir = request.target_dir.join(&folder);
         // Stage under the target dir (not a temp dir elsewhere) so the final rename
@@ -260,6 +261,11 @@ impl LibraryManager {
         file: &DbFile,
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
+        validate_export_path(
+            &file.release_id,
+            &format!("original_filename for file {}", file.id),
+            &file.original_filename,
+        )?;
         let bytes = self.read_release_blob(file).await?;
         let file_path = staging_dir.join(&file.original_filename);
         if let Some(parent) = file_path.parent() {
@@ -756,6 +762,15 @@ fn unique_export_path(
         }
         index += 1;
     }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn validate_export_path(release_id: &str, label: &str, value: &str) -> Result<(), LibraryError> {
+    coven::library_dir::validate_cloud_path(value).map_err(|error| {
+        LibraryError::Import(format!(
+            "invalid export path for release {release_id} {label} {value:?}: {error}"
+        ))
+    })
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
