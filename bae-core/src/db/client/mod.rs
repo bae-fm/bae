@@ -9,7 +9,7 @@ use coven::{ClockRef, Coven, CovenError, CovenHandle, DbError, SqlContext};
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tracing::warn;
 
 mod album;
@@ -68,6 +68,20 @@ fn clear_external_blob_on(conn: &Connection, blob_id: &str) -> Result<(), DbErro
 pub struct DeleteCleanupPlan {
     pub cloud_delete_keys: Vec<String>,
     pub external_blob_ids_to_clear: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportReplacementDelete {
+    pub release_id: String,
+    pub album_id: String,
+    pub cleanup: DeleteCleanupPlan,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportReplacementOutcome {
+    pub release_id: String,
+    pub album_id: String,
+    pub album_deleted: bool,
 }
 
 fn add_cloud_outbox_delete_on(

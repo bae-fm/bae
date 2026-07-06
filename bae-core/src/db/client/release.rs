@@ -456,7 +456,8 @@ impl Database {
         // each blob by the hashed id, `Browsable` lays it out at a readable
         // `cloud_path` computed inside this transaction (ready when the gate flips).
         storage: crate::config::HomeStorage,
-    ) -> Result<(), DbError> {
+        replacement_deletes: &[ImportReplacementDelete],
+    ) -> Result<Vec<ImportReplacementOutcome>, DbError> {
         let album = album.cloned();
         let release = release.clone();
         let tracks: Vec<DbTrack> = tracks_to_files
@@ -481,10 +482,13 @@ impl Database {
         let import_status = import_status.as_str().to_string();
         let identities = identities.to_vec();
         let local_path = local_path.to_string();
+        let replacement_deletes = replacement_deletes.to_vec();
 
         let now_dt = self.inner.clock.now();
         let now = now_dt.to_rfc3339();
         let now_ts = now_dt.timestamp();
+        let replacement_outcomes = Arc::new(Mutex::new(Vec::new()));
+        let replacement_outcomes_for_write = Arc::clone(&replacement_outcomes);
         self.inner
             .handle
             .write(move |w| {
@@ -502,6 +506,51 @@ impl Database {
                     // stamp for `_updated_at`; wall-clock `now` stays
                     // for `created_at`.
                     let reg = sql.stamp();
+
+                    for replacement in &replacement_deletes {
+                        apply_delete_cleanup_on(tx, &replacement.cleanup, &reg)?;
+                        tx.execute(
+                            "UPDATE imports SET release_id = NULL WHERE release_id = ?",
+                            params![replacement.release_id],
+                        )?;
+                        tx.execute(
+                            "DELETE FROM releases WHERE id = ?",
+                            params![replacement.release_id],
+                        )?;
+
+                        let remaining_release_count: i64 = tx.query_row(
+                            "SELECT COUNT(*) FROM releases WHERE album_id = ?",
+                            params![replacement.album_id],
+                            |row| row.get(0),
+                        )?;
+                        let album_deleted = remaining_release_count == 0;
+                        if album_deleted {
+                            tx.execute(
+                                "DELETE FROM albums WHERE id = ?",
+                                params![replacement.album_id],
+                            )?;
+                        } else {
+                            let primary_release_id: Option<String> = tx.query_row(
+                                "SELECT primary_release_id FROM albums WHERE id = ?",
+                                params![replacement.album_id],
+                                |row| row.get(0),
+                            )?;
+                            if primary_release_id.as_deref() == Some(&replacement.release_id) {
+                                tx.execute(
+                                    "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
+                                    params![reg, replacement.album_id],
+                                )?;
+                            }
+                        }
+                        replacement_outcomes_for_write
+                            .lock()
+                            .expect("replacement outcomes mutex not poisoned")
+                            .push(ImportReplacementOutcome {
+                                release_id: replacement.release_id.clone(),
+                                album_id: replacement.album_id.clone(),
+                                album_deleted,
+                            });
+                    }
 
                     // 1. Insert album (if new)
                     if let Some(album) = &album {
@@ -650,7 +699,10 @@ impl Database {
             })
             .await
             .map_err(Self::coven_error)?;
-        Ok(())
+        Ok(Arc::try_unwrap(replacement_outcomes)
+            .expect("replacement outcomes captured only by finalize_import_atomic")
+            .into_inner()
+            .expect("replacement outcomes mutex not poisoned"))
     }
 
     /// Delete a release by ID

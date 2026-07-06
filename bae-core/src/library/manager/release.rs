@@ -49,6 +49,15 @@ impl LibraryManager {
         &self,
         identities: &[crate::import::ReleaseIdentity],
     ) -> Result<Option<String>, String> {
+        self.find_existing_album_for_import_excluding(identities, &[])
+            .await
+    }
+
+    pub(crate) async fn find_existing_album_for_import_excluding(
+        &self,
+        identities: &[crate::import::ReleaseIdentity],
+        excluded_release_ids: &[String],
+    ) -> Result<Option<String>, String> {
         if identities.is_empty() {
             return Ok(None);
         }
@@ -57,7 +66,7 @@ impl LibraryManager {
         //    already in `release_identities`.
         if let Some(existing) = self
             .database
-            .find_album_by_identity_release(identities)
+            .find_album_by_identity_release_excluding(identities, excluded_release_ids)
             .await
             .map_err(|e| format!("Database error: {e}"))?
         {
@@ -71,7 +80,7 @@ impl LibraryManager {
         //    in `release_identities`.
         let album_id = self
             .database
-            .find_album_by_identity_group(identities)
+            .find_album_by_identity_group_excluding_many(identities, excluded_release_ids)
             .await
             .map_err(|e| format!("Database error: {e}"))?;
 
@@ -770,6 +779,39 @@ impl LibraryManager {
             self.delete_release(&release_id).await?;
         }
         Ok(())
+    }
+
+    pub(crate) async fn import_replacement_plans_for_content_hash(
+        &self,
+        hash: &str,
+    ) -> Result<Vec<ImportReplacementPlan>, LibraryError> {
+        let mut plans = Vec::new();
+        for release_id in self.database.release_ids_for_content_hash(hash).await? {
+            let release = self
+                .database
+                .find_release_by_id(&release_id)
+                .await?
+                .ok_or_else(|| {
+                    LibraryError::TrackMapping(format!("Release not found: {release_id}"))
+                })?;
+            let track_ids: Vec<String> = self
+                .get_tracks(&release_id)
+                .await?
+                .into_iter()
+                .map(|t| t.id)
+                .collect();
+            let delete_plan = self.release_delete_plan(&release).await?;
+            plans.push(ImportReplacementPlan {
+                db_delete: crate::db::ImportReplacementDelete {
+                    release_id,
+                    album_id: release.album_id,
+                    cleanup: delete_plan.db_cleanup,
+                },
+                evict_blobs: delete_plan.evict_blobs,
+                track_ids,
+            });
+        }
+        Ok(plans)
     }
 }
 

@@ -475,6 +475,14 @@ impl ImportService {
         // Content fingerprint of the folder tree. Used below to overwrite a
         // prior import of the same files, then stamped onto the new release row.
         let content_hash = categorized.content_hash();
+        let replacement_plans = library_manager
+            .import_replacement_plans_for_content_hash(&content_hash)
+            .await
+            .map_err(|e| format!("Failed to prepare prior import replacement: {e}"))?;
+        let replacement_release_ids: Vec<String> = replacement_plans
+            .iter()
+            .map(|plan| plan.db_delete.release_id.clone())
+            .collect();
 
         // Phase 0a: Reconcile the prepared release with existing library state
         send_event(
@@ -522,19 +530,6 @@ impl ImportService {
             }
         };
 
-        // Overwrite a prior import of the same folder tree: re-importing
-        // replaces rather than duplicates. Remove the existing release(s)
-        // carrying this content hash (and their remote files, via the library
-        // remove path) before reconciling, so the new import builds against
-        // post-removal state — a single-release album is freshly recreated; a
-        // multi-release album keeps its siblings and reassigns its primary. The
-        // source-metadata fetch above already ran, so the window between this
-        // removal and the new insert holds no fallible network step.
-        library_manager
-            .delete_releases_with_content_hash(&content_hash)
-            .await
-            .map_err(|e| format!("Failed to overwrite prior import: {e}"))?;
-
         let mut prepared = self
             .reconcile_prepared_release(
                 parsed,
@@ -545,6 +540,7 @@ impl ImportService {
                     .ok_or_else(|| format!("Non-UTF-8 folder path: {:?}", folder))?,
                 &identity_choice,
                 user_edit,
+                &replacement_release_ids,
             )
             .await?;
 
@@ -715,6 +711,7 @@ impl ImportService {
             &candidate_key,
             embedded_cover,
             &db_metadata,
+            &replacement_plans,
         )
         .await?;
 
@@ -791,6 +788,7 @@ impl ImportService {
         candidate_key: &str,
         embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
         db_metadata: &[DbReleaseMetadata],
+        replacement_plans: &[crate::library::manager::ImportReplacementPlan],
     ) -> Result<(), String> {
         let library_manager = &self.library_manager;
         let total_files = discovered_files.len();
@@ -1034,6 +1032,7 @@ impl ImportService {
                 finalized_import_status,
                 identities,
                 &local_path,
+                replacement_plans,
             )
             .await
             .map_err(|e| format!("Failed to finalize import: {}", e))?;

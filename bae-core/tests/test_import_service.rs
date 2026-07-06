@@ -17,11 +17,14 @@ use bae_core::musicbrainz::{
     ExternalUrls, MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbReleaseGroupRef,
     MbReleaseResponse, MbTrack,
 };
+use bae_core::sync::CloudCipher;
+use coven::EncryptionService;
 use coven::LibraryDir;
 use serial_test::serial;
 use std::fs;
 use std::path::Path;
-use support::seed_discogs_test_release;
+use std::sync::Arc;
+use support::{seed_discogs_test_release, MockCloudHome};
 use tempfile::TempDir;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -30,6 +33,8 @@ struct ImportFixture {
     db: Database,
     handle: bae_core::import::ImportServiceHandle,
     library_manager: LibraryManager,
+    config_handle: Arc<bae_core::config::ConfigHandle>,
+    ids: Arc<dyn coven::IdProvider>,
     _temp: TempDir,
 }
 
@@ -47,13 +52,14 @@ impl ImportFixture {
         .unwrap();
         let library_dir = LibraryDir::new(db_dir.clone());
         let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
+        let ids: Arc<dyn coven::IdProvider> = Arc::new(coven::UuidProvider);
         let library_manager = LibraryManager::new(
             db.clone(),
             library_dir.clone(),
-            config_handle,
+            config_handle.clone(),
             key_service,
             std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
+            ids.clone(),
             tokio::runtime::Handle::current(),
         );
 
@@ -67,6 +73,8 @@ impl ImportFixture {
             db,
             handle,
             library_manager,
+            config_handle,
+            ids,
             _temp: temp,
         }
     }
@@ -74,6 +82,59 @@ impl ImportFixture {
     fn temp_path(&self) -> &Path {
         self._temp.path()
     }
+
+    async fn connect_cloud(&self) {
+        self.library_manager
+            .connect_test_cloud_home(
+                Arc::new(MockCloudHome::new()),
+                CloudCipher::Encrypted(EncryptionService::new_with_key(&[7u8; 32])),
+            )
+            .await
+            .expect("connect in-memory cloud home");
+    }
+
+    fn set_decode_verification(&self, verify: bool) {
+        self.config_handle
+            .update(|c| c.verify_decode_on_import = verify)
+            .expect("set verify_decode_on_import");
+    }
+}
+
+async fn import_folder(
+    f: &ImportFixture,
+    album_dir: &Path,
+    selected_cover: Option<CoverSelection>,
+    storage_mode: StorageMode,
+    identity_choice: IdentityChoice,
+) -> Result<(String, String), String> {
+    let import_id = f.ids.new_id();
+    f.handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir.to_path_buf(),
+            selected_cover,
+            storage_mode,
+            pin: false,
+            identity_choice,
+            user_edit: None,
+        })
+        .unwrap();
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    support::try_wait_for_import_complete(&mut progress_rx).await
+}
+
+async fn assert_release_has_external_ref(f: &ImportFixture, release_id: &str) {
+    assert!(
+        f.db.find_release_by_id(release_id).await.unwrap().is_some(),
+        "prior release row should remain"
+    );
+    let files = f.db.get_files_for_release(release_id).await.unwrap();
+    assert!(!files.is_empty(), "prior release files should remain");
+    assert!(
+        f.db.external_blob(&files[0].id).await.unwrap().is_some(),
+        "prior local file reference should remain"
+    );
 }
 
 fn generate_album_files(dir: &Path, filenames: &[&str]) {
@@ -974,6 +1035,180 @@ async fn two_sequential_imports() {
             .unwrap();
     assert_eq!(album1.title, "First Album");
     assert_eq!(album2.title, "Second Album");
+}
+
+#[tokio::test]
+#[serial]
+async fn reimport_cover_download_failure_preserves_prior_release() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+
+    let album_dir = f.temp_path().join("cover-failure-reimport");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_tagged_album_files(
+        &album_dir,
+        "Album Title",
+        "Artist Name",
+        None,
+        &[TaggedTrack {
+            filename: "01 Track Title.flac",
+            title: "Track Title",
+            track_number: 1,
+        }],
+    );
+
+    let (prior_release_id, _) = import_folder(
+        &f,
+        &album_dir,
+        None,
+        StorageMode::Local,
+        IdentityChoice::Unknown,
+    )
+    .await
+    .expect("initial import succeeds");
+    assert_release_has_external_ref(&f, &prior_release_id).await;
+
+    let result = import_folder(
+        &f,
+        &album_dir,
+        Some(CoverSelection::Remote(
+            "http://127.0.0.1:9/cover.jpg".to_string(),
+            MetadataSource::MusicBrainz,
+        )),
+        StorageMode::Local,
+        IdentityChoice::Unknown,
+    )
+    .await;
+
+    assert!(result.is_err(), "cover download should fail");
+    assert_release_has_external_ref(&f, &prior_release_id).await;
+}
+
+#[tokio::test]
+#[serial]
+async fn reimport_decode_verification_failure_preserves_prior_release() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    f.set_decode_verification(false);
+
+    let album_dir = f.temp_path().join("decode-failure-reimport");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_tagged_album_files(
+        &album_dir,
+        "Album Title",
+        "Artist Name",
+        None,
+        &[TaggedTrack {
+            filename: "01 Track Title.flac",
+            title: "Track Title",
+            track_number: 1,
+        }],
+    );
+    truncate_flac_body(&album_dir.join("01 Track Title.flac"));
+
+    let (prior_release_id, _) = import_folder(
+        &f,
+        &album_dir,
+        None,
+        StorageMode::Local,
+        IdentityChoice::Unknown,
+    )
+    .await
+    .expect("initial import succeeds while decode verification is disabled");
+    assert_release_has_external_ref(&f, &prior_release_id).await;
+
+    f.set_decode_verification(true);
+    let result = import_folder(
+        &f,
+        &album_dir,
+        None,
+        StorageMode::Local,
+        IdentityChoice::Unknown,
+    )
+    .await;
+
+    let error = result.expect_err("decode verification should fail");
+    assert!(
+        error.contains("decode verification failed"),
+        "unexpected error: {error}"
+    );
+    assert_release_has_external_ref(&f, &prior_release_id).await;
+}
+
+#[tokio::test]
+#[serial]
+async fn successful_reimport_replaces_prior_release_once() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    f.connect_cloud().await;
+
+    let album_dir = f.temp_path().join("successful-reimport");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_tagged_album_files(
+        &album_dir,
+        "Album Title",
+        "Artist Name",
+        None,
+        &[TaggedTrack {
+            filename: "01 Track Title.flac",
+            title: "Track Title",
+            track_number: 1,
+        }],
+    );
+
+    let (prior_release_id, _) = import_folder(
+        &f,
+        &album_dir,
+        None,
+        StorageMode::Remote,
+        IdentityChoice::Unknown,
+    )
+    .await
+    .expect("initial remote import queues upload");
+    let upload_count = f.library_manager.drain_uploads_for_test().await.unwrap();
+    assert_eq!(
+        upload_count, 1,
+        "initial remote import should upload one file"
+    );
+    let prior_release =
+        f.db.find_release_by_id(&prior_release_id)
+            .await
+            .unwrap()
+            .expect("prior release exists after upload");
+    assert!(prior_release.remote, "prior release should be remote");
+    let content_hash = prior_release.content_hash.clone().unwrap();
+
+    let (replacement_release_id, _) = import_folder(
+        &f,
+        &album_dir,
+        None,
+        StorageMode::Local,
+        IdentityChoice::Unknown,
+    )
+    .await
+    .expect("re-import succeeds");
+
+    assert!(
+        f.db.find_release_by_id(&prior_release_id)
+            .await
+            .unwrap()
+            .is_none(),
+        "prior release should be replaced"
+    );
+    let release_ids =
+        f.db.release_ids_for_content_hash(&content_hash)
+            .await
+            .unwrap();
+    assert_eq!(
+        release_ids,
+        vec![replacement_release_id],
+        "one release should carry the re-imported content hash"
+    );
+    assert_eq!(
+        f.db.get_pending_cloud_deletes().await.unwrap().len(),
+        1,
+        "replacing the prior remote release should queue its cloud blob for deletion"
+    );
 }
 
 /// 6. Import with local cover art: covers row + the cover blob in coven's local store.

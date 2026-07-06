@@ -64,6 +64,7 @@ impl ImportService {
         source_path: &str,
         identity_choice: &crate::import::IdentityChoice,
         user_edit: Option<crate::import::ReleaseUserEdit>,
+        replacement_release_ids: &[String],
     ) -> Result<PreparedMetadata, String> {
         let library_manager = &self.library_manager;
 
@@ -127,7 +128,7 @@ impl ImportService {
             .clone();
 
         let existing_album_id = library_manager
-            .find_existing_album_for_import(&identities)
+            .find_existing_album_for_import_excluding(&identities, replacement_release_ids)
             .await?;
         if let Some(album_id) = &existing_album_id {
             db_release.album_id = album_id.clone();

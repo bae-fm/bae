@@ -761,6 +761,7 @@ mod composer_mode_tests {
             &[],
             tmp.path().to_str().unwrap(),
             crate::config::HomeStorage::Opaque,
+            &[],
         )
         .await
         .unwrap();
@@ -913,6 +914,7 @@ mod composer_mode_tests {
             &[],
             tmp.path().to_str().unwrap(),
             crate::config::HomeStorage::Opaque,
+            &[],
         )
         .await
         .unwrap();
@@ -1046,6 +1048,7 @@ mod composer_mode_tests {
             &[],
             tmp.path().to_str().unwrap(),
             crate::config::HomeStorage::Opaque,
+            &[],
         )
         .await
         .unwrap();

@@ -42,9 +42,9 @@ use crate::config::ConfigHandle;
 use crate::db::{
     Database, DbAlbum, DbAlbumArtist, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole,
     DbFile, DbImport, DbLibraryImage, DbRelease, DbTrack, DbTrackArtist, DeleteCleanupPlan,
-    ImportOperationStatus, LibraryImageType, Pressing, SortDirection as DbSortDirection,
-    StorageFilter as DbStorageFilter, StorageSortCriterion as DbStorageSortCriterion,
-    StorageSortField as DbStorageSortField,
+    ImportOperationStatus, ImportReplacementDelete, LibraryImageType, Pressing,
+    SortDirection as DbSortDirection, StorageFilter as DbStorageFilter,
+    StorageSortCriterion as DbStorageSortCriterion, StorageSortField as DbStorageSortField,
 };
 use crate::keys::BaeKeyServiceExt;
 use crate::keys::KeyService;
@@ -111,6 +111,12 @@ pub enum LibraryError {
 struct ReleaseDeletePlan {
     db_cleanup: DeleteCleanupPlan,
     evict_blobs: Vec<coven::BlobRef>,
+}
+
+pub(crate) struct ImportReplacementPlan {
+    pub(crate) db_delete: ImportReplacementDelete,
+    pub(crate) evict_blobs: Vec<coven::BlobRef>,
+    pub(crate) track_ids: Vec<String>,
 }
 
 /// All DB data needed to play or serve a track.

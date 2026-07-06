@@ -48,6 +48,15 @@ impl Database {
         &self,
         identities: &[crate::import::ReleaseIdentity],
     ) -> Result<Option<DbAlbum>, DbError> {
+        self.find_album_by_identity_release_excluding(identities, &[])
+            .await
+    }
+
+    pub async fn find_album_by_identity_release_excluding(
+        &self,
+        identities: &[crate::import::ReleaseIdentity],
+        exclude_release_ids: &[String],
+    ) -> Result<Option<DbAlbum>, DbError> {
         let exact_pairs: Vec<(String, String)> = identities
             .iter()
             .filter_map(|id| {
@@ -59,6 +68,7 @@ impl Database {
         if exact_pairs.is_empty() {
             return Ok(None);
         }
+        let exclude_release_ids = exclude_release_ids.to_vec();
 
         self.call(move |conn| {
             let placeholders = exact_pairs
@@ -66,6 +76,18 @@ impl Database {
                 .map(|_| "(?, ?)")
                 .collect::<Vec<_>>()
                 .join(", ");
+            let exclude_predicate = if exclude_release_ids.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "AND ri.release_id NOT IN ({})",
+                    exclude_release_ids
+                        .iter()
+                        .map(|_| "?")
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            };
             let sql = format!(
                 r#"
                     SELECT
@@ -75,12 +97,17 @@ impl Database {
                     JOIN releases r ON r.album_id = a.id
                     JOIN release_identities ri ON ri.release_id = r.id
                     WHERE (ri.source, ri.source_release_id) IN ({placeholders})
+                      {exclude_predicate}
                     LIMIT 1
                     "#,
             );
-            let mut binds: Vec<&str> = Vec::with_capacity(exact_pairs.len() * 2);
+            let mut binds: Vec<&str> =
+                Vec::with_capacity(exact_pairs.len() * 2 + exclude_release_ids.len());
             for (source, release_id) in &exact_pairs {
                 binds.push(source);
+                binds.push(release_id);
+            }
+            for release_id in &exclude_release_ids {
                 binds.push(release_id);
             }
             conn.query_row(
@@ -102,7 +129,7 @@ impl Database {
         &self,
         identities: &[crate::import::ReleaseIdentity],
     ) -> Result<Option<String>, DbError> {
-        self.find_album_by_identity_group_match(identities, None)
+        self.find_album_by_identity_group_match(identities, &[])
             .await
     }
 
@@ -115,14 +142,23 @@ impl Database {
         identities: &[crate::import::ReleaseIdentity],
         exclude_release_id: &str,
     ) -> Result<Option<String>, DbError> {
-        self.find_album_by_identity_group_match(identities, Some(exclude_release_id))
+        self.find_album_by_identity_group_match(identities, &[exclude_release_id.to_string()])
+            .await
+    }
+
+    pub async fn find_album_by_identity_group_excluding_many(
+        &self,
+        identities: &[crate::import::ReleaseIdentity],
+        exclude_release_ids: &[String],
+    ) -> Result<Option<String>, DbError> {
+        self.find_album_by_identity_group_match(identities, exclude_release_ids)
             .await
     }
 
     async fn find_album_by_identity_group_match(
         &self,
         identities: &[crate::import::ReleaseIdentity],
-        exclude_release_id: Option<&str>,
+        exclude_release_ids: &[String],
     ) -> Result<Option<String>, DbError> {
         if identities.is_empty() {
             return Ok(None);
@@ -132,7 +168,7 @@ impl Database {
             .iter()
             .map(|id| (id.source.as_str().to_string(), id.source_group_id.clone()))
             .collect();
-        let exclude_release_id = exclude_release_id.map(str::to_string);
+        let exclude_release_ids = exclude_release_ids.to_vec();
 
         self.call(move |conn| {
             let placeholders = pairs
@@ -140,10 +176,17 @@ impl Database {
                 .map(|_| "(?, ?)")
                 .collect::<Vec<_>>()
                 .join(", ");
-            let exclude_predicate = if exclude_release_id.is_some() {
-                "AND ri.release_id != ?"
+            let exclude_predicate = if exclude_release_ids.is_empty() {
+                String::new()
             } else {
-                ""
+                format!(
+                    "AND ri.release_id NOT IN ({})",
+                    exclude_release_ids
+                        .iter()
+                        .map(|_| "?")
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
             };
             let sql = format!(
                 r#"
@@ -156,13 +199,13 @@ impl Database {
                     "#,
             );
             let mut binds: Vec<&str> =
-                Vec::with_capacity(pairs.len() * 2 + usize::from(exclude_release_id.is_some()));
+                Vec::with_capacity(pairs.len() * 2 + exclude_release_ids.len());
             for (source, group_id) in &pairs {
                 binds.push(source);
                 binds.push(group_id);
             }
-            if let Some(exclude_release_id) = &exclude_release_id {
-                binds.push(exclude_release_id);
+            for release_id in &exclude_release_ids {
+                binds.push(release_id);
             }
             conn.query_row(
                 &sql,

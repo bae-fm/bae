@@ -17,7 +17,7 @@ impl LibraryManager {
     /// owns the `DbTrack` (with its populated `duration_ms`) that gets
     /// inserted. There is no parallel list of tracks or durations.
     #[allow(clippy::too_many_arguments)]
-    pub async fn finalize_import_atomic(
+    pub(crate) async fn finalize_import_atomic(
         &self,
         album: Option<&DbAlbum>,
         release: &DbRelease,
@@ -40,12 +40,18 @@ impl LibraryManager {
         import_status: ImportOperationStatus,
         identities: &[crate::import::ReleaseIdentity],
         local_path: &str,
+        replacement_plans: &[ImportReplacementPlan],
     ) -> Result<(), LibraryError> {
         // The home's storage mode decides the blob layout (opaque hashed-by-id vs.
         // browsable readable paths); the manager owns config, so it reads the mode
         // here rather than threading it from the importer.
         let storage = self.config_handle.config().cloud_home.storage;
-        self.database
+        let replacement_deletes: Vec<_> = replacement_plans
+            .iter()
+            .map(|plan| plan.db_delete.clone())
+            .collect();
+        let replacement_outcomes = self
+            .database
             .finalize_import_atomic(
                 album,
                 release,
@@ -69,8 +75,35 @@ impl LibraryManager {
                 identities,
                 local_path,
                 storage,
+                &replacement_deletes,
             )
             .await?;
+        if !replacement_plans.is_empty() {
+            self.emit_outbox_changed().await;
+        }
+        for (index, plan) in replacement_plans.iter().enumerate() {
+            let outcome = replacement_outcomes
+                .get(index)
+                .expect("finalize_import_atomic returns one outcome per replacement plan");
+            self.evict_delete_blobs(plan.evict_blobs.clone()).await;
+
+            if !plan.track_ids.is_empty() {
+                self.emit(LibraryEvent::TracksDeleted {
+                    track_ids: plan.track_ids.clone(),
+                });
+            }
+
+            if outcome.album_deleted {
+                self.emit_album_removed(&outcome.album_id, vec![outcome.release_id.clone()]);
+            } else {
+                self.emit_album_updated(&outcome.album_id).await;
+                self.emit_release_removed(&outcome.album_id, &outcome.release_id)
+                    .await;
+            }
+        }
+        if !replacement_plans.is_empty() {
+            self.spawn_cleanup();
+        }
         Ok(())
     }
 
