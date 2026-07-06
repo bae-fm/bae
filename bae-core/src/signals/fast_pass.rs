@@ -303,9 +303,12 @@ mod tests {
         let pair = ScannedCueFlacPair {
             cue_file: cue.clone(),
             audio_file: flac.clone(),
+            audio_files: vec![flac.clone()],
             cue_sheet: crate::cue_flac::CueSheet {
                 title: None,
                 performer: None,
+                composer: None,
+                songwriter: None,
                 catalog: None,
                 date: None,
                 tracks: Vec::new(),

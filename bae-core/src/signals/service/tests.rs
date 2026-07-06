@@ -154,6 +154,14 @@ fn minimal_mp3() -> Vec<u8> {
     v
 }
 
+fn fixture_flac() -> Vec<u8> {
+    std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/flac/01 Test Track 1.flac"
+    ))
+    .expect("read FLAC fixture")
+}
+
 /// Minimal JPEG bytes — 0xFFD8FF magic + a byte. Enough for
 /// `is_valid_image` to accept it.
 fn minimal_jpeg() -> Vec<u8> {
@@ -404,14 +412,11 @@ async fn cue_fields_land_in_fast_pass() {
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path().join("Some Folder");
     fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.mp3"), minimal_mp3()).unwrap();
-    // CUE file with album-level + track-level values. The CUE's FILE
-    // directive references a non-existent FLAC, which means this CUE
-    // won't pair with the mp3 — it lands in documents and still gets
-    // parsed by the fast pass.
+    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
+    // CUE file with album-level + track-level values.
     let cue = r#"PERFORMER "Artist Alpha"
 TITLE "Album Title A"
-FILE "audio.wav" WAVE
+FILE "audio.flac" WAVE
   TRACK 01 AUDIO
     PERFORMER "Artist Alpha"
     TITLE "Track One"
@@ -445,19 +450,15 @@ FILE "audio.wav" WAVE
 #[tokio::test(flavor = "multi_thread")]
 async fn cue_catalog_becomes_barcode() {
     // A CUE with a `CATALOG` field. The disc's UPC/EAN surfaces as a
-    // barcode code, not as a catalog-number string. The CUE's FILE
-    // directive references a non-existent WAV, so
-    // it doesn't pair with the mp3 and lands in `unpaired_cue_sheets`;
-    // its CATALOG is still harvested. Track count (1) matches the
-    // on-disk audio (1 mp3), so the incomplete-rip guard doesn't fire.
+    // barcode code, not as a catalog-number string.
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path().join("Some Folder");
     fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.mp3"), minimal_mp3()).unwrap();
+    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
     let cue = "CATALOG 0075678164521\n\
 PERFORMER \"Artist Alpha\"\n\
 TITLE \"Album Title A\"\n\
-FILE \"audio.wav\" WAVE\n  \
+FILE \"audio.flac\" WAVE\n  \
   TRACK 01 AUDIO\n    \
     TITLE \"Track One\"\n    \
     INDEX 01 00:00:00\n";
@@ -493,12 +494,12 @@ fn non_utf8_cue_is_decoded_not_dropped() {
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path().join("Some Folder");
     fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.mp3"), minimal_mp3()).unwrap();
+    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
 
     let mut cue: Vec<u8> = Vec::new();
     cue.extend_from_slice(b"PERFORMER \"Artist Alpha\"\n");
     cue.extend_from_slice(b"TITLE \"Album Title A\"\n");
-    cue.extend_from_slice(b"FILE \"audio.wav\" WAVE\n");
+    cue.extend_from_slice(b"FILE \"audio.flac\" WAVE\n");
     cue.extend_from_slice(b"  TRACK 01 AUDIO\n");
     cue.extend_from_slice(b"    TITLE \"I Ain");
     cue.push(0x92); // Windows-1252 right single quotation mark

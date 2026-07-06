@@ -441,6 +441,7 @@ impl Database {
         track_artist_roles: &[DbTrackArtistRole],
         files: &[DbFile],
         audio_formats: &[DbAudioFormat],
+        audio_segments: &[DbAudioSegment],
         library_image: Option<(&DbLibraryImage, &[u8])>,
         primary_release_id: Option<(&str, &str)>, // (album_id, release_id)
         import_id: &str,
@@ -473,6 +474,7 @@ impl Database {
         let track_artist_roles = track_artist_roles.to_vec();
         let files = files.to_vec();
         let audio_formats = audio_formats.to_vec();
+        let audio_segments = audio_segments.to_vec();
         let library_image = library_image.map(|(image, bytes)| (image.clone(), bytes.to_vec()));
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let import_id = import_id.to_string();
@@ -600,9 +602,12 @@ impl Database {
                         )?;
                     }
 
-                    // 8. Insert audio formats
+                    // 8. Insert audio formats and their ordered file windows.
                     for af in &audio_formats {
                         insert_audio_format_row(tx, af, &reg)?;
+                    }
+                    for segment in &audio_segments {
+                        insert_audio_segment_row(tx, segment, &reg)?;
                     }
 
                     // 9. Write the cover row and its host-provided blob in one

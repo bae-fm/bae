@@ -363,13 +363,12 @@ fn assemble_parsed_album(seed: AlbumSeed, clock: &dyn Clock, ids: &dyn IdProvide
 }
 
 /// Map a CUE-backed rip's parsed sheets to a [`ParsedAlbum`] for the Unknown
-/// path. A single CUE image holds many tracks in one audio file, so — unlike
-/// [`map_file_tags_to_db`], which seeds one track per file — the track
-/// structure comes from the CUE's `TRACK` entries: title from each `TITLE`,
-/// per-track artist from each `PERFORMER`. Album-level fields come from the
-/// sheet header (`TITLE` / `PERFORMER` / `REM DATE`), the album title falling
-/// back to the folder name. `sheets` and `audio_files` are one-per-pair in
-/// disc order — the same order `track_to_file_mapper` slices pairs — so side
+/// path. Unlike [`map_file_tags_to_db`], which seeds one track per file, the
+/// track structure comes from playable CUE `TRACK` entries: title from each
+/// `TITLE`, per-track artist from each `PERFORMER`. Album-level fields come
+/// from the sheet header (`TITLE` / `PERFORMER` / `REM DATE`), the album title
+/// falling back to the folder name. `sheets` and `audio_files` are one-per-pair
+/// in disc order — the same order `track_to_file_mapper` slices pairs — so side
 /// is the 1-based disc index and track numbers run per sheet.
 pub fn map_cue_sheets_to_db(
     sheets: &[&CueSheet],
@@ -410,7 +409,7 @@ pub fn map_cue_sheets_to_db(
     let mut tracks: Vec<TrackSeed> = Vec::new();
     for (disc_index, sheet) in sheets.iter().enumerate() {
         let side = disc_index as i32 + 1;
-        for (position, track) in sheet.tracks.iter().enumerate() {
+        for (position, track) in sheet.playable_tracks().enumerate() {
             // A CUE track without a TITLE is rare; seed a blank for the user
             // rather than fabricate a placeholder.
             let title = non_empty(track.title.clone()).unwrap_or_default();
@@ -672,12 +671,22 @@ mod tests {
 
     #[test]
     fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
-        use crate::cue_flac::{CuePregap, CueSheet, CueTrack};
+        use crate::cue_flac::{CueIndex, CuePregap, CueSheet, CueTrack, CueTrackMode};
         let mk = |number: u32, title: &str| CueTrack {
             number,
+            mode: CueTrackMode::Audio,
             title: Some(title.to_string()),
             performer: Some("Artist Name".to_string()),
+            composer: None,
+            songwriter: None,
             isrc: None,
+            flags: Vec::new(),
+            indexes: vec![CueIndex {
+                number: 1,
+                frames: 0,
+                file_reference: "image.flac".to_string(),
+            }],
+            postgap_frames: None,
             file_reference: "image.flac".to_string(),
             start_cue_frames: 0,
             pregap: CuePregap::None,
@@ -688,6 +697,8 @@ mod tests {
         let sheet = CueSheet {
             title: Some("Album Title".to_string()),
             performer: Some("Artist Name".to_string()),
+            composer: None,
+            songwriter: None,
             catalog: None,
             date: Some("1970".to_string()),
             tracks: vec![mk(1, "Track One"), mk(2, "Track Two"), mk(3, "Track Three")],

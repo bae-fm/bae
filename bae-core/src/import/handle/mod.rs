@@ -481,7 +481,7 @@ pub fn shape_user_edit_from_search_detail(
 
 /// Audio file paths from a `CategorizedFiles`, in the same order the
 /// flattened pipeline produces. CUE-backed releases yield only the
-/// audio file from each pair (the CUE itself carries no embedded
+/// audio files referenced by each pair (the CUE itself carries no embedded
 /// tags); per-track releases yield each track in scan order.
 ///
 /// Used by the Unknown import path to read embedded cover art from the backing
@@ -494,7 +494,7 @@ pub fn categorized_audio_paths(
     match &categorized.audio {
         AudioContent::CueFlacPairs { pairs, .. } => {
             for pair in pairs {
-                paths.push(pair.audio_file.path.clone());
+                paths.extend(pair.audio_files.iter().map(|file| file.path.clone()));
             }
         }
         AudioContent::TrackFiles { tracks, .. } => {
@@ -526,7 +526,9 @@ pub(crate) fn categorized_to_discovered_files(
         AudioContent::CueFlacPairs { pairs, .. } => {
             for pair in pairs {
                 push(&mut files, &pair.cue_file);
-                push(&mut files, &pair.audio_file);
+                for audio_file in &pair.audio_files {
+                    push(&mut files, audio_file);
+                }
             }
         }
         AudioContent::TrackFiles { tracks, .. } => {

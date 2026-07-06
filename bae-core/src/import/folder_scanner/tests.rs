@@ -1,4 +1,5 @@
 use super::*;
+use crate::cue_flac::CueTrackMode;
 
 /// Minimal valid FLAC header (42 bytes) with total_samples=0 (unknown length).
 /// This passes is_valid_flac without needing a realistic file size.
@@ -158,15 +159,18 @@ fn test_cue_parser_tolerates_missing_performer_title() {
 
 #[test]
 fn test_cue_parser_stops_at_data_track() {
-    // Only TRACK NN AUDIO is parsed; MODE1 data tracks terminate the
-    // track sequence (they sit at the end of rip CUE files).
     let tmp = tempfile::tempdir().unwrap();
     let cue = tmp.path().join("album.cue");
     let content = "FILE \"album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 MODE1/2048\n    INDEX 01 05:00:00\n";
     std::fs::write(&cue, content).unwrap();
 
     let sheet = CueFlacProcessor::parse_cue_sheet(&cue).unwrap();
-    assert_eq!(sheet.tracks.len(), 1);
+    assert_eq!(sheet.tracks.len(), 2);
+    assert_eq!(sheet.playable_track_count(), 1);
+    assert!(matches!(
+        sheet.tracks[1].mode,
+        CueTrackMode::Other(ref mode) if mode == "MODE1/2048"
+    ));
 }
 
 #[test]
@@ -837,10 +841,10 @@ fn test_file_tree_all_files_under() {
     assert_eq!(root_all.len(), 3);
 }
 
-/// Regression: per-track FLACs + CUE + LOG + artwork subfolder + folder.jpg
-/// must be detected as a candidate. This mimics a typical CD-rip folder.
+/// Per-track FLACs plus a CUE naming absent audio are not a partial success:
+/// the CUE is the layout, so the release is invalid.
 #[test]
-fn test_per_track_flacs_with_cue_and_artwork_subfolder() {
+fn per_track_flacs_with_missing_cue_audio_are_invalid() {
     let tmp = tempfile::TempDir::new().unwrap();
     let album = tmp
         .path()
@@ -857,7 +861,7 @@ fn test_per_track_flacs_with_cue_and_artwork_subfolder() {
         .unwrap();
     }
 
-    // CUE sheet
+    // CUE sheet with missing referenced audio.
     std::fs::write(
         album.join("Album Title.cue"),
         "FILE \"dummy.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n",
@@ -881,44 +885,16 @@ fn test_per_track_flacs_with_cue_and_artwork_subfolder() {
     // folder.jpg at album root
     std::fs::write(album.join("folder.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
-    let candidates = scan_valid(tmp.path().join("Collection"));
+    let items = scan_items(tmp.path().join("Collection"));
 
-    assert_eq!(
-        candidates.len(),
-        1,
-        "Expected 1 candidate, got {}",
-        candidates.len()
-    );
-
-    let c = &candidates[0];
-    assert!(
-        c.name.contains("Artist - Album Title"),
-        "Candidate name should contain album title, got: {}",
-        c.name
-    );
-
-    // Should have per-track audio (not CUE+FLAC pairs, since tracks are individual files)
-    match &c.files.audio {
-        AudioContent::TrackFiles { tracks, .. } => {
-            assert_eq!(tracks.len(), 12, "Expected 12 track files");
+    assert_eq!(items.len(), 1);
+    match &items[0] {
+        ScanItem::Invalid(invalid) => {
+            assert!(invalid.name.contains("Artist - Album Title"));
+            assert!(matches!(invalid.reason, InvalidReason::CueMissingAudio));
         }
-        AudioContent::CueFlacPairs { .. } => {
-            panic!("Expected TrackFiles, got CueFlacPairs");
-        }
+        ScanItem::Valid(_) => panic!("missing CUE audio must not be a valid candidate"),
     }
-
-    // Should have artwork from both root and subfolder
-    assert!(
-        !c.files.artwork.is_empty(),
-        "Expected artwork files, got none"
-    );
-
-    // Should have documents (CUE + LOG)
-    assert!(
-        c.files.documents.len() >= 2,
-        "Expected at least 2 documents (CUE + LOG), got {}",
-        c.files.documents.len()
-    );
 }
 
 /// A CUE paired with an `.m4a` file produces a `CUE+ALAC` format label
@@ -956,11 +932,11 @@ fn test_collect_release_candidate_files_cue_alac_format_label() {
     }
 }
 
-/// Multi-FILE CUEs (one FILE per TRACK) never pair, so their parsed sheet
-/// would otherwise be discarded. The release's signals — here the CATALOG
-/// (UPC) — must survive on `unpaired_cue_sheets`.
+/// Multi-FILE CUEs resolve as CUE-backed releases, with every referenced audio
+/// file attached to the pair. The release's signals — here the CATALOG (UPC) —
+/// live on the parsed sheet attached to the pair.
 #[test]
-fn test_collect_release_candidate_files_retains_unpaired_multifile_cue_sheet() {
+fn test_collect_release_candidate_files_resolves_multifile_cue_sheet() {
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path();
 
@@ -982,17 +958,24 @@ FILE "02 - Track Two.flac" WAVE
 
     let files = collect_release_candidate_files(root).expect("scan should succeed");
 
-    // A multi-FILE CUE doesn't pair → audio is the per-track files.
-    assert!(
-        matches!(files.audio, AudioContent::TrackFiles { .. }),
-        "multi-FILE CUE must not pair; got {:?}",
-        files.audio,
-    );
-    // The parsed sheet — and its CATALOG/UPC — is retained, not discarded.
-    assert_eq!(files.unpaired_cue_sheets.len(), 1);
-    let (_, sheet) = &files.unpaired_cue_sheets[0];
-    assert_eq!(sheet.catalog.as_deref(), Some("0123456789012"));
-    assert_eq!(sheet.tracks.len(), 2);
+    match &files.audio {
+        AudioContent::CueFlacPairs { pairs, .. } => {
+            assert_eq!(pairs.len(), 1);
+            assert_eq!(pairs[0].audio_files.len(), 2);
+            assert_eq!(
+                pairs[0]
+                    .audio_files
+                    .iter()
+                    .map(|file| file.file_name.as_str())
+                    .collect::<Vec<_>>(),
+                vec!["01 - Track One.flac", "02 - Track Two.flac"],
+            );
+            assert_eq!(pairs[0].cue_sheet.catalog.as_deref(), Some("0123456789012"));
+            assert_eq!(pairs[0].cue_sheet.tracks.len(), 2);
+        }
+        other => panic!("expected CueFlacPairs, got {other:?}"),
+    }
+    assert!(files.unpaired_cue_sheets.is_empty());
 }
 
 #[test]
@@ -2106,10 +2089,10 @@ fn reference_fixture() -> Vec<FixtureEntry> {
         top_level_candidate: false,
     });
 
-    // --- CANDIDATE 6 — flat FLAC + cover + log + non-pairing CUE (C4). ---
+    // --- Missing CUE audio — flat FLAC + cover + log + unresolved CUE. ---
     entries.push(FixtureEntry::Expect {
         rel_path: "Artist B/1986 - Album B1".into(),
-        top_level_candidate: true,
+        top_level_candidate: false,
     });
     entries.extend(flat_audio("Artist B/1986 - Album B1", 5, FileKind::Flac));
     entries.push(FixtureEntry::File {
@@ -3062,11 +3045,10 @@ fn m4a_release_surfaces_as_trackfiles() {
     }
 }
 
-/// A multi-FILE CUE (one FILE per TRACK, the lossy-rip shape) does not
-/// pair on purpose — each track has its own file. The per-track audio
-/// surfaces as `TrackFiles`; the CUE lands in `documents`.
+/// A multi-FILE CUE resolves as a CUE-backed release; each referenced track
+/// file remains attached as an ordered source for that layout.
 #[test]
-fn multi_file_cue_surfaces_as_trackfiles() {
+fn multi_file_cue_surfaces_as_cue_backed_release() {
     let tmp = tempfile::tempdir().unwrap();
     let album = tmp.path().join("Album");
     std::fs::create_dir_all(&album).unwrap();
@@ -3085,19 +3067,25 @@ fn multi_file_cue_surfaces_as_trackfiles() {
     assert_eq!(candidates.len(), 1);
     let c = &candidates[0];
     match &c.files.audio {
-        AudioContent::TrackFiles {
-            tracks,
+        AudioContent::CueFlacPairs {
+            pairs,
             format_label,
         } => {
-            assert_eq!(tracks.len(), 3);
-            assert_eq!(format_label, "M4A");
+            assert_eq!(format_label, "CUE+ALAC");
+            assert_eq!(pairs.len(), 1);
+            assert_eq!(pairs[0].audio_files.len(), 3);
+            assert_eq!(
+                pairs[0]
+                    .audio_files
+                    .iter()
+                    .map(|file| file.file_name.as_str())
+                    .collect::<Vec<_>>(),
+                vec!["01.m4a", "02.m4a", "03.m4a"],
+            );
         }
-        other => panic!("expected TrackFiles, got {other:?}"),
+        other => panic!("expected CueFlacPairs, got {other:?}"),
     }
-    assert!(
-        c.files.documents.iter().any(|d| d.file_name == "Album.cue"),
-        "multi-FILE CUE should land in documents",
-    );
+    assert!(!c.files.documents.iter().any(|d| d.file_name == "Album.cue"));
 }
 
 /// Single-FILE CUE whose own stem differs from the audio file it names —
@@ -3128,10 +3116,10 @@ fn single_file_cue_pairs_by_file_directive_not_stem() {
     }
 }
 
-/// L1.31 — A CUE whose stem does not match any audio in the dir lands in
-/// `documents`; the audio stays as TrackFiles.
+/// L1.31 — A CUE whose FILE directive names missing audio invalidates the
+/// release; the CUE is the disc layout, not a document hint.
 #[test]
-fn non_pairing_cue_becomes_document() {
+fn cue_referencing_missing_audio_is_invalid() {
     let mut entries = flat_audio("Album", 5, FileKind::Flac);
     entries.push(FixtureEntry::File {
         rel_path: "Album/Album.cue".into(),
@@ -3140,28 +3128,24 @@ fn non_pairing_cue_becomes_document() {
             file_reference: "Album.flac",
         },
     });
-    let result = run_scenario(entries);
-    let c = result.candidate("Album");
-    match &c.files.audio {
-        AudioContent::TrackFiles { tracks, .. } => assert_eq!(tracks.len(), 5),
-        other => panic!("expected TrackFiles, got {other:?}"),
-    }
-    assert!(
-        c.files.documents.iter().any(|d| d.file_name == "Album.cue"),
-        "Album.cue should land in documents, got {:?}",
-        c.files
-            .documents
-            .iter()
-            .map(|d| d.file_name.as_str())
-            .collect::<Vec<_>>(),
-    );
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().to_path_buf();
+    build_fixture(&root, &entries);
+    let items = scan_items(root);
+    assert_eq!(items.len(), 1);
+    assert!(matches!(
+        &items[0],
+        ScanItem::Invalid(InvalidCandidate {
+            reason: InvalidReason::CueMissingAudio,
+            ..
+        })
+    ));
 }
 
-/// L1.32 — Candidate 6 shape: on-disk track count equals the non-pairing
-/// CUE's declared count, so the mismatch guard stays quiet. Candidate
-/// surfaces with the CUE as a document.
+/// L1.32 — Matching track counts do not make a missing CUE FILE reference
+/// valid. The CUE still names absent audio.
 #[test]
-fn non_pairing_cue_with_matching_track_count_keeps_release() {
+fn cue_referencing_missing_audio_is_invalid_even_when_track_count_matches() {
     let mut entries = flat_audio("Album", 5, FileKind::Flac);
     entries.push(FixtureEntry::File {
         rel_path: "Album/Album.cue".into(),
@@ -3170,14 +3154,18 @@ fn non_pairing_cue_with_matching_track_count_keeps_release() {
             file_reference: "Album.flac",
         },
     });
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Album"]);
-    assert!(result
-        .candidate("Album")
-        .files
-        .documents
-        .iter()
-        .any(|d| d.file_name == "Album.cue"),);
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().to_path_buf();
+    build_fixture(&root, &entries);
+    let items = scan_items(root);
+    assert_eq!(items.len(), 1);
+    assert!(matches!(
+        &items[0],
+        ScanItem::Invalid(InvalidCandidate {
+            reason: InvalidReason::CueMissingAudio,
+            ..
+        })
+    ));
 }
 
 /// L1.33 — `booklet/*.png` attaches as artwork with the `booklet/` prefix.
@@ -3663,11 +3651,11 @@ fn multi_disc_with_descriptive_disc_names_emits_parent() {
 }
 
 /// L3.5 — A multi-FILE CUE referencing a missing audio file is an
-/// incomplete rip and yields no candidate. The CUE's per-track FILEs
+/// incomplete rip and yields an invalid candidate. The CUE's per-track FILEs
 /// describe where audio lives; a missing FILE means the audio for
 /// those tracks is unreachable.
 #[test]
-fn multi_file_cue_with_missing_secondary_file_is_incomplete() {
+fn multi_file_cue_with_missing_secondary_file_is_invalid() {
     let tmp = tempfile::tempdir().unwrap();
     let album = tmp.path().join("Album");
     std::fs::create_dir_all(&album).unwrap();
@@ -3678,12 +3666,44 @@ fn multi_file_cue_with_missing_secondary_file_is_incomplete() {
             "PERFORMER \"X\"\nTITLE \"Y\"\nFILE \"Album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\nFILE \"Missing.flac\" WAVE\n  TRACK 02 AUDIO\n    INDEX 01 05:00:00\n",
         )
         .unwrap();
-    let candidates = scan_valid(tmp.path().to_path_buf());
-    assert_eq!(
-        candidates.len(),
-        0,
-        "multi-FILE CUE with a missing FILE reference is an incomplete rip"
-    );
+    let items = scan_items(tmp.path().to_path_buf());
+    assert_eq!(items.len(), 1);
+    match &items[0] {
+        ScanItem::Invalid(invalid) => {
+            assert!(matches!(invalid.reason, InvalidReason::CueMissingAudio));
+        }
+        ScanItem::Valid(_) => panic!("missing CUE audio must not be a valid candidate"),
+    }
+}
+
+#[test]
+fn invalid_cue_candidate_does_not_stop_sibling_discovery() {
+    let tmp = tempfile::tempdir().unwrap();
+    let bad = tmp.path().join("Bad Album");
+    let good = tmp.path().join("Good Album");
+    std::fs::create_dir_all(&bad).unwrap();
+    std::fs::create_dir_all(&good).unwrap();
+    std::fs::write(bad.join("Album.flac"), bytes_for(FileKind::Flac)).unwrap();
+    std::fs::write(
+        bad.join("Album.cue"),
+        "FILE \"Album.flac\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Missing Index\"\n",
+    )
+    .unwrap();
+    std::fs::write(good.join("01.flac"), bytes_for(FileKind::Flac)).unwrap();
+
+    let items = scan_items(tmp.path().to_path_buf());
+    assert_eq!(items.len(), 2);
+    assert!(items.iter().any(|item| matches!(
+        item,
+        ScanItem::Invalid(InvalidCandidate {
+            reason: InvalidReason::CueParseFailed { .. },
+            ..
+        })
+    )));
+    assert!(items.iter().any(|item| matches!(
+        item,
+        ScanItem::Valid(candidate) if candidate.name == "Good Album"
+    )));
 }
 
 /// L3.6 — Folder with only a CUE and cover, no audio, yields nothing.

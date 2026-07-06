@@ -901,7 +901,7 @@ impl ImportService {
         }
 
         // Audio formats, cover image, and finalize are identical across strategies.
-        let mut audio_formats = Self::build_audio_formats(
+        let mut built_audio = Self::build_audio_formats(
             tracks_to_files,
             &file_ids,
             self.library_manager.clock().as_ref(),
@@ -925,7 +925,9 @@ impl ImportService {
             );
             let loudness = crate::import::loudness::measure_loudness(
                 &self.event_tx,
-                &mut audio_formats,
+                &mut built_audio.audio_formats,
+                &built_audio.audio_segments,
+                &file_ids,
                 tracks_to_files,
                 candidate_key,
             )
@@ -1024,7 +1026,8 @@ impl ImportService {
                 remapped_release_artist_roles,
                 remapped_track_artist_roles,
                 &db_files,
-                &audio_formats,
+                &built_audio.audio_formats,
+                &built_audio.audio_segments,
                 library_image,
                 cover_rel_id,
                 import_id,

@@ -232,10 +232,9 @@ CREATE TABLE IF NOT EXISTS release_files (
 -- bits_per_sample is nullable: lossy codecs (MP3, AAC, etc.) don't expose a
 -- bit depth via FFmpeg, and substituting a default would store a fabricated
 -- value. NULL surfaces the absence to consumers.
--- A track is a sample window [start_sample, end_sample) into its backing file.
--- Standalone per-track files use (0, NULL) = the whole file; CUE tracks carry
--- the track's bounds. Playback decodes the file natively (FFmpeg) and seeks /
--- stops by sample -- there is no byte-range extraction or synthetic header.
+-- Audio-format rows hold track-level codec/display metadata. File-backed sample
+-- windows live in audio_format_segments so a CUE track can be assembled from
+-- ordered windows across one or more source files.
 CREATE TABLE IF NOT EXISTS audio_formats (
     id TEXT PRIMARY KEY,
     track_id TEXT NOT NULL UNIQUE,
@@ -247,17 +246,6 @@ CREATE TABLE IF NOT EXISTS audio_formats (
     sample_rate INTEGER NOT NULL,
     bits_per_sample INTEGER,
     channels INTEGER NOT NULL,
-    file_id TEXT REFERENCES release_files(id) ON DELETE SET NULL,
-    start_sample INTEGER NOT NULL,
-    end_sample INTEGER,
-    end_byte INTEGER,
-    -- Byte this track's audio begins at within its backing file: the seektable
-    -- checkpoint the playback seek lands on (computed at import by seeking to
-    -- start_sample). NULL for a track starting at byte 0 (album's first track /
-    -- whole-file track) — nothing to prefetch, the header read covers it.
-    -- Playback fetches this window in parallel with the header probe so the
-    -- track-start seek lands on buffered bytes instead of a second round-trip.
-    start_byte INTEGER,
     -- Per-track loudness measured at import (EBU R128 integrated loudness over
     -- this track's sample window), in LUFS. NULL = not measured (decode/measure
     -- failure, or a near-silent track that has no usable loudness). Playback
@@ -271,6 +259,23 @@ CREATE TABLE IF NOT EXISTS audio_formats (
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS audio_format_segments (
+    id TEXT PRIMARY KEY,
+    audio_format_id TEXT NOT NULL,
+    segment_index INTEGER NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('audio_pregap', 'main')),
+    file_id TEXT NOT NULL,
+    start_sample INTEGER NOT NULL,
+    end_sample INTEGER,
+    start_byte INTEGER,
+    end_byte INTEGER,
+    _updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (audio_format_id, segment_index),
+    FOREIGN KEY (audio_format_id) REFERENCES audio_formats (id) ON DELETE CASCADE,
+    FOREIGN KEY (file_id) REFERENCES release_files(id) ON DELETE CASCADE
 );
 
 -- Album covers — the one small grid image bae produces per release, 1:1 with a
@@ -357,6 +362,7 @@ CREATE INDEX IF NOT EXISTS idx_release_identities_release
 CREATE INDEX IF NOT EXISTS idx_tracks_release_id ON tracks (release_id);
 CREATE INDEX IF NOT EXISTS idx_release_files_release_id ON release_files (release_id);
 CREATE INDEX IF NOT EXISTS idx_audio_formats_track_id ON audio_formats (track_id);
+CREATE INDEX IF NOT EXISTS idx_audio_format_segments_format_id ON audio_format_segments (audio_format_id);
 CREATE INDEX IF NOT EXISTS idx_imports_status ON imports (status);
 CREATE INDEX IF NOT EXISTS idx_imports_release_id ON imports (release_id);
 

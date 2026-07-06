@@ -68,11 +68,13 @@ impl ScannedFile {
 pub struct ScannedCueFlacPair {
     /// The CUE sheet file
     pub cue_file: ScannedFile,
-    /// The audio file
+    /// The first audio file referenced by the CUE sheet.
     pub audio_file: ScannedFile,
+    /// Every audio file referenced by the CUE sheet, in CUE reference order.
+    pub audio_files: Vec<ScannedFile>,
     /// Parsed CUE sheet.
     pub cue_sheet: crate::cue_flac::CueSheet,
-    /// Combined size of CUE + audio file.
+    /// Combined size of CUE + referenced audio files.
     pub total_size: u64,
 }
 
@@ -99,7 +101,7 @@ impl AudioContent {
         match self {
             Self::CueFlacPairs { pairs, .. } => pairs
                 .iter()
-                .map(|p| p.cue_sheet.tracks.len() as u32)
+                .map(|p| p.cue_sheet.playable_track_count() as u32)
                 .sum::<u32>(),
             Self::TrackFiles { tracks, .. } => tracks.len() as u32,
         }
@@ -122,10 +124,9 @@ pub struct CategorizedFiles {
     pub artwork: Vec<ScannedFile>,
     /// Document files (.log, .txt, .m3u) - CUE files in pairs are NOT included here
     pub documents: Vec<ScannedFile>,
-    /// Parsed sheets for CUEs that aren't part of a CUE+audio pair: multi-FILE
-    /// CUEs (one FILE per TRACK — never pair) and aggregate CUEs alongside
-    /// per-track audio. Paired CUEs carry their sheet on the pair itself. The
-    /// CUE is still listed in `documents`; this is the parsed-signal channel so
+    /// Parsed sheets for CUEs that aren't part of a CUE+audio pair. Paired CUEs
+    /// carry their sheet on the pair itself. The CUE is still listed in
+    /// `documents`; this is the parsed-signal channel so
     /// catalog/performer/title harvesting reads parsed data instead of
     /// re-reading the file.
     pub unpaired_cue_sheets: Vec<(PathBuf, crate::cue_flac::CueSheet)>,
@@ -149,7 +150,9 @@ impl CategorizedFiles {
             AudioContent::CueFlacPairs { pairs, .. } => {
                 for pair in pairs {
                     entries.push((&pair.cue_file.relative_path, pair.cue_file.size));
-                    entries.push((&pair.audio_file.relative_path, pair.audio_file.size));
+                    for audio_file in &pair.audio_files {
+                        entries.push((&audio_file.relative_path, audio_file.size));
+                    }
                 }
             }
             AudioContent::TrackFiles { tracks, .. } => {
@@ -203,6 +206,12 @@ pub enum InvalidReason {
     CorruptImage { path: String },
     #[error("CUE references a missing audio file")]
     CueMissingAudio,
+    #[error("CUE could not be parsed: {path}")]
+    CueParseFailed { path: String },
+    #[error("CUE layout is not supported")]
+    CueUnsupportedLayout,
+    #[error("CUE references audio files with incompatible formats")]
+    CueIncompatibleSegmentFormats,
     #[error("no valid audio files")]
     NoValidAudio,
 }
@@ -797,21 +806,28 @@ fn categorize_files_from_tree(
         // Other file types are ignored
     }
 
-    // Parse every CUE exactly once. The pair builder, the incomplete-rip
-    // guard, and the pair-detection pass below all read from this map —
-    // single source of truth per CUE.
-    let parsed_cues: HashMap<PathBuf, crate::cue_flac::CueSheet> = all_cue
-        .iter()
-        .map(|cue| {
-            CueFlacProcessor::parse_cue_sheet(&cue.path)
-                .map(|sheet| (cue.path.clone(), sheet))
-                .map_err(|e| format!("Failed to parse CUE {:?}: {}", cue.path, e))
-        })
-        .collect::<Result<_, _>>()?;
+    // Parse every CUE exactly once. A malformed sheet invalidates only this
+    // candidate leaf; the watched root scan keeps walking siblings.
+    let mut parsed_cues: HashMap<PathBuf, crate::cue_flac::CueSheet> = HashMap::new();
+    for cue in &all_cue {
+        match CueFlacProcessor::parse_cue_sheet(&cue.path) {
+            Ok(sheet) => {
+                parsed_cues.insert(cue.path.clone(), sheet);
+            }
+            Err(error) => {
+                info!(
+                    "Invalid candidate: failed to parse CUE {:?}: {error}",
+                    cue.path
+                );
+                return invalid(InvalidReason::CueParseFailed {
+                    path: cue.relative_path.clone(),
+                });
+            }
+        }
+    }
 
-    // Detect CUE+audio pairs by the CUE's own FILE directive — single-FILE
-    // sheets pair with the named audio file in the same directory; multi-FILE
-    // sheets (one FILE per TRACK) cannot pair on purpose.
+    // Detect CUE-backed releases by the CUE's own FILE directives. Every
+    // referenced audio file must exist in the CUE's directory.
     let audio_by_path: HashMap<PathBuf, usize> = all_audio
         .iter()
         .enumerate()
@@ -824,16 +840,17 @@ fn categorize_files_from_tree(
             let sheet = parsed_cues
                 .get(&cue.path)
                 .expect("parsed_cues is populated for every CUE");
-            let Some(file_reference) = sheet.single_file() else {
+            let file_references = sheet.audio_file_references();
+            if file_references.is_empty() {
                 return Ok(None);
-            };
+            }
             let cue_dir = cue
                 .path
                 .parent()
                 .ok_or_else(|| format!("CUE file has no parent: {:?}", cue.path))?;
-            let audio_path = cue_dir.join(file_reference);
+            let first_audio_path = cue_dir.join(file_references[0]);
             Ok(audio_by_path
-                .get(&audio_path)
+                .get(&first_audio_path)
                 .map(|audio_index| DetectedCueAudioPair {
                     cue_index,
                     audio_index: *audio_index,
@@ -846,21 +863,10 @@ fn categorize_files_from_tree(
     let paired_cue_indices: HashSet<usize> =
         detected_pairs.iter().map(|pair| pair.cue_index).collect();
 
-    // CUE mismatch guard: a non-pairing CUE whose FILE directive references
-    // something not on disk AND whose declared track count exceeds the audio
-    // files in the CUE's directory signals an incomplete rip (e.g. 10 per-
-    // track FLACs alongside a CUE declaring 15 tracks of `Album.flac`).
-    // Refuse the candidate rather than surface half a release.
-    //
-    // Legitimate non-pairing CUEs — where the CUE is a redundant aggregate of
-    // the same per-track FLACs and track counts match — stay as documents.
-    // Paired CUEs are skipped outright: pair-detection already verified their
-    // audio exists.
+    // Every CUE FILE reference is part of the disc layout. If any referenced
+    // audio is missing, refuse the candidate rather than import a release whose
+    // layout points at absent audio.
     for (cue_index, cue) in all_cue.iter().enumerate() {
-        if paired_cue_indices.contains(&cue_index) {
-            continue;
-        }
-
         let Some(cue_dir) = cue.path.parent() else {
             continue;
         };
@@ -868,32 +874,18 @@ fn categorize_files_from_tree(
         let cue_sheet = parsed_cues
             .get(&cue.path)
             .expect("parsed_cues is populated for every CUE");
-        let unique_refs: HashSet<&str> = cue_sheet
-            .tracks
-            .iter()
-            .map(|t| t.file_reference.as_str())
-            .collect();
+        let unique_refs: HashSet<&str> = cue_sheet.audio_file_references().into_iter().collect();
         let references_missing = unique_refs.iter().any(|name| !cue_dir.join(name).exists());
-        if !references_missing {
-            continue;
-        }
-
-        // Count audio files directly in the CUE's directory. Co-location
-        // is the rule for CUE+audio: a CUE at a parent of disc subdirs
-        // is not a legitimate shape, so we don't count descendants.
-        let on_disk_audio = all_audio
-            .iter()
-            .filter(|f| f.path.parent() == Some(cue_dir))
-            .count();
-
-        if cue_sheet.tracks.len() > on_disk_audio {
+        if references_missing {
             info!(
-                "Invalid candidate: CUE {:?} declares {} tracks but only {} audio files on disk",
-                cue.path,
-                cue_sheet.tracks.len(),
-                on_disk_audio
+                "Invalid candidate: CUE {:?} references missing audio",
+                cue.path
             );
             return invalid(InvalidReason::CueMissingAudio);
+        }
+
+        if paired_cue_indices.contains(&cue_index) {
+            continue;
         }
     }
 
@@ -909,16 +901,36 @@ fn categorize_files_from_tree(
                 .remove(&cue_file.path)
                 .expect("detected CUE pair has a parsed CUE sheet");
 
-            let total_size = cue_file.size + audio_file.size;
+            let cue_dir = cue_file
+                .path
+                .parent()
+                .ok_or_else(|| format!("CUE file has no parent: {:?}", cue_file.path))?;
+            let mut audio_files = Vec::new();
+            let mut seen = HashSet::new();
+            for reference in cue_sheet.audio_file_references() {
+                let audio_path = cue_dir.join(reference);
+                let audio_index = audio_by_path.get(&audio_path).ok_or_else(|| {
+                    format!("CUE reference missing after validation: {reference}")
+                })?;
+                if seen.insert(*audio_index) {
+                    audio_files.push(all_audio[*audio_index].clone());
+                }
+            }
+            if audio_files.is_empty() {
+                return invalid(InvalidReason::CueUnsupportedLayout);
+            }
+
+            let total_size = cue_file.size + audio_files.iter().map(|file| file.size).sum::<u64>();
             pairs.push(ScannedCueFlacPair {
                 cue_file,
                 audio_file,
+                audio_files,
                 cue_sheet,
                 total_size,
             });
         }
 
-        // Unused CUE files (not part of a pair) become documents
+        // CUE files with no playable audio references stay as documents.
         for (cue_index, cue) in all_cue.into_iter().enumerate() {
             if !paired_cue_indices.contains(&cue_index) {
                 documents.push(cue);

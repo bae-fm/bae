@@ -40,10 +40,11 @@ use crate::album_detail::{
 use crate::config::CloudProvider;
 use crate::config::ConfigHandle;
 use crate::db::{
-    Database, DbAlbum, DbAlbumArtist, DbArtist, DbAudioFormat, DbFile, DbImport, DbLibraryImage,
-    DbRelease, DbTrack, DbTrackArtist, DeleteCleanupPlan, ImportOperationStatus, LibraryImageType,
-    Pressing, SortDirection as DbSortDirection, StorageFilter as DbStorageFilter,
-    StorageSortCriterion as DbStorageSortCriterion, StorageSortField as DbStorageSortField,
+    Database, DbAlbum, DbAlbumArtist, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole,
+    DbFile, DbImport, DbLibraryImage, DbRelease, DbTrack, DbTrackArtist, DeleteCleanupPlan,
+    ImportOperationStatus, LibraryImageType, Pressing, SortDirection as DbSortDirection,
+    StorageFilter as DbStorageFilter, StorageSortCriterion as DbStorageSortCriterion,
+    StorageSortField as DbStorageSortField,
 };
 use crate::keys::BaeKeyServiceExt;
 use crate::keys::KeyService;
@@ -123,11 +124,8 @@ pub(crate) struct TrackAudioMeta {
     pub track: DbTrack,
     pub release: DbRelease,
     pub audio_format: DbAudioFormat,
-    pub audio_file: DbFile,
-    /// File id backing this track's audio. Always `Some` coming out of `resolve`
-    /// — the `audio_format.file_id` invariant is checked there, so downstream
-    /// code can read this directly without re-validating.
-    pub file_id: String,
+    pub audio_segments: Vec<DbAudioSegment>,
+    pub audio_files: Vec<DbFile>,
 }
 
 impl TrackAudioMeta {
@@ -147,25 +145,51 @@ impl TrackAudioMeta {
 
         let release = database.get_release_for_track(&track).await?;
 
-        let file_id = audio_format.file_id.clone().ok_or_else(|| {
-            LibraryError::TrackMapping(format!(
-                "No file_id in audio_format for track: {}",
+        let audio_segments = database
+            .get_audio_segments_for_format(&audio_format.id)
+            .await?;
+        if audio_segments.is_empty() {
+            return Err(LibraryError::TrackMapping(format!(
+                "No audio segments for track: {}",
                 track_id
-            ))
-        })?;
+            )));
+        }
 
-        let audio_file = database.find_file_by_id(&file_id).await?.ok_or_else(|| {
-            LibraryError::TrackMapping(format!("Audio file not found: {}", file_id))
-        })?;
+        let mut audio_files = Vec::new();
+        for segment in &audio_segments {
+            let audio_file = database
+                .find_file_by_id(&segment.file_id)
+                .await?
+                .ok_or_else(|| {
+                    LibraryError::TrackMapping(format!("Audio file not found: {}", segment.file_id))
+                })?;
+            if !audio_files
+                .iter()
+                .any(|existing: &DbFile| existing.id == audio_file.id)
+            {
+                audio_files.push(audio_file);
+            }
+        }
 
         Ok(Self {
             track,
             release,
             audio_format,
-            audio_file,
-            file_id,
+            audio_segments,
+            audio_files,
         })
     }
+}
+
+pub struct ResolvedTrackAudioSegment {
+    pub role: DbAudioSegmentRole,
+    pub file_id: String,
+    pub cloud_path: Option<String>,
+    pub file_size: u64,
+    pub start_sample: u64,
+    pub end_sample: Option<u64>,
+    pub start_byte: Option<u64>,
+    pub end_byte: Option<u64>,
 }
 
 /// All resolved data needed to set up a playback reader for a track.
@@ -176,15 +200,7 @@ impl TrackAudioMeta {
 pub struct ResolvedTrackAudio {
     pub track_id: String,
     pub release_id: String,
-    /// File id backing this track's audio data. The blob id coven addresses this
-    /// file by (in the `release_files` namespace), and the playback cache key.
-    pub file_id: String,
-    /// The readable cloud-relative key for this file's blob (`release_files.cloud_path`):
-    /// a readable path on a browsable home, `None` for the hashed-by-id default on
-    /// an opaque one. Carried into the `BlobRef` the playback reader streams through
-    /// coven; coven resolves the locality (external ref / local store / cache / cloud).
-    pub cloud_path: Option<String>,
-    pub file_size: u64,
+    pub segments: Vec<ResolvedTrackAudioSegment>,
     pub duration_ms: Option<i64>,
     pub pregap_ms: Option<i64>,
     pub generated_pregap_ms: Option<i64>,
@@ -192,24 +208,11 @@ pub struct ResolvedTrackAudio {
     pub generated_pregap_samples: Option<i64>,
     pub sample_rate: u32,
     pub channels: u32,
-    /// This track's sample window in its backing file: `start_sample` is 0 for a
-    /// whole-file track, `end_sample` is `None` when the track runs to EOF.
-    pub start_sample: u64,
-    pub end_sample: Option<u64>,
     /// This track's audio codec, as stored at import. Playback dispatches the
     /// track-start seek on it: FLAC/lossless byte-seek to `start_byte`; APE
     /// sample-seeks its mandatory index and also prefetches the file's end (its
     /// demuxer reads the tail on open).
     pub content_type: crate::util::content_type::ContentType,
-    /// One past this track's last byte in its backing file (frame-granular, from
-    /// import; `None` when the track runs to EOF / a whole-file track). Playback
-    /// buffers the rest of the current track up to here instead of a fixed window.
-    pub end_byte: Option<u64>,
-    /// The byte this track's audio begins at within its backing file: the
-    /// seektable landing recorded at import (`audio_format.start_byte`). `None`
-    /// for a track starting at byte 0. Lets playback prefetch the track's audio
-    /// in parallel with the header probe.
-    pub start_byte: Option<u64>,
     /// Raw loudness/peak measurements (LUFS + linear peak) for this track and its
     /// album, as stored at import. `None` = not measured. Playback derives the
     /// replay gain from these against a constant target; nothing here is a gain.
@@ -225,12 +228,31 @@ impl ResolvedTrackAudio {
     /// cloud), so this carries only the blob's identity (`file_id` + `cloud_path`)
     /// and the playback parameters — not a resolved read source.
     pub(crate) fn from_meta(meta: &TrackAudioMeta) -> Self {
+        let segments = meta
+            .audio_segments
+            .iter()
+            .map(|segment| {
+                let audio_file = meta
+                    .audio_files
+                    .iter()
+                    .find(|file| file.id == segment.file_id)
+                    .expect("TrackAudioMeta resolves every segment file");
+                ResolvedTrackAudioSegment {
+                    role: segment.role.clone(),
+                    file_id: segment.file_id.clone(),
+                    cloud_path: audio_file.cloud_path.clone(),
+                    file_size: audio_file.file_size as u64,
+                    start_sample: segment.start_sample as u64,
+                    end_sample: segment.end_sample.map(|sample| sample as u64),
+                    start_byte: segment.start_byte.map(|byte| byte as u64),
+                    end_byte: segment.end_byte.map(|byte| byte as u64),
+                }
+            })
+            .collect();
         Self {
             track_id: meta.track.id.clone(),
             release_id: meta.track.release_id.clone(),
-            file_id: meta.file_id.clone(),
-            cloud_path: meta.audio_file.cloud_path.clone(),
-            file_size: meta.audio_file.file_size as u64,
+            segments,
             duration_ms: meta.track.duration_ms,
             pregap_ms: meta.audio_format.pregap_ms,
             generated_pregap_ms: meta.audio_format.generated_pregap_ms,
@@ -238,11 +260,7 @@ impl ResolvedTrackAudio {
             generated_pregap_samples: meta.audio_format.generated_pregap_samples,
             sample_rate: meta.audio_format.sample_rate as u32,
             channels: meta.audio_format.channels as u32,
-            start_sample: meta.audio_format.start_sample as u64,
-            end_sample: meta.audio_format.end_sample.map(|s| s as u64),
             content_type: meta.audio_format.content_type.clone(),
-            end_byte: meta.audio_format.end_byte.map(|b| b as u64),
-            start_byte: meta.audio_format.start_byte.map(|b| b as u64),
             track_loudness_lufs: meta.audio_format.track_loudness_lufs,
             track_peak_linear: meta.audio_format.track_peak_linear,
             album_loudness_lufs: meta.release.album_loudness_lufs,
@@ -339,11 +357,8 @@ pub struct ResolvedExportTags {
 /// neighbours.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub struct ExportTrackPlan {
-    /// The track's source audio file, read at plan time: from this device's
-    /// local copy when one exists, otherwise downloaded from the cloud home
-    /// and decrypted with the release's item key. Length-verified against
-    /// the file row either way.
-    pub(crate) audio_bytes: Vec<u8>,
+    /// Source audio files read at plan time, keyed by release file id.
+    pub(crate) audio_bytes: Vec<ExportAudioBytes>,
     pub tags: ExportTags,
     /// The cover image bytes to embed, read through coven at plan time, or `None`
     /// when the album has no primary release with a cover.
@@ -365,12 +380,25 @@ pub struct ExportTrackPlan {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, Copy)]
+pub(crate) struct ExportAudioBytes {
+    pub file_id: String,
+    pub bytes: Vec<u8>,
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone)]
 pub(crate) struct ExportAudioWindow {
-    pub source_start_sample: u64,
-    pub source_end_sample: Option<u64>,
+    pub segments: Vec<ExportAudioSegmentWindow>,
     pub leading_silence_samples: u64,
     pub trailing_silence_samples: u64,
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone)]
+pub(crate) struct ExportAudioSegmentWindow {
+    pub file_id: String,
+    pub source_start_sample: u64,
+    pub source_end_sample: Option<u64>,
 }
 
 /// Which image to use when changing an album's cover art.

@@ -173,13 +173,19 @@ impl ExportService {
         output_path: &Path,
     ) -> Result<(), String> {
         let format = &plan.audio_meta.audio_format;
-        let is_whole_source = format.start_sample == 0
-            && format.end_sample.is_none()
-            && format.start_byte.is_none()
-            && format.end_byte.is_none();
+        let whole_segment = plan.audio_window.segments.len() == 1
+            && plan.audio_window.segments[0].source_start_sample == 0
+            && plan.audio_window.segments[0].source_end_sample.is_none()
+            && plan.audio_window.leading_silence_samples == 0
+            && plan.audio_window.trailing_silence_samples == 0;
         let output_path_owned = output_path.to_path_buf();
-        if is_whole_source {
-            let audio_bytes = std::mem::take(&mut plan.audio_bytes);
+        if whole_segment {
+            let segment_file_id = plan.audio_window.segments[0].file_id.clone();
+            let audio_bytes = std::mem::take(&mut plan.audio_bytes)
+                .into_iter()
+                .find(|audio| audio.file_id == segment_file_id)
+                .map(|audio| audio.bytes)
+                .ok_or_else(|| format!("missing export bytes for file {segment_file_id}"))?;
             tokio::task::spawn_blocking(move || -> Result<(), String> {
                 let mut output_guard = OutputPathsGuard::new(vec![output_path_owned.clone()]);
                 std::fs::write(&output_path_owned, &audio_bytes)
@@ -740,23 +746,48 @@ async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<Arc<DecodedPcm>,
 
     let audio_data_owned = std::mem::take(&mut plan.audio_bytes);
     debug!(
-        "Loading audio for track {} ({} bytes)",
+        "Loading audio for track {} ({} source file(s))",
         track_id,
         audio_data_owned.len()
     );
 
     // Export uses its own window so CUE pregaps can be excluded or appended to
     // the previous track without changing playback's raw track window.
-    let window = plan.audio_window;
-    let start_sample = (window.source_start_sample > 0).then_some(window.source_start_sample);
-    let end_sample = window.source_end_sample;
+    let window = plan.audio_window.clone();
 
-    debug!(
-        "Decoding {} bytes of audio data to PCM",
-        audio_data_owned.len()
-    );
-    let mut decoded = tokio::task::spawn_blocking(move || {
-        crate::audio_codec::decode_audio(&audio_data_owned, start_sample, end_sample)
+    let mut decoded = tokio::task::spawn_blocking(move || -> Result<DecodedPcm, String> {
+        let mut out_samples = Vec::new();
+        let mut sample_rate = None;
+        let mut channels = None;
+        for segment in &window.segments {
+            let bytes = audio_data_owned
+                .iter()
+                .find(|audio| audio.file_id == segment.file_id)
+                .ok_or_else(|| format!("missing export bytes for file {}", segment.file_id))?;
+            let start_sample =
+                (segment.source_start_sample > 0).then_some(segment.source_start_sample);
+            let mut decoded = crate::audio_codec::decode_audio(
+                &bytes.bytes,
+                start_sample,
+                segment.source_end_sample,
+            )
+            .map_err(|e| e.to_string())?;
+            match (sample_rate, channels) {
+                (None, None) => {
+                    sample_rate = Some(decoded.sample_rate);
+                    channels = Some(decoded.channels);
+                }
+                (Some(rate), Some(ch)) if rate == decoded.sample_rate && ch == decoded.channels => {
+                }
+                _ => return Err("decoded export segments have incompatible formats".to_string()),
+            }
+            out_samples.append(&mut decoded.samples);
+        }
+        Ok(DecodedPcm::new(
+            out_samples,
+            sample_rate.unwrap_or(44_100),
+            channels.unwrap_or(2),
+        ))
     })
     .await
     .map_err(PlaybackError::task)?
@@ -765,13 +796,13 @@ async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<Arc<DecodedPcm>,
     info!(
         "Successfully decoded track {}: {} samples, {}Hz, {} channels",
         track_id,
-        decoded.samples.len(),
-        decoded.sample_rate,
-        decoded.channels
+        decoded.raw_samples().len(),
+        decoded.sample_rate(),
+        decoded.channels()
     );
 
     if window.leading_silence_samples > 0 || window.trailing_silence_samples > 0 {
-        let channels = decoded.channels as usize;
+        let channels = decoded.channels() as usize;
         let leading = usize::try_from(window.leading_silence_samples)
             .map_err(|_| PlaybackError::flac("leading silence exceeds addressable memory"))?
             .checked_mul(channels)
@@ -780,17 +811,17 @@ async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<Arc<DecodedPcm>,
             .map_err(|_| PlaybackError::flac("trailing silence exceeds addressable memory"))?
             .checked_mul(channels)
             .ok_or_else(|| PlaybackError::flac("trailing silence sample count overflow"))?;
-        let mut samples = Vec::with_capacity(leading + decoded.samples.len() + trailing);
+        let mut samples = Vec::with_capacity(leading + decoded.raw_samples().len() + trailing);
         samples.resize(leading, 0);
-        samples.extend_from_slice(&decoded.samples);
+        samples.extend_from_slice(decoded.raw_samples());
         samples.resize(samples.len() + trailing, 0);
-        decoded.samples = samples;
+        decoded = DecodedPcm::new(samples, decoded.sample_rate(), decoded.channels());
     }
 
     Ok(Arc::new(DecodedPcm::new(
-        decoded.samples,
-        decoded.sample_rate,
-        decoded.channels,
+        decoded.raw_samples().to_vec(),
+        decoded.sample_rate(),
+        decoded.channels(),
     )))
 }
 

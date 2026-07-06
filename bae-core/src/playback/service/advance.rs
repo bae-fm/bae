@@ -52,7 +52,7 @@ impl PlaybackService {
         let prepared = prepare_track_for_playback(
             &self.library_manager,
             track_id,
-            &mut self.shared_file_buffer,
+            &mut self.shared_file_buffers,
             self.progress_tx.clone(),
             self.fetch_arbiter.clone(),
         )
@@ -66,12 +66,17 @@ impl PlaybackService {
         };
 
         // Create decoder sink/source and start decoder eagerly for gapless playback
-        let decoder_buffer = prepared.buffer.clone();
+        let decoder_buffer = prepared
+            .segments
+            .first()
+            .expect("prepared track has at least one segment")
+            .buffer
+            .clone();
         let cancel_token = prepared.cancel_token.clone();
 
         // Preload params (natural transition: no pregap skip): seek to the
         // track's first sample, trim there, stop at its end.
-        let decode = prepared.decode_params(0);
+        let decode = prepared.decode_params(0, true);
         let (mut sink, source, _ready) =
             create_track_stream_pair(prepared.sample_rate, prepared.channels);
 
@@ -353,9 +358,7 @@ impl PlaybackService {
 
         // Release the previous track's buffer (unless shared with the new one).
         if let Some(prev) = self.current_prepared.take() {
-            if !prev.buffer_shared {
-                prev.buffer.cancel();
-            }
+            prev.cancel_unshared_buffers();
         }
 
         self.current_prepared = Some(next_prepared);
@@ -448,9 +451,7 @@ impl PlaybackService {
         // Fall back to play_track which handles pregap at decoder start.
         if !is_natural_transition && pregap_ms.is_some_and(|p| p > 0) {
             info!("Pregap skip needed for preloaded track - falling back to play_track");
-            if !next_prepared.buffer_shared {
-                next_prepared.buffer.cancel();
-            }
+            next_prepared.cancel_unshared_buffers();
             if let Some(source) =
                 detach_preloaded_source(self.current_playback_source.as_ref(), preloaded_source)
             {
@@ -478,9 +479,7 @@ impl PlaybackService {
             }
         }
         if let Some(prepared) = &self.current_prepared {
-            if !prepared.buffer_shared {
-                prepared.buffer.cancel();
-            }
+            prepared.cancel_unshared_buffers();
         }
 
         // Swap next to current. The preloaded track's decoder becomes the current

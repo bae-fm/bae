@@ -555,20 +555,32 @@ mod tests {
     /// wrappers produce the same disc ID.
     #[test]
     fn test_cue_duration_discid_matches_across_codecs() {
-        use crate::cue_flac::{CuePregap, CueSheet, CueTrack};
+        use crate::cue_flac::{CueIndex, CuePregap, CueSheet, CueTrack, CueTrackMode};
 
         // Three tracks, 75 CUE frames/sec → minute 0, minute 3, minute 6.
         let sheet = CueSheet {
             title: Some("Album Title".to_string()),
             performer: Some("Artist Name".to_string()),
+            composer: None,
+            songwriter: None,
             catalog: None,
             date: None,
             tracks: vec![
                 CueTrack {
                     number: 1,
+                    mode: CueTrackMode::Audio,
                     title: Some("Track 01".to_string()),
                     performer: None,
+                    composer: None,
+                    songwriter: None,
                     isrc: None,
+                    flags: Vec::new(),
+                    indexes: vec![CueIndex {
+                        number: 1,
+                        frames: 0,
+                        file_reference: "Album.flac".to_string(),
+                    }],
+                    postgap_frames: None,
                     file_reference: "Album.flac".to_string(),
                     start_cue_frames: 0,
                     pregap: CuePregap::None,
@@ -578,9 +590,19 @@ mod tests {
                 },
                 CueTrack {
                     number: 2,
+                    mode: CueTrackMode::Audio,
                     title: Some("Track 02".to_string()),
                     performer: None,
+                    composer: None,
+                    songwriter: None,
                     isrc: None,
+                    flags: Vec::new(),
+                    indexes: vec![CueIndex {
+                        number: 1,
+                        frames: 3 * 60 * 75,
+                        file_reference: "Album.flac".to_string(),
+                    }],
+                    postgap_frames: None,
                     file_reference: "Album.flac".to_string(),
                     start_cue_frames: 3 * 60 * 75,
                     pregap: CuePregap::None,
@@ -590,9 +612,19 @@ mod tests {
                 },
                 CueTrack {
                     number: 3,
+                    mode: CueTrackMode::Audio,
                     title: Some("Track 03".to_string()),
                     performer: None,
+                    composer: None,
+                    songwriter: None,
                     isrc: None,
+                    flags: Vec::new(),
+                    indexes: vec![CueIndex {
+                        number: 1,
+                        frames: 6 * 60 * 75,
+                        file_reference: "Album.flac".to_string(),
+                    }],
+                    postgap_frames: None,
                     file_reference: "Album.flac".to_string(),
                     start_cue_frames: 6 * 60 * 75,
                     pregap: CuePregap::None,
@@ -624,6 +656,8 @@ mod tests {
         let sheet = CueSheet {
             title: None,
             performer: None,
+            composer: None,
+            songwriter: None,
             catalog: None,
             date: None,
             tracks: vec![],

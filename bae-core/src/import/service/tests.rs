@@ -852,7 +852,11 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
         crate::import::track_to_file_mapper::analyze_cue_audio(&audio_path).expect("analyze ape");
     let cue_pair = Arc::new(crate::import::types::CueFlacAnalysis {
         cue_sheet,
-        analysis,
+        audio_files: vec![crate::import::types::CueAnalyzedAudioFile {
+            file_reference: "Test Album.ape".to_string(),
+            path: audio_path.clone(),
+            analysis,
+        }],
     });
     (0..cue_pair.cue_sheet.tracks.len())
         .map(|index| TrackFile::CueBacked {
@@ -901,7 +905,7 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
         "file-1".to_string(),
     );
 
-    let formats = ImportService::build_audio_formats(
+    let built = ImportService::build_audio_formats(
         &tracks,
         &file_ids,
         &test_clock(),
@@ -909,7 +913,15 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
     )
     .expect("build_audio_formats");
 
-    let ends: Vec<Option<i64>> = formats.iter().map(|f| f.end_byte).collect();
+    let main_segments: Vec<_> = built
+        .audio_segments
+        .iter()
+        .filter(|segment| segment.role == crate::db::DbAudioSegmentRole::Main)
+        .collect();
+    let ends: Vec<Option<i64>> = main_segments
+        .iter()
+        .map(|segment| segment.end_byte)
+        .collect();
     // Non-last tracks carry a real, ascending, in-file end byte.
     let e0 = ends[0].expect("track 1 (non-last) must have an end byte");
     let e1 = ends[1].expect("track 2 (non-last) must have an end byte");
@@ -927,12 +939,12 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
 
     // Each track's end is the next track's start byte -- one boundary, not two.
     assert_eq!(
-        formats[1].start_byte,
+        main_segments[1].start_byte,
         Some(e0),
         "track 2 starts where track 1 ends"
     );
     assert_eq!(
-        formats[2].start_byte,
+        main_segments[2].start_byte,
         Some(e1),
         "track 3 starts where track 2 ends"
     );

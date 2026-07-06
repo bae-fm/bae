@@ -86,10 +86,10 @@ FILE "02.m4a" WAVE
 }
 
 #[test]
-fn parse_per_track_rip_with_cross_file_pregap_fails_loud() {
-    // Track 2's INDEX 00 is in file 1 and INDEX 01 is in file 2. That shape
-    // requires guessing whether the previous file's tail belongs to track 1,
-    // track 2, or export-only gap handling, so the parser rejects it.
+fn parse_per_track_rip_with_cross_file_pregap_preserves_both_files() {
+    // Track 2's INDEX 00 is in file 1 and INDEX 01 is in file 2. The parsed
+    // layout keeps both indexes with their FILE scope so resolution can build
+    // an audio-pregap segment followed by the main segment.
     let cue_content = r#"TITLE "Album Title"
 PERFORMER "Artist Name"
 FILE "01.wav" WAVE
@@ -107,7 +107,13 @@ FILE "02.wav" WAVE
 FILE "03.wav" WAVE
     INDEX 01 00:00:00
 "#;
-    assert!(CueFlacProcessor::parse_cue_content(cue_content).is_err());
+    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    assert_eq!(sheet.tracks.len(), 3);
+    let track2 = &sheet.tracks[1];
+    assert_eq!(track2.file_reference, "02.wav");
+    assert_eq!(track2.index(0).unwrap().file_reference, "01.wav");
+    assert_eq!(track2.index(1).unwrap().file_reference, "02.wav");
+    assert_eq!(track2.pregap_cue_frames, Some((2 * 60 + 55) * 75 + 33));
 }
 
 #[test]
@@ -461,6 +467,51 @@ FILE "Artist Name - Album Title.flac" WAVE
     assert_eq!(sheet.tracks.len(), 2);
     assert_eq!(sheet.tracks[0].start_cue_frames, 0);
     assert_eq!(sheet.tracks[1].start_cue_frames, 3 * 60 * 75 + 45 * 75);
+    assert_eq!(sheet.tracks[0].index(2).unwrap().frames, 90 * 75);
+    assert_eq!(sheet.tracks[0].index(3).unwrap().frames, 135 * 75);
+}
+
+#[test]
+fn parse_track_captures_flags_postgap_composer_and_songwriter() {
+    let cue_content = r#"PERFORMER "Artist Name"
+TITLE "Album Title"
+COMPOSER "Release Composer"
+SONGWRITER "Release Songwriter"
+FILE "Album.flac" WAVE
+  TRACK 01 AUDIO
+    TITLE "Track One"
+    COMPOSER "Track Composer"
+    SONGWRITER "Track Songwriter"
+    FLAGS DCP PRE
+    INDEX 01 00:00:00
+    POSTGAP 00:01:00
+"#;
+    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    assert_eq!(sheet.composer.as_deref(), Some("Release Composer"));
+    assert_eq!(sheet.songwriter.as_deref(), Some("Release Songwriter"));
+    let track = &sheet.tracks[0];
+    assert_eq!(track.composer.as_deref(), Some("Track Composer"));
+    assert_eq!(track.songwriter.as_deref(), Some("Track Songwriter"));
+    assert_eq!(track.flags, vec!["DCP".to_string(), "PRE".to_string()]);
+    assert_eq!(track.postgap_frames, Some(75));
+}
+
+#[test]
+fn parse_non_audio_track_preserves_layout_but_not_playable_count() {
+    let cue_content = r#"PERFORMER "Artist Name"
+TITLE "Album Title"
+FILE "Album.bin" BINARY
+  TRACK 01 MODE1/2352
+    INDEX 01 00:00:00
+FILE "Album.flac" WAVE
+  TRACK 02 AUDIO
+    INDEX 01 00:00:00
+"#;
+    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    assert_eq!(sheet.tracks.len(), 2);
+    assert!(!sheet.tracks[0].is_playable_audio());
+    assert_eq!(sheet.playable_track_count(), 1);
+    assert_eq!(sheet.audio_file_references(), vec!["Album.flac"]);
 }
 
 #[test]

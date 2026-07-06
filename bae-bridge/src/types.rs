@@ -698,6 +698,9 @@ pub enum BridgeInvalidReason {
     CorruptAudioFile { path: String },
     CorruptImage { path: String },
     CueMissingAudio,
+    CueParseFailed { path: String },
+    CueUnsupportedLayout,
+    CueIncompatibleSegmentFormats,
     NoValidAudio,
 }
 
@@ -707,6 +710,11 @@ impl BridgeInvalidReason {
             Self::CorruptAudioFile { .. } => "core.import.invalid.corrupt_audio",
             Self::CorruptImage { .. } => "core.import.invalid.corrupt_image",
             Self::CueMissingAudio => "core.import.invalid.cue_missing_audio",
+            Self::CueParseFailed { .. } => "core.import.invalid.cue_parse_failed",
+            Self::CueUnsupportedLayout => "core.import.invalid.cue_unsupported_layout",
+            Self::CueIncompatibleSegmentFormats => {
+                "core.import.invalid.cue_incompatible_segment_formats"
+            }
             Self::NoValidAudio => "core.import.invalid.no_valid_audio",
         }
     }
@@ -719,6 +727,9 @@ pub(crate) fn invalid_reason_to_bridge(r: bae_core::import::InvalidReason) -> Br
         R::CorruptAudioFile { path } => BridgeInvalidReason::CorruptAudioFile { path },
         R::CorruptImage { path } => BridgeInvalidReason::CorruptImage { path },
         R::CueMissingAudio => BridgeInvalidReason::CueMissingAudio,
+        R::CueParseFailed { path } => BridgeInvalidReason::CueParseFailed { path },
+        R::CueUnsupportedLayout => BridgeInvalidReason::CueUnsupportedLayout,
+        R::CueIncompatibleSegmentFormats => BridgeInvalidReason::CueIncompatibleSegmentFormats,
         R::NoValidAudio => BridgeInvalidReason::NoValidAudio,
     }
 }
@@ -3680,12 +3691,26 @@ mod loc_key_coverage {
                 path: String::new(),
             },
             BridgeInvalidReason::CueMissingAudio,
+            BridgeInvalidReason::CueParseFailed {
+                path: String::new(),
+            },
+            BridgeInvalidReason::CueUnsupportedLayout,
+            BridgeInvalidReason::CueIncompatibleSegmentFormats,
             BridgeInvalidReason::NoValidAudio,
         ] {
             let expected = match r {
                 BridgeInvalidReason::CorruptAudioFile { .. } => "core.import.invalid.corrupt_audio",
                 BridgeInvalidReason::CorruptImage { .. } => "core.import.invalid.corrupt_image",
                 BridgeInvalidReason::CueMissingAudio => "core.import.invalid.cue_missing_audio",
+                BridgeInvalidReason::CueParseFailed { .. } => {
+                    "core.import.invalid.cue_parse_failed"
+                }
+                BridgeInvalidReason::CueUnsupportedLayout => {
+                    "core.import.invalid.cue_unsupported_layout"
+                }
+                BridgeInvalidReason::CueIncompatibleSegmentFormats => {
+                    "core.import.invalid.cue_incompatible_segment_formats"
+                }
                 BridgeInvalidReason::NoValidAudio => "core.import.invalid.no_valid_audio",
             };
             assert_eq!(bridge_invalid_reason_key(r.clone()), expected);

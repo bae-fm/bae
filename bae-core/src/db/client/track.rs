@@ -125,4 +125,22 @@ impl Database {
         })
         .await
     }
+
+    pub async fn get_audio_segments_for_format(
+        &self,
+        audio_format_id: &str,
+    ) -> Result<Vec<DbAudioSegment>, DbError> {
+        let audio_format_id = audio_format_id.to_string();
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT * FROM audio_format_segments \
+                 WHERE audio_format_id = ? \
+                 ORDER BY segment_index",
+            )?;
+            let rows = stmt.query_map(params![audio_format_id], row_to_audio_segment)?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
+    }
 }

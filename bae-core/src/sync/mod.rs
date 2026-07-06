@@ -114,6 +114,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
             .with_cloud_path_column("cloud_path"),
         ),
         SyncedTable::new("audio_formats"),
+        SyncedTable::new("audio_format_segments"),
         // The bae-produced album cover: host-provided (coven owns the copy in
         // its local store while Local), CacheEager (pulled with the row when
         // Remote so the grid renders from local bytes). An asset — it rides its
@@ -253,8 +254,8 @@ mod tests {
 
     /// `releases` is the only gated root, gated by `remote`. The release subtree
     /// (`tracks`, `track_artists`, `release_files`, `release_identities`,
-    /// `audio_formats`) inherits the gate via coven's FK walk and so is declared
-    /// plain; a gate accidentally attached to one of those — or to a
+    /// `audio_formats`, `audio_format_segments`) inherits the gate via coven's
+    /// FK walk and so is declared plain; a gate accidentally attached to one of those — or to a
     /// gated-by-descendants ancestor like `albums` — would diverge from the
     /// schema's FK shape and is what this test catches.
     #[test]

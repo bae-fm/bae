@@ -27,7 +27,7 @@ use super::{
     PlaybackQueue, PreviousAction, QueueEntryId, QueueSnapshot, Traversal,
 };
 use crate::audio_codec::StreamingDecodeError;
-use crate::db::{DbPlaybackContext, DbPlaybackState};
+use crate::db::{DbAudioSegmentRole, DbPlaybackContext, DbPlaybackState};
 use crate::library::LibraryEvent;
 use crate::library::LibraryManager;
 use crate::library::ResolvedTrackAudio;
@@ -44,7 +44,7 @@ use crate::playback::source::{TrackCrossing, TrackFmt};
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use crate::playback::{create_track_stream_pair, TrackStream};
 use crate::util::format::PhysicalSideMedium;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::sync::oneshot;
@@ -458,32 +458,53 @@ impl PlaybackPreparedTrack {
         }
     }
 
-    /// Decoder window for this track beginning at `start_sample + offset` (FFmpeg
-    /// seeks and trims lead-in there) and stopping at the track's end. `offset` is
-    /// the in-track sample to begin at -- 0 for a natural start or gapless
-    /// advance, the pregap skip or a seek position otherwise. Shared by the
-    /// play/preload/seek paths so they can't drift on the seek/trim mapping.
-    fn decode_params(&self, offset: u64) -> StreamDecodeParams {
+    /// Decoder windows for this track beginning at the in-track sample offset.
+    fn decode_params(&self, offset: u64, include_pregap: bool) -> StreamDecodeParams {
         use crate::util::content_type::ContentType;
-        // Byte-seek only at the natural track start (offset 0): the stored
-        // `start_byte` is the seektable landing for `start_sample`, not for an
-        // arbitrary in-track seek. A mid-track seek (offset > 0) has no recorded
-        // byte, so it sample-seeks. APE carries no per-frame byte position, so it
-        // always sample-seeks its mandatory index. Everything else (FLAC/lossless)
-        // byte-seeks straight to the landing, avoiding the seektable round-trip.
-        let seek_to_byte = if offset == 0 && self.content_type != ContentType::Ape {
-            self.start_byte
-        } else {
-            None
-        };
+        let mut remaining_offset = offset;
         let generated_pregap_samples = self.generated_pregap_samples();
-        let source_offset = offset.saturating_sub(generated_pregap_samples);
+        let leading_silence_frames = if include_pregap {
+            generated_pregap_samples.saturating_sub(offset)
+        } else {
+            0
+        };
+        if include_pregap {
+            remaining_offset = remaining_offset.saturating_sub(generated_pregap_samples);
+        }
+
+        let mut segments = Vec::new();
+        for segment in &self.segments {
+            if !include_pregap && segment.role == DbAudioSegmentRole::AudioPregap {
+                continue;
+            }
+            let segment_len = segment
+                .end_sample
+                .map(|end| end.saturating_sub(segment.start_sample));
+            if let Some(len) = segment_len {
+                if remaining_offset >= len {
+                    remaining_offset -= len;
+                    continue;
+                }
+            }
+            let target_sample = segment.start_sample + remaining_offset;
+            let seek_to_byte = if remaining_offset == 0 && self.content_type != ContentType::Ape {
+                segment.start_byte
+            } else {
+                None
+            };
+            segments.push(SegmentDecodeParams {
+                buffer: segment.buffer.clone(),
+                seek_to_byte,
+                target_sample,
+                stop_at_sample: segment.end_sample,
+                end_byte: segment.end_byte,
+            });
+            remaining_offset = 0;
+        }
+
         StreamDecodeParams {
-            seek_to_byte,
-            target_sample: self.start_sample + source_offset,
-            stop_at_sample: self.end_sample,
-            end_byte: self.end_byte,
-            leading_silence_frames: generated_pregap_samples.saturating_sub(offset),
+            segments,
+            leading_silence_frames,
         }
     }
 
@@ -500,18 +521,31 @@ impl PlaybackPreparedTrack {
         });
         u64::try_from(samples).expect("audio_format generated_pregap_samples is non-negative")
     }
+
+    fn cancel_unshared_buffers(&self) {
+        for segment in &self.segments {
+            if !segment.buffer_shared {
+                segment.buffer.cancel();
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
+struct PreparedAudioSegment {
+    role: DbAudioSegmentRole,
+    buffer: SharedSparseBuffer,
+    buffer_shared: bool,
+    start_sample: u64,
+    end_sample: Option<u64>,
+    start_byte: Option<u64>,
+    end_byte: Option<u64>,
 }
 
 #[derive(Clone)]
 struct PlaybackPreparedTrack {
     track_info: PlaybackTrackInfo,
-    /// Raw audio buffer (may have headers prepended for CUE/FLAC).
-    /// Reused across seeks: cancel this decoder's token, join it, then create
-    /// a new decoder with a new token. The data reader stays alive across seeks.
-    buffer: SharedSparseBuffer,
-    /// If true, the buffer is shared with other tracks (from the cache).
-    /// Don't cancel() it during teardown — other decoders may be using it.
-    buffer_shared: bool,
+    segments: Vec<PreparedAudioSegment>,
     /// Per-decoder cancellation token. Set to true to stop the AVIO read callback
     /// without affecting other decoders on the same buffer.
     cancel_token: Arc<std::sync::atomic::AtomicBool>,
@@ -526,20 +560,9 @@ struct PlaybackPreparedTrack {
     generated_pregap_samples: Option<i64>,
     /// Track duration from metadata
     duration: std::time::Duration,
-    /// This track's sample window in its backing file (start 0 / end None = whole file).
-    start_sample: u64,
-    end_sample: Option<u64>,
     /// This track's audio codec. Selects the track-start seek: FLAC/lossless
     /// byte-seek to `start_byte`; APE sample-seeks its index.
     content_type: crate::util::content_type::ContentType,
-    /// The byte this track's audio begins at within its backing file (the
-    /// seektable landing recorded at import). `None` = starts at byte 0. Used as
-    /// the by-byte seek target for a lossless track's natural start.
-    start_byte: Option<u64>,
-    /// This track's byte span in its backing file (frame-granular; end None =
-    /// whole file). The decoder hands `end_byte` to its reader as the read-ahead
-    /// ceiling so the fill buffers the rest of the current track.
-    end_byte: Option<u64>,
     /// Linear playback gain folded into the audio callback's volume multiply.
     /// Derived once here from the replay-gain mode and the stored loudness/peak
     /// measurements; `1.0` = no change (Off, or no usable measurement).
@@ -580,6 +603,10 @@ impl TrackStart {
             Self::Position(position) => position,
         }
     }
+
+    fn includes_pregap(self) -> bool {
+        matches!(self, Self::Natural | Self::Position(_))
+    }
 }
 
 impl PreloadedNext {
@@ -603,9 +630,7 @@ fn clear_preloaded_next(
     if let Some(source) = detach_preloaded_source(current_playback_source, source) {
         source.cancel();
     }
-    if !prepared.buffer_shared {
-        prepared.buffer.cancel();
-    }
+    prepared.cancel_unshared_buffers();
 }
 
 fn detach_preloaded_source(
@@ -628,8 +653,7 @@ fn detach_preloaded_source(
 fn finalize_playback_track(
     resolved: ResolvedTrackAudio,
     track_info: PlaybackTrackInfo,
-    buffer: SharedSparseBuffer,
-    buffer_shared: bool,
+    segments: Vec<PreparedAudioSegment>,
     replay_gain_mode: crate::config::ReplayGainMode,
 ) -> PlaybackPreparedTrack {
     let duration = resolved
@@ -647,8 +671,7 @@ fn finalize_playback_track(
 
     PlaybackPreparedTrack {
         track_info,
-        buffer,
-        buffer_shared,
+        segments,
         cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         sample_rate: resolved.sample_rate,
         channels: resolved.channels,
@@ -656,11 +679,7 @@ fn finalize_playback_track(
         generated_pregap_ms: resolved.generated_pregap_ms,
         generated_pregap_samples: resolved.generated_pregap_samples,
         duration,
-        start_sample: resolved.start_sample,
-        end_sample: resolved.end_sample,
         content_type: resolved.content_type,
-        start_byte: resolved.start_byte,
-        end_byte: resolved.end_byte,
         replay_gain_linear,
     }
 }
@@ -668,7 +687,7 @@ fn finalize_playback_track(
 async fn prepare_track_for_playback(
     library_manager: &LibraryManager,
     track_id: &str,
-    shared_file_buffer: &mut Option<(String, SharedSparseBuffer)>,
+    shared_file_buffers: &mut HashMap<String, SharedSparseBuffer>,
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
     fetch_arbiter: Arc<FetchArbiter>,
 ) -> Result<PlaybackPreparedTrack, PlaybackError> {
@@ -677,39 +696,39 @@ async fn prepare_track_for_playback(
         .await
         .map_err(PlaybackError::database)?;
 
-    let source_size = resolved.file_size;
-
-    // Tracks sharing a source file (the tracks of a CUE image) share one buffer,
-    // keyed by the backing file's blob id. coven resolves locality per read, so
-    // the key is independent of where the bytes live.
-    let cache_key = resolved.file_id.clone();
-
-    let cached = shared_file_buffer
-        .as_ref()
-        .filter(|(k, _)| *k == cache_key)
-        .map(|(_, buf)| buf.clone());
-
-    let mut is_shared = cached.is_some();
-    let buffer = if let Some(buf) = cached {
-        info!("Reusing cached file buffer");
-        buf.uncancel();
-        buf
-    } else {
-        let buffer = create_sparse_buffer(source_size);
-        let reader = create_audio_reader(
-            library_manager,
-            &resolved.file_id,
-            resolved.cloud_path.as_deref(),
-            source_size,
-            fetch_arbiter,
-            resolved.start_byte,
-            resolved.content_type == crate::util::content_type::ContentType::Ape,
-        );
-        reader.start_reading(buffer.clone(), progress_tx);
-        *shared_file_buffer = Some((cache_key, buffer.clone()));
-        is_shared = true;
-        buffer
-    };
+    let mut prepared_segments = Vec::with_capacity(resolved.segments.len());
+    for segment in &resolved.segments {
+        let cached = shared_file_buffers.get(&segment.file_id).cloned();
+        let buffer_shared = cached.is_some();
+        let buffer = if let Some(buf) = cached {
+            info!("Reusing cached file buffer");
+            buf.uncancel();
+            buf
+        } else {
+            let buffer = create_sparse_buffer(segment.file_size);
+            let reader = create_audio_reader(
+                library_manager,
+                &segment.file_id,
+                segment.cloud_path.as_deref(),
+                segment.file_size,
+                fetch_arbiter.clone(),
+                segment.start_byte,
+                resolved.content_type == crate::util::content_type::ContentType::Ape,
+            );
+            reader.start_reading(buffer.clone(), progress_tx.clone());
+            shared_file_buffers.insert(segment.file_id.clone(), buffer.clone());
+            buffer
+        };
+        prepared_segments.push(PreparedAudioSegment {
+            role: segment.role.clone(),
+            buffer,
+            buffer_shared,
+            start_sample: segment.start_sample,
+            end_sample: segment.end_sample,
+            start_byte: segment.start_byte,
+            end_byte: segment.end_byte,
+        });
+    }
 
     // Read the replay-gain mode once here and pass it down (DI: one read at the
     // top, not a static lookup buried in `finalize_playback_track`).
@@ -718,8 +737,7 @@ async fn prepare_track_for_playback(
     Ok(finalize_playback_track(
         resolved,
         track_info,
-        buffer,
-        is_shared,
+        prepared_segments,
         replay_gain_mode,
     ))
 }
@@ -757,10 +775,8 @@ pub struct PlaybackService {
     main_was_playing_before_preview: bool,
     /// How often (ms) the audio callback sends position updates to the UI.
     position_update_interval_ms: u32,
-    /// Cached full-file buffer for frame-dependent codecs (APE).
-    /// Tracks from the same source file share a buffer to avoid re-reading.
-    /// Key is the resolved local file path (or file ID for cloud).
-    shared_file_buffer: Option<(String, SharedSparseBuffer)>,
+    /// Cached full-file buffers keyed by release file id.
+    shared_file_buffers: HashMap<String, SharedSparseBuffer>,
     /// Shared with PlaybackHandle. Written on every position tick and by
     /// `emit_position_display`; read by late-mounting views.
     last_position_display: Arc<std::sync::Mutex<Option<f64>>>,
@@ -784,7 +800,9 @@ impl PlaybackService {
     /// reader yields to it. Called wherever a track becomes the current one.
     fn mark_current_foreground(&self) {
         if let Some(prepared) = &self.current_prepared {
-            self.fetch_arbiter.set_foreground(prepared.buffer.id());
+            if let Some(segment) = prepared.segments.first() {
+                self.fetch_arbiter.set_foreground(segment.buffer.id());
+            }
         }
     }
 }
@@ -883,7 +901,7 @@ pub(crate) async fn setup_audio_stream(
 /// preview player's seek.
 pub(crate) async fn teardown_decoder_for_seek(
     source: &mut Option<Arc<Mutex<source::PlaybackSource>>>,
-    buffer: &SharedSparseBuffer,
+    buffers: &[SharedSparseBuffer],
     cancel_token: &Arc<std::sync::atomic::AtomicBool>,
     decoder_handle: &mut Option<std::thread::JoinHandle<()>>,
 ) {
@@ -898,7 +916,9 @@ pub(crate) async fn teardown_decoder_for_seek(
     cancel_token.store(true, std::sync::atomic::Ordering::Release);
 
     // Wake any readers blocked on the condvar so they can check the token.
-    buffer.wake_readers();
+    for buffer in buffers {
+        buffer.wake_readers();
+    }
 
     // Wait for decoder thread to exit. Surface a thread panic as an error
     // (decoder bug, real signal); tokio join failures (panic in the
@@ -923,15 +943,17 @@ pub(crate) async fn teardown_decoder_for_seek(
 /// first output sample exact either way. `stop_at_sample` ends output at the
 /// track's end (`None` = to EOF).
 struct StreamDecodeParams {
-    /// When set, byte-seek straight to this offset (a lossless track's natural
-    /// start, the recorded seektable landing). `None` sample-seeks to
-    /// `target_sample` instead (APE's index, or a mid-track seek).
+    segments: Vec<SegmentDecodeParams>,
+    leading_silence_frames: u64,
+}
+
+struct SegmentDecodeParams {
+    buffer: SharedSparseBuffer,
     seek_to_byte: Option<u64>,
     target_sample: u64,
     stop_at_sample: Option<u64>,
     /// The track's end byte offset -- the read-ahead ceiling. `None` = whole file.
     end_byte: Option<u64>,
-    leading_silence_frames: u64,
 }
 
 impl StreamDecodeParams {
@@ -941,7 +963,7 @@ impl StreamDecodeParams {
     /// seek/trim mapping.
     fn run_decoder(
         &self,
-        buffer: SharedSparseBuffer,
+        _buffer: SharedSparseBuffer,
         sink: &mut crate::playback::track_stream::TrackSink,
         cancel: Arc<std::sync::atomic::AtomicBool>,
     ) -> Result<(), StreamingDecodeError> {
@@ -952,24 +974,27 @@ impl StreamDecodeParams {
             }
         }
 
-        // Byte seek and sample seek are mutually exclusive: with a byte landing we
-        // jump to it, else we sample-seek. `start_at_sample` trims lead-in either
-        // way so the first output sample is exactly `target_sample`.
-        let seek_to_sample = if self.seek_to_byte.is_some() {
-            None
-        } else {
-            Some(self.target_sample)
-        };
-        crate::audio_codec::decode_audio_streaming(
-            buffer,
-            sink,
-            self.seek_to_byte,
-            seek_to_sample,
-            Some(self.target_sample),
-            self.stop_at_sample,
-            self.end_byte,
-            cancel,
-        )
+        for segment in &self.segments {
+            let seek_to_sample = if segment.seek_to_byte.is_some() {
+                None
+            } else {
+                Some(segment.target_sample)
+            };
+            crate::audio_codec::decode_audio_streaming(
+                segment.buffer.clone(),
+                sink,
+                segment.seek_to_byte,
+                seek_to_sample,
+                Some(segment.target_sample),
+                segment.stop_at_sample,
+                segment.end_byte,
+                cancel.clone(),
+            )?;
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) || sink.is_cancelled() {
+                return Err(StreamingDecodeError::InputCancelled);
+            }
+        }
+        Ok(())
     }
 }
 
@@ -1082,7 +1107,7 @@ impl PlaybackService {
                     is_muted: false,
                     pre_mute_volume: 1.0,
                     position_update_interval_ms,
-                    shared_file_buffer: None,
+                    shared_file_buffers: HashMap::new(),
                     last_position_display,
                     boundary_tx,
                     boundary_rx,

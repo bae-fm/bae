@@ -180,9 +180,8 @@ fn probe_aac_returns_content_type_aac() {
 // ─────────────────────────────── Import tests ───────────────────────────────
 
 /// Importing a standalone ALAC `.m4a` must land with `ContentType::Alac` in
-/// the DB and resolve to a `FullFile { start_sample: 0, end_sample: None }`
-/// playback strategy. Per-track M4A files don't have CUE boundaries, so the
-/// whole file is one track.
+/// the DB and resolve to one full-file playback segment. Per-track M4A files
+/// don't have CUE boundaries, so the whole file is one track.
 #[tokio::test]
 async fn import_standalone_alac_m4a() {
     tracing_init();
@@ -212,19 +211,21 @@ async fn import_standalone_alac_m4a() {
         .resolve_track_audio(&track.id)
         .await
         .expect("resolve track audio");
+    assert_eq!(resolved.segments.len(), 1);
+    let segment = &resolved.segments[0];
 
     assert_eq!(
-        resolved.start_sample, 0,
+        segment.start_sample, 0,
         "standalone track starts at sample 0"
     );
     assert_eq!(
-        resolved.end_sample, None,
+        segment.end_sample, None,
         "standalone track runs to EOF (no end sample)"
     );
 }
 
 /// Importing a standalone AAC `.m4a` must land with `ContentType::Aac` and
-/// the same FullFile playback shape as ALAC.
+/// the same full-file segment shape as ALAC.
 #[tokio::test]
 async fn import_standalone_aac_m4a() {
     tracing_init();
@@ -254,8 +255,9 @@ async fn import_standalone_aac_m4a() {
         .await
         .expect("resolve track audio");
 
-    assert_eq!(resolved.start_sample, 0);
-    assert_eq!(resolved.end_sample, None);
+    assert_eq!(resolved.segments.len(), 1);
+    assert_eq!(resolved.segments[0].start_sample, 0);
+    assert_eq!(resolved.segments[0].end_sample, None);
 }
 
 // ─────────────────────────────── Scanner test ───────────────────────────────
@@ -309,9 +311,9 @@ fn scanner_recognizes_cue_alac_pair() {
 
 // ─────────────────────────────── Import CUE+ALAC ────────────────────────────
 
-/// End-to-end CUE+ALAC import: three tracks, each with `FullFile` playback
-/// strategy carrying the CUE-derived sample boundaries (3s = 132300 samples
-/// at 44100 Hz). The last track has no `end_sample` because it runs to EOF.
+/// End-to-end CUE+ALAC import: three tracks, each with one playback segment
+/// carrying the CUE-derived sample boundaries (3s = 132300 samples at 44100 Hz).
+/// The last track has no `end_sample` because it runs to EOF.
 #[tokio::test]
 async fn import_cue_alac_pair() {
     tracing_init();
@@ -403,15 +405,17 @@ async fn import_cue_alac_pair() {
             .resolve_track_audio(&track.id)
             .await
             .expect("resolve track audio");
+        assert_eq!(resolved.segments.len(), 1);
+        let segment = &resolved.segments[0];
 
         assert_eq!(
-            resolved.start_sample,
+            segment.start_sample,
             START_SAMPLES[i],
             "track {} start_sample",
             i + 1
         );
         assert_eq!(
-            resolved.end_sample,
+            segment.end_sample,
             END_SAMPLES[i],
             "track {} end_sample",
             i + 1

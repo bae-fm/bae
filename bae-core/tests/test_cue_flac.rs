@@ -65,14 +65,21 @@ async fn test_cue_flac_records_track_positions() {
                     track.title,
                 )
             });
+        assert_eq!(audio_format.content_type, ContentType::Flac);
         // Track 1 starts at sample 0; later tracks start further into the file.
+        let resolved = library_manager
+            .resolve_track_audio(&track.id)
+            .await
+            .expect("resolve track audio");
+        assert_eq!(resolved.segments.len(), 1);
+        let segment = &resolved.segments[0];
         if i == 0 {
             assert_eq!(
-                audio_format.start_sample, 0,
+                segment.start_sample, 0,
                 "the first CUE/FLAC track starts at sample 0",
             );
             assert_eq!(
-                audio_format.start_byte, None,
+                segment.start_byte, None,
                 "the first CUE/FLAC track starts at byte 0 (no prefetch, header covers it)",
             );
         } else {
@@ -80,7 +87,7 @@ async fn test_cue_flac_records_track_positions() {
             // the byte playback byte-seeks to. Contiguous tracks share a boundary,
             // so it equals the prior track's end byte (both are the same seek
             // landing computed by a binary search over the frames).
-            let start_byte = audio_format.start_byte.unwrap_or_else(|| {
+            let start_byte = segment.start_byte.unwrap_or_else(|| {
                 panic!("deep CUE/FLAC track {} should record a start byte", i + 1)
             });
             assert!(
@@ -92,14 +99,14 @@ async fn test_cue_flac_records_track_positions() {
         // Every track but the last carries an end sample; the last runs to EOF.
         if i < tracks.len() - 1 {
             assert!(
-                audio_format.end_sample.is_some(),
+                segment.end_sample.is_some(),
                 "CUE/FLAC track {} should have an end sample",
                 i + 1,
             );
             // The import seeks the shared file to record each track's end byte
             // offset -- the playback read-ahead ceiling. Every track but the last
             // gets one; the last runs to EOF.
-            let end_byte = audio_format.end_byte.unwrap_or_else(|| {
+            let end_byte = segment.end_byte.unwrap_or_else(|| {
                 panic!("CUE/FLAC track {} should record an end byte offset", i + 1)
             });
             assert!(
@@ -109,31 +116,32 @@ async fn test_cue_flac_records_track_positions() {
             );
         } else {
             assert_eq!(
-                audio_format.end_sample, None,
+                segment.end_sample, None,
                 "the last CUE/FLAC track runs to EOF",
             );
             assert_eq!(
-                audio_format.end_byte, None,
+                segment.end_byte, None,
                 "the last CUE/FLAC track runs to EOF (no end byte)",
             );
         }
         if i > 0 {
-            let prev_format = library_manager
-                .get_audio_format_by_track_id(&tracks[i - 1].id)
+            let prev_resolved = library_manager
+                .resolve_track_audio(&tracks[i - 1].id)
                 .await
-                .expect("get prev format")
-                .expect("prev format exists");
+                .expect("resolve previous track audio");
+            assert_eq!(prev_resolved.segments.len(), 1);
+            let prev_segment = &prev_resolved.segments[0];
             assert!(
-                audio_format.start_sample > prev_format.start_sample,
+                segment.start_sample > prev_segment.start_sample,
                 "track {} start_sample ({}) should be > track {} start_sample ({})",
                 i + 1,
-                audio_format.start_sample,
+                segment.start_sample,
                 i,
-                prev_format.start_sample,
+                prev_segment.start_sample,
             );
             // End byte offsets ascend with the tracks (each is a later boundary
             // in the shared file). The last track's is None, so guard on both.
-            if let (Some(prev_end), Some(cur_end)) = (prev_format.end_byte, audio_format.end_byte) {
+            if let (Some(prev_end), Some(cur_end)) = (prev_segment.end_byte, segment.end_byte) {
                 assert!(
                     cur_end > prev_end,
                     "track {} end byte ({cur_end}) should be > track {} end byte ({prev_end})",
@@ -146,8 +154,8 @@ async fn test_cue_flac_records_track_positions() {
             // and the end-byte seek binary-search to that same frame. So the stored
             // start byte equals the prior track's end byte.
             assert_eq!(
-                audio_format.start_byte,
-                prev_format.end_byte,
+                segment.start_byte,
+                prev_segment.end_byte,
                 "track {} start byte should equal track {} end byte (contiguous seek landing)",
                 i + 1,
                 i,
@@ -157,8 +165,8 @@ async fn test_cue_flac_records_track_positions() {
             "Track {} '{}': samples {}..{:?}",
             i + 1,
             track.title,
-            audio_format.start_sample,
-            audio_format.end_sample,
+            segment.start_sample,
+            segment.end_sample,
         );
     }
     for track in &tracks {

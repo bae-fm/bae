@@ -596,6 +596,13 @@ impl TrackFile {
 #[derive(Debug)]
 pub struct CueFlacAnalysis {
     pub cue_sheet: CueSheet,
+    pub audio_files: Vec<CueAnalyzedAudioFile>,
+}
+
+#[derive(Debug)]
+pub struct CueAnalyzedAudioFile {
+    pub file_reference: String,
+    pub path: PathBuf,
     pub analysis: CueAudioAnalysis,
 }
 

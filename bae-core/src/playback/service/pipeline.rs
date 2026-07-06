@@ -45,9 +45,7 @@ impl PlaybackService {
             prepared
                 .cancel_token
                 .store(true, std::sync::atomic::Ordering::Release);
-            if !prepared.buffer_shared {
-                prepared.buffer.cancel();
-            }
+            prepared.cancel_unshared_buffers();
         }
         self.abort_current_listeners();
         self.current_prepared = None;
@@ -183,7 +181,12 @@ impl PlaybackService {
             .current_prepared
             .as_ref()
             .expect("start_decoder_and_watch requires a staged current_prepared");
-        let decoder_buffer = prepared.buffer.clone();
+        let decoder_buffer = prepared
+            .segments
+            .first()
+            .expect("prepared track has at least one segment")
+            .buffer
+            .clone();
         let cancel_token = prepared.cancel_token.clone();
 
         // Create decoder sink/source with the track's sample rate and spawn the
@@ -284,7 +287,7 @@ impl PlaybackService {
         let prepared = prepare_track_for_playback(
             &self.library_manager,
             track_id,
-            &mut self.shared_file_buffer,
+            &mut self.shared_file_buffers,
             self.progress_tx.clone(),
             self.fetch_arbiter.clone(),
         )
@@ -322,9 +325,13 @@ impl PlaybackService {
         );
 
         let start_position = start.position(prepared.total_pregap_ms());
-        let start_sample_offset =
-            (start_position.as_secs_f64() * prepared.sample_rate as f64) as u64;
-        let decode = prepared.decode_params(start_sample_offset);
+        let include_pregap = start.includes_pregap();
+        let start_sample_offset = if include_pregap {
+            (start_position.as_secs_f64() * prepared.sample_rate as f64) as u64
+        } else {
+            0
+        };
+        let decode = prepared.decode_params(start_sample_offset, include_pregap);
 
         let sample_rate = prepared.sample_rate;
         let channels = prepared.channels;
@@ -379,7 +386,7 @@ impl PlaybackService {
         // Stop-specific teardown beyond the current track:
         self.clear_next_track_state();
         // Drop shared buffer cache — stop means we're done with this album
-        self.shared_file_buffer = None;
+        self.shared_file_buffers.clear();
         *self.current_position_shared.lock().unwrap() = None;
         self.audio_output
             .set_state(crate::playback::audio_output::AudioState::Stopped);

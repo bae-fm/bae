@@ -195,6 +195,8 @@ impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
 pub(super) async fn measure_loudness(
     event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
     audio_formats: &mut [crate::db::DbAudioFormat],
+    audio_segments: &[crate::db::DbAudioSegment],
+    file_ids: &HashMap<PathBuf, String>,
     tracks_to_files: &[TrackFile],
     candidate_key: &str,
 ) -> LoudnessResult {
@@ -204,11 +206,14 @@ pub(super) async fn measure_loudness(
     // (every CUE track of one image points at the same bytes). An unreadable
     // file yields `None`, so its tracks are skipped (logged) rather than
     // measured against missing bytes.
-    let mut file_bytes: HashMap<PathBuf, Option<Arc<Vec<u8>>>> = HashMap::new();
-    for tf in tracks_to_files {
-        let path = tf.file_path().to_path_buf();
-        file_bytes.entry(path.clone()).or_insert_with(|| {
-            match std::fs::read(&path) {
+    let path_by_file_id: HashMap<String, PathBuf> = file_ids
+        .iter()
+        .map(|(path, id)| (id.clone(), path.clone()))
+        .collect();
+    let mut file_bytes: HashMap<String, Option<Arc<Vec<u8>>>> = HashMap::new();
+    for (file_id, path) in &path_by_file_id {
+        file_bytes.entry(file_id.clone()).or_insert_with(|| {
+            match std::fs::read(path) {
                 Ok(bytes) => Some(Arc::new(bytes)),
                 Err(e) => {
                     warn!("loudness: cannot read {path:?} to measure: {e}; its tracks stay unmeasured");
@@ -241,34 +246,69 @@ pub(super) async fn measure_loudness(
     // collected; the caller fails the import on these when verify is on.
     let mut broken_tracks: Vec<String> = Vec::new();
     for (idx, tf) in tracks_to_files.iter().enumerate() {
-        let path = tf.file_path().to_path_buf();
-        let Some(bytes) = file_bytes.get(&path).and_then(|b| b.clone()) else {
+        let format_id = audio_formats[idx].id.clone();
+        let mut segments: Vec<_> = audio_segments
+            .iter()
+            .filter(|segment| segment.audio_format_id == format_id)
+            .collect();
+        segments.sort_by_key(|segment| segment.segment_index);
+        if segments.is_empty() {
+            warn!(
+                "loudness: audio format {} has no segments; track stays unmeasured",
+                format_id
+            );
             tracks_done += 1;
             let fraction = tracks_done as f32 / tracks_total as f32;
             emit_loudness_progress(event_tx, candidate_key, tracks_done, tracks_total, fraction);
             continue;
-        };
-        let start_sample = audio_formats[idx].start_sample as u64;
-        let end_sample = audio_formats[idx].end_sample.map(|s| s as u64);
+        }
         // Frames in this track's window, to fill its bar segment as the decode
         // streams: the sample window when known, else the track duration ×
         // sample rate. Absent both, the segment only steps at the post-track
         // tick.
         let sample_rate = audio_formats[idx].sample_rate as u64;
-        let total_frames = match end_sample {
-            Some(end) => Some(end.saturating_sub(start_sample)),
-            None => tf
-                .db_track()
-                .duration_ms
-                .filter(|&ms| ms > 0 && sample_rate > 0)
-                .map(|ms| ms as u64 * sample_rate / 1000),
-        };
+        let total_frames = segments
+            .iter()
+            .try_fold(0u64, |total, segment| {
+                segment.end_sample.map(|end| {
+                    total.saturating_add((end as u64).saturating_sub(segment.start_sample as u64))
+                })
+            })
+            .or_else(|| {
+                tf.db_track()
+                    .duration_ms
+                    .filter(|&ms| ms > 0 && sample_rate > 0)
+                    .map(|ms| ms as u64 * sample_rate / 1000)
+            });
+        let mut decode_segments = Vec::new();
+        let mut missing_segment = false;
+        for segment in &segments {
+            let Some(bytes) = file_bytes.get(&segment.file_id).and_then(|b| b.clone()) else {
+                warn!(
+                    "loudness: cannot read segment source file {} for track {}; track stays unmeasured",
+                    segment.file_id,
+                    idx + 1
+                );
+                missing_segment = true;
+                break;
+            };
+            decode_segments.push((
+                bytes,
+                segment.start_sample as u64,
+                segment.end_sample.map(|sample| sample as u64),
+            ));
+        }
+        if missing_segment {
+            tracks_done += 1;
+            let fraction = tracks_done as f32 / tracks_total as f32;
+            emit_loudness_progress(event_tx, candidate_key, tracks_done, tracks_total, fraction);
+            continue;
+        }
         // Cloned into the blocking task so the sink can emit progress on the
         // import event channel directly from the worker thread.
         // `idx`/`tracks_total` place this track's scan in the bar.
         let task_event_tx = event_tx.clone();
         let key = candidate_key.to_string();
-        let task_path = path.clone();
         let outcome = tokio::task::spawn_blocking(move || {
             let mut sink = LoudnessProgressSink {
                 state: None,
@@ -285,28 +325,37 @@ pub(super) async fn measure_loudness(
             // A decode that fails outright is broken; one that returns Ok can still
             // be broken (fatal errors / a truncated body) — `broken_reason` reads
             // the error count and frame shortfall the sink captured.
-            if let Err(e) = crate::audio_codec::decode_audio_to_sink(
-                &bytes,
-                Some(start_sample),
-                end_sample,
-                &mut sink,
-            ) {
-                warn!("loudness: decode failed for {task_path:?}: {e}; track stays unmeasured");
-                return TrackOutcome {
-                    measured: None,
-                    broken: Some(format!("decode failed: {e}")),
-                };
+            for (bytes, start_sample, end_sample) in decode_segments {
+                if let Err(e) = crate::audio_codec::decode_audio_to_sink(
+                    &bytes,
+                    Some(start_sample),
+                    end_sample,
+                    &mut sink,
+                ) {
+                    warn!(
+                        "loudness: decode failed for track {}: {e}; track stays unmeasured",
+                        idx + 1
+                    );
+                    return TrackOutcome {
+                        measured: None,
+                        broken: Some(format!("decode failed: {e}")),
+                    };
+                }
             }
             let broken = sink.broken_reason();
             let measured = match sink.into_result() {
                 Ok((meter, Some(m))) => Some((meter, m.loudness_lufs, m.peak_linear)),
                 Ok((_, None)) => {
-                    debug!("loudness: {task_path:?} has no usable loudness (silent); unmeasured");
+                    debug!(
+                        "loudness: track {} has no usable loudness (silent); unmeasured",
+                        idx + 1
+                    );
                     None
                 }
                 Err(e) => {
                     warn!(
-                        "loudness: measure failed for {task_path:?}: {e}; track stays unmeasured"
+                        "loudness: measure failed for track {}: {e}; track stays unmeasured",
+                        idx + 1
                     );
                     None
                 }
@@ -325,10 +374,14 @@ pub(super) async fn measure_loudness(
                 }
                 if let Some(reason) = broken {
                     warn!(
-                        "import verify: {path:?} (track {}) looks broken: {reason}",
+                        "import verify: track source for track {} looks broken: {reason}",
                         idx + 1
                     );
-                    broken_tracks.push(format!("{} (track {}): {reason}", path.display(), idx + 1));
+                    broken_tracks.push(format!(
+                        "{} (track {}): {reason}",
+                        tf.db_track().title,
+                        idx + 1
+                    ));
                 }
             }
             Err(e) => warn!("loudness: measurement task panicked: {e}; track stays unmeasured"),

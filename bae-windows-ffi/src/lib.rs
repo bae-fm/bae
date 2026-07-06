@@ -3305,7 +3305,11 @@ fn candidate_audio_paths(
     match &files.audio {
         AudioContent::CueFlacPairs { pairs, .. } => pairs
             .iter()
-            .map(|pair| pair.audio_file.path.to_string_lossy().to_string())
+            .flat_map(|pair| {
+                pair.audio_files
+                    .iter()
+                    .map(|file| file.path.to_string_lossy().to_string())
+            })
             .collect(),
         AudioContent::TrackFiles { tracks, .. } => tracks
             .iter()

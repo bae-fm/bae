@@ -483,11 +483,9 @@ pub struct DbFile {
 
 /// Audio format metadata for a track. One record per track (1:1 with track).
 ///
-/// A track is a sample window `[start_sample, end_sample)` into its backing
-/// file: standalone per-track files use `(0, None)` (the whole file), CUE tracks
-/// carry the track's bounds. Playback decodes the file natively (FFmpeg) and
-/// seeks / stops by sample -- there is no byte-range extraction or synthetic
-/// header.
+/// The file windows that supply this track's samples live in
+/// `DbAudioSegment`. This row holds the track-level codec/display metadata,
+/// pregap durations, and measured loudness.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DbAudioFormat {
     pub id: String,
@@ -510,24 +508,6 @@ pub struct DbAudioFormat {
     /// Bits per sample (16, 24, etc.). None for lossy codecs where FFmpeg can't determine it.
     pub bits_per_sample: Option<i64>,
     pub channels: i64,
-    /// FK to DbFile containing this track's audio data.
-    pub file_id: Option<String>,
-    /// First sample of this track within its backing file (0 for a whole-file track).
-    pub start_sample: i64,
-    /// One past this track's last sample within its backing file (None = to EOF).
-    pub end_sample: Option<i64>,
-    /// One past this track's last byte within its backing file (None = to EOF /
-    /// a whole-file track). Frame-granular, computed at import by seeking.
-    /// Playback buffers the rest of the current track up to here, ahead of the
-    /// playhead, rather than a fixed window.
-    pub end_byte: Option<i64>,
-    /// Byte this track's audio begins at within its backing file: the seektable
-    /// checkpoint the playback seek lands on, computed at import by seeking to
-    /// `start_sample` (see `seek_landing_bytes`). `None` for a track starting at
-    /// byte 0 (the album's first track, or a whole-file track). Playback fetches
-    /// this window in parallel with the header probe so the track-start seek lands
-    /// on buffered bytes rather than paying a second serial round-trip.
-    pub start_byte: Option<i64>,
     /// Per-track integrated loudness (EBU R128) in LUFS, measured at import over
     /// this track's sample window. `None` = not measured (decode/measure failure
     /// or a near-silent track with no usable loudness). Playback derives a gain
@@ -537,6 +517,48 @@ pub struct DbAudioFormat {
     /// channels. `None` = not measured. Playback caps the track gain at
     /// `1.0/peak`.
     pub track_peak_linear: Option<f64>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum DbAudioSegmentRole {
+    AudioPregap,
+    Main,
+}
+
+impl DbAudioSegmentRole {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::AudioPregap => "audio_pregap",
+            Self::Main => "main",
+        }
+    }
+
+    pub fn from_db_value(value: &str) -> Option<Self> {
+        match value {
+            "audio_pregap" => Some(Self::AudioPregap),
+            "main" => Some(Self::Main),
+            _ => None,
+        }
+    }
+}
+
+/// One ordered file-backed window that supplies samples for an audio format.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DbAudioSegment {
+    pub id: String,
+    pub audio_format_id: String,
+    pub segment_index: i64,
+    pub role: DbAudioSegmentRole,
+    pub file_id: String,
+    /// First sample of this segment within its backing file.
+    pub start_sample: i64,
+    /// One past this segment's last sample within its backing file.
+    pub end_sample: Option<i64>,
+    /// Byte this segment begins at within its backing file. `None` means byte 0.
+    pub start_byte: Option<i64>,
+    /// One past this segment's last byte within its backing file.
+    pub end_byte: Option<i64>,
     pub created_at: DateTime<Utc>,
 }
 impl DbAlbumArtist {
@@ -966,16 +988,14 @@ impl DbFile {
     }
 }
 impl DbAudioFormat {
-    /// Build an audio format for a track that spans `[start_sample, end_sample)`
-    /// of its backing file. Use `(0, None)` for a whole-file (per-track) source.
+    /// Build track-level audio format metadata. File windows are represented by
+    /// `DbAudioSegment` rows keyed to this format id.
     pub fn new(
         track_id: &str,
         content_type: ContentType,
         sample_rate: i64,
         bits_per_sample: Option<i64>,
         channels: i64,
-        start_sample: i64,
-        end_sample: Option<i64>,
         id: String,
         now: DateTime<Utc>,
     ) -> Self {
@@ -990,39 +1010,10 @@ impl DbAudioFormat {
             sample_rate,
             bits_per_sample,
             channels,
-            file_id: None,
-            start_sample,
-            end_sample,
-            end_byte: None,
-            start_byte: None,
             track_loudness_lufs: None,
             track_peak_linear: None,
             created_at: now,
         }
-    }
-
-    /// Set the file_id linking to DbFile.
-    pub fn with_file_id(mut self, file_id: &str) -> Self {
-        self.file_id = Some(file_id.to_string());
-        self
-    }
-
-    /// Set the track's end byte within its backing file. The default `None` is
-    /// the whole file -- correct for a per-track source; a single-file album's
-    /// track sets its own end byte, computed at import.
-    pub fn with_end_byte(mut self, end_byte: Option<i64>) -> Self {
-        self.end_byte = end_byte;
-        self
-    }
-
-    /// Set the track's start byte within its backing file (the seektable
-    /// checkpoint the playback seek lands on). The default `None` is byte 0 —
-    /// correct for the album's first track and a whole-file per-track source; a
-    /// deep track of a single-file album sets its own start byte, computed at
-    /// import.
-    pub fn with_start_byte(mut self, start_byte: Option<i64>) -> Self {
-        self.start_byte = start_byte;
-        self
     }
 
     /// Set pregap duration (CUE tracks with INDEX 00).
@@ -1395,10 +1386,10 @@ pub struct DbReleaseDetail {
     pub tracks: Vec<DbTrackWithArtists>,
     pub files: Vec<DbFile>,
     /// Audio-format rows for this release's tracks. Each carries the codec,
-    /// sample rate, bit depth, channels, and its `file_id`, so the resolver can
-    /// attach a format descriptor to each audio file. A single-file CUE rip has
-    /// many rows sharing one `file_id` (one per track).
+    /// sample rate, bit depth, and channels. File-backed windows live in
+    /// `audio_segments`.
     pub audio_formats: Vec<DbAudioFormat>,
+    pub audio_segments: Vec<DbAudioSegment>,
     /// All identity rows for this release. Empty for Unknown imports.
     pub identities: Vec<crate::import::ReleaseIdentity>,
 }

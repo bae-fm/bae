@@ -347,14 +347,21 @@ impl LibraryManager {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let resolved = self.resolve_export_tags(&meta).await?;
 
-        let audio_bytes =
-            crate::storage::local::transfer::read_release_file_bytes(&meta.audio_file, self)
+        let mut audio_bytes = Vec::new();
+        for audio_file in &meta.audio_files {
+            let bytes = crate::storage::local::transfer::read_release_file_bytes(audio_file, self)
                 .await
                 .map_err(|e| {
                     LibraryError::TrackMapping(format!(
-                        "Couldn't read audio for track {track_id}: {e}"
+                        "Couldn't read audio file {} for track {track_id}: {e}",
+                        audio_file.id
                     ))
                 })?;
+            audio_bytes.push(super::ExportAudioBytes {
+                file_id: audio_file.id.clone(),
+                bytes,
+            });
+        }
 
         let cover_image_bytes = match resolved.primary_release_id.as_deref() {
             Some(rid) => match self.cover_ref(rid).await? {
@@ -574,8 +581,9 @@ impl LibraryManager {
         let mut plans = Vec::with_capacity(tracks.len());
         for track in tracks {
             let mut plan = self.get_export_track_plan(&track.id).await?;
-            plan.audio_window =
-                export_window_for_single_file_cue_audio_format(&plan.audio_meta.audio_format);
+            plan.audio_window = export_window_from_meta(&plan.audio_meta);
+            plan.audio_window.leading_silence_samples =
+                non_negative_samples(plan.audio_meta.audio_format.generated_pregap_samples);
             plans.push(plan);
         }
 
@@ -612,12 +620,7 @@ impl LibraryManager {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn export_window_from_meta(meta: &TrackAudioMeta) -> super::ExportAudioWindow {
     super::ExportAudioWindow {
-        source_start_sample: u64::try_from(meta.audio_format.start_sample)
-            .expect("audio_format.start_sample is a non-negative sample position"),
-        source_end_sample: meta.audio_format.end_sample.map(|sample| {
-            u64::try_from(sample)
-                .expect("audio_format.end_sample is a non-negative sample position")
-        }),
+        segments: export_segment_windows(meta, true),
         leading_silence_samples: 0,
         trailing_silence_samples: 0,
     }
@@ -630,27 +633,17 @@ fn export_window_for_track_file(
     placement: crate::config::ExportPregapPlacement,
     is_first_track: bool,
 ) -> super::ExportAudioWindow {
-    let source_start = u64::try_from(meta.audio_format.start_sample)
-        .expect("audio_format.start_sample is a non-negative sample position");
-    let source_end = meta.audio_format.end_sample.map(|sample| {
-        u64::try_from(sample).expect("audio_format.end_sample is a non-negative sample position")
-    });
     let own_audio_pregap = non_negative_samples(meta.audio_format.pregap_samples);
     let own_generated_pregap = non_negative_samples(meta.audio_format.generated_pregap_samples);
     let includes_htoa = is_first_track
         && placement == crate::config::ExportPregapPlacement::AppendToPreviousIncludingHtoa;
-    let source_start_sample = if includes_htoa {
-        source_start
-    } else {
-        source_start.saturating_add(own_audio_pregap)
-    };
+    let mut segments = export_segment_windows(meta, includes_htoa || own_audio_pregap == 0);
     let leading_silence_samples = if includes_htoa {
         own_generated_pregap
     } else {
         0
     };
 
-    let mut source_end_sample = source_end;
     let mut trailing_silence_samples = 0;
     if matches!(
         placement,
@@ -660,9 +653,10 @@ fn export_window_for_track_file(
         if let Some(next) = next_meta {
             let next_audio_pregap = non_negative_samples(next.audio_format.pregap_samples);
             if next_audio_pregap > 0 {
-                let next_audio_start = u64::try_from(next.audio_format.start_sample)
-                    .expect("audio_format.start_sample is a non-negative sample position");
-                source_end_sample = Some(next_audio_start.saturating_add(next_audio_pregap));
+                segments.extend(export_segment_windows_for_role(
+                    next,
+                    crate::db::DbAudioSegmentRole::AudioPregap,
+                ));
             }
             trailing_silence_samples =
                 non_negative_samples(next.audio_format.generated_pregap_samples);
@@ -670,26 +664,47 @@ fn export_window_for_track_file(
     }
 
     super::ExportAudioWindow {
-        source_start_sample,
-        source_end_sample,
+        segments,
         leading_silence_samples,
         trailing_silence_samples,
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn export_window_for_single_file_cue_audio_format(
-    audio_format: &crate::db::DbAudioFormat,
-) -> super::ExportAudioWindow {
-    super::ExportAudioWindow {
-        source_start_sample: u64::try_from(audio_format.start_sample)
-            .expect("audio_format.start_sample is a non-negative sample position"),
-        source_end_sample: audio_format.end_sample.map(|sample| {
-            u64::try_from(sample)
-                .expect("audio_format.end_sample is a non-negative sample position")
-        }),
-        leading_silence_samples: non_negative_samples(audio_format.generated_pregap_samples),
-        trailing_silence_samples: 0,
+fn export_segment_windows(
+    meta: &TrackAudioMeta,
+    include_audio_pregap: bool,
+) -> Vec<super::ExportAudioSegmentWindow> {
+    meta.audio_segments
+        .iter()
+        .filter(|segment| {
+            include_audio_pregap || segment.role == crate::db::DbAudioSegmentRole::Main
+        })
+        .map(export_segment_window)
+        .collect()
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn export_segment_windows_for_role(
+    meta: &TrackAudioMeta,
+    role: crate::db::DbAudioSegmentRole,
+) -> Vec<super::ExportAudioSegmentWindow> {
+    meta.audio_segments
+        .iter()
+        .filter(|segment| segment.role == role)
+        .map(export_segment_window)
+        .collect()
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn export_segment_window(segment: &crate::db::DbAudioSegment) -> super::ExportAudioSegmentWindow {
+    super::ExportAudioSegmentWindow {
+        file_id: segment.file_id.clone(),
+        source_start_sample: u64::try_from(segment.start_sample)
+            .expect("audio segment start_sample is non-negative"),
+        source_end_sample: segment
+            .end_sample
+            .map(|sample| u64::try_from(sample).expect("audio segment end_sample is non-negative")),
     }
 }
 
@@ -853,32 +868,6 @@ impl Drop for StagingDir {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::DbAudioFormat;
-    use crate::util::content_type::ContentType;
-
-    #[test]
-    fn single_file_cue_window_includes_source_and_generated_pregap() {
-        let mut audio_format = DbAudioFormat::new(
-            "track-1",
-            ContentType::Flac,
-            44_100,
-            Some(16),
-            2,
-            10_000,
-            Some(30_000),
-            "audio-format-1".to_string(),
-            chrono::DateTime::from_timestamp(0, 0).expect("valid Unix epoch timestamp"),
-        );
-        audio_format.pregap_samples = Some(2_000);
-        audio_format.generated_pregap_samples = Some(3_000);
-
-        let window = export_window_for_single_file_cue_audio_format(&audio_format);
-
-        assert_eq!(window.source_start_sample, 10_000);
-        assert_eq!(window.source_end_sample, Some(30_000));
-        assert_eq!(window.leading_silence_samples, 3_000);
-        assert_eq!(window.trailing_silence_samples, 0);
-    }
 
     #[test]
     fn replace_export_dir_restores_prior_export_when_staging_rename_fails() {

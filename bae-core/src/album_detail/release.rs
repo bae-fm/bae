@@ -182,15 +182,21 @@ impl ReleaseDetail {
 
         let track_groups: Vec<TrackGroup> = crate::util::format::group_tracks_by_side(&tracks);
 
-        // Describe each audio file's format. Audio-format rows key on track id and
-        // carry the owning file id; a single-file CUE rip has one row per track, all
-        // sharing that file id. Group by file id (first row wins — every row for one
+        // Describe each audio file's format. Audio segments carry the owning file
+        // id; a single-file CUE rip has many track formats sharing one file through
+        // their segments. Group by file id (first row wins — every row for one
         // file shares the file-level codec/rate/depth/channels). A file's audio
         // duration (for deriving a lossy file's average bitrate) is the sum of its
         // tracks' durations, kept as `Some(sum)` only while every contributing track
         // has a known duration; one unknown duration makes the file's total unknown
         // so no bitrate is derived from a partial sum.
         let audio_formats = raw.audio_formats;
+        let audio_segments = raw.audio_segments;
+        let audio_format_by_id: std::collections::HashMap<&str, &crate::db::DbAudioFormat> =
+            audio_formats
+                .iter()
+                .map(|format| (format.id.as_str(), format))
+                .collect();
         let track_durations: std::collections::HashMap<&str, Option<i64>> = tracks
             .iter()
             .map(|t| (t.id.as_str(), t.duration_ms))
@@ -198,31 +204,40 @@ impl ReleaseDetail {
         let mut file_format = std::collections::HashMap::new();
         let mut file_audio_duration_ms: std::collections::HashMap<&str, Option<i64>> =
             std::collections::HashMap::new();
-        for af in &audio_formats {
-            let Some(file_id) = af.file_id.as_deref() else {
-                debug!(
-                    "audio_format {} has no file_id; skipping format attribution",
-                    af.id
+        for segment in &audio_segments {
+            let Some(af) = audio_format_by_id
+                .get(segment.audio_format_id.as_str())
+                .copied()
+            else {
+                warn!(
+                    "audio segment {} references missing audio_format {}; skipping format attribution",
+                    segment.id, segment.audio_format_id
                 );
                 continue;
             };
+            let file_id = segment.file_id.as_str();
             file_format.entry(file_id).or_insert(af);
             // `af` is joined from this release's tracks, so the lookup should be
             // present; its value is the track's own (optional) duration. A missing
             // entry means that join invariant broke — log it rather than silently
             // folding it in as unknown. Fold into the file total: any unknown
             // duration collapses the file's total to unknown.
-            let track_dur = match track_durations.get(af.track_id.as_str()) {
-                Some(duration) => *duration,
-                None => {
-                    warn!(
-                        "audio_format {} references track {} absent from the release; \
-                         treating its duration as unknown",
-                        af.id, af.track_id
-                    );
-                    None
-                }
-            };
+            let track_dur = segment
+                .end_sample
+                .map(|end| {
+                    (end.saturating_sub(segment.start_sample) * 1000) / af.sample_rate.max(1)
+                })
+                .or_else(|| match track_durations.get(af.track_id.as_str()) {
+                    Some(duration) => *duration,
+                    None => {
+                        warn!(
+                            "audio_format {} references track {} absent from the release; \
+                             treating its duration as unknown",
+                            af.id, af.track_id
+                        );
+                        None
+                    }
+                });
             let slot = file_audio_duration_ms.entry(file_id).or_insert(Some(0));
             *slot = match (*slot, track_dur) {
                 (Some(acc), Some(d)) => Some(acc + d),

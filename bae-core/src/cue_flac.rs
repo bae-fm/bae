@@ -17,7 +17,21 @@ pub enum CueFlacError {
 /// Convert to ms with `cue_frames * 1000 / 75` (lossy, for UI display only).
 #[derive(Debug, Clone)]
 pub struct CueIndex {
+    pub number: u32,
     pub frames: u64,
+    pub file_reference: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CueTrackMode {
+    Audio,
+    Other(String),
+}
+
+impl CueTrackMode {
+    pub fn is_audio(&self) -> bool {
+        matches!(self, Self::Audio)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -30,10 +44,16 @@ pub enum CuePregap {
 #[derive(Debug, Clone)]
 pub struct CueTrack {
     pub number: u32,
+    pub mode: CueTrackMode,
     pub title: Option<String>,
     pub performer: Option<String>,
+    pub composer: Option<String>,
+    pub songwriter: Option<String>,
     /// 12-character International Standard Recording Code from `ISRC <code>`.
     pub isrc: Option<String>,
+    pub flags: Vec<String>,
+    pub indexes: Vec<CueIndex>,
+    pub postgap_frames: Option<u64>,
     /// Filename from the `FILE` directive that scopes this track. For
     /// single-FILE CUE sheets every track carries the same string; for
     /// multi-FILE sheets (one FILE per TRACK, the shape used by lossy-format
@@ -53,6 +73,14 @@ pub struct CueTrack {
 }
 
 impl CueTrack {
+    pub fn is_playable_audio(&self) -> bool {
+        self.mode.is_audio()
+    }
+
+    pub fn index(&self, number: u32) -> Option<&CueIndex> {
+        self.indexes.iter().find(|index| index.number == number)
+    }
+
     /// Where audio bytes begin (CUE frames): INDEX 00 if pregap exists, else INDEX 01
     pub fn audio_start_cue_frames(&self) -> u64 {
         match &self.pregap {
@@ -112,6 +140,8 @@ impl CueTrack {
 pub struct CueSheet {
     pub title: Option<String>,
     pub performer: Option<String>,
+    pub composer: Option<String>,
+    pub songwriter: Option<String>,
     /// Media catalog number from `CATALOG <13-digit>`. Typically the UPC/EAN
     /// barcode — a strong release identifier when matching against MusicBrainz.
     pub catalog: Option<String>,
@@ -122,14 +152,51 @@ pub struct CueSheet {
 }
 
 impl CueSheet {
+    pub fn playable_tracks(&self) -> impl Iterator<Item = &CueTrack> {
+        self.tracks.iter().filter(|track| track.is_playable_audio())
+    }
+
+    pub fn playable_track_count(&self) -> usize {
+        self.playable_tracks().count()
+    }
+
+    pub fn file_references(&self) -> Vec<&str> {
+        let mut refs = Vec::new();
+        for track in &self.tracks {
+            for index in &track.indexes {
+                if !refs.contains(&index.file_reference.as_str()) {
+                    refs.push(index.file_reference.as_str());
+                }
+            }
+            if !refs.contains(&track.file_reference.as_str()) {
+                refs.push(track.file_reference.as_str());
+            }
+        }
+        refs
+    }
+
+    pub fn audio_file_references(&self) -> Vec<&str> {
+        let mut refs = Vec::new();
+        for track in self.playable_tracks() {
+            for index in &track.indexes {
+                if !refs.contains(&index.file_reference.as_str()) {
+                    refs.push(index.file_reference.as_str());
+                }
+            }
+            if !refs.contains(&track.file_reference.as_str()) {
+                refs.push(track.file_reference.as_str());
+            }
+        }
+        refs
+    }
+
     /// `Some(filename)` if every track refers to the same `FILE` (single-FILE
     /// CUE — one concatenated audio container per release, the EAC shape).
     /// `None` for multi-FILE CUEs (one FILE per TRACK, the lossy-rip shape).
     /// The discriminator for "is this a CUE+single-audio pair candidate?".
     pub fn single_file(&self) -> Option<&str> {
-        let first = self.tracks.first()?.file_reference.as_str();
-        self.tracks
-            .iter()
+        let first = self.playable_tracks().next()?.file_reference.as_str();
+        self.playable_tracks()
             .all(|t| t.file_reference == first)
             .then_some(first)
     }
@@ -144,31 +211,52 @@ pub struct CueFlacPair {
 #[derive(Debug)]
 struct PendingCueTrack {
     number: u32,
+    mode: CueTrackMode,
     title: Option<String>,
     performer: Option<String>,
+    composer: Option<String>,
+    songwriter: Option<String>,
     isrc: Option<String>,
+    flags: Vec<String>,
+    indexes: Vec<CueIndex>,
     pregap: Option<(u64, String)>,
     generated_pregap_frames: Option<u64>,
+    postgap_frames: Option<u64>,
     start: Option<(u64, String)>,
+    file_reference: String,
 }
 
 impl PendingCueTrack {
-    fn new(number: u32) -> Self {
+    fn new(number: u32, mode: CueTrackMode, file_reference: String) -> Self {
         Self {
             number,
+            mode,
             title: None,
             performer: None,
+            composer: None,
+            songwriter: None,
             isrc: None,
+            flags: Vec::new(),
+            indexes: Vec::new(),
             pregap: None,
             generated_pregap_frames: None,
+            postgap_frames: None,
             start: None,
+            file_reference,
         }
     }
 
     fn finish(self, input: &str) -> Result<CueTrack, nom::Err<nom::error::Error<&str>>> {
-        let (start_cue_frames, file_reference) = self.start.ok_or_else(|| {
-            nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Tag))
-        })?;
+        let (start_cue_frames, file_reference) = match self.start {
+            Some(start) => start,
+            None if !self.mode.is_audio() => (0, self.file_reference.clone()),
+            None => {
+                return Err(nom::Err::Failure(nom::error::Error::new(
+                    input,
+                    nom::error::ErrorKind::Tag,
+                )));
+            }
+        };
         let pregap = match (self.pregap, self.generated_pregap_frames) {
             (Some(_), Some(_)) => {
                 return Err(nom::Err::Failure(nom::error::Error::new(
@@ -176,17 +264,11 @@ impl PendingCueTrack {
                     nom::error::ErrorKind::Tag,
                 )));
             }
-            (Some((frames, pregap_file_reference)), None)
-                if pregap_file_reference == file_reference =>
-            {
-                CuePregap::Audio(CueIndex { frames })
-            }
-            (Some(_), None) => {
-                return Err(nom::Err::Failure(nom::error::Error::new(
-                    input,
-                    nom::error::ErrorKind::Tag,
-                )));
-            }
+            (Some((frames, pregap_file_reference)), None) => CuePregap::Audio(CueIndex {
+                number: 0,
+                frames,
+                file_reference: pregap_file_reference,
+            }),
             (None, Some(frames)) => CuePregap::Silence { frames },
             (None, None) => CuePregap::None,
         };
@@ -200,9 +282,15 @@ impl PendingCueTrack {
         };
         Ok(CueTrack {
             number: self.number,
+            mode: self.mode,
             title: self.title,
             performer: self.performer,
+            composer: self.composer,
+            songwriter: self.songwriter,
             isrc: self.isrc,
+            flags: self.flags,
+            indexes: self.indexes,
+            postgap_frames: self.postgap_frames,
             file_reference,
             start_cue_frames,
             pregap,
@@ -303,6 +391,8 @@ impl CueFlacProcessor {
     fn parse_cue_content(input: &str) -> IResult<&str, CueSheet> {
         let mut title: Option<String> = None;
         let mut performer: Option<String> = None;
+        let mut composer: Option<String> = None;
+        let mut songwriter: Option<String> = None;
         let mut catalog: Option<String> = None;
         let mut date: Option<String> = None;
         let mut current_file: Option<String> = None;
@@ -316,20 +406,14 @@ impl CueFlacProcessor {
             }
 
             let track_directive = Self::parse_track_directive(line)?;
-            if let Some((number, audio)) = track_directive {
+            if let Some((number, mode)) = track_directive {
                 if let Some(track) = current_track.take() {
                     tracks.push(track.finish(input)?);
                 }
-                if !audio {
-                    if tracks.is_empty() {
-                        return Self::failure(input, nom::error::ErrorKind::Tag);
-                    }
-                    break;
-                }
-                if current_file.is_none() {
+                let Some(file_reference) = current_file.clone() else {
                     return Self::failure(input, nom::error::ErrorKind::Tag);
-                }
-                current_track = Some(PendingCueTrack::new(number));
+                };
+                current_track = Some(PendingCueTrack::new(number, mode, file_reference));
                 continue;
             }
 
@@ -351,6 +435,8 @@ impl CueFlacProcessor {
                         line,
                         &mut title,
                         &mut performer,
+                        &mut composer,
+                        &mut songwriter,
                         &mut catalog,
                         &mut date,
                     );
@@ -382,10 +468,13 @@ impl CueFlacProcessor {
         for i in 0..tracks.len() {
             if i + 1 < tracks.len() {
                 let next_track = &tracks[i + 1];
-                let boundary = next_track
-                    .pregap_cue_frames
-                    .unwrap_or(next_track.start_cue_frames);
-                tracks[i].end_cue_frames = Some(boundary);
+                let boundary_index = match &next_track.pregap {
+                    CuePregap::Audio(index) => Some(index),
+                    CuePregap::None | CuePregap::Silence { .. } => next_track.index(1),
+                };
+                tracks[i].end_cue_frames = boundary_index
+                    .filter(|index| index.file_reference == tracks[i].file_reference)
+                    .map(|index| index.frames);
             }
         }
         Ok((
@@ -393,6 +482,8 @@ impl CueFlacProcessor {
             CueSheet {
                 title,
                 performer,
+                composer,
+                songwriter,
                 catalog,
                 date,
                 tracks,
@@ -404,6 +495,8 @@ impl CueFlacProcessor {
         line: &str,
         title: &mut Option<String>,
         performer: &mut Option<String>,
+        composer: &mut Option<String>,
+        songwriter: &mut Option<String>,
         catalog: &mut Option<String>,
         date: &mut Option<String>,
     ) {
@@ -426,6 +519,16 @@ impl CueFlacProcessor {
             Some(("PERFORMER", rest)) => {
                 if let Some(value) = Self::quoted_value(rest) {
                     *performer = Some(value.to_string());
+                }
+            }
+            Some(("COMPOSER", rest)) => {
+                if let Some(value) = Self::quoted_value(rest) {
+                    *composer = Some(value.to_string());
+                }
+            }
+            Some(("SONGWRITER", rest)) => {
+                if let Some(value) = Self::quoted_value(rest) {
+                    *songwriter = Some(value.to_string());
                 }
             }
             Some((keyword, _)) if Self::header_keyword_is_known_skipped(keyword) => {}
@@ -451,6 +554,16 @@ impl CueFlacProcessor {
                     track.performer = Some(value.to_string());
                 }
             }
+            Some(("COMPOSER", rest)) => {
+                if let Some(value) = Self::quoted_value(rest) {
+                    track.composer = Some(value.to_string());
+                }
+            }
+            Some(("SONGWRITER", rest)) => {
+                if let Some(value) = Self::quoted_value(rest) {
+                    track.songwriter = Some(value.to_string());
+                }
+            }
             Some(("ISRC", rest)) => {
                 let code = rest.split_whitespace().next().ok_or_else(|| {
                     nom::Err::Failure(nom::error::Error::new(
@@ -462,6 +575,11 @@ impl CueFlacProcessor {
             }
             Some(("INDEX", rest)) => {
                 let (index_number, cue_frames) = Self::parse_index_values(input, rest)?;
+                track.indexes.push(CueIndex {
+                    number: index_number,
+                    frames: cue_frames,
+                    file_reference: current_file.to_string(),
+                });
                 match index_number {
                     0 => track.pregap = Some((cue_frames, current_file.to_string())),
                     1 => {
@@ -476,6 +594,15 @@ impl CueFlacProcessor {
                 })?;
                 track.generated_pregap_frames = Some(cue_frames);
             }
+            Some(("POSTGAP", rest)) => {
+                let (_, cue_frames) = Self::parse_time(rest).map_err(|_| {
+                    nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+                })?;
+                track.postgap_frames = Some(cue_frames);
+            }
+            Some(("FLAGS", rest)) => {
+                track.flags = rest.split_whitespace().map(str::to_string).collect();
+            }
             Some((keyword, _)) if Self::track_keyword_is_known_skipped(keyword) => {}
             _ => warn!(
                 "unrecognized CUE line in track {}: {:?}",
@@ -487,7 +614,7 @@ impl CueFlacProcessor {
 
     fn parse_track_directive(
         input: &str,
-    ) -> Result<Option<(u32, bool)>, nom::Err<nom::error::Error<&str>>> {
+    ) -> Result<Option<(u32, CueTrackMode)>, nom::Err<nom::error::Error<&str>>> {
         let Some(("TRACK", rest)) = Self::keyword_and_rest(input) else {
             return Ok(None);
         };
@@ -496,7 +623,12 @@ impl CueFlacProcessor {
         let mode = parts.next().ok_or_else(|| {
             nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Tag))
         })?;
-        Ok(Some((number, mode == "AUDIO")))
+        let mode = if mode == "AUDIO" {
+            CueTrackMode::Audio
+        } else {
+            CueTrackMode::Other(mode.to_string())
+        };
+        Ok(Some((number, mode)))
     }
 
     fn parse_file_directive(
@@ -542,11 +674,8 @@ impl CueFlacProcessor {
     fn track_keyword_is_known_skipped(keyword: &str) -> bool {
         const TRACK_BODY_SKIPPED: &[&str] = &[
             "FLAGS",
-            "POSTGAP",
             "CDTEXTFILE",
-            "SONGWRITER",
             "ARRANGER",
-            "COMPOSER",
             "GENRE",
             "MESSAGE",
             "DISC_ID",

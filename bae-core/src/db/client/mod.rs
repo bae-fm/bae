@@ -810,6 +810,7 @@ fn build_release_detail_on(
     let tracks = get_tracks_with_artists_for_release_on(conn, &release.id)?;
     let files = get_files_for_release_on(conn, &release.id)?;
     let audio_formats = get_audio_formats_for_release_on(conn, &release.id)?;
+    let audio_segments = get_audio_segments_for_release_on(conn, &release.id)?;
     let identities = get_release_identities_on(conn, &release.id)?;
 
     Ok(DbReleaseDetail {
@@ -817,6 +818,7 @@ fn build_release_detail_on(
         tracks,
         files,
         audio_formats,
+        audio_segments,
         identities,
     })
 }
@@ -899,6 +901,22 @@ fn get_audio_formats_for_release_on(
              WHERE t.release_id = ?",
     )?;
     let rows = stmt.query_map(params![release_id], row_to_audio_format)?;
+    rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+        .map_err(DbError::from)
+}
+
+fn get_audio_segments_for_release_on(
+    conn: &Connection,
+    release_id: &str,
+) -> Result<Vec<DbAudioSegment>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT s.* FROM audio_format_segments s \
+             JOIN audio_formats af ON af.id = s.audio_format_id \
+             JOIN tracks t ON t.id = af.track_id \
+             WHERE t.release_id = ? \
+             ORDER BY af.track_id, s.segment_index",
+    )?;
+    let rows = stmt.query_map(params![release_id], row_to_audio_segment)?;
     rows.collect::<coven::rusqlite::Result<Vec<_>>>()
         .map_err(DbError::from)
 }
@@ -1107,13 +1125,31 @@ fn row_to_audio_format(row: &Row) -> coven::rusqlite::Result<DbAudioFormat> {
         sample_rate: row.get("sample_rate")?,
         bits_per_sample: row.get("bits_per_sample")?,
         channels: row.get("channels")?,
+        track_loudness_lufs: row.get("track_loudness_lufs")?,
+        track_peak_linear: row.get("track_peak_linear")?,
+        created_at: rfc3339_column(row, "created_at")?,
+    })
+}
+
+fn row_to_audio_segment(row: &Row) -> coven::rusqlite::Result<DbAudioSegment> {
+    let role_text: String = row.get("role")?;
+    let role = DbAudioSegmentRole::from_db_value(&role_text).ok_or_else(|| {
+        coven::rusqlite::Error::FromSqlConversionFailure(
+            0,
+            coven::rusqlite::types::Type::Text,
+            format!("unknown audio segment role: {role_text}").into(),
+        )
+    })?;
+    Ok(DbAudioSegment {
+        id: row.get("id")?,
+        audio_format_id: row.get("audio_format_id")?,
+        segment_index: row.get("segment_index")?,
+        role,
         file_id: row.get("file_id")?,
         start_sample: row.get("start_sample")?,
         end_sample: row.get("end_sample")?,
-        end_byte: row.get("end_byte")?,
         start_byte: row.get("start_byte")?,
-        track_loudness_lufs: row.get("track_loudness_lufs")?,
-        track_peak_linear: row.get("track_peak_linear")?,
+        end_byte: row.get("end_byte")?,
         created_at: rfc3339_column(row, "created_at")?,
     })
 }
@@ -1473,8 +1509,8 @@ fn insert_audio_format_row(
     conn.execute(
         r#"
         INSERT INTO audio_formats (
-            id, track_id, content_type, pregap_ms, generated_pregap_ms, pregap_samples, generated_pregap_samples, sample_rate, bits_per_sample, channels, file_id, start_sample, end_sample, end_byte, start_byte, track_loudness_lufs, track_peak_linear, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, track_id, content_type, pregap_ms, generated_pregap_ms, pregap_samples, generated_pregap_samples, sample_rate, bits_per_sample, channels, track_loudness_lufs, track_peak_linear, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             af.id,
@@ -1487,15 +1523,39 @@ fn insert_audio_format_row(
             af.sample_rate,
             af.bits_per_sample,
             af.channels,
-            af.file_id,
-            af.start_sample,
-            af.end_sample,
-            af.end_byte,
-            af.start_byte,
             af.track_loudness_lufs,
             af.track_peak_linear,
             reg,
             af.created_at.to_rfc3339(),
+        ],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
+fn insert_audio_segment_row(
+    conn: &Connection,
+    segment: &DbAudioSegment,
+    reg: &str,
+) -> Result<(), DbError> {
+    conn.execute(
+        r#"
+        INSERT INTO audio_format_segments (
+            id, audio_format_id, segment_index, role, file_id, start_sample, end_sample, start_byte, end_byte, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        "#,
+        params![
+            segment.id,
+            segment.audio_format_id,
+            segment.segment_index,
+            segment.role.as_str(),
+            segment.file_id,
+            segment.start_sample,
+            segment.end_sample,
+            segment.start_byte,
+            segment.end_byte,
+            reg,
+            segment.created_at.to_rfc3339(),
         ],
     )
     .map(|_| ())

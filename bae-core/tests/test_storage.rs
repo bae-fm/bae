@@ -129,7 +129,7 @@ async fn test_local_import() {
 
     info!("All {} tracks created", tracks.len());
 
-    // Verify audio_format records exist with file_id linkage
+    // Verify audio_format records exist with segment file linkage
     for track in &tracks {
         let audio_format = library_manager
             .get_audio_format_by_track_id(&track.id)
@@ -140,15 +140,22 @@ async fn test_local_import() {
             "Track '{}' should have an audio_format record",
             track.title
         );
-        let af = audio_format.unwrap();
+        let _af = audio_format.unwrap();
+        let resolved = library_manager
+            .resolve_track_audio(&track.id)
+            .await
+            .expect("resolve track audio");
         assert!(
-            af.file_id.is_some(),
-            "Track '{}' audio_format should have a file_id",
+            resolved
+                .segments
+                .iter()
+                .any(|segment| !segment.file_id.is_empty()),
+            "Track '{}' should have a segment file_id",
             track.title
         );
     }
 
-    info!("All tracks have audio_format records with file_id");
+    info!("All tracks have audio_format records with segment file links");
 
     // Verify release is local with this device's in-place local copy.
     let release = database
@@ -267,7 +274,7 @@ async fn test_local_delete_preserves_files() {
         .expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks after import");
 
-    // Verify audio_format records exist with file_id linkage
+    // Verify audio_format records exist.
     for track in &tracks {
         let audio_format = library_manager
             .get_audio_format_by_track_id(&track.id)
@@ -459,12 +466,22 @@ async fn run_import_with_cover_test() {
             ContentType::Flac,
             "Should be FLAC format"
         );
+        let resolved = library_manager
+            .resolve_track_audio(&track.id)
+            .await
+            .expect("Failed to resolve track audio");
         assert!(
-            audio_format.file_id.is_some(),
-            "Track '{}' audio_format should have a file_id",
+            resolved
+                .segments
+                .iter()
+                .any(|segment| !segment.file_id.is_empty()),
+            "Track '{}' should have a segment file_id",
             track.title
         );
-        info!("Track '{}' has audio format with file_id", track.title);
+        info!(
+            "Track '{}' has audio format with segment file link",
+            track.title
+        );
     }
 
     let cover = library_manager
@@ -503,7 +520,7 @@ async fn run_import_with_cover_test() {
     );
     info!("Album primary_release_id is set correctly");
 
-    // Verify roundtrip: audio format records exist with file_id
+    // Verify roundtrip: audio format records exist with segment file linkage
     for track in &tracks {
         let audio_format = library_manager
             .get_audio_format_by_track_id(&track.id)
@@ -515,9 +532,16 @@ async fn run_import_with_cover_test() {
             ContentType::Flac,
             "Should be FLAC format"
         );
+        let resolved = library_manager
+            .resolve_track_audio(&track.id)
+            .await
+            .expect("Failed to resolve track audio");
         assert!(
-            audio_format.file_id.is_some(),
-            "Track '{}' audio_format should have a file_id",
+            resolved
+                .segments
+                .iter()
+                .any(|segment| !segment.file_id.is_empty()),
+            "Track '{}' should have a segment file_id",
             track.title
         );
     }

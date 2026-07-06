@@ -3,7 +3,7 @@ use crate::db::DbTrack;
 use crate::import::folder_scanner::{
     AudioContent, CategorizedFiles, ScannedCueFlacPair, ScannedFile,
 };
-use crate::import::types::{CueAudioAnalysis, CueFlacAnalysis, TrackFile};
+use crate::import::types::{CueAnalyzedAudioFile, CueAudioAnalysis, CueFlacAnalysis, TrackFile};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
@@ -47,7 +47,7 @@ fn map_tracks_to_cue_flacs(
 
     let sheets: Vec<&CueSheet> = sorted.iter().map(|p| &p.cue_sheet).collect();
 
-    let per_pair_counts: Vec<usize> = sheets.iter().map(|s| s.tracks.len()).collect();
+    let per_pair_counts: Vec<usize> = sheets.iter().map(|s| s.playable_track_count()).collect();
     let total_cue_tracks: usize = per_pair_counts.iter().sum();
     if total_cue_tracks != tracks.len() {
         return Err(format!(
@@ -84,36 +84,53 @@ fn map_tracks_to_cue_flac(
         "Processing CUE/FLAC pair: {} + {} ({} tracks)",
         pair.audio_file.path.display(),
         pair.cue_file.path.display(),
-        cue_sheet.tracks.len()
+        cue_sheet.playable_track_count()
     );
-    if cue_sheet.tracks.is_empty() {
+    if cue_sheet.playable_track_count() == 0 {
         return Err(format!(
-            "CUE sheet '{}' contains no tracks. Check CUE file format.",
+            "CUE sheet '{}' contains no playable audio tracks. Check CUE file format.",
             pair.cue_file.path.display(),
         ));
     }
     // Caller pre-sliced `tracks` to match the CUE's track count, so the
     // zip-by-index below is always exact.
     assert_eq!(
-        cue_sheet.tracks.len(),
+        cue_sheet.playable_track_count(),
         tracks.len(),
         "caller must slice tracks to match per-pair CUE track count",
     );
 
-    let analysis = analyze_cue_audio(&pair.audio_file.path)?;
+    let cue_dir = pair
+        .cue_file
+        .path
+        .parent()
+        .ok_or_else(|| format!("CUE file has no parent: {:?}", pair.cue_file.path))?;
+    let mut analyzed_files = Vec::new();
+    for file_reference in cue_sheet.audio_file_references() {
+        let path = cue_dir.join(file_reference);
+        let analysis = analyze_cue_audio(&path)?;
+        analyzed_files.push(CueAnalyzedAudioFile {
+            file_reference: file_reference.to_string(),
+            path,
+            analysis,
+        });
+    }
+    ensure_cue_segment_formats_match(&analyzed_files)?;
     let pair_analysis = Arc::new(CueFlacAnalysis {
         cue_sheet,
-        analysis,
+        audio_files: analyzed_files,
     });
 
     let mut mappings = Vec::with_capacity(tracks.len());
+    let playable_tracks: Vec<_> = pair_analysis.cue_sheet.playable_tracks().collect();
     for (index, mut db_track) in tracks.into_iter().enumerate() {
-        let cue_track = &pair_analysis.cue_sheet.tracks[index];
+        let cue_track = playable_tracks[index];
         // CUE sheets give us exact per-track timing. The final track has no
         // next-track boundary in the sheet, so its duration is derived from
         // the container's total duration minus its INDEX 01 start.
         db_track.duration_ms = cue_track.track_duration_ms().map(|d| d as i64).or_else(|| {
-            container_duration_ms(&pair_analysis.analysis)
+            main_file_analysis(&pair_analysis, cue_track.file_reference.as_str())
+                .and_then(container_duration_ms)
                 .map(|total| total - cue_track.start_time_ms() as i64)
         });
         debug!(
@@ -132,6 +149,35 @@ fn map_tracks_to_cue_flac(
 
 fn container_duration_ms(analysis: &CueAudioAnalysis) -> Option<i64> {
     Some(analysis.probe.duration.as_millis() as i64)
+}
+
+fn main_file_analysis<'a>(
+    cue_pair: &'a CueFlacAnalysis,
+    file_reference: &str,
+) -> Option<&'a CueAudioAnalysis> {
+    cue_pair
+        .audio_files
+        .iter()
+        .find(|file| file.file_reference == file_reference)
+        .map(|file| &file.analysis)
+}
+
+fn ensure_cue_segment_formats_match(files: &[CueAnalyzedAudioFile]) -> Result<(), String> {
+    let Some(first) = files.first() else {
+        return Ok(());
+    };
+    let baseline = &first.analysis.probe;
+    for file in &files[1..] {
+        let probe = &file.analysis.probe;
+        if probe.content_type != baseline.content_type
+            || probe.sample_rate != baseline.sample_rate
+            || probe.bits_per_sample != baseline.bits_per_sample
+            || probe.channels != baseline.channels
+        {
+            return Err("CUE references audio files with incompatible formats".to_string());
+        }
+    }
+    Ok(())
 }
 
 /// Extract duration from a standalone audio file.

@@ -202,7 +202,7 @@ impl PreviewPlayer {
             .expect("active preview decoder has a cancel token");
         teardown_decoder_for_seek(
             &mut self.playback_source,
-            &buffer,
+            std::slice::from_ref(&buffer),
             &preview_cancel,
             &mut self.decoder_handle,
         )

@@ -33,7 +33,11 @@ impl PlaybackService {
             return;
         }
 
-        let old_buffer = current_prepared.buffer.clone();
+        let old_buffers: Vec<_> = current_prepared
+            .segments
+            .iter()
+            .map(|segment| segment.buffer.clone())
+            .collect();
         let old_cancel_token = current_prepared.cancel_token.clone();
         let prepared = current_prepared.clone();
         // Mint a fresh cancel token for the seek's decoder so the ready-watcher's
@@ -58,7 +62,7 @@ impl PlaybackService {
 
         teardown_decoder_for_seek(
             &mut self.current_playback_source,
-            &old_buffer,
+            &old_buffers,
             &old_cancel_token,
             &mut self.current_decoder_handle,
         )
@@ -71,11 +75,8 @@ impl PlaybackService {
         // immediately and the demand-driven fill fetches the seek target first,
         // so there's no fixed wait and no frozen-but-Playing bar.
         let position_samples = (position.as_secs_f64() * prepared.sample_rate as f64) as u64;
-        let decode = prepared.decode_params(position_samples);
-        info!(
-            "Seek: position {:?}, seek_to {}",
-            position, decode.target_sample
-        );
+        let decode = prepared.decode_params(position_samples, true);
+        info!("Seek: position {:?}", position);
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::StateChanged {

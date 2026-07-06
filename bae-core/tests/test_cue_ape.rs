@@ -366,8 +366,8 @@ async fn test_cue_ape_records_track_timing() {
     // Expected CUE timings in samples at 44100Hz:
     // CUE frames: 0, 30*75=2250, 60*75=4500
     // Samples: cue_frames * 588
-    let expected_start_sample = [0i64, 2250 * 588, 4500 * 588];
-    let expected_end_sample: [Option<i64>; 3] = [Some(2250 * 588), Some(4500 * 588), None];
+    let expected_start_sample = [0u64, 2250 * 588, 4500 * 588];
+    let expected_end_sample: [Option<u64>; 3] = [Some(2250 * 588), Some(4500 * 588), None];
 
     for (i, track) in tracks.iter().enumerate() {
         let af = library_manager
@@ -383,15 +383,22 @@ async fn test_cue_ape_records_track_timing() {
             i + 1
         );
 
+        let resolved = library_manager
+            .resolve_track_audio(&track.id)
+            .await
+            .expect("resolve track audio");
+        assert_eq!(resolved.segments.len(), 1);
+        let segment = &resolved.segments[0];
+
         // A CUE+APE track is a sample window of the shared file.
         assert_eq!(
-            af.start_sample,
+            segment.start_sample,
             expected_start_sample[i],
             "Track {} start_sample",
             i + 1,
         );
         assert_eq!(
-            af.end_sample,
+            segment.end_sample,
             expected_end_sample[i],
             "Track {} end_sample",
             i + 1,
@@ -401,8 +408,8 @@ async fn test_cue_ape_records_track_timing() {
             "Track {} '{}': start_sample={}, end_sample={:?}",
             i + 1,
             track.title,
-            af.start_sample,
-            af.end_sample,
+            segment.start_sample,
+            segment.end_sample,
         );
     }
 }
@@ -1397,7 +1404,7 @@ async fn test_cue_ape_next_track() {
 }
 
 /// Import a two-disc CUE/APE release under the given storage mode and assert
-/// each track's audio_format.file_id resolves to its own disc's APE file
+/// each track's main audio segment resolves to its own disc's APE file
 /// (identified by the relative path `CD{N}/CDImage.ape`).
 ///
 /// This exercises the bare-filename collision regression in every code path:
@@ -1542,26 +1549,25 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
         "release_files must store relative paths for both discs, not bare filenames"
     );
 
-    // Each track's audio_format.file_id must point to its own disc's APE.
+    // Each track's main audio segment must point to its own disc's APE.
     let filename_by_id: std::collections::HashMap<String, String> = files
         .iter()
         .map(|f| (f.id.clone(), f.original_filename.clone()))
         .collect();
 
     for track in &tracks {
-        let af = library_manager
-            .get_audio_format_by_track_id(&track.id)
+        let resolved = library_manager
+            .resolve_track_audio(&track.id)
             .await
-            .expect("get audio format")
-            .unwrap_or_else(|| panic!("track {} ({}) has no audio format", track.title, track.id));
-
-        let file_id = af
-            .file_id
-            .as_ref()
-            .unwrap_or_else(|| panic!("track {} has no file_id", track.title));
+            .expect("resolve track audio");
+        let segment = resolved
+            .segments
+            .iter()
+            .find(|segment| segment.role == bae_core::db::DbAudioSegmentRole::Main)
+            .unwrap_or_else(|| panic!("track {} has no main audio segment", track.title));
         let filename = filename_by_id
-            .get(file_id)
-            .unwrap_or_else(|| panic!("file_id {file_id} not in release_files"));
+            .get(&segment.file_id)
+            .unwrap_or_else(|| panic!("file_id {} not in release_files", segment.file_id));
 
         let expected = match track.side {
             1 => "CD1/CDImage.ape",
