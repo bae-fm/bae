@@ -1,6 +1,6 @@
-//! File header validation for detecting corrupt or incomplete downloads.
+//! File header validation for detecting corrupt downloads.
 //!
-//! Simple magic-byte and size checks. No deep parsing, no heuristics.
+//! Simple magic-byte and minimum-size checks. No deep parsing, no heuristics.
 
 use std::fs;
 use std::io::{self, Read};
@@ -11,9 +11,8 @@ use std::path::Path;
 /// Validates:
 /// 1. `fLaC` magic bytes
 /// 2. STREAMINFO block header (block type 0, length 34)
-/// 3. File size vs declared sample count (catches obvious truncation)
 ///
-/// Returns `Ok(true)` if valid, `Ok(false)` if corrupt/truncated, `Err` on IO failure.
+/// Returns `Ok(true)` if valid, `Ok(false)` if corrupt, `Err` on IO failure.
 pub fn is_valid_flac(path: &Path) -> io::Result<bool> {
     let mut file = fs::File::open(path)?;
     let file_size = file.metadata()?.len();
@@ -43,52 +42,6 @@ pub fn is_valid_flac(path: &Path) -> io::Result<bool> {
     // Block length (3 bytes big-endian)
     let block_length = ((header[5] as u32) << 16) | ((header[6] as u32) << 8) | (header[7] as u32);
     if block_length != 34 {
-        return Ok(false);
-    }
-
-    // Parse STREAMINFO (34 bytes starting at offset 8)
-    // Bytes 10-11 (within STREAMINFO, offset 18-19 in header): bits per sample, channels, sample rate
-    // Layout of STREAMINFO:
-    //   [0..1]   min block size
-    //   [2..3]   max block size
-    //   [4..6]   min frame size
-    //   [7..9]   max frame size
-    //   [10..13] sample rate (20 bits) | channels-1 (3 bits) | bits_per_sample-1 (5 bits) | total_samples high 4 bits
-    //   [14..17] total_samples low 32 bits
-    //   [18..33] MD5 signature
-
-    let si = &header[8..42]; // STREAMINFO data
-
-    // Sample rate: top 20 bits of si[10..14]
-    let sample_rate = ((si[10] as u32) << 12) | ((si[11] as u32) << 4) | ((si[12] as u32) >> 4);
-
-    // Channels: bits 4-6 of si[12] (3 bits, stored as channels-1)
-    let channels = ((si[12] >> 1) & 0x07) as u32 + 1;
-
-    // Bits per sample: bit 0 of si[12] (high bit) + bits 7-4 of si[13] (4 bits) = 5 bits total, stored as bps-1
-    let bps = ((((si[12] & 0x01) as u32) << 4) | ((si[13] >> 4) as u32)) + 1;
-
-    // Total samples: 4 bits from si[13] (low nibble) + 32 bits from si[14..18]
-    let total_samples_high = (si[13] & 0x0F) as u64;
-    let total_samples_low = ((si[14] as u64) << 24)
-        | ((si[15] as u64) << 16)
-        | ((si[16] as u64) << 8)
-        | (si[17] as u64);
-    let total_samples = (total_samples_high << 32) | total_samples_low;
-
-    // If total_samples is 0, it means unknown length (valid in streaming FLAC) — skip size check
-    if total_samples == 0 || sample_rate == 0 {
-        return Ok(true);
-    }
-
-    // Compute expected raw PCM size
-    let bytes_per_sample = bps.div_ceil(8);
-    let expected_raw_size = total_samples * channels as u64 * bytes_per_sample as u64;
-
-    // If actual file size < 10% of raw PCM size, it's obviously truncated.
-    // FLAC typically compresses to 50-70% of raw, so 10% is extremely generous.
-    let min_expected = expected_raw_size / 10;
-    if file_size < min_expected {
         return Ok(false);
     }
 
@@ -270,7 +223,7 @@ mod tests {
     use tempfile::NamedTempFile;
 
     /// Build a minimal valid FLAC header (42 bytes).
-    /// total_samples and sample_rate can be customized for truncation tests.
+    /// total_samples and sample_rate can be customized for header-shape tests.
     fn make_flac_header(sample_rate: u32, channels: u32, bps: u32, total_samples: u64) -> Vec<u8> {
         let mut buf = Vec::new();
 
@@ -337,11 +290,8 @@ mod tests {
 
     #[test]
     fn test_valid_flac_magic() {
-        // 44100 Hz, 2 channels, 16-bit, 10 million samples (~226 sec)
-        // Raw PCM = 10_000_000 * 2 * 2 = 40_000_000 bytes
-        // We need file size >= 4_000_000 (10%)
+        // 44100 Hz, 2 channels, 16-bit, 10 million samples (~226 sec).
         let mut data = make_flac_header(44100, 2, 16, 10_000_000);
-        // Pad to a realistic size (5 MB — well above 10% threshold)
         data.resize(5_000_000, 0xAA);
         let file = write_temp_file("flac", &data);
         assert!(is_valid_flac(file.path()).unwrap());
@@ -355,13 +305,13 @@ mod tests {
     }
 
     #[test]
-    fn test_truncated_flac() {
-        // Valid header declaring 10M samples at 44100/2ch/16bit → raw = 40MB
-        // 10% threshold = 4MB. File is only 1KB → truncated.
+    fn test_highly_compressed_flac_header_is_valid() {
+        // Valid header declaring 10M samples at 44100/2ch/16bit. A tiny body
+        // can still be a valid FLAC when the audio is highly compressible.
         let mut data = make_flac_header(44100, 2, 16, 10_000_000);
         data.resize(1024, 0xAA);
         let file = write_temp_file("flac", &data);
-        assert!(!is_valid_flac(file.path()).unwrap());
+        assert!(is_valid_flac(file.path()).unwrap());
     }
 
     #[test]
@@ -372,9 +322,9 @@ mod tests {
 
     #[test]
     fn test_flac_unknown_length() {
-        // total_samples = 0 means unknown length — should pass (skip size check)
+        // total_samples = 0 is a valid streaming-length STREAMINFO value.
         let mut data = make_flac_header(44100, 2, 16, 0);
-        data.resize(100, 0xAA); // tiny file but that's OK with unknown length
+        data.resize(100, 0xAA);
         let file = write_temp_file("flac", &data);
         assert!(is_valid_flac(file.path()).unwrap());
     }
@@ -408,9 +358,9 @@ mod tests {
     }
 
     #[test]
-    fn test_flac_zero_sample_rate_skips_size_check() {
-        // A 0 sample rate can't yield an expected raw size, so the truncation
-        // heuristic is skipped and the file is accepted regardless of size.
+    fn test_flac_zero_sample_rate_header_shape_is_valid() {
+        // Semantic format validation belongs to probe/decode; this header
+        // validator only checks the FLAC container prefix and STREAMINFO shape.
         let mut data = make_flac_header(0, 2, 16, 10_000_000);
         data.resize(100, 0xAA);
         let file = write_temp_file("flac", &data);

@@ -256,9 +256,7 @@ mod tests {
     /// Synthetic FLAC bytes valid enough to round-trip through the CUE/FLAC
     /// import analyzer and `file_validation::is_valid_flac`.
     ///
-    /// 44.1 kHz / 2-channel / 16-bit STREAMINFO declaring 1 second of audio,
-    /// padded with zeros above the truncation guard's threshold (file must be
-    /// at least 10% of raw PCM, so ≥ 17_640 bytes — round up to 18_000).
+    /// 44.1 kHz / 2-channel / 16-bit STREAMINFO declaring 1 second of audio.
     fn synthetic_flac_bytes() -> Vec<u8> {
         let sample_rate: u32 = 44_100;
         let channels: u32 = 2;
@@ -303,8 +301,7 @@ mod tests {
 
         debug_assert_eq!(buf.len(), 42);
 
-        // Pad above the truncation guard's threshold for 1 s of 16-bit stereo
-        // (raw = 44_100 * 2 * 2 = 176_400 bytes → ≥ 17_640 required).
+        // Keep the fixture's byte shape stable for FFmpeg probe tests.
         buf.resize(18_000, 0);
         buf
     }

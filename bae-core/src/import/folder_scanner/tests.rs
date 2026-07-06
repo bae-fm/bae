@@ -1,8 +1,7 @@
 use super::*;
 use crate::cue_flac::CueTrackMode;
 
-/// Minimal valid FLAC header (42 bytes) with total_samples=0 (unknown length).
-/// This passes is_valid_flac without needing a realistic file size.
+/// Valid FLAC fixture bytes.
 fn fake_flac() -> Vec<u8> {
     std::fs::read(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -1136,47 +1135,10 @@ fn fake_avi() -> Vec<u8> {
     v
 }
 
-/// FLAC that passes the magic/STREAMINFO shape check but declares more
-/// samples than the file holds — `is_valid_flac` must reject it via the
-/// truncation size check.
-///
-/// STREAMINFO encodes 44100 Hz / 2ch / 16-bit / 10_000_000 samples. Raw
-/// PCM = 40 MB, 10% threshold = 4 MB. We cap the file at 1 KB so
-/// `file_size < min_expected` fires.
-fn truncated_flac() -> Vec<u8> {
-    let mut buf = vec![b'f', b'L', b'a', b'C', 0x00, 0x00, 0x00, 34];
-
-    // STREAMINFO bytes 0..10: block sizes + frame sizes (zero is fine).
-    buf.extend_from_slice(&[0u8; 10]);
-
-    // Sample rate (20 bits) | channels-1 (3 bits) | bps-1 (5 bits) | total_samples high (4 bits).
-    let sample_rate = 44100u32;
-    let ch_minus_1 = 2u32 - 1;
-    let bps_minus_1 = 16u32 - 1;
-    let total_samples: u64 = 10_000_000;
-    let ts_high = ((total_samples >> 32) & 0x0F) as u32;
-    buf.push((sample_rate >> 12) as u8);
-    buf.push(((sample_rate >> 4) & 0xFF) as u8);
-    buf.push(
-        (((sample_rate & 0x0F) as u8) << 4)
-            | ((ch_minus_1 as u8) << 1)
-            | ((bps_minus_1 >> 4) as u8),
-    );
-    buf.push(((bps_minus_1 & 0x0F) as u8) << 4 | ts_high as u8);
-
-    // total_samples low 32 bits.
-    let ts_low = (total_samples & 0xFFFF_FFFF) as u32;
-    buf.push((ts_low >> 24) as u8);
-    buf.push(((ts_low >> 16) & 0xFF) as u8);
-    buf.push(((ts_low >> 8) & 0xFF) as u8);
-    buf.push((ts_low & 0xFF) as u8);
-
-    // MD5 (16 bytes). Header ends at offset 42.
-    buf.extend_from_slice(&[0u8; 16]);
-    assert_eq!(buf.len(), 42);
-
-    // Pad to 1 KB — well below the 4 MB threshold.
-    buf.resize(1024, 0xAA);
+/// FLAC with valid magic but a malformed STREAMINFO block length.
+fn malformed_flac_streaminfo() -> Vec<u8> {
+    let mut buf = vec![b'f', b'L', b'a', b'C', 0x00, 0x00, 0x00, 33];
+    buf.resize(42, 0x00);
     buf
 }
 
@@ -1279,10 +1241,8 @@ enum FileKind {
     Dff,
     /// Empty FLAC file (size 0). The scanner must reject the candidate.
     ZeroByteFlac,
-    /// Valid `fLaC` magic + STREAMINFO that declares far more samples
-    /// than the file actually contains. `file_validation::is_valid_flac`
-    /// must reject it.
-    TruncatedFlac,
+    /// Valid `fLaC` magic with malformed STREAMINFO length.
+    MalformedFlacStreaminfo,
     /// Wrong magic bytes where a FLAC is expected. `is_valid_flac` must
     /// reject it.
     BrokenFlac,
@@ -1366,7 +1326,7 @@ fn bytes_for(kind: FileKind) -> Vec<u8> {
         FileKind::Dsf => fake_dsf(),
         FileKind::Dff => fake_dff(),
         FileKind::ZeroByteFlac => Vec::new(),
-        FileKind::TruncatedFlac => truncated_flac(),
+        FileKind::MalformedFlacStreaminfo => malformed_flac_streaminfo(),
         FileKind::BrokenFlac => broken_flac(),
         FileKind::Jpeg => fake_jpeg(),
         FileKind::Png => fake_png(),
@@ -1470,7 +1430,7 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
                 path, size,
             );
         }
-        FileKind::TruncatedFlac | FileKind::BrokenFlac => {
+        FileKind::MalformedFlacStreaminfo | FileKind::BrokenFlac => {
             // is_valid_flac must reject both — the test matrix depends on
             // these kinds being seen as invalid audio.
             assert!(
@@ -1739,10 +1699,10 @@ fn test_write_zero_byte_flac() {
 }
 
 #[test]
-fn test_write_truncated_flac() {
+fn test_write_malformed_flac_streaminfo() {
     let tmp = tempfile::tempdir().unwrap();
-    let path = write_one(tmp.path(), "01.flac", FileKind::TruncatedFlac);
-    // Magic is valid but the size-vs-samples check fires.
+    let path = write_one(tmp.path(), "01.flac", FileKind::MalformedFlacStreaminfo);
+    // Magic is valid but STREAMINFO declares the wrong block length.
     let bytes = std::fs::read(&path).unwrap();
     assert_eq!(&bytes[..4], b"fLaC");
     assert!(!file_validation::is_valid_flac(&path).unwrap());
@@ -2690,12 +2650,12 @@ fn partial_marker_extension_case_insensitive() {
     }
 }
 
-/// L1.6 — Valid FLAC magic but declared samples >> file size ⇒ rejected.
+/// Valid FLAC magic with malformed STREAMINFO is rejected.
 #[test]
-fn truncated_flac_rejected() {
+fn malformed_flac_streaminfo_rejected() {
     let result = run_scenario(vec![FixtureEntry::File {
         rel_path: "Album/01.flac".into(),
-        kind: FileKind::TruncatedFlac,
+        kind: FileKind::MalformedFlacStreaminfo,
     }]);
     assert!(result.top_level_paths().is_empty());
 }
