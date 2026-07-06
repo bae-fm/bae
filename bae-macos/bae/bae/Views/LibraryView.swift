@@ -145,15 +145,15 @@ extension LibraryView {
 
     private var albumSortControls: some View {
         HStack(spacing: 4) {
-            ForEach(sortCriteria.indices, id: \.self) { index in
+            ForEach($sortCriteria, id: \.field) { $criterion in
+                let field = criterion.field
                 SortCriterionChip(
-                    criterion: $sortCriteria[index],
+                    criterion: $criterion,
                     choosableFields: BridgeSortField.allCases.filter {
-                        $0 == sortCriteria[index].field
-                            || !usedFields.contains($0)
+                        $0 == field || !usedFields.contains($0)
                     },
                     canRemove: sortCriteria.count > 1,
-                    onRemove: { sortCriteria.remove(at: index) },
+                    onRemove: { sortCriteria.removeAll { $0.field == field } },
                 )
             }
             let unused = BridgeSortField.allCases.filter {
