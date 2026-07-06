@@ -888,17 +888,14 @@ impl AppHandle {
         release_id: String,
         target_dir: String,
         selection: crate::types::BridgeExportSelection,
-    ) {
-        // `target_dir` crosses uniffi as a String, so it is always valid UTF-8 and
-        // the core's UTF-8 validation cannot fail here — assert that rather than
-        // route an impossible error back through the (non-throwing) Swift binding.
+    ) -> Result<(), BridgeError> {
         self.runtime
             .block_on(self.services.library_manager().enqueue_export(
                 &release_id,
                 std::path::PathBuf::from(target_dir),
                 crate::bridge_utils::core_export_selection(selection),
             ))
-            .expect("bridge export target_dir is valid UTF-8");
+            .map_err(BridgeError::export)
     }
 
     /// Pause or resume the export queue. The in-flight export finishes; the queue
@@ -2426,6 +2423,8 @@ mod tests {
         WorkSummary,
     };
     use bae_core::db::{DbArtist, DbComposerSummary, DbWork, DbWorkSummary};
+    #[cfg(not(feature = "desktop"))]
+    use bae_core::keys::BaeKeyServiceExt;
     use std::sync::{Arc, Mutex};
 
     /// Records every delivered event so tests can assert on the stream.
@@ -2437,6 +2436,105 @@ mod tests {
         fn on_event(&self, event: crate::types::BridgeUiEvent) {
             self.events.lock().unwrap().push(event);
         }
+    }
+
+    #[cfg(not(feature = "desktop"))]
+    fn fresh_bridge_handle(test_name: &str) -> (super::AppHandle, std::path::PathBuf) {
+        let root = std::env::temp_dir().join(format!("bae-bridge-{test_name}"));
+        match std::fs::remove_dir_all(&root) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => panic!("remove stale test library dir: {error}"),
+        }
+        let library_dir = coven::LibraryDir::new(root.join("library"));
+        std::fs::create_dir_all(&*library_dir).expect("create test library dir");
+        bae_core::config::install_test_keyring();
+
+        let library_id = format!("test-{test_name}");
+        let config = bae_core::config::Config::with_defaults(
+            library_id.clone(),
+            format!("device-{test_name}"),
+            library_dir.clone(),
+            "Test Library".to_string(),
+        );
+        let key_service = bae_core::keys::KeyService::new(library_id.clone());
+        key_service
+            .set_discogs_key("test-discogs-token")
+            .expect("seed test Discogs key");
+        let database = bae_core::db::Database::open(
+            config.to_coven(),
+            Arc::new(coven::SystemClock),
+            coven::KeyService::new(library_id),
+            bae_core::sync::synced_tables(),
+            None,
+        )
+        .expect("open test database");
+        let runtime = tokio::runtime::Runtime::new().expect("create test runtime");
+        let config_handle = Arc::new(bae_core::config::ConfigHandle::new(config));
+        let manager = bae_core::library::LibraryManager::new(
+            database,
+            library_dir,
+            config_handle,
+            key_service,
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::SequentialIdProvider::new(test_name)),
+            runtime.handle().clone(),
+        );
+        let playback = bae_core::playback::PlaybackService::start(
+            manager.clone(),
+            runtime.handle().clone(),
+            50,
+        );
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let services = {
+            let cover_art = bae_core::import::cover_art::CoverArtArchiveClient::new();
+            let import = bae_core::import::ImportService::start(
+                runtime.handle().clone(),
+                manager.clone(),
+                cover_art.clone(),
+            );
+            let identify = bae_core::identify::IdentifyService::start(
+                manager.clone(),
+                runtime.handle().clone(),
+                import.event_sender_for_test(),
+                cover_art,
+            );
+            let extraction = bae_core::signals::ExtractionService::start(
+                runtime.handle().clone(),
+                import.event_sender_for_test(),
+                Arc::new(coven::SystemClock),
+                manager.clone(),
+            );
+            bae_core::library::AppServices::new(manager, playback, import, identify, extraction)
+        };
+        #[cfg(any(target_os = "ios", target_os = "android"))]
+        let services = bae_core::library::AppServices::new(manager, playback);
+        let handle = super::AppHandle {
+            runtime,
+            services,
+            ui_event_bus: bae_core::ui::UiEventBus::new(),
+        };
+
+        (handle, root)
+    }
+
+    #[cfg(not(feature = "desktop"))]
+    #[test]
+    fn enqueue_export_missing_release_does_not_panic() {
+        let (handle, root) = fresh_bridge_handle("enqueue-export-missing-release");
+        let result = handle.enqueue_export(
+            "missing-release".to_string(),
+            root.join("exports").to_string_lossy().into_owned(),
+            crate::types::BridgeExportSelection::Original,
+        );
+
+        assert!(matches!(
+            result,
+            Err(crate::types::BridgeError::Diagnostic {
+                category: crate::types::BridgeErrorCategory::Export,
+                ..
+            })
+        ));
     }
 
     /// A consumer that falls behind the broadcast bus gets `Lagged`, not

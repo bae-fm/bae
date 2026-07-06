@@ -44,6 +44,7 @@ tracing-android = "0.2"
 [dev-dependencies]
 # The validation-reason ↔ catalog cross-check test loads the master catalog.
 bae-loc = { path = "../bae-loc" }
+bae-core = { path = "../bae-core", features = ["test-utils"] }
 
 [features]
 default = []

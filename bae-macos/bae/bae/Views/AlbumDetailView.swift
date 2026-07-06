@@ -417,11 +417,16 @@ extension AlbumDetailView {
         else {
             return
         }
-        exports.enqueueExport(
-            releaseId,
-            target.targetDir,
-            target.selection
-        )
+        do {
+            try exports.enqueueExport(
+                releaseId,
+                target.targetDir,
+                target.selection
+            )
+        }
+        catch {
+            exportError = error.localizedDescription
+        }
     }
 
     private func presentManageConfirmSheet(releaseId: String) {

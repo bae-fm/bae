@@ -66,11 +66,17 @@ final class StorageActionRunner {
             return
         }
         for releaseId in releaseIds {
-            exports.enqueueExport(
-                releaseId,
-                target.targetDir,
-                target.selection
-            )
+            do {
+                try exports.enqueueExport(
+                    releaseId,
+                    target.targetDir,
+                    target.selection
+                )
+            }
+            catch {
+                uiStore.showError(error.localizedDescription)
+                return
+            }
         }
     }
 

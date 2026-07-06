@@ -224,6 +224,11 @@ impl ImportServiceHandle {
             cover_art_archive,
         }
     }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn event_sender_for_test(&self) -> broadcast::Sender<ImportEvent> {
+        self.event_tx.clone()
+    }
 }
 
 pub fn remap_artist_links<T: Clone>(
