@@ -488,10 +488,10 @@ impl LibraryManager {
             })
             .collect();
 
-        let resolved_ids = self.find_or_create_artists(&parsed_artists).await?;
+        let resolved_artists = self.resolve_artists_for_import(&parsed_artists).await?;
         let name_to_id: HashMap<String, String> = name_order
             .iter()
-            .zip(resolved_ids.iter())
+            .zip(resolved_artists.ids.iter())
             .map(|(name, id)| (name.to_lowercase(), id.clone()))
             .collect();
 
@@ -578,6 +578,8 @@ impl LibraryManager {
                 &updated_album,
                 &updated_release,
                 &track_updates,
+                &resolved_artists.inserts,
+                &resolved_artists.external_id_updates,
                 &album_artists,
                 &track_artists,
             )

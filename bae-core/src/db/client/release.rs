@@ -128,15 +128,29 @@ impl Database {
         album: &DbAlbum,
         release: &DbRelease,
         track_updates: &[(String, DbTrack)],
+        artists: &[DbArtist],
+        artist_external_id_updates: &[(String, DbArtist)],
         album_artists: &[DbAlbumArtist],
         track_artists: &[DbTrackArtist],
     ) -> Result<(), DbError> {
-        let (album_id, release_id, album, release, track_updates, album_artists, track_artists) = (
+        let (
+            album_id,
+            release_id,
+            album,
+            release,
+            track_updates,
+            artists,
+            artist_external_id_updates,
+            album_artists,
+            track_artists,
+        ) = (
             album_id.to_string(),
             release_id.to_string(),
             album.clone(),
             release.clone(),
             track_updates.to_vec(),
+            artists.to_vec(),
+            artist_external_id_updates.to_vec(),
             album_artists.to_vec(),
             track_artists.to_vec(),
         );
@@ -146,7 +160,23 @@ impl Database {
             // One HLC stamp for every synced row this edit touches.
             let reg = sql.stamp();
 
-            // 1. Update album.
+            // 1. Insert new artist rows and fill empty source-ID fields on
+            //    existing artists before the album/track links point at them.
+            for artist in &artists {
+                insert_artist_row(tx, artist, &reg)?;
+            }
+            for (artist_id, artist) in &artist_external_id_updates {
+                update_artist_external_ids_row(
+                    tx,
+                    artist_id,
+                    artist.discogs_artist_id.as_deref(),
+                    artist.musicbrainz_artist_id.as_deref(),
+                    artist.sort_name.as_deref(),
+                    &reg,
+                )?;
+            }
+
+            // 2. Update album.
             tx.execute(
                 r#"UPDATE albums SET title = ?, artist_id = ?, year = ?, is_compilation = ?,
                     _updated_at = ? WHERE id = ?"#,
@@ -160,7 +190,7 @@ impl Database {
                 ],
             )?;
 
-            // 2. Update release pressing fields.
+            // 3. Update release pressing fields.
             tx.execute(
                 r#"UPDATE releases SET year = ?, format = ?, label = ?, catalog_number = ?,
                     country = ?, barcode = ?, _updated_at = ? WHERE id = ?"#,
@@ -176,7 +206,7 @@ impl Database {
                 ],
             )?;
 
-            // 3. Update tracks by existing ID.
+            // 4. Update tracks by existing ID.
             for (existing_id, new_track) in &track_updates {
                 tx.execute(
                     r#"UPDATE tracks SET title = ?, side = ?, track_number = ?,
@@ -191,10 +221,10 @@ impl Database {
                 )?;
             }
 
-            // 4. Replace album_artists.
+            // 5. Replace album_artists.
             replace_album_artists(tx, &album_id, &album_artists, &reg, &now)?;
 
-            // 5. Replace track_artists for the affected tracks.
+            // 6. Replace track_artists for the affected tracks.
             let track_ids: Vec<&str> = track_updates.iter().map(|(id, _)| id.as_str()).collect();
             replace_track_artists(tx, &track_ids, &track_artists, &reg, &now)?;
 
@@ -448,7 +478,7 @@ impl Database {
     }
 
     /// All data needed to atomically finalize an import in a single transaction.
-    /// Nothing is in the DB yet (except the import record and artists).
+    /// Nothing is in the DB yet except the import record.
     #[allow(clippy::too_many_arguments)]
     pub async fn finalize_import_atomic(
         &self,
@@ -465,10 +495,13 @@ impl Database {
         track_works: &[DbTrackWork],
         release_artist_roles: &[DbReleaseArtistRole],
         track_artist_roles: &[DbTrackArtistRole],
+        artists: &[DbArtist],
+        artist_external_id_updates: &[(String, DbArtist)],
         files: &[DbFile],
         audio_formats: &[DbAudioFormat],
         audio_segments: &[DbAudioSegment],
         library_image: Option<(&DbLibraryImage, &[u8])>,
+        artist_images: &[(&DbLibraryImage, &[u8])],
         primary_release_id: Option<(&str, &str)>, // (album_id, release_id)
         import_id: &str,
         import_status: ImportOperationStatus,
@@ -499,10 +532,33 @@ impl Database {
         let track_works = track_works.to_vec();
         let release_artist_roles = release_artist_roles.to_vec();
         let track_artist_roles = track_artist_roles.to_vec();
+        let artists = artists.to_vec();
+        let artist_external_id_updates = artist_external_id_updates.to_vec();
         let files = files.to_vec();
         let audio_formats = audio_formats.to_vec();
         let audio_segments = audio_segments.to_vec();
         let library_image = library_image.map(|(image, bytes)| (image.clone(), bytes.to_vec()));
+        let artist_images: Vec<(DbLibraryImage, Vec<u8>)> = artist_images
+            .iter()
+            .map(|(image, bytes)| ((*image).clone(), (*bytes).to_vec()))
+            .collect();
+        let image_blobs: Vec<(String, String, Vec<u8>)> = library_image
+            .iter()
+            .map(|(image, bytes)| {
+                (
+                    image.image_type.namespace().to_string(),
+                    image.id.clone(),
+                    bytes.clone(),
+                )
+            })
+            .chain(artist_images.iter().map(|(image, bytes)| {
+                (
+                    image.image_type.namespace().to_string(),
+                    image.id.clone(),
+                    bytes.clone(),
+                )
+            }))
+            .collect();
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let import_id = import_id.to_string();
         let import_status = import_status.as_str().to_string();
@@ -518,12 +574,8 @@ impl Database {
         self.inner
             .handle
             .write(move |w| {
-                if let Some((image, bytes)) = &library_image {
-                    w.put_blob(
-                        image.image_type.namespace(),
-                        image.id.clone(),
-                        bytes.clone(),
-                    );
+                for (namespace, id, bytes) in image_blobs {
+                    w.put_blob(namespace, id, bytes);
                 }
 
                 w.sql(move |sql| {
@@ -578,7 +630,24 @@ impl Database {
                             });
                     }
 
-                    // 1. Insert album (if new)
+                    // 1. Insert new artist rows and fill empty source-ID fields
+                    //    on existing artists. Album/release/track links below
+                    //    reference the resolved ids.
+                    for artist in &artists {
+                        insert_artist_row(tx, artist, &reg)?;
+                    }
+                    for (artist_id, artist) in &artist_external_id_updates {
+                        update_artist_external_ids_row(
+                            tx,
+                            artist_id,
+                            artist.discogs_artist_id.as_deref(),
+                            artist.musicbrainz_artist_id.as_deref(),
+                            artist.sort_name.as_deref(),
+                            &reg,
+                        )?;
+                    }
+
+                    // 2. Insert album (if new)
                     if let Some(album) = &album {
                         insert_album_row(tx, album, &reg)?;
 
@@ -588,10 +657,10 @@ impl Database {
                         }
                     }
 
-                    // 2. Insert release
+                    // 3. Insert release
                     insert_release_row(tx, &release, &reg)?;
 
-                    // 2b. Insert per-source identity rows. Empty for Unknown
+                    // 3b. Insert per-source identity rows. Empty for Unknown
                     //     imports. `release_identities` is uniquely keyed on
                     //     `(release_id, source)`, so a release never carries two
                     //     rows for the same source.
@@ -599,7 +668,7 @@ impl Database {
                         insert_release_identity_row(tx, &release.id, identity, &reg, &now)?;
                     }
 
-                    // 3. Insert globally identified works before their links.
+                    // 4. Insert globally identified works before their links.
                     for work in &works {
                         insert_work_row(tx, work, &reg)?;
                     }
@@ -616,14 +685,14 @@ impl Database {
                         insert_release_artist_role_row(tx, role, &reg)?;
                     }
 
-                    // 4. Insert tracks. DbTracks live inside `tracks_to_files`;
+                    // 5. Insert tracks. DbTracks live inside `tracks_to_files`;
                     //    their `duration_ms` was populated by the mapper from
                     //    the CUE sheet or a standalone-file probe.
                     for track in &tracks {
                         insert_track_row(tx, track, &reg)?;
                     }
 
-                    // 5. Insert track artists and work/role links.
+                    // 6. Insert track artists and work/role links.
                     for ta in &track_artists {
                         insert_track_artist_row(tx, ta, &reg)?;
                     }
@@ -636,12 +705,12 @@ impl Database {
                         insert_track_artist_role_row(tx, role, &reg)?;
                     }
 
-                    // 6. Insert release metadata.
+                    // 7. Insert release metadata.
                     for meta in &metadata {
                         insert_release_metadata_row(tx, meta)?;
                     }
 
-                    // 7. Insert files, and register each as a coven
+                    // 8. Insert files, and register each as a coven
                     //    user-provided external ref (the user's own file in
                     //    place). Every import lands Local — the files ARE the
                     //    user's files at `local_path`, tracked in coven's
@@ -677,7 +746,7 @@ impl Database {
                         )?;
                     }
 
-                    // 8. Insert audio formats and their ordered file windows.
+                    // 9. Insert audio formats and their ordered file windows.
                     for af in &audio_formats {
                         insert_audio_format_row(tx, af, &reg)?;
                     }
@@ -685,7 +754,7 @@ impl Database {
                         insert_audio_segment_row(tx, segment, &reg)?;
                     }
 
-                    // 9. Write the cover row and its host-provided blob in one
+                    // 10. Write the cover row and its host-provided blob in one
                     //    coven write. On a browsable home its readable cloud_path
                     //    (`{album}/{release}/cover.{ext}`) is computed now,
                     //    ready when the gate flips; an opaque home leaves it
@@ -698,14 +767,21 @@ impl Database {
                         } else {
                             None
                         };
-                        let image = DbLibraryImage {
-                            cloud_path,
-                            ..image.clone()
-                        };
-                        upsert_library_image_row(tx, &image, &reg)?;
+                        upsert_library_image_row_with_cloud_path(tx, image, cloud_path, &reg)?;
                     }
 
-                    // 10. Set album primary_release_id
+                    // 11. Write prepared artist image rows. Their blobs were
+                    //     added to the same coven batch above.
+                    for (image, _) in &artist_images {
+                        let cloud_path = artist_image_cloud_path_for_storage(
+                            storage,
+                            &image.id,
+                            &image.content_type,
+                        );
+                        upsert_library_image_row_with_cloud_path(tx, image, cloud_path, &reg)?;
+                    }
+
+                    // 12. Set album primary_release_id
                     if let Some((album_id, release_id)) = &primary_release_id {
                         tx.execute(
                             "UPDATE albums SET primary_release_id = ?, _updated_at = ? WHERE id = ?",
@@ -713,7 +789,7 @@ impl Database {
                         )?;
                     }
 
-                    // 11. Link import to release and mark complete
+                    // 13. Link import to release and mark complete
                     tx.execute(
                         "UPDATE imports SET release_id = ?, status = ?, updated_at = ? WHERE id = ?",
                         params![release.id, import_status, now_ts, import_id,],

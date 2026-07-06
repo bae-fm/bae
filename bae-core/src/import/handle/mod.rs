@@ -255,7 +255,7 @@ pub fn remap_artist_links<T: Clone>(
 /// Remap track artist IDs from the parsed (temporary) artist IDs to the actual DB IDs.
 ///
 /// The ParsedAlbum's track_artists reference artist IDs generated during parsing, but
-/// find_or_create_artists may have resolved them to existing DB artists. This function
+/// reconcile may have resolved them to existing DB artists. This function
 /// applies the same ID mapping used for album_artists.
 pub fn remap_track_artists(
     track_artists: &[crate::db::DbTrackArtist],
@@ -291,7 +291,8 @@ pub(crate) async fn fetch_artist_images(
     discogs_client: &DiscogsClient,
     parsed_artists: &[crate::db::DbArtist],
     artist_id_map: &HashMap<String, String>,
-) {
+) -> Vec<(crate::db::DbLibraryImage, Vec<u8>)> {
+    let mut images = Vec::new();
     for parsed_artist in parsed_artists {
         let actual_id = match artist_id_map.get(&parsed_artist.id) {
             Some(id) => id,
@@ -317,14 +318,18 @@ pub(crate) async fn fetch_artist_images(
             }
         }
 
-        crate::import::artist_image::fetch_and_save_artist_image(
+        if let Some(image) = crate::import::artist_image::fetch_artist_image(
             actual_id,
             &discogs_artist_id,
             discogs_client,
             library_manager,
         )
-        .await;
+        .await
+        {
+            images.push(image);
+        }
     }
+    images
 }
 
 /// Project a parsed album (mapper output) into the editor's

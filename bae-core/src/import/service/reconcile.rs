@@ -147,13 +147,13 @@ impl ImportService {
             .map_err(|e| format!("Failed to create import record: {}", e))?;
 
         let resolved = library_manager
-            .find_or_create_artists(&artists)
+            .resolve_artists_for_import(&artists)
             .await
             .map_err(|e| format!("Failed to resolve artists: {e}"))?;
 
         let artist_id_map: HashMap<String, String> = artists
             .iter()
-            .zip(resolved.iter())
+            .zip(resolved.ids.iter())
             .map(|(a, id)| (a.id.clone(), id.clone()))
             .collect();
 
@@ -199,9 +199,14 @@ impl ImportService {
         let discogs_client = library_manager
             .discogs_client()
             .map_err(|e| format!("Failed to read Discogs key: {e}"))?;
-        if let Some(ref discogs_client) = discogs_client {
-            fetch_artist_images(library_manager, discogs_client, &artists, &artist_id_map).await;
-        }
+        let artist_images = if let Some(ref discogs_client) = discogs_client {
+            fetch_artist_images(library_manager, discogs_client, &artists, &artist_id_map).await
+        } else {
+            Vec::new()
+        };
+
+        let artist_inserts = resolved.inserts;
+        let artist_external_id_updates = resolved.external_id_updates;
 
         Ok(PreparedMetadata {
             db_album,
@@ -220,6 +225,9 @@ impl ImportService {
             },
             remapped_release_artist_roles,
             remapped_track_artist_roles,
+            artists: artist_inserts,
+            artist_external_id_updates,
+            artist_images,
             identities,
             album_title,
             artist_name,

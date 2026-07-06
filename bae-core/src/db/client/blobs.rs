@@ -169,10 +169,7 @@ impl Database {
         artist_id: &str,
         content_type: &ContentType,
     ) -> Option<String> {
-        if !storage.is_browsable() {
-            return None;
-        }
-        Some(resolve_artist_cloud_path(artist_id, content_type))
+        artist_image_cloud_path_for_storage(storage, artist_id, content_type)
     }
 
     // ---- Local blob refs ----

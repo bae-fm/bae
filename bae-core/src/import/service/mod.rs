@@ -54,6 +54,9 @@ struct PreparedMetadata {
     work_graph: ParsedWorkGraph,
     remapped_release_artist_roles: Vec<DbReleaseArtistRole>,
     remapped_track_artist_roles: Vec<DbTrackArtistRole>,
+    artists: Vec<crate::db::DbArtist>,
+    artist_external_id_updates: Vec<(String, crate::db::DbArtist)>,
+    artist_images: Vec<(crate::db::DbLibraryImage, Vec<u8>)>,
     /// Per-source identity rows for the release. Empty for Unknown.
     /// Commit writes one `release_identities` row per element.
     identities: Vec<crate::import::types::ReleaseIdentity>,
@@ -801,6 +804,9 @@ impl ImportService {
             work_graph,
             remapped_release_artist_roles,
             remapped_track_artist_roles,
+            artists,
+            artist_external_id_updates,
+            artist_images,
             identities,
             remote_cover_image,
             ..
@@ -993,6 +999,10 @@ impl ImportService {
         let library_image = cover_winner
             .as_ref()
             .map(|(image, bytes)| (image, bytes.as_slice()));
+        let artist_images: Vec<_> = artist_images
+            .iter()
+            .map(|(image, bytes)| (image, bytes.as_slice()))
+            .collect();
         let cover_rel_id = Some((album_id, db_release.id.as_str()));
 
         self.emit_phase_progress(
@@ -1023,10 +1033,13 @@ impl ImportService {
                 &work_graph.track_works,
                 remapped_release_artist_roles,
                 remapped_track_artist_roles,
+                artists,
+                artist_external_id_updates,
                 &db_files,
                 &built_audio.audio_formats,
                 &built_audio.audio_segments,
                 library_image,
+                &artist_images,
                 cover_rel_id,
                 import_id,
                 finalized_import_status,
@@ -1176,7 +1189,7 @@ pub(crate) fn apply_identity_choice(
 ///
 /// Rebuilds resolve names against the existing `artists` vec, inserting
 /// fresh `DbArtist` rows for previously-unseen names; the import
-/// pipeline's `find_or_create_artists` canonicalizes them at DB-write
+/// pipeline's import-artist resolver canonicalizes them at DB-write
 /// time. Inserted rows leave `musicbrainz_artist_id` /
 /// `discogs_artist_id` as `None` — the user-introduced name has no
 /// source binding to record.
@@ -1211,8 +1224,8 @@ fn apply_user_edit_to_seed(
 
     // Helper: resolve an artist name to an id, inserting a fresh
     // (source-id-free) `DbArtist` row when the name doesn't match an
-    // existing one. Lookups are case-insensitive — the DB layer's
-    // `find_or_create_artists` matches the same way.
+    // existing one. Lookups are case-insensitive — the import-artist
+    // resolver matches the same way.
     let ensure_artist = |artists: &mut Vec<DbArtist>, name: &str| -> String {
         if let Some(existing) = artists.iter().find(|a| a.name.eq_ignore_ascii_case(name)) {
             return existing.id.clone();
@@ -1343,7 +1356,7 @@ fn apply_user_edit_to_seed(
 }
 
 /// Case-insensitive equality on lists of artist names. Matches the rule
-/// `find_or_create_artists` uses for canonicalization, so two name lists
+/// the import-artist resolver uses for canonicalization, so two name lists
 /// the DB would treat as identical compare equal here.
 fn names_equal(a: &[String], b: &[String]) -> bool {
     a.len() == b.len()

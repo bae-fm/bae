@@ -33,6 +33,16 @@ fn image_table(image_type: &LibraryImageType) -> &'static str {
     }
 }
 
+fn artist_image_cloud_path_for_storage(
+    storage: crate::config::HomeStorage,
+    artist_id: &str,
+    content_type: &ContentType,
+) -> Option<String> {
+    storage
+        .is_browsable()
+        .then(|| resolve_artist_cloud_path(artist_id, content_type))
+}
+
 fn register_external_blob_on(
     conn: &Connection,
     blob_id: &str,
@@ -1213,6 +1223,64 @@ fn row_to_release_storage_summary(row: &Row) -> coven::rusqlite::Result<DbReleas
 
 // ─── Synced-row INSERT helpers (run inside `db.call`, against `&Connection`
 // or a `&Transaction`, both of which deref to `&Connection`). ───────────────
+
+fn insert_artist_row(conn: &Connection, artist: &DbArtist, reg: &str) -> Result<(), DbError> {
+    conn.execute(
+        r#"
+        INSERT INTO artists (
+            id, name, sort_name, discogs_artist_id,
+            musicbrainz_artist_id, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        "#,
+        params![
+            artist.id,
+            artist.name,
+            artist.sort_name,
+            artist.discogs_artist_id,
+            artist.musicbrainz_artist_id,
+            reg,
+            artist.created_at.to_rfc3339(),
+        ],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
+fn upsert_library_image_row_with_cloud_path(
+    conn: &Connection,
+    image: &DbLibraryImage,
+    cloud_path: Option<String>,
+    reg: &str,
+) -> Result<(), DbError> {
+    let image = DbLibraryImage {
+        cloud_path,
+        ..image.clone()
+    };
+    upsert_library_image_row(conn, &image, reg)
+}
+
+fn update_artist_external_ids_row(
+    conn: &Connection,
+    id: &str,
+    discogs_artist_id: Option<&str>,
+    musicbrainz_artist_id: Option<&str>,
+    sort_name: Option<&str>,
+    reg: &str,
+) -> Result<(), DbError> {
+    conn.execute(
+        r#"
+        UPDATE artists SET
+            discogs_artist_id = COALESCE(discogs_artist_id, ?),
+            musicbrainz_artist_id = COALESCE(musicbrainz_artist_id, ?),
+            sort_name = COALESCE(sort_name, ?),
+            _updated_at = ?
+        WHERE id = ?
+        "#,
+        params![discogs_artist_id, musicbrainz_artist_id, sort_name, reg, id,],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
 
 fn insert_album_row(conn: &Connection, album: &DbAlbum, reg: &str) -> Result<(), DbError> {
     conn.execute(

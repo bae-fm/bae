@@ -2,6 +2,13 @@
 
 use super::*;
 
+#[derive(Debug, Clone)]
+pub(crate) struct ResolvedImportArtists {
+    pub ids: Vec<String>,
+    pub inserts: Vec<DbArtist>,
+    pub external_id_updates: Vec<(String, DbArtist)>,
+}
+
 impl LibraryManager {
     /// Insert an artist
     pub async fn insert_artist(&self, artist: &DbArtist) -> Result<(), LibraryError> {
@@ -86,42 +93,67 @@ impl LibraryManager {
         Ok(self.database.find_artist_by_id(artist_id).await?)
     }
 
-    /// Resolve each parsed artist to an existing DB row or insert a new one.
+    /// Resolve each parsed artist to an existing DB row or a row to insert at
+    /// finalize.
     ///
     /// Returns the DB artist ID for each input in the same order, so callers can
     /// zip with `artists` to build a parsed-ID -> DB-ID map.
     ///
     /// Lookup chain: Various Artists alias (cross-source), `discogs_artist_id`,
-    /// `musicbrainz_artist_id`, name (case-insensitive) with source-ID conflict
-    /// check, then insert. On a match, any new source IDs are accumulated onto
-    /// the existing row via COALESCE.
-    pub async fn find_or_create_artists(
+    /// `musicbrainz_artist_id`, name (case-insensitive) with source-ID
+    /// conflict check, then deferred insert. On a match, any new source IDs are
+    /// carried as a deferred COALESCE update.
+    pub(crate) async fn resolve_artists_for_import(
         &self,
         artists: &[DbArtist],
-    ) -> Result<Vec<String>, LibraryError> {
-        let mut resolved = Vec::with_capacity(artists.len());
+    ) -> Result<ResolvedImportArtists, LibraryError> {
+        let mut ids = Vec::with_capacity(artists.len());
+        let mut inserts = Vec::new();
+        let mut external_id_updates = Vec::new();
 
         for artist in artists {
             let existing = self.find_existing_artist_for_import(artist).await?;
             let actual_id = if let Some(existing_artist) = existing {
-                self.database
-                    .update_artist_external_ids(
-                        &existing_artist.id,
-                        artist.discogs_artist_id.as_deref(),
-                        artist.musicbrainz_artist_id.as_deref(),
-                        artist.sort_name.as_deref(),
-                    )
-                    .await?;
-                existing_artist.id
+                let id = existing_artist.id;
+                external_id_updates.push((id.clone(), artist.clone()));
+                id
             } else {
-                self.database.insert_artist(artist).await?;
+                inserts.push(artist.clone());
                 artist.id.clone()
             };
 
-            resolved.push(actual_id);
+            ids.push(actual_id);
         }
 
-        Ok(resolved)
+        Ok(ResolvedImportArtists {
+            ids,
+            inserts,
+            external_id_updates,
+        })
+    }
+
+    /// Resolve each parsed artist to an existing DB row or insert it
+    /// immediately. Used by metadata edits, whose DB write path updates an
+    /// already-finalized release.
+    pub async fn find_or_create_artists(
+        &self,
+        artists: &[DbArtist],
+    ) -> Result<Vec<String>, LibraryError> {
+        let resolved = self.resolve_artists_for_import(artists).await?;
+        for artist in &resolved.inserts {
+            self.database.insert_artist(artist).await?;
+        }
+        for (artist_id, artist) in &resolved.external_id_updates {
+            self.database
+                .update_artist_external_ids(
+                    artist_id,
+                    artist.discogs_artist_id.as_deref(),
+                    artist.musicbrainz_artist_id.as_deref(),
+                    artist.sort_name.as_deref(),
+                )
+                .await?;
+        }
+        Ok(resolved.ids)
     }
 
     async fn find_existing_artist_for_import(

@@ -10,7 +10,7 @@ impl LibraryManager {
     }
 
     /// Atomically insert all import data in a single transaction.
-    /// Nothing is in the DB yet (except the import record and artists).
+    /// Nothing is in the DB yet except the import record.
     /// The release either exists complete or doesn't exist at all.
     ///
     /// Track rows are read straight off `tracks_to_files` — each `TrackFile`
@@ -32,10 +32,13 @@ impl LibraryManager {
         track_works: &[crate::db::DbTrackWork],
         release_artist_roles: &[crate::db::DbReleaseArtistRole],
         track_artist_roles: &[crate::db::DbTrackArtistRole],
+        artists: &[DbArtist],
+        artist_external_id_updates: &[(String, DbArtist)],
         files: &[DbFile],
         audio_formats: &[DbAudioFormat],
         audio_segments: &[DbAudioSegment],
         library_image: Option<(&DbLibraryImage, &[u8])>,
+        artist_images: &[(&DbLibraryImage, &[u8])],
         primary_release_id: Option<(&str, &str)>,
         import_id: &str,
         import_status: ImportOperationStatus,
@@ -66,10 +69,13 @@ impl LibraryManager {
                 track_works,
                 release_artist_roles,
                 track_artist_roles,
+                artists,
+                artist_external_id_updates,
                 files,
                 audio_formats,
                 audio_segments,
                 library_image,
+                artist_images,
                 primary_release_id,
                 import_id,
                 import_status,

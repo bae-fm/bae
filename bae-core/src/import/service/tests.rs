@@ -218,6 +218,67 @@ async fn selected_local_cover_path_must_match_discovered_file() {
     );
 }
 
+#[tokio::test]
+async fn failed_import_before_finalize_leaves_only_import_audit_row() {
+    let (service, tmp) = setup_import_service().await;
+    let folder = tmp.path().join("release");
+    std::fs::create_dir(&folder).unwrap();
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac"),
+        folder.join("01.flac"),
+    )
+    .unwrap();
+
+    let import_id = "import-1".to_string();
+    service
+        .do_import(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key: folder.to_string_lossy().into_owned(),
+            folder,
+            selected_cover: Some(CoverSelection::Remote(
+                "http://127.0.0.1:9/missing.jpg".to_string(),
+                MetadataSource::MusicBrainz,
+            )),
+            storage_mode: StorageMode::Local,
+            pin: false,
+            identity_choice: crate::import::IdentityChoice::Unknown,
+            user_edit: None,
+        })
+        .await;
+
+    let database = service.library_manager.database_for_test();
+    let (artist_count, artist_image_count, import_status) = database
+        .handle()
+        .sql({
+            let import_id = import_id.clone();
+            move |sql| {
+                let conn = sql.connection();
+                let artist_count = conn.query_row("SELECT COUNT(*) FROM artists", [], |row| {
+                    row.get::<_, i64>(0)
+                })?;
+                let artist_image_count =
+                    conn.query_row("SELECT COUNT(*) FROM artist_images", [], |row| {
+                        row.get::<_, i64>(0)
+                    })?;
+                let import_status: String = conn.query_row(
+                    "SELECT status FROM imports WHERE id = ?",
+                    [&import_id],
+                    |row| row.get(0),
+                )?;
+                Ok::<_, coven::CovenError>((artist_count, artist_image_count, import_status))
+            }
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(artist_count, 0);
+    assert_eq!(artist_image_count, 0);
+    assert_eq!(
+        import_status,
+        crate::db::ImportOperationStatus::Failed.as_str()
+    );
+}
+
 #[cfg(unix)]
 #[tokio::test]
 async fn unreadable_selected_cover_is_an_error() {
@@ -568,7 +629,7 @@ fn user_edit_overrides_seeded_pressing_fields() {
     assert_eq!(tracks[0].title, "Edited Track");
 
     // The new album artist gets a placeholder DbArtist row so the
-    // import pipeline can canonicalize via find_or_create_artists.
+    // import pipeline can canonicalize it at DB-write time.
     assert!(artists.iter().any(|a| a.name == "Edited Artist"));
     assert_eq!(
         album.artist_id,

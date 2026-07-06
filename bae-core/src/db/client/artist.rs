@@ -6,27 +6,7 @@ impl Database {
         let artist = artist.clone();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = sql.connection();
-            conn.execute(
-                r#"
-                    INSERT INTO artists (
-                        id, name, sort_name, discogs_artist_id,
-                        musicbrainz_artist_id,
-                        _updated_at, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                    "#,
-                params![
-                    artist.id,
-                    artist.name,
-                    artist.sort_name,
-                    artist.discogs_artist_id,
-                    artist.musicbrainz_artist_id,
-                    reg,
-                    artist.created_at.to_rfc3339(),
-                ],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
+            insert_artist_row(sql.connection(), &artist, &reg)
         })
         .await
     }
@@ -93,20 +73,14 @@ impl Database {
         );
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = sql.connection();
-            conn.execute(
-                r#"
-                    UPDATE artists SET
-                        discogs_artist_id = COALESCE(discogs_artist_id, ?),
-                        musicbrainz_artist_id = COALESCE(musicbrainz_artist_id, ?),
-                        sort_name = COALESCE(sort_name, ?),
-                        _updated_at = ?
-                    WHERE id = ?
-                    "#,
-                params![discogs_id, mb_id, sort_name, reg, id],
+            update_artist_external_ids_row(
+                sql.connection(),
+                &id,
+                discogs_id.as_deref(),
+                mb_id.as_deref(),
+                sort_name.as_deref(),
+                &reg,
             )
-            .map(|_| ())
-            .map_err(DbError::from)
         })
         .await
     }
