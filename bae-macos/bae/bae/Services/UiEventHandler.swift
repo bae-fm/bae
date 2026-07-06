@@ -1,8 +1,79 @@
 import Foundation
+import os.log
+
+private let logger = Logger.bae("UiEventHandler")
 
 /// Receives UI events from core via the unified event stream and
 /// dispatches them to the reducer on the main actor.
 final class UiEventHandler: UiEventCallback, @unchecked Sendable {
+    private let eventContinuation: AsyncStream<BridgeUiEvent>.Continuation
+    private let eventDeliveryTask: Task<Void, Never>
+
+    init(
+        playbackStore: PlaybackStore,
+        configStore: ConfigStore,
+        importStore: ImportStore,
+        libraryStore: LibraryStore,
+        projectionRegistry: ProjectionRegistry,
+        appService: AppService,
+        uiStore: UiStore,
+        outboxStore: OutboxStore,
+        downloadStore: DownloadStore,
+        exportStore: ExportStore
+    ) {
+        let eventStream = AsyncStream.makeStream(
+            of: BridgeUiEvent.self,
+            bufferingPolicy: .unbounded
+        )
+        let deliveryTarget = UiEventDeliveryTarget(
+            playbackStore: playbackStore,
+            configStore: configStore,
+            importStore: importStore,
+            libraryStore: libraryStore,
+            projectionRegistry: projectionRegistry,
+            appService: appService,
+            uiStore: uiStore,
+            outboxStore: outboxStore,
+            downloadStore: downloadStore,
+            exportStore: exportStore
+        )
+        self.eventContinuation = eventStream.continuation
+        self.eventDeliveryTask = Task { @MainActor in
+            for await event in eventStream.stream {
+                deliveryTarget.reduce(event)
+            }
+        }
+    }
+
+    func onEvent(event: BridgeUiEvent) {
+        switch eventContinuation.yield(event) {
+        case .enqueued:
+            break
+
+        case .dropped(let event):
+            logger.warning(
+                "Dropped UI event because the delivery stream buffer dropped it: \(String(describing: event))"
+            )
+
+        case .terminated:
+            logger.warning(
+                "Dropped UI event because the delivery stream has terminated: \(String(describing: event))"
+            )
+
+        @unknown default:
+            logger.warning(
+                "Dropped UI event because the delivery stream returned an unknown result: \(String(describing: event))"
+            )
+        }
+    }
+
+    deinit {
+        eventContinuation.finish()
+        eventDeliveryTask.cancel()
+    }
+}
+
+private final class UiEventDeliveryTarget: @unchecked Sendable {
     private let playbackStore: PlaybackStore
     private let configStore: ConfigStore
     private let importStore: ImportStore
@@ -45,33 +116,28 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
         self.exportStore = exportStore
     }
 
-    func onEvent(event: BridgeUiEvent) {
-        // The library was torn down (closed/switched) while an event was in
-        // flight; the weak `appService` is gone, so there's nothing to update.
-        guard let appService else { return }
-        let playbackStore = playbackStore
-        let configStore = configStore
-        let importStore = importStore
-        let libraryStore = libraryStore
-        let projectionRegistry = projectionRegistry
-        let uiStore = uiStore
-        let outboxStore = outboxStore
-        let downloadStore = downloadStore
-        let exportStore = exportStore
-        Task { @MainActor in
-            let context = ReducerContext(
-                playbackStore: playbackStore,
-                configStore: configStore,
-                importStore: importStore,
-                libraryStore: libraryStore,
-                projectionRegistry: projectionRegistry,
-                appService: appService,
-                uiStore: uiStore,
-                outboxStore: outboxStore,
-                downloadStore: downloadStore,
-                exportStore: exportStore
+    @MainActor
+    func reduce(_ event: BridgeUiEvent) {
+        // The library was torn down (closed/switched) while events were queued;
+        // the weak `appService` is gone, so this handler has no live target.
+        guard let appService else {
+            logger.warning(
+                "Dropped UI event because the library event target was deallocated: \(String(describing: event))"
             )
-            UiEventReducer.reduce(event, into: context)
+            return
         }
+        let context = ReducerContext(
+            playbackStore: playbackStore,
+            configStore: configStore,
+            importStore: importStore,
+            libraryStore: libraryStore,
+            projectionRegistry: projectionRegistry,
+            appService: appService,
+            uiStore: uiStore,
+            outboxStore: outboxStore,
+            downloadStore: downloadStore,
+            exportStore: exportStore
+        )
+        UiEventReducer.reduce(event, into: context)
     }
 }
