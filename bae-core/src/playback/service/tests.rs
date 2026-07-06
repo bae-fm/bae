@@ -42,6 +42,30 @@ fn test_prepared_track(
     }
 }
 
+fn test_resolved_track_audio(
+    track_id: &str,
+    sample_rate: u32,
+    channels: u32,
+) -> ResolvedTrackAudio {
+    ResolvedTrackAudio {
+        track_id: track_id.to_string(),
+        release_id: "release-id".to_string(),
+        segments: vec![],
+        duration_ms: Some(1000),
+        pregap_ms: None,
+        generated_pregap_ms: None,
+        pregap_samples: None,
+        generated_pregap_samples: None,
+        sample_rate,
+        channels,
+        content_type: crate::util::content_type::ContentType::Flac,
+        track_loudness_lufs: None,
+        track_peak_linear: None,
+        album_loudness_lufs: None,
+        album_peak_linear: None,
+    }
+}
+
 fn finished_decoder_handle() -> std::thread::JoinHandle<()> {
     std::thread::spawn(|| {})
 }
@@ -132,6 +156,30 @@ fn track_start_position_cases() {
         TrackStart::Position(Duration::from_millis(42_000)).position(Some(3000)),
         Duration::from_millis(42_000)
     );
+}
+
+#[test]
+fn resolved_audio_format_rejects_zero_channels() {
+    let resolved = test_resolved_track_audio("track-id", 44_100, 0);
+
+    let error = ensure_resolved_audio_format("track-id", &resolved)
+        .expect_err("zero channels should be rejected");
+
+    assert!(error
+        .to_string()
+        .contains("track track-id has unusable audio format"));
+}
+
+#[test]
+fn resolved_audio_format_rejects_zero_sample_rate() {
+    let resolved = test_resolved_track_audio("track-id", 0, 2);
+
+    let error = ensure_resolved_audio_format("track-id", &resolved)
+        .expect_err("zero sample rate should be rejected");
+
+    assert!(error
+        .to_string()
+        .contains("track track-id has unusable audio format"));
 }
 
 #[test]

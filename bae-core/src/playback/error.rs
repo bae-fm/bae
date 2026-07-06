@@ -18,6 +18,9 @@ pub enum PlaybackError {
     /// Async task panicked or was cancelled
     #[error("Task failed: {0}")]
     TaskFailed(String),
+    /// Internal playback invariant failed
+    #[error("Internal playback error: {0}")]
+    Internal(String),
     /// A remote track has no local copy and sync is disconnected, so the
     /// audio can't be fetched. The user needs to reconnect cloud sync.
     #[error("Sync is disconnected — reconnect to play this release")]
@@ -55,6 +58,9 @@ impl PlaybackError {
     }
     pub fn task(e: impl std::fmt::Display) -> Self {
         Self::TaskFailed(e.to_string())
+    }
+    pub fn internal(msg: impl Into<String>) -> Self {
+        Self::Internal(msg.into())
     }
     pub fn io(msg: impl Into<String>) -> Self {
         Self::Io(std::io::Error::other(msg.into()))

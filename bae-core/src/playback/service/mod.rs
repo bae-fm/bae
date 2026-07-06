@@ -684,6 +684,19 @@ fn finalize_playback_track(
     }
 }
 
+fn ensure_resolved_audio_format(
+    track_id: &str,
+    resolved: &ResolvedTrackAudio,
+) -> Result<(), PlaybackError> {
+    if resolved.sample_rate == 0 || resolved.channels == 0 {
+        return Err(PlaybackError::internal(format!(
+            "track {track_id} has unusable audio format: sample_rate={}, channels={}",
+            resolved.sample_rate, resolved.channels
+        )));
+    }
+    Ok(())
+}
+
 async fn prepare_track_for_playback(
     library_manager: &LibraryManager,
     track_id: &str,
@@ -695,6 +708,7 @@ async fn prepare_track_for_playback(
         .resolve_track_audio_and_info(track_id)
         .await
         .map_err(PlaybackError::database)?;
+    ensure_resolved_audio_format(track_id, &resolved)?;
 
     let mut prepared_segments = Vec::with_capacity(resolved.segments.len());
     for segment in &resolved.segments {

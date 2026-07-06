@@ -32,6 +32,28 @@ fn admitted_audio_content_type(content_type: &ContentType) -> bool {
     )
 }
 
+fn ensure_probe_audio_format(
+    path: &Path,
+    probe: &crate::audio_codec::ProbeResult,
+) -> Result<(), String> {
+    if probe.sample_rate == 0 || probe.channels == 0 {
+        return Err(format!(
+            "unusable audio format in {}: sample_rate={}, channels={}",
+            path.display(),
+            probe.sample_rate,
+            probe.channels
+        ));
+    }
+    if !admitted_audio_content_type(&probe.content_type) {
+        return Err(format!(
+            "Unsupported audio codec {} in {}",
+            probe.content_type.display_name(),
+            path.display()
+        ));
+    }
+    Ok(())
+}
+
 /// Resolve the probe-verified `ContentType` for a discovered file.
 ///
 /// Audio files are probed (only the decoder knows which codec the container
@@ -53,13 +75,7 @@ pub(super) fn resolve_file_content_type(path: &Path) -> Result<ContentType, Stri
             .ok_or_else(|| format!("Invalid path: {}", path.display()))?;
         let probe = crate::audio_codec::probe_audio_from_path(path_str)
             .ok_or_else(|| format!("Failed to probe audio file: {}", path.display()))?;
-        if !admitted_audio_content_type(&probe.content_type) {
-            return Err(format!(
-                "Unsupported audio codec {} in {}",
-                probe.content_type.display_name(),
-                path.display()
-            ));
-        }
+        ensure_probe_audio_format(path, &probe)?;
         return Ok(probe.content_type);
     }
 
@@ -126,8 +142,12 @@ fn cue_backed_audio_format(
     now: chrono::DateTime<chrono::Utc>,
 ) -> Result<DbAudioFormat, String> {
     let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
+    let cue_path = cue_file_path(cue_pair, &cue_track.file_reference)?;
 
-    let fmt = cue_analysis_format(cue_file_analysis(cue_pair, &cue_track.file_reference)?);
+    let fmt = cue_analysis_format(
+        cue_file_analysis(cue_pair, &cue_track.file_reference)?,
+        cue_path,
+    )?;
     let audio_pregap_ms = cue_track
         .pregap_duration_ms()
         .filter(|&ms| ms > 0)
@@ -173,13 +193,7 @@ fn standalone_probed_audio_format(
         .ok_or_else(|| format!("Invalid path: {}", file_path.display()))?;
     let probe = crate::audio_codec::probe_audio_from_path(path_str)
         .ok_or_else(|| format!("Failed to probe audio file: {}", file_path.display()))?;
-    if !admitted_audio_content_type(&probe.content_type) {
-        return Err(format!(
-            "Unsupported audio codec {} in {}",
-            probe.content_type.display_name(),
-            file_path.display()
-        ));
-    }
+    ensure_probe_audio_format(file_path, &probe)?;
 
     // A per-track file is its own whole-file source; the sample window lives in
     // its `audio_format_segments` row.
@@ -204,14 +218,18 @@ struct CueAnalysisFormat {
     channels: u32,
 }
 
-fn cue_analysis_format(analysis: &CueAudioAnalysis) -> CueAnalysisFormat {
+fn cue_analysis_format(
+    analysis: &CueAudioAnalysis,
+    path: &Path,
+) -> Result<CueAnalysisFormat, String> {
     let probe = &analysis.probe;
-    CueAnalysisFormat {
+    ensure_probe_audio_format(path, probe)?;
+    Ok(CueAnalysisFormat {
         content_type: probe.content_type.clone(),
         sample_rate: probe.sample_rate,
         bits_per_sample: probe.bits_per_sample.map(|b| b as i64),
         channels: probe.channels,
-    }
+    })
 }
 
 /// Byte each CUE track's audio *starts* on within the shared file: the byte the
@@ -235,7 +253,13 @@ fn cue_file_landing_bytes(
         .audio_files
         .iter()
         .find(|file| file.path == file_path)?;
-    let sample_rate = cue_analysis_format(&analysis.analysis).sample_rate;
+    let sample_rate = match cue_analysis_format(&analysis.analysis, file_path) {
+        Ok(fmt) => fmt.sample_rate,
+        Err(error) => {
+            warn!("Skipping CUE byte landing for unusable audio format: {error}");
+            return None;
+        }
+    };
     let start_samples: Vec<u64> = cue_pair
         .cue_sheet
         .playable_tracks()
@@ -318,7 +342,11 @@ impl ImportService {
         now: chrono::DateTime<chrono::Utc>,
     ) -> Result<Vec<DbAudioSegment>, String> {
         let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
-        let fmt = cue_analysis_format(cue_file_analysis(cue_pair, &cue_track.file_reference)?);
+        let main_path = cue_file_path(cue_pair, &cue_track.file_reference)?;
+        let fmt = cue_analysis_format(
+            cue_file_analysis(cue_pair, &cue_track.file_reference)?,
+            main_path,
+        )?;
         let sample_rate = fmt.sample_rate as u64;
         let mut segments = Vec::new();
 
@@ -353,7 +381,6 @@ impl ImportService {
             ));
         }
 
-        let main_path = cue_file_path(cue_pair, &cue_track.file_reference)?;
         let main_file_id = file_ids
             .get(main_path)
             .ok_or_else(|| format!("No DbFile registered for CUE source {main_path:?}"))?;
@@ -502,6 +529,75 @@ mod tests {
         assert!(!admitted_audio_content_type(&ContentType::Other(
             "audio/x-ms-wma".to_string()
         )));
+    }
+
+    fn probe_result(sample_rate: u32, channels: u32) -> ProbeResult {
+        ProbeResult {
+            content_type: ContentType::Flac,
+            duration: std::time::Duration::from_secs(1),
+            sample_rate,
+            bits_per_sample: Some(16),
+            channels,
+        }
+    }
+
+    #[test]
+    fn probe_audio_format_rejects_zero_channels() {
+        let path = Path::new("track.flac");
+
+        let error = ensure_probe_audio_format(path, &probe_result(44_100, 0))
+            .expect_err("zero channels should be rejected");
+
+        assert!(error.contains("unusable audio format"));
+    }
+
+    #[test]
+    fn probe_audio_format_rejects_zero_sample_rate() {
+        let path = Path::new("track.flac");
+
+        let error = ensure_probe_audio_format(path, &probe_result(0, 2))
+            .expect_err("zero sample rate should be rejected");
+
+        assert!(error.contains("unusable audio format"));
+    }
+
+    #[test]
+    fn cue_backed_audio_format_rejects_zero_channels() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let cue_path = temp.path().join("Album.cue");
+        let audio_path = temp.path().join("test.flac");
+        std::fs::write(
+            &cue_path,
+            r#"PERFORMER "Artist Name"
+TITLE "Album Title"
+FILE "test.flac" WAVE
+  TRACK 01 AUDIO
+    TITLE "Track One"
+    INDEX 01 00:00:00
+"#,
+        )
+        .expect("write cue");
+        let cue_sheet =
+            crate::cue_flac::CueFlacProcessor::parse_cue_sheet(&cue_path).expect("parse cue");
+        let cue_pair = CueFlacAnalysis {
+            cue_sheet,
+            audio_files: vec![CueAnalyzedAudioFile {
+                file_reference: "test.flac".to_string(),
+                path: audio_path,
+                analysis: CueAudioAnalysis {
+                    probe: probe_result(44_100, 0),
+                },
+            }],
+        };
+        let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+
+        let error =
+            cue_backed_audio_format("track-id", &cue_pair, 0, "audio-format-id".to_string(), now)
+                .expect_err("zero-channel CUE audio format should fail");
+
+        assert!(error.contains("unusable audio format"));
     }
 
     #[test]
