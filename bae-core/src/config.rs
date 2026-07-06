@@ -1,6 +1,8 @@
 use coven::LibraryDir;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::ffi::OsString;
+use std::io::{Error, Write};
+use std::path::{Path, PathBuf};
 use tokio::sync::watch;
 use tracing::{debug, info, warn};
 
@@ -568,6 +570,100 @@ pub fn bae_dir() -> Result<std::path::PathBuf, ConfigError> {
         .join(".bae"))
 }
 
+#[derive(Debug)]
+enum AtomicWriteError {
+    BeforeCommit(std::io::Error),
+    AfterCommit(std::io::Error),
+}
+
+impl AtomicWriteError {
+    fn committed(&self) -> bool {
+        matches!(self, Self::AfterCommit(_))
+    }
+
+    fn into_io(self) -> std::io::Error {
+        match self {
+            Self::BeforeCommit(e) | Self::AfterCommit(e) => e,
+        }
+    }
+}
+
+#[derive(Debug)]
+enum ConfigWriteError {
+    BeforeCommit(ConfigError),
+    AfterCommit(ConfigError),
+}
+
+impl ConfigWriteError {
+    fn committed(&self) -> bool {
+        matches!(self, Self::AfterCommit(_))
+    }
+
+    fn into_config_error(self) -> ConfigError {
+        match self {
+            Self::BeforeCommit(e) | Self::AfterCommit(e) => e,
+        }
+    }
+}
+
+fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), AtomicWriteError> {
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let file_name = path.file_name().ok_or_else(|| {
+        AtomicWriteError::BeforeCommit(Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "atomic write target has no file name",
+        ))
+    })?;
+
+    let mut temp_prefix = OsString::from(".");
+    temp_prefix.push(file_name);
+    temp_prefix.push(".");
+
+    let mut temp = tempfile::Builder::new()
+        .prefix(&temp_prefix)
+        .suffix(".tmp")
+        .tempfile_in(parent)
+        .map_err(AtomicWriteError::BeforeCommit)?;
+    temp.write_all(bytes)
+        .map_err(AtomicWriteError::BeforeCommit)?;
+    temp.as_file()
+        .sync_all()
+        .map_err(AtomicWriteError::BeforeCommit)?;
+    temp.persist(path)
+        .map_err(|e| AtomicWriteError::BeforeCommit(e.error))?;
+    sync_parent_dir(parent).map_err(AtomicWriteError::AfterCommit)
+}
+
+fn write_atomic_io(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    write_atomic(path, bytes).map_err(AtomicWriteError::into_io)
+}
+
+#[cfg(unix)]
+fn sync_parent_dir(parent: &Path) -> std::io::Result<()> {
+    std::fs::File::open(parent)?.sync_all()
+}
+
+#[cfg(windows)]
+fn sync_parent_dir(parent: &Path) -> std::io::Result<()> {
+    use std::os::windows::fs::OpenOptionsExt;
+
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+
+    std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+        .open(parent)?
+        .sync_all()
+}
+
+#[cfg(not(any(unix, windows)))]
+fn sync_parent_dir(_parent: &Path) -> std::io::Result<()> {
+    Ok(())
+}
+
 /// YAML config file structure for non-secret settings (per-library)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigYaml {
@@ -877,7 +973,7 @@ impl Config {
                 yaml_config.device_id = Some(id.clone());
                 let serialized = serde_yaml::to_string(&yaml_config)
                     .map_err(|e| ConfigError::Serialization(e.to_string()))?;
-                std::fs::write(config_path, serialized)?;
+                write_atomic_io(config_path, serialized.as_bytes())?;
                 id
             }
         };
@@ -892,18 +988,33 @@ impl Config {
     pub fn save_active_library(&self) -> Result<(), ConfigError> {
         let app_dir = bae_dir()?;
         std::fs::create_dir_all(&app_dir)?;
-        std::fs::write(app_dir.join("active-library"), &self.library_id)?;
+        let pointer_path = app_dir.join("active-library");
+        write_atomic_io(&pointer_path, self.library_id.as_bytes())?;
         Ok(())
     }
 
     pub fn save_to_config_yaml(&self) -> Result<(), ConfigError> {
-        std::fs::create_dir_all(&*self.library_dir)?;
+        self.write_config_yaml()
+            .map_err(ConfigWriteError::into_config_error)
+    }
+
+    fn write_config_yaml(&self) -> Result<(), ConfigWriteError> {
+        std::fs::create_dir_all(&*self.library_dir)
+            .map_err(ConfigError::from)
+            .map_err(ConfigWriteError::BeforeCommit)?;
         let yaml: ConfigYaml = self.into();
-        std::fs::write(
-            self.library_dir.config_path(),
-            serde_yaml::to_string(&yaml).unwrap(),
-        )?;
-        Ok(())
+        let serialized = serde_yaml::to_string(&yaml)
+            .map_err(|e| ConfigError::Serialization(e.to_string()))
+            .map_err(ConfigWriteError::BeforeCommit)?;
+        write_atomic(&self.library_dir.config_path(), serialized.as_bytes()).map_err(|e| {
+            let committed = e.committed();
+            let config_error = ConfigError::from(e.into_io());
+            if committed {
+                ConfigWriteError::AfterCommit(config_error)
+            } else {
+                ConfigWriteError::BeforeCommit(config_error)
+            }
+        })
     }
 
     /// Construct a Config with defaults for a new library.
@@ -1000,11 +1111,29 @@ impl ConfigHandle {
     /// Edit the config, persist it to disk, and publish the new state to
     /// subscribers. The single write path for every config change.
     pub fn update(&self, edit: impl FnOnce(&mut Config)) -> Result<(), ConfigError> {
-        let mut config = self.config().clone();
-        edit(&mut config);
-        config.save_to_config_yaml()?;
-        self.state.send_replace(config);
-        Ok(())
+        let mut save_err = None;
+        self.state.send_if_modified(|config| {
+            let mut edited = config.clone();
+            edit(&mut edited);
+            match edited.write_config_yaml() {
+                Ok(()) => {
+                    *config = edited;
+                    true
+                }
+                Err(e) => {
+                    let committed = e.committed();
+                    save_err = Some(e.into_config_error());
+                    if committed {
+                        *config = edited;
+                    }
+                    committed
+                }
+            }
+        });
+        match save_err {
+            Some(e) => Err(e),
+            None => Ok(()),
+        }
     }
 
     pub fn has_discogs_key(&self) -> bool {
@@ -1053,7 +1182,7 @@ pub fn rename_inactive_library(
     yaml.library_name = new_name.to_string();
     let serialized =
         serde_yaml::to_string(&yaml).map_err(|e| ConfigError::Serialization(e.to_string()))?;
-    std::fs::write(&config_path, serialized)?;
+    write_atomic_io(&config_path, serialized.as_bytes())?;
     Ok(())
 }
 
@@ -1190,6 +1319,8 @@ fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, ConfigEr
 mod tests {
     use super::*;
     use serial_test::serial;
+    use std::sync::{Arc, Barrier};
+    use std::time::Duration;
     use tempfile::TempDir;
 
     fn make_test_config(library_id: &str, library_path: PathBuf) -> Config {
@@ -1433,6 +1564,49 @@ mod tests {
         .unwrap();
         assert_eq!(yaml.library_id, "my-library-id");
         assert_eq!(yaml.mcp, McpConfig::disabled_default());
+    }
+
+    #[test]
+    fn write_atomic_replaces_file_bytes() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("config.yaml");
+        std::fs::write(&path, b"old config").unwrap();
+
+        write_atomic(&path, b"new config").unwrap();
+
+        assert_eq!(std::fs::read(&path).unwrap(), b"new config");
+    }
+
+    #[test]
+    fn write_atomic_requires_existing_parent() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("missing").join("config.yaml");
+
+        let err = write_atomic(&path, b"new config").unwrap_err().into_io();
+
+        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn write_atomic_failure_leaves_target_and_removes_temp() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("config.yaml");
+        std::fs::create_dir(&path).unwrap();
+
+        let err = write_atomic(&path, b"new config").unwrap_err().into_io();
+
+        assert!(matches!(
+            err.kind(),
+            std::io::ErrorKind::AlreadyExists | std::io::ErrorKind::IsADirectory
+        ));
+        assert!(path.is_dir());
+        let temp_names: Vec<_> = std::fs::read_dir(tmp.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .filter(|name| name.to_string_lossy().starts_with(".config.yaml."))
+            .collect();
+        assert!(temp_names.is_empty());
     }
 
     #[test]
@@ -1763,6 +1937,54 @@ mod tests {
             .update(|c| c.discogs = Some(DiscogsValidation::Valid))
             .unwrap();
         assert_eq!(handle.config().discogs, Some(DiscogsValidation::Valid));
+    }
+
+    #[test]
+    fn update_serializes_concurrent_edits() {
+        let tmp = TempDir::new().unwrap();
+        let library_path = tmp.path().to_path_buf();
+        let config = make_test_config("lib-update-race", library_path.clone());
+        config.save_to_config_yaml().unwrap();
+        let handle = Arc::new(ConfigHandle::new(config));
+        let start = Arc::new(Barrier::new(3));
+
+        fn spawn_update(
+            handle: Arc<ConfigHandle>,
+            start: Arc<Barrier>,
+            edit: impl FnOnce(&mut Config) + Send + 'static,
+        ) -> std::thread::JoinHandle<()> {
+            std::thread::spawn(move || {
+                start.wait();
+                handle
+                    .update(|config| {
+                        std::thread::sleep(Duration::from_millis(100));
+                        edit(config);
+                    })
+                    .unwrap();
+            })
+        }
+
+        let rename = spawn_update(Arc::clone(&handle), Arc::clone(&start), |config| {
+            config.library_name = "Renamed Library".to_string();
+        });
+        let playback = spawn_update(Arc::clone(&handle), Arc::clone(&start), |config| {
+            config.pause_between_sides = true;
+        });
+
+        start.wait();
+        rename.join().unwrap();
+        playback.join().unwrap();
+
+        let final_config = handle.config().clone();
+        assert_eq!(final_config.library_name, "Renamed Library");
+        assert!(final_config.pause_between_sides);
+
+        let yaml: ConfigYaml = serde_yaml::from_str(
+            &std::fs::read_to_string(library_path.join("config.yaml")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(yaml.library_name, "Renamed Library");
+        assert!(yaml.pause_between_sides);
     }
 
     #[test]
