@@ -473,6 +473,7 @@ impl UiEventBus {
                     Ok(LibraryEvent::AlbumAdded { album }) => {
                         let album_id = album.album.id.clone();
                         bus.invalidate(Invalidation::AlbumList);
+                        bus.invalidate(Invalidation::ComposerList);
                         bus.invalidate(Invalidation::Album { album_id });
                         tracing::info!("wire_library: AlbumAdded for album {}", album.album.id);
                         bus.emit(UiBusEvent::AlbumAdded { album });
@@ -480,6 +481,7 @@ impl UiEventBus {
                     Ok(LibraryEvent::AlbumUpdated { album }) => {
                         let album_id = album.album.id.clone();
                         bus.invalidate(Invalidation::AlbumList);
+                        bus.invalidate(Invalidation::ComposerList);
                         bus.invalidate(Invalidation::Album { album_id });
                         bus.emit(UiBusEvent::AlbumUpdated { album });
                     }
@@ -488,6 +490,7 @@ impl UiEventBus {
                         release_ids,
                     }) => {
                         bus.invalidate(Invalidation::AlbumList);
+                        bus.invalidate(Invalidation::ComposerList);
                         bus.invalidate(Invalidation::Album {
                             album_id: album_id.clone(),
                         });
@@ -503,6 +506,7 @@ impl UiEventBus {
                     }
                     Ok(LibraryEvent::ReleaseAdded { album, release }) => {
                         bus.invalidate(Invalidation::AlbumList);
+                        bus.invalidate(Invalidation::ComposerList);
                         bus.invalidate(Invalidation::Album {
                             album_id: album.id.clone(),
                         });
@@ -513,6 +517,7 @@ impl UiEventBus {
                     }
                     Ok(LibraryEvent::ReleaseUpdated { album_id, release }) => {
                         bus.invalidate(Invalidation::AlbumList);
+                        bus.invalidate(Invalidation::ComposerList);
                         bus.invalidate(Invalidation::Album {
                             album_id: album_id.clone(),
                         });
@@ -527,6 +532,7 @@ impl UiEventBus {
                         album,
                     }) => {
                         bus.invalidate(Invalidation::AlbumList);
+                        bus.invalidate(Invalidation::ComposerList);
                         bus.invalidate(Invalidation::Album {
                             album_id: album_id.clone(),
                         });
@@ -710,6 +716,54 @@ mod tests {
         match recv_ui_event(&runtime, &mut ui_rx) {
             UiBusEvent::SyncingChanged { syncing: true } => {}
             other => panic!("expected SyncingChanged delta, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn release_removal_invalidates_composer_list_before_delta() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let bus = UiEventBus::new();
+        let mut ui_rx = bus.subscribe();
+        let (library_tx, library_rx) = broadcast::channel(16);
+        bus.wire_library_events(library_rx, runtime.handle());
+
+        library_tx
+            .send(LibraryEvent::ReleaseRemoved {
+                album_id: "album-1".to_string(),
+                release_id: "release-1".to_string(),
+                album: None,
+            })
+            .unwrap();
+
+        let expected = [
+            Invalidation::AlbumList,
+            Invalidation::ComposerList,
+            Invalidation::Album {
+                album_id: "album-1".to_string(),
+            },
+            Invalidation::Release {
+                release_id: "release-1".to_string(),
+            },
+        ];
+
+        for invalidation in expected {
+            match recv_ui_event(&runtime, &mut ui_rx) {
+                UiBusEvent::Invalidated(actual) => assert_eq!(actual, invalidation),
+                other => panic!("expected invalidation, got {other:?}"),
+            }
+        }
+
+        match recv_ui_event(&runtime, &mut ui_rx) {
+            UiBusEvent::ReleaseRemoved {
+                album_id,
+                release_id,
+                album,
+            } => {
+                assert_eq!(album_id, "album-1");
+                assert_eq!(release_id, "release-1");
+                assert!(album.is_none());
+            }
+            other => panic!("expected ReleaseRemoved delta, got {other:?}"),
         }
     }
 

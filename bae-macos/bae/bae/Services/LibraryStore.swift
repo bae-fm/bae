@@ -1,31 +1,8 @@
-import Combine
 import Foundation
 import Observation
 import os.log
 
 private let logger = Logger.bae("LibraryStore")
-
-/// Describes a library-shape change broadcast on
-/// `LibraryStore.libraryShapeSubject`.
-///
-/// Each variant carries the ids needed for a subscriber to decide
-/// whether its list is affected. Library-scoped grids only care about
-/// album-level variants; storage grids care about both album- and
-/// release-level variants because releases are their rows.
-///
-/// Updates are included because metadata changes (rename, year edit)
-/// can move a row to a different sort position. The reducer can't tell
-/// whether a given update touched a sort-affecting field, so it fires
-/// on every update; subscribers always invalidate, and `invalidate()`
-/// is cheap (the old list stays visible during the refetch).
-enum LibraryShapeChange {
-    case albumAdded(albumId: String)
-    case albumUpdated(albumId: String)
-    case albumRemoved(albumId: String)
-    case releaseAdded(albumId: String, releaseId: String)
-    case releaseUpdated(albumId: String, releaseId: String)
-    case releaseRemoved(albumId: String, releaseId: String)
-}
 
 // MARK: - Album page sources
 
@@ -185,15 +162,14 @@ extension BridgeAlbum: Identifiable {}
 ///   in the `releaseSummaries` slice; interning a detail interns its
 ///   summary.
 ///
-/// ## Reducers write slices; lists are views
+/// ## Reducers write slices; lists are projections
 ///
 /// Event reducers (`handle*`) write one or more slices and nothing
 /// else. Event payloads are self-contained: the reducer writes the
 /// incoming data unconditionally, without reading other slices to
-/// decide what to do. They never notify lists, because lists are
-/// views over a query at a point in time, not subscribers. If a
-/// user action could change a visible list's shape, the action
-/// handler calls `list.invalidate()` at the mutation site.
+/// decide what to do. Scoped invalidations refresh visible lists through
+/// `ProjectionRegistry`; the store does not publish a second list-shape
+/// notification path.
 @MainActor
 @Observable
 final class LibraryStore {
@@ -239,26 +215,6 @@ final class LibraryStore {
     /// - `loadReleaseDetail` / `reloadReleaseDetail` (on-demand loaders)
     private(set) var releaseDetails: [String: ReleaseDetail] = [:]
     private(set) var composerSummaries: [String: BridgeComposerSummary] = [:]
-
-    /// Fires when the library's *shape* changes — anything that could
-    /// alter the total row count or ordering of a library- or
-    /// storage-scoped list (add, remove, or metadata update that might
-    /// move a sort key). Views holding a `PaginatedList` subscribe and
-    /// call `list.invalidate()` so import-, sync-, and edit-driven
-    /// shape changes show up without the list needing to observe the
-    /// store. See `PaginatedList.swift`'s "lists are views, not
-    /// subscribers" rule for the shape-vs-content distinction this
-    /// subject bridges.
-    ///
-    /// The payload is a typed `LibraryShapeChange` variant. Subscribers
-    /// filter on what matters to their list:
-    ///
-    /// - Library grid: invalidate on album-level variants only.
-    ///   Release-level changes don't move rows.
-    /// - Storage grid: invalidate on every variant — album changes move
-    ///   whole groups of rows, release changes move individual rows.
-    @ObservationIgnored
-    let libraryShapeSubject = PassthroughSubject<LibraryShapeChange, Never>()
 
     nonisolated init() {}
 
@@ -425,10 +381,8 @@ final class LibraryStore {
     /// - `releaseSummaries` + `releaseDetails` via `internReleaseDetail`
     ///   for each release on the payload
     ///
-    /// Does not notify lists — if this event was caused by a local user
-    /// action, the action handler at the call site is responsible for
-    /// calling `invalidate()` on any list that might need to reflect the
-    /// shape change.
+    /// Does not notify lists; scoped invalidation events refresh visible
+    /// projections.
     func handleAlbumAdded(album: BridgeAlbumDetail) {
         _ = internAlbumSummary(album.album)
 
@@ -445,9 +399,8 @@ final class LibraryStore {
     /// missing entry. Field changes on identity-stable instances
     /// (`AlbumSummary`, `ReleaseSummary`) propagate through
     /// `@Observable` to views already reading them in place; the fat
-    /// `releaseDetails` structs are replaced wholesale. Sort positions
-    /// in live lists do not update here; mutators that could have
-    /// changed the sort key call `list.invalidate()` at the action site.
+    /// `releaseDetails` structs are replaced wholesale. Scoped invalidations
+    /// refresh live lists when sort positions may have changed.
     func handleAlbumUpdated(album: BridgeAlbumDetail) {
         _ = internAlbumSummary(album.album)
 
@@ -459,9 +412,6 @@ final class LibraryStore {
     /// Reducer target for `AlbumRemoved`. Drops the album from
     /// `albumSummaries` and cascades to the child releases the event
     /// carries, in both `releaseSummaries` and `releaseDetails`.
-    ///
-    /// Action handlers at the delete call site are responsible for
-    /// invalidating any visible lists.
     func handleAlbumRemoved(albumId: String, releaseIds: [String]) {
         albumSummaries.removeValue(forKey: albumId)
         composerSummaries.removeAll()

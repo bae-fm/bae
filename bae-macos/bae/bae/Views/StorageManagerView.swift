@@ -115,12 +115,6 @@ struct StorageManagerView: View {
             rebuildList()
         }
         .onChange(of: sort) { _, _ in rebuildList() }
-        .onReceive(libraryStore.libraryShapeSubject) { _ in
-            // Storage rows are releases keyed by album. Every variant —
-            // album or release, added/updated/removed — could move the
-            // visible shape, so invalidate unconditionally.
-            list?.invalidate()
-        }
         .onDisappear {
             rebuildTask?.cancel()
         }
@@ -149,9 +143,9 @@ struct StorageManagerView: View {
             guard !Task.isCancelled else {
                 return
             }
-            listRegistration = projectionRegistry.register(
-                domains: [.albumList, .album, .release],
-                invalidate: { [newList] _ in newList.invalidate() }
+            listRegistration = projectionRegistry.registerList(
+                newList,
+                domain: .albumList
             )
             list = newList
         }

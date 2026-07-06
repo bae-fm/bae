@@ -97,15 +97,6 @@ struct LibraryView: View {
                 await reloadComposerList(sort: composerSortCriterion)
             }
         }
-        .onReceive(libraryStore.libraryShapeSubject) { change in
-            switch change {
-            case .albumAdded, .albumUpdated, .albumRemoved:
-                albumList?.invalidate()
-                composerList?.invalidate()
-            case .releaseAdded, .releaseUpdated, .releaseRemoved:
-                composerList?.invalidate()
-            }
-        }
         .onReceive(uiStore.libraryNavigationSubject) { target in
             switch target {
             case .composer(let artistId):

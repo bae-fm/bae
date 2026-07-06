@@ -566,15 +566,9 @@ extension UiEventReducer {
                 "reducer: albumAdded for album \(album.album.id)"
             )
             libraryStore.handleAlbumAdded(album: album)
-            libraryStore.libraryShapeSubject.send(
-                .albumAdded(albumId: album.album.id)
-            )
 
         case .albumUpdated(let album):
             libraryStore.handleAlbumUpdated(album: album)
-            libraryStore.libraryShapeSubject.send(
-                .albumUpdated(albumId: album.album.id)
-            )
 
         case .albumRemoved(let albumId, let releaseIds):
             libraryStore.handleAlbumRemoved(
@@ -586,21 +580,12 @@ extension UiEventReducer {
                 releaseIds: releaseIds
             )
             context.uiStore.clearSelectedRelease(inAlbum: albumId)
-            libraryStore.libraryShapeSubject.send(
-                .albumRemoved(albumId: albumId)
-            )
 
         case .releaseAdded(let album, let release):
             libraryStore.handleReleaseAdded(album: album, release: release)
-            libraryStore.libraryShapeSubject.send(
-                .releaseAdded(albumId: album.id, releaseId: release.id)
-            )
 
-        case .releaseUpdated(let albumId, let release):
+        case .releaseUpdated(_, let release):
             libraryStore.handleReleaseUpdated(release: release)
-            libraryStore.libraryShapeSubject.send(
-                .releaseUpdated(albumId: albumId, releaseId: release.id)
-            )
 
         case .releaseRemoved(let albumId, let releaseId, let album):
             libraryStore.handleReleaseRemoved(
@@ -611,9 +596,6 @@ extension UiEventReducer {
             context.uiStore.clearSelectedReleaseIfMatching(
                 releaseId,
                 inAlbum: albumId
-            )
-            libraryStore.libraryShapeSubject.send(
-                .releaseRemoved(albumId: albumId, releaseId: releaseId)
             )
 
         case .releaseTransferProgress, .releaseTransferEnded:
