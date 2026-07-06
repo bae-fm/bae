@@ -1,13 +1,29 @@
 //! Cover art resizing for storage and export.
 
+use std::io::Cursor;
+
+use image::ImageReader;
 use tracing::debug;
 
 /// Maximum dimension for a stored/embedded cover thumbnail.
 const COVER_MAX_SIZE: u32 = 600;
+const MAX_DECODE_DIMENSION: u32 = 8_192;
+const MAX_DECODE_ALLOC_BYTES: u64 = 128 * 1024 * 1024;
 
 /// Resize cover art to fit within COVER_MAX_SIZE, encoded as JPEG.
 pub fn resize_cover(data: &[u8]) -> Result<Vec<u8>, String> {
-    let img = image::load_from_memory(data)
+    let mut reader = ImageReader::new(Cursor::new(data))
+        .with_guessed_format()
+        .map_err(|e| format!("Failed to read cover image: {}", e))?;
+
+    let mut limits = image::Limits::default();
+    limits.max_image_width = Some(MAX_DECODE_DIMENSION);
+    limits.max_image_height = Some(MAX_DECODE_DIMENSION);
+    limits.max_alloc = Some(MAX_DECODE_ALLOC_BYTES);
+    reader.limits(limits);
+
+    let img = reader
+        .decode()
         .map_err(|e| format!("Failed to decode cover image: {}", e))?;
 
     let (w, h) = (img.width(), img.height());
@@ -78,5 +94,10 @@ mod tests {
     #[test]
     fn garbage_bytes_error() {
         assert!(resize_cover(&[0u8; 16]).is_err());
+    }
+
+    #[test]
+    fn oversized_source_dimensions_error_before_decode() {
+        assert!(resize_cover(&png_source(MAX_DECODE_DIMENSION + 1, 1)).is_err());
     }
 }
