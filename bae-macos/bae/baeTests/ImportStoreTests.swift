@@ -25,32 +25,29 @@ private func makeStatus(albumId: String) -> LibraryStatus {
 
 @Suite("ImportStore library-removal invalidation")
 struct ImportStoreRemovalTests {
-    /// Deleting the imported album must clear the candidate's terminal
-    /// "Imported / View in Library" state — it points at a dead album and
-    /// locks the candidate against re-import.
     @MainActor
-    @Test("album removal clears a matching importStatus")
-    func albumRemovalClearsImportStatus() throws {
+    @Test("release invalidation clears a matching importStatus")
+    func releaseInvalidationClearsImportStatus() throws {
         let store = ImportStore()
         var candidate = makeCandidate("c1")
         candidate.importStatus = .complete(albumId: "al-1", releaseId: "rel-1")
         store.folderCandidates["c1"] = candidate
 
-        store.handleAlbumRemoved(albumId: "al-1", releaseIds: ["rel-1"])
+        store.removeLibraryStatus(releaseId: "rel-1")
 
         let survived = try #require(store.folderCandidates["c1"])
         #expect(survived.importStatus == nil)
     }
 
     @MainActor
-    @Test("album removal leaves an unrelated importStatus alone")
-    func albumRemovalKeepsUnrelatedImportStatus() {
+    @Test("release invalidation leaves an unrelated importStatus alone")
+    func releaseInvalidationKeepsUnrelatedImportStatus() {
         let store = ImportStore()
         var candidate = makeCandidate("c1")
         candidate.importStatus = .complete(albumId: "al-2", releaseId: "rel-2")
         store.folderCandidates["c1"] = candidate
 
-        store.handleAlbumRemoved(albumId: "al-1", releaseIds: ["rel-1"])
+        store.removeLibraryStatus(releaseId: "rel-1")
 
         #expect(
             store.folderCandidates["c1"]?.importStatus
@@ -58,11 +55,9 @@ struct ImportStoreRemovalTests {
         )
     }
 
-    /// A release deleted out of a surviving album: the candidate that
-    /// imported that release loses its terminal state; siblings keep theirs.
     @MainActor
-    @Test("release removal clears the candidate that imported it")
-    func releaseRemovalClearsByReleaseId() throws {
+    @Test("release invalidation clears the candidate that imported it")
+    func releaseInvalidationClearsByReleaseId() throws {
         let store = ImportStore()
         var imported = makeCandidate("c1")
         imported.importStatus = .complete(albumId: "al-1", releaseId: "rel-1")
@@ -71,7 +66,7 @@ struct ImportStoreRemovalTests {
         sibling.importStatus = .complete(albumId: "al-1", releaseId: "rel-2")
         store.folderCandidates["c2"] = sibling
 
-        store.handleReleaseRemoved(releaseId: "rel-1")
+        store.removeLibraryStatus(releaseId: "rel-1")
 
         let cleared = try #require(store.folderCandidates["c1"])
         #expect(cleared.importStatus == nil)
@@ -83,20 +78,19 @@ struct ImportStoreRemovalTests {
     }
 
     @MainActor
-    @Test("album removal drops search-merged library statuses")
-    func albumRemovalDropsLibraryStatuses() throws {
+    @Test("album deletion invalidates each removed release status")
+    func albumDeletionInvalidatesEachRemovedReleaseStatus() throws {
         let store = ImportStore()
         var candidate = makeCandidate("c1")
         candidate.libraryStatuses = [
             "rel-1": makeStatus(albumId: "al-1"),
-            // A sibling pressing of the removed album, never imported itself:
-            // its status points at the removed album and is equally stale.
             "rel-sibling": makeStatus(albumId: "al-1"),
             "rel-other": makeStatus(albumId: "al-other"),
         ]
         store.folderCandidates["c1"] = candidate
 
-        store.handleAlbumRemoved(albumId: "al-1", releaseIds: ["rel-1"])
+        store.removeLibraryStatus(releaseId: "rel-1")
+        store.removeLibraryStatus(releaseId: "rel-sibling")
 
         let survived = try #require(store.folderCandidates["c1"])
         #expect(survived.libraryStatuses["rel-1"] == nil)
@@ -133,7 +127,7 @@ struct ImportStoreRemovalTests {
         )
         store.reIdentifyCandidates["c1"] = candidate
 
-        store.handleReleaseRemoved(releaseId: "rel-1")
+        store.removeLibraryStatus(releaseId: "rel-1")
 
         guard
             case .found(_, let statuses, _, _, _) =
@@ -162,7 +156,7 @@ struct ImportStoreRemovalTests {
         )
         store.reIdentifyCandidates["c1"] = candidate
 
-        store.handleReleaseRemoved(releaseId: "rel-1")
+        store.removeLibraryStatus(releaseId: "rel-1")
 
         guard
             case .conflict(_, let discid, _, let barcode, _, _, _) =

@@ -50,11 +50,9 @@ final class ReleaseSummary: Identifiable {
     /// renders its own art; `ImageView` fetches the bytes by id and caches the
     /// decoded image under the version.
     var cover: BridgeImageRef?
-    /// Non-nil while a pin/unpin/manage/unmanage transition runs. Set from
-    /// `ReleaseTransferProgress`, cleared on `ReleaseTransferEnded`. Not part of
-    /// the wire payload — driven entirely by the transfer event stream, so the
-    /// wire `update(from:)` paths leave it untouched (a `ReleaseUpdated` landing
-    /// mid-transfer must not clear the in-flight indicator).
+    /// Non-nil while a pin/unpin/manage/unmanage transition runs. Core includes
+    /// the current action in release queries, so invalidations refresh this the
+    /// same way they refresh storage state.
     var transfer: TransferState?
 
     /// Total release size formatted for the current locale, e.g. "350 MB".
@@ -73,6 +71,7 @@ final class ReleaseSummary: Identifiable {
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
         cover = bridge.cover
+        transfer = Self.transferState(from: bridge.transferAction)
     }
 
     /// Build a summary from the fat `BridgeRelease` wire type. Used by
@@ -114,6 +113,10 @@ final class ReleaseSummary: Identifiable {
         if cover != bridge.cover {
             cover = bridge.cover
         }
+        let transfer = Self.transferState(from: bridge.transferAction)
+        if self.transfer != transfer {
+            self.transfer = transfer
+        }
     }
 
     func update(from bridge: BridgeRelease) {
@@ -138,5 +141,15 @@ final class ReleaseSummary: Identifiable {
         if cover != bridge.cover {
             cover = bridge.cover
         }
+        let transfer = Self.transferState(from: bridge.transferAction)
+        if self.transfer != transfer {
+            self.transfer = transfer
+        }
+    }
+
+    private static func transferState(
+        from action: BridgeReleaseStorageAction?
+    ) -> TransferState? {
+        action.map { TransferState(label: $0.transferProgressVerb) }
     }
 }

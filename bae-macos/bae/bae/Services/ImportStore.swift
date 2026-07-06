@@ -90,33 +90,94 @@ class ImportStore {
         folderCandidates[key] ?? reIdentifyCandidates[key]
     }
 
-    /// Invalidate cached "in library" state after an album is removed from
-    /// the library. Candidates cache library facts in three places —
-    /// `importStatus == .complete`, the search-merged `libraryStatuses`, and
-    /// the statuses embedded in terminal `identifyState` payloads — and none
-    /// of them receive library events on their own; without this sweep a
-    /// deleted release keeps its green "Imported" check, "View in Library"
-    /// link, and disabled commit buttons. Derived purely from the removal
-    /// event's ids.
-    func handleAlbumRemoved(albumId: String, releaseIds: [String]) {
-        let removedReleases = Set(releaseIds)
-        sweepCandidates { candidate in
-            if case .complete(let completedAlbum, let completedRelease) =
-                candidate.importStatus,
-                completedAlbum == albumId
-                    || removedReleases.contains(completedRelease)
-            {
-                candidate.importStatus = nil
+    func applyImportCandidatesSnapshot(
+        _ snapshot: BridgeImportCandidatesSnapshot
+    ) {
+        watchedFolders = snapshot.watchedFolders
+
+        var nextFolderCandidates: OrderedDictionary<String, Candidate> = [:]
+        for bridge in snapshot.folderCandidates {
+            let incoming = Candidate(bridge: bridge)
+            if let existing = folderCandidates[incoming.key] {
+                nextFolderCandidates[incoming.key] = incoming.withSessionState(
+                    from: existing
+                )
             }
-            candidate.removeLibraryStatuses { releaseId, status in
-                removedReleases.contains(releaseId) || status.albumId == albumId
+            else {
+                nextFolderCandidates[incoming.key] = incoming
+            }
+        }
+        folderCandidates = nextFolderCandidates
+
+        invalidCandidates = OrderedDictionary(
+            uniqueKeysWithValues: snapshot.invalidCandidates.map {
+                ($0.folderPath, $0)
+            }
+        )
+    }
+
+    func applyImportCandidateSnapshot(
+        key requestedKey: String,
+        snapshot: BridgeImportCandidateSnapshot?
+    ) {
+        guard let snapshot else {
+            folderCandidates.removeValue(forKey: requestedKey)
+            invalidCandidates.removeValue(forKey: requestedKey)
+            return
+        }
+
+        switch snapshot {
+        case .folder(let bridge, let runtime):
+            let incoming = Candidate(bridge: bridge)
+            let existing = folderCandidates[incoming.key]
+            folderCandidates[incoming.key] =
+                existing.map { incoming.withSessionState(from: $0) }
+                ?? incoming
+            invalidCandidates.removeValue(forKey: incoming.key)
+            applyRuntime(runtime, to: incoming.key)
+
+        case .invalid(let candidate):
+            invalidCandidates[candidate.folderPath] = candidate
+            folderCandidates.removeValue(forKey: candidate.folderPath)
+
+        case .runtime(let key, let runtime):
+            applyRuntime(runtime, to: key)
+        }
+    }
+
+    private func applyRuntime(
+        _ runtime: BridgeCandidateRuntimeSnapshot,
+        to key: String
+    ) {
+        if key.hasPrefix("reidentify:") {
+            mutateReIdentifyCandidate(key: key) { candidate in
+                applyRuntime(runtime, to: &candidate)
+            }
+        }
+        else {
+            mutateFolderCandidate(key: key) { candidate in
+                applyRuntime(runtime, to: &candidate)
             }
         }
     }
 
-    /// Companion of `handleAlbumRemoved(albumId:releaseIds:)` for a release
-    /// removal that leaves its album in place.
-    func handleReleaseRemoved(releaseId: String) {
+    private func applyRuntime(
+        _ runtime: BridgeCandidateRuntimeSnapshot,
+        to candidate: inout Candidate
+    ) {
+        candidate.identifyState = IdentifyState(
+            bridge: runtime.identifyState
+        )
+        candidate.signalsToolbar = SignalsToolbar(
+            bridge: runtime.signalsToolbar
+        )
+        candidate.signals = runtime.signals.map(Signals.init(bridge:))
+        candidate.importStatus = runtime.importStatus.map(
+            ImportStatus.init(bridge:)
+        )
+    }
+
+    func removeLibraryStatus(releaseId: String) {
         sweepCandidates { candidate in
             if case .complete(_, let completedRelease) = candidate.importStatus,
                 completedRelease == releaseId
@@ -142,20 +203,35 @@ class ImportStore {
         sweep(&reIdentifyCandidates)
     }
 
-    /// Mutate a candidate in-place in whichever dict holds it. No-op if the
-    /// key isn't present in any dict.
+    private func mutateFolderCandidate(
+        key: String,
+        _ mutate: (inout Candidate) -> Void
+    ) {
+        if var candidate = folderCandidates[key] {
+            mutate(&candidate)
+            folderCandidates[key] = candidate
+        }
+    }
+
+    private func mutateReIdentifyCandidate(
+        key: String,
+        _ mutate: (inout Candidate) -> Void
+    ) {
+        if var candidate = reIdentifyCandidates[key] {
+            mutate(&candidate)
+            reIdentifyCandidates[key] = candidate
+        }
+    }
+
     func mutateCandidate(
         forKey key: String,
         _ mutate: (inout Candidate) -> Void
     ) {
-        if var c = folderCandidates[key] {
-            mutate(&c)
-            folderCandidates[key] = c
-            return
+        if key.hasPrefix("reidentify:") {
+            mutateReIdentifyCandidate(key: key, mutate)
         }
-        if var c = reIdentifyCandidates[key] {
-            mutate(&c)
-            reIdentifyCandidates[key] = c
+        else {
+            mutateFolderCandidate(key: key, mutate)
         }
     }
 

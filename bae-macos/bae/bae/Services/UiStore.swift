@@ -157,15 +157,6 @@ class UiStore: @unchecked Sendable {
         selectedReleaseIdByAlbum.removeValue(forKey: albumId)
     }
 
-    func clearSelectedReleaseIfMatching(
-        _ releaseId: String,
-        inAlbum albumId: String
-    ) {
-        if selectedReleaseIdByAlbum[albumId] == releaseId {
-            selectedReleaseIdByAlbum.removeValue(forKey: albumId)
-        }
-    }
-
     func switchSection(_ section: MainSection) {
         activeSection = section
     }

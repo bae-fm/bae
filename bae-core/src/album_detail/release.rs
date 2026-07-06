@@ -18,6 +18,7 @@ pub(crate) struct ReleaseResolveCtx {
     pub(crate) has_cloud_home: bool,
     pub(crate) pinned: bool,
     pub(crate) cover: Option<ImageRef>,
+    pub(crate) transfer_action: Option<ReleaseStorageAction>,
 }
 
 /// Resolved release summary: the slim projection that list views (storage
@@ -53,6 +54,7 @@ pub struct ReleaseSummary {
     /// no cloud home. The in-flight-uploads gate lives in the UI: it consults
     /// the outbox snapshot's release groups before showing these actions.
     pub storage_actions: Vec<ReleaseStorageAction>,
+    pub transfer_action: Option<ReleaseStorageAction>,
     pub file_count: i64,
     pub total_size: i64,
     /// Reference to this release's own cover (image id + version), or `None` when
@@ -82,6 +84,7 @@ impl ReleaseSummary {
                 ctx.pinned,
                 ctx.has_cloud_home,
             ),
+            transfer_action: ctx.transfer_action,
             file_count: raw.file_count,
             total_size: raw.total_size,
             cover: ctx.cover.clone(),

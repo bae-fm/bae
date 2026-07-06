@@ -257,13 +257,14 @@ impl UiEventBus {
         runtime_handle: &tokio::runtime::Handle,
     ) {
         let rx = app_services.import().subscribe_events();
-        self.wire_import_events(rx, runtime_handle);
+        self.wire_import_events(rx, app_services.import().clone(), runtime_handle);
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     fn wire_import_events(
         &self,
         mut rx: broadcast::Receiver<crate::import::ImportEvent>,
+        import: crate::import::ImportServiceHandle,
         runtime_handle: &tokio::runtime::Handle,
     ) {
         let bus = self.clone();
@@ -273,171 +274,168 @@ impl UiEventBus {
 
             loop {
                 match rx.recv().await {
-                    Ok(ImportEvent::Scan(scan_event)) => match scan_event {
-                        ScanEvent::WatchedFoldersChanged { folders } => {
-                            bus.invalidate(Invalidation::WatchedFolders);
-                            bus.emit(UiBusEvent::WatchedFoldersChanged { folders });
-                        }
-                        ScanEvent::FolderCandidate(c) => {
-                            bus.invalidate(Invalidation::ImportCandidate {
-                                key: c.path.to_string_lossy().to_string(),
-                            });
-                            bus.invalidate(Invalidation::ImportCandidateList);
-                            bus.emit(UiBusEvent::FolderCandidateAdded { candidate: c });
-                        }
-                        ScanEvent::InvalidCandidate(c) => {
-                            bus.invalidate(Invalidation::ImportCandidate {
-                                key: c.path.to_string_lossy().to_string(),
-                            });
-                            bus.invalidate(Invalidation::ImportCandidateList);
-                            bus.emit(UiBusEvent::InvalidCandidate { candidate: c });
-                        }
-                        ScanEvent::CandidateRemoved { candidate_key } => {
-                            bus.invalidate(Invalidation::ImportCandidate {
-                                key: candidate_key.clone(),
-                            });
-                            bus.invalidate(Invalidation::ImportCandidateList);
-                            bus.emit(UiBusEvent::ScanCandidateRemoved { key: candidate_key });
-                        }
-                        ScanEvent::CandidateSkipChanged {
-                            candidate_key,
-                            skipped,
-                        } => {
-                            bus.invalidate(Invalidation::ImportCandidate {
-                                key: candidate_key.clone(),
-                            });
-                            bus.invalidate(Invalidation::ImportCandidateList);
-                            bus.emit(UiBusEvent::CandidateSkipChanged {
-                                key: candidate_key,
-                                skipped,
-                            });
-                        }
-                        ScanEvent::Failed { error } => {
-                            bus.emit(UiBusEvent::Error {
-                                error: crate::ui::UiError::import(error),
-                            });
-                        }
-                        ScanEvent::Finished => {
-                            bus.emit(UiBusEvent::ScanFinished);
-                        }
-                    },
-                    Ok(ImportEvent::ImportProgress {
-                        candidate_key,
-                        progress,
-                    }) => {
-                        let bus_event = match progress {
-                            ImportProgress::Preparing { step, .. } => {
-                                bus.invalidate(Invalidation::ImportCandidate {
-                                    key: candidate_key.clone(),
-                                });
-                                Some(UiBusEvent::CandidateImportImporting {
-                                    key: candidate_key.clone(),
-                                    progress_percent: 0,
-                                    step: Some(crate::import::ImportStep::Preparing(step)),
-                                })
-                            }
-                            ImportProgress::Started { .. } => {
-                                bus.invalidate(Invalidation::ImportCandidate {
-                                    key: candidate_key.clone(),
-                                });
-                                Some(UiBusEvent::CandidateImportImporting {
-                                    key: candidate_key.clone(),
-                                    progress_percent: 0,
-                                    step: None,
-                                })
-                            }
-                            ImportProgress::Progress { percent, phase, .. } => {
-                                bus.invalidate(Invalidation::ImportCandidate {
-                                    key: candidate_key.clone(),
-                                });
-                                Some(UiBusEvent::CandidateImportImporting {
-                                    key: candidate_key.clone(),
-                                    progress_percent: percent as u32,
-                                    step: Some(crate::import::ImportStep::Running(phase)),
-                                })
-                            }
-                            ImportProgress::Complete { id, album_id, .. } => {
-                                bus.invalidate(Invalidation::ImportCandidate {
-                                    key: candidate_key.clone(),
-                                });
-                                bus.invalidate(Invalidation::ImportCandidateList);
-                                Some(UiBusEvent::CandidateImportComplete {
-                                    key: candidate_key.clone(),
-                                    release_id: id,
-                                    album_id,
-                                })
-                            }
-                            ImportProgress::RemoteUploadQueued { id, album_id, .. } => {
-                                bus.invalidate(Invalidation::ImportCandidate {
-                                    key: candidate_key.clone(),
-                                });
-                                bus.invalidate(Invalidation::ImportCandidateList);
-                                Some(UiBusEvent::CandidateImportComplete {
-                                    key: candidate_key.clone(),
-                                    release_id: id,
-                                    album_id,
-                                })
-                            }
-                            ImportProgress::Failed { error, .. } => {
-                                bus.invalidate(Invalidation::ImportCandidate {
-                                    key: candidate_key.clone(),
-                                });
-                                // The import pipeline flattens every failure
-                                // (scan, metadata, encryption, DB) to a string;
-                                // the UI shows a generic Import line plus this as
-                                // copyable, log-only detail.
-                                Some(UiBusEvent::CandidateImportError {
-                                    key: candidate_key.clone(),
-                                    error: crate::ui::UiError::import(error),
-                                })
-                            }
-                        };
+                    Ok(event) => {
+                        import.record_candidate_event(&event);
+                        match event {
+                            ImportEvent::Scan(scan_event) => match scan_event {
+                                ScanEvent::WatchedFoldersChanged { folders } => {
+                                    bus.invalidate(Invalidation::WatchedFolders);
+                                    bus.emit(UiBusEvent::WatchedFoldersChanged { folders });
+                                }
+                                ScanEvent::FolderCandidate(c) => {
+                                    bus.invalidate(Invalidation::ImportCandidate {
+                                        key: c.path.to_string_lossy().to_string(),
+                                    });
+                                    bus.invalidate(Invalidation::ImportCandidateList);
+                                    bus.emit(UiBusEvent::FolderCandidateAdded { candidate: c });
+                                }
+                                ScanEvent::InvalidCandidate(c) => {
+                                    bus.invalidate(Invalidation::ImportCandidate {
+                                        key: c.path.to_string_lossy().to_string(),
+                                    });
+                                    bus.invalidate(Invalidation::ImportCandidateList);
+                                    bus.emit(UiBusEvent::InvalidCandidate { candidate: c });
+                                }
+                                ScanEvent::CandidateRemoved { candidate_key } => {
+                                    bus.invalidate(Invalidation::ImportCandidate {
+                                        key: candidate_key.clone(),
+                                    });
+                                    bus.invalidate(Invalidation::ImportCandidateList);
+                                    bus.emit(UiBusEvent::ScanCandidateRemoved {
+                                        key: candidate_key,
+                                    });
+                                }
+                                ScanEvent::CandidateSkipChanged {
+                                    candidate_key,
+                                    skipped,
+                                } => {
+                                    bus.invalidate(Invalidation::ImportCandidate {
+                                        key: candidate_key.clone(),
+                                    });
+                                    bus.invalidate(Invalidation::ImportCandidateList);
+                                    bus.emit(UiBusEvent::CandidateSkipChanged {
+                                        key: candidate_key,
+                                        skipped,
+                                    });
+                                }
+                                ScanEvent::Failed { error } => {
+                                    bus.emit(UiBusEvent::Error {
+                                        error: crate::ui::UiError::import(error),
+                                    });
+                                }
+                                ScanEvent::Finished => {
+                                    bus.emit(UiBusEvent::ScanFinished);
+                                }
+                            },
+                            ImportEvent::ImportProgress {
+                                candidate_key,
+                                progress,
+                            } => {
+                                let bus_event = match progress {
+                                    ImportProgress::Preparing { step, .. } => {
+                                        bus.invalidate(Invalidation::ImportCandidate {
+                                            key: candidate_key.clone(),
+                                        });
+                                        Some(UiBusEvent::CandidateImportImporting {
+                                            key: candidate_key.clone(),
+                                            progress_percent: 0,
+                                            step: Some(crate::import::ImportStep::Preparing(step)),
+                                        })
+                                    }
+                                    ImportProgress::Started { .. } => {
+                                        bus.invalidate(Invalidation::ImportCandidate {
+                                            key: candidate_key.clone(),
+                                        });
+                                        Some(UiBusEvent::CandidateImportImporting {
+                                            key: candidate_key.clone(),
+                                            progress_percent: 0,
+                                            step: None,
+                                        })
+                                    }
+                                    ImportProgress::Progress { percent, phase, .. } => {
+                                        bus.invalidate(Invalidation::ImportCandidate {
+                                            key: candidate_key.clone(),
+                                        });
+                                        Some(UiBusEvent::CandidateImportImporting {
+                                            key: candidate_key.clone(),
+                                            progress_percent: percent as u32,
+                                            step: Some(crate::import::ImportStep::Running(phase)),
+                                        })
+                                    }
+                                    ImportProgress::Complete { id, album_id, .. }
+                                    | ImportProgress::RemoteUploadQueued { id, album_id, .. } => {
+                                        bus.invalidate(Invalidation::ImportCandidate {
+                                            key: candidate_key.clone(),
+                                        });
+                                        bus.invalidate(Invalidation::ImportCandidateList);
+                                        Some(UiBusEvent::CandidateImportComplete {
+                                            key: candidate_key.clone(),
+                                            release_id: id,
+                                            album_id,
+                                        })
+                                    }
+                                    ImportProgress::Failed { error, .. } => {
+                                        bus.invalidate(Invalidation::ImportCandidate {
+                                            key: candidate_key.clone(),
+                                        });
+                                        // The import pipeline flattens every failure
+                                        // (scan, metadata, encryption, DB) to a string;
+                                        // the UI shows a generic Import line plus this as
+                                        // copyable, log-only detail.
+                                        Some(UiBusEvent::CandidateImportError {
+                                            key: candidate_key.clone(),
+                                            error: crate::ui::UiError::import(error),
+                                        })
+                                    }
+                                };
 
-                        if let Some(event) = bus_event {
-                            bus.emit(event);
+                                if let Some(event) = bus_event {
+                                    bus.emit(event);
+                                }
+                            }
+                            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                            ImportEvent::ImportLoudnessProgress {
+                                candidate_key,
+                                tracks_done,
+                                tracks_total,
+                                fraction,
+                            } => {
+                                bus.emit(UiBusEvent::CandidateImportLoudnessProgress {
+                                    key: candidate_key,
+                                    tracks_done,
+                                    tracks_total,
+                                    fraction,
+                                });
+                            }
+                            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                            ImportEvent::IdentifyStateChanged {
+                                candidate_key,
+                                state,
+                                toolbar,
+                            } => {
+                                bus.invalidate(Invalidation::ImportCandidate {
+                                    key: candidate_key.clone(),
+                                });
+                                bus.emit(UiBusEvent::CandidateIdentifyStateChanged {
+                                    key: candidate_key,
+                                    state,
+                                    toolbar,
+                                });
+                            }
+                            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                            ImportEvent::SignalsUpdated {
+                                candidate_key,
+                                signals,
+                            } => {
+                                bus.invalidate(Invalidation::ImportCandidate {
+                                    key: candidate_key.clone(),
+                                });
+                                bus.emit(UiBusEvent::CandidateSignalsUpdated {
+                                    key: candidate_key,
+                                    signals,
+                                });
+                            }
                         }
-                    }
-                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                    Ok(ImportEvent::ImportLoudnessProgress {
-                        candidate_key,
-                        tracks_done,
-                        tracks_total,
-                        fraction,
-                    }) => {
-                        bus.emit(UiBusEvent::CandidateImportLoudnessProgress {
-                            key: candidate_key,
-                            tracks_done,
-                            tracks_total,
-                            fraction,
-                        });
-                    }
-                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                    Ok(ImportEvent::IdentifyStateChanged {
-                        candidate_key,
-                        state,
-                        toolbar,
-                    }) => {
-                        bus.invalidate(Invalidation::ImportCandidate {
-                            key: candidate_key.clone(),
-                        });
-                        bus.emit(UiBusEvent::CandidateIdentifyStateChanged {
-                            key: candidate_key,
-                            state,
-                            toolbar,
-                        });
-                    }
-                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                    Ok(ImportEvent::SignalsUpdated {
-                        candidate_key,
-                        signals,
-                    }) => {
-                        bus.invalidate(Invalidation::ImportCandidate {
-                            key: candidate_key.clone(),
-                        });
-                        bus.emit(UiBusEvent::CandidateSignalsUpdated {
-                            key: candidate_key,
-                            signals,
-                        });
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                         tracing::warn!("Import event bus lagged by {n} events");
@@ -602,8 +600,10 @@ impl UiEventBus {
 mod tests {
     use super::*;
     use crate::config::{Config, ConfigHandle};
+    use crate::db::Database;
     use crate::library::LibraryEvent;
     use coven::LibraryDir;
+    use std::sync::Arc;
     use std::time::Duration;
     use tempfile::TempDir;
 
@@ -617,6 +617,37 @@ mod tests {
                 .expect("timed out waiting for UI event")
                 .expect("event bus closed")
         })
+    }
+
+    fn make_test_library_manager(
+        runtime: &tokio::runtime::Runtime,
+    ) -> (crate::library::LibraryManager, TempDir) {
+        let tmp = TempDir::new().unwrap();
+        let library_dir = LibraryDir::new(tmp.path().join("lib"));
+        let database = runtime
+            .block_on(Database::new_test(
+                tmp.path().join("test.db").to_str().unwrap(),
+                Arc::new(coven::SystemClock),
+            ))
+            .unwrap();
+        let library_id = format!("test-{}", uuid::Uuid::new_v4());
+        let config = Config::with_defaults(
+            library_id.clone(),
+            "test-device".to_string(),
+            library_dir.clone(),
+            "Test Library".to_string(),
+        );
+        crate::config::install_test_keyring();
+        let manager = crate::library::LibraryManager::new(
+            database,
+            library_dir,
+            Arc::new(ConfigHandle::new(config)),
+            crate::keys::KeyService::new(library_id),
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::UuidProvider),
+            runtime.handle().clone(),
+        );
+        (manager, tmp)
     }
 
     /// A config change published by the handle is forwarded to the bus as a
@@ -773,8 +804,13 @@ mod tests {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let bus = UiEventBus::new();
         let mut ui_rx = bus.subscribe();
+        let (library_manager, _tmp) = make_test_library_manager(&runtime);
+        let import = crate::import::ImportService::start(
+            runtime.handle().clone(),
+            library_manager,
+            crate::import::cover_art::CoverArtArchiveClient::new(),
+        );
         let (import_tx, import_rx) = broadcast::channel(1);
-        bus.wire_import_events(import_rx, runtime.handle());
 
         import_tx
             .send(crate::import::ImportEvent::Scan(
@@ -787,6 +823,7 @@ mod tests {
             ))
             .unwrap();
         drop(import_tx);
+        bus.wire_import_events(import_rx, import, runtime.handle());
 
         match recv_ui_event(&runtime, &mut ui_rx) {
             UiBusEvent::Invalidated(Invalidation::WatchedFolders) => {}

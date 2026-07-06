@@ -1402,10 +1402,10 @@ private class ExportFormatDelegate: NSObject {
         guard let album = PreviewData.albumDetails[albumId] else {
             fatalError("no preview album for id: \(albumId)")
         }
-        store.handleAlbumAdded(album: album)
+        store.internAlbumDetail(album)
         guard let summary = store.albumSummaries[albumId] else {
             fatalError(
-                "handleAlbumAdded did not seed summary for id: \(albumId)"
+                "preview seed did not create summary for id: \(albumId)"
             )
         }
         guard let primary = store.releaseDetails[summary.primaryReleaseId]
@@ -1508,7 +1508,7 @@ private class ExportFormatDelegate: NSObject {
                 guard let album = PreviewData.albumDetails["a-04"] else {
                     fatalError("a-04 not in PreviewData.albumDetails")
                 }
-                store.handleAlbumAdded(album: album)
+                store.internAlbumDetail(album)
             }
         }
     }

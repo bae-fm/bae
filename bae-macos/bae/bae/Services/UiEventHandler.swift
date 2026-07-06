@@ -11,15 +11,10 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
 
     init(
         playbackStore: PlaybackStore,
-        configStore: ConfigStore,
         importStore: ImportStore,
-        libraryStore: LibraryStore,
         projectionRegistry: ProjectionRegistry,
         appService: AppService,
-        uiStore: UiStore,
-        outboxStore: OutboxStore,
-        downloadStore: DownloadStore,
-        exportStore: ExportStore
+        uiStore: UiStore
     ) {
         let eventStream = AsyncStream.makeStream(
             of: BridgeUiEvent.self,
@@ -27,15 +22,10 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
         )
         let deliveryTarget = UiEventDeliveryTarget(
             playbackStore: playbackStore,
-            configStore: configStore,
             importStore: importStore,
-            libraryStore: libraryStore,
             projectionRegistry: projectionRegistry,
             appService: appService,
-            uiStore: uiStore,
-            outboxStore: outboxStore,
-            downloadStore: downloadStore,
-            exportStore: exportStore
+            uiStore: uiStore
         )
         self.eventContinuation = eventStream.continuation
         self.eventDeliveryTask = Task { @MainActor in
@@ -75,9 +65,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
 
 private final class UiEventDeliveryTarget: @unchecked Sendable {
     private let playbackStore: PlaybackStore
-    private let configStore: ConfigStore
     private let importStore: ImportStore
-    private let libraryStore: LibraryStore
     private let projectionRegistry: ProjectionRegistry
     /// Weak so the handler doesn't retain the `AppService` it dispatches to.
     /// The handler is owned by the Rust subscribe task (held alive by the
@@ -88,32 +76,19 @@ private final class UiEventDeliveryTarget: @unchecked Sendable {
     /// bus's sender, ends the subscribe task, and tears down the library.
     private weak var appService: AppService?
     private let uiStore: UiStore
-    private let outboxStore: OutboxStore
-    private let downloadStore: DownloadStore
-    private let exportStore: ExportStore
 
     init(
         playbackStore: PlaybackStore,
-        configStore: ConfigStore,
         importStore: ImportStore,
-        libraryStore: LibraryStore,
         projectionRegistry: ProjectionRegistry,
         appService: AppService,
-        uiStore: UiStore,
-        outboxStore: OutboxStore,
-        downloadStore: DownloadStore,
-        exportStore: ExportStore
+        uiStore: UiStore
     ) {
         self.playbackStore = playbackStore
-        self.configStore = configStore
         self.importStore = importStore
-        self.libraryStore = libraryStore
         self.projectionRegistry = projectionRegistry
         self.appService = appService
         self.uiStore = uiStore
-        self.outboxStore = outboxStore
-        self.downloadStore = downloadStore
-        self.exportStore = exportStore
     }
 
     @MainActor
@@ -128,15 +103,10 @@ private final class UiEventDeliveryTarget: @unchecked Sendable {
         }
         let context = ReducerContext(
             playbackStore: playbackStore,
-            configStore: configStore,
             importStore: importStore,
-            libraryStore: libraryStore,
             projectionRegistry: projectionRegistry,
             appService: appService,
-            uiStore: uiStore,
-            outboxStore: outboxStore,
-            downloadStore: downloadStore,
-            exportStore: exportStore
+            uiStore: uiStore
         )
         UiEventReducer.reduce(event, into: context)
     }

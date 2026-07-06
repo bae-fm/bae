@@ -114,9 +114,9 @@ pub use folder_scanner::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use handle::{
-    parsed_album_to_user_edit, shape_user_edit_from_search_detail, DiscogsSaveOutcome,
-    GroupedSearchResults, ImportCandidateSnapshot, ImportCandidatesSnapshot, ImportEvent,
-    ImportServiceHandle, ScanEvent, SearchQuery,
+    parsed_album_to_user_edit, shape_user_edit_from_search_detail, CandidateImportStatusSnapshot,
+    CandidateRuntimeSnapshot, DiscogsSaveOutcome, GroupedSearchResults, ImportCandidateSnapshot,
+    ImportCandidatesSnapshot, ImportEvent, ImportServiceHandle, ScanEvent, SearchQuery,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use progress::ImportProgressHandle;

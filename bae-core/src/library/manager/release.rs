@@ -651,6 +651,7 @@ impl LibraryManager {
             has_cloud_home,
             pinned,
             cover,
+            transfer_action: self.current_transfer_action(release_id),
         };
         Ok(Some(ReleaseDetail::from_raw(
             raw,
@@ -1027,6 +1028,7 @@ pub(crate) async fn find_release_detail_with(
         has_cloud_home,
         pinned,
         cover,
+        transfer_action: None,
     };
     Ok(Some(ReleaseDetail::from_raw(
         raw,

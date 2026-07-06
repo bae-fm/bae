@@ -4,7 +4,7 @@ use crate::import::folder_registry::{ImportFolderRegistry, WatchedFolder};
 use crate::import::folder_scanner::{FolderCandidate, InvalidCandidate};
 use crate::import::progress::ImportProgressHandle;
 use crate::import::types::{
-    DiscoveredFile, ImportCommand, ImportProgress, MetadataSource, StorageMode,
+    DiscoveredFile, ImportCommand, ImportProgress, ImportStep, MetadataSource, StorageMode,
 };
 use crate::library::LibraryManager;
 use std::collections::HashMap;
@@ -40,21 +40,82 @@ pub struct ImportCandidatesSnapshot {
 
 #[derive(Debug, Clone)]
 pub enum ImportCandidateSnapshot {
-    Folder(FolderCandidate),
+    Folder {
+        candidate: FolderCandidate,
+        runtime: CandidateRuntimeSnapshot,
+    },
     Invalid(InvalidCandidate),
+    Runtime {
+        key: String,
+        runtime: CandidateRuntimeSnapshot,
+    },
+}
+
+#[derive(Debug, Clone)]
+enum ScannedImportCandidateSnapshot {
+    Folder {
+        candidate: FolderCandidate,
+        runtime: CandidateRuntimeSnapshot,
+    },
+    Invalid(InvalidCandidate),
+}
+
+#[derive(Debug, Clone)]
+pub struct CandidateRuntimeSnapshot {
+    pub identify_state: crate::identify::IdentifyState,
+    pub toolbar: Vec<crate::identify::ToolbarSignal>,
+    pub signals: Option<crate::signals::Signals>,
+    pub import_status: Option<CandidateImportStatusSnapshot>,
+}
+
+impl CandidateRuntimeSnapshot {
+    fn idle() -> Self {
+        Self {
+            identify_state: crate::identify::IdentifyState::Idle,
+            toolbar: Vec::new(),
+            signals: None,
+            import_status: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum CandidateImportStatusSnapshot {
+    Importing {
+        progress_percent: u32,
+        step: Option<ImportStep>,
+    },
+    Complete {
+        release_id: String,
+        album_id: String,
+    },
+    Error {
+        error: String,
+    },
 }
 
 #[derive(Debug, Default)]
 pub(crate) struct ImportCandidateState {
-    candidates: HashMap<String, ImportCandidateSnapshot>,
+    candidates: HashMap<String, ScannedImportCandidateSnapshot>,
+    runtime: HashMap<String, CandidateRuntimeSnapshot>,
 }
 
 impl ImportCandidateState {
-    fn candidate_watched_folder_path(candidate: &ImportCandidateSnapshot) -> &str {
+    const REIDENTIFY_PREFIX: &str = "reidentify:";
+
+    fn candidate_watched_folder_path(candidate: &ScannedImportCandidateSnapshot) -> &str {
         match candidate {
-            ImportCandidateSnapshot::Folder(candidate) => &candidate.watched_folder_path,
-            ImportCandidateSnapshot::Invalid(candidate) => &candidate.watched_folder_path,
+            ScannedImportCandidateSnapshot::Folder { candidate, .. } => {
+                &candidate.watched_folder_path
+            }
+            ScannedImportCandidateSnapshot::Invalid(candidate) => &candidate.watched_folder_path,
         }
+    }
+
+    fn runtime_entry(&mut self, candidate_key: &str) -> &mut CandidateRuntimeSnapshot {
+        self.runtime
+            .entry(candidate_key.to_string())
+            .or_insert_with(CandidateRuntimeSnapshot::idle)
     }
 
     pub(super) fn replace_root(
@@ -65,29 +126,117 @@ impl ImportCandidateState {
     ) {
         self.remove_root(root);
         for candidate in folder_candidates {
+            let key = candidate.path.to_string_lossy().into_owned();
+            let runtime = self
+                .runtime
+                .entry(key.clone())
+                .or_insert_with(CandidateRuntimeSnapshot::idle)
+                .clone();
             self.candidates.insert(
-                candidate.path.to_string_lossy().into_owned(),
-                ImportCandidateSnapshot::Folder(candidate),
+                key,
+                ScannedImportCandidateSnapshot::Folder { candidate, runtime },
             );
         }
         for candidate in invalid_candidates {
             self.candidates.insert(
                 candidate.path.to_string_lossy().into_owned(),
-                ImportCandidateSnapshot::Invalid(candidate),
+                ScannedImportCandidateSnapshot::Invalid(candidate),
             );
         }
     }
 
     pub(super) fn remove_root(&mut self, root: &Path) {
         let root_key = root.to_string_lossy();
+        let removed: Vec<String> = self
+            .candidates
+            .iter()
+            .filter(|(_, candidate)| {
+                Self::candidate_watched_folder_path(candidate) == root_key.as_ref()
+            })
+            .map(|(key, _)| key.clone())
+            .collect();
         self.candidates.retain(|_, candidate| {
             Self::candidate_watched_folder_path(candidate) != root_key.as_ref()
         });
+        for key in removed {
+            self.runtime.remove(&key);
+        }
     }
 
     pub(super) fn set_skipped(&mut self, key: &str, skipped: bool) {
-        if let Some(ImportCandidateSnapshot::Folder(candidate)) = self.candidates.get_mut(key) {
+        if let Some(ScannedImportCandidateSnapshot::Folder { candidate, .. }) =
+            self.candidates.get_mut(key)
+        {
             candidate.skipped = skipped;
+        }
+    }
+
+    pub(super) fn record_event(&mut self, event: &ImportEvent) {
+        match event {
+            ImportEvent::ImportProgress {
+                candidate_key,
+                progress,
+            } => {
+                let runtime = self.runtime_entry(candidate_key);
+                runtime.import_status = match progress {
+                    ImportProgress::Preparing { step, .. } => {
+                        Some(CandidateImportStatusSnapshot::Importing {
+                            progress_percent: 0,
+                            step: Some(ImportStep::Preparing(*step)),
+                        })
+                    }
+                    ImportProgress::Started { .. } => {
+                        Some(CandidateImportStatusSnapshot::Importing {
+                            progress_percent: 0,
+                            step: None,
+                        })
+                    }
+                    ImportProgress::Progress { percent, phase, .. } => {
+                        Some(CandidateImportStatusSnapshot::Importing {
+                            progress_percent: *percent as u32,
+                            step: Some(ImportStep::Running(*phase)),
+                        })
+                    }
+                    ImportProgress::Complete { id, album_id, .. }
+                    | ImportProgress::RemoteUploadQueued { id, album_id, .. } => {
+                        Some(CandidateImportStatusSnapshot::Complete {
+                            release_id: id.clone(),
+                            album_id: album_id.clone(),
+                        })
+                    }
+                    ImportProgress::Failed { error, .. } => {
+                        Some(CandidateImportStatusSnapshot::Error {
+                            error: error.clone(),
+                        })
+                    }
+                };
+            }
+            ImportEvent::IdentifyStateChanged {
+                candidate_key,
+                state,
+                toolbar,
+            } => {
+                let runtime = self.runtime_entry(candidate_key);
+                runtime.identify_state = state.clone();
+                runtime.toolbar = toolbar.clone();
+            }
+            ImportEvent::SignalsUpdated {
+                candidate_key,
+                signals,
+            } => {
+                let runtime = self.runtime_entry(candidate_key);
+                runtime.signals = Some(signals.clone());
+            }
+            ImportEvent::Scan(_) | ImportEvent::ImportLoudnessProgress { .. } => {}
+        }
+        for (key, candidate) in &mut self.candidates {
+            if let ScannedImportCandidateSnapshot::Folder { runtime, .. } = candidate {
+                let current = self
+                    .runtime
+                    .get(key)
+                    .unwrap_or_else(|| panic!("folder candidate {key:?} is missing runtime state"));
+                *runtime = current.clone();
+            }
         }
     }
 
@@ -105,10 +254,10 @@ impl ImportCandidateState {
         let mut invalid_candidates = Vec::new();
         for (key, candidate) in &self.candidates {
             match candidate {
-                ImportCandidateSnapshot::Folder(candidate) => {
+                ScannedImportCandidateSnapshot::Folder { candidate, .. } => {
                     folder_candidates.push((key.as_str(), candidate.clone()))
                 }
-                ImportCandidateSnapshot::Invalid(candidate) => {
+                ScannedImportCandidateSnapshot::Invalid(candidate) => {
                     invalid_candidates.push((key.as_str(), candidate.clone()))
                 }
             }
@@ -152,7 +301,25 @@ impl ImportCandidateState {
     }
 
     pub(super) fn get(&self, key: &str) -> Option<ImportCandidateSnapshot> {
-        self.candidates.get(key).cloned()
+        if key.starts_with(Self::REIDENTIFY_PREFIX) {
+            return self.runtime.get(key).cloned().map(|runtime| {
+                ImportCandidateSnapshot::Runtime {
+                    key: key.to_string(),
+                    runtime,
+                }
+            });
+        }
+        self.candidates
+            .get(key)
+            .cloned()
+            .map(|candidate| match candidate {
+                ScannedImportCandidateSnapshot::Folder { candidate, runtime } => {
+                    ImportCandidateSnapshot::Folder { candidate, runtime }
+                }
+                ScannedImportCandidateSnapshot::Invalid(candidate) => {
+                    ImportCandidateSnapshot::Invalid(candidate)
+                }
+            })
     }
 }
 
@@ -195,6 +362,12 @@ pub enum ImportEvent {
         candidate_key: String,
         signals: crate::signals::Signals,
     },
+}
+
+impl ImportServiceHandle {
+    pub(crate) fn record_candidate_event(&self, event: &ImportEvent) {
+        self.candidate_state.lock().unwrap().record_event(event);
+    }
 }
 
 /// Search query — one of the three search modes.

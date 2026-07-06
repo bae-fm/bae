@@ -101,6 +101,9 @@ final class AppService: @unchecked Sendable, Observable {
             syncReady: appHandle.isSyncReady()
         )
         importStore = ImportStore()
+        importStore.applyImportCandidatesSnapshot(
+            appHandle.getImportCandidates()
+        )
         libraryStore = LibraryStore()
         // Seed the queue panel with the current outbox so it renders correct
         // state on first open, before any `outboxChanged` event arrives. A
@@ -146,15 +149,10 @@ final class AppService: @unchecked Sendable, Observable {
         appHandle.subscribeUiEvents(
             callback: UiEventHandler(
                 playbackStore: playbackStore,
-                configStore: configStore,
                 importStore: importStore,
-                libraryStore: libraryStore,
                 projectionRegistry: projectionRegistry,
                 appService: self,
-                uiStore: uiStore,
-                outboxStore: outboxStore,
-                downloadStore: downloadStore,
-                exportStore: exportStore
+                uiStore: uiStore
             )
         )
         appHandle.registerArtworkAnalyzer(analyzer: VisionArtworkAnalyzer())
@@ -175,6 +173,9 @@ final class AppService: @unchecked Sendable, Observable {
             projectionRegistry.register(makeOutboxProjection()),
             projectionRegistry.register(makeDownloadProjection()),
             projectionRegistry.register(makeExportProjection()),
+            projectionRegistry.register(makeImportCandidatesProjection()),
+            projectionRegistry.register(makeImportCandidateProjection()),
+            projectionRegistry.register(makeImportLibraryStatusProjection()),
             projectionRegistry.register(makeReleaseDetailProjection()),
         ]
     }
@@ -287,6 +288,75 @@ final class AppService: @unchecked Sendable, Observable {
     private struct ReleaseDetailProjectionValue: Sendable {
         let releaseId: String
         let release: BridgeRelease?
+    }
+
+    private func makeImportCandidatesProjection()
+        -> Projection<BridgeImportCandidatesSnapshot>
+    {
+        Projection(
+            domains: [.importCandidateList, .watchedFolders],
+            query: { [appHandle] _ in
+                try await DetachedWork.run {
+                    appHandle.getImportCandidates()
+                }
+            },
+            apply: { [importStore] snapshot in
+                importStore.applyImportCandidatesSnapshot(snapshot)
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
+    }
+
+    private struct ImportCandidateProjectionValue: Sendable {
+        let key: String
+        let snapshot: BridgeImportCandidateSnapshot?
+    }
+
+    private func makeImportCandidateProjection()
+        -> Projection<ImportCandidateProjectionValue>
+    {
+        Projection(
+            domain: .importCandidate,
+            query: { [appHandle] invalidation in
+                guard case .importCandidate(let key) = invalidation else {
+                    preconditionFailure(
+                        "Import candidate projection received \(invalidation)"
+                    )
+                }
+                let snapshot = try await DetachedWork.run {
+                    appHandle.getCandidate(key: key)
+                }
+                return ImportCandidateProjectionValue(
+                    key: key,
+                    snapshot: snapshot
+                )
+            },
+            apply: { [importStore] value in
+                importStore.applyImportCandidateSnapshot(
+                    key: value.key,
+                    snapshot: value.snapshot
+                )
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
+    }
+
+    private func makeImportLibraryStatusProjection() -> Projection<String> {
+        Projection(
+            domain: .release,
+            query: { invalidation in
+                guard case .release(let releaseId) = invalidation else {
+                    preconditionFailure(
+                        "Import library-status projection received \(invalidation)"
+                    )
+                }
+                return releaseId
+            },
+            apply: { [importStore] releaseId in
+                importStore.removeLibraryStatus(releaseId: releaseId)
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
     }
 
     private func makeReleaseDetailProjection()

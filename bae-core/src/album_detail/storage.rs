@@ -87,12 +87,14 @@ impl StorageRow {
         raw: DbStorageRow,
         has_cloud_home: bool,
         pinned: bool,
+        transfer_action: Option<ReleaseStorageAction>,
         resolve_cover: impl Fn(&str) -> Option<ImageRef>,
     ) -> StorageRow {
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
             pinned,
             cover: resolve_cover(&raw.release.id),
+            transfer_action,
         };
         StorageRow {
             release: ReleaseSummary::from_raw(raw.release, &ctx),

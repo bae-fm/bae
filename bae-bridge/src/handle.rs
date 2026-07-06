@@ -1850,14 +1850,60 @@ fn convert_import_candidate_snapshot(
     candidate: bae_core::import::ImportCandidateSnapshot,
 ) -> crate::types::BridgeImportCandidateSnapshot {
     match candidate {
-        bae_core::import::ImportCandidateSnapshot::Folder(candidate) => {
+        bae_core::import::ImportCandidateSnapshot::Folder { candidate, runtime } => {
             crate::types::BridgeImportCandidateSnapshot::Folder {
                 candidate: convert_folder_candidate(candidate),
+                runtime: convert_candidate_runtime_snapshot(runtime),
             }
         }
         bae_core::import::ImportCandidateSnapshot::Invalid(candidate) => {
             crate::types::BridgeImportCandidateSnapshot::Invalid {
                 candidate: convert_invalid_candidate(candidate),
+            }
+        }
+        bae_core::import::ImportCandidateSnapshot::Runtime { key, runtime } => {
+            crate::types::BridgeImportCandidateSnapshot::Runtime {
+                key,
+                runtime: convert_candidate_runtime_snapshot(runtime),
+            }
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+fn convert_candidate_runtime_snapshot(
+    runtime: bae_core::import::CandidateRuntimeSnapshot,
+) -> crate::types::BridgeCandidateRuntimeSnapshot {
+    crate::types::BridgeCandidateRuntimeSnapshot {
+        identify_state: crate::types::identify_state_to_bridge(runtime.identify_state),
+        signals_toolbar: crate::types::toolbar_to_bridge(runtime.toolbar),
+        signals: runtime.signals.map(crate::types::signals_to_bridge),
+        import_status: runtime.import_status.map(convert_candidate_import_status),
+    }
+}
+
+#[cfg(feature = "desktop")]
+fn convert_candidate_import_status(
+    status: bae_core::import::CandidateImportStatusSnapshot,
+) -> crate::types::BridgeCandidateImportStatus {
+    match status {
+        bae_core::import::CandidateImportStatusSnapshot::Importing {
+            progress_percent,
+            step,
+        } => crate::types::BridgeCandidateImportStatus::Importing {
+            progress_percent,
+            step: step.map(crate::types::import_step_to_bridge),
+        },
+        bae_core::import::CandidateImportStatusSnapshot::Complete {
+            release_id,
+            album_id,
+        } => crate::types::BridgeCandidateImportStatus::Complete {
+            release_id,
+            album_id,
+        },
+        bae_core::import::CandidateImportStatusSnapshot::Error { error } => {
+            crate::types::BridgeCandidateImportStatus::Error {
+                error: crate::types::bridge_error(bae_core::ui::UiError::import(error)),
             }
         }
     }
@@ -2203,6 +2249,9 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
             .into_iter()
             .map(crate::types::BridgeReleaseStorageAction::from_core)
             .collect(),
+        transfer_action: summary
+            .transfer_action
+            .map(crate::types::BridgeReleaseStorageAction::from_core),
         total_duration_ms: rel.total_duration_ms,
         tracks: rel.tracks.into_iter().map(convert_track).collect(),
         track_groups: rel
@@ -2245,6 +2294,9 @@ fn convert_release_summary(s: bae_core::album_detail::ReleaseSummary) -> BridgeR
             .into_iter()
             .map(crate::types::BridgeReleaseStorageAction::from_core)
             .collect(),
+        transfer_action: s
+            .transfer_action
+            .map(crate::types::BridgeReleaseStorageAction::from_core),
         file_count: s.file_count,
         total_size: s.total_size,
         cover: s.cover.map(crate::types::BridgeImageRef::from_core),

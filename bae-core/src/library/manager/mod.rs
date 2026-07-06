@@ -472,6 +472,7 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
 /// fire it directly.
 struct TransferEndedGuard {
     event_tx: broadcast::Sender<LibraryEvent>,
+    transfer_actions: Arc<Mutex<HashMap<String, ReleaseStorageAction>>>,
     release_id: String,
     armed: bool,
 }
@@ -487,6 +488,10 @@ impl Drop for TransferEndedGuard {
         if !self.armed {
             return;
         }
+        self.transfer_actions
+            .lock()
+            .unwrap()
+            .remove(&self.release_id);
         if let Err(err) = self.event_tx.send(LibraryEvent::ReleaseTransferEnded {
             release_id: std::mem::take(&mut self.release_id),
         }) {
@@ -639,6 +644,7 @@ pub struct LibraryManager {
     /// and leaves the release remote (no orphans). Registered for the transfer's
     /// duration; transient.
     transfer_cancels: Arc<Mutex<HashMap<String, crate::library::CancellationToken>>>,
+    transfer_actions: Arc<Mutex<HashMap<String, ReleaseStorageAction>>>,
     /// In-memory queue for "Pin for offline". A single serial worker drains it
     /// one release at a time. Shared across manager clones; transient (empty
     /// after a restart — a release that wasn't fully pinned stays cloud-only).
@@ -752,6 +758,7 @@ impl LibraryManager {
             sync,
             sync_status,
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
+            transfer_actions: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             export_queue: Arc::new(crate::library::ExportQueue::new()),
             #[cfg(any(test, feature = "test-utils"))]
@@ -804,6 +811,7 @@ impl LibraryManager {
             sync,
             sync_status,
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
+            transfer_actions: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             export_queue: Arc::new(crate::library::ExportQueue::new()),
             #[cfg(any(test, feature = "test-utils"))]
@@ -830,6 +838,14 @@ impl LibraryManager {
     {
         let manager = self.clone();
         self.runtime_handle.spawn(worker(manager));
+    }
+
+    pub(crate) fn current_transfer_action(&self, release_id: &str) -> Option<ReleaseStorageAction> {
+        self.transfer_actions
+            .lock()
+            .unwrap()
+            .get(release_id)
+            .copied()
     }
 
     /// Connect a real `SyncManager` over an injected cloud home for tests, so the

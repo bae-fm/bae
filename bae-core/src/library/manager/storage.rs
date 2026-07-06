@@ -174,9 +174,14 @@ impl LibraryManager {
             let pinned = self
                 .release_pinned(raw.release.any_file_id.as_deref())
                 .await?;
-            rows.push(StorageRow::from_raw(raw, has_cloud_home, pinned, |rid| {
-                covers.get(rid).cloned()
-            }));
+            let transfer_action = self.current_transfer_action(&raw.release.id);
+            rows.push(StorageRow::from_raw(
+                raw,
+                has_cloud_home,
+                pinned,
+                transfer_action,
+                |rid| covers.get(rid).cloned(),
+            ));
         }
         Ok(StoragePage { rows, total_count })
     }

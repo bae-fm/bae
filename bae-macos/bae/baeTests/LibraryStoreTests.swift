@@ -52,6 +52,7 @@ private func makeBridgeRelease(
         storageState: storageState,
         pinned: pinned,
         storageActions: storageActions,
+        transferAction: nil,
         tracks: [],
         trackGroups: [],
         files: [],
@@ -82,6 +83,7 @@ private func makeBridgeReleaseSummary(
         storageState: storageState,
         pinned: pinned,
         storageActions: storageActions,
+        transferAction: nil,
         fileCount: fileCount,
         totalSize: totalSize,
         cover: cover
@@ -495,16 +497,10 @@ struct InternReleaseDetailTests {
         // (here `format`) carry through from the same `BridgeRelease`.
         #expect(detail.summary.format == "FLAC")
     }
-}
-
-// MARK: - Album event tests
-
-@Suite("LibraryStore album events")
-struct AlbumEventTests {
 
     @MainActor
-    @Test("handleAlbumAdded populates normalized slices")
-    func albumAddedPopulatesSlices() {
+    @Test("internAlbumDetail populates normalized slices")
+    func internAlbumDetailPopulatesSlices() {
         let store = LibraryStore()
         let release1 = makeBridgeRelease(id: "r-1")
         let release2 = makeBridgeRelease(id: "r-2", displayName: "Release Two")
@@ -512,7 +508,7 @@ struct AlbumEventTests {
             releases: [release1, release2]
         )
 
-        store.handleAlbumAdded(album: detail)
+        store.internAlbumDetail(detail)
 
         #expect(store.albumSummaries["album-1"] != nil)
         #expect(store.releaseSummaries["r-1"] != nil)
@@ -523,294 +519,14 @@ struct AlbumEventTests {
     }
 
     @MainActor
-    @Test("handleAlbumAdded does not mutate live lists")
-    func albumAddedDoesNotMutateList() async {
+    @Test("release detail nil snapshot removes release slices")
+    func nilReleaseDetailSnapshotRemovesReleaseSlices() {
         let store = LibraryStore()
-        let list = makeList(
-            store: store,
-            albums: [makeBridgeAlbum(id: "a1", title: "Existing")]
-        )
-        await list.loadInitial()
-        await list.loadRange(offset: 0, limit: 1)
-
-        let preCount = list.totalCount
-
-        store.handleAlbumAdded(
-            album: makeBridgeAlbumDetail(albumId: "a2", title: "New")
-        )
-
-        // Slice holds the new summary, but the list's segments are untouched.
-        #expect(store.albumSummaries["a2"] != nil)
-        #expect(list.totalCount == preCount)
-        #expect(list.idAt(0) == "a1")
-    }
-
-    @MainActor
-    @Test("handleAlbumUpdated updates existing summary, same identity")
-    func albumUpdated() {
-        let store = LibraryStore()
-        let detail1 = makeBridgeAlbumDetail(title: "Old")
-        store.handleAlbumAdded(album: detail1)
-        let original = store.albumSummaries["album-1"]!
-
-        let detail2 = makeBridgeAlbumDetail(title: "New")
-        store.handleAlbumUpdated(album: detail2)
-
-        #expect(store.albumSummaries["album-1"] === original)
-        #expect(original.title == "New")
-    }
-
-    @MainActor
-    @Test("handleAlbumUpdated with no prior album interns the payload")
-    func albumUpdatedWithoutPriorSummary() {
-        let store = LibraryStore()
-        let r1 = makeBridgeRelease(id: "r-1")
-        let detail = makeBridgeAlbumDetail(
-            releases: [r1]
-        )
-
-        // Simulates re-subscribe / out-of-order delivery: the reducer
-        // receives `AlbumUpdated` with no prior `AlbumAdded` state.
-        // The reducer must not drop the payload.
-        store.handleAlbumUpdated(album: detail)
-
-        #expect(store.albumSummaries["album-1"]?.title == "Album Title")
-        #expect(store.releaseSummaries["r-1"] != nil)
-        #expect(store.releaseDetails["r-1"] != nil)
-    }
-
-    @MainActor
-    @Test(
-        "handleAlbumUpdated replaces releaseDetails and updates release summary identity"
-    )
-    func albumUpdatedRefreshesSlices() {
-        let store = LibraryStore()
-        let r1 = makeBridgeRelease(
-            id: "r-1",
-            displayName: "V1",
-            storageState: .remote,
-            pinned: false
-        )
-        let initialDetail = makeBridgeAlbumDetail(
-            releases: [r1]
-        )
-        store.handleAlbumAdded(album: initialDetail)
-        let originalSummary = store.releaseSummaries["r-1"]!
-
-        let updatedR1 = makeBridgeRelease(
-            id: "r-1",
-            displayName: "V2",
-            storageState: .remote,
-            pinned: true
-        )
-        let updatedDetail = makeBridgeAlbumDetail(
-            releases: [updatedR1]
-        )
-        store.handleAlbumUpdated(album: updatedDetail)
-
-        // Summary identity preserved; fields updated in place.
-        #expect(store.releaseSummaries["r-1"] === originalSummary)
-        #expect(originalSummary.pinned)
-
-        // Detail replaced wholesale; still wraps canonical summary.
-        #expect(store.releaseDetails["r-1"]!.displayName == "V2")
-        #expect(store.releaseDetails["r-1"]!.summary === originalSummary)
-    }
-
-    @MainActor
-    @Test("handleAlbumRemoved removes summary and all its releases from slices")
-    func albumRemoved() {
-        let store = LibraryStore()
-        let r1 = makeBridgeRelease(id: "r-1", albumId: "album-1")
-        let r2 = makeBridgeRelease(id: "r-2", albumId: "album-1")
-        store.handleAlbumAdded(
-            album: makeBridgeAlbumDetail(releases: [r1, r2])
-        )
-
-        store.handleAlbumRemoved(
-            albumId: "album-1",
-            releaseIds: ["r-1", "r-2"]
-        )
-
-        #expect(store.albumSummaries["album-1"] == nil)
-        #expect(store.releaseSummaries["r-1"] == nil)
-        #expect(store.releaseSummaries["r-2"] == nil)
-        #expect(store.releaseDetails["r-1"] == nil)
-        #expect(store.releaseDetails["r-2"] == nil)
-    }
-
-    @MainActor
-    @Test("handleAlbumRemoved cascades only the removed album's releases")
-    func albumRemovedCascadeScoped() {
-        let store = LibraryStore()
-        let a1r1 = makeBridgeRelease(id: "a1-r1", albumId: "album-1")
-        let a1r2 = makeBridgeRelease(id: "a1-r2", albumId: "album-1")
-        let a2r1 = makeBridgeRelease(id: "a2-r1", albumId: "album-2")
-        let a2r2 = makeBridgeRelease(id: "a2-r2", albumId: "album-2")
-
-        store.handleAlbumAdded(
-            album: makeBridgeAlbumDetail(
-                albumId: "album-1",
-                releases: [a1r1, a1r2]
-            )
-        )
-        store.handleAlbumAdded(
-            album: makeBridgeAlbumDetail(
-                albumId: "album-2",
-                releases: [a2r1, a2r2]
-            )
-        )
-
-        store.handleAlbumRemoved(
-            albumId: "album-1",
-            releaseIds: ["a1-r1", "a1-r2"]
-        )
-
-        // album-1 and both of its releases are gone.
-        #expect(store.albumSummaries["album-1"] == nil)
-        #expect(store.releaseSummaries["a1-r1"] == nil)
-        #expect(store.releaseSummaries["a1-r2"] == nil)
-        #expect(store.releaseDetails["a1-r1"] == nil)
-        #expect(store.releaseDetails["a1-r2"] == nil)
-
-        // album-2 and both of its releases survive.
-        #expect(store.albumSummaries["album-2"] != nil)
-        #expect(store.releaseSummaries["a2-r1"] != nil)
-        #expect(store.releaseSummaries["a2-r2"] != nil)
-        #expect(store.releaseDetails["a2-r1"] != nil)
-        #expect(store.releaseDetails["a2-r2"] != nil)
-    }
-
-    @MainActor
-    @Test("handleAlbumRemoved does not mutate live lists")
-    func albumRemovedDoesNotMutateList() async {
-        let store = LibraryStore()
-        let list = makeList(
-            store: store,
-            albums: [
-                makeBridgeAlbum(id: "a1", title: "Alpha"),
-                makeBridgeAlbum(id: "a2", title: "Beta"),
-            ]
-        )
-        await list.loadInitial()
-        await list.loadRange(offset: 0, limit: 2)
-
-        let preCount = list.totalCount
-
-        store.handleAlbumRemoved(albumId: "a2", releaseIds: [])
-
-        // Slice shrinks, but the list's segments are untouched until invalidate().
-        #expect(store.albumSummaries["a2"] == nil)
-        #expect(list.totalCount == preCount)
-        #expect(list.idAt(0) == "a1")
-        #expect(list.idAt(1) == "a2")
-    }
-}
-
-// MARK: - Release event tests
-
-@Suite("LibraryStore release events")
-struct ReleaseEventTests {
-
-    @MainActor
-    @Test(
-        "handleReleaseAdded interns the release and updates parent album releaseIds from event"
-    )
-    func releaseAddedInternsSlices() {
-        let store = LibraryStore()
-        store.handleAlbumAdded(album: makeBridgeAlbumDetail(albumId: "album-1"))
-        let newRelease = makeBridgeRelease(
-            id: "release-2",
-            displayName: "Second Release"
-        )
-        let updatedAlbum = makeBridgeAlbum(
-            id: "album-1",
-            releaseIds: ["release-1", "release-2"]
-        )
-
-        store.handleReleaseAdded(album: updatedAlbum, release: newRelease)
-
-        #expect(store.releaseSummaries["release-2"]?.id == "release-2")
-        #expect(
-            store.releaseDetails["release-2"]?.displayName == "Second Release"
-        )
-        #expect(
-            store.albumSummaries["album-1"]?.releaseIds.contains("release-2")
-                == true
-        )
-    }
-
-    @MainActor
-    @Test("handleReleaseUpdated replaces detail, preserves summary identity")
-    func releaseUpdated() {
-        let store = LibraryStore()
-        store.handleReleaseAdded(
-            album: makeBridgeAlbum(id: "album-1", releaseIds: ["release-1"]),
-            release: makeBridgeRelease(displayName: "Old")
-        )
-        let originalSummary = store.releaseSummaries["release-1"]!
-
-        let updated = makeBridgeRelease(
-            displayName: "New",
-            storageState: .remote,
-            pinned: true
-        )
-        store.handleReleaseUpdated(release: updated)
-
-        #expect(store.releaseDetails["release-1"]?.displayName == "New")
-        #expect(store.releaseSummaries["release-1"] === originalSummary)
-        #expect(originalSummary.pinned)
-    }
-
-    @MainActor
-    @Test(
-        "handleReleaseRemoved drops the release and interns the event's post-removal album"
-    )
-    func releaseRemoved() {
-        let store = LibraryStore()
-        store.handleAlbumAdded(
-            album: makeBridgeAlbumDetail(
-                albumId: "album-1",
-                releases: [
-                    makeBridgeRelease(id: "release-1"),
-                    makeBridgeRelease(id: "release-2"),
-                ]
-            )
-        )
-        store.albumSummaries["album-1"]?.releaseIds = [
-            "release-1", "release-2",
-        ]
+        store.internReleaseDetail(makeBridgeRelease())
         #expect(store.releaseSummaries["release-1"] != nil)
         #expect(store.releaseDetails["release-1"] != nil)
 
-        // The event carries the parent album's post-removal summary, exactly
-        // as the core emitter ships it — releaseIds no longer lists release-1.
-        store.handleReleaseRemoved(
-            releaseId: "release-1",
-            album: makeBridgeAlbum(id: "album-1", releaseIds: ["release-2"])
-        )
-
-        #expect(store.releaseSummaries["release-1"] == nil)
-        #expect(store.releaseDetails["release-1"] == nil)
-        #expect(store.albumSummaries["album-1"]?.releaseIds == ["release-2"])
-    }
-
-    @MainActor
-    @Test(
-        "handleReleaseRemoved leaves the album untouched when the event carries no summary"
-    )
-    func releaseRemovedWithoutAlbum() {
-        let store = LibraryStore()
-        store.handleAlbumAdded(
-            album: makeBridgeAlbumDetail(
-                albumId: "album-1",
-                releases: [makeBridgeRelease()]
-            )
-        )
-
-        // album: nil mirrors the cascade-delete case where AlbumRemoved already
-        // dropped the summary; the release slices still clear.
-        store.handleReleaseRemoved(releaseId: "release-1", album: nil)
+        store.applyReleaseDetailSnapshot(releaseId: "release-1", bridge: nil)
 
         #expect(store.releaseSummaries["release-1"] == nil)
         #expect(store.releaseDetails["release-1"] == nil)

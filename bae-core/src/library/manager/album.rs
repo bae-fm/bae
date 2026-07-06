@@ -172,6 +172,7 @@ impl LibraryManager {
                 has_cloud_home,
                 pinned,
                 cover: release_cover,
+                transfer_action: self.current_transfer_action(&r.release.id),
             };
             releases.push(ReleaseDetail::from_raw(r, &raw.artists, i, &ctx));
         }

@@ -244,6 +244,7 @@ pub struct BridgeReleaseSummary {
     /// per-release outbox progress before showing actions. The Storage
     /// Manager row context menu renders these.
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
+    pub transfer_action: Option<BridgeReleaseStorageAction>,
     pub file_count: i64,
     pub total_size: i64,
     /// Reference to this release's own cover (image id + version), or `None` when
@@ -272,6 +273,7 @@ pub struct BridgeRelease {
     /// core. The in-flight-uploads gate lives in the UI: it consults
     /// per-release outbox progress before showing actions.
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
+    pub transfer_action: Option<BridgeReleaseStorageAction>,
     pub tracks: Vec<BridgeTrack>,
     pub track_groups: Vec<BridgeTrackGroup>,
     pub files: Vec<BridgeFile>,
@@ -723,8 +725,40 @@ pub struct BridgeInvalidCandidate {
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeImportCandidateSnapshot {
-    Folder { candidate: BridgeFolderCandidate },
-    Invalid { candidate: BridgeInvalidCandidate },
+    Folder {
+        candidate: BridgeFolderCandidate,
+        runtime: BridgeCandidateRuntimeSnapshot,
+    },
+    Invalid {
+        candidate: BridgeInvalidCandidate,
+    },
+    Runtime {
+        key: String,
+        runtime: BridgeCandidateRuntimeSnapshot,
+    },
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCandidateRuntimeSnapshot {
+    pub identify_state: BridgeIdentifyState,
+    pub signals_toolbar: BridgeSignalsToolbar,
+    pub signals: Option<BridgeSignals>,
+    pub import_status: Option<BridgeCandidateImportStatus>,
+}
+
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeCandidateImportStatus {
+    Importing {
+        progress_percent: u32,
+        step: Option<BridgeImportStep>,
+    },
+    Complete {
+        release_id: String,
+        album_id: String,
+    },
+    Error {
+        error: BridgeError,
+    },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

@@ -9,8 +9,7 @@
 
     extension PreviewData {
         /// A `LibraryStore` seeded with every preview album's summary and its
-        /// releases' fat details, via the same `handleAlbumAdded` reducer the
-        /// app runs on an `AlbumAdded` event. `AlbumDetailView.body` finds
+        /// releases' fat details. `AlbumDetailView.body` finds
         /// `albumSummaries[albumId]` and `releaseDetails[…]` without a live
         /// load, and its `.task` is a no-op because `loadReleaseDetail`
         /// short-circuits when the detail is already present.
@@ -18,7 +17,7 @@
         static func seededLibraryStore() -> LibraryStore {
             let store = LibraryStore()
             for detail in albumDetails.values {
-                store.handleAlbumAdded(album: detail)
+                store.internAlbumDetail(detail)
             }
             return store
         }

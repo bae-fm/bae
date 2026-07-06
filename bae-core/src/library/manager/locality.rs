@@ -451,6 +451,7 @@ impl LibraryManager {
         // the normal exit defuses it after emitting the event itself.
         let mut ended_guard = TransferEndedGuard {
             event_tx: self.event_tx.clone(),
+            transfer_actions: self.transfer_actions.clone(),
             release_id: release_id.to_string(),
             armed: true,
         };
@@ -464,6 +465,10 @@ impl LibraryManager {
             };
             match progress {
                 TransferProgress::Started => {
+                    self.transfer_actions
+                        .lock()
+                        .unwrap()
+                        .insert(release_id.to_string(), action);
                     self.emit(LibraryEvent::ReleaseTransferProgress {
                         release_id: release_id.to_string(),
                         action,
@@ -491,6 +496,7 @@ impl LibraryManager {
 
         // Normal exit: emit the terminal event ourselves and defuse the guard so
         // its drop doesn't emit a second one.
+        self.transfer_actions.lock().unwrap().remove(release_id);
         self.emit(LibraryEvent::ReleaseTransferEnded {
             release_id: release_id.to_string(),
         });

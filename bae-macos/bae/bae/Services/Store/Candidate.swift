@@ -174,6 +174,25 @@ struct Candidate: Equatable, Identifiable {
         isAdded = bridge.isAdded
     }
 
+    func withSessionState(from existing: Candidate) -> Candidate {
+        var copy = self
+        copy.identifyState = existing.identifyState
+        copy.importStatus = existing.importStatus
+        copy.releaseDetailBridge = existing.releaseDetailBridge
+        copy.libraryStatuses = existing.libraryStatuses
+        copy.mode = existing.mode
+        copy.error = existing.error
+        copy.selectedCover = existing.selectedCover
+        copy.search = existing.search
+        copy.signals = existing.signals
+        copy.signalsToolbar = existing.signalsToolbar
+        copy.identityChoice = existing.identityChoice
+        copy.editValues = existing.editValues
+        copy.searchTask = existing.searchTask
+        copy.prefetchTask = existing.prefetchTask
+        return copy
+    }
+
     /// Construct a re-identify candidate. The release already lives in
     /// the library; identify-pipeline events stream into this candidate the
     /// same way folder events do, so the existing `ImportSearchPane` UI renders

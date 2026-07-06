@@ -4,9 +4,6 @@ import Foundation
 /// candidate search, signal dismissal, file-tag preview, commit, and the
 /// duplicate-name check.
 final class Importer: Sendable, Observable {
-    /// The current watched-folder list. Fetched when the import view appears to
-    /// render the group headers (the durable list, not an event).
-    let watchedFolders: @Sendable () -> [BridgeWatchedFolder]
     /// Add a folder to watch for imports: persist it and scan it. Already-watched
     /// folders are left as-is.
     let addWatchedFolder: @Sendable (_ path: String) throws -> Void
@@ -43,9 +40,6 @@ final class Importer: Sendable, Observable {
     let isSourceFolderNameImported: @Sendable (_ name: String) throws -> Bool
 
     init(
-        watchedFolders: @escaping @Sendable () -> [BridgeWatchedFolder] = {
-            []
-        },
         addWatchedFolder: @escaping @Sendable (String) throws -> Void = { _ in
         },
         removeWatchedFolder: @escaping @Sendable (String) throws -> Void = {
@@ -84,7 +78,6 @@ final class Importer: Sendable, Observable {
         isSourceFolderNameImported:
             @escaping @Sendable (String) throws -> Bool = { _ in false }
     ) {
-        self.watchedFolders = watchedFolders
         self.addWatchedFolder = addWatchedFolder
         self.removeWatchedFolder = removeWatchedFolder
         self.setCandidateSkipped = setCandidateSkipped
@@ -101,7 +94,6 @@ final class Importer: Sendable, Observable {
 
     convenience init(handle: any AppHandleProtocol) {
         self.init(
-            watchedFolders: { handle.watchedFolders() },
             addWatchedFolder: { try handle.addWatchedFolder(path: $0) },
             removeWatchedFolder: { try handle.removeWatchedFolder(path: $0) },
             setCandidateSkipped: {

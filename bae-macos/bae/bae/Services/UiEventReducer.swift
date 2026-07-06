@@ -1,22 +1,14 @@
 import AppKit
-import os.log
-
-private let logger = Logger.bae("UiEventReducer")
 
 /// The stores and services a `UiEventReducer` writes, bundled so the reducer and
-/// its per-category helpers take one dependency rather than nine separate ones.
+/// its per-category helpers take one dependency.
 @MainActor
 struct ReducerContext {
     let playbackStore: PlaybackStore
-    let configStore: ConfigStore
     let importStore: ImportStore
-    let libraryStore: LibraryStore
     let projectionRegistry: ProjectionRegistry
     let appService: AppService
     let uiStore: UiStore
-    let outboxStore: OutboxStore
-    let downloadStore: DownloadStore
-    let exportStore: ExportStore
 }
 
 /// The fields carried by the `playbackPlaying` and `playbackPaused` events,
@@ -125,30 +117,39 @@ enum UiEventReducer {
             .playbackStopped, .playbackError, .playbackProgress,
             .playbackSeeked,
             .volumeChanged, .muteChanged, .repeatModeChanged,
-            .queueUpdated, .queueItemsAdded:
+            .queueItemsAdded:
             reducePlayback(event, into: context)
 
         case .previewPlaying, .previewPaused, .previewIdle, .previewProgress:
             reducePreview(event, into: context)
 
+        case .candidateImportLoudnessProgress(
+            let key,
+            let tracksDone,
+            let tracksTotal,
+            let fraction
+        ):
+            context.importStore.importLoudnessSubject.send(
+                ImportLoudnessProgressEvent(
+                    key: key,
+                    tracksDone: tracksDone,
+                    tracksTotal: tracksTotal,
+                    fraction: Double(fraction)
+                )
+            )
+
         case .candidateIdentifyStateChanged, .candidateSignalsUpdated,
-            .candidateImportImporting, .candidateImportLoudnessProgress,
-            .candidateImportComplete, .candidateImportError,
-            .candidateSkipChanged:
-            reduceCandidate(event, into: context)
-
-        case .watchedFoldersChanged, .folderCandidateAdded, .invalidCandidate,
-            .scanCandidateRemoved, .scanFinished:
-            reduceScan(event, into: context)
-
-        case .albumAdded, .albumUpdated, .albumRemoved,
+            .candidateImportImporting, .candidateImportComplete,
+            .candidateImportError, .candidateSkipChanged,
+            .watchedFoldersChanged, .folderCandidateAdded, .invalidCandidate,
+            .scanCandidateRemoved, .scanFinished,
+            .albumAdded, .albumUpdated, .albumRemoved,
             .releaseAdded, .releaseUpdated, .releaseRemoved,
-            .releaseTransferProgress, .releaseTransferEnded:
-            reduceLibrary(event, into: context)
-
-        case .configChanged, .syncError, .syncTimeChanged, .syncingChanged,
-            .outboxChanged, .downloadQueueChanged, .exportQueueChanged:
-            reduceSyncAndConfig(event, into: context)
+            .releaseTransferProgress, .releaseTransferEnded,
+            .configChanged, .syncError, .syncTimeChanged, .syncingChanged,
+            .outboxChanged, .downloadQueueChanged, .exportQueueChanged,
+            .queueUpdated:
+            break
 
         case .error, .errorCleared:
             reduceErrors(event, into: context)
@@ -171,7 +172,7 @@ enum UiEventReducer {
 
         case .playbackError, .playbackProgress, .playbackSeeked,
             .volumeChanged, .muteChanged,
-            .repeatModeChanged, .queueUpdated, .queueItemsAdded:
+            .repeatModeChanged, .queueItemsAdded:
             reducePlaybackStateAndControls(event, into: context)
 
         default:
@@ -348,13 +349,6 @@ enum UiEventReducer {
         case .repeatModeChanged(let mode):
             playbackStore.repeatMode = RepeatMode(bridge: mode)
 
-        case .queueUpdated(let snapshot):
-            // The event carries display-ready items in two lanes (core resolves
-            // them before emitting), so map them straight through — no DB
-            // re-query here. The manual lane and the context render as distinct
-            // sections.
-            context.appService.applyQueueSnapshot(snapshot)
-
         case .queueItemsAdded(let count):
             playbackStore.queueItemsAddedSubject.send(Int(count))
 
@@ -427,239 +421,6 @@ extension UiEventReducer {
             context.appService.mediaControlService.updatePreviewPosition(
                 positionMs: positionMs
             )
-
-        default:
-            break
-        }
-    }
-
-    @MainActor
-    private static func reduceCandidate(
-        _ event: BridgeUiEvent,
-        into context: ReducerContext
-    ) {
-        let importStore = context.importStore
-        switch event {
-        case .candidateIdentifyStateChanged(let key, let state, let toolbar):
-            importStore.mutateCandidate(forKey: key) { candidate in
-                candidate.identifyState = IdentifyState(bridge: state)
-                candidate.signalsToolbar = SignalsToolbar(bridge: toolbar)
-            }
-
-        case .candidateSignalsUpdated(let key, let signals):
-            importStore.mutateCandidate(forKey: key) {
-                $0.signals = Signals(bridge: signals)
-            }
-
-        case .candidateImportImporting(
-            let key,
-            let progressPercent,
-            let step
-        ):
-            importStore.mutateCandidate(forKey: key) {
-                $0.importStatus = .importing(
-                    progressPercent: progressPercent,
-                    step: step
-                )
-            }
-
-        case .candidateImportLoudnessProgress(
-            let key,
-            let tracksDone,
-            let tracksTotal,
-            let fraction
-        ):
-            // High-frequency sub-track tick — publish to the leaf bar's signal,
-            // never the @Observable candidate row.
-            importStore.importLoudnessSubject.send(
-                ImportLoudnessProgressEvent(
-                    key: key,
-                    tracksDone: tracksDone,
-                    tracksTotal: tracksTotal,
-                    fraction: Double(fraction)
-                )
-            )
-
-        case .candidateImportComplete(let key, let releaseId, let albumId):
-            importStore.mutateCandidate(forKey: key) {
-                $0.importStatus = .complete(
-                    albumId: albumId,
-                    releaseId: releaseId
-                )
-            }
-
-        case .candidateImportError(let key, let error):
-            importStore.mutateCandidate(forKey: key) {
-                $0.importStatus = .error(error)
-            }
-
-        case .candidateSkipChanged(let key, let skipped):
-            // The user skipped or unskipped the candidate; flip its flag so the
-            // import view re-tabs it New ↔ Skipped. In-place mutation keeps the
-            // candidate's identify/search/import state.
-            importStore.mutateCandidate(forKey: key) { $0.skipped = skipped }
-
-        default:
-            break
-        }
-    }
-
-    @MainActor
-    private static func reduceScan(
-        _ event: BridgeUiEvent,
-        into context: ReducerContext
-    ) {
-        let importStore = context.importStore
-        switch event {
-        case .watchedFoldersChanged(let folders):
-            // Pure assignment. Candidates of an unwatched folder aren't deleted
-            // here — `candidateGroups` only surfaces candidates whose folder is
-            // still watched, so a removed folder's rows simply stop rendering.
-            importStore.watchedFolders = folders
-
-        case .folderCandidateAdded(let candidate):
-            // Insert only if absent: a re-scan (e.g. when the import view
-            // reappears) re-emits every candidate, and overwriting would wipe a
-            // candidate's in-progress identify/search/import state. The folder
-            // may have been invalid before (a corrupt file got fixed), so drop
-            // it from the invalid list — a folder is never in both.
-            let native = Candidate(bridge: candidate)
-            importStore.invalidCandidates.removeValue(forKey: native.key)
-            if importStore.folderCandidates[native.key] == nil {
-                importStore.folderCandidates[native.key] = native
-            }
-
-        case .invalidCandidate(let candidate):
-            // A folder that looks like a release but failed validation. Surface
-            // it under Skipped, and drop it from the valid-candidate list — it
-            // may have been valid before (a file got corrupted); a folder is
-            // never in both lists.
-            importStore.invalidCandidates[candidate.folderPath] = candidate
-            importStore.folderCandidates.removeValue(
-                forKey: candidate.folderPath
-            )
-
-        case .scanCandidateRemoved(let key):
-            // The watcher re-scanned the candidate's folder and it's gone from
-            // disk; drop it from whichever list holds it.
-            importStore.folderCandidates.removeValue(forKey: key)
-            importStore.invalidCandidates.removeValue(forKey: key)
-
-        case .scanFinished:
-            // No state change needed — views react to candidate additions
-            break
-
-        default:
-            break
-        }
-    }
-
-    @MainActor
-    private static func reduceLibrary(
-        _ event: BridgeUiEvent,
-        into context: ReducerContext
-    ) {
-        let libraryStore = context.libraryStore
-        switch event {
-        case .albumAdded(let album):
-            logger.info(
-                "reducer: albumAdded for album \(album.album.id)"
-            )
-            libraryStore.handleAlbumAdded(album: album)
-
-        case .albumUpdated(let album):
-            libraryStore.handleAlbumUpdated(album: album)
-
-        case .albumRemoved(let albumId, let releaseIds):
-            libraryStore.handleAlbumRemoved(
-                albumId: albumId,
-                releaseIds: releaseIds
-            )
-            context.importStore.handleAlbumRemoved(
-                albumId: albumId,
-                releaseIds: releaseIds
-            )
-            context.uiStore.clearSelectedRelease(inAlbum: albumId)
-
-        case .releaseAdded(let album, let release):
-            libraryStore.handleReleaseAdded(album: album, release: release)
-
-        case .releaseUpdated(_, let release):
-            libraryStore.handleReleaseUpdated(release: release)
-
-        case .releaseRemoved(let albumId, let releaseId, let album):
-            libraryStore.handleReleaseRemoved(
-                releaseId: releaseId,
-                album: album
-            )
-            context.importStore.handleReleaseRemoved(releaseId: releaseId)
-            context.uiStore.clearSelectedReleaseIfMatching(
-                releaseId,
-                inAlbum: albumId
-            )
-
-        case .releaseTransferProgress, .releaseTransferEnded:
-            reduceReleaseTransfer(event, into: context)
-
-        default:
-            break
-        }
-    }
-
-    @MainActor
-    private static func reduceReleaseTransfer(
-        _ event: BridgeUiEvent,
-        into context: ReducerContext
-    ) {
-        let libraryStore = context.libraryStore
-        switch event {
-        case .releaseTransferProgress(let releaseId, let action):
-            libraryStore.handleReleaseTransferProgress(
-                releaseId: releaseId,
-                label: action.transferProgressVerb
-            )
-
-        case .releaseTransferEnded(let releaseId):
-            libraryStore.handleReleaseTransferEnded(releaseId: releaseId)
-
-        default:
-            break
-        }
-    }
-
-    @MainActor
-    private static func reduceSyncAndConfig(
-        _ event: BridgeUiEvent,
-        into context: ReducerContext
-    ) {
-        let configStore = context.configStore
-        switch event {
-        case .configChanged(let config, let syncReady):
-            configStore.applyConfigSnapshot(config, syncReady: syncReady)
-
-        case .syncError(let error):
-            // `nil` error clears the banner (sync recovered). Otherwise show the
-            // generic category line plus the opaque detail the error carries.
-            configStore.syncError = error.map { DisplayError($0) }
-
-        case .syncTimeChanged(let time):
-            // `nil` time means no sync has completed yet — a real absence, so
-            // the Date stays nil. Otherwise core sends epoch milliseconds.
-            configStore.lastSyncTime = time.map {
-                Date(timeIntervalSince1970: TimeInterval($0) / 1000)
-            }
-
-        case .syncingChanged(let syncing):
-            configStore.syncing = syncing
-
-        case .outboxChanged(let snapshot):
-            context.outboxStore.applySnapshot(snapshot)
-
-        case .downloadQueueChanged(let snapshot):
-            context.downloadStore.applySnapshot(snapshot)
-
-        case .exportQueueChanged(let snapshot):
-            context.exportStore.applySnapshot(snapshot)
 
         default:
             break

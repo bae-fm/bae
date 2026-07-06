@@ -64,10 +64,8 @@ struct FolderImportTab: View {
             uiStore.lightbox = nil
         }
         .task {
-            // Hydrate the durable watched-folder list and scan each so its
-            // releases stream in as candidates. The reducer keeps already-loaded
-            // candidates' in-progress state on re-scan, so this is safe to re-run.
-            importStore.watchedFolders = importer.watchedFolders()
+            // Scan watched folders; candidate and folder state refreshes through
+            // invalidation projections.
             do {
                 try importer.scanWatchedFolders()
             }
@@ -518,11 +516,6 @@ extension FolderImportTab {
         .environment(Library.stub)
         .environment(PreviewAudio.stub)
         .environment(PreviewData.folderImportStore)
-        .environment(
-            // FolderImportTab's .task re-hydrates watchedFolders from the
-            // Importer, so it must return the seeded folder or the view falls
-            // back to its empty state.
-            Importer(watchedFolders: { [PreviewData.importWatchedFolder] })
-        )
+        .environment(Importer())
     }
 #endif

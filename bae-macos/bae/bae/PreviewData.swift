@@ -260,6 +260,7 @@ enum PreviewData {
                     storageState: .local,
                     pinned: false,
                     storageActions: [],
+                    transferAction: nil,
                     tracks: makeTracks(tracks, artist: artist),
                     trackGroups: [
                         BridgeTrackGroup(
@@ -320,6 +321,7 @@ enum PreviewData {
                     storageState: .local,
                     pinned: false,
                     storageActions: [],
+                    transferAction: nil,
                     tracks: sides.tracks,
                     trackGroups: sides.groups,
                     files: [],
@@ -387,6 +389,7 @@ enum PreviewData {
                     storageState: .local,
                     pinned: false,
                     storageActions: [],
+                    transferAction: nil,
                     tracks: allTracks,
                     trackGroups: groups,
                     files: [],

@@ -162,14 +162,11 @@ extension BridgeAlbum: Identifiable {}
 ///   in the `releaseSummaries` slice; interning a detail interns its
 ///   summary.
 ///
-/// ## Reducers write slices; lists are projections
+/// ## Queries write slices; lists are projections
 ///
-/// Event reducers (`handle*`) write one or more slices and nothing
-/// else. Event payloads are self-contained: the reducer writes the
-/// incoming data unconditionally, without reading other slices to
-/// decide what to do. Scoped invalidations refresh visible lists through
-/// `ProjectionRegistry`; the store does not publish a second list-shape
-/// notification path.
+/// Page-source ingest and release-detail projections write one or more slices
+/// from core query results. Scoped invalidations refresh visible lists through
+/// `ProjectionRegistry`; the store does not fold library event deltas.
 @MainActor
 @Observable
 final class LibraryStore {
@@ -178,9 +175,7 @@ final class LibraryStore {
     /// Album summaries. Read by the library grid and any row renderer
     /// that needs album metadata without the fat payload.
     ///
-    /// ## Source of writes
-    /// - `handleAlbumAdded` / `handleAlbumUpdated` (library events)
-    /// - `internAlbumSummary` (called by list page-source ingest)
+    /// Written by `internAlbumSummary` from list page-source ingest.
     private(set) var albumSummaries: [String: AlbumSummary] = [:]
 
     /// Release summaries — the slim projection every list over releases
@@ -193,10 +188,7 @@ final class LibraryStore {
     /// stable `ReleaseSummary` from this slice — they must stay in
     /// sync. `internReleaseDetail` interns both halves in one call.
     ///
-    /// ## Source of writes
-    /// - `handleAlbumAdded` / `handleAlbumUpdated` (library events)
-    /// - `handleReleaseAdded` / `handleReleaseUpdated` (release events)
-    /// - `internReleaseSummary` / `internReleaseDetail` (list ingest)
+    /// Written by `internReleaseSummary` / `internReleaseDetail`.
     private(set) var releaseSummaries: [String: ReleaseSummary] = [:]
 
     /// Fat release payload for the album detail view: tracks, files,
@@ -208,11 +200,7 @@ final class LibraryStore {
     /// so content mutations on the summary (pin state, total size) are
     /// picked up through the shared `ReleaseSummary` instance.
     ///
-    /// ## Source of writes
-    /// - `handleAlbumAdded` / `handleAlbumUpdated` (library events)
-    /// - `handleReleaseAdded` / `handleReleaseUpdated` (release events)
-    /// - `internReleaseDetail` (album-detail ingest)
-    /// - `loadReleaseDetail` / `reloadReleaseDetail` (on-demand loaders)
+    /// Written by `internReleaseDetail` and on-demand detail loaders.
     private(set) var releaseDetails: [String: ReleaseDetail] = [:]
     private(set) var composerSummaries: [String: BridgeComposerSummary] = [:]
 
@@ -288,6 +276,13 @@ final class LibraryStore {
         let detail = ReleaseDetail(summary: summary, bridge: bridge)
         releaseDetails[bridge.id] = detail
         return detail
+    }
+
+    func internAlbumDetail(_ bridge: BridgeAlbumDetail) {
+        _ = internAlbumSummary(bridge.album)
+        for release in bridge.releases {
+            _ = internReleaseDetail(release)
+        }
     }
 
     func applyReleaseDetailSnapshot(
@@ -372,110 +367,4 @@ final class LibraryStore {
         }
     }
 
-    // MARK: - Album event handlers
-
-    /// Reducer target for `AlbumAdded`. Decomposes the fat event
-    /// payload across every affected slice:
-    ///
-    /// - `albumSummaries` via `internAlbumSummary`
-    /// - `releaseSummaries` + `releaseDetails` via `internReleaseDetail`
-    ///   for each release on the payload
-    ///
-    /// Does not notify lists; scoped invalidation events refresh visible
-    /// projections.
-    func handleAlbumAdded(album: BridgeAlbumDetail) {
-        _ = internAlbumSummary(album.album)
-
-        for release in album.releases {
-            _ = internReleaseDetail(release)
-        }
-    }
-
-    /// Reducer target for `AlbumUpdated`. Same slice decomposition as
-    /// `handleAlbumAdded` — the event shape is identical, so the
-    /// reducers write the same slices. Writes are unconditional: if
-    /// no prior summary exists (re-subscribe, out-of-order delivery)
-    /// the reducer still interns from the payload, which upserts the
-    /// missing entry. Field changes on identity-stable instances
-    /// (`AlbumSummary`, `ReleaseSummary`) propagate through
-    /// `@Observable` to views already reading them in place; the fat
-    /// `releaseDetails` structs are replaced wholesale. Scoped invalidations
-    /// refresh live lists when sort positions may have changed.
-    func handleAlbumUpdated(album: BridgeAlbumDetail) {
-        _ = internAlbumSummary(album.album)
-
-        for release in album.releases {
-            _ = internReleaseDetail(release)
-        }
-    }
-
-    /// Reducer target for `AlbumRemoved`. Drops the album from
-    /// `albumSummaries` and cascades to the child releases the event
-    /// carries, in both `releaseSummaries` and `releaseDetails`.
-    func handleAlbumRemoved(albumId: String, releaseIds: [String]) {
-        albumSummaries.removeValue(forKey: albumId)
-        composerSummaries.removeAll()
-        for id in releaseIds {
-            releaseSummaries.removeValue(forKey: id)
-            releaseDetails.removeValue(forKey: id)
-        }
-    }
-
-    // MARK: - Release event handlers
-
-    /// Reducer target for `ReleaseAdded`. Interns the release into both
-    /// `releaseSummaries` and `releaseDetails`, and upserts the parent
-    /// album so its `releaseIds` reflects the authoritative DB-ordered
-    /// list carried in the event.
-    func handleReleaseAdded(album: BridgeAlbum, release: BridgeRelease) {
-        _ = internReleaseDetail(release)
-        _ = internAlbumSummary(album)
-        composerSummaries.removeAll()
-    }
-
-    /// Reducer target for `ReleaseUpdated`. Same slice writes as
-    /// `handleReleaseAdded` — `internReleaseDetail` is identity-stable
-    /// for the summary and replaces the detail wholesale.
-    func handleReleaseUpdated(release: BridgeRelease) {
-        _ = internReleaseDetail(release)
-        composerSummaries.removeAll()
-    }
-
-    /// Reducer target for `ReleaseRemoved`. Drops the release from both
-    /// `releaseSummaries` and `releaseDetails`, then interns the parent
-    /// album's post-removal summary carried in the event — the same
-    /// `internAlbumSummary` `handleReleaseAdded` uses — so `releaseIds`
-    /// reflects the authoritative DB-ordered list without reading the old
-    /// summary to patch it. `album` is nil when the album was removed with
-    /// its last release; `AlbumRemoved` already dropped the summary then,
-    /// so there's nothing further to do here.
-    func handleReleaseRemoved(
-        releaseId: String,
-        album: BridgeAlbum?
-    ) {
-        applyReleaseDetailSnapshot(releaseId: releaseId, bridge: nil)
-        composerSummaries.removeAll()
-        if let album {
-            _ = internAlbumSummary(album)
-        }
-    }
-
-    /// Reducer target for `ReleaseTransferProgress`. Sets the live transfer
-    /// indicator on the identity-stable summary so the album-detail sheet and
-    /// the Storage Manager row both reflect it. A no-op when the summary isn't
-    /// loaded (the row isn't visible, so nothing renders the indicator).
-    func handleReleaseTransferProgress(
-        releaseId: String,
-        label: String
-    ) {
-        releaseSummaries[releaseId]?.transfer = TransferState(
-            label: label
-        )
-    }
-
-    /// Reducer target for `ReleaseTransferEnded`. Clears the transfer indicator;
-    /// any failure reason arrives separately via the thrown error path.
-    func handleReleaseTransferEnded(releaseId: String) {
-        releaseSummaries[releaseId]?.transfer = nil
-    }
 }
