@@ -44,11 +44,13 @@ targets:
       - path: ../../bae-macos/bae/bae/BridgeDownloadTransferProgress+Derived.swift
       - path: ../../bae-macos/bae/bae/DownloadTransferProgressView.swift
       - path: ../../bae-macos/bae/bae/DurationClock.swift
+      - path: ../../bae-macos/bae/bae/Concurrency/DetachedWork.swift
       - path: ../../bae-macos/bae/bae/Services/PlaybackStore.swift
       - path: ../../bae-macos/bae/bae/Services/PlaybackPositionEvent.swift
       - path: ../../bae-macos/bae/bae/Services/ConfigStore.swift
       - path: ../../bae-macos/bae/bae/Services/LibraryStore.swift
       - path: ../../bae-macos/bae/bae/Services/PaginatedList.swift
+      - path: ../../bae-macos/bae/bae/Services/Projection.swift
       - path: ../../bae-macos/bae/bae/Services/Library.swift
       - path: ../../bae-macos/bae/bae/Services/Playback.swift
       - path: ../../bae-macos/bae/bae/Services/Queue.swift

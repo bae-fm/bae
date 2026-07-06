@@ -151,12 +151,16 @@ final class PaginatedList<Row: Identifiable & Sendable> where Row.ID: Sendable {
 
     /// Fetch the total count. Called once when the list is first mounted.
     func loadInitial() async {
+        let gen = generation
         do {
             let count =
                 try await Task.detached { [pageSource] in
                     try await pageSource.count()
                 }
                 .value
+            guard generation == gen else {
+                return
+            }
             totalCount = count
             segments = []
         }

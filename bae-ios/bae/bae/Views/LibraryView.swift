@@ -20,12 +20,12 @@ private enum LibraryRoute: Hashable {
 
 /// Library browse root: a top bar with sync status, an album grid paged from
 /// the database, navigation into album detail, and a persistent now-playing
-/// bar. The grid re-queries whenever the library shape changes (sync streams
-/// albums in over time), driven by `LibraryStore.libraryShapeSubject` →
-/// `AlbumList.invalidate()`.
+/// bar. The grid re-queries when core invalidates the album or composer list.
 struct LibraryView: View {
     @Environment(LibraryStore.self)
     private var libraryStore
+    @Environment(ProjectionRegistry.self)
+    private var projectionRegistry
     @Environment(Library.self)
     private var library
     @Environment(ConfigStore.self)
@@ -44,6 +44,10 @@ struct LibraryView: View {
     @State
     private var composerList: ComposerList?
     @State
+    private var albumListRegistration: ProjectionRegistration?
+    @State
+    private var composerListRegistration: ProjectionRegistration?
+    @State
     private var routePath: [LibraryRoute] = []
     @State
     private var searchQuery = ""
@@ -60,6 +64,15 @@ struct LibraryView: View {
     @State
     private var composerSortCriterion =
         BridgeComposerSortCriterion(field: .name, direction: .ascending)
+
+    private var listSelection: LibraryListSelection {
+        LibraryListSelection(
+            mode: mode,
+            albumSortField: sortField,
+            albumSortDirection: sortDirection,
+            composerSortCriterion: composerSortCriterion
+        )
+    }
 
     var body: some View {
         NavigationStack(path: $routePath) {
@@ -158,30 +171,12 @@ struct LibraryView: View {
                 NowPlayingBar()
             }
         }
-        .task(id: mode) {
+        .task(id: listSelection) {
             switch mode {
             case .albums:
-                if albumList == nil {
-                    await rebuildList()
-                }
+                await rebuildList()
             case .composers:
-                if composerList == nil {
-                    await rebuildComposerList()
-                }
-            }
-        }
-        .onChange(of: sortField) { Task { await rebuildList() } }
-        .onChange(of: sortDirection) { Task { await rebuildList() } }
-        .onChange(of: composerSortCriterion) {
-            Task { await rebuildComposerList() }
-        }
-        .onReceive(libraryStore.libraryShapeSubject) { change in
-            switch change {
-            case .albumAdded, .albumUpdated, .albumRemoved:
-                albumList?.invalidate()
-                composerList?.invalidate()
-            case .releaseAdded, .releaseUpdated, .releaseRemoved:
-                composerList?.invalidate()
+                await rebuildComposerList()
             }
         }
     }
@@ -193,7 +188,7 @@ struct LibraryView: View {
     /// Rebuild the paged album list for the current sort — on first appear and
     /// whenever the sort field/direction changes.
     private func rebuildList() async {
-        let albumList = AlbumList(
+        let newList = AlbumList(
             pageSource: LibraryAlbumPageSource(
                 library: library,
                 sort: [
@@ -209,12 +204,19 @@ struct LibraryView: View {
                 configStore.showError(error)
             },
         )
-        self.albumList = albumList
-        await albumList.loadInitial()
+        albumListRegistration = projectionRegistry.registerList(
+            newList,
+            domain: .albumList
+        )
+        await newList.loadInitial()
+        guard !Task.isCancelled else {
+            return
+        }
+        albumList = newList
     }
 
     private func rebuildComposerList() async {
-        let list = ComposerList(
+        let newList = ComposerList(
             pageSource: LibraryComposerPageSource(
                 library: library,
                 sort: composerSortCriterion
@@ -228,8 +230,15 @@ struct LibraryView: View {
                 configStore.showError(error)
             },
         )
-        composerList = list
-        await list.loadInitial()
+        composerListRegistration = projectionRegistry.registerList(
+            newList,
+            domain: .composerList
+        )
+        await newList.loadInitial()
+        guard !Task.isCancelled else {
+            return
+        }
+        composerList = newList
     }
 
     @ViewBuilder
@@ -531,6 +540,13 @@ private struct LibraryContentView: View {
             preconditionFailure("Unexpected refresh sleep error: \(error)")
         }
     }
+}
+
+private struct LibraryListSelection: Hashable {
+    let mode: LibraryBrowserMode
+    let albumSortField: BridgeSortField
+    let albumSortDirection: BridgeSortDirection
+    let composerSortCriterion: BridgeComposerSortCriterion
 }
 
 private extension Array where Element == LibraryRoute {

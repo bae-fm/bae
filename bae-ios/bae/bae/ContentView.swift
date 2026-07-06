@@ -53,10 +53,12 @@ struct ContentView: View {
                 case .library(let service):
                     LibraryView()
                         .environment(holder)
+                        .environment(service)
                         .environment(service.libraryStore)
                         .environment(service.configStore)
                         .environment(service.playbackStore)
                         .environment(service.downloadStore)
+                        .environment(service.projectionRegistry)
                         .environment(service.mediaPaths)
                         .environment(service.library)
                         .environment(service.playback)

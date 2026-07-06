@@ -19,12 +19,14 @@ final class AppService: Observable {
     /// remote commands, and owns the `AVAudioSession` the cpal sink needs.
     let mediaControlService = MediaControlService()
 
-    // ── Stores (reducer is the sole writer) ──────────────────────────────
+    // ── Stores ───────────────────────────────────────────────────────────
 
     let playbackStore = PlaybackStore()
     let configStore: ConfigStore
     let libraryStore = LibraryStore()
     let downloadStore: DownloadStore
+    let projectionRegistry = ProjectionRegistry()
+    private var projectionRegistrations: [ProjectionRegistration] = []
 
     // ── Domain services (narrow projections of `AppHandle`) ───────────────
 
@@ -87,23 +89,130 @@ final class AppService: Observable {
         sync = Sync(handle: appHandle)
     }
 
-    /// Subscribe to the live event stream (routed through `UiEventReducer`) and
-    /// register the media-control remote commands. Called once after
-    /// construction.
+    /// Subscribe to the live event stream and register media-control remote
+    /// commands. Called once after construction.
     func wireUp() {
+        registerRootProjections()
         appHandle.subscribeUiEvents(
             callback: UiEventHandler(
-                playbackStore: playbackStore,
-                configStore: configStore,
-                libraryStore: libraryStore,
-                downloadStore: downloadStore,
-                mediaControlService: mediaControlService,
-                appHandle: appHandle
+                appService: self
             )
         )
         mediaControlService.setupRemoteCommands(
             playback: playback,
             playbackStore: playbackStore
+        )
+    }
+
+    private func registerRootProjections() {
+        precondition(projectionRegistrations.isEmpty)
+        projectionRegistrations = [
+            projectionRegistry.register(makeConfigProjection()),
+            projectionRegistry.register(makeSyncStatusProjection()),
+            projectionRegistry.register(makeDownloadProjection()),
+            projectionRegistry.register(makeReleaseDetailProjection()),
+        ]
+    }
+
+    private struct ConfigProjectionValue: Sendable {
+        let config: BridgeConfig
+        let syncReady: Bool
+    }
+
+    private func makeConfigProjection() -> Projection<ConfigProjectionValue> {
+        Projection(
+            domain: .config,
+            query: { [appHandle] _ in
+                try await DetachedWork.run {
+                    ConfigProjectionValue(
+                        config: appHandle.getConfig(),
+                        syncReady: appHandle.isSyncReady()
+                    )
+                }
+            },
+            apply: { [configStore] value in
+                configStore.applyConfigSnapshot(
+                    value.config,
+                    syncReady: value.syncReady
+                )
+            },
+            onError: { [configStore] error in configStore.showError(error) }
+        )
+    }
+
+    private func makeSyncStatusProjection()
+        -> Projection<BridgeSyncStatusSnapshot>
+    {
+        Projection(
+            domain: .syncStatus,
+            query: { [appHandle] _ in
+                try await DetachedWork.run {
+                    appHandle.getSyncStatus()
+                }
+            },
+            apply: { [configStore] snapshot in
+                configStore.applySyncStatusSnapshot(snapshot)
+            },
+            onError: { [configStore] error in configStore.showError(error) }
+        )
+    }
+
+    private func makeDownloadProjection()
+        -> Projection<BridgeDownloadSnapshot>
+    {
+        Projection(
+            domain: .downloadQueue,
+            query: { [appHandle] _ in
+                try await DetachedWork.run {
+                    appHandle.getDownloadSnapshot()
+                }
+            },
+            apply: { [downloadStore] snapshot in
+                downloadStore.snapshot = snapshot
+            },
+            onError: { [configStore] error in configStore.showError(error) }
+        )
+    }
+
+    private struct ReleaseDetailProjectionValue: Sendable {
+        let releaseId: String
+        let release: BridgeRelease?
+    }
+
+    private func makeReleaseDetailProjection()
+        -> Projection<ReleaseDetailProjectionValue>
+    {
+        Projection(
+            domain: .release,
+            query: { [appHandle] invalidation in
+                guard case .release(let releaseId) = invalidation else {
+                    preconditionFailure(
+                        "Release projection received \(invalidation)"
+                    )
+                }
+                let release = try await DetachedWork.run {
+                    try appHandle.findReleaseDetail(releaseId: releaseId)
+                }
+                return ReleaseDetailProjectionValue(
+                    releaseId: releaseId,
+                    release: release
+                )
+            },
+            apply: { [libraryStore] value in
+                libraryStore.applyReleaseDetailSnapshot(
+                    releaseId: value.releaseId,
+                    bridge: value.release
+                )
+            },
+            onError: { [configStore] error in configStore.showError(error) }
+        )
+    }
+
+    func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
+        playbackStore.applyQueueSnapshot(snapshot)
+        mediaControlService.updateCommandAvailability(
+            hasNext: snapshot.hasNext,
+            hasPrevious: snapshot.hasPrevious
         )
     }
 }

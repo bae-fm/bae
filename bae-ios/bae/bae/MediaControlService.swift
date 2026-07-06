@@ -23,8 +23,8 @@ struct NowPlayingMetadata {
 ///
 /// Transport intent flows the other way: remote commands (play/pause/skip/seek
 /// from the lock screen or headphones) call into `Playback`, and the resulting
-/// `Playback*` events come back through the reducer to update Now Playing — the
-/// same single source of truth the in-app bar reads.
+/// `Playback*` events update Now Playing — the same single source of truth the
+/// in-app bar reads.
 final class MediaControlService: @unchecked Sendable {
     private var sessionActivated = false
     private var observersRegistered = false
