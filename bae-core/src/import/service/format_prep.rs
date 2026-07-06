@@ -473,6 +473,11 @@ pub(super) struct BuiltAudioFormats {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::audio_codec::ProbeResult;
+    use crate::import::types::{
+        CueAnalyzedAudioFile, CueAudioAnalysis, CueFlacAnalysis, TrackFile,
+    };
+    use std::sync::Arc;
 
     #[test]
     fn audio_codec_allowlist_is_the_intentional_import_surface() {
@@ -497,5 +502,98 @@ mod tests {
         assert!(!admitted_audio_content_type(&ContentType::Other(
             "audio/x-ms-wma".to_string()
         )));
+    }
+
+    #[test]
+    fn cue_backed_segments_ignore_rejected_index00_boundaries() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let cue_path = temp.path().join("Album.cue");
+        let audio_path = temp.path().join("test.ape");
+        std::fs::write(
+            &cue_path,
+            r#"PERFORMER "Artist Name"
+TITLE "Album Title"
+FILE "test.ape" WAVE
+  TRACK 01 AUDIO
+    TITLE "Track One"
+    INDEX 00 00:00:00
+    INDEX 01 00:00:32
+  TRACK 02 AUDIO
+    TITLE "Track Two"
+    INDEX 01 05:05:00
+  TRACK 03 AUDIO
+    TITLE "Track Three"
+    INDEX 00 05:05:00
+    INDEX 01 08:31:20
+  TRACK 04 AUDIO
+    TITLE "Track Four"
+    INDEX 00 05:05:00
+    INDEX 01 11:01:30
+"#,
+        )
+        .expect("write cue");
+
+        let cue_sheet =
+            crate::cue_flac::CueFlacProcessor::parse_cue_sheet(&cue_path).expect("parse cue");
+        let cue_pair = Arc::new(CueFlacAnalysis {
+            cue_sheet,
+            audio_files: vec![CueAnalyzedAudioFile {
+                file_reference: "test.ape".to_string(),
+                path: audio_path.clone(),
+                analysis: CueAudioAnalysis {
+                    probe: ProbeResult {
+                        content_type: ContentType::Ape,
+                        duration: std::time::Duration::from_secs(12 * 60),
+                        sample_rate: 75,
+                        bits_per_sample: Some(16),
+                        channels: 2,
+                    },
+                },
+            }],
+        });
+
+        let tracks_to_files: Vec<_> = cue_pair
+            .cue_sheet
+            .playable_tracks()
+            .enumerate()
+            .map(|(index, track)| TrackFile::CueBacked {
+                db_track: crate::db::DbTrack::new_test(
+                    "release-id",
+                    &format!("track-{index}"),
+                    track.title.as_deref().unwrap_or("Track Title"),
+                    Some(track.number as i32),
+                ),
+                file_path: audio_path.clone(),
+                cue_pair: Arc::clone(&cue_pair),
+                cue_index: index,
+            })
+            .collect();
+        let file_ids = HashMap::from([(audio_path, "file-id".to_string())]);
+        let clock = coven::FixedClock(
+            chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+                .unwrap()
+                .with_timezone(&chrono::Utc),
+        );
+        let ids = coven::SequentialIdProvider::new("audio");
+
+        let built = ImportService::build_audio_formats(&tracks_to_files, &file_ids, &clock, &ids)
+            .expect("build audio formats");
+        let main_segments: Vec<_> = built
+            .audio_segments
+            .iter()
+            .filter(|segment| segment.role == DbAudioSegmentRole::Main)
+            .collect();
+
+        assert_eq!(main_segments.len(), 4);
+        for segment in &main_segments {
+            assert!(
+                segment
+                    .end_sample
+                    .is_none_or(|end_sample| end_sample > segment.start_sample),
+                "main segment must have a positive sample window: {segment:?}",
+            );
+        }
+        assert_eq!(main_segments[1].end_sample, Some((8 * 60 + 31) * 75 + 20),);
+        assert_eq!(main_segments[2].end_sample, Some((11 * 60 + 1) * 75 + 30),);
     }
 }

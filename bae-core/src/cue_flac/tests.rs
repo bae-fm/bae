@@ -792,6 +792,10 @@ FILE "test.ape" WAVE
         None,
         "Bogus pregap should be cleared, leaving no duration"
     );
+    assert!(
+        track3.index(0).is_none(),
+        "Bogus INDEX 00 should be removed from the raw index list"
+    );
 }
 
 #[test]

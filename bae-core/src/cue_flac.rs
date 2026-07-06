@@ -454,14 +454,15 @@ impl CueFlacProcessor {
             )));
         }
 
-        // Some rippers (EAC v0.99pb4) write bogus INDEX 00 values that are
-        // before the previous track's INDEX 01. Clear these so audio_start_cue_frames()
-        // and pregap_duration_ms() don't use them downstream.
+        // Some rippers write bogus INDEX 00 values that are before the
+        // previous track's INDEX 01. Remove them so every downstream boundary
+        // reader sees the same corrected shape.
         for i in 1..tracks.len() {
             if let Some(pregap) = tracks[i].pregap_cue_frames {
                 if pregap <= tracks[i - 1].start_cue_frames {
                     tracks[i].pregap_cue_frames = None;
                     tracks[i].pregap = CuePregap::None;
+                    tracks[i].indexes.retain(|index| index.number != 0);
                 }
             }
         }
