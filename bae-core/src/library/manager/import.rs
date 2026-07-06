@@ -16,6 +16,7 @@ impl LibraryManager {
     /// Track rows are read straight off `tracks_to_files` — each `TrackFile`
     /// owns the `DbTrack` (with its populated `duration_ms`) that gets
     /// inserted. There is no parallel list of tracks or durations.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn finalize_import_atomic(
         &self,

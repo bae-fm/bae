@@ -781,6 +781,7 @@ impl LibraryManager {
         Ok(())
     }
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn import_replacement_plans_for_content_hash(
         &self,
         hash: &str,

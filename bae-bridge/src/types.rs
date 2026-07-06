@@ -2665,7 +2665,6 @@ impl BridgeError {
     pub(crate) fn import(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Import, detail)
     }
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn export(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Export, detail)
     }
