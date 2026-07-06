@@ -506,8 +506,7 @@ async fn read_cover_art_response(
     let content_type =
         super::image_response::image_content_type_from_response(response.headers(), cover_art_url);
 
-    let bytes = response
-        .bytes()
+    let bytes = crate::util::http::read_body_capped(response, crate::util::http::MAX_IMAGE_BYTES)
         .await
         .map_err(|e| format!("Failed to read cover art response: {}", e))?;
     if bytes.len() < 100 {
@@ -515,7 +514,7 @@ async fn read_cover_art_response(
     }
 
     info!("Downloaded cover art ({} bytes)", bytes.len());
-    Ok((bytes.to_vec(), content_type))
+    Ok((bytes, content_type))
 }
 
 #[cfg(test)]
@@ -659,7 +658,31 @@ mod tests {
         format!("http://{addr}/cover.jpg")
     }
 
-    #[tokio::test(start_paused = true)]
+    async fn start_declared_length_response(content_length: usize) -> String {
+        use tokio::io::AsyncWriteExt;
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("test listener should bind");
+        let addr = listener
+            .local_addr()
+            .expect("test listener should have an address");
+        tokio::spawn(async move {
+            let (mut stream, _) = listener
+                .accept()
+                .await
+                .expect("test request should connect");
+            let response = format!("HTTP/1.1 200 OK\r\nContent-Length: {content_length}\r\n\r\n");
+            stream
+                .write_all(response.as_bytes())
+                .await
+                .expect("test response headers should write");
+            std::future::pending::<()>().await;
+        });
+        format!("http://{addr}/cover.jpg")
+    }
+
+    #[tokio::test]
     async fn caa_lookup_does_not_cache_transient_failure() {
         let success = br#"{
             "images": [
@@ -809,6 +832,19 @@ mod tests {
         let url = start_mock(vec![(200, vec![0u8; 50])]).await; // under the 100-byte floor
         let err = download_cover_art_bytes(&url).await.unwrap_err();
         assert!(err.contains("too small"), "got: {err}");
+    }
+
+    #[tokio::test]
+    async fn download_rejects_declared_over_cap_response() {
+        let url = start_declared_length_response(crate::util::http::MAX_IMAGE_BYTES + 1).await;
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(1),
+            download_cover_art_bytes(&url),
+        )
+        .await
+        .expect("oversized response should fail before reading the body");
+        let err = result.unwrap_err();
+        assert!(err.contains("too large"), "got: {err}");
     }
 
     #[tokio::test]

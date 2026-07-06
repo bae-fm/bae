@@ -58,13 +58,19 @@ pub async fn fetch_and_save_artist_image(
     let content_type =
         super::image_response::image_content_type_from_response(response.headers(), &image_url);
 
-    let bytes = match response.bytes().await {
-        Ok(b) => b,
-        Err(e) => {
-            warn!("Failed to read artist image bytes: {}", e);
-            return false;
-        }
-    };
+    let bytes =
+        match crate::util::http::read_body_capped(response, crate::util::http::MAX_IMAGE_BYTES)
+            .await
+        {
+            Ok(b) => b,
+            Err(e) => {
+                warn!(
+                    "Failed to read artist image bytes for artist {artist_id} from {image_url}: {}",
+                    e
+                );
+                return false;
+            }
+        };
 
     if bytes.len() < 100 {
         warn!("Downloaded artist image too small ({} bytes)", bytes.len());
