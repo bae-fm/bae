@@ -11,7 +11,7 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
     private let libraryStore: LibraryStore
     private let downloadStore: DownloadStore
     private let mediaControlService: MediaControlService
-    private let appHandle: AppHandle
+    private weak var appHandle: AppHandle?
 
     init(
         playbackStore: PlaybackStore,
@@ -30,6 +30,12 @@ final class UiEventHandler: UiEventCallback, @unchecked Sendable {
     }
 
     func onEvent(event: BridgeUiEvent) {
+        guard let appHandle else {
+            logger.debug(
+                "dropping UI event after app handle released: \(String(describing: event))"
+            )
+            return
+        }
         let playbackStore = playbackStore
         let configStore = configStore
         let libraryStore = libraryStore
