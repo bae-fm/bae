@@ -64,6 +64,10 @@ use coven::EncryptionService;
 use coven::IdRef;
 use coven::LibraryDir;
 
+/// Library events can burst during imports and sync catch-up; lag is recoverable
+/// through UI invalidations, and this bound keeps ordinary bursts in order.
+const LIBRARY_EVENT_CHANNEL_CAPACITY: usize = 1024;
+
 mod album;
 mod artist;
 mod composer;
@@ -660,7 +664,7 @@ impl LibraryManager {
         runtime_handle: tokio::runtime::Handle,
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     ) -> Result<Self, coven::DbError> {
-        let (event_tx, _) = broadcast::channel(16);
+        let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
         let outbox_in_flight = Arc::new(Mutex::new(HashMap::new()));
         let upload_throughput = Arc::new(crate::library::UploadThroughput::new());
         let sync_paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -737,7 +741,7 @@ impl LibraryManager {
         ids: IdRef,
         runtime_handle: tokio::runtime::Handle,
     ) -> Self {
-        let (event_tx, _) = broadcast::channel(16);
+        let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
         let handle = database.handle().clone();
 
         let sync = SyncController::new(
