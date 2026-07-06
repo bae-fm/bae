@@ -52,6 +52,10 @@
   <data name="cover.remote_sources" xml:space="preserve"><value>Віддалені джерела</value></data>
   <data name="cover.section_title" xml:space="preserve"><value>Обкладинка</value></data>
   <data name="cover.show_failed" xml:space="preserve"><value>не вдалося показати віддалені обкладинки: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>назад</value></data>
+  <data name="action.copy" xml:space="preserve"><value>копіювати</value></data>
+  <data name="action.done" xml:space="preserve"><value>готово</value></data>
+  <data name="action.scan" xml:space="preserve"><value>сканувати…</value></data>
   <data name="error.playback_title" xml:space="preserve"><value>помилка відтворення</value></data>
   <data name="error.title" xml:space="preserve"><value>помилка</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>не вдалося завантажити галерею</value></data>
@@ -67,7 +71,7 @@
   <data name="import.back_to_search" xml:space="preserve"><value>Назад до пошуку</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>вибрати теку та сканувати</value></data>
   <data name="import.complete" xml:space="preserve"><value>імпортовано</value></data>
-  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# track} other {# tracks}}</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# трек} other {# треків}}</value></data>
   <data name="import.confirm_title" xml:space="preserve"><value>підтвердити імпорт</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>сканувати та імпортувати</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>перетягніть теку для імпорту</value></data>
@@ -88,6 +92,20 @@
   <data name="import.storage.managed" xml:space="preserve"><value>Кероване</value></data>
   <data name="import.title" xml:space="preserve"><value>імпорт</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>переглянути в бібліотеці</value></data>
+  <data name="join.title" xml:space="preserve"><value>приєднатися до бібліотеки</value></data>
+  <data name="join.intro" xml:space="preserve"><value>додайте цей пристрій до бібліотеки, яка вже є на іншому пристрої.</value></data>
+  <data name="join.this_device_code" xml:space="preserve"><value>код цього пристрою</value></data>
+  <data name="join.show_to_member" xml:space="preserve"><value>на пристрої, який уже є у вашій бібліотеці, відкрийте налаштування → пристрої → додати пристрій і відскануйте або вставте це.</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>цей пристрій: {fingerprint}</value></data>
+  <data name="join.generate_failed" xml:space="preserve"><value>не вдалося створити код цього пристрою</value></data>
+  <data name="join.invite_label" xml:space="preserve"><value>код запрошення</value></data>
+  <data name="join.invite_hint" xml:space="preserve"><value>коли той пристрій схвалить цей, введіть код запрошення, який він покаже.</value></data>
+  <data name="join.invite_placeholder" xml:space="preserve"><value>вставити код запрошення</value></data>
+  <data name="join.invalid_invite" xml:space="preserve"><value>недійсний код запрошення</value></data>
+  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · власник {fingerprint}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>приєднатися</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>приєднання до {name}…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>не вдалося приєднатися до бібліотеки</value></data>
   <data name="libraries.active" xml:space="preserve"><value>{name}  ·  активна</value></data>
   <data name="libraries.new" xml:space="preserve"><value>нова бібліотека</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>перейменувати</value></data>
@@ -109,6 +127,26 @@
   <data name="menu.play_next" xml:space="preserve"><value>Відтворити наступним</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>Зробити основним релізом</value></data>
   <data name="menu.set_primary_done" xml:space="preserve"><value>зробити основним релізом</value></data>
+  <data name="members.title" xml:space="preserve"><value>пристрої</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>цей пристрій</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>власник</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>учасник</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>підписник</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>не вдалося завантажити пристрої</value></data>
+  <data name="members.add" xml:space="preserve"><value>додати пристрій…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>видалити</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>цей пристрій втратить доступ, а ключ бібліотеки буде оновлено. натисніть видалити ще раз, щоб підтвердити.</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>додати пристрій</value></data>
+  <data name="members.approve.capture_hint" xml:space="preserve"><value>на новому пристрої відкрийте приєднання до бібліотеки й покажіть його код. відскануйте його тут або вставте нижче.</value></data>
+  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>вставте код пристрою</value></data>
+  <data name="members.approve.decode" xml:space="preserve"><value>декодувати</value></data>
+  <data name="members.approve.invalid_request" xml:space="preserve"><value>недійсний код пристрою</value></data>
+  <data name="members.approve.confirm_title" xml:space="preserve"><value>схвалити цей пристрій?</value></data>
+  <data name="members.approve.confirm_hint" xml:space="preserve"><value>його буде додано до вашої бібліотеки, і він зможе синхронізуватися. ви отримаєте код, який треба ввести на ньому.</value></data>
+  <data name="members.approve.confirm" xml:space="preserve"><value>схвалити</value></data>
+  <data name="members.approve.in_progress" xml:space="preserve"><value>схвалення пристрою…</value></data>
+  <data name="members.approve.failed" xml:space="preserve"><value>не вдалося схвалити цей пристрій</value></data>
+  <data name="members.approve.invited_hint" xml:space="preserve"><value>введіть цей код на новому пристрої.</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>видалити</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>скасувати</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>не вдалося завантажити чергу надсилання</value></data>
@@ -118,12 +156,12 @@
   <data name="outbox.retry_now" xml:space="preserve"><value>повторити зараз</value></data>
   <data name="queue.clear" xml:space="preserve"><value>очистити чергу</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Вилучити з черги</value></data>
-  <data name="queue.title" xml:space="preserve"><value>черга</value></data>
-  <data name="queue.section.up_next" xml:space="preserve"><value>Далі в черзі</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Відтворюється з</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>Ваша фонотека</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>Далі в черзі</value></data>
   <data name="queue.shuffle.off" xml:space="preserve"><value>вимкнути перемішування</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>перемішати</value></data>
+  <data name="queue.title" xml:space="preserve"><value>черга</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>код відновлення</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>відновити</value></data>
   <data name="restore.failed" xml:space="preserve"><value>відновлення не вдалося</value></data>
@@ -138,7 +176,7 @@
   <data name="restore.in_progress_named" xml:space="preserve"><value>відновлення {name}…</value></data>
   <data name="restore.invalid_code" xml:space="preserve"><value>недійсний код відновлення</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>ключ доступу</value></data>
-  <data name="s3.field.bucket" xml:space="preserve"><value>S3-бакет</value></data>
+  <data name="s3.field.bucket" xml:space="preserve"><value>Сегмент S3</value></data>
   <data name="s3.field.endpoint" xml:space="preserve"><value>кінцева точка (необов’язково)</value></data>
   <data name="s3.field.key_prefix" xml:space="preserve"><value>префікс ключа (необов’язково)</value></data>
   <data name="s3.field.region" xml:space="preserve"><value>регіон</value></data>
@@ -156,12 +194,14 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>не вдалося зберегти ключ — щось пішло не так.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Токен API Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Перевірка…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Пауза між сторонами</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Бібліотека: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>заблокувати бібліотеку</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Пауза між сторонами</value></data>
-  <data name="settings.restore_code.label" xml:space="preserve"><value>код відновлення (введіть на іншому пристрої)</value></data>
-  <data name="settings.restore_code.show" xml:space="preserve"><value>показати код відновлення</value></data>
-  <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(недоступно — синхронізацію підключено?)</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>відновлення</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>ваш код відновлення відновлює цю бібліотеку на новому пристрої, коли немає іншого пристрою, щоб схвалити його. будь-хто з ним має повний доступ — тримайте його в таємниці.</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>код відновлення</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>показати код відновлення…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(недоступно — синхронізацію підключено?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>підключити S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>підключення до S3…</value></data>
   <data name="settings.storage.browsable" xml:space="preserve"><value>доступне для перегляду — зберігається без шифрування</value></data>
@@ -177,6 +217,7 @@
   <data name="signal.kind.catalog" xml:space="preserve"><value>Каталог</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ID диска</value></data>
   <data name="sort.artist" xml:space="preserve"><value>виконавець</value></data>
+  <data name="sort.name" xml:space="preserve"><value>назва</value></data>
   <data name="sort.newest" xml:space="preserve"><value>найновіші</value></data>
   <data name="sort.title" xml:space="preserve"><value>назва</value></data>
   <data name="sort.year" xml:space="preserve"><value>рік</value></data>
@@ -195,8 +236,10 @@
   <data name="sync.reconnect" xml:space="preserve"><value>Підключити знову</value></data>
   <data name="sync.synced" xml:space="preserve"><value>синхронізовано {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>синхронізація…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Original</value></data>
+  <data name="track.export.original" xml:space="preserve"><value>Оригінал</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>Не вдалося підготувати експорт.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>виберіть бібліотеку</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>приєднатися до бібліотеки</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>створити бібліотеку</value></data>
   <data name="welcome.no_library" xml:space="preserve"><value>поки немає бібліотеки</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>ваші бібліотеки</value></data>
@@ -207,11 +250,11 @@
   <data name="settings.sync.not_connected" xml:space="preserve"><value>Синхронізація: не підключено</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>готово</value></data>
   <data name="settings.sync.status" xml:space="preserve"><value>Синхронізація: {provider}{account} — {state}</value></data>
-  <data name="download.title" xml:space="preserve"><value>downloads</value></data>
-  <data name="download.paused" xml:space="preserve"><value>paused</value></data>
-  <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
-  <data name="download.state.downloading" xml:space="preserve"><value>downloading</value></data>
-  <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
+  <data name="download.title" xml:space="preserve"><value>завантаження</value></data>
+  <data name="download.paused" xml:space="preserve"><value>призупинено</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>у черзі</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>завантаження</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>помилка</value></data>
   <data name="settings.automation.label" xml:space="preserve"><value>Автоматизація</value></data>
   <data name="settings.automation.enable_mcp" xml:space="preserve"><value>Увімкнути сервер MCP</value></data>
   <data name="settings.automation.port" xml:space="preserve"><value>Порт</value></data>
@@ -220,35 +263,53 @@
   <data name="settings.automation.rotate_token" xml:space="preserve"><value>змінити токен</value></data>
   <data name="settings.automation.status.running" xml:space="preserve"><value>Сервер MCP: {url}</value></data>
   <data name="settings.automation.status.disabled" xml:space="preserve"><value>Сервер MCP вимкнено</value></data>
-  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>Неправильна конфігурація сервера MCP</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>Недійсна конфігурація сервера MCP</value></data>
   <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>Токен MCP недоступний</value></data>
   <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>Не вдалося запустити сервер MCP</value></data>
-  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>Сервер MCP зупинився</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>Сервер MCP зупинено</value></data>
   <data name="settings.automation.invalid_port" xml:space="preserve"><value>введіть порт від 1 до 65535</value></data>
   <data name="settings.automation.status_unavailable" xml:space="preserve"><value>Стан MCP недоступний</value></data>
   <data name="settings.automation.token_unavailable" xml:space="preserve"><value>Токен MCP недоступний</value></data>
   <data name="settings.automation.token_copied" xml:space="preserve"><value>токен скопійовано</value></data>
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>токен змінено й скопійовано</value></data>
-  <data name="sort.name" xml:space="preserve"><value>name</value></data>
-  <data name="library.mode.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="library.mode.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="library.no_composers" xml:space="preserve"><value>No composers</value></data>
-  <data name="search.section.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="search.section.tracks" xml:space="preserve"><value>Tracks</value></data>
-  <data name="search.section.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="search.section.works" xml:space="preserve"><value>Works</value></data>
-  <data name="search.section.releases" xml:space="preserve"><value>Releases</value></data>
-  <data name="search.section.credits" xml:space="preserve"><value>Credits</value></data>
-  <data name="search.section.recordings" xml:space="preserve"><value>Recordings</value></data>
-  <data name="composer.open_failed" xml:space="preserve"><value>Could not open composer detail</value></data>
-  <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
-  <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
-  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Bit depth</value></data>
-  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Source</value></data>
-  <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
-  <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
-  <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
-  <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>Альбоми</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>Композитори</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>Немає композиторів</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>Альбоми</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>Треки</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>Композитори</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>Твори</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>Релізи</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>Автори</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>Записи</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>Не вдалося відкрити відомості про композитора</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>Не вдалося відкрити відомості про твір</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} творів</value></data>
+  <data name="settings.export.label" xml:space="preserve"><value>Експорт</value></data>
+  <data name="settings.export.default_track_format" xml:space="preserve"><value>Формат треку за замовчуванням</value></data>
+  <data name="settings.export.default_release_format" xml:space="preserve"><value>Формат релізу за замовчуванням</value></data>
+  <data name="settings.export.presets" xml:space="preserve"><value>Пресети</value></data>
+  <data name="settings.export.preset_name" xml:space="preserve"><value>Назва</value></data>
+  <data name="settings.export.preset_track" xml:space="preserve"><value>Трек</value></data>
+  <data name="settings.export.preset_release" xml:space="preserve"><value>Реліз</value></data>
+  <data name="settings.export.preset_pregap" xml:space="preserve"><value>Передзазор</value></data>
+  <data name="settings.export.add_flac" xml:space="preserve"><value>Додати FLAC</value></data>
+  <data name="settings.export.add_mp3" xml:space="preserve"><value>Додати MP3</value></data>
+  <data name="settings.export.add_opus" xml:space="preserve"><value>Додати Opus</value></data>
+  <data name="settings.export.add_wav" xml:space="preserve"><value>Додати WAV</value></data>
+  <data name="settings.export.add_aiff" xml:space="preserve"><value>Додати AIFF</value></data>
+  <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>Додати в кінець, крім HTOA</value></data>
+  <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>Додати в кінець, включно з HTOA</value></data>
+  <data name="settings.export.pregap.exclude" xml:space="preserve"><value>Виключити</value></data>
   <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>Один файл + CUE</value></data>
+  <data name="action.remove" xml:space="preserve"><value>Видалити</value></data>
+  <data name="settings.export.filename_format" xml:space="preserve"><value>Формат імені файлу</value></data>
+  <data name="settings.export.tokens_help" xml:space="preserve"><value>Доступні токени: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
+  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Бітова глибина</value></data>
+  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Джерело</value></data>
+  <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-бітний</value></data>
+  <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-бітний</value></data>
+  <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-бітний</value></data>
+  <data name="settings.export.bitrate" xml:space="preserve"><value>Бітрейт</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>Не вдалося зберегти налаштування експорту</value></data>
 </root>

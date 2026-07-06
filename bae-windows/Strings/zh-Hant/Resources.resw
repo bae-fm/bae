@@ -2,216 +2,259 @@
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
-  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>search</value></data>
-  <data name="LibrariesButton.Content" xml:space="preserve"><value>libraries</value></data>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>搜尋</value></data>
+  <data name="LibrariesButton.Content" xml:space="preserve"><value>資料庫</value></data>
   <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>隨機播放資料庫</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>close</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>close 資料庫</value></data>
-  <data name="ImportButton.Content" xml:space="preserve"><value>import</value></data>
+  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>關閉</value></data>
+  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>關閉資料庫</value></data>
+  <data name="ImportButton.Content" xml:space="preserve"><value>匯入</value></data>
   <data name="StorageButton.Content" xml:space="preserve"><value>儲存空間</value></data>
-  <data name="SettingsButton.Content" xml:space="preserve"><value>settings</value></data>
+  <data name="SettingsButton.Content" xml:space="preserve"><value>設定</value></data>
   <data name="action.cancel" xml:space="preserve"><value>取消</value></data>
   <data name="action.close" xml:space="preserve"><value>關閉</value></data>
   <data name="action.delete" xml:space="preserve"><value>刪除</value></data>
   <data name="action.import" xml:space="preserve"><value>匯入</value></data>
-  <data name="action.ok" xml:space="preserve"><value>好</value></data>
+  <data name="action.ok" xml:space="preserve"><value>OK</value></data>
   <data name="action.play" xml:space="preserve"><value>播放</value></data>
   <data name="action.save" xml:space="preserve"><value>儲存</value></data>
-  <data name="action.search" xml:space="preserve"><value>search</value></data>
-  <data name="album.delete.body" xml:space="preserve"><value>This removes the release from the 資料庫.</value></data>
-  <data name="album.delete.failed" xml:space="preserve"><value>couldn't delete</value></data>
-  <data name="album.delete.title" xml:space="preserve"><value>delete release?</value></data>
-  <data name="album.edit.label" xml:space="preserve"><value>edit</value></data>
-  <data name="album.edit.load_failed" xml:space="preserve"><value>couldn't load the 中繼資料 editor</value></data>
-  <data name="album.edit.reset" xml:space="preserve"><value>Reset to Source</value></data>
-  <data name="album.edit.reset_failed" xml:space="preserve"><value>couldn't reset to source</value></data>
-  <data name="album.edit.title" xml:space="preserve"><value>edit 中繼資料</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>Gallery</value></data>
-  <data name="album.open_failed" xml:space="preserve"><value>couldn't open this album</value></data>
-  <data name="album.reidentify.label" xml:space="preserve"><value>re-identify</value></data>
-  <data name="album.reidentify.confirm" xml:space="preserve"><value>Re-identify</value></data>
-  <data name="album.reidentify.title" xml:space="preserve"><value>re-identify</value></data>
-  <data name="album.release_picker" xml:space="preserve"><value>Release</value></data>
-  <data name="album.shuffle" xml:space="preserve"><value>shuffle</value></data>
+  <data name="action.search" xml:space="preserve"><value>搜尋</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>這會從資料庫移除該發行版本。</value></data>
+  <data name="album.delete.failed" xml:space="preserve"><value>無法刪除</value></data>
+  <data name="album.delete.title" xml:space="preserve"><value>要刪除發行嗎？</value></data>
+  <data name="album.edit.label" xml:space="preserve"><value>編輯</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>無法載入中繼資料編輯器</value></data>
+  <data name="album.edit.reset" xml:space="preserve"><value>重設為來源</value></data>
+  <data name="album.edit.reset_failed" xml:space="preserve"><value>無法重設為來源</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>編輯中繼資料</value></data>
+  <data name="album.gallery" xml:space="preserve"><value>圖庫</value></data>
+  <data name="album.open_failed" xml:space="preserve"><value>無法開啟此專輯</value></data>
+  <data name="album.reidentify.label" xml:space="preserve"><value>重新識別</value></data>
+  <data name="album.reidentify.confirm" xml:space="preserve"><value>重新識別</value></data>
+  <data name="album.reidentify.title" xml:space="preserve"><value>重新識別</value></data>
+  <data name="album.release_picker" xml:space="preserve"><value>發行</value></data>
+  <data name="album.shuffle" xml:space="preserve"><value>隨機播放</value></data>
   <data name="cloud.provider.dropbox" xml:space="preserve"><value>Dropbox</value></data>
   <data name="cloud.provider.google_drive" xml:space="preserve"><value>Google Drive</value></data>
   <data name="cloud.provider.onedrive" xml:space="preserve"><value>OneDrive</value></data>
   <data name="cloud.provider.s3" xml:space="preserve"><value>S3</value></data>
-  <data name="cloud.signin.failed" xml:space="preserve"><value>cloud sign-in failed</value></data>
-  <data name="cloud.signin.in_progress" xml:space="preserve"><value>signing in to {provider}…</value></data>
-  <data name="cloud.signin.not_configured" xml:space="preserve"><value>cloud sign-in isn't configured on this build (no oauth-creds.json)</value></data>
-  <data name="cloud.unsupported_provider" xml:space="preserve"><value>this build doesn't support {provider} 同步</value></data>
-  <data name="cover.change_title" xml:space="preserve"><value>change cover</value></data>
-  <data name="cover.fetch_failed" xml:space="preserve"><value>couldn't fetch remote covers</value></data>
-  <data name="cover.fetching" xml:space="preserve"><value>fetching covers…</value></data>
-  <data name="cover.images_load_failed" xml:space="preserve"><value>couldn't load this release's images</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>No cover art available — the import uses its default cover.</value></data>
-  <data name="cover.none_remote" xml:space="preserve"><value>No remote covers found</value></data>
-  <data name="cover.pick_hint" xml:space="preserve"><value>Pick a cover, or leave unselected to use the default.</value></data>
-  <data name="cover.release_files" xml:space="preserve"><value>Release files</value></data>
-  <data name="cover.remote_sources" xml:space="preserve"><value>Remote sources</value></data>
-  <data name="cover.section_title" xml:space="preserve"><value>Cover</value></data>
-  <data name="cover.show_failed" xml:space="preserve"><value>couldn't show remote covers: {detail}</value></data>
-  <data name="error.playback_title" xml:space="preserve"><value>playback error</value></data>
-  <data name="error.title" xml:space="preserve"><value>error</value></data>
-  <data name="gallery.load_failed" xml:space="preserve"><value>couldn't load the gallery</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>couldn't read the gallery</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>gallery</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>conflict</value></data>
-  <data name="identify.error" xml:space="preserve"><value>error</value></data>
-  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {found (#)} other {found (#)}}</value></data>
-  <data name="identify.identifying" xml:space="preserve"><value>identifying…</value></data>
-  <data name="identify.manual" xml:space="preserve"><value>manual search only</value></data>
-  <data name="identify.not_found" xml:space="preserve"><value>not found</value></data>
-  <data name="import.already_in_library" xml:space="preserve"><value>this release is already in your 資料庫</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>Back to Search</value></data>
-  <data name="import.choose_folder" xml:space="preserve"><value>choose folder &amp;amp; scan</value></data>
-  <data name="import.complete" xml:space="preserve"><value>imported</value></data>
-  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# track} other {# tracks}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>confirm import</value></data>
-  <data name="import.drop_caption" xml:space="preserve"><value>scan &amp;amp; import</value></data>
-  <data name="import.drop_folder_only" xml:space="preserve"><value>drop a folder to import</value></data>
-  <data name="import.drop_read_failed" xml:space="preserve"><value>could not read the dropped item</value></data>
-  <data name="import.error_title" xml:space="preserve"><value>import error</value></data>
-  <data name="import.error.load_release" xml:space="preserve"><value>couldn't load the release to import</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>couldn't load 儲存空間 settings</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>couldn't read 儲存空間 settings</value></data>
-  <data name="import.failed" xml:space="preserve"><value>import failed</value></data>
-  <data name="import.field.artist_manual" xml:space="preserve"><value>artist (manual search)</value></data>
-  <data name="import.no_releases" xml:space="preserve"><value>no releases found</value></data>
-  <data name="import.preview" xml:space="preserve"><value>preview</value></data>
-  <data name="import.progress.percent" xml:space="preserve"><value>importing {percent}%</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>import release</value></data>
-  <data name="import.rerun_identify" xml:space="preserve"><value>re-run identification</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>scanning…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Keep local copy</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Managed</value></data>
-  <data name="import.title" xml:space="preserve"><value>import</value></data>
-  <data name="import.view_in_library" xml:space="preserve"><value>view in 資料庫</value></data>
-  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  active</value></data>
-  <data name="libraries.new" xml:space="preserve"><value>new 資料庫</value></data>
-  <data name="libraries.rename" xml:space="preserve"><value>rename</value></data>
-  <data name="libraries.title" xml:space="preserve"><value>libraries</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>couldn't create a 資料庫</value></data>
-  <data name="library.empty" xml:space="preserve"><value>資料庫 is empty</value></data>
-  <data name="library.load_failed" xml:space="preserve"><value>couldn't load the 資料庫</value></data>
-  <data name="library.locked" xml:space="preserve"><value>資料庫 is locked</value></data>
-  <data name="library.open_failed" xml:space="preserve"><value>couldn't open the 資料庫</value></data>
-  <data name="library.unlock.body" xml:space="preserve"><value>This 資料庫 is encrypted and its key isn't on this device. Enter the 64-character hex key to unlock it.</value></data>
+  <data name="cloud.signin.failed" xml:space="preserve"><value>雲端登入失敗</value></data>
+  <data name="cloud.signin.in_progress" xml:space="preserve"><value>正在登入 {provider}…</value></data>
+  <data name="cloud.signin.not_configured" xml:space="preserve"><value>此建置未設定雲端登入（沒有 oauth-creds.json）</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>此建置不支援 {provider} 同步</value></data>
+  <data name="cover.change_title" xml:space="preserve"><value>更換封面</value></data>
+  <data name="cover.fetch_failed" xml:space="preserve"><value>無法擷取遠端封面</value></data>
+  <data name="cover.fetching" xml:space="preserve"><value>正在擷取封面…</value></data>
+  <data name="cover.images_load_failed" xml:space="preserve"><value>無法載入此發行的影像</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>沒有可用封面 — 匯入會使用預設封面。</value></data>
+  <data name="cover.none_remote" xml:space="preserve"><value>找不到遠端封面</value></data>
+  <data name="cover.pick_hint" xml:space="preserve"><value>選擇封面，或不選取以使用預設值。</value></data>
+  <data name="cover.release_files" xml:space="preserve"><value>發行檔案</value></data>
+  <data name="cover.remote_sources" xml:space="preserve"><value>遠端來源</value></data>
+  <data name="cover.section_title" xml:space="preserve"><value>封面</value></data>
+  <data name="cover.show_failed" xml:space="preserve"><value>無法顯示遠端封面：{detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>返回</value></data>
+  <data name="action.copy" xml:space="preserve"><value>複製</value></data>
+  <data name="action.done" xml:space="preserve"><value>完成</value></data>
+  <data name="action.scan" xml:space="preserve"><value>掃描…</value></data>
+  <data name="error.playback_title" xml:space="preserve"><value>播放錯誤</value></data>
+  <data name="error.title" xml:space="preserve"><value>錯誤</value></data>
+  <data name="gallery.load_failed" xml:space="preserve"><value>無法載入圖庫</value></data>
+  <data name="gallery.read_failed" xml:space="preserve"><value>無法讀取圖庫</value></data>
+  <data name="gallery.title" xml:space="preserve"><value>圖庫</value></data>
+  <data name="identify.conflict" xml:space="preserve"><value>衝突</value></data>
+  <data name="identify.error" xml:space="preserve"><value>錯誤</value></data>
+  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {找到 (#)} other {找到 (#)}}</value></data>
+  <data name="identify.identifying" xml:space="preserve"><value>正在識別…</value></data>
+  <data name="identify.manual" xml:space="preserve"><value>僅手動搜尋</value></data>
+  <data name="identify.not_found" xml:space="preserve"><value>找不到</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>此發行版本已在你的資料庫中</value></data>
+  <data name="import.back_to_search" xml:space="preserve"><value>返回搜尋</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>選擇資料夾並掃描</value></data>
+  <data name="import.complete" xml:space="preserve"><value>已匯入</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# 首曲目} other {# 首曲目}}</value></data>
+  <data name="import.confirm_title" xml:space="preserve"><value>確認匯入</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>掃描並匯入</value></data>
+  <data name="import.drop_folder_only" xml:space="preserve"><value>拖放資料夾以匯入</value></data>
+  <data name="import.drop_read_failed" xml:space="preserve"><value>無法讀取拖放的項目</value></data>
+  <data name="import.error_title" xml:space="preserve"><value>匯入錯誤</value></data>
+  <data name="import.error.load_release" xml:space="preserve"><value>無法載入要匯入的發行</value></data>
+  <data name="import.error.load_storage_settings" xml:space="preserve"><value>無法載入儲存空間設定</value></data>
+  <data name="import.error.read_storage_settings" xml:space="preserve"><value>無法讀取儲存空間設定</value></data>
+  <data name="import.failed" xml:space="preserve"><value>匯入失敗</value></data>
+  <data name="import.field.artist_manual" xml:space="preserve"><value>演出者（手動搜尋）</value></data>
+  <data name="import.no_releases" xml:space="preserve"><value>找不到發行</value></data>
+  <data name="import.preview" xml:space="preserve"><value>預覽</value></data>
+  <data name="import.progress.percent" xml:space="preserve"><value>正在匯入 {percent}%</value></data>
+  <data name="import.release_title" xml:space="preserve"><value>匯入發行</value></data>
+  <data name="import.rerun_identify" xml:space="preserve"><value>重新執行識別</value></data>
+  <data name="import.scanning" xml:space="preserve"><value>正在掃描…</value></data>
+  <data name="import.storage.keep_local" xml:space="preserve"><value>保留本機副本</value></data>
+  <data name="import.storage.managed" xml:space="preserve"><value>受管理</value></data>
+  <data name="import.title" xml:space="preserve"><value>匯入</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>在資料庫中檢視</value></data>
+  <data name="join.title" xml:space="preserve"><value>加入資料庫</value></data>
+  <data name="join.intro" xml:space="preserve"><value>將此裝置加入你另一台裝置上已有的資料庫。</value></data>
+  <data name="join.this_device_code" xml:space="preserve"><value>此裝置的代碼</value></data>
+  <data name="join.show_to_member" xml:space="preserve"><value>在已加入你資料庫的裝置上，開啟設定 → 裝置 → 加入裝置，然後掃描或貼上這段代碼。</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>此裝置：{fingerprint}</value></data>
+  <data name="join.generate_failed" xml:space="preserve"><value>無法產生此裝置的代碼</value></data>
+  <data name="join.invite_label" xml:space="preserve"><value>邀請碼</value></data>
+  <data name="join.invite_hint" xml:space="preserve"><value>該裝置核准此裝置後，輸入它顯示的邀請碼。</value></data>
+  <data name="join.invite_placeholder" xml:space="preserve"><value>貼上邀請碼</value></data>
+  <data name="join.invalid_invite" xml:space="preserve"><value>邀請碼無效</value></data>
+  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · 擁有者 {fingerprint}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>加入</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>正在加入 {name}…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>無法加入資料庫</value></data>
+  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  使用中</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>新增資料庫</value></data>
+  <data name="libraries.rename" xml:space="preserve"><value>重新命名</value></data>
+  <data name="libraries.title" xml:space="preserve"><value>資料庫</value></data>
+  <data name="library.create_failed" xml:space="preserve"><value>無法建立資料庫</value></data>
+  <data name="library.empty" xml:space="preserve"><value>資料庫是空的</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>無法載入資料庫</value></data>
+  <data name="library.locked" xml:space="preserve"><value>資料庫已鎖定</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>無法開啟資料庫</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>此資料庫已加密，且其金鑰不在此裝置上。請輸入 64 字元十六進位金鑰以解鎖。</value></data>
   <data name="library.unlock.confirm" xml:space="preserve"><value>解鎖</value></data>
-  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64-character hex key</value></data>
-  <data name="library.unlock.title" xml:space="preserve"><value>unlock 資料庫</value></data>
-  <data name="menu.add_to_queue" xml:space="preserve"><value>Add to Queue</value></data>
-  <data name="menu.change_cover" xml:space="preserve"><value>Change cover…</value></data>
-  <data name="menu.delete" xml:space="preserve"><value>Delete…</value></data>
-  <data name="menu.export" xml:space="preserve"><value>Export…</value></data>
+  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64 字元十六進位金鑰</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>解鎖資料庫</value></data>
+  <data name="menu.add_to_queue" xml:space="preserve"><value>加入佇列</value></data>
+  <data name="menu.change_cover" xml:space="preserve"><value>更換封面…</value></data>
+  <data name="menu.delete" xml:space="preserve"><value>刪除…</value></data>
+  <data name="menu.export" xml:space="preserve"><value>匯出…</value></data>
   <data name="menu.play" xml:space="preserve"><value>播放</value></data>
-  <data name="menu.play_next" xml:space="preserve"><value>Play Next</value></data>
-  <data name="menu.set_primary" xml:space="preserve"><value>Set as primary release</value></data>
-  <data name="menu.set_primary_done" xml:space="preserve"><value>set as primary release</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>delete</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>cancel</value></data>
-  <data name="outbox.load_failed" xml:space="preserve"><value>couldn't load the outbox</value></data>
-  <data name="outbox.pause" xml:space="preserve"><value>pause</value></data>
-  <data name="outbox.read_failed" xml:space="preserve"><value>couldn't read the outbox</value></data>
-  <data name="outbox.resume" xml:space="preserve"><value>resume</value></data>
-  <data name="outbox.retry_now" xml:space="preserve"><value>retry now</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>clear queue</value></data>
+  <data name="menu.play_next" xml:space="preserve"><value>下一首播放</value></data>
+  <data name="menu.set_primary" xml:space="preserve"><value>設為主要發行</value></data>
+  <data name="menu.set_primary_done" xml:space="preserve"><value>設為主要發行</value></data>
+  <data name="members.title" xml:space="preserve"><value>裝置</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>此裝置</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>擁有者</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>成員</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>追隨者</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>無法載入裝置</value></data>
+  <data name="members.add" xml:space="preserve"><value>加入裝置…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>移除</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>此裝置將失去存取權，資料庫金鑰也會輪替。再次按下移除以確認。</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>加入裝置</value></data>
+  <data name="members.approve.capture_hint" xml:space="preserve"><value>在新裝置上開啟加入資料庫並顯示其代碼。在此掃描，或貼到下方。</value></data>
+  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>貼上裝置代碼</value></data>
+  <data name="members.approve.decode" xml:space="preserve"><value>解碼</value></data>
+  <data name="members.approve.invalid_request" xml:space="preserve"><value>裝置代碼無效</value></data>
+  <data name="members.approve.confirm_title" xml:space="preserve"><value>要核准此裝置嗎？</value></data>
+  <data name="members.approve.confirm_hint" xml:space="preserve"><value>它會加入你的資料庫並可同步。你會取得要在該裝置上輸入的代碼。</value></data>
+  <data name="members.approve.confirm" xml:space="preserve"><value>核准</value></data>
+  <data name="members.approve.in_progress" xml:space="preserve"><value>正在核准裝置…</value></data>
+  <data name="members.approve.failed" xml:space="preserve"><value>無法核准此裝置</value></data>
+  <data name="members.approve.invited_hint" xml:space="preserve"><value>在新裝置輸入此代碼。</value></data>
+  <data name="outbox.delete.kind" xml:space="preserve"><value>刪除</value></data>
+  <data name="outbox.cancel_item" xml:space="preserve"><value>取消</value></data>
+  <data name="outbox.load_failed" xml:space="preserve"><value>無法載入寄件匣</value></data>
+  <data name="outbox.pause" xml:space="preserve"><value>暫停</value></data>
+  <data name="outbox.read_failed" xml:space="preserve"><value>無法讀取寄件匣</value></data>
+  <data name="outbox.resume" xml:space="preserve"><value>繼續</value></data>
+  <data name="outbox.retry_now" xml:space="preserve"><value>立即重試</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>清除佇列</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>從佇列移除</value></data>
-  <data name="queue.title" xml:space="preserve"><value>queue</value></data>
-  <data name="queue.section.up_next" xml:space="preserve"><value>接下來</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>來自</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>你的資料庫</value></data>
-  <data name="queue.shuffle.off" xml:space="preserve"><value>turn off shuffle</value></data>
-  <data name="queue.shuffle.on" xml:space="preserve"><value>shuffle</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>restore code</value></data>
-  <data name="restore.confirm" xml:space="preserve"><value>restore</value></data>
-  <data name="restore.failed" xml:space="preserve"><value>restore failed</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloud 儲存空間</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>加密 key (hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>資料庫 id</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>資料庫 name (optional)</value></data>
-  <data name="restore.from_cloud" xml:space="preserve"><value>restore from cloud</value></data>
-  <data name="restore.from_cloud_title" xml:space="preserve"><value>restore from cloud</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>restore from code</value></data>
-  <data name="restore.in_progress" xml:space="preserve"><value>restoring…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>restoring {name}…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>invalid restore code</value></data>
-  <data name="s3.field.access_key" xml:space="preserve"><value>access key</value></data>
-  <data name="s3.field.bucket" xml:space="preserve"><value>S3 bucket</value></data>
-  <data name="s3.field.endpoint" xml:space="preserve"><value>endpoint (optional)</value></data>
-  <data name="s3.field.key_prefix" xml:space="preserve"><value>key prefix (optional)</value></data>
-  <data name="s3.field.region" xml:space="preserve"><value>region</value></data>
-  <data name="s3.field.secret_key" xml:space="preserve"><value>secret key</value></data>
-  <data name="search.failed" xml:space="preserve"><value>Search failed</value></data>
-  <data name="search.field.album" xml:space="preserve"><value>album</value></data>
-  <data name="search.field.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>source</value></data>
-  <data name="search.no_matches" xml:space="preserve"><value>no matches</value></data>
-  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs token</value></data>
-  <data name="settings.discogs.recheck" xml:space="preserve"><value>re-check</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs rejected this key — check it and save again.</value></data>
-  <data name="settings.discogs.remove" xml:space="preserve"><value>remove token</value></data>
-  <data name="settings.discogs.save" xml:space="preserve"><value>save token</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>couldn't save the key — something went wrong.</value></data>
-  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API token</value></data>
-  <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>待播清單</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>關閉隨機播放</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>隨機播放</value></data>
+  <data name="queue.title" xml:space="preserve"><value>佇列</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>還原碼</value></data>
+  <data name="restore.confirm" xml:space="preserve"><value>還原</value></data>
+  <data name="restore.failed" xml:space="preserve"><value>還原失敗</value></data>
+  <data name="restore.field.cloud_storage" xml:space="preserve"><value>雲端儲存空間</value></data>
+  <data name="restore.field.encryption_key" xml:space="preserve"><value>加密金鑰 (十六進位)</value></data>
+  <data name="restore.field.library_id" xml:space="preserve"><value>資料庫 ID</value></data>
+  <data name="restore.field.library_name" xml:space="preserve"><value>資料庫名稱 (選填)</value></data>
+  <data name="restore.from_cloud" xml:space="preserve"><value>從雲端還原</value></data>
+  <data name="restore.from_cloud_title" xml:space="preserve"><value>從雲端還原</value></data>
+  <data name="restore.from_code" xml:space="preserve"><value>從代碼還原</value></data>
+  <data name="restore.in_progress" xml:space="preserve"><value>正在還原…</value></data>
+  <data name="restore.in_progress_named" xml:space="preserve"><value>正在還原 {name}…</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>還原碼無效</value></data>
+  <data name="s3.field.access_key" xml:space="preserve"><value>存取金鑰</value></data>
+  <data name="s3.field.bucket" xml:space="preserve"><value>S3 儲存桶</value></data>
+  <data name="s3.field.endpoint" xml:space="preserve"><value>端點（選填）</value></data>
+  <data name="s3.field.key_prefix" xml:space="preserve"><value>金鑰前綴（選填）</value></data>
+  <data name="s3.field.region" xml:space="preserve"><value>地區</value></data>
+  <data name="s3.field.secret_key" xml:space="preserve"><value>秘密金鑰</value></data>
+  <data name="search.failed" xml:space="preserve"><value>搜尋失敗</value></data>
+  <data name="search.field.album" xml:space="preserve"><value>專輯</value></data>
+  <data name="search.field.artist" xml:space="preserve"><value>演出者</value></data>
+  <data name="search.field.source" xml:space="preserve"><value>來源</value></data>
+  <data name="search.no_matches" xml:space="preserve"><value>沒有符合項目</value></data>
+  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs 權杖</value></data>
+  <data name="settings.discogs.recheck" xml:space="preserve"><value>重新檢查</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs 拒絕此金鑰 — 請檢查後再次儲存。</value></data>
+  <data name="settings.discogs.remove" xml:space="preserve"><value>移除權杖</value></data>
+  <data name="settings.discogs.save" xml:space="preserve"><value>儲存權杖</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>無法儲存金鑰 — 發生錯誤。</value></data>
+  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API 權杖</value></data>
+  <data name="settings.discogs.validating" xml:space="preserve"><value>正在驗證…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>面與面之間暫停</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>資料庫: {name}</value></data>
-  <data name="settings.lock_library" xml:space="preserve"><value>lock 資料庫</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>在面之間暫停</value></data>
-  <data name="settings.restore_code.label" xml:space="preserve"><value>restore code (enter on another device)</value></data>
-  <data name="settings.restore_code.show" xml:space="preserve"><value>show restore code</value></data>
-  <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(unavailable — is 同步 connected?)</value></data>
-  <data name="settings.s3.connect" xml:space="preserve"><value>connect S3</value></data>
-  <data name="settings.s3.connecting" xml:space="preserve"><value>connecting to S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>browsable — stored unencrypted</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>鎖定資料庫</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>復原</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>當你沒有其他可用裝置核准時，復原碼可在新裝置上還原此資料庫。任何持有它的人都能完整存取 — 請保密。</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>復原碼</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>顯示復原碼…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>（無法使用 — 同步已連線嗎？）</value></data>
+  <data name="settings.s3.connect" xml:space="preserve"><value>連接 S3</value></data>
+  <data name="settings.s3.connecting" xml:space="preserve"><value>正在連接 S3…</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>可瀏覽 — 未加密儲存</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>儲存空間</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>opaque — end-to-end encrypted</value></data>
-  <data name="settings.sync.disconnect" xml:space="preserve"><value>disconnect</value></data>
-  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} click disconnect again to confirm.</value></data>
-  <data name="settings.sync.now" xml:space="preserve"><value>同步 now</value></data>
-  <data name="settings.title" xml:space="preserve"><value>settings</value></data>
-  <data name="signal.exclude" xml:space="preserve"><value>exclude signal</value></data>
-  <data name="signal.include" xml:space="preserve"><value>include signal</value></data>
-  <data name="signal.kind.barcode" xml:space="preserve"><value>Barcode</value></data>
-  <data name="signal.kind.catalog" xml:space="preserve"><value>Catalog</value></data>
-  <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
-  <data name="sort.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="sort.newest" xml:space="preserve"><value>newest</value></data>
-  <data name="sort.title" xml:space="preserve"><value>title</value></data>
-  <data name="sort.year" xml:space="preserve"><value>year</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Move into 資料庫</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Pin for offline</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Move out of 資料庫…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Remove local copy</value></data>
-  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# file} other {# files}}</value></data>
-  <data name="storage.load_failed" xml:space="preserve"><value>couldn't load 儲存空間</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>Pinned</value></data>
-  <data name="storage.read_failed" xml:space="preserve"><value>couldn't read 儲存空間</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>Managed</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Unmanaged</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>不透明 — 端對端加密</value></data>
+  <data name="settings.sync.disconnect" xml:space="preserve"><value>中斷連線</value></data>
+  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} 再次按下中斷連線以確認。</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>立即同步</value></data>
+  <data name="settings.title" xml:space="preserve"><value>設定</value></data>
+  <data name="signal.exclude" xml:space="preserve"><value>排除訊號</value></data>
+  <data name="signal.include" xml:space="preserve"><value>包含訊號</value></data>
+  <data name="signal.kind.barcode" xml:space="preserve"><value>條碼</value></data>
+  <data name="signal.kind.catalog" xml:space="preserve"><value>目錄</value></data>
+  <data name="signal.kind.disc_id" xml:space="preserve"><value>光碟 ID</value></data>
+  <data name="sort.artist" xml:space="preserve"><value>演出者</value></data>
+  <data name="sort.name" xml:space="preserve"><value>名稱</value></data>
+  <data name="sort.newest" xml:space="preserve"><value>最新</value></data>
+  <data name="sort.title" xml:space="preserve"><value>標題</value></data>
+  <data name="sort.year" xml:space="preserve"><value>年份</value></data>
+  <data name="storage.action.manage" xml:space="preserve"><value>移入資料庫</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>釘選供離線使用</value></data>
+  <data name="storage.action.unmanage" xml:space="preserve"><value>移出資料庫…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>移除本機副本</value></data>
+  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# 個檔案} other {# 個檔案}}</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>無法載入儲存空間</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>已釘選</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>無法讀取儲存空間</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>受管理</value></data>
+  <data name="storage.state.unmanaged" xml:space="preserve"><value>未受管理</value></data>
   <data name="storage.title" xml:space="preserve"><value>儲存空間</value></data>
-  <data name="sync.error_title" xml:space="preserve"><value>同步 error</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>同步錯誤</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>重新連接</value></data>
-  <data name="sync.synced" xml:space="preserve"><value>同步ed {time}</value></data>
-  <data name="sync.syncing" xml:space="preserve"><value>同步ing…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Original</value></data>
-  <data name="welcome.choose_library" xml:space="preserve"><value>choose a 資料庫</value></data>
-  <data name="welcome.create_library" xml:space="preserve"><value>create 資料庫</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>no 資料庫 yet</value></data>
-  <data name="welcome.your_libraries" xml:space="preserve"><value>your libraries</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>已同步 {time}</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>正在同步…</value></data>
+  <data name="track.export.original" xml:space="preserve"><value>原始</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>無法準備匯出。</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>選擇資料庫</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>加入資料庫</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>建立資料庫</value></data>
+  <data name="welcome.no_library" xml:space="preserve"><value>尚無資料庫</value></data>
+  <data name="welcome.your_libraries" xml:space="preserve"><value>你的資料庫</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
-  <data name="settings.discogs.connected" xml:space="preserve"><value>connected</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>saved — couldn't validate yet (offline). will retry.</value></data>
-  <data name="settings.sync.initializing" xml:space="preserve"><value>initializing</value></data>
-  <data name="settings.sync.not_connected" xml:space="preserve"><value>同步: not connected</value></data>
-  <data name="settings.sync.ready" xml:space="preserve"><value>ready</value></data>
+  <data name="settings.discogs.connected" xml:space="preserve"><value>已連線</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>已儲存 — 尚無法驗證（離線）。將重試。</value></data>
+  <data name="settings.sync.initializing" xml:space="preserve"><value>正在初始化</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>同步：未連線</value></data>
+  <data name="settings.sync.ready" xml:space="preserve"><value>就緒</value></data>
   <data name="settings.sync.status" xml:space="preserve"><value>同步: {provider}{account} — {state}</value></data>
-  <data name="download.title" xml:space="preserve"><value>downloads</value></data>
-  <data name="download.paused" xml:space="preserve"><value>paused</value></data>
-  <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
-  <data name="download.state.downloading" xml:space="preserve"><value>downloading</value></data>
-  <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
+  <data name="download.title" xml:space="preserve"><value>下載</value></data>
+  <data name="download.paused" xml:space="preserve"><value>已暫停</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>已加入佇列</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>正在下載</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>失敗</value></data>
   <data name="settings.automation.label" xml:space="preserve"><value>自動化</value></data>
   <data name="settings.automation.enable_mcp" xml:space="preserve"><value>啟用 MCP 伺服器</value></data>
   <data name="settings.automation.port" xml:space="preserve"><value>連接埠</value></data>
@@ -222,33 +265,51 @@
   <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP 伺服器已停用</value></data>
   <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>MCP 伺服器設定無效</value></data>
   <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP 權杖無法使用</value></data>
-  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>無法啟動 MCP 伺服器</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP 伺服器無法啟動</value></data>
   <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP 伺服器已停止</value></data>
   <data name="settings.automation.invalid_port" xml:space="preserve"><value>請輸入 1 到 65535 之間的連接埠</value></data>
   <data name="settings.automation.status_unavailable" xml:space="preserve"><value>MCP 狀態無法使用</value></data>
   <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP 權杖無法使用</value></data>
   <data name="settings.automation.token_copied" xml:space="preserve"><value>權杖已複製</value></data>
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>權杖已輪替並複製</value></data>
-  <data name="sort.name" xml:space="preserve"><value>name</value></data>
-  <data name="library.mode.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="library.mode.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="library.no_composers" xml:space="preserve"><value>No composers</value></data>
-  <data name="search.section.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="search.section.tracks" xml:space="preserve"><value>Tracks</value></data>
-  <data name="search.section.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="search.section.works" xml:space="preserve"><value>Works</value></data>
-  <data name="search.section.releases" xml:space="preserve"><value>Releases</value></data>
-  <data name="search.section.credits" xml:space="preserve"><value>Credits</value></data>
-  <data name="search.section.recordings" xml:space="preserve"><value>Recordings</value></data>
-  <data name="composer.open_failed" xml:space="preserve"><value>Could not open composer detail</value></data>
-  <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
-  <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
-  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Bit depth</value></data>
-  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Source</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>專輯</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>作曲者</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>沒有作曲者</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>專輯</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>曲目</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>作曲者</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>作品</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>發行</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>製作名單</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>錄音</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>無法開啟作曲者詳細資料</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>無法開啟作品詳細資料</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} 部作品</value></data>
+  <data name="settings.export.label" xml:space="preserve"><value>匯出</value></data>
+  <data name="settings.export.default_track_format" xml:space="preserve"><value>預設曲目格式</value></data>
+  <data name="settings.export.default_release_format" xml:space="preserve"><value>預設發行格式</value></data>
+  <data name="settings.export.presets" xml:space="preserve"><value>預設</value></data>
+  <data name="settings.export.preset_name" xml:space="preserve"><value>名稱</value></data>
+  <data name="settings.export.preset_track" xml:space="preserve"><value>曲目</value></data>
+  <data name="settings.export.preset_release" xml:space="preserve"><value>發行</value></data>
+  <data name="settings.export.preset_pregap" xml:space="preserve"><value>預間隙</value></data>
+  <data name="settings.export.add_flac" xml:space="preserve"><value>加入 FLAC</value></data>
+  <data name="settings.export.add_mp3" xml:space="preserve"><value>加入 MP3</value></data>
+  <data name="settings.export.add_opus" xml:space="preserve"><value>加入 Opus</value></data>
+  <data name="settings.export.add_wav" xml:space="preserve"><value>加入 WAV</value></data>
+  <data name="settings.export.add_aiff" xml:space="preserve"><value>加入 AIFF</value></data>
+  <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>附加，排除 HTOA</value></data>
+  <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>附加，包含 HTOA</value></data>
+  <data name="settings.export.pregap.exclude" xml:space="preserve"><value>排除</value></data>
+  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>單一檔案 + CUE</value></data>
+  <data name="action.remove" xml:space="preserve"><value>移除</value></data>
+  <data name="settings.export.filename_format" xml:space="preserve"><value>檔名格式</value></data>
+  <data name="settings.export.tokens_help" xml:space="preserve"><value>可用標記：{title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
+  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>位元深度</value></data>
+  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>來源</value></data>
   <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
   <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
-  <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
-  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>單一檔案 + CUE</value></data>
+  <data name="settings.export.bitrate" xml:space="preserve"><value>位元率</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>無法儲存匯出設定</value></data>
 </root>

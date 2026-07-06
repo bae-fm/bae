@@ -14,7 +14,7 @@
   <data name="action.close" xml:space="preserve"><value>Cerrar</value></data>
   <data name="action.delete" xml:space="preserve"><value>Eliminar</value></data>
   <data name="action.import" xml:space="preserve"><value>Importar</value></data>
-  <data name="action.ok" xml:space="preserve"><value>Aceptar</value></data>
+  <data name="action.ok" xml:space="preserve"><value>OK</value></data>
   <data name="action.play" xml:space="preserve"><value>Reproducir</value></data>
   <data name="action.save" xml:space="preserve"><value>Guardar</value></data>
   <data name="action.search" xml:space="preserve"><value>buscar</value></data>
@@ -31,7 +31,7 @@
   <data name="album.reidentify.label" xml:space="preserve"><value>reidentificar</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>Reidentificar</value></data>
   <data name="album.reidentify.title" xml:space="preserve"><value>reidentificar</value></data>
-  <data name="album.release_picker" xml:space="preserve"><value>Edición</value></data>
+  <data name="album.release_picker" xml:space="preserve"><value>Lanzamiento</value></data>
   <data name="album.shuffle" xml:space="preserve"><value>aleatorio</value></data>
   <data name="cloud.provider.dropbox" xml:space="preserve"><value>Dropbox</value></data>
   <data name="cloud.provider.google_drive" xml:space="preserve"><value>Google Drive</value></data>
@@ -52,6 +52,10 @@
   <data name="cover.remote_sources" xml:space="preserve"><value>Fuentes remotas</value></data>
   <data name="cover.section_title" xml:space="preserve"><value>Portada</value></data>
   <data name="cover.show_failed" xml:space="preserve"><value>no se pudieron mostrar las portadas remotas: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>atrás</value></data>
+  <data name="action.copy" xml:space="preserve"><value>copiar</value></data>
+  <data name="action.done" xml:space="preserve"><value>hecho</value></data>
+  <data name="action.scan" xml:space="preserve"><value>escanear…</value></data>
   <data name="error.playback_title" xml:space="preserve"><value>error de reproducción</value></data>
   <data name="error.title" xml:space="preserve"><value>error</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>no se pudo cargar la galería</value></data>
@@ -67,7 +71,7 @@
   <data name="import.back_to_search" xml:space="preserve"><value>Volver a la búsqueda</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>elegir carpeta y analizar</value></data>
   <data name="import.complete" xml:space="preserve"><value>importado</value></data>
-  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# track} other {# tracks}}</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# pista} other {# pistas}}</value></data>
   <data name="import.confirm_title" xml:space="preserve"><value>confirmar importación</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>analizar e importar</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>suelta una carpeta para importar</value></data>
@@ -88,6 +92,20 @@
   <data name="import.storage.managed" xml:space="preserve"><value>Gestionadas</value></data>
   <data name="import.title" xml:space="preserve"><value>importar</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>ver en la biblioteca</value></data>
+  <data name="join.title" xml:space="preserve"><value>unirse a una biblioteca</value></data>
+  <data name="join.intro" xml:space="preserve"><value>añade este dispositivo a una biblioteca que ya tienes en otro dispositivo.</value></data>
+  <data name="join.this_device_code" xml:space="preserve"><value>código de este dispositivo</value></data>
+  <data name="join.show_to_member" xml:space="preserve"><value>en un dispositivo que ya esté en tu biblioteca, abre ajustes → dispositivos → añadir un dispositivo y escanea o pega esto.</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>este dispositivo: {fingerprint}</value></data>
+  <data name="join.generate_failed" xml:space="preserve"><value>no se pudo generar el código de este dispositivo</value></data>
+  <data name="join.invite_label" xml:space="preserve"><value>código de invitación</value></data>
+  <data name="join.invite_hint" xml:space="preserve"><value>cuando ese dispositivo apruebe este, introduce el código de invitación que muestre.</value></data>
+  <data name="join.invite_placeholder" xml:space="preserve"><value>pegar código de invitación</value></data>
+  <data name="join.invalid_invite" xml:space="preserve"><value>código de invitación no válido</value></data>
+  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · propietario {fingerprint}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>unirse</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>uniéndose a {name}…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>no se pudo unir a la biblioteca</value></data>
   <data name="libraries.active" xml:space="preserve"><value>{name}  ·  activa</value></data>
   <data name="libraries.new" xml:space="preserve"><value>biblioteca nueva</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>renombrar</value></data>
@@ -109,6 +127,26 @@
   <data name="menu.play_next" xml:space="preserve"><value>Reproducir a continuación</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>Establecer como edición principal</value></data>
   <data name="menu.set_primary_done" xml:space="preserve"><value>establecer como edición principal</value></data>
+  <data name="members.title" xml:space="preserve"><value>dispositivos</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>este dispositivo</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>propietario</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>miembro</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>seguidor</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>no se pudieron cargar los dispositivos</value></data>
+  <data name="members.add" xml:space="preserve"><value>añadir un dispositivo…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>eliminar</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>este dispositivo perderá acceso y se rotará la clave de la biblioteca. haz clic en eliminar otra vez para confirmar.</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>añadir un dispositivo</value></data>
+  <data name="members.approve.capture_hint" xml:space="preserve"><value>en el dispositivo nuevo, abre unirse a una biblioteca y muestra su código. escanéalo aquí o pégalo abajo.</value></data>
+  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>pegar el código del dispositivo</value></data>
+  <data name="members.approve.decode" xml:space="preserve"><value>decodificar</value></data>
+  <data name="members.approve.invalid_request" xml:space="preserve"><value>código de dispositivo no válido</value></data>
+  <data name="members.approve.confirm_title" xml:space="preserve"><value>¿aprobar este dispositivo?</value></data>
+  <data name="members.approve.confirm_hint" xml:space="preserve"><value>se añadirá a tu biblioteca y podrá sincronizarse. recibirás un código para introducir en él.</value></data>
+  <data name="members.approve.confirm" xml:space="preserve"><value>aprobar</value></data>
+  <data name="members.approve.in_progress" xml:space="preserve"><value>aprobando dispositivo…</value></data>
+  <data name="members.approve.failed" xml:space="preserve"><value>no se pudo aprobar este dispositivo</value></data>
+  <data name="members.approve.invited_hint" xml:space="preserve"><value>introduce este código en el dispositivo nuevo.</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>eliminar</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>cancelar</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>no se pudo cargar la bandeja de salida</value></data>
@@ -118,12 +156,12 @@
   <data name="outbox.retry_now" xml:space="preserve"><value>reintentar ahora</value></data>
   <data name="queue.clear" xml:space="preserve"><value>vaciar la cola</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Quitar de la cola</value></data>
-  <data name="queue.title" xml:space="preserve"><value>cola</value></data>
-  <data name="queue.section.up_next" xml:space="preserve"><value>A continuación</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Reproduciendo desde</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>Tu biblioteca</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>A continuación</value></data>
   <data name="queue.shuffle.off" xml:space="preserve"><value>desactivar aleatorio</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>aleatorio</value></data>
+  <data name="queue.title" xml:space="preserve"><value>cola</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>código de restauración</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>restaurar</value></data>
   <data name="restore.failed" xml:space="preserve"><value>error al restaurar</value></data>
@@ -156,12 +194,14 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>no se pudo guardar la clave — algo salió mal.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Token de API de Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validando…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pausa entre caras</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Biblioteca: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>bloquear biblioteca</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pausar entre lados</value></data>
-  <data name="settings.restore_code.label" xml:space="preserve"><value>código de restauración (introdúcelo en otro dispositivo)</value></data>
-  <data name="settings.restore_code.show" xml:space="preserve"><value>mostrar código de restauración</value></data>
-  <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(no disponible — ¿está conectada la sincronización?)</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>recuperación</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>tu código de recuperación restaura esta biblioteca en un dispositivo nuevo cuando no tienes otro dispositivo disponible para aprobarlo. cualquiera que lo tenga tendrá acceso completo — mantenlo secreto.</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>código de recuperación</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>mostrar código de recuperación…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(no disponible — ¿la sincronización está conectada?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>conectar S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>conectando con S3…</value></data>
   <data name="settings.storage.browsable" xml:space="preserve"><value>explorable — almacenado sin cifrar</value></data>
@@ -177,6 +217,7 @@
   <data name="signal.kind.catalog" xml:space="preserve"><value>Catálogo</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ID de disco</value></data>
   <data name="sort.artist" xml:space="preserve"><value>artista</value></data>
+  <data name="sort.name" xml:space="preserve"><value>nombre</value></data>
   <data name="sort.newest" xml:space="preserve"><value>más reciente</value></data>
   <data name="sort.title" xml:space="preserve"><value>título</value></data>
   <data name="sort.year" xml:space="preserve"><value>año</value></data>
@@ -196,7 +237,9 @@
   <data name="sync.synced" xml:space="preserve"><value>sincronizado {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>sincronizando…</value></data>
   <data name="track.export.original" xml:space="preserve"><value>Original</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>No se pudo preparar la exportación.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>elige una biblioteca</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>unirse a una biblioteca</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>crear biblioteca</value></data>
   <data name="welcome.no_library" xml:space="preserve"><value>aún no hay biblioteca</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>tus bibliotecas</value></data>
@@ -207,11 +250,11 @@
   <data name="settings.sync.not_connected" xml:space="preserve"><value>Sincronización: no conectada</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>listo</value></data>
   <data name="settings.sync.status" xml:space="preserve"><value>Sincronización: {provider}{account} — {state}</value></data>
-  <data name="download.title" xml:space="preserve"><value>downloads</value></data>
-  <data name="download.paused" xml:space="preserve"><value>paused</value></data>
-  <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
-  <data name="download.state.downloading" xml:space="preserve"><value>downloading</value></data>
-  <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
+  <data name="download.title" xml:space="preserve"><value>descargas</value></data>
+  <data name="download.paused" xml:space="preserve"><value>en pausa</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>en cola</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>descargando</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>falló</value></data>
   <data name="settings.automation.label" xml:space="preserve"><value>Automatización</value></data>
   <data name="settings.automation.enable_mcp" xml:space="preserve"><value>Activar servidor MCP</value></data>
   <data name="settings.automation.port" xml:space="preserve"><value>Puerto</value></data>
@@ -223,32 +266,50 @@
   <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>Configuración del servidor MCP no válida</value></data>
   <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>Token MCP no disponible</value></data>
   <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>No se pudo iniciar el servidor MCP</value></data>
-  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>El servidor MCP se detuvo</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>Servidor MCP detenido</value></data>
   <data name="settings.automation.invalid_port" xml:space="preserve"><value>introduce un puerto de 1 a 65535</value></data>
   <data name="settings.automation.status_unavailable" xml:space="preserve"><value>Estado de MCP no disponible</value></data>
-  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>Token de MCP no disponible</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>Token MCP no disponible</value></data>
   <data name="settings.automation.token_copied" xml:space="preserve"><value>token copiado</value></data>
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>token rotado y copiado</value></data>
-  <data name="sort.name" xml:space="preserve"><value>name</value></data>
-  <data name="library.mode.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="library.mode.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="library.no_composers" xml:space="preserve"><value>No composers</value></data>
-  <data name="search.section.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="search.section.tracks" xml:space="preserve"><value>Tracks</value></data>
-  <data name="search.section.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="search.section.works" xml:space="preserve"><value>Works</value></data>
-  <data name="search.section.releases" xml:space="preserve"><value>Releases</value></data>
-  <data name="search.section.credits" xml:space="preserve"><value>Credits</value></data>
-  <data name="search.section.recordings" xml:space="preserve"><value>Recordings</value></data>
-  <data name="composer.open_failed" xml:space="preserve"><value>Could not open composer detail</value></data>
-  <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
-  <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
-  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Bit depth</value></data>
-  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Source</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>Álbumes</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>Compositores</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>No hay compositores</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>Álbumes</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>Pistas</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>Compositores</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>Obras</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>Lanzamientos</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>Créditos</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>Grabaciones</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>No se pudieron abrir los detalles del compositor</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>No se pudieron abrir los detalles de la obra</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} obras</value></data>
+  <data name="settings.export.label" xml:space="preserve"><value>Exportar</value></data>
+  <data name="settings.export.default_track_format" xml:space="preserve"><value>Formato de pista predeterminado</value></data>
+  <data name="settings.export.default_release_format" xml:space="preserve"><value>Formato de lanzamiento predeterminado</value></data>
+  <data name="settings.export.presets" xml:space="preserve"><value>Preajustes</value></data>
+  <data name="settings.export.preset_name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="settings.export.preset_track" xml:space="preserve"><value>Pista</value></data>
+  <data name="settings.export.preset_release" xml:space="preserve"><value>Lanzamiento</value></data>
+  <data name="settings.export.preset_pregap" xml:space="preserve"><value>Pregap</value></data>
+  <data name="settings.export.add_flac" xml:space="preserve"><value>Añadir FLAC</value></data>
+  <data name="settings.export.add_mp3" xml:space="preserve"><value>Añadir MP3</value></data>
+  <data name="settings.export.add_opus" xml:space="preserve"><value>Añadir Opus</value></data>
+  <data name="settings.export.add_wav" xml:space="preserve"><value>Añadir WAV</value></data>
+  <data name="settings.export.add_aiff" xml:space="preserve"><value>Añadir AIFF</value></data>
+  <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>Añadir excepto HTOA</value></data>
+  <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>Añadir incluyendo HTOA</value></data>
+  <data name="settings.export.pregap.exclude" xml:space="preserve"><value>Excluir</value></data>
+  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>Archivo único + CUE</value></data>
+  <data name="action.remove" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="settings.export.filename_format" xml:space="preserve"><value>Formato de nombre de archivo</value></data>
+  <data name="settings.export.tokens_help" xml:space="preserve"><value>Tokens disponibles: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
+  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Profundidad de bits</value></data>
+  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Fuente</value></data>
   <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
   <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
-  <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
-  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>Archivo único + CUE</value></data>
+  <data name="settings.export.bitrate" xml:space="preserve"><value>Tasa de bits</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>No se pudieron guardar los ajustes de exportación</value></data>
 </root>

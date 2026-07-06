@@ -2,217 +2,260 @@
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
-  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>search</value></data>
-  <data name="LibrariesButton.Content" xml:space="preserve"><value>libraries</value></data>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>ค้นหา</value></data>
+  <data name="LibrariesButton.Content" xml:space="preserve"><value>คลัง</value></data>
   <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>สุ่มเล่นคลังเพลง</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>close</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>close ไลบรารี</value></data>
-  <data name="ImportButton.Content" xml:space="preserve"><value>import</value></data>
+  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>ปิด</value></data>
+  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>ปิดคลัง</value></data>
+  <data name="ImportButton.Content" xml:space="preserve"><value>นำเข้า</value></data>
   <data name="StorageButton.Content" xml:space="preserve"><value>พื้นที่จัดเก็บ</value></data>
   <data name="SettingsButton.Content" xml:space="preserve"><value>settings</value></data>
   <data name="action.cancel" xml:space="preserve"><value>ยกเลิก</value></data>
   <data name="action.close" xml:space="preserve"><value>ปิด</value></data>
   <data name="action.delete" xml:space="preserve"><value>ลบ</value></data>
   <data name="action.import" xml:space="preserve"><value>นำเข้า</value></data>
-  <data name="action.ok" xml:space="preserve"><value>ตกลง</value></data>
+  <data name="action.ok" xml:space="preserve"><value>OK</value></data>
   <data name="action.play" xml:space="preserve"><value>เล่น</value></data>
   <data name="action.save" xml:space="preserve"><value>บันทึก</value></data>
-  <data name="action.search" xml:space="preserve"><value>search</value></data>
-  <data name="album.delete.body" xml:space="preserve"><value>This removes the release from the ไลบรารี.</value></data>
-  <data name="album.delete.failed" xml:space="preserve"><value>couldn't delete</value></data>
-  <data name="album.delete.title" xml:space="preserve"><value>delete release?</value></data>
-  <data name="album.edit.label" xml:space="preserve"><value>edit</value></data>
-  <data name="album.edit.load_failed" xml:space="preserve"><value>couldn't load the เมทาดาทา editor</value></data>
-  <data name="album.edit.reset" xml:space="preserve"><value>Reset to Source</value></data>
-  <data name="album.edit.reset_failed" xml:space="preserve"><value>couldn't reset to source</value></data>
-  <data name="album.edit.title" xml:space="preserve"><value>edit เมทาดาทา</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>Gallery</value></data>
-  <data name="album.open_failed" xml:space="preserve"><value>couldn't open this album</value></data>
-  <data name="album.reidentify.label" xml:space="preserve"><value>re-identify</value></data>
-  <data name="album.reidentify.confirm" xml:space="preserve"><value>Re-identify</value></data>
-  <data name="album.reidentify.title" xml:space="preserve"><value>re-identify</value></data>
-  <data name="album.release_picker" xml:space="preserve"><value>Release</value></data>
-  <data name="album.shuffle" xml:space="preserve"><value>shuffle</value></data>
+  <data name="action.search" xml:space="preserve"><value>ค้นหา</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>การดำเนินการนี้จะนำรุ่นวางจำหน่ายออกจากคลัง</value></data>
+  <data name="album.delete.failed" xml:space="preserve"><value>ลบไม่ได้</value></data>
+  <data name="album.delete.title" xml:space="preserve"><value>ลบรีลีสหรือไม่</value></data>
+  <data name="album.edit.label" xml:space="preserve"><value>แก้ไข</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>โหลดตัวแก้ไขเมทาดาทาไม่ได้</value></data>
+  <data name="album.edit.reset" xml:space="preserve"><value>รีเซ็ตเป็นแหล่งที่มา</value></data>
+  <data name="album.edit.reset_failed" xml:space="preserve"><value>รีเซ็ตเป็นแหล่งที่มาไม่ได้</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>แก้ไขเมทาดาทา</value></data>
+  <data name="album.gallery" xml:space="preserve"><value>แกลเลอรี</value></data>
+  <data name="album.open_failed" xml:space="preserve"><value>เปิดอัลบั้มนี้ไม่ได้</value></data>
+  <data name="album.reidentify.label" xml:space="preserve"><value>ระบุใหม่</value></data>
+  <data name="album.reidentify.confirm" xml:space="preserve"><value>ระบุใหม่</value></data>
+  <data name="album.reidentify.title" xml:space="preserve"><value>ระบุใหม่</value></data>
+  <data name="album.release_picker" xml:space="preserve"><value>รีลีส</value></data>
+  <data name="album.shuffle" xml:space="preserve"><value>สุ่มเล่น</value></data>
   <data name="cloud.provider.dropbox" xml:space="preserve"><value>Dropbox</value></data>
   <data name="cloud.provider.google_drive" xml:space="preserve"><value>Google Drive</value></data>
   <data name="cloud.provider.onedrive" xml:space="preserve"><value>OneDrive</value></data>
   <data name="cloud.provider.s3" xml:space="preserve"><value>S3</value></data>
-  <data name="cloud.signin.failed" xml:space="preserve"><value>cloud sign-in failed</value></data>
-  <data name="cloud.signin.in_progress" xml:space="preserve"><value>signing in to {provider}…</value></data>
-  <data name="cloud.signin.not_configured" xml:space="preserve"><value>cloud sign-in isn't configured on this build (no oauth-creds.json)</value></data>
-  <data name="cloud.unsupported_provider" xml:space="preserve"><value>this build doesn't support {provider} ซิงค์</value></data>
-  <data name="cover.change_title" xml:space="preserve"><value>change cover</value></data>
-  <data name="cover.fetch_failed" xml:space="preserve"><value>couldn't fetch remote covers</value></data>
-  <data name="cover.fetching" xml:space="preserve"><value>fetching covers…</value></data>
-  <data name="cover.images_load_failed" xml:space="preserve"><value>couldn't load this release's images</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>No cover art available — the import uses its default cover.</value></data>
-  <data name="cover.none_remote" xml:space="preserve"><value>No remote covers found</value></data>
-  <data name="cover.pick_hint" xml:space="preserve"><value>Pick a cover, or leave unselected to use the default.</value></data>
-  <data name="cover.release_files" xml:space="preserve"><value>Release files</value></data>
-  <data name="cover.remote_sources" xml:space="preserve"><value>Remote sources</value></data>
-  <data name="cover.section_title" xml:space="preserve"><value>Cover</value></data>
-  <data name="cover.show_failed" xml:space="preserve"><value>couldn't show remote covers: {detail}</value></data>
-  <data name="error.playback_title" xml:space="preserve"><value>playback error</value></data>
-  <data name="error.title" xml:space="preserve"><value>error</value></data>
-  <data name="gallery.load_failed" xml:space="preserve"><value>couldn't load the gallery</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>couldn't read the gallery</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>gallery</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>conflict</value></data>
-  <data name="identify.error" xml:space="preserve"><value>error</value></data>
-  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {found (#)} other {found (#)}}</value></data>
-  <data name="identify.identifying" xml:space="preserve"><value>identifying…</value></data>
-  <data name="identify.manual" xml:space="preserve"><value>manual search only</value></data>
-  <data name="identify.not_found" xml:space="preserve"><value>not found</value></data>
-  <data name="import.already_in_library" xml:space="preserve"><value>this release is already in your ไลบรารี</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>Back to Search</value></data>
-  <data name="import.choose_folder" xml:space="preserve"><value>choose folder &amp;amp; scan</value></data>
-  <data name="import.complete" xml:space="preserve"><value>imported</value></data>
-  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# track} other {# tracks}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>confirm import</value></data>
-  <data name="import.drop_caption" xml:space="preserve"><value>scan &amp;amp; import</value></data>
-  <data name="import.drop_folder_only" xml:space="preserve"><value>drop a folder to import</value></data>
-  <data name="import.drop_read_failed" xml:space="preserve"><value>could not read the dropped item</value></data>
-  <data name="import.error_title" xml:space="preserve"><value>import error</value></data>
-  <data name="import.error.load_release" xml:space="preserve"><value>couldn't load the release to import</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>couldn't load พื้นที่จัดเก็บ settings</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>couldn't read พื้นที่จัดเก็บ settings</value></data>
-  <data name="import.failed" xml:space="preserve"><value>import failed</value></data>
-  <data name="import.field.artist_manual" xml:space="preserve"><value>artist (manual search)</value></data>
-  <data name="import.no_releases" xml:space="preserve"><value>no releases found</value></data>
-  <data name="import.preview" xml:space="preserve"><value>preview</value></data>
-  <data name="import.progress.percent" xml:space="preserve"><value>importing {percent}%</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>import release</value></data>
-  <data name="import.rerun_identify" xml:space="preserve"><value>re-run identification</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>scanning…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Keep local copy</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Managed</value></data>
-  <data name="import.title" xml:space="preserve"><value>import</value></data>
-  <data name="import.view_in_library" xml:space="preserve"><value>view in ไลบรารี</value></data>
-  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  active</value></data>
-  <data name="libraries.new" xml:space="preserve"><value>new ไลบรารี</value></data>
-  <data name="libraries.rename" xml:space="preserve"><value>rename</value></data>
-  <data name="libraries.title" xml:space="preserve"><value>libraries</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>couldn't create a ไลบรารี</value></data>
-  <data name="library.empty" xml:space="preserve"><value>ไลบรารี is empty</value></data>
-  <data name="library.load_failed" xml:space="preserve"><value>couldn't load the ไลบรารี</value></data>
-  <data name="library.locked" xml:space="preserve"><value>ไลบรารี is locked</value></data>
-  <data name="library.open_failed" xml:space="preserve"><value>couldn't open the ไลบรารี</value></data>
-  <data name="library.unlock.body" xml:space="preserve"><value>This ไลบรารี is encrypted and its key isn't on this device. Enter the 64-character hex key to unlock it.</value></data>
+  <data name="cloud.signin.failed" xml:space="preserve"><value>ลงชื่อเข้าใช้คลาวด์ไม่สำเร็จ</value></data>
+  <data name="cloud.signin.in_progress" xml:space="preserve"><value>กำลังลงชื่อเข้าใช้ {provider}…</value></data>
+  <data name="cloud.signin.not_configured" xml:space="preserve"><value>การลงชื่อเข้าใช้คลาวด์ไม่ได้ตั้งค่าไว้ในบิลด์นี้ (ไม่มี oauth-creds.json)</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>บิลด์นี้ไม่รองรับการซิงค์ {provider}</value></data>
+  <data name="cover.change_title" xml:space="preserve"><value>เปลี่ยนปก</value></data>
+  <data name="cover.fetch_failed" xml:space="preserve"><value>ดึงปกระยะไกลไม่ได้</value></data>
+  <data name="cover.fetching" xml:space="preserve"><value>กำลังดึงปก…</value></data>
+  <data name="cover.images_load_failed" xml:space="preserve"><value>โหลดภาพของรีลีสนี้ไม่ได้</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>ไม่มีภาพปก — การนำเข้าจะใช้ปกเริ่มต้น</value></data>
+  <data name="cover.none_remote" xml:space="preserve"><value>ไม่พบปกระยะไกล</value></data>
+  <data name="cover.pick_hint" xml:space="preserve"><value>เลือกปก หรือปล่อยว่างเพื่อใช้ค่าเริ่มต้น</value></data>
+  <data name="cover.release_files" xml:space="preserve"><value>ไฟล์รีลีส</value></data>
+  <data name="cover.remote_sources" xml:space="preserve"><value>แหล่งระยะไกล</value></data>
+  <data name="cover.section_title" xml:space="preserve"><value>ปก</value></data>
+  <data name="cover.show_failed" xml:space="preserve"><value>แสดงปกระยะไกลไม่ได้: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>กลับ</value></data>
+  <data name="action.copy" xml:space="preserve"><value>คัดลอก</value></data>
+  <data name="action.done" xml:space="preserve"><value>เสร็จแล้ว</value></data>
+  <data name="action.scan" xml:space="preserve"><value>สแกน…</value></data>
+  <data name="error.playback_title" xml:space="preserve"><value>ข้อผิดพลาดในการเล่น</value></data>
+  <data name="error.title" xml:space="preserve"><value>ข้อผิดพลาด</value></data>
+  <data name="gallery.load_failed" xml:space="preserve"><value>โหลดแกลเลอรีไม่ได้</value></data>
+  <data name="gallery.read_failed" xml:space="preserve"><value>อ่านแกลเลอรีไม่ได้</value></data>
+  <data name="gallery.title" xml:space="preserve"><value>แกลเลอรี</value></data>
+  <data name="identify.conflict" xml:space="preserve"><value>ขัดแย้ง</value></data>
+  <data name="identify.error" xml:space="preserve"><value>ข้อผิดพลาด</value></data>
+  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {พบ (#)} other {พบ (#)}}</value></data>
+  <data name="identify.identifying" xml:space="preserve"><value>กำลังระบุ…</value></data>
+  <data name="identify.manual" xml:space="preserve"><value>ค้นหาด้วยตนเองเท่านั้น</value></data>
+  <data name="identify.not_found" xml:space="preserve"><value>ไม่พบ</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>รุ่นวางจำหน่ายนี้อยู่ในคลังของคุณแล้ว</value></data>
+  <data name="import.back_to_search" xml:space="preserve"><value>กลับไปค้นหา</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>เลือกโฟลเดอร์และสแกน</value></data>
+  <data name="import.complete" xml:space="preserve"><value>นำเข้าแล้ว</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# แทร็ก} other {# แทร็ก}}</value></data>
+  <data name="import.confirm_title" xml:space="preserve"><value>ยืนยันการนำเข้า</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>สแกนและนำเข้า</value></data>
+  <data name="import.drop_folder_only" xml:space="preserve"><value>วางโฟลเดอร์เพื่อนำเข้า</value></data>
+  <data name="import.drop_read_failed" xml:space="preserve"><value>ไม่สามารถอ่านรายการที่วางได้</value></data>
+  <data name="import.error_title" xml:space="preserve"><value>ข้อผิดพลาดในการนำเข้า</value></data>
+  <data name="import.error.load_release" xml:space="preserve"><value>โหลดรีลีสที่จะนำเข้าไม่ได้</value></data>
+  <data name="import.error.load_storage_settings" xml:space="preserve"><value>โหลดการตั้งค่าพื้นที่จัดเก็บไม่ได้</value></data>
+  <data name="import.error.read_storage_settings" xml:space="preserve"><value>อ่านการตั้งค่าพื้นที่จัดเก็บไม่ได้</value></data>
+  <data name="import.failed" xml:space="preserve"><value>นำเข้าไม่สำเร็จ</value></data>
+  <data name="import.field.artist_manual" xml:space="preserve"><value>ศิลปิน (ค้นหาด้วยตนเอง)</value></data>
+  <data name="import.no_releases" xml:space="preserve"><value>ไม่พบรีลีส</value></data>
+  <data name="import.preview" xml:space="preserve"><value>ดูตัวอย่าง</value></data>
+  <data name="import.progress.percent" xml:space="preserve"><value>กำลังนำเข้า {percent}%</value></data>
+  <data name="import.release_title" xml:space="preserve"><value>นำเข้ารีลีส</value></data>
+  <data name="import.rerun_identify" xml:space="preserve"><value>เรียกใช้การระบุใหม่</value></data>
+  <data name="import.scanning" xml:space="preserve"><value>กำลังสแกน…</value></data>
+  <data name="import.storage.keep_local" xml:space="preserve"><value>เก็บสำเนาในเครื่อง</value></data>
+  <data name="import.storage.managed" xml:space="preserve"><value>จัดการแล้ว</value></data>
+  <data name="import.title" xml:space="preserve"><value>นำเข้า</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>ดูในคลัง</value></data>
+  <data name="join.title" xml:space="preserve"><value>เข้าร่วมคลัง</value></data>
+  <data name="join.intro" xml:space="preserve"><value>เพิ่มอุปกรณ์นี้ไปยังคลังที่คุณมีอยู่แล้วบนอุปกรณ์อื่น</value></data>
+  <data name="join.this_device_code" xml:space="preserve"><value>รหัสของอุปกรณ์นี้</value></data>
+  <data name="join.show_to_member" xml:space="preserve"><value>บนอุปกรณ์ที่อยู่ในคลังของคุณแล้ว ให้เปิด การตั้งค่า → อุปกรณ์ → เพิ่มอุปกรณ์ แล้วสแกนหรือวางรหัสนี้</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>อุปกรณ์นี้: {fingerprint}</value></data>
+  <data name="join.generate_failed" xml:space="preserve"><value>สร้างรหัสของอุปกรณ์นี้ไม่ได้</value></data>
+  <data name="join.invite_label" xml:space="preserve"><value>รหัสเชิญ</value></data>
+  <data name="join.invite_hint" xml:space="preserve"><value>เมื่ออุปกรณ์นั้นอนุมัติอุปกรณ์นี้แล้ว ให้ป้อนรหัสเชิญที่แสดง</value></data>
+  <data name="join.invite_placeholder" xml:space="preserve"><value>วางรหัสเชิญ</value></data>
+  <data name="join.invalid_invite" xml:space="preserve"><value>รหัสเชิญไม่ถูกต้อง</value></data>
+  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · เจ้าของ {fingerprint}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>เข้าร่วม</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>กำลังเข้าร่วม {name}…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>เข้าร่วมคลังไม่ได้</value></data>
+  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  ใช้งานอยู่</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>คลังใหม่</value></data>
+  <data name="libraries.rename" xml:space="preserve"><value>เปลี่ยนชื่อ</value></data>
+  <data name="libraries.title" xml:space="preserve"><value>คลัง</value></data>
+  <data name="library.create_failed" xml:space="preserve"><value>สร้างคลังไม่ได้</value></data>
+  <data name="library.empty" xml:space="preserve"><value>คลังว่างเปล่า</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>โหลดคลังไม่ได้</value></data>
+  <data name="library.locked" xml:space="preserve"><value>คลังถูกล็อก</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>เปิดคลังไม่ได้</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>คลังนี้ถูกเข้ารหัสและคีย์ไม่ได้อยู่บนอุปกรณ์นี้ ป้อนคีย์เลขฐานสิบหก 64 อักขระเพื่อปลดล็อก</value></data>
   <data name="library.unlock.confirm" xml:space="preserve"><value>ปลดล็อก</value></data>
-  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64-character hex key</value></data>
-  <data name="library.unlock.title" xml:space="preserve"><value>unlock ไลบรารี</value></data>
-  <data name="menu.add_to_queue" xml:space="preserve"><value>Add to Queue</value></data>
-  <data name="menu.change_cover" xml:space="preserve"><value>Change cover…</value></data>
-  <data name="menu.delete" xml:space="preserve"><value>Delete…</value></data>
-  <data name="menu.export" xml:space="preserve"><value>Export…</value></data>
+  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>กุญแจเลขฐานสิบหก 64 อักขระ</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>ปลดล็อกคลัง</value></data>
+  <data name="menu.add_to_queue" xml:space="preserve"><value>เพิ่มในคิว</value></data>
+  <data name="menu.change_cover" xml:space="preserve"><value>เปลี่ยนปก…</value></data>
+  <data name="menu.delete" xml:space="preserve"><value>ลบ…</value></data>
+  <data name="menu.export" xml:space="preserve"><value>ส่งออก…</value></data>
   <data name="menu.play" xml:space="preserve"><value>เล่น</value></data>
-  <data name="menu.play_next" xml:space="preserve"><value>Play Next</value></data>
-  <data name="menu.set_primary" xml:space="preserve"><value>Set as primary release</value></data>
-  <data name="menu.set_primary_done" xml:space="preserve"><value>set as primary release</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>delete</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>cancel</value></data>
-  <data name="outbox.load_failed" xml:space="preserve"><value>couldn't load the outbox</value></data>
-  <data name="outbox.pause" xml:space="preserve"><value>pause</value></data>
-  <data name="outbox.read_failed" xml:space="preserve"><value>couldn't read the outbox</value></data>
-  <data name="outbox.resume" xml:space="preserve"><value>resume</value></data>
-  <data name="outbox.retry_now" xml:space="preserve"><value>retry now</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>clear queue</value></data>
+  <data name="menu.play_next" xml:space="preserve"><value>เล่นถัดไป</value></data>
+  <data name="menu.set_primary" xml:space="preserve"><value>ตั้งเป็นรีลีสหลัก</value></data>
+  <data name="menu.set_primary_done" xml:space="preserve"><value>ตั้งเป็นรีลีสหลัก</value></data>
+  <data name="members.title" xml:space="preserve"><value>อุปกรณ์</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>อุปกรณ์นี้</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>เจ้าของ</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>สมาชิก</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>ผู้ติดตาม</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>โหลดอุปกรณ์ไม่ได้</value></data>
+  <data name="members.add" xml:space="preserve"><value>เพิ่มอุปกรณ์…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>ลบ</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>อุปกรณ์นี้จะสูญเสียสิทธิ์เข้าถึงและคีย์คลังจะถูกหมุนเวียน คลิกลบอีกครั้งเพื่อยืนยัน</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>เพิ่มอุปกรณ์</value></data>
+  <data name="members.approve.capture_hint" xml:space="preserve"><value>บนอุปกรณ์ใหม่ ให้เปิด เข้าร่วมคลัง แล้วแสดงรหัสของอุปกรณ์นั้น สแกนที่นี่หรือวางด้านล่าง</value></data>
+  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>วางรหัสของอุปกรณ์</value></data>
+  <data name="members.approve.decode" xml:space="preserve"><value>ถอดรหัส</value></data>
+  <data name="members.approve.invalid_request" xml:space="preserve"><value>รหัสอุปกรณ์ไม่ถูกต้อง</value></data>
+  <data name="members.approve.confirm_title" xml:space="preserve"><value>อนุมัติอุปกรณ์นี้หรือไม่</value></data>
+  <data name="members.approve.confirm_hint" xml:space="preserve"><value>อุปกรณ์นี้จะถูกเพิ่มไปยังคลังของคุณและสามารถซิงค์ได้ คุณจะได้รับรหัสเพื่อป้อนบนอุปกรณ์นั้น</value></data>
+  <data name="members.approve.confirm" xml:space="preserve"><value>อนุมัติ</value></data>
+  <data name="members.approve.in_progress" xml:space="preserve"><value>กำลังอนุมัติอุปกรณ์…</value></data>
+  <data name="members.approve.failed" xml:space="preserve"><value>อนุมัติอุปกรณ์นี้ไม่ได้</value></data>
+  <data name="members.approve.invited_hint" xml:space="preserve"><value>ป้อนรหัสนี้บนอุปกรณ์ใหม่</value></data>
+  <data name="outbox.delete.kind" xml:space="preserve"><value>ลบ</value></data>
+  <data name="outbox.cancel_item" xml:space="preserve"><value>ยกเลิก</value></data>
+  <data name="outbox.load_failed" xml:space="preserve"><value>โหลดกล่องขาออกไม่ได้</value></data>
+  <data name="outbox.pause" xml:space="preserve"><value>หยุดพัก</value></data>
+  <data name="outbox.read_failed" xml:space="preserve"><value>อ่านกล่องขาออกไม่ได้</value></data>
+  <data name="outbox.resume" xml:space="preserve"><value>เล่นต่อ</value></data>
+  <data name="outbox.retry_now" xml:space="preserve"><value>ลองอีกครั้งตอนนี้</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>ล้างคิว</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>นำออกจากคิว</value></data>
-  <data name="queue.title" xml:space="preserve"><value>queue</value></data>
-  <data name="queue.section.up_next" xml:space="preserve"><value>ถัดไป</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>กำลังเล่นจาก</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>คลังของคุณ</value></data>
-  <data name="queue.shuffle.off" xml:space="preserve"><value>turn off shuffle</value></data>
-  <data name="queue.shuffle.on" xml:space="preserve"><value>shuffle</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>restore code</value></data>
-  <data name="restore.confirm" xml:space="preserve"><value>restore</value></data>
-  <data name="restore.failed" xml:space="preserve"><value>restore failed</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloud พื้นที่จัดเก็บ</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>การเข้ารหัส key (hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>ไลบรารี id</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>ไลบรารี name (optional)</value></data>
-  <data name="restore.from_cloud" xml:space="preserve"><value>restore from cloud</value></data>
-  <data name="restore.from_cloud_title" xml:space="preserve"><value>restore from cloud</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>restore from code</value></data>
-  <data name="restore.in_progress" xml:space="preserve"><value>restoring…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>restoring {name}…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>invalid restore code</value></data>
-  <data name="s3.field.access_key" xml:space="preserve"><value>access key</value></data>
-  <data name="s3.field.bucket" xml:space="preserve"><value>S3 bucket</value></data>
-  <data name="s3.field.endpoint" xml:space="preserve"><value>endpoint (optional)</value></data>
-  <data name="s3.field.key_prefix" xml:space="preserve"><value>key prefix (optional)</value></data>
-  <data name="s3.field.region" xml:space="preserve"><value>region</value></data>
-  <data name="s3.field.secret_key" xml:space="preserve"><value>secret key</value></data>
-  <data name="search.failed" xml:space="preserve"><value>Search failed</value></data>
-  <data name="search.field.album" xml:space="preserve"><value>album</value></data>
-  <data name="search.field.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>source</value></data>
-  <data name="search.no_matches" xml:space="preserve"><value>no matches</value></data>
-  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs token</value></data>
-  <data name="settings.discogs.recheck" xml:space="preserve"><value>re-check</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs rejected this key — check it and save again.</value></data>
-  <data name="settings.discogs.remove" xml:space="preserve"><value>remove token</value></data>
-  <data name="settings.discogs.save" xml:space="preserve"><value>save token</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>couldn't save the key — something went wrong.</value></data>
-  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API token</value></data>
-  <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
-  <data name="settings.library_label" xml:space="preserve"><value>ไลบรารี: {name}</value></data>
-  <data name="settings.lock_library" xml:space="preserve"><value>lock ไลบรารี</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>ถัดไป</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>ปิดสุ่มเล่น</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>สุ่มเล่น</value></data>
+  <data name="queue.title" xml:space="preserve"><value>คิว</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>รหัสคืนค่า</value></data>
+  <data name="restore.confirm" xml:space="preserve"><value>คืนค่า</value></data>
+  <data name="restore.failed" xml:space="preserve"><value>คืนค่าไม่สำเร็จ</value></data>
+  <data name="restore.field.cloud_storage" xml:space="preserve"><value>พื้นที่จัดเก็บคลาวด์</value></data>
+  <data name="restore.field.encryption_key" xml:space="preserve"><value>คีย์เข้ารหัส (เลขฐานสิบหก)</value></data>
+  <data name="restore.field.library_id" xml:space="preserve"><value>ID คลัง</value></data>
+  <data name="restore.field.library_name" xml:space="preserve"><value>ชื่อคลัง (ไม่บังคับ)</value></data>
+  <data name="restore.from_cloud" xml:space="preserve"><value>คืนค่าจากคลาวด์</value></data>
+  <data name="restore.from_cloud_title" xml:space="preserve"><value>คืนค่าจากคลาวด์</value></data>
+  <data name="restore.from_code" xml:space="preserve"><value>คืนค่าจากรหัส</value></data>
+  <data name="restore.in_progress" xml:space="preserve"><value>กำลังคืนค่า…</value></data>
+  <data name="restore.in_progress_named" xml:space="preserve"><value>กำลังคืนค่า {name}…</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>รหัสคืนค่าไม่ถูกต้อง</value></data>
+  <data name="s3.field.access_key" xml:space="preserve"><value>กุญแจเข้าถึง</value></data>
+  <data name="s3.field.bucket" xml:space="preserve"><value>บัคเก็ต S3</value></data>
+  <data name="s3.field.endpoint" xml:space="preserve"><value>ปลายทาง (ไม่บังคับ)</value></data>
+  <data name="s3.field.key_prefix" xml:space="preserve"><value>คำนำหน้าคีย์ (ไม่บังคับ)</value></data>
+  <data name="s3.field.region" xml:space="preserve"><value>ภูมิภาค</value></data>
+  <data name="s3.field.secret_key" xml:space="preserve"><value>กุญแจลับ</value></data>
+  <data name="search.failed" xml:space="preserve"><value>ค้นหาไม่สำเร็จ</value></data>
+  <data name="search.field.album" xml:space="preserve"><value>อัลบั้ม</value></data>
+  <data name="search.field.artist" xml:space="preserve"><value>ศิลปิน</value></data>
+  <data name="search.field.source" xml:space="preserve"><value>แหล่งที่มา</value></data>
+  <data name="search.no_matches" xml:space="preserve"><value>ไม่พบรายการตรงกัน</value></data>
+  <data name="settings.discogs.label" xml:space="preserve"><value>โทเค็น Discogs</value></data>
+  <data name="settings.discogs.recheck" xml:space="preserve"><value>ตรวจสอบซ้ำ</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs ปฏิเสธคีย์นี้ — ตรวจสอบแล้วบันทึกอีกครั้ง</value></data>
+  <data name="settings.discogs.remove" xml:space="preserve"><value>ลบโทเค็น</value></data>
+  <data name="settings.discogs.save" xml:space="preserve"><value>บันทึกโทเค็น</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>บันทึกคีย์ไม่ได้ — เกิดข้อผิดพลาด</value></data>
+  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>โทเค็น API ของ Discogs</value></data>
+  <data name="settings.discogs.validating" xml:space="preserve"><value>กำลังตรวจสอบ…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>หยุดพักระหว่างด้าน</value></data>
-  <data name="settings.restore_code.label" xml:space="preserve"><value>restore code (enter on another device)</value></data>
-  <data name="settings.restore_code.show" xml:space="preserve"><value>show restore code</value></data>
-  <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(unavailable — is ซิงค์ connected?)</value></data>
-  <data name="settings.s3.connect" xml:space="preserve"><value>connect S3</value></data>
-  <data name="settings.s3.connecting" xml:space="preserve"><value>connecting to S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>browsable — stored unencrypted</value></data>
+  <data name="settings.library_label" xml:space="preserve"><value>ไลบรารี: {name}</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>ล็อกคลัง</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>การกู้คืน</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>รหัสกู้คืนของคุณใช้คืนค่าคลังนี้บนอุปกรณ์ใหม่เมื่อคุณไม่มีอุปกรณ์อื่นให้อนุมัติ ผู้ที่มีรหัสนี้จะเข้าถึงได้เต็มรูปแบบ — เก็บไว้เป็นความลับ</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>รหัสกู้คืน</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>แสดงรหัสกู้คืน…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(ไม่พร้อมใช้งาน — การซิงค์เชื่อมต่ออยู่หรือไม่?)</value></data>
+  <data name="settings.s3.connect" xml:space="preserve"><value>เชื่อมต่อ S3</value></data>
+  <data name="settings.s3.connecting" xml:space="preserve"><value>กำลังเชื่อมต่อกับ S3…</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>เรียกดูได้ — จัดเก็บแบบไม่เข้ารหัส</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>พื้นที่จัดเก็บ</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>opaque — end-to-end encrypted</value></data>
-  <data name="settings.sync.disconnect" xml:space="preserve"><value>disconnect</value></data>
-  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} click disconnect again to confirm.</value></data>
-  <data name="settings.sync.now" xml:space="preserve"><value>ซิงค์ now</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>ทึบ — เข้ารหัสตั้งแต่ต้นทางถึงปลายทาง</value></data>
+  <data name="settings.sync.disconnect" xml:space="preserve"><value>ตัดการเชื่อมต่อ</value></data>
+  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} คลิกตัดการเชื่อมต่ออีกครั้งเพื่อยืนยัน</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>ซิงค์ตอนนี้</value></data>
   <data name="settings.title" xml:space="preserve"><value>settings</value></data>
-  <data name="signal.exclude" xml:space="preserve"><value>exclude signal</value></data>
-  <data name="signal.include" xml:space="preserve"><value>include signal</value></data>
-  <data name="signal.kind.barcode" xml:space="preserve"><value>Barcode</value></data>
-  <data name="signal.kind.catalog" xml:space="preserve"><value>Catalog</value></data>
-  <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
-  <data name="sort.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="sort.newest" xml:space="preserve"><value>newest</value></data>
-  <data name="sort.title" xml:space="preserve"><value>title</value></data>
-  <data name="sort.year" xml:space="preserve"><value>year</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Move into ไลบรารี</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Pin for offline</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Move out of ไลบรารี…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Remove local copy</value></data>
-  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# file} other {# files}}</value></data>
-  <data name="storage.load_failed" xml:space="preserve"><value>couldn't load พื้นที่จัดเก็บ</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>Pinned</value></data>
-  <data name="storage.read_failed" xml:space="preserve"><value>couldn't read พื้นที่จัดเก็บ</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>Managed</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Unmanaged</value></data>
+  <data name="signal.exclude" xml:space="preserve"><value>ยกเว้นสัญญาณ</value></data>
+  <data name="signal.include" xml:space="preserve"><value>รวมสัญญาณ</value></data>
+  <data name="signal.kind.barcode" xml:space="preserve"><value>บาร์โค้ด</value></data>
+  <data name="signal.kind.catalog" xml:space="preserve"><value>แค็ตตาล็อก</value></data>
+  <data name="signal.kind.disc_id" xml:space="preserve"><value>รหัสดิสก์</value></data>
+  <data name="sort.artist" xml:space="preserve"><value>ศิลปิน</value></data>
+  <data name="sort.name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="sort.newest" xml:space="preserve"><value>ใหม่สุด</value></data>
+  <data name="sort.title" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="sort.year" xml:space="preserve"><value>ปี</value></data>
+  <data name="storage.action.manage" xml:space="preserve"><value>ย้ายเข้าคลัง</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>ปักหมุดเพื่อใช้ออฟไลน์</value></data>
+  <data name="storage.action.unmanage" xml:space="preserve"><value>ย้ายออกจากคลัง…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>ลบสำเนาในเครื่อง</value></data>
+  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# ไฟล์} other {# ไฟล์}}</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>โหลดพื้นที่จัดเก็บไม่ได้</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>ปักหมุดแล้ว</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>อ่านพื้นที่จัดเก็บไม่ได้</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>จัดการแล้ว</value></data>
+  <data name="storage.state.unmanaged" xml:space="preserve"><value>ไม่ได้จัดการ</value></data>
   <data name="storage.title" xml:space="preserve"><value>พื้นที่จัดเก็บ</value></data>
-  <data name="sync.error_title" xml:space="preserve"><value>ซิงค์ error</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>ข้อผิดพลาดการซิงค์</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>เชื่อมต่ออีกครั้ง</value></data>
-  <data name="sync.synced" xml:space="preserve"><value>ซิงค์ed {time}</value></data>
-  <data name="sync.syncing" xml:space="preserve"><value>ซิงค์ing…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Original</value></data>
-  <data name="welcome.choose_library" xml:space="preserve"><value>choose a ไลบรารี</value></data>
-  <data name="welcome.create_library" xml:space="preserve"><value>create ไลบรารี</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>no ไลบรารี yet</value></data>
-  <data name="welcome.your_libraries" xml:space="preserve"><value>your libraries</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>ซิงค์แล้ว {time}</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>กำลังซิงค์…</value></data>
+  <data name="track.export.original" xml:space="preserve"><value>ต้นฉบับ</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>เตรียมการส่งออกไม่ได้</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>เลือกคลัง</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>เข้าร่วมคลัง</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>สร้างคลัง</value></data>
+  <data name="welcome.no_library" xml:space="preserve"><value>ยังไม่มีคลัง</value></data>
+  <data name="welcome.your_libraries" xml:space="preserve"><value>คลังของคุณ</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
-  <data name="settings.discogs.connected" xml:space="preserve"><value>connected</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>saved — couldn't validate yet (offline). will retry.</value></data>
-  <data name="settings.sync.initializing" xml:space="preserve"><value>initializing</value></data>
-  <data name="settings.sync.not_connected" xml:space="preserve"><value>ซิงค์: not connected</value></data>
-  <data name="settings.sync.ready" xml:space="preserve"><value>ready</value></data>
+  <data name="settings.discogs.connected" xml:space="preserve"><value>เชื่อมต่อแล้ว</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>บันทึกแล้ว — ยังตรวจสอบไม่ได้ (ออฟไลน์) จะลองอีกครั้ง</value></data>
+  <data name="settings.sync.initializing" xml:space="preserve"><value>กำลังเริ่มต้น</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>การซิงค์: ไม่ได้เชื่อมต่อ</value></data>
+  <data name="settings.sync.ready" xml:space="preserve"><value>พร้อม</value></data>
   <data name="settings.sync.status" xml:space="preserve"><value>ซิงค์: {provider}{account} — {state}</value></data>
-  <data name="download.title" xml:space="preserve"><value>downloads</value></data>
-  <data name="download.paused" xml:space="preserve"><value>paused</value></data>
-  <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
-  <data name="download.state.downloading" xml:space="preserve"><value>downloading</value></data>
-  <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
-  <data name="settings.automation.label" xml:space="preserve"><value>ระบบอัตโนมัติ</value></data>
+  <data name="download.title" xml:space="preserve"><value>การดาวน์โหลด</value></data>
+  <data name="download.paused" xml:space="preserve"><value>หยุดพักแล้ว</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>อยู่ในคิว</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>กำลังดาวน์โหลด</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>ไม่สำเร็จ</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>การทำงานอัตโนมัติ</value></data>
   <data name="settings.automation.enable_mcp" xml:space="preserve"><value>เปิดใช้เซิร์ฟเวอร์ MCP</value></data>
   <data name="settings.automation.port" xml:space="preserve"><value>พอร์ต</value></data>
   <data name="settings.automation.refresh" xml:space="preserve"><value>รีเฟรชสถานะ</value></data>
@@ -220,35 +263,53 @@
   <data name="settings.automation.rotate_token" xml:space="preserve"><value>หมุนเวียนโทเค็น</value></data>
   <data name="settings.automation.status.running" xml:space="preserve"><value>เซิร์ฟเวอร์ MCP: {url}</value></data>
   <data name="settings.automation.status.disabled" xml:space="preserve"><value>เซิร์ฟเวอร์ MCP ถูกปิดใช้งาน</value></data>
-  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>การกำหนดค่าเซิร์ฟเวอร์ MCP ไม่ถูกต้อง</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>การตั้งค่าเซิร์ฟเวอร์ MCP ไม่ถูกต้อง</value></data>
   <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>โทเค็น MCP ไม่พร้อมใช้งาน</value></data>
-  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>ไม่สามารถเริ่มเซิร์ฟเวอร์ MCP ได้</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>เซิร์ฟเวอร์ MCP เริ่มทำงานไม่ได้</value></data>
   <data name="settings.automation.status.server_failed" xml:space="preserve"><value>เซิร์ฟเวอร์ MCP หยุดทำงาน</value></data>
   <data name="settings.automation.invalid_port" xml:space="preserve"><value>ป้อนพอร์ตตั้งแต่ 1 ถึง 65535</value></data>
   <data name="settings.automation.status_unavailable" xml:space="preserve"><value>สถานะ MCP ไม่พร้อมใช้งาน</value></data>
   <data name="settings.automation.token_unavailable" xml:space="preserve"><value>โทเค็น MCP ไม่พร้อมใช้งาน</value></data>
   <data name="settings.automation.token_copied" xml:space="preserve"><value>คัดลอกโทเค็นแล้ว</value></data>
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>หมุนเวียนและคัดลอกโทเค็นแล้ว</value></data>
-  <data name="sort.name" xml:space="preserve"><value>name</value></data>
-  <data name="library.mode.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="library.mode.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="library.no_composers" xml:space="preserve"><value>No composers</value></data>
-  <data name="search.section.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="search.section.tracks" xml:space="preserve"><value>Tracks</value></data>
-  <data name="search.section.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="search.section.works" xml:space="preserve"><value>Works</value></data>
-  <data name="search.section.releases" xml:space="preserve"><value>Releases</value></data>
-  <data name="search.section.credits" xml:space="preserve"><value>Credits</value></data>
-  <data name="search.section.recordings" xml:space="preserve"><value>Recordings</value></data>
-  <data name="composer.open_failed" xml:space="preserve"><value>Could not open composer detail</value></data>
-  <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
-  <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
-  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Bit depth</value></data>
-  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Source</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>อัลบั้ม</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>ผู้ประพันธ์</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>ไม่มีผู้ประพันธ์</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>อัลบั้ม</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>แทร็ก</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>ผู้ประพันธ์</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>ผลงาน</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>รีลีส</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>เครดิต</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>การบันทึกเสียง</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>ไม่สามารถเปิดรายละเอียดผู้ประพันธ์ได้</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>ไม่สามารถเปิดรายละเอียดผลงานได้</value></data>
+  <data name="work.count" xml:space="preserve"><value>ผลงาน {count} รายการ</value></data>
+  <data name="settings.export.label" xml:space="preserve"><value>ส่งออก</value></data>
+  <data name="settings.export.default_track_format" xml:space="preserve"><value>รูปแบบแทร็กเริ่มต้น</value></data>
+  <data name="settings.export.default_release_format" xml:space="preserve"><value>รูปแบบรีลีสเริ่มต้น</value></data>
+  <data name="settings.export.presets" xml:space="preserve"><value>ค่าที่ตั้งไว้</value></data>
+  <data name="settings.export.preset_name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="settings.export.preset_track" xml:space="preserve"><value>แทร็ก</value></data>
+  <data name="settings.export.preset_release" xml:space="preserve"><value>รีลีส</value></data>
+  <data name="settings.export.preset_pregap" xml:space="preserve"><value>ช่วงนำก่อนแทร็ก</value></data>
+  <data name="settings.export.add_flac" xml:space="preserve"><value>เพิ่ม FLAC</value></data>
+  <data name="settings.export.add_mp3" xml:space="preserve"><value>เพิ่ม MP3</value></data>
+  <data name="settings.export.add_opus" xml:space="preserve"><value>เพิ่ม Opus</value></data>
+  <data name="settings.export.add_wav" xml:space="preserve"><value>เพิ่ม WAV</value></data>
+  <data name="settings.export.add_aiff" xml:space="preserve"><value>เพิ่ม AIFF</value></data>
+  <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>ต่อท้ายยกเว้น HTOA</value></data>
+  <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>ต่อท้ายรวม HTOA</value></data>
+  <data name="settings.export.pregap.exclude" xml:space="preserve"><value>ยกเว้น</value></data>
+  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>ไฟล์เดียว + CUE</value></data>
+  <data name="action.remove" xml:space="preserve"><value>ลบ</value></data>
+  <data name="settings.export.filename_format" xml:space="preserve"><value>รูปแบบชื่อไฟล์</value></data>
+  <data name="settings.export.tokens_help" xml:space="preserve"><value>โทเค็นที่ใช้ได้: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
+  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>ความลึกบิต</value></data>
+  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>แหล่งที่มา</value></data>
   <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
   <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
-  <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
-  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>ไฟล์เดียว + CUE</value></data>
+  <data name="settings.export.bitrate" xml:space="preserve"><value>บิตเรต</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>ไม่สามารถบันทึกการตั้งค่าการส่งออกได้</value></data>
 </root>

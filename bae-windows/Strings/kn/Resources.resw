@@ -2,216 +2,259 @@
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
-  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>search</value></data>
-  <data name="LibrariesButton.Content" xml:space="preserve"><value>libraries</value></data>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>ಹುಡುಕಿ</value></data>
+  <data name="LibrariesButton.Content" xml:space="preserve"><value>ಲೈಬ್ರರಿಗಳು</value></data>
   <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>ಲೈಬ್ರರಿಯನ್ನು ಶಫಲ್ ಮಾಡಿ</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>close</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>close ಲೈಬ್ರರಿ</value></data>
-  <data name="ImportButton.Content" xml:space="preserve"><value>import</value></data>
+  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>ಮುಚ್ಚಿ</value></data>
+  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ ಮುಚ್ಚಿ</value></data>
+  <data name="ImportButton.Content" xml:space="preserve"><value>ಆಮದು</value></data>
   <data name="StorageButton.Content" xml:space="preserve"><value>ಸಂಗ್ರಹಣೆ</value></data>
   <data name="SettingsButton.Content" xml:space="preserve"><value>settings</value></data>
   <data name="action.cancel" xml:space="preserve"><value>ರದ್ದು</value></data>
   <data name="action.close" xml:space="preserve"><value>ಮುಚ್ಚು</value></data>
   <data name="action.delete" xml:space="preserve"><value>ಅಳಿಸಿ</value></data>
   <data name="action.import" xml:space="preserve"><value>ಆಮದು</value></data>
-  <data name="action.ok" xml:space="preserve"><value>ಸರಿ</value></data>
+  <data name="action.ok" xml:space="preserve"><value>OK</value></data>
   <data name="action.play" xml:space="preserve"><value>ಪ್ಲೇ</value></data>
   <data name="action.save" xml:space="preserve"><value>ಉಳಿಸಿ</value></data>
-  <data name="action.search" xml:space="preserve"><value>search</value></data>
-  <data name="album.delete.body" xml:space="preserve"><value>This removes the release from the ಲೈಬ್ರರಿ.</value></data>
-  <data name="album.delete.failed" xml:space="preserve"><value>couldn't delete</value></data>
-  <data name="album.delete.title" xml:space="preserve"><value>delete release?</value></data>
-  <data name="album.edit.label" xml:space="preserve"><value>edit</value></data>
-  <data name="album.edit.load_failed" xml:space="preserve"><value>couldn't load the ಮೆಟಾಡೇಟಾ editor</value></data>
-  <data name="album.edit.reset" xml:space="preserve"><value>Reset to Source</value></data>
-  <data name="album.edit.reset_failed" xml:space="preserve"><value>couldn't reset to source</value></data>
-  <data name="album.edit.title" xml:space="preserve"><value>edit ಮೆಟಾಡೇಟಾ</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>Gallery</value></data>
-  <data name="album.open_failed" xml:space="preserve"><value>couldn't open this album</value></data>
-  <data name="album.reidentify.label" xml:space="preserve"><value>re-identify</value></data>
-  <data name="album.reidentify.confirm" xml:space="preserve"><value>Re-identify</value></data>
-  <data name="album.reidentify.title" xml:space="preserve"><value>re-identify</value></data>
-  <data name="album.release_picker" xml:space="preserve"><value>Release</value></data>
-  <data name="album.shuffle" xml:space="preserve"><value>shuffle</value></data>
+  <data name="action.search" xml:space="preserve"><value>ಹುಡುಕಿ</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>ಇದು ಬಿಡುಗಡೆಯನ್ನು ಗ್ರಂಥಾಲಯದಿಂದ ತೆಗೆದುಹಾಕುತ್ತದೆ.</value></data>
+  <data name="album.delete.failed" xml:space="preserve"><value>ಅಳಿಸಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="album.delete.title" xml:space="preserve"><value>ಬಿಡುಗಡೆ ಅಳಿಸಬೇಕೇ?</value></data>
+  <data name="album.edit.label" xml:space="preserve"><value>ತಿದ್ದು</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>ಮೆಟಾಡೇಟಾ ಸಂಪಾದಕವನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="album.edit.reset" xml:space="preserve"><value>ಮೂಲಕ್ಕೆ ಮರುಹೊಂದಿಸಿ</value></data>
+  <data name="album.edit.reset_failed" xml:space="preserve"><value>ಮೂಲಕ್ಕೆ ಮರುಹೊಂದಿಸಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>ಮೆಟಾಡೇಟಾ ಸಂಪಾದಿಸಿ</value></data>
+  <data name="album.gallery" xml:space="preserve"><value>ಗ್ಯಾಲರಿ</value></data>
+  <data name="album.open_failed" xml:space="preserve"><value>ಈ ಆಲ್ಬಮ್ ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="album.reidentify.label" xml:space="preserve"><value>ಮರುಗುರುತಿಸಿ</value></data>
+  <data name="album.reidentify.confirm" xml:space="preserve"><value>ಮರುಗುರುತಿಸಿ</value></data>
+  <data name="album.reidentify.title" xml:space="preserve"><value>ಮರುಗುರುತಿಸಿ</value></data>
+  <data name="album.release_picker" xml:space="preserve"><value>ಬಿಡುಗಡೆ</value></data>
+  <data name="album.shuffle" xml:space="preserve"><value>ಕಲಸು</value></data>
   <data name="cloud.provider.dropbox" xml:space="preserve"><value>Dropbox</value></data>
   <data name="cloud.provider.google_drive" xml:space="preserve"><value>Google Drive</value></data>
   <data name="cloud.provider.onedrive" xml:space="preserve"><value>OneDrive</value></data>
   <data name="cloud.provider.s3" xml:space="preserve"><value>S3</value></data>
-  <data name="cloud.signin.failed" xml:space="preserve"><value>cloud sign-in failed</value></data>
-  <data name="cloud.signin.in_progress" xml:space="preserve"><value>signing in to {provider}…</value></data>
-  <data name="cloud.signin.not_configured" xml:space="preserve"><value>cloud sign-in isn't configured on this build (no oauth-creds.json)</value></data>
-  <data name="cloud.unsupported_provider" xml:space="preserve"><value>this build doesn't support {provider} ಸಿಂಕ್</value></data>
-  <data name="cover.change_title" xml:space="preserve"><value>change cover</value></data>
-  <data name="cover.fetch_failed" xml:space="preserve"><value>couldn't fetch remote covers</value></data>
-  <data name="cover.fetching" xml:space="preserve"><value>fetching covers…</value></data>
-  <data name="cover.images_load_failed" xml:space="preserve"><value>couldn't load this release's images</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>No cover art available — the import uses its default cover.</value></data>
-  <data name="cover.none_remote" xml:space="preserve"><value>No remote covers found</value></data>
-  <data name="cover.pick_hint" xml:space="preserve"><value>Pick a cover, or leave unselected to use the default.</value></data>
-  <data name="cover.release_files" xml:space="preserve"><value>Release files</value></data>
-  <data name="cover.remote_sources" xml:space="preserve"><value>Remote sources</value></data>
-  <data name="cover.section_title" xml:space="preserve"><value>Cover</value></data>
-  <data name="cover.show_failed" xml:space="preserve"><value>couldn't show remote covers: {detail}</value></data>
-  <data name="error.playback_title" xml:space="preserve"><value>playback error</value></data>
-  <data name="error.title" xml:space="preserve"><value>error</value></data>
-  <data name="gallery.load_failed" xml:space="preserve"><value>couldn't load the gallery</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>couldn't read the gallery</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>gallery</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>conflict</value></data>
-  <data name="identify.error" xml:space="preserve"><value>error</value></data>
-  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {found (#)} other {found (#)}}</value></data>
-  <data name="identify.identifying" xml:space="preserve"><value>identifying…</value></data>
-  <data name="identify.manual" xml:space="preserve"><value>manual search only</value></data>
-  <data name="identify.not_found" xml:space="preserve"><value>not found</value></data>
-  <data name="import.already_in_library" xml:space="preserve"><value>this release is already in your ಲೈಬ್ರರಿ</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>Back to Search</value></data>
-  <data name="import.choose_folder" xml:space="preserve"><value>choose folder &amp;amp; scan</value></data>
-  <data name="import.complete" xml:space="preserve"><value>imported</value></data>
-  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# track} other {# tracks}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>confirm import</value></data>
-  <data name="import.drop_caption" xml:space="preserve"><value>scan &amp;amp; import</value></data>
-  <data name="import.drop_folder_only" xml:space="preserve"><value>drop a folder to import</value></data>
-  <data name="import.drop_read_failed" xml:space="preserve"><value>could not read the dropped item</value></data>
-  <data name="import.error_title" xml:space="preserve"><value>import error</value></data>
-  <data name="import.error.load_release" xml:space="preserve"><value>couldn't load the release to import</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>couldn't load ಸಂಗ್ರಹಣೆ settings</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>couldn't read ಸಂಗ್ರಹಣೆ settings</value></data>
-  <data name="import.failed" xml:space="preserve"><value>import failed</value></data>
-  <data name="import.field.artist_manual" xml:space="preserve"><value>artist (manual search)</value></data>
-  <data name="import.no_releases" xml:space="preserve"><value>no releases found</value></data>
-  <data name="import.preview" xml:space="preserve"><value>preview</value></data>
-  <data name="import.progress.percent" xml:space="preserve"><value>importing {percent}%</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>import release</value></data>
-  <data name="import.rerun_identify" xml:space="preserve"><value>re-run identification</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>scanning…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Keep local copy</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Managed</value></data>
-  <data name="import.title" xml:space="preserve"><value>import</value></data>
-  <data name="import.view_in_library" xml:space="preserve"><value>view in ಲೈಬ್ರರಿ</value></data>
-  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  active</value></data>
-  <data name="libraries.new" xml:space="preserve"><value>new ಲೈಬ್ರರಿ</value></data>
-  <data name="libraries.rename" xml:space="preserve"><value>rename</value></data>
-  <data name="libraries.title" xml:space="preserve"><value>libraries</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>couldn't create a ಲೈಬ್ರರಿ</value></data>
-  <data name="library.empty" xml:space="preserve"><value>ಲೈಬ್ರರಿ is empty</value></data>
-  <data name="library.load_failed" xml:space="preserve"><value>couldn't load the ಲೈಬ್ರರಿ</value></data>
-  <data name="library.locked" xml:space="preserve"><value>ಲೈಬ್ರರಿ is locked</value></data>
-  <data name="library.open_failed" xml:space="preserve"><value>couldn't open the ಲೈಬ್ರರಿ</value></data>
-  <data name="library.unlock.body" xml:space="preserve"><value>This ಲೈಬ್ರರಿ is encrypted and its key isn't on this device. Enter the 64-character hex key to unlock it.</value></data>
+  <data name="cloud.signin.failed" xml:space="preserve"><value>ಕ್ಲೌಡ್ ಸೈನ್-ಇನ್ ವಿಫಲವಾಯಿತು</value></data>
+  <data name="cloud.signin.in_progress" xml:space="preserve"><value>{provider} ಗೆ ಸೈನ್ ಇನ್ ಮಾಡಲಾಗುತ್ತಿದೆ…</value></data>
+  <data name="cloud.signin.not_configured" xml:space="preserve"><value>ಈ ನಿರ್ಮಾಣದಲ್ಲಿ ಕ್ಲೌಡ್ ಸೈನ್-ಇನ್ ಸಂರಚಿಸಲಾಗಿಲ್ಲ (oauth-creds.json ಇಲ್ಲ)</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>ಈ ಬಿಲ್ಡ್ {provider} ಸಿಂಕ್ ಅನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ</value></data>
+  <data name="cover.change_title" xml:space="preserve"><value>ಕವರ್ ಬದಲಿಸಿ</value></data>
+  <data name="cover.fetch_failed" xml:space="preserve"><value>ದೂರಸ್ಥ ಮುಖಪುಟಗಳನ್ನು ತರಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="cover.fetching" xml:space="preserve"><value>ಕವರ್‌ಗಳನ್ನು ತರುತ್ತಿದೆ…</value></data>
+  <data name="cover.images_load_failed" xml:space="preserve"><value>ಈ ಬಿಡುಗಡೆಯ ಚಿತ್ರಗಳು ಲೋಡ್ ಆಗಲಿಲ್ಲ</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>ಕವರ್ ಚಿತ್ರ ಲಭ್ಯವಿಲ್ಲ — ಆಮದು ತನ್ನ ಡೀಫಾಲ್ಟ್ ಕವರ್ ಬಳಸುತ್ತದೆ.</value></data>
+  <data name="cover.none_remote" xml:space="preserve"><value>ದೂರಸ್ಥ ಮುಖಪುಟಗಳು ಸಿಕ್ಕಿಲ್ಲ</value></data>
+  <data name="cover.pick_hint" xml:space="preserve"><value>ಕವರ್ ಆಯ್ಕೆಮಾಡಿ, ಅಥವಾ ಡೀಫಾಲ್ಟ್ ಬಳಸಲು ಆಯ್ಕೆಮಾಡದೆ ಬಿಡಿ.</value></data>
+  <data name="cover.release_files" xml:space="preserve"><value>ಬಿಡುಗಡೆ ಕಡತಗಳು</value></data>
+  <data name="cover.remote_sources" xml:space="preserve"><value>ದೂರಸ್ಥ ಮೂಲಗಳು</value></data>
+  <data name="cover.section_title" xml:space="preserve"><value>ಕವರ್</value></data>
+  <data name="cover.show_failed" xml:space="preserve"><value>ದೂರಸ್ಥ ಮುಖಪುಟಗಳನ್ನು ತೋರಿಸಲಾಗಲಿಲ್ಲ: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>ಹಿಂದೆ</value></data>
+  <data name="action.copy" xml:space="preserve"><value>ನಕಲಿಸಿ</value></data>
+  <data name="action.done" xml:space="preserve"><value>ಮುಗಿದಿದೆ</value></data>
+  <data name="action.scan" xml:space="preserve"><value>ಸ್ಕ್ಯಾನ್…</value></data>
+  <data name="error.playback_title" xml:space="preserve"><value>ಪ್ಲೇಬ್ಯಾಕ್ ದೋಷ</value></data>
+  <data name="error.title" xml:space="preserve"><value>ದೋಷ</value></data>
+  <data name="gallery.load_failed" xml:space="preserve"><value>ಗ್ಯಾಲರಿ ಲೋಡ್ ಆಗಲಿಲ್ಲ</value></data>
+  <data name="gallery.read_failed" xml:space="preserve"><value>ಗ್ಯಾಲರಿ ಓದಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="gallery.title" xml:space="preserve"><value>ಗ್ಯಾಲರಿ</value></data>
+  <data name="identify.conflict" xml:space="preserve"><value>ಘರ್ಷಣೆ</value></data>
+  <data name="identify.error" xml:space="preserve"><value>ದೋಷ</value></data>
+  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {ಸಿಕ್ಕಿದೆ (#)} other {ಸಿಕ್ಕಿವೆ (#)}}</value></data>
+  <data name="identify.identifying" xml:space="preserve"><value>ಗುರುತಿಸಲಾಗುತ್ತಿದೆ…</value></data>
+  <data name="identify.manual" xml:space="preserve"><value>ಕೈಯಾರೆ ಹುಡುಕಾಟ ಮಾತ್ರ</value></data>
+  <data name="identify.not_found" xml:space="preserve"><value>ಸಿಕ್ಕಿಲ್ಲ</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>ಈ ಬಿಡುಗಡೆ ಈಗಾಗಲೇ ನಿಮ್ಮ ಗ್ರಂಥಾಲಯದಲ್ಲಿದೆ</value></data>
+  <data name="import.back_to_search" xml:space="preserve"><value>ಹುಡುಕಾಟಕ್ಕೆ ಹಿಂದಿರುಗಿ</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>ಫೋಲ್ಡರ್ ಆಯ್ಕೆಮಾಡಿ ಮತ್ತು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ</value></data>
+  <data name="import.complete" xml:space="preserve"><value>ಆಮದು ಮಾಡಲಾಗಿದೆ</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# ಟ್ರ್ಯಾಕ್} other {# ಟ್ರ್ಯಾಕ್‌ಗಳು}}</value></data>
+  <data name="import.confirm_title" xml:space="preserve"><value>ಆಮದು ದೃಢೀಕರಿಸಿ</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಮತ್ತು ಆಮದುಮಾಡಿ</value></data>
+  <data name="import.drop_folder_only" xml:space="preserve"><value>ಆಮದು ಮಾಡಲು ಫೋಲ್ಡರ್ ಬಿಡಿ</value></data>
+  <data name="import.drop_read_failed" xml:space="preserve"><value>ಬಿಟ್ಟ ಐಟಂ ಓದಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="import.error_title" xml:space="preserve"><value>ಆಮದು ದೋಷ</value></data>
+  <data name="import.error.load_release" xml:space="preserve"><value>ಆಮದು ಮಾಡಲು ಬಿಡುಗಡೆಯನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="import.error.load_storage_settings" xml:space="preserve"><value>ಸಂಗ್ರಹಣೆ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="import.error.read_storage_settings" xml:space="preserve"><value>ಸಂಗ್ರಹಣೆ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಓದಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="import.failed" xml:space="preserve"><value>ಆಮದು ವಿಫಲವಾಯಿತು</value></data>
+  <data name="import.field.artist_manual" xml:space="preserve"><value>ಕಲಾವಿದ (ಕೈಯಾರೆ ಹುಡುಕಾಟ)</value></data>
+  <data name="import.no_releases" xml:space="preserve"><value>ಬಿಡುಗಡೆಗಳು ಸಿಕ್ಕಿಲ್ಲ</value></data>
+  <data name="import.preview" xml:space="preserve"><value>ಪೂರ್ವವೀಕ್ಷಣೆ</value></data>
+  <data name="import.progress.percent" xml:space="preserve"><value>{percent}% ಆಮದು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
+  <data name="import.release_title" xml:space="preserve"><value>ಬಿಡುಗಡೆ ಆಮದು ಮಾಡಿ</value></data>
+  <data name="import.rerun_identify" xml:space="preserve"><value>ಗುರುತಿಸುವಿಕೆಯನ್ನು ಮತ್ತೆ ನಡೆಸಿ</value></data>
+  <data name="import.scanning" xml:space="preserve"><value>ಸ್ಕ್ಯಾನ್ ಮಾಡಲಾಗುತ್ತಿದೆ…</value></data>
+  <data name="import.storage.keep_local" xml:space="preserve"><value>ಸ್ಥಳೀಯ ಪ್ರತಿಯನ್ನು ಇಟ್ಟುಕೊಳ್ಳಿ</value></data>
+  <data name="import.storage.managed" xml:space="preserve"><value>ನಿರ್ವಹಿತ</value></data>
+  <data name="import.title" xml:space="preserve"><value>ಆಮದು</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯದಲ್ಲಿ ನೋಡಿ</value></data>
+  <data name="join.title" xml:space="preserve"><value>ಲೈಬ್ರರಿಗೆ ಸೇರಿ</value></data>
+  <data name="join.intro" xml:space="preserve"><value>ಈ ಸಾಧನವನ್ನು ಮತ್ತೊಂದು ಸಾಧನದಲ್ಲಿರುವ ನಿಮ್ಮ ಲೈಬ್ರರಿಗೆ ಸೇರಿಸಿ.</value></data>
+  <data name="join.this_device_code" xml:space="preserve"><value>ಈ ಸಾಧನದ ಕೋಡ್</value></data>
+  <data name="join.show_to_member" xml:space="preserve"><value>ನಿಮ್ಮ ಲೈಬ್ರರಿಯಲ್ಲಿರುವ ಸಾಧನದಲ್ಲಿ ಸೆಟ್ಟಿಂಗ್‌ಗಳು → ಸಾಧನಗಳು → ಸಾಧನ ಸೇರಿಸಿ ತೆರೆಯಿರಿ ಮತ್ತು ಇದನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಅಥವಾ ಅಂಟಿಸಿ.</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>ಈ ಸಾಧನ: {fingerprint}</value></data>
+  <data name="join.generate_failed" xml:space="preserve"><value>ಈ ಸಾಧನದ ಕೋಡ್ ಸೃಷ್ಟಿಸಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="join.invite_label" xml:space="preserve"><value>ಆಹ್ವಾನ ಕೋಡ್</value></data>
+  <data name="join.invite_hint" xml:space="preserve"><value>ಆ ಸಾಧನ ಇದನ್ನು ಅನುಮೋದಿಸಿದ ನಂತರ, ಅದು ತೋರಿಸುವ ಆಹ್ವಾನ ಕೋಡ್ ನಮೂದಿಸಿ.</value></data>
+  <data name="join.invite_placeholder" xml:space="preserve"><value>ಆಹ್ವಾನ ಕೋಡ್ ಅಂಟಿಸಿ</value></data>
+  <data name="join.invalid_invite" xml:space="preserve"><value>ಅಮಾನ್ಯ ಆಹ್ವಾನ ಕೋಡ್</value></data>
+  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · ಮಾಲೀಕ {fingerprint}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>ಸೇರಿ</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>{name} ಸೇರುತ್ತಿದೆ…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>ಲೈಬ್ರರಿಗೆ ಸೇರಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  ಸಕ್ರಿಯ</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>ಹೊಸ ಗ್ರಂಥಾಲಯ</value></data>
+  <data name="libraries.rename" xml:space="preserve"><value>ಮರುಹೆಸರಿಸಿ</value></data>
+  <data name="libraries.title" xml:space="preserve"><value>ಲೈಬ್ರರಿಗಳು</value></data>
+  <data name="library.create_failed" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯವನ್ನು ರಚಿಸಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="library.empty" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ ಖಾಲಿಯಾಗಿದೆ</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯವನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="library.locked" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ ಲಾಕ್ ಆಗಿದೆ</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯವನ್ನು ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>ಈ ಗ್ರಂಥಾಲಯ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಆಗಿದೆ ಮತ್ತು ಅದರ ಕೀಲಿ ಈ ಸಾಧನದಲ್ಲಿಲ್ಲ. ಅನ್ಲಾಕ್ ಮಾಡಲು 64 ಅಕ್ಷರಗಳ ಹೆಕ್ಸ್ ಕೀಲಿಯನ್ನು ನಮೂದಿಸಿ.</value></data>
   <data name="library.unlock.confirm" xml:space="preserve"><value>ಅನ್‌ಲಾಕ್</value></data>
-  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64-character hex key</value></data>
-  <data name="library.unlock.title" xml:space="preserve"><value>unlock ಲೈಬ್ರರಿ</value></data>
-  <data name="menu.add_to_queue" xml:space="preserve"><value>Add to Queue</value></data>
-  <data name="menu.change_cover" xml:space="preserve"><value>Change cover…</value></data>
-  <data name="menu.delete" xml:space="preserve"><value>Delete…</value></data>
-  <data name="menu.export" xml:space="preserve"><value>Export…</value></data>
+  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64-ಅಕ್ಷರಗಳ ಹೆಕ್ಸ್ ಕೀಲಿ</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ ಅನ್ಲಾಕ್ ಮಾಡಿ</value></data>
+  <data name="menu.add_to_queue" xml:space="preserve"><value>ಸಾಲಿಗೆ ಸೇರಿಸಿ</value></data>
+  <data name="menu.change_cover" xml:space="preserve"><value>ಕವರ್ ಬದಲಿಸಿ…</value></data>
+  <data name="menu.delete" xml:space="preserve"><value>ಅಳಿಸಿ…</value></data>
+  <data name="menu.export" xml:space="preserve"><value>ರಫ್ತು…</value></data>
   <data name="menu.play" xml:space="preserve"><value>ಪ್ಲೇ</value></data>
-  <data name="menu.play_next" xml:space="preserve"><value>Play Next</value></data>
-  <data name="menu.set_primary" xml:space="preserve"><value>Set as primary release</value></data>
-  <data name="menu.set_primary_done" xml:space="preserve"><value>set as primary release</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>delete</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>cancel</value></data>
-  <data name="outbox.load_failed" xml:space="preserve"><value>couldn't load the outbox</value></data>
-  <data name="outbox.pause" xml:space="preserve"><value>pause</value></data>
-  <data name="outbox.read_failed" xml:space="preserve"><value>couldn't read the outbox</value></data>
-  <data name="outbox.resume" xml:space="preserve"><value>resume</value></data>
-  <data name="outbox.retry_now" xml:space="preserve"><value>retry now</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>clear queue</value></data>
+  <data name="menu.play_next" xml:space="preserve"><value>ಮುಂದೆ ಪ್ಲೇ ಮಾಡಿ</value></data>
+  <data name="menu.set_primary" xml:space="preserve"><value>ಪ್ರಾಥಮಿಕ ಬಿಡುಗಡೆ ಆಗಿ ಹೊಂದಿಸಿ</value></data>
+  <data name="menu.set_primary_done" xml:space="preserve"><value>ಪ್ರಾಥಮಿಕ ಬಿಡುಗಡೆ ಆಗಿ ಹೊಂದಿಸಿ</value></data>
+  <data name="members.title" xml:space="preserve"><value>ಸಾಧನಗಳು</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>ಈ ಸಾಧನ</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>ಮಾಲೀಕ</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>ಸದಸ್ಯ</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>ಅನುಯಾಯಿ</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>ಸಾಧನಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="members.add" xml:space="preserve"><value>ಸಾಧನ ಸೇರಿಸಿ…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>ತೆಗೆದುಹಾಕಿ</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>ಈ ಸಾಧನ ಪ್ರವೇಶ ಕಳೆದುಕೊಳ್ಳುತ್ತದೆ ಮತ್ತು ಲೈಬ್ರರಿ ಕೀಲಿ ತಿರುಗಿಸಲಾಗುತ್ತದೆ. ದೃಢೀಕರಿಸಲು ತೆಗೆದುಹಾಕಿ ಅನ್ನು ಮತ್ತೆ ಕ್ಲಿಕ್ ಮಾಡಿ.</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>ಸಾಧನ ಸೇರಿಸಿ</value></data>
+  <data name="members.approve.capture_hint" xml:space="preserve"><value>ಹೊಸ ಸಾಧನದಲ್ಲಿ ಲೈಬ್ರರಿಗೆ ಸೇರ್ಪಡೆ ತೆರೆಯಿರಿ ಮತ್ತು ಅದರ ಕೋಡ್ ತೋರಿಸಿ. ಅದನ್ನು ಇಲ್ಲಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ, ಅಥವಾ ಕೆಳಗೆ ಅಂಟಿಸಿ.</value></data>
+  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>ಸಾಧನದ ಕೋಡ್ ಅಂಟಿಸಿ</value></data>
+  <data name="members.approve.decode" xml:space="preserve"><value>ಡಿಕೋಡ್</value></data>
+  <data name="members.approve.invalid_request" xml:space="preserve"><value>ಅಮಾನ್ಯ ಸಾಧನ ಕೋಡ್</value></data>
+  <data name="members.approve.confirm_title" xml:space="preserve"><value>ಈ ಸಾಧನವನ್ನು ಅನುಮೋದಿಸಬೇಕೇ?</value></data>
+  <data name="members.approve.confirm_hint" xml:space="preserve"><value>ಇದು ನಿಮ್ಮ ಲೈಬ್ರರಿಗೆ ಸೇರಿಸಲಾಗುತ್ತದೆ ಮತ್ತು ಸಮಕಾಲೀಕರಿಸಲು ಸಾಧ್ಯವಾಗುತ್ತದೆ. ಅದರಲ್ಲಿ ನಮೂದಿಸಲು ನಿಮಗೆ ಕೋಡ್ ಸಿಗುತ್ತದೆ.</value></data>
+  <data name="members.approve.confirm" xml:space="preserve"><value>ಅನುಮೋದಿಸಿ</value></data>
+  <data name="members.approve.in_progress" xml:space="preserve"><value>ಸಾಧನ ಅನುಮೋದಿಸಲಾಗುತ್ತಿದೆ…</value></data>
+  <data name="members.approve.failed" xml:space="preserve"><value>ಈ ಸಾಧನವನ್ನು ಅನುಮೋದಿಸಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="members.approve.invited_hint" xml:space="preserve"><value>ಈ ಕೋಡ್ ಅನ್ನು ಹೊಸ ಸಾಧನದಲ್ಲಿ ನಮೂದಿಸಿ.</value></data>
+  <data name="outbox.delete.kind" xml:space="preserve"><value>ಅಳಿಸಿ</value></data>
+  <data name="outbox.cancel_item" xml:space="preserve"><value>ರದ್ದುಮಾಡಿ</value></data>
+  <data name="outbox.load_failed" xml:space="preserve"><value>ಹೊರಪೆಟ್ಟಿಗೆ ಲೋಡ್ ಆಗಲಿಲ್ಲ</value></data>
+  <data name="outbox.pause" xml:space="preserve"><value>ವಿರಾಮ</value></data>
+  <data name="outbox.read_failed" xml:space="preserve"><value>ಹೊರಪೆಟ್ಟಿಗೆ ಓದಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="outbox.resume" xml:space="preserve"><value>ಮುಂದುವರಿಸಿ</value></data>
+  <data name="outbox.retry_now" xml:space="preserve"><value>ಈಗ ಮರುಪ್ರಯತ್ನಿಸಿ</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>ಸಾಲು ತೆರವುಗೊಳಿಸಿ</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>ಸರತಿಯಿಂದ ತೆಗೆದುಹಾಕಿ</value></data>
-  <data name="queue.title" xml:space="preserve"><value>queue</value></data>
-  <data name="queue.section.up_next" xml:space="preserve"><value>ಮುಂದಿನದು</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>ಇದರಿಂದ ಪ್ಲೇ ಆಗುತ್ತಿದೆ</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>ನಿಮ್ಮ ಲೈಬ್ರರಿ</value></data>
-  <data name="queue.shuffle.off" xml:space="preserve"><value>turn off shuffle</value></data>
-  <data name="queue.shuffle.on" xml:space="preserve"><value>shuffle</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>restore code</value></data>
-  <data name="restore.confirm" xml:space="preserve"><value>restore</value></data>
-  <data name="restore.failed" xml:space="preserve"><value>restore failed</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloud ಸಂಗ್ರಹಣೆ</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>ಎನ್‌ಕ್ರಿಪ್ಷನ್ key (hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>ಲೈಬ್ರರಿ id</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>ಲೈಬ್ರರಿ name (optional)</value></data>
-  <data name="restore.from_cloud" xml:space="preserve"><value>restore from cloud</value></data>
-  <data name="restore.from_cloud_title" xml:space="preserve"><value>restore from cloud</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>restore from code</value></data>
-  <data name="restore.in_progress" xml:space="preserve"><value>restoring…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>restoring {name}…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>invalid restore code</value></data>
-  <data name="s3.field.access_key" xml:space="preserve"><value>access key</value></data>
-  <data name="s3.field.bucket" xml:space="preserve"><value>S3 bucket</value></data>
-  <data name="s3.field.endpoint" xml:space="preserve"><value>endpoint (optional)</value></data>
-  <data name="s3.field.key_prefix" xml:space="preserve"><value>key prefix (optional)</value></data>
-  <data name="s3.field.region" xml:space="preserve"><value>region</value></data>
-  <data name="s3.field.secret_key" xml:space="preserve"><value>secret key</value></data>
-  <data name="search.failed" xml:space="preserve"><value>Search failed</value></data>
-  <data name="search.field.album" xml:space="preserve"><value>album</value></data>
-  <data name="search.field.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>source</value></data>
-  <data name="search.no_matches" xml:space="preserve"><value>no matches</value></data>
-  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs token</value></data>
-  <data name="settings.discogs.recheck" xml:space="preserve"><value>re-check</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs rejected this key — check it and save again.</value></data>
-  <data name="settings.discogs.remove" xml:space="preserve"><value>remove token</value></data>
-  <data name="settings.discogs.save" xml:space="preserve"><value>save token</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>couldn't save the key — something went wrong.</value></data>
-  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API token</value></data>
-  <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>ಮುಂದೆ</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>ಕಲಸುವಿಕೆಯನ್ನು ಆಫ್ ಮಾಡಿ</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>ಕಲಸು</value></data>
+  <data name="queue.title" xml:space="preserve"><value>ಸಾಲು</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>ಮರುಸ್ಥಾಪನೆ ಕೋಡ್</value></data>
+  <data name="restore.confirm" xml:space="preserve"><value>ಮರುಸ್ಥಾಪಿಸಿ</value></data>
+  <data name="restore.failed" xml:space="preserve"><value>ಮರುಸ್ಥಾಪನೆ ವಿಫಲವಾಯಿತು</value></data>
+  <data name="restore.field.cloud_storage" xml:space="preserve"><value>ಕ್ಲೌಡ್ ಸಂಗ್ರಹಣೆ</value></data>
+  <data name="restore.field.encryption_key" xml:space="preserve"><value>ಎನ್‌ಕ್ರಿಪ್ಷನ್ ಕೀಲಿ (ಹೆಕ್ಸ್)</value></data>
+  <data name="restore.field.library_id" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ id</value></data>
+  <data name="restore.field.library_name" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯದ ಹೆಸರು (ಐಚ್ಛಿಕ)</value></data>
+  <data name="restore.from_cloud" xml:space="preserve"><value>ಕ್ಲೌಡ್‌ನಿಂದ ಮರುಸ್ಥಾಪಿಸಿ</value></data>
+  <data name="restore.from_cloud_title" xml:space="preserve"><value>ಕ್ಲೌಡ್‌ನಿಂದ ಮರುಸ್ಥಾಪಿಸಿ</value></data>
+  <data name="restore.from_code" xml:space="preserve"><value>ಕೋಡ್‌ನಿಂದ ಮರುಸ್ಥಾಪಿಸಿ</value></data>
+  <data name="restore.in_progress" xml:space="preserve"><value>ಮರುಸ್ಥಾಪಿಸಲಾಗುತ್ತಿದೆ…</value></data>
+  <data name="restore.in_progress_named" xml:space="preserve"><value>{name} ಮರುಸ್ಥಾಪಿಸಲಾಗುತ್ತಿದೆ…</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>ಅಮಾನ್ಯ ಮರುಸ್ಥಾಪನೆ ಕೋಡ್</value></data>
+  <data name="s3.field.access_key" xml:space="preserve"><value>ಪ್ರವೇಶ ಕೀಲಿ</value></data>
+  <data name="s3.field.bucket" xml:space="preserve"><value>S3 ಬಕೆಟ್</value></data>
+  <data name="s3.field.endpoint" xml:space="preserve"><value>ಅಂತಿಮ ಬಿಂದು (ಐಚ್ಛಿಕ)</value></data>
+  <data name="s3.field.key_prefix" xml:space="preserve"><value>ಕೀಲಿ ಪೂರ್ವಪ್ರತ್ಯಯ (ಐಚ್ಛಿಕ)</value></data>
+  <data name="s3.field.region" xml:space="preserve"><value>ಪ್ರದೇಶ</value></data>
+  <data name="s3.field.secret_key" xml:space="preserve"><value>ರಹಸ್ಯ ಕೀಲಿ</value></data>
+  <data name="search.failed" xml:space="preserve"><value>ಹುಡುಕಾಟ ವಿಫಲವಾಯಿತು</value></data>
+  <data name="search.field.album" xml:space="preserve"><value>ಆಲ್ಬಮ್</value></data>
+  <data name="search.field.artist" xml:space="preserve"><value>ಕಲಾವಿದ</value></data>
+  <data name="search.field.source" xml:space="preserve"><value>ಮೂಲ</value></data>
+  <data name="search.no_matches" xml:space="preserve"><value>ಹೊಂದಾಣಿಕೆಗಳಿಲ್ಲ</value></data>
+  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs ಟೋಕನ್</value></data>
+  <data name="settings.discogs.recheck" xml:space="preserve"><value>ಮರುಪರಿಶೀಲಿಸಿ</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs ಈ ಕೀ ತಿರಸ್ಕರಿಸಿದೆ — ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಉಳಿಸಿ.</value></data>
+  <data name="settings.discogs.remove" xml:space="preserve"><value>ಟೋಕನ್ ತೆಗೆದುಹಾಕಿ</value></data>
+  <data name="settings.discogs.save" xml:space="preserve"><value>ಟೋಕನ್ ಉಳಿಸಿ</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>ಕೀ ಉಳಿಸಲಾಗಲಿಲ್ಲ — ಏನೋ ತಪ್ಪಾಗಿದೆ.</value></data>
+  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API ಟೋಕನ್</value></data>
+  <data name="settings.discogs.validating" xml:space="preserve"><value>ಮಾನ್ಯಗೊಳಿಸಲಾಗುತ್ತಿದೆ…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>ಬದಿಗಳ ನಡುವೆ ವಿರಾಮ</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>ಲೈಬ್ರರಿ: {name}</value></data>
-  <data name="settings.lock_library" xml:space="preserve"><value>lock ಲೈಬ್ರರಿ</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>ಸೈಡ್‌ಗಳ ನಡುವೆ ವಿರಾಮ</value></data>
-  <data name="settings.restore_code.label" xml:space="preserve"><value>restore code (enter on another device)</value></data>
-  <data name="settings.restore_code.show" xml:space="preserve"><value>show restore code</value></data>
-  <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(unavailable — is ಸಿಂಕ್ connected?)</value></data>
-  <data name="settings.s3.connect" xml:space="preserve"><value>connect S3</value></data>
-  <data name="settings.s3.connecting" xml:space="preserve"><value>connecting to S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>browsable — stored unencrypted</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ ಲಾಕ್ ಮಾಡಿ</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>ಮರುಪಡೆಯುವಿಕೆ</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>ಅನುಮೋದಿಸಲು ಬೇರೆ ಸಾಧನ ಲಭ್ಯವಿಲ್ಲದಾಗ, ನಿಮ್ಮ ಮರುಪಡೆಯುವ ಕೋಡ್ ಈ ಲೈಬ್ರರಿಯನ್ನು ಹೊಸ ಸಾಧನದಲ್ಲಿ ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ. ಅದಿರುವ ಯಾರಿಗಾದರೂ ಪೂರ್ಣ ಪ್ರವೇಶವಿರುತ್ತದೆ — ಅದನ್ನು ರಹಸ್ಯವಾಗಿಡಿ.</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>ಮರುಪಡೆಯುವ ಕೋಡ್</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>ಮರುಪಡೆಯುವ ಕೋಡ್ ತೋರಿಸಿ…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(ಲಭ್ಯವಿಲ್ಲ — ಸಿಂಕ್ ಸಂಪರ್ಕಗೊಂಡಿದೆಯೇ?)</value></data>
+  <data name="settings.s3.connect" xml:space="preserve"><value>S3 ಸಂಪರ್ಕಿಸಿ</value></data>
+  <data name="settings.s3.connecting" xml:space="preserve"><value>S3 ಗೆ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ…</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>ಬ್ರೌಸ್ ಮಾಡಬಹುದಾದುದು — ಎನ್‌ಕ್ರಿಪ್ಟ್ ಮಾಡದೆ ಸಂಗ್ರಹಿಸಲಾಗಿದೆ</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>ಸಂಗ್ರಹಣೆ</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>opaque — end-to-end encrypted</value></data>
-  <data name="settings.sync.disconnect" xml:space="preserve"><value>disconnect</value></data>
-  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} click disconnect again to confirm.</value></data>
-  <data name="settings.sync.now" xml:space="preserve"><value>ಸಿಂಕ್ now</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>ಅಪಾರದರ್ಶಕ — ತುದಿಯಿಂದ ತುದಿಗೆ ಎನ್‌ಕ್ರಿಪ್ಟ್ ಮಾಡಲಾಗಿದೆ</value></data>
+  <data name="settings.sync.disconnect" xml:space="preserve"><value>ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಿ</value></data>
+  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} ದೃಢೀಕರಿಸಲು ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಿ ಅನ್ನು ಮತ್ತೆ ಕ್ಲಿಕ್ ಮಾಡಿ.</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>ಈಗ ಸಿಂಕ್ ಮಾಡಿ</value></data>
   <data name="settings.title" xml:space="preserve"><value>settings</value></data>
-  <data name="signal.exclude" xml:space="preserve"><value>exclude signal</value></data>
-  <data name="signal.include" xml:space="preserve"><value>include signal</value></data>
-  <data name="signal.kind.barcode" xml:space="preserve"><value>Barcode</value></data>
-  <data name="signal.kind.catalog" xml:space="preserve"><value>Catalog</value></data>
-  <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
-  <data name="sort.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="sort.newest" xml:space="preserve"><value>newest</value></data>
-  <data name="sort.title" xml:space="preserve"><value>title</value></data>
-  <data name="sort.year" xml:space="preserve"><value>year</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Move into ಲೈಬ್ರರಿ</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Pin for offline</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Move out of ಲೈಬ್ರರಿ…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Remove local copy</value></data>
-  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# file} other {# files}}</value></data>
-  <data name="storage.load_failed" xml:space="preserve"><value>couldn't load ಸಂಗ್ರಹಣೆ</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>Pinned</value></data>
-  <data name="storage.read_failed" xml:space="preserve"><value>couldn't read ಸಂಗ್ರಹಣೆ</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>Managed</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Unmanaged</value></data>
+  <data name="signal.exclude" xml:space="preserve"><value>ಸಂಕೇತ ಹೊರತುಪಡಿಸಿ</value></data>
+  <data name="signal.include" xml:space="preserve"><value>ಸಂಕೇತ ಸೇರಿಸಿ</value></data>
+  <data name="signal.kind.barcode" xml:space="preserve"><value>ಬಾರ್‌ಕೋಡ್</value></data>
+  <data name="signal.kind.catalog" xml:space="preserve"><value>ಕ್ಯಾಟಲಾಗ್</value></data>
+  <data name="signal.kind.disc_id" xml:space="preserve"><value>ಡಿಸ್ಕ್ ID</value></data>
+  <data name="sort.artist" xml:space="preserve"><value>ಕಲಾವಿದ</value></data>
+  <data name="sort.name" xml:space="preserve"><value>ಹೆಸರು</value></data>
+  <data name="sort.newest" xml:space="preserve"><value>ಹೊಸದು</value></data>
+  <data name="sort.title" xml:space="preserve"><value>ಶೀರ್ಷಿಕೆ</value></data>
+  <data name="sort.year" xml:space="preserve"><value>ವರ್ಷ</value></data>
+  <data name="storage.action.manage" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯಕ್ಕೆ ಸರಿಸಿ</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>ಆಫ್‌ಲೈನ್‌ಗಾಗಿ ಪಿನ್ ಮಾಡಿ</value></data>
+  <data name="storage.action.unmanage" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯದಿಂದ ಹೊರಗೆ ಸರಿಸಿ…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>ಸ್ಥಳೀಯ ಪ್ರತಿಯನ್ನು ತೆಗೆದುಹಾಕಿ</value></data>
+  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# ಫೈಲ್} other {# ಫೈಲ್‌ಗಳು}}</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>ಸಂಗ್ರಹಣೆಯನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>ಪಿನ್ ಮಾಡಲಾಗಿದೆ</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>ಸಂಗ್ರಹಣೆಯನ್ನು ಓದಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>ನಿರ್ವಹಿತ</value></data>
+  <data name="storage.state.unmanaged" xml:space="preserve"><value>ನಿರ್ವಹಿಸದ</value></data>
   <data name="storage.title" xml:space="preserve"><value>ಸಂಗ್ರಹಣೆ</value></data>
-  <data name="sync.error_title" xml:space="preserve"><value>ಸಿಂಕ್ error</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>ಸಿಂಕ್ ದೋಷ</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>ಮತ್ತೆ ಸಂಪರ್ಕಿಸಿ</value></data>
-  <data name="sync.synced" xml:space="preserve"><value>ಸಿಂಕ್ed {time}</value></data>
-  <data name="sync.syncing" xml:space="preserve"><value>ಸಿಂಕ್ing…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Original</value></data>
-  <data name="welcome.choose_library" xml:space="preserve"><value>choose a ಲೈಬ್ರರಿ</value></data>
-  <data name="welcome.create_library" xml:space="preserve"><value>create ಲೈಬ್ರರಿ</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>no ಲೈಬ್ರರಿ yet</value></data>
-  <data name="welcome.your_libraries" xml:space="preserve"><value>your libraries</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>{time} ಸಿಂಕ್ ಆಗಿದೆ</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>ಸಿಂಕ್ ಆಗುತ್ತಿದೆ…</value></data>
+  <data name="track.export.original" xml:space="preserve"><value>ಮೂಲ</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>ರಫ್ತನ್ನು ಸಿದ್ಧಪಡಿಸಲಾಗಲಿಲ್ಲ.</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ ಆಯ್ಕೆಮಾಡಿ</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>ಲೈಬ್ರರಿಗೆ ಸೇರಿ</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ ರಚಿಸಿ</value></data>
+  <data name="welcome.no_library" xml:space="preserve"><value>ಇನ್ನೂ ಗ್ರಂಥಾಲಯ ಇಲ್ಲ</value></data>
+  <data name="welcome.your_libraries" xml:space="preserve"><value>ನಿಮ್ಮ ಲೈಬ್ರರಿಗಳು</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
-  <data name="settings.discogs.connected" xml:space="preserve"><value>connected</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>saved — couldn't validate yet (offline). will retry.</value></data>
-  <data name="settings.sync.initializing" xml:space="preserve"><value>initializing</value></data>
-  <data name="settings.sync.not_connected" xml:space="preserve"><value>ಸಿಂಕ್: not connected</value></data>
-  <data name="settings.sync.ready" xml:space="preserve"><value>ready</value></data>
+  <data name="settings.discogs.connected" xml:space="preserve"><value>ಸಂಪರ್ಕಗೊಂಡಿದೆ</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>ಉಳಿಸಲಾಗಿದೆ — ಇನ್ನೂ ಮಾನ್ಯಗೊಳಿಸಲಾಗಲಿಲ್ಲ (ಆಫ್‌ಲೈನ್). ಮರುಪ್ರಯತ್ನಿಸುತ್ತದೆ.</value></data>
+  <data name="settings.sync.initializing" xml:space="preserve"><value>ಪ್ರಾರಂಭಿಸಲಾಗುತ್ತಿದೆ</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>ಸಿಂಕ್: ಸಂಪರ್ಕಗೊಂಡಿಲ್ಲ</value></data>
+  <data name="settings.sync.ready" xml:space="preserve"><value>ಸಿದ್ಧ</value></data>
   <data name="settings.sync.status" xml:space="preserve"><value>ಸಿಂಕ್: {provider}{account} — {state}</value></data>
-  <data name="download.title" xml:space="preserve"><value>downloads</value></data>
-  <data name="download.paused" xml:space="preserve"><value>paused</value></data>
-  <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
-  <data name="download.state.downloading" xml:space="preserve"><value>downloading</value></data>
-  <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
+  <data name="download.title" xml:space="preserve"><value>ಡೌನ್‌ಲೋಡ್‌ಗಳು</value></data>
+  <data name="download.paused" xml:space="preserve"><value>ವಿರಾಮದಲ್ಲಿದೆ</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>ಸಾಲಿನಲ್ಲಿ ಇದೆ</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>ಡೌನ್‌ಲೋಡ್ ಆಗುತ್ತಿದೆ</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>ವಿಫಲವಾಯಿತು</value></data>
   <data name="settings.automation.label" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲನೆ</value></data>
   <data name="settings.automation.enable_mcp" xml:space="preserve"><value>MCP ಸರ್ವರ್ ಸಕ್ರಿಯಗೊಳಿಸಿ</value></data>
   <data name="settings.automation.port" xml:space="preserve"><value>ಪೋರ್ಟ್</value></data>
@@ -220,7 +263,7 @@
   <data name="settings.automation.rotate_token" xml:space="preserve"><value>ಟೋಕನ್ ಬದಲಿಸಿ</value></data>
   <data name="settings.automation.status.running" xml:space="preserve"><value>MCP ಸರ್ವರ್: {url}</value></data>
   <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP ಸರ್ವರ್ ನಿಷ್ಕ್ರಿಯವಾಗಿದೆ</value></data>
-  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>MCP ಸರ್ವರ್ ಸಂರಚನೆ ಅಮಾನ್ಯವಾಗಿದೆ</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>ಅಮಾನ್ಯ MCP ಸರ್ವರ್ ಸಂರಚನೆ</value></data>
   <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP ಟೋಕನ್ ಲಭ್ಯವಿಲ್ಲ</value></data>
   <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP ಸರ್ವರ್ ಪ್ರಾರಂಭಿಸಲಾಗಲಿಲ್ಲ</value></data>
   <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP ಸರ್ವರ್ ನಿಂತಿದೆ</value></data>
@@ -229,26 +272,44 @@
   <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP ಟೋಕನ್ ಲಭ್ಯವಿಲ್ಲ</value></data>
   <data name="settings.automation.token_copied" xml:space="preserve"><value>ಟೋಕನ್ ನಕಲಿಸಲಾಗಿದೆ</value></data>
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>ಟೋಕನ್ ಬದಲಿಸಿ ನಕಲಿಸಲಾಗಿದೆ</value></data>
-  <data name="sort.name" xml:space="preserve"><value>name</value></data>
-  <data name="library.mode.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="library.mode.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="library.no_composers" xml:space="preserve"><value>No composers</value></data>
-  <data name="search.section.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="search.section.tracks" xml:space="preserve"><value>Tracks</value></data>
-  <data name="search.section.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="search.section.works" xml:space="preserve"><value>Works</value></data>
-  <data name="search.section.releases" xml:space="preserve"><value>Releases</value></data>
-  <data name="search.section.credits" xml:space="preserve"><value>Credits</value></data>
-  <data name="search.section.recordings" xml:space="preserve"><value>Recordings</value></data>
-  <data name="composer.open_failed" xml:space="preserve"><value>Could not open composer detail</value></data>
-  <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
-  <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
-  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Bit depth</value></data>
-  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Source</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>ಆಲ್ಬಮ್‌ಗಳು</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>ಸಂಗೀತ ಸಂಯೋಜಕರು</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>ಸಂಗೀತ ಸಂಯೋಜಕರು ಇಲ್ಲ</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>ಆಲ್ಬಮ್‌ಗಳು</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>ಟ್ರ್ಯಾಕ್‌ಗಳು</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>ಸಂಗೀತ ಸಂಯೋಜಕರು</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>ಕೃತಿಗಳು</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>ಬಿಡುಗಡೆಗಳು</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>ಕ್ರೆಡಿಟ್‌ಗಳು</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>ಸಂಗೀತ ಸಂಯೋಜಕರ ವಿವರ ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>ಕೃತಿ ವಿವರ ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} ಕೃತಿಗಳು</value></data>
+  <data name="settings.export.label" xml:space="preserve"><value>ರಫ್ತು</value></data>
+  <data name="settings.export.default_track_format" xml:space="preserve"><value>ಪೂರ್ವನಿಯೋಜಿತ ಹಾಡು ಸ್ವರೂಪ</value></data>
+  <data name="settings.export.default_release_format" xml:space="preserve"><value>ಪೂರ್ವನಿಯೋಜಿತ ಬಿಡುಗಡೆ ಸ್ವರೂಪ</value></data>
+  <data name="settings.export.presets" xml:space="preserve"><value>ಪ್ರೀಸೆಟ್‌ಗಳು</value></data>
+  <data name="settings.export.preset_name" xml:space="preserve"><value>ಹೆಸರು</value></data>
+  <data name="settings.export.preset_track" xml:space="preserve"><value>ಟ್ರ್ಯಾಕ್</value></data>
+  <data name="settings.export.preset_release" xml:space="preserve"><value>ಬಿಡುಗಡೆ</value></data>
+  <data name="settings.export.preset_pregap" xml:space="preserve"><value>ಪೂರ್ವಅಂತರ</value></data>
+  <data name="settings.export.add_flac" xml:space="preserve"><value>FLAC ಸೇರಿಸಿ</value></data>
+  <data name="settings.export.add_mp3" xml:space="preserve"><value>MP3 ಸೇರಿಸಿ</value></data>
+  <data name="settings.export.add_opus" xml:space="preserve"><value>Opus ಸೇರಿಸಿ</value></data>
+  <data name="settings.export.add_wav" xml:space="preserve"><value>WAV ಸೇರಿಸಿ</value></data>
+  <data name="settings.export.add_aiff" xml:space="preserve"><value>AIFF ಸೇರಿಸಿ</value></data>
+  <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>HTOA ಹೊರತುಪಡಿಸಿ ಸೇರಿಸಿ</value></data>
+  <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>HTOA ಸೇರಿಸಿ ಸೇರಿಸಿ</value></data>
+  <data name="settings.export.pregap.exclude" xml:space="preserve"><value>ಹೊರತುಪಡಿಸಿ</value></data>
+  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>ಒಂದು ಫೈಲ್ + CUE</value></data>
+  <data name="action.remove" xml:space="preserve"><value>ತೆಗೆದುಹಾಕಿ</value></data>
+  <data name="settings.export.filename_format" xml:space="preserve"><value>ಕಡತದ ಹೆಸರು ಸ್ವರೂಪ</value></data>
+  <data name="settings.export.tokens_help" xml:space="preserve"><value>ಲಭ್ಯವಿರುವ ಟೋಕನ್‌ಗಳು: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
+  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>ಬಿಟ್ ಆಳ</value></data>
+  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>ಮೂಲ</value></data>
   <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
   <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
-  <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
-  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>ಒಂದು ಫೈಲ್ + CUE</value></data>
+  <data name="settings.export.bitrate" xml:space="preserve"><value>ಬಿಟ್‌ರೇಟ್</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>ರಫ್ತು ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಉಳಿಸಲಾಗಲಿಲ್ಲ</value></data>
 </root>

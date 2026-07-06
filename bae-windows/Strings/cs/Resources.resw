@@ -52,6 +52,10 @@
   <data name="cover.remote_sources" xml:space="preserve"><value>Vzdálené zdroje</value></data>
   <data name="cover.section_title" xml:space="preserve"><value>Obal</value></data>
   <data name="cover.show_failed" xml:space="preserve"><value>nelze zobrazit vzdálené obaly: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>zpět</value></data>
+  <data name="action.copy" xml:space="preserve"><value>kopírovat</value></data>
+  <data name="action.done" xml:space="preserve"><value>hotovo</value></data>
+  <data name="action.scan" xml:space="preserve"><value>skenovat…</value></data>
   <data name="error.playback_title" xml:space="preserve"><value>chyba přehrávání</value></data>
   <data name="error.title" xml:space="preserve"><value>chyba</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>nelze načíst galerii</value></data>
@@ -67,7 +71,7 @@
   <data name="import.back_to_search" xml:space="preserve"><value>Zpět na vyhledávání</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>vybrat složku a skenovat</value></data>
   <data name="import.complete" xml:space="preserve"><value>importováno</value></data>
-  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# track} other {# tracks}}</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# stopa} few {# stopy} other {# stop}}</value></data>
   <data name="import.confirm_title" xml:space="preserve"><value>potvrdit import</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>skenovat a importovat</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>přetáhněte složku k importu</value></data>
@@ -88,6 +92,20 @@
   <data name="import.storage.managed" xml:space="preserve"><value>Spravované</value></data>
   <data name="import.title" xml:space="preserve"><value>import</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>zobrazit v knihovně</value></data>
+  <data name="join.title" xml:space="preserve"><value>připojit se ke knihovně</value></data>
+  <data name="join.intro" xml:space="preserve"><value>přidat toto zařízení do knihovny, kterou už máte na jiném zařízení.</value></data>
+  <data name="join.this_device_code" xml:space="preserve"><value>kód tohoto zařízení</value></data>
+  <data name="join.show_to_member" xml:space="preserve"><value>na zařízení, které už je ve vaší knihovně, otevřete nastavení → zařízení → přidat zařízení a naskenujte nebo vložte toto.</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>toto zařízení: {fingerprint}</value></data>
+  <data name="join.generate_failed" xml:space="preserve"><value>nepodařilo se vygenerovat kód tohoto zařízení</value></data>
+  <data name="join.invite_label" xml:space="preserve"><value>zvací kód</value></data>
+  <data name="join.invite_hint" xml:space="preserve"><value>jakmile toto zařízení schválí, zadejte zvací kód, který zobrazí.</value></data>
+  <data name="join.invite_placeholder" xml:space="preserve"><value>vložit zvací kód</value></data>
+  <data name="join.invalid_invite" xml:space="preserve"><value>neplatný zvací kód</value></data>
+  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · vlastník {fingerprint}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>připojit se</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>připojuje se k {name}…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>nepodařilo se připojit ke knihovně</value></data>
   <data name="libraries.active" xml:space="preserve"><value>{name}  ·  aktivní</value></data>
   <data name="libraries.new" xml:space="preserve"><value>nová knihovna</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>přejmenovat</value></data>
@@ -104,11 +122,31 @@
   <data name="menu.add_to_queue" xml:space="preserve"><value>Přidat do fronty</value></data>
   <data name="menu.change_cover" xml:space="preserve"><value>Změnit obal…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>Smazat…</value></data>
-  <data name="menu.export" xml:space="preserve"><value>Exportovat…</value></data>
+  <data name="menu.export" xml:space="preserve"><value>Export…</value></data>
   <data name="menu.play" xml:space="preserve"><value>Přehrát</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>Přehrát jako další</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>Nastavit jako primární vydání</value></data>
   <data name="menu.set_primary_done" xml:space="preserve"><value>nastavit jako primární vydání</value></data>
+  <data name="members.title" xml:space="preserve"><value>zařízení</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>toto zařízení</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>vlastník</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>člen</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>sledující</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>zařízení se nepodařilo načíst</value></data>
+  <data name="members.add" xml:space="preserve"><value>přidat zařízení…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>odebrat</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>toto zařízení ztratí přístup a klíč knihovny bude obměněn. potvrďte dalším kliknutím na odebrat.</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>přidat zařízení</value></data>
+  <data name="members.approve.capture_hint" xml:space="preserve"><value>na novém zařízení otevřete připojit se ke knihovně a zobrazte jeho kód. naskenujte ho tady nebo ho vložte níže.</value></data>
+  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>vložit kód zařízení</value></data>
+  <data name="members.approve.decode" xml:space="preserve"><value>dekódovat</value></data>
+  <data name="members.approve.invalid_request" xml:space="preserve"><value>neplatný kód zařízení</value></data>
+  <data name="members.approve.confirm_title" xml:space="preserve"><value>schválit toto zařízení?</value></data>
+  <data name="members.approve.confirm_hint" xml:space="preserve"><value>bude přidáno do vaší knihovny a bude se moct synchronizovat. dostanete kód, který na něm zadáte.</value></data>
+  <data name="members.approve.confirm" xml:space="preserve"><value>schválit</value></data>
+  <data name="members.approve.in_progress" xml:space="preserve"><value>zařízení se schvaluje…</value></data>
+  <data name="members.approve.failed" xml:space="preserve"><value>toto zařízení se nepodařilo schválit</value></data>
+  <data name="members.approve.invited_hint" xml:space="preserve"><value>zadejte tento kód na novém zařízení.</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>smazat</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>zrušit</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nelze načíst odchozí frontu</value></data>
@@ -118,12 +156,12 @@
   <data name="outbox.retry_now" xml:space="preserve"><value>zopakovat hned</value></data>
   <data name="queue.clear" xml:space="preserve"><value>vymazat frontu</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Odebrat z fronty</value></data>
-  <data name="queue.title" xml:space="preserve"><value>fronta</value></data>
-  <data name="queue.section.up_next" xml:space="preserve"><value>Další v pořadí</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Přehrává se z</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>Vaše knihovna</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>Další v pořadí</value></data>
   <data name="queue.shuffle.off" xml:space="preserve"><value>vypnout náhodné přehrávání</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>náhodně</value></data>
+  <data name="queue.title" xml:space="preserve"><value>fronta</value></data>
   <data name="restore.code_placeholder" xml:space="preserve"><value>kód pro obnovení</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>obnovit</value></data>
   <data name="restore.failed" xml:space="preserve"><value>obnovení selhalo</value></data>
@@ -156,12 +194,14 @@
   <data name="settings.discogs.save_failed" xml:space="preserve"><value>nelze uložit klíč — došlo k chybě.</value></data>
   <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>API token Discogs</value></data>
   <data name="settings.discogs.validating" xml:space="preserve"><value>Ověřování…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauza mezi stranami</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Knihovna: {name}</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>zamknout knihovnu</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pozastavit mezi stranami</value></data>
-  <data name="settings.restore_code.label" xml:space="preserve"><value>kód pro obnovení (zadejte na jiném zařízení)</value></data>
-  <data name="settings.restore_code.show" xml:space="preserve"><value>zobrazit kód pro obnovení</value></data>
-  <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(nedostupné — je synchronizace připojena?)</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>obnovení</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>váš kód pro obnovení obnoví tuto knihovnu na novém zařízení, když nemáte k dispozici žádné jiné zařízení pro schválení. každý, kdo ho má, má plný přístup — uchovejte ho v tajnosti.</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>kód pro obnovení</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>zobrazit kód pro obnovení…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(nedostupné — je synchronizace připojená?)</value></data>
   <data name="settings.s3.connect" xml:space="preserve"><value>připojit S3</value></data>
   <data name="settings.s3.connecting" xml:space="preserve"><value>připojování k S3…</value></data>
   <data name="settings.storage.browsable" xml:space="preserve"><value>procházitelné — uloženo nešifrovaně</value></data>
@@ -177,6 +217,7 @@
   <data name="signal.kind.catalog" xml:space="preserve"><value>Katalog</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ID disku</value></data>
   <data name="sort.artist" xml:space="preserve"><value>interpret</value></data>
+  <data name="sort.name" xml:space="preserve"><value>název</value></data>
   <data name="sort.newest" xml:space="preserve"><value>nejnovější</value></data>
   <data name="sort.title" xml:space="preserve"><value>název</value></data>
   <data name="sort.year" xml:space="preserve"><value>rok</value></data>
@@ -195,8 +236,10 @@
   <data name="sync.reconnect" xml:space="preserve"><value>Znovu připojit</value></data>
   <data name="sync.synced" xml:space="preserve"><value>synchronizováno {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>synchronizace…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Original</value></data>
+  <data name="track.export.original" xml:space="preserve"><value>Originál</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>Export se nepodařilo připravit.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>vyberte knihovnu</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>připojit se ke knihovně</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>vytvořit knihovnu</value></data>
   <data name="welcome.no_library" xml:space="preserve"><value>zatím žádná knihovna</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>vaše knihovny</value></data>
@@ -207,48 +250,66 @@
   <data name="settings.sync.not_connected" xml:space="preserve"><value>Synchronizace: nepřipojeno</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>připraveno</value></data>
   <data name="settings.sync.status" xml:space="preserve"><value>Synchronizace: {provider}{account} — {state}</value></data>
-  <data name="download.title" xml:space="preserve"><value>downloads</value></data>
-  <data name="download.paused" xml:space="preserve"><value>paused</value></data>
-  <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
-  <data name="download.state.downloading" xml:space="preserve"><value>downloading</value></data>
-  <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
+  <data name="download.title" xml:space="preserve"><value>stahování</value></data>
+  <data name="download.paused" xml:space="preserve"><value>pozastaveno</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>ve frontě</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>stahuje se</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>selhalo</value></data>
   <data name="settings.automation.label" xml:space="preserve"><value>Automatizace</value></data>
-  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>Povolit server MCP</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>Zapnout MCP server</value></data>
   <data name="settings.automation.port" xml:space="preserve"><value>Port</value></data>
   <data name="settings.automation.refresh" xml:space="preserve"><value>obnovit stav</value></data>
   <data name="settings.automation.copy_token" xml:space="preserve"><value>kopírovat token</value></data>
   <data name="settings.automation.rotate_token" xml:space="preserve"><value>obměnit token</value></data>
   <data name="settings.automation.status.running" xml:space="preserve"><value>Server MCP: {url}</value></data>
   <data name="settings.automation.status.disabled" xml:space="preserve"><value>Server MCP je zakázán</value></data>
-  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>Neplatná konfigurace serveru MCP</value></data>
-  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>Token MCP není dostupný</value></data>
-  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>Server MCP se nepodařilo spustit</value></data>
-  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>Server MCP se zastavil</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>Neplatná konfigurace MCP serveru</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP token není dostupný</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP server se nepodařilo spustit</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP server zastaven</value></data>
   <data name="settings.automation.invalid_port" xml:space="preserve"><value>zadejte port od 1 do 65535</value></data>
   <data name="settings.automation.status_unavailable" xml:space="preserve"><value>Stav MCP není k dispozici</value></data>
-  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>Token MCP není k dispozici</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP token není dostupný</value></data>
   <data name="settings.automation.token_copied" xml:space="preserve"><value>token zkopírován</value></data>
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>token obměněn a zkopírován</value></data>
-  <data name="sort.name" xml:space="preserve"><value>name</value></data>
-  <data name="library.mode.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="library.mode.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="library.no_composers" xml:space="preserve"><value>No composers</value></data>
-  <data name="search.section.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="search.section.tracks" xml:space="preserve"><value>Tracks</value></data>
-  <data name="search.section.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="search.section.works" xml:space="preserve"><value>Works</value></data>
-  <data name="search.section.releases" xml:space="preserve"><value>Releases</value></data>
-  <data name="search.section.credits" xml:space="preserve"><value>Credits</value></data>
-  <data name="search.section.recordings" xml:space="preserve"><value>Recordings</value></data>
-  <data name="composer.open_failed" xml:space="preserve"><value>Could not open composer detail</value></data>
-  <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
-  <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
-  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Bit depth</value></data>
-  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Source</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>Alba</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>Skladatelé</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>Žádní skladatelé</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>Alba</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>Stopy</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>Skladatelé</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>Díla</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>Vydání</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>Kredity</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>Nahrávky</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>Nepodařilo se otevřít detail skladatele</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>Nepodařilo se otevřít detail díla</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} děl</value></data>
+  <data name="settings.export.label" xml:space="preserve"><value>Export</value></data>
+  <data name="settings.export.default_track_format" xml:space="preserve"><value>Výchozí formát stopy</value></data>
+  <data name="settings.export.default_release_format" xml:space="preserve"><value>Výchozí formát vydání</value></data>
+  <data name="settings.export.presets" xml:space="preserve"><value>Předvolby</value></data>
+  <data name="settings.export.preset_name" xml:space="preserve"><value>Název</value></data>
+  <data name="settings.export.preset_track" xml:space="preserve"><value>Stopa</value></data>
+  <data name="settings.export.preset_release" xml:space="preserve"><value>Vydání</value></data>
+  <data name="settings.export.preset_pregap" xml:space="preserve"><value>Pregap</value></data>
+  <data name="settings.export.add_flac" xml:space="preserve"><value>Přidat FLAC</value></data>
+  <data name="settings.export.add_mp3" xml:space="preserve"><value>Přidat MP3</value></data>
+  <data name="settings.export.add_opus" xml:space="preserve"><value>Přidat Opus</value></data>
+  <data name="settings.export.add_wav" xml:space="preserve"><value>Přidat WAV</value></data>
+  <data name="settings.export.add_aiff" xml:space="preserve"><value>Přidat AIFF</value></data>
+  <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>Připojit kromě HTOA</value></data>
+  <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>Připojit včetně HTOA</value></data>
+  <data name="settings.export.pregap.exclude" xml:space="preserve"><value>Vyloučit</value></data>
+  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>Jeden soubor + CUE</value></data>
+  <data name="action.remove" xml:space="preserve"><value>Odebrat</value></data>
+  <data name="settings.export.filename_format" xml:space="preserve"><value>Formát názvu souboru</value></data>
+  <data name="settings.export.tokens_help" xml:space="preserve"><value>Dostupné tokeny: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
+  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Bitová hloubka</value></data>
+  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Zdroj</value></data>
   <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
   <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
-  <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
-  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>Jeden soubor + CUE</value></data>
+  <data name="settings.export.bitrate" xml:space="preserve"><value>Datový tok</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>Nastavení exportu se nepodařilo uložit</value></data>
 </root>

@@ -2,217 +2,260 @@
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
-  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>search</value></data>
-  <data name="LibrariesButton.Content" xml:space="preserve"><value>libraries</value></data>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>تلاش</value></data>
+  <data name="LibrariesButton.Content" xml:space="preserve"><value>کتب خانے</value></data>
   <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>لائبریری کو شفل کریں</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>close</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>close لائبریری</value></data>
-  <data name="ImportButton.Content" xml:space="preserve"><value>import</value></data>
+  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>بند کریں</value></data>
+  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>لائبریری بند کریں</value></data>
+  <data name="ImportButton.Content" xml:space="preserve"><value>درآمد</value></data>
   <data name="StorageButton.Content" xml:space="preserve"><value>اسٹوریج</value></data>
   <data name="SettingsButton.Content" xml:space="preserve"><value>settings</value></data>
   <data name="action.cancel" xml:space="preserve"><value>منسوخ</value></data>
   <data name="action.close" xml:space="preserve"><value>بند کریں</value></data>
   <data name="action.delete" xml:space="preserve"><value>حذف کریں</value></data>
   <data name="action.import" xml:space="preserve"><value>درآمد</value></data>
-  <data name="action.ok" xml:space="preserve"><value>ٹھیک ہے</value></data>
+  <data name="action.ok" xml:space="preserve"><value>OK</value></data>
   <data name="action.play" xml:space="preserve"><value>چلائیں</value></data>
   <data name="action.save" xml:space="preserve"><value>محفوظ کریں</value></data>
-  <data name="action.search" xml:space="preserve"><value>search</value></data>
-  <data name="album.delete.body" xml:space="preserve"><value>This removes the release from the لائبریری.</value></data>
-  <data name="album.delete.failed" xml:space="preserve"><value>couldn't delete</value></data>
-  <data name="album.delete.title" xml:space="preserve"><value>delete release?</value></data>
-  <data name="album.edit.label" xml:space="preserve"><value>edit</value></data>
-  <data name="album.edit.load_failed" xml:space="preserve"><value>couldn't load the میٹا ڈیٹا editor</value></data>
-  <data name="album.edit.reset" xml:space="preserve"><value>Reset to Source</value></data>
-  <data name="album.edit.reset_failed" xml:space="preserve"><value>couldn't reset to source</value></data>
-  <data name="album.edit.title" xml:space="preserve"><value>edit میٹا ڈیٹا</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>Gallery</value></data>
-  <data name="album.open_failed" xml:space="preserve"><value>couldn't open this album</value></data>
-  <data name="album.reidentify.label" xml:space="preserve"><value>re-identify</value></data>
-  <data name="album.reidentify.confirm" xml:space="preserve"><value>Re-identify</value></data>
-  <data name="album.reidentify.title" xml:space="preserve"><value>re-identify</value></data>
-  <data name="album.release_picker" xml:space="preserve"><value>Release</value></data>
-  <data name="album.shuffle" xml:space="preserve"><value>shuffle</value></data>
+  <data name="action.search" xml:space="preserve"><value>تلاش</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>یہ ریلیز کو لائبریری سے ہٹاتا ہے۔</value></data>
+  <data name="album.delete.failed" xml:space="preserve"><value>حذف نہیں ہو سکا</value></data>
+  <data name="album.delete.title" xml:space="preserve"><value>اشاعت حذف کریں؟</value></data>
+  <data name="album.edit.label" xml:space="preserve"><value>ترمیم کریں</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>میٹا ڈیٹا ایڈیٹر لوڈ نہیں ہو سکا</value></data>
+  <data name="album.edit.reset" xml:space="preserve"><value>ماخذ پر ری سیٹ کریں</value></data>
+  <data name="album.edit.reset_failed" xml:space="preserve"><value>ماخذ پر ری سیٹ نہیں ہو سکا</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>میٹا ڈیٹا میں ترمیم کریں</value></data>
+  <data name="album.gallery" xml:space="preserve"><value>گیلری</value></data>
+  <data name="album.open_failed" xml:space="preserve"><value>یہ album نہیں کھل سکا</value></data>
+  <data name="album.reidentify.label" xml:space="preserve"><value>دوبارہ شناخت کریں</value></data>
+  <data name="album.reidentify.confirm" xml:space="preserve"><value>دوبارہ شناخت کریں</value></data>
+  <data name="album.reidentify.title" xml:space="preserve"><value>دوبارہ شناخت کریں</value></data>
+  <data name="album.release_picker" xml:space="preserve"><value>اشاعت</value></data>
+  <data name="album.shuffle" xml:space="preserve"><value>شفل</value></data>
   <data name="cloud.provider.dropbox" xml:space="preserve"><value>Dropbox</value></data>
   <data name="cloud.provider.google_drive" xml:space="preserve"><value>Google Drive</value></data>
   <data name="cloud.provider.onedrive" xml:space="preserve"><value>OneDrive</value></data>
   <data name="cloud.provider.s3" xml:space="preserve"><value>S3</value></data>
-  <data name="cloud.signin.failed" xml:space="preserve"><value>cloud sign-in failed</value></data>
-  <data name="cloud.signin.in_progress" xml:space="preserve"><value>signing in to {provider}…</value></data>
-  <data name="cloud.signin.not_configured" xml:space="preserve"><value>cloud sign-in isn't configured on this build (no oauth-creds.json)</value></data>
-  <data name="cloud.unsupported_provider" xml:space="preserve"><value>this build doesn't support {provider} مطابقت پذیری</value></data>
-  <data name="cover.change_title" xml:space="preserve"><value>change cover</value></data>
-  <data name="cover.fetch_failed" xml:space="preserve"><value>couldn't fetch remote covers</value></data>
-  <data name="cover.fetching" xml:space="preserve"><value>fetching covers…</value></data>
-  <data name="cover.images_load_failed" xml:space="preserve"><value>couldn't load this release's images</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>No cover art available — the import uses its default cover.</value></data>
-  <data name="cover.none_remote" xml:space="preserve"><value>No remote covers found</value></data>
-  <data name="cover.pick_hint" xml:space="preserve"><value>Pick a cover, or leave unselected to use the default.</value></data>
-  <data name="cover.release_files" xml:space="preserve"><value>Release files</value></data>
-  <data name="cover.remote_sources" xml:space="preserve"><value>Remote sources</value></data>
-  <data name="cover.section_title" xml:space="preserve"><value>Cover</value></data>
-  <data name="cover.show_failed" xml:space="preserve"><value>couldn't show remote covers: {detail}</value></data>
-  <data name="error.playback_title" xml:space="preserve"><value>playback error</value></data>
-  <data name="error.title" xml:space="preserve"><value>error</value></data>
-  <data name="gallery.load_failed" xml:space="preserve"><value>couldn't load the gallery</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>couldn't read the gallery</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>gallery</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>conflict</value></data>
-  <data name="identify.error" xml:space="preserve"><value>error</value></data>
+  <data name="cloud.signin.failed" xml:space="preserve"><value>کلاؤڈ سائن ان ناکام</value></data>
+  <data name="cloud.signin.in_progress" xml:space="preserve"><value>{provider} میں سائن ان ہو رہا ہے…</value></data>
+  <data name="cloud.signin.not_configured" xml:space="preserve"><value>اس بلڈ میں کلاؤڈ سائن ان ترتیب نہیں دیا گیا (oauth-creds.json نہیں)</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>یہ بلڈ {provider} مطابقت پذیری کو سپورٹ نہیں کرتا</value></data>
+  <data name="cover.change_title" xml:space="preserve"><value>سرورق بدلیں</value></data>
+  <data name="cover.fetch_failed" xml:space="preserve"><value>دور دراز سرورق حاصل نہیں ہو سکے</value></data>
+  <data name="cover.fetching" xml:space="preserve"><value>سرورق حاصل ہو رہے ہیں…</value></data>
+  <data name="cover.images_load_failed" xml:space="preserve"><value>اس اشاعت کی تصاویر لوڈ نہیں ہو سکیں</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>سرورق تصویر دستیاب نہیں — درآمد اپنا طے شدہ سرورق استعمال کرتی ہے۔</value></data>
+  <data name="cover.none_remote" xml:space="preserve"><value>دور دراز سرورق نہیں ملے</value></data>
+  <data name="cover.pick_hint" xml:space="preserve"><value>سرورق منتخب کریں، یا طے شدہ استعمال کرنے کے لیے غیر منتخب چھوڑیں۔</value></data>
+  <data name="cover.release_files" xml:space="preserve"><value>اشاعت مسلیں</value></data>
+  <data name="cover.remote_sources" xml:space="preserve"><value>دور دراز ماخذ</value></data>
+  <data name="cover.section_title" xml:space="preserve"><value>سرورق</value></data>
+  <data name="cover.show_failed" xml:space="preserve"><value>دور دراز سرورق دکھائے نہیں جا سکے: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>واپس</value></data>
+  <data name="action.copy" xml:space="preserve"><value>نقل کریں</value></data>
+  <data name="action.done" xml:space="preserve"><value>done</value></data>
+  <data name="action.scan" xml:space="preserve"><value>اسکین کریں…</value></data>
+  <data name="error.playback_title" xml:space="preserve"><value>چلانے کی خرابی</value></data>
+  <data name="error.title" xml:space="preserve"><value>خرابی</value></data>
+  <data name="gallery.load_failed" xml:space="preserve"><value>گیلری لوڈ نہیں ہو سکی</value></data>
+  <data name="gallery.read_failed" xml:space="preserve"><value>گیلری پڑھی نہیں جا سکی</value></data>
+  <data name="gallery.title" xml:space="preserve"><value>گیلری</value></data>
+  <data name="identify.conflict" xml:space="preserve"><value>ٹکراؤ</value></data>
+  <data name="identify.error" xml:space="preserve"><value>خرابی</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {found (#)} other {found (#)}}</value></data>
-  <data name="identify.identifying" xml:space="preserve"><value>identifying…</value></data>
-  <data name="identify.manual" xml:space="preserve"><value>manual search only</value></data>
-  <data name="identify.not_found" xml:space="preserve"><value>not found</value></data>
-  <data name="import.already_in_library" xml:space="preserve"><value>this release is already in your لائبریری</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>Back to Search</value></data>
-  <data name="import.choose_folder" xml:space="preserve"><value>choose folder &amp;amp; scan</value></data>
-  <data name="import.complete" xml:space="preserve"><value>imported</value></data>
+  <data name="identify.identifying" xml:space="preserve"><value>شناخت ہو رہی ہے…</value></data>
+  <data name="identify.manual" xml:space="preserve"><value>صرف ہاتھ سے تلاش</value></data>
+  <data name="identify.not_found" xml:space="preserve"><value>نہیں ملا</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>یہ ریلیز پہلے ہی آپ کی لائبریری میں ہے</value></data>
+  <data name="import.back_to_search" xml:space="preserve"><value>تلاش پر واپس</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>فولڈر منتخب کریں اور اسکین کریں</value></data>
+  <data name="import.complete" xml:space="preserve"><value>درآمد شدہ</value></data>
   <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# track} other {# tracks}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>confirm import</value></data>
-  <data name="import.drop_caption" xml:space="preserve"><value>scan &amp;amp; import</value></data>
-  <data name="import.drop_folder_only" xml:space="preserve"><value>drop a folder to import</value></data>
-  <data name="import.drop_read_failed" xml:space="preserve"><value>could not read the dropped item</value></data>
-  <data name="import.error_title" xml:space="preserve"><value>import error</value></data>
-  <data name="import.error.load_release" xml:space="preserve"><value>couldn't load the release to import</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>couldn't load اسٹوریج settings</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>couldn't read اسٹوریج settings</value></data>
-  <data name="import.failed" xml:space="preserve"><value>import failed</value></data>
-  <data name="import.field.artist_manual" xml:space="preserve"><value>artist (manual search)</value></data>
-  <data name="import.no_releases" xml:space="preserve"><value>no releases found</value></data>
-  <data name="import.preview" xml:space="preserve"><value>preview</value></data>
-  <data name="import.progress.percent" xml:space="preserve"><value>importing {percent}%</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>import release</value></data>
-  <data name="import.rerun_identify" xml:space="preserve"><value>re-run identification</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>scanning…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Keep local copy</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Managed</value></data>
-  <data name="import.title" xml:space="preserve"><value>import</value></data>
-  <data name="import.view_in_library" xml:space="preserve"><value>view in لائبریری</value></data>
-  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  active</value></data>
-  <data name="libraries.new" xml:space="preserve"><value>new لائبریری</value></data>
-  <data name="libraries.rename" xml:space="preserve"><value>rename</value></data>
-  <data name="libraries.title" xml:space="preserve"><value>libraries</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>couldn't create a لائبریری</value></data>
-  <data name="library.empty" xml:space="preserve"><value>لائبریری is empty</value></data>
-  <data name="library.load_failed" xml:space="preserve"><value>couldn't load the لائبریری</value></data>
-  <data name="library.locked" xml:space="preserve"><value>لائبریری is locked</value></data>
-  <data name="library.open_failed" xml:space="preserve"><value>couldn't open the لائبریری</value></data>
-  <data name="library.unlock.body" xml:space="preserve"><value>This لائبریری is encrypted and its key isn't on this device. Enter the 64-character hex key to unlock it.</value></data>
+  <data name="import.confirm_title" xml:space="preserve"><value>درآمد کی تصدیق کریں</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>اسکین کریں اور درآمد کریں</value></data>
+  <data name="import.drop_folder_only" xml:space="preserve"><value>درآمد کے لیے پوشہ چھوڑیں</value></data>
+  <data name="import.drop_read_failed" xml:space="preserve"><value>چھوڑی گئی شے پڑھی نہیں جا سکی</value></data>
+  <data name="import.error_title" xml:space="preserve"><value>درآمد خرابی</value></data>
+  <data name="import.error.load_release" xml:space="preserve"><value>درآمد کے لیے اشاعت لوڈ نہیں ہو سکی</value></data>
+  <data name="import.error.load_storage_settings" xml:space="preserve"><value>اسٹوریج ترتیبات لوڈ نہیں ہو سکیں</value></data>
+  <data name="import.error.read_storage_settings" xml:space="preserve"><value>اسٹوریج ترتیبات پڑھی نہیں جا سکیں</value></data>
+  <data name="import.failed" xml:space="preserve"><value>درآمد ناکام</value></data>
+  <data name="import.field.artist_manual" xml:space="preserve"><value>فنکار (ہاتھ سے تلاش)</value></data>
+  <data name="import.no_releases" xml:space="preserve"><value>کوئی اشاعت نہیں ملی</value></data>
+  <data name="import.preview" xml:space="preserve"><value>پیش منظر</value></data>
+  <data name="import.progress.percent" xml:space="preserve"><value>{percent}% درآمد ہو رہا ہے</value></data>
+  <data name="import.release_title" xml:space="preserve"><value>اشاعت درآمد کریں</value></data>
+  <data name="import.rerun_identify" xml:space="preserve"><value>شناخت دوبارہ چلائیں</value></data>
+  <data name="import.scanning" xml:space="preserve"><value>اسکین ہو رہا ہے…</value></data>
+  <data name="import.storage.keep_local" xml:space="preserve"><value>مقامی نقل رکھیں</value></data>
+  <data name="import.storage.managed" xml:space="preserve"><value>منظم</value></data>
+  <data name="import.title" xml:space="preserve"><value>درآمد</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>لائبریری میں دیکھیں</value></data>
+  <data name="join.title" xml:space="preserve"><value>کتب خانے میں شامل ہوں</value></data>
+  <data name="join.intro" xml:space="preserve"><value>اس آلے کو ایسے کتب خانے میں شامل کریں جو آپ کے دوسرے آلے پر پہلے سے ہے۔</value></data>
+  <data name="join.this_device_code" xml:space="preserve"><value>اس آلے کا رمز</value></data>
+  <data name="join.show_to_member" xml:space="preserve"><value>اپنے کتب خانے میں پہلے سے موجود آلے پر ترتیبات → آلات → آلہ شامل کریں کھولیں اور اسے اسکین یا پیسٹ کریں۔</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>یہ آلہ: {fingerprint}</value></data>
+  <data name="join.generate_failed" xml:space="preserve"><value>اس آلے کا رمز نہیں بن سکا</value></data>
+  <data name="join.invite_label" xml:space="preserve"><value>دعوتی رمز</value></data>
+  <data name="join.invite_hint" xml:space="preserve"><value>جب وہ آلہ اس کو منظور کر دے، تو دکھایا گیا دعوتی رمز درج کریں۔</value></data>
+  <data name="join.invite_placeholder" xml:space="preserve"><value>دعوتی رمز پیسٹ کریں</value></data>
+  <data name="join.invalid_invite" xml:space="preserve"><value>غلط دعوتی رمز</value></data>
+  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · مالک {fingerprint}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>شامل ہوں</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>{name} میں شامل ہو رہا ہے…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>کتب خانے میں شامل نہیں ہو سکا</value></data>
+  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  فعال</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>نئی لائبریری</value></data>
+  <data name="libraries.rename" xml:space="preserve"><value>نام بدلیں</value></data>
+  <data name="libraries.title" xml:space="preserve"><value>کتب خانے</value></data>
+  <data name="library.create_failed" xml:space="preserve"><value>لائبریری بنائی نہیں جا سکی</value></data>
+  <data name="library.empty" xml:space="preserve"><value>لائبریری خالی ہے</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>لائبریری لوڈ نہیں ہو سکی</value></data>
+  <data name="library.locked" xml:space="preserve"><value>لائبریری مقفل ہے</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>لائبریری کھولی نہیں جا سکی</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>یہ لائبریری خفیہ کردہ ہے اور اس کی کلید اس آلے پر نہیں ہے۔ اسے کھولنے کے لیے 64 حروف والی hex کلید درج کریں۔</value></data>
   <data name="library.unlock.confirm" xml:space="preserve"><value>کھولیں</value></data>
-  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64-character hex key</value></data>
-  <data name="library.unlock.title" xml:space="preserve"><value>unlock لائبریری</value></data>
-  <data name="menu.add_to_queue" xml:space="preserve"><value>Add to Queue</value></data>
-  <data name="menu.change_cover" xml:space="preserve"><value>Change cover…</value></data>
-  <data name="menu.delete" xml:space="preserve"><value>Delete…</value></data>
-  <data name="menu.export" xml:space="preserve"><value>Export…</value></data>
+  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64 حروفی ہیکس کلید</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>لائبریری کھولیں</value></data>
+  <data name="menu.add_to_queue" xml:space="preserve"><value>قطار میں شامل کریں</value></data>
+  <data name="menu.change_cover" xml:space="preserve"><value>سرورق بدلیں…</value></data>
+  <data name="menu.delete" xml:space="preserve"><value>حذف کریں…</value></data>
+  <data name="menu.export" xml:space="preserve"><value>برآمد…</value></data>
   <data name="menu.play" xml:space="preserve"><value>چلائیں</value></data>
-  <data name="menu.play_next" xml:space="preserve"><value>Play Next</value></data>
-  <data name="menu.set_primary" xml:space="preserve"><value>Set as primary release</value></data>
-  <data name="menu.set_primary_done" xml:space="preserve"><value>set as primary release</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>delete</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>cancel</value></data>
-  <data name="outbox.load_failed" xml:space="preserve"><value>couldn't load the outbox</value></data>
-  <data name="outbox.pause" xml:space="preserve"><value>pause</value></data>
-  <data name="outbox.read_failed" xml:space="preserve"><value>couldn't read the outbox</value></data>
-  <data name="outbox.resume" xml:space="preserve"><value>resume</value></data>
-  <data name="outbox.retry_now" xml:space="preserve"><value>retry now</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>clear queue</value></data>
+  <data name="menu.play_next" xml:space="preserve"><value>اگلا چلائیں</value></data>
+  <data name="menu.set_primary" xml:space="preserve"><value>بنیادی اشاعت مقرر کریں</value></data>
+  <data name="menu.set_primary_done" xml:space="preserve"><value>بنیادی اشاعت مقرر کریں</value></data>
+  <data name="members.title" xml:space="preserve"><value>آلات</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>یہ آلہ</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>مالک</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>رکن</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>پیروکار</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>آلات لوڈ نہیں ہو سکے</value></data>
+  <data name="members.add" xml:space="preserve"><value>آلہ شامل کریں…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>ہٹائیں</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>یہ آلہ رسائی کھو دے گا اور کتب خانے کی کلید تبدیل ہو گی۔ تصدیق کے لیے ہٹائیں دوبارہ کلک کریں۔</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>آلہ شامل کریں</value></data>
+  <data name="members.approve.capture_hint" xml:space="preserve"><value>نئے آلے پر کتب خانے میں شامل ہوں کھولیں اور اس کا رمز دکھائیں۔ اسے یہاں اسکین کریں، یا نیچے پیسٹ کریں۔</value></data>
+  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>آلے کا رمز پیسٹ کریں</value></data>
+  <data name="members.approve.decode" xml:space="preserve"><value>ڈی کوڈ کریں</value></data>
+  <data name="members.approve.invalid_request" xml:space="preserve"><value>غلط آلہ رمز</value></data>
+  <data name="members.approve.confirm_title" xml:space="preserve"><value>یہ آلہ منظور کریں؟</value></data>
+  <data name="members.approve.confirm_hint" xml:space="preserve"><value>یہ آپ کے کتب خانے میں شامل ہو گا اور ہم وقت سازی کر سکے گا۔ آپ کو اس پر درج کرنے کے لیے رمز ملے گا۔</value></data>
+  <data name="members.approve.confirm" xml:space="preserve"><value>منظور کریں</value></data>
+  <data name="members.approve.in_progress" xml:space="preserve"><value>آلہ منظور ہو رہا ہے…</value></data>
+  <data name="members.approve.failed" xml:space="preserve"><value>یہ آلہ منظور نہیں ہو سکا</value></data>
+  <data name="members.approve.invited_hint" xml:space="preserve"><value>یہ رمز نئے آلے پر درج کریں۔</value></data>
+  <data name="outbox.delete.kind" xml:space="preserve"><value>حذف کریں</value></data>
+  <data name="outbox.cancel_item" xml:space="preserve"><value>منسوخ کریں</value></data>
+  <data name="outbox.load_failed" xml:space="preserve"><value>آؤٹ باکس لوڈ نہیں ہو سکا</value></data>
+  <data name="outbox.pause" xml:space="preserve"><value>روکیں</value></data>
+  <data name="outbox.read_failed" xml:space="preserve"><value>آؤٹ باکس پڑھا نہیں جا سکا</value></data>
+  <data name="outbox.resume" xml:space="preserve"><value>جاری رکھیں</value></data>
+  <data name="outbox.retry_now" xml:space="preserve"><value>اب دوبارہ کوشش کریں</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>قطار صاف کریں</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>قطار سے ہٹائیں</value></data>
-  <data name="queue.title" xml:space="preserve"><value>queue</value></data>
-  <data name="queue.section.up_next" xml:space="preserve"><value>اگلا</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>یہاں سے چل رہا ہے</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>آپ کی لائبریری</value></data>
-  <data name="queue.shuffle.off" xml:space="preserve"><value>turn off shuffle</value></data>
-  <data name="queue.shuffle.on" xml:space="preserve"><value>shuffle</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>restore code</value></data>
-  <data name="restore.confirm" xml:space="preserve"><value>restore</value></data>
-  <data name="restore.failed" xml:space="preserve"><value>restore failed</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloud اسٹوریج</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>خفیہ کاری key (hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>لائبریری id</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>لائبریری name (optional)</value></data>
-  <data name="restore.from_cloud" xml:space="preserve"><value>restore from cloud</value></data>
-  <data name="restore.from_cloud_title" xml:space="preserve"><value>restore from cloud</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>restore from code</value></data>
-  <data name="restore.in_progress" xml:space="preserve"><value>restoring…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>restoring {name}…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>invalid restore code</value></data>
-  <data name="s3.field.access_key" xml:space="preserve"><value>access key</value></data>
-  <data name="s3.field.bucket" xml:space="preserve"><value>S3 bucket</value></data>
-  <data name="s3.field.endpoint" xml:space="preserve"><value>endpoint (optional)</value></data>
-  <data name="s3.field.key_prefix" xml:space="preserve"><value>key prefix (optional)</value></data>
-  <data name="s3.field.region" xml:space="preserve"><value>region</value></data>
-  <data name="s3.field.secret_key" xml:space="preserve"><value>secret key</value></data>
-  <data name="search.failed" xml:space="preserve"><value>Search failed</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>اگلا</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>شفل بند کریں</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>شفل</value></data>
+  <data name="queue.title" xml:space="preserve"><value>قطار</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>بحالی رمز</value></data>
+  <data name="restore.confirm" xml:space="preserve"><value>بحال کریں</value></data>
+  <data name="restore.failed" xml:space="preserve"><value>بحالی ناکام</value></data>
+  <data name="restore.field.cloud_storage" xml:space="preserve"><value>کلاؤڈ اسٹوریج</value></data>
+  <data name="restore.field.encryption_key" xml:space="preserve"><value>خفیہ کاری کلید (hex)</value></data>
+  <data name="restore.field.library_id" xml:space="preserve"><value>لائبریری ID</value></data>
+  <data name="restore.field.library_name" xml:space="preserve"><value>لائبریری کا نام (اختیاری)</value></data>
+  <data name="restore.from_cloud" xml:space="preserve"><value>کلاؤڈ سے بحال کریں</value></data>
+  <data name="restore.from_cloud_title" xml:space="preserve"><value>کلاؤڈ سے بحال کریں</value></data>
+  <data name="restore.from_code" xml:space="preserve"><value>رمز سے بحال کریں</value></data>
+  <data name="restore.in_progress" xml:space="preserve"><value>بحال ہو رہا ہے…</value></data>
+  <data name="restore.in_progress_named" xml:space="preserve"><value>{name} بحال ہو رہا ہے…</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>غلط بحالی رمز</value></data>
+  <data name="s3.field.access_key" xml:space="preserve"><value>رسائی کلید</value></data>
+  <data name="s3.field.bucket" xml:space="preserve"><value>S3 بکٹ</value></data>
+  <data name="s3.field.endpoint" xml:space="preserve"><value>اختتامی نقطہ (اختیاری)</value></data>
+  <data name="s3.field.key_prefix" xml:space="preserve"><value>کلید سابقہ (اختیاری)</value></data>
+  <data name="s3.field.region" xml:space="preserve"><value>خطہ</value></data>
+  <data name="s3.field.secret_key" xml:space="preserve"><value>خفیہ کلید</value></data>
+  <data name="search.failed" xml:space="preserve"><value>تلاش ناکام</value></data>
   <data name="search.field.album" xml:space="preserve"><value>album</value></data>
   <data name="search.field.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>source</value></data>
-  <data name="search.no_matches" xml:space="preserve"><value>no matches</value></data>
-  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs token</value></data>
-  <data name="settings.discogs.recheck" xml:space="preserve"><value>re-check</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs rejected this key — check it and save again.</value></data>
-  <data name="settings.discogs.remove" xml:space="preserve"><value>remove token</value></data>
-  <data name="settings.discogs.save" xml:space="preserve"><value>save token</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>couldn't save the key — something went wrong.</value></data>
-  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API token</value></data>
-  <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
+  <data name="search.field.source" xml:space="preserve"><value>ماخذ</value></data>
+  <data name="search.no_matches" xml:space="preserve"><value>کوئی میل نہیں</value></data>
+  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs ٹوکن</value></data>
+  <data name="settings.discogs.recheck" xml:space="preserve"><value>دوبارہ جانچیں</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs نے یہ کلید مسترد کر دی — اسے جانچ کر دوبارہ محفوظ کریں۔</value></data>
+  <data name="settings.discogs.remove" xml:space="preserve"><value>ٹوکن ہٹائیں</value></data>
+  <data name="settings.discogs.save" xml:space="preserve"><value>ٹوکن محفوظ کریں</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>کلید محفوظ نہیں ہو سکی — کچھ غلط ہو گیا۔</value></data>
+  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API ٹوکن</value></data>
+  <data name="settings.discogs.validating" xml:space="preserve"><value>توثیق ہو رہی ہے…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>اطراف کے درمیان وقفہ</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>لائبریری: {name}</value></data>
-  <data name="settings.lock_library" xml:space="preserve"><value>lock لائبریری</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>سائیڈز کے درمیان توقف</value></data>
-  <data name="settings.restore_code.label" xml:space="preserve"><value>restore code (enter on another device)</value></data>
-  <data name="settings.restore_code.show" xml:space="preserve"><value>show restore code</value></data>
-  <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(unavailable — is مطابقت پذیری connected?)</value></data>
-  <data name="settings.s3.connect" xml:space="preserve"><value>connect S3</value></data>
-  <data name="settings.s3.connecting" xml:space="preserve"><value>connecting to S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>browsable — stored unencrypted</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>لائبریری مقفل کریں</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>بازیابی</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>آپ کا بازیابی رمز اس کتب خانے کو نئے آلے پر بحال کرتا ہے جب منظوری کے لیے کوئی دوسرا آلہ دستیاب نہ ہو۔ جس کے پاس یہ ہو اسے مکمل رسائی ہے — اسے خفیہ رکھیں۔</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>بازیابی رمز</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>بازیابی رمز دکھائیں…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(دستیاب نہیں — کیا ہم آہنگی منسلک ہے؟)</value></data>
+  <data name="settings.s3.connect" xml:space="preserve"><value>S3 منسلک کریں</value></data>
+  <data name="settings.s3.connecting" xml:space="preserve"><value>S3 سے منسلک ہو رہا ہے…</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>براؤز کے قابل — غیر مرموز محفوظ</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>اسٹوریج</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>opaque — end-to-end encrypted</value></data>
-  <data name="settings.sync.disconnect" xml:space="preserve"><value>disconnect</value></data>
-  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} click disconnect again to confirm.</value></data>
-  <data name="settings.sync.now" xml:space="preserve"><value>مطابقت پذیری now</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>غیر شفاف — سرے سے سرے تک مرموز</value></data>
+  <data name="settings.sync.disconnect" xml:space="preserve"><value>منقطع کریں</value></data>
+  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} تصدیق کے لیے منقطع کریں دوبارہ کلک کریں۔</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>اب مطابقت پذیر کریں</value></data>
   <data name="settings.title" xml:space="preserve"><value>settings</value></data>
-  <data name="signal.exclude" xml:space="preserve"><value>exclude signal</value></data>
-  <data name="signal.include" xml:space="preserve"><value>include signal</value></data>
-  <data name="signal.kind.barcode" xml:space="preserve"><value>Barcode</value></data>
-  <data name="signal.kind.catalog" xml:space="preserve"><value>Catalog</value></data>
-  <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
+  <data name="signal.exclude" xml:space="preserve"><value>اشارہ خارج کریں</value></data>
+  <data name="signal.include" xml:space="preserve"><value>اشارہ شامل کریں</value></data>
+  <data name="signal.kind.barcode" xml:space="preserve"><value>بارکوڈ</value></data>
+  <data name="signal.kind.catalog" xml:space="preserve"><value>کیٹلاگ</value></data>
+  <data name="signal.kind.disc_id" xml:space="preserve"><value>ڈسک ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="sort.newest" xml:space="preserve"><value>newest</value></data>
+  <data name="sort.name" xml:space="preserve"><value>name</value></data>
+  <data name="sort.newest" xml:space="preserve"><value>تازہ ترین</value></data>
   <data name="sort.title" xml:space="preserve"><value>title</value></data>
   <data name="sort.year" xml:space="preserve"><value>year</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Move into لائبریری</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Pin for offline</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Move out of لائبریری…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Remove local copy</value></data>
+  <data name="storage.action.manage" xml:space="preserve"><value>لائبریری میں منتقل کریں</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>آف لائن کے لیے پن کریں</value></data>
+  <data name="storage.action.unmanage" xml:space="preserve"><value>لائبریری سے باہر منتقل کریں…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>مقامی نقل ہٹائیں</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# file} other {# files}}</value></data>
-  <data name="storage.load_failed" xml:space="preserve"><value>couldn't load اسٹوریج</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>Pinned</value></data>
-  <data name="storage.read_failed" xml:space="preserve"><value>couldn't read اسٹوریج</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>Managed</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Unmanaged</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>اسٹوریج لوڈ نہیں ہو سکا</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>پن شدہ</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>اسٹوریج پڑھا نہیں جا سکا</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>منظم</value></data>
+  <data name="storage.state.unmanaged" xml:space="preserve"><value>غیر منظم</value></data>
   <data name="storage.title" xml:space="preserve"><value>اسٹوریج</value></data>
-  <data name="sync.error_title" xml:space="preserve"><value>مطابقت پذیری error</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>مطابقت پذیری خرابی</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>دوبارہ جوڑیں</value></data>
-  <data name="sync.synced" xml:space="preserve"><value>مطابقت پذیریed {time}</value></data>
-  <data name="sync.syncing" xml:space="preserve"><value>مطابقت پذیریing…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Original</value></data>
-  <data name="welcome.choose_library" xml:space="preserve"><value>choose a لائبریری</value></data>
-  <data name="welcome.create_library" xml:space="preserve"><value>create لائبریری</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>no لائبریری yet</value></data>
-  <data name="welcome.your_libraries" xml:space="preserve"><value>your libraries</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>{time} مطابقت پذیر</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>مطابقت پذیری ہو رہی ہے…</value></data>
+  <data name="track.export.original" xml:space="preserve"><value>اصل</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>برآمد تیار نہیں ہو سکی۔</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>لائبریری منتخب کریں</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>کتب خانے میں شامل ہوں</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>لائبریری بنائیں</value></data>
+  <data name="welcome.no_library" xml:space="preserve"><value>ابھی کوئی لائبریری نہیں</value></data>
+  <data name="welcome.your_libraries" xml:space="preserve"><value>آپ کے کتب خانے</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
-  <data name="settings.discogs.connected" xml:space="preserve"><value>connected</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>saved — couldn't validate yet (offline). will retry.</value></data>
-  <data name="settings.sync.initializing" xml:space="preserve"><value>initializing</value></data>
-  <data name="settings.sync.not_connected" xml:space="preserve"><value>مطابقت پذیری: not connected</value></data>
-  <data name="settings.sync.ready" xml:space="preserve"><value>ready</value></data>
+  <data name="settings.discogs.connected" xml:space="preserve"><value>منسلک</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>محفوظ ہو گیا — ابھی توثیق نہیں ہو سکی (آف لائن)۔ دوبارہ کوشش ہو گی۔</value></data>
+  <data name="settings.sync.initializing" xml:space="preserve"><value>شروع ہو رہا ہے</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>مطابقت پذیری: منسلک نہیں</value></data>
+  <data name="settings.sync.ready" xml:space="preserve"><value>تیار</value></data>
   <data name="settings.sync.status" xml:space="preserve"><value>مطابقت پذیری: {provider}{account} — {state}</value></data>
-  <data name="download.title" xml:space="preserve"><value>downloads</value></data>
-  <data name="download.paused" xml:space="preserve"><value>paused</value></data>
-  <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
-  <data name="download.state.downloading" xml:space="preserve"><value>downloading</value></data>
-  <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
-  <data name="settings.automation.label" xml:space="preserve"><value>آٹومیشن</value></data>
+  <data name="download.title" xml:space="preserve"><value>ڈاؤن لوڈز</value></data>
+  <data name="download.paused" xml:space="preserve"><value>رکا ہوا</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>قطار میں</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>ڈاؤن لوڈ ہو رہا ہے</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>ناکام</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>خودکاری</value></data>
   <data name="settings.automation.enable_mcp" xml:space="preserve"><value>MCP سرور فعال کریں</value></data>
   <data name="settings.automation.port" xml:space="preserve"><value>پورٹ</value></data>
   <data name="settings.automation.refresh" xml:space="preserve"><value>حالت تازہ کریں</value></data>
@@ -220,8 +263,8 @@
   <data name="settings.automation.rotate_token" xml:space="preserve"><value>ٹوکن تبدیل کریں</value></data>
   <data name="settings.automation.status.running" xml:space="preserve"><value>MCP سرور: {url}</value></data>
   <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP سرور غیر فعال ہے</value></data>
-  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>MCP سرور کی تشکیل درست نہیں ہے</value></data>
-  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP ٹوکن دستیاب نہیں ہے</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>MCP سرور کی ترتیب غلط ہے</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP ٹوکن دستیاب نہیں</value></data>
   <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP سرور شروع نہیں ہو سکا</value></data>
   <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP سرور رک گیا</value></data>
   <data name="settings.automation.invalid_port" xml:space="preserve"><value>1 سے 65535 تک پورٹ درج کریں</value></data>
@@ -229,26 +272,44 @@
   <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP ٹوکن دستیاب نہیں</value></data>
   <data name="settings.automation.token_copied" xml:space="preserve"><value>ٹوکن کاپی ہو گیا</value></data>
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>ٹوکن تبدیل کر کے کاپی ہو گیا</value></data>
-  <data name="sort.name" xml:space="preserve"><value>name</value></data>
-  <data name="library.mode.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="library.mode.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="library.no_composers" xml:space="preserve"><value>No composers</value></data>
-  <data name="search.section.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="search.section.tracks" xml:space="preserve"><value>Tracks</value></data>
-  <data name="search.section.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="search.section.works" xml:space="preserve"><value>Works</value></data>
-  <data name="search.section.releases" xml:space="preserve"><value>Releases</value></data>
-  <data name="search.section.credits" xml:space="preserve"><value>Credits</value></data>
-  <data name="search.section.recordings" xml:space="preserve"><value>Recordings</value></data>
-  <data name="composer.open_failed" xml:space="preserve"><value>Could not open composer detail</value></data>
-  <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
-  <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
-  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Bit depth</value></data>
-  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Source</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>البمز</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>موسیقار</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>کوئی موسیقار نہیں</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>البمز</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>نغمے</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>موسیقار</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>کام</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>اشاعتیں</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>اعزازات</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>ریکارڈنگز</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>موسیقار کی تفصیل نہیں کھل سکی</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>کام کی تفصیل نہیں کھل سکی</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} کام</value></data>
+  <data name="settings.export.label" xml:space="preserve"><value>برآمد</value></data>
+  <data name="settings.export.default_track_format" xml:space="preserve"><value>طے شدہ نغمہ ساخت</value></data>
+  <data name="settings.export.default_release_format" xml:space="preserve"><value>طے شدہ اشاعت ساخت</value></data>
+  <data name="settings.export.presets" xml:space="preserve"><value>پیش سیٹس</value></data>
+  <data name="settings.export.preset_name" xml:space="preserve"><value>نام</value></data>
+  <data name="settings.export.preset_track" xml:space="preserve"><value>نغمہ</value></data>
+  <data name="settings.export.preset_release" xml:space="preserve"><value>اشاعت</value></data>
+  <data name="settings.export.preset_pregap" xml:space="preserve"><value>پری گیپ</value></data>
+  <data name="settings.export.add_flac" xml:space="preserve"><value>FLAC شامل کریں</value></data>
+  <data name="settings.export.add_mp3" xml:space="preserve"><value>MP3 شامل کریں</value></data>
+  <data name="settings.export.add_opus" xml:space="preserve"><value>Opus شامل کریں</value></data>
+  <data name="settings.export.add_wav" xml:space="preserve"><value>WAV شامل کریں</value></data>
+  <data name="settings.export.add_aiff" xml:space="preserve"><value>AIFF شامل کریں</value></data>
+  <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>HTOA کے علاوہ شامل کریں</value></data>
+  <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>HTOA سمیت شامل کریں</value></data>
+  <data name="settings.export.pregap.exclude" xml:space="preserve"><value>خارج کریں</value></data>
+  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>ایک مسل + CUE</value></data>
+  <data name="action.remove" xml:space="preserve"><value>ہٹائیں</value></data>
+  <data name="settings.export.filename_format" xml:space="preserve"><value>مسل نام ساخت</value></data>
+  <data name="settings.export.tokens_help" xml:space="preserve"><value>دستیاب ٹوکن: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
+  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>بٹ گہرائی</value></data>
+  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>ماخذ</value></data>
   <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
   <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
-  <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
-  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>واحد فائل + CUE</value></data>
+  <data name="settings.export.bitrate" xml:space="preserve"><value>بٹ شرح</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>برآمد کی ترتیبات محفوظ نہیں ہو سکیں</value></data>
 </root>

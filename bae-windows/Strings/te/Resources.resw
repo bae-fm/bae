@@ -2,253 +2,314 @@
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
-  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>search</value></data>
-  <data name="LibrariesButton.Content" xml:space="preserve"><value>libraries</value></data>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>శోధన</value></data>
+  <data name="LibrariesButton.Content" xml:space="preserve"><value>లైబ్రరీలు</value></data>
   <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>లైబ్రరీని షఫుల్ చేయి</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>close</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>close లైబ్రరీ</value></data>
-  <data name="ImportButton.Content" xml:space="preserve"><value>import</value></data>
+  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>మూసివేయి</value></data>
+  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>లైబ్రరీని మూసివేయండి</value></data>
+  <data name="ImportButton.Content" xml:space="preserve"><value>దిగుమతి</value></data>
   <data name="StorageButton.Content" xml:space="preserve"><value>నిల్వ</value></data>
-  <data name="SettingsButton.Content" xml:space="preserve"><value>settings</value></data>
+  <data name="SettingsButton.Content" xml:space="preserve"><value>సెట్టింగ్‌లు</value></data>
   <data name="action.cancel" xml:space="preserve"><value>రద్దు</value></data>
   <data name="action.close" xml:space="preserve"><value>మూసివేయి</value></data>
   <data name="action.delete" xml:space="preserve"><value>తొలగించు</value></data>
   <data name="action.import" xml:space="preserve"><value>దిగుమతి</value></data>
-  <data name="action.ok" xml:space="preserve"><value>సరే</value></data>
+  <data name="action.ok" xml:space="preserve"><value>OK</value></data>
   <data name="action.play" xml:space="preserve"><value>ప్లే</value></data>
   <data name="action.save" xml:space="preserve"><value>సేవ్</value></data>
-  <data name="action.search" xml:space="preserve"><value>search</value></data>
-  <data name="album.delete.body" xml:space="preserve"><value>This removes the release from the లైబ్రరీ.</value></data>
-  <data name="album.delete.failed" xml:space="preserve"><value>couldn't delete</value></data>
-  <data name="album.delete.title" xml:space="preserve"><value>delete release?</value></data>
-  <data name="album.edit.label" xml:space="preserve"><value>edit</value></data>
-  <data name="album.edit.load_failed" xml:space="preserve"><value>couldn't load the మెటాడేటా editor</value></data>
-  <data name="album.edit.reset" xml:space="preserve"><value>Reset to Source</value></data>
-  <data name="album.edit.reset_failed" xml:space="preserve"><value>couldn't reset to source</value></data>
-  <data name="album.edit.title" xml:space="preserve"><value>edit మెటాడేటా</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>Gallery</value></data>
-  <data name="album.open_failed" xml:space="preserve"><value>couldn't open this album</value></data>
-  <data name="album.reidentify.label" xml:space="preserve"><value>re-identify</value></data>
-  <data name="album.reidentify.confirm" xml:space="preserve"><value>Re-identify</value></data>
-  <data name="album.reidentify.title" xml:space="preserve"><value>re-identify</value></data>
-  <data name="album.release_picker" xml:space="preserve"><value>Release</value></data>
-  <data name="album.shuffle" xml:space="preserve"><value>shuffle</value></data>
+  <data name="action.search" xml:space="preserve"><value>శోధన</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>ఇది విడుదలను లైబ్రరీ నుండి తీసివేస్తుంది.</value></data>
+  <data name="album.delete.failed" xml:space="preserve"><value>తొలగించలేకపోయింది</value></data>
+  <data name="album.delete.title" xml:space="preserve"><value>విడుదలను తొలగించాలా?</value></data>
+  <data name="album.edit.label" xml:space="preserve"><value>సవరించు</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>మెటాడేటా సవరకాన్ని లోడ్ చేయలేకపోయింది</value></data>
+  <data name="album.edit.reset" xml:space="preserve"><value>మూలానికి రీసెట్ చేయి</value></data>
+  <data name="album.edit.reset_failed" xml:space="preserve"><value>మూలానికి రీసెట్ చేయలేకపోయింది</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>మెటాడేటాను సవరించండి</value></data>
+  <data name="album.gallery" xml:space="preserve"><value>గ్యాలరీ</value></data>
+  <data name="album.open_failed" xml:space="preserve"><value>ఈ ఆల్బమ్‌ను తెరవలేకపోయింది</value></data>
+  <data name="album.reidentify.label" xml:space="preserve"><value>మళ్లీ గుర్తించు</value></data>
+  <data name="album.reidentify.confirm" xml:space="preserve"><value>మళ్లీ గుర్తించు</value></data>
+  <data name="album.reidentify.title" xml:space="preserve"><value>మళ్లీ గుర్తించు</value></data>
+  <data name="album.release_picker" xml:space="preserve"><value>విడుదల</value></data>
+  <data name="album.shuffle" xml:space="preserve"><value>షఫుల్</value></data>
   <data name="cloud.provider.dropbox" xml:space="preserve"><value>Dropbox</value></data>
   <data name="cloud.provider.google_drive" xml:space="preserve"><value>Google Drive</value></data>
   <data name="cloud.provider.onedrive" xml:space="preserve"><value>OneDrive</value></data>
   <data name="cloud.provider.s3" xml:space="preserve"><value>S3</value></data>
-  <data name="cloud.signin.failed" xml:space="preserve"><value>cloud sign-in failed</value></data>
-  <data name="cloud.signin.in_progress" xml:space="preserve"><value>signing in to {provider}…</value></data>
-  <data name="cloud.signin.not_configured" xml:space="preserve"><value>cloud sign-in isn't configured on this build (no oauth-creds.json)</value></data>
-  <data name="cloud.unsupported_provider" xml:space="preserve"><value>this build doesn't support {provider} సింక్</value></data>
-  <data name="cover.change_title" xml:space="preserve"><value>change cover</value></data>
-  <data name="cover.fetch_failed" xml:space="preserve"><value>couldn't fetch remote covers</value></data>
-  <data name="cover.fetching" xml:space="preserve"><value>fetching covers…</value></data>
-  <data name="cover.images_load_failed" xml:space="preserve"><value>couldn't load this release's images</value></data>
-  <data name="cover.none_available" xml:space="preserve"><value>No cover art available — the import uses its default cover.</value></data>
-  <data name="cover.none_remote" xml:space="preserve"><value>No remote covers found</value></data>
-  <data name="cover.pick_hint" xml:space="preserve"><value>Pick a cover, or leave unselected to use the default.</value></data>
-  <data name="cover.release_files" xml:space="preserve"><value>Release files</value></data>
-  <data name="cover.remote_sources" xml:space="preserve"><value>Remote sources</value></data>
-  <data name="cover.section_title" xml:space="preserve"><value>Cover</value></data>
-  <data name="cover.show_failed" xml:space="preserve"><value>couldn't show remote covers: {detail}</value></data>
-  <data name="error.playback_title" xml:space="preserve"><value>playback error</value></data>
-  <data name="error.title" xml:space="preserve"><value>error</value></data>
-  <data name="gallery.load_failed" xml:space="preserve"><value>couldn't load the gallery</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>couldn't read the gallery</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>gallery</value></data>
-  <data name="identify.conflict" xml:space="preserve"><value>conflict</value></data>
-  <data name="identify.error" xml:space="preserve"><value>error</value></data>
-  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {found (#)} other {found (#)}}</value></data>
-  <data name="identify.identifying" xml:space="preserve"><value>identifying…</value></data>
-  <data name="identify.manual" xml:space="preserve"><value>manual search only</value></data>
-  <data name="identify.not_found" xml:space="preserve"><value>not found</value></data>
-  <data name="import.already_in_library" xml:space="preserve"><value>this release is already in your లైబ్రరీ</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>Back to Search</value></data>
-  <data name="import.choose_folder" xml:space="preserve"><value>choose folder &amp;amp; scan</value></data>
-  <data name="import.complete" xml:space="preserve"><value>imported</value></data>
-  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# track} other {# tracks}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>confirm import</value></data>
-  <data name="import.drop_caption" xml:space="preserve"><value>scan &amp;amp; import</value></data>
-  <data name="import.drop_folder_only" xml:space="preserve"><value>drop a folder to import</value></data>
-  <data name="import.drop_read_failed" xml:space="preserve"><value>could not read the dropped item</value></data>
-  <data name="import.error_title" xml:space="preserve"><value>import error</value></data>
-  <data name="import.error.load_release" xml:space="preserve"><value>couldn't load the release to import</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>couldn't load నిల్వ settings</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>couldn't read నిల్వ settings</value></data>
-  <data name="import.failed" xml:space="preserve"><value>import failed</value></data>
-  <data name="import.field.artist_manual" xml:space="preserve"><value>artist (manual search)</value></data>
-  <data name="import.no_releases" xml:space="preserve"><value>no releases found</value></data>
-  <data name="import.preview" xml:space="preserve"><value>preview</value></data>
-  <data name="import.progress.percent" xml:space="preserve"><value>importing {percent}%</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>import release</value></data>
-  <data name="import.rerun_identify" xml:space="preserve"><value>re-run identification</value></data>
-  <data name="import.scanning" xml:space="preserve"><value>scanning…</value></data>
-  <data name="import.storage.keep_local" xml:space="preserve"><value>Keep local copy</value></data>
-  <data name="import.storage.managed" xml:space="preserve"><value>Managed</value></data>
-  <data name="import.title" xml:space="preserve"><value>import</value></data>
-  <data name="import.view_in_library" xml:space="preserve"><value>view in లైబ్రరీ</value></data>
-  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  active</value></data>
-  <data name="libraries.new" xml:space="preserve"><value>new లైబ్రరీ</value></data>
-  <data name="libraries.rename" xml:space="preserve"><value>rename</value></data>
-  <data name="libraries.title" xml:space="preserve"><value>libraries</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>couldn't create a లైబ్రరీ</value></data>
-  <data name="library.empty" xml:space="preserve"><value>లైబ్రరీ is empty</value></data>
-  <data name="library.load_failed" xml:space="preserve"><value>couldn't load the లైబ్రరీ</value></data>
-  <data name="library.locked" xml:space="preserve"><value>లైబ్రరీ is locked</value></data>
-  <data name="library.open_failed" xml:space="preserve"><value>couldn't open the లైబ్రరీ</value></data>
-  <data name="library.unlock.body" xml:space="preserve"><value>This లైబ్రరీ is encrypted and its key isn't on this device. Enter the 64-character hex key to unlock it.</value></data>
+  <data name="cloud.signin.failed" xml:space="preserve"><value>క్లౌడ్ సైన్-ఇన్ విఫలమైంది</value></data>
+  <data name="cloud.signin.in_progress" xml:space="preserve"><value>{provider}లో సైన్ ఇన్ అవుతోంది…</value></data>
+  <data name="cloud.signin.not_configured" xml:space="preserve"><value>ఈ బిల్డ్‌లో క్లౌడ్ సైన్-ఇన్ కాన్ఫిగర్ చేయబడలేదు (oauth-creds.json లేదు)</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>ఈ బిల్డ్ {provider} సింక్‌కు మద్దతు ఇవ్వదు</value></data>
+  <data name="cover.change_title" xml:space="preserve"><value>కవర్ మార్చు</value></data>
+  <data name="cover.fetch_failed" xml:space="preserve"><value>దూరస్థ కవర్‌లను తెచ్చుకోలేకపోయింది</value></data>
+  <data name="cover.fetching" xml:space="preserve"><value>కవర్‌లు తెస్తోంది…</value></data>
+  <data name="cover.images_load_failed" xml:space="preserve"><value>ఈ విడుదల చిత్రాలను లోడ్ చేయలేకపోయింది</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>కవర్ ఆర్ట్ అందుబాటులో లేదు — దిగుమతి దాని డిఫాల్ట్ కవర్‌ను ఉపయోగిస్తుంది.</value></data>
+  <data name="cover.none_remote" xml:space="preserve"><value>దూరస్థ కవర్‌లు కనబడలేదు</value></data>
+  <data name="cover.pick_hint" xml:space="preserve"><value>కవర్‌ను ఎంచుకోండి, లేదా డిఫాల్ట్ ఉపయోగించడానికి ఎంపిక చేయకుండా వదిలేయండి.</value></data>
+  <data name="cover.release_files" xml:space="preserve"><value>విడుదల ఫైల్‌లు</value></data>
+  <data name="cover.remote_sources" xml:space="preserve"><value>దూరస్థ మూలాలు</value></data>
+  <data name="cover.section_title" xml:space="preserve"><value>కవర్</value></data>
+  <data name="cover.show_failed" xml:space="preserve"><value>దూరస్థ కవర్‌లను చూపించలేకపోయింది: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>వెనక్కి</value></data>
+  <data name="action.copy" xml:space="preserve"><value>కాపీ చేయి</value></data>
+  <data name="action.done" xml:space="preserve"><value>పూర్తయింది</value></data>
+  <data name="action.scan" xml:space="preserve"><value>స్కాన్…</value></data>
+  <data name="error.playback_title" xml:space="preserve"><value>ప్లేబ్యాక్ లోపం</value></data>
+  <data name="error.title" xml:space="preserve"><value>లోపం</value></data>
+  <data name="gallery.load_failed" xml:space="preserve"><value>గ్యాలరీని లోడ్ చేయలేకపోయింది</value></data>
+  <data name="gallery.read_failed" xml:space="preserve"><value>గ్యాలరీని చదవలేకపోయింది</value></data>
+  <data name="gallery.title" xml:space="preserve"><value>గ్యాలరీ</value></data>
+  <data name="identify.conflict" xml:space="preserve"><value>ఘర్షణ</value></data>
+  <data name="identify.error" xml:space="preserve"><value>లోపం</value></data>
+  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {కనబడింది (#)} other {కనబడ్డాయి (#)}}</value></data>
+  <data name="identify.identifying" xml:space="preserve"><value>గుర్తిస్తోంది…</value></data>
+  <data name="identify.manual" xml:space="preserve"><value>చేతి శోధన మాత్రమే</value></data>
+  <data name="identify.not_found" xml:space="preserve"><value>కనబడలేదు</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>ఈ విడుదల ఇప్పటికే మీ లైబ్రరీలో ఉంది</value></data>
+  <data name="import.back_to_search" xml:space="preserve"><value>శోధనకు తిరిగి వెళ్లు</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>ఫోల్డర్‌ను ఎంచుకుని స్కాన్ చేయండి</value></data>
+  <data name="import.complete" xml:space="preserve"><value>దిగుమతి అయింది</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# ట్రాక్} other {# ట్రాక్‌లు}}</value></data>
+  <data name="import.confirm_title" xml:space="preserve"><value>దిగుమతిని నిర్ధారించు</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>స్కాన్ చేసి దిగుమతి చేయండి</value></data>
+  <data name="import.drop_folder_only" xml:space="preserve"><value>దిగుమతి కోసం ఫోల్డర్‌ను వదలండి</value></data>
+  <data name="import.drop_read_failed" xml:space="preserve"><value>వదిలిన అంశాన్ని చదవలేకపోయింది</value></data>
+  <data name="import.error_title" xml:space="preserve"><value>దిగుమతి లోపం</value></data>
+  <data name="import.error.load_release" xml:space="preserve"><value>దిగుమతి చేయాల్సిన విడుదలను లోడ్ చేయలేకపోయింది</value></data>
+  <data name="import.error.load_storage_settings" xml:space="preserve"><value>నిల్వ సెట్టింగ్‌లను లోడ్ చేయలేకపోయింది</value></data>
+  <data name="import.error.read_storage_settings" xml:space="preserve"><value>నిల్వ సెట్టింగ్‌లను చదవలేకపోయింది</value></data>
+  <data name="import.failed" xml:space="preserve"><value>దిగుమతి విఫలమైంది</value></data>
+  <data name="import.field.artist_manual" xml:space="preserve"><value>కళాకారుడు (చేతి శోధన)</value></data>
+  <data name="import.no_releases" xml:space="preserve"><value>విడుదలలు కనబడలేదు</value></data>
+  <data name="import.preview" xml:space="preserve"><value>ప్రివ్యూ</value></data>
+  <data name="import.progress.percent" xml:space="preserve"><value>దిగుమతి అవుతోంది {percent}%</value></data>
+  <data name="import.release_title" xml:space="preserve"><value>విడుదలను దిగుమతి చేయి</value></data>
+  <data name="import.rerun_identify" xml:space="preserve"><value>గుర్తింపును మళ్లీ రన్ చేయి</value></data>
+  <data name="import.scanning" xml:space="preserve"><value>స్కాన్ చేస్తోంది…</value></data>
+  <data name="import.storage.keep_local" xml:space="preserve"><value>లోకల్ కాపీని ఉంచు</value></data>
+  <data name="import.storage.managed" xml:space="preserve"><value>నిర్వహించబడుతోంది</value></data>
+  <data name="import.title" xml:space="preserve"><value>దిగుమతి</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>లైబ్రరీలో చూడండి</value></data>
+  <data name="join.title" xml:space="preserve"><value>లైబ్రరీలో చేరు</value></data>
+  <data name="join.intro" xml:space="preserve"><value>ఈ పరికరాన్ని మీకు ఇప్పటికే మరో పరికరంలో ఉన్న లైబ్రరీకి జోడించండి.</value></data>
+  <data name="join.this_device_code" xml:space="preserve"><value>ఈ పరికరం కోడ్</value></data>
+  <data name="join.show_to_member" xml:space="preserve"><value>మీ లైబ్రరీలో ఇప్పటికే ఉన్న పరికరంలో సెట్టింగ్‌లు → పరికరాలు → పరికరాన్ని జోడించు తెరిచి దీన్ని స్కాన్ చేయండి లేదా అతికించండి.</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>ఈ పరికరం: {fingerprint}</value></data>
+  <data name="join.generate_failed" xml:space="preserve"><value>ఈ పరికరం కోడ్‌ను సృష్టించలేకపోయింది</value></data>
+  <data name="join.invite_label" xml:space="preserve"><value>ఆహ్వాన కోడ్</value></data>
+  <data name="join.invite_hint" xml:space="preserve"><value>ఆ పరికరం దీన్ని ఆమోదించిన తర్వాత, అది చూపించే ఆహ్వాన కోడ్‌ను నమోదు చేయండి.</value></data>
+  <data name="join.invite_placeholder" xml:space="preserve"><value>ఆహ్వాన కోడ్‌ను అతికించు</value></data>
+  <data name="join.invalid_invite" xml:space="preserve"><value>చెల్లని ఆహ్వాన కోడ్</value></data>
+  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · యజమాని {fingerprint}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>చేరు</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>{name}లో చేరుతోంది…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>లైబ్రరీలో చేరలేకపోయింది</value></data>
+  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  యాక్టివ్</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>కొత్త లైబ్రరీ</value></data>
+  <data name="libraries.rename" xml:space="preserve"><value>పేరు మార్చు</value></data>
+  <data name="libraries.title" xml:space="preserve"><value>లైబ్రరీలు</value></data>
+  <data name="library.create_failed" xml:space="preserve"><value>లైబ్రరీని సృష్టించలేకపోయింది</value></data>
+  <data name="library.empty" xml:space="preserve"><value>లైబ్రరీ ఖాళీగా ఉంది</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>లైబ్రరీని లోడ్ చేయలేకపోయింది</value></data>
+  <data name="library.locked" xml:space="preserve"><value>లైబ్రరీ లాక్ చేయబడింది</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>లైబ్రరీని తెరవలేకపోయింది</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>ఈ లైబ్రరీ గుప్తీకరించబడింది మరియు దాని కీ ఈ పరికరంలో లేదు. దాన్ని అన్‌లాక్ చేయడానికి 64-అక్షరాల హెక్స్ కీని నమోదు చేయండి.</value></data>
   <data name="library.unlock.confirm" xml:space="preserve"><value>అన్‌లాక్</value></data>
-  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64-character hex key</value></data>
-  <data name="library.unlock.title" xml:space="preserve"><value>unlock లైబ్రరీ</value></data>
-  <data name="menu.add_to_queue" xml:space="preserve"><value>Add to Queue</value></data>
-  <data name="menu.change_cover" xml:space="preserve"><value>Change cover…</value></data>
-  <data name="menu.delete" xml:space="preserve"><value>Delete…</value></data>
-  <data name="menu.export" xml:space="preserve"><value>Export…</value></data>
+  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64-అక్షరాల హెక్సాడెసిమల్ కీ</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>లైబ్రరీని అన్‌లాక్ చేయండి</value></data>
+  <data name="menu.add_to_queue" xml:space="preserve"><value>క్యూలో జోడించు</value></data>
+  <data name="menu.change_cover" xml:space="preserve"><value>కవర్ మార్చు…</value></data>
+  <data name="menu.delete" xml:space="preserve"><value>తొలగించు…</value></data>
+  <data name="menu.export" xml:space="preserve"><value>ఎగుమతి…</value></data>
   <data name="menu.play" xml:space="preserve"><value>ప్లే</value></data>
-  <data name="menu.play_next" xml:space="preserve"><value>Play Next</value></data>
-  <data name="menu.set_primary" xml:space="preserve"><value>Set as primary release</value></data>
-  <data name="menu.set_primary_done" xml:space="preserve"><value>set as primary release</value></data>
-  <data name="outbox.delete.kind" xml:space="preserve"><value>delete</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>cancel</value></data>
-  <data name="outbox.load_failed" xml:space="preserve"><value>couldn't load the outbox</value></data>
-  <data name="outbox.pause" xml:space="preserve"><value>pause</value></data>
-  <data name="outbox.read_failed" xml:space="preserve"><value>couldn't read the outbox</value></data>
-  <data name="outbox.resume" xml:space="preserve"><value>resume</value></data>
-  <data name="outbox.retry_now" xml:space="preserve"><value>retry now</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>clear queue</value></data>
+  <data name="menu.play_next" xml:space="preserve"><value>తర్వాత ప్లే చేయి</value></data>
+  <data name="menu.set_primary" xml:space="preserve"><value>ప్రాధమిక విడుదలగా సెట్ చేయి</value></data>
+  <data name="menu.set_primary_done" xml:space="preserve"><value>ప్రాధమిక విడుదలగా సెట్ చేయి</value></data>
+  <data name="members.title" xml:space="preserve"><value>పరికరాలు</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>ఈ పరికరం</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>యజమాని</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>సభ్యుడు</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>ఫాలోవర్</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>పరికరాలను లోడ్ చేయలేకపోయింది</value></data>
+  <data name="members.add" xml:space="preserve"><value>పరికరాన్ని జోడించు…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>తీసివేయి</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>ఈ పరికరం ప్రవేశం కోల్పోతుంది మరియు లైబ్రరీ కీ మార్చబడుతుంది. నిర్ధారించడానికి తీసివేయి మళ్లీ క్లిక్ చేయండి.</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>పరికరాన్ని జోడించు</value></data>
+  <data name="members.approve.capture_hint" xml:space="preserve"><value>కొత్త పరికరంలో లైబ్రరీలో చేరండి తెరిచి దాని కోడ్ చూపించండి. దాన్ని ఇక్కడ స్కాన్ చేయండి, లేదా క్రింద అతికించండి.</value></data>
+  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>పరికరం కోడ్‌ను అతికించు</value></data>
+  <data name="members.approve.decode" xml:space="preserve"><value>డీకోడ్</value></data>
+  <data name="members.approve.invalid_request" xml:space="preserve"><value>చెల్లని పరికరం కోడ్</value></data>
+  <data name="members.approve.confirm_title" xml:space="preserve"><value>ఈ పరికరాన్ని ఆమోదించాలా?</value></data>
+  <data name="members.approve.confirm_hint" xml:space="preserve"><value>ఇది మీ లైబ్రరీకి జోడించబడుతుంది మరియు సమకాలీకరించగలదు. అందులో నమోదు చేయడానికి మీకు ఒక కోడ్ వస్తుంది.</value></data>
+  <data name="members.approve.confirm" xml:space="preserve"><value>ఆమోదించు</value></data>
+  <data name="members.approve.in_progress" xml:space="preserve"><value>పరికరాన్ని ఆమోదిస్తోంది…</value></data>
+  <data name="members.approve.failed" xml:space="preserve"><value>ఈ పరికరాన్ని ఆమోదించలేకపోయింది</value></data>
+  <data name="members.approve.invited_hint" xml:space="preserve"><value>ఈ కోడ్‌ను కొత్త పరికరంలో నమోదు చేయండి.</value></data>
+  <data name="outbox.delete.kind" xml:space="preserve"><value>తొలగించు</value></data>
+  <data name="outbox.cancel_item" xml:space="preserve"><value>రద్దు చేయి</value></data>
+  <data name="outbox.load_failed" xml:space="preserve"><value>బయటికి పంపే పెట్టెను లోడ్ చేయలేకపోయింది</value></data>
+  <data name="outbox.pause" xml:space="preserve"><value>పాజ్</value></data>
+  <data name="outbox.read_failed" xml:space="preserve"><value>బయటికి పంపే పెట్టెను చదవలేకపోయింది</value></data>
+  <data name="outbox.resume" xml:space="preserve"><value>కొనసాగించు</value></data>
+  <data name="outbox.retry_now" xml:space="preserve"><value>ఇప్పుడే మళ్లీ ప్రయత్నించు</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>క్యూ ఖాళీ చేయి</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>క్యూ నుండి తీసివేయి</value></data>
-  <data name="queue.title" xml:space="preserve"><value>queue</value></data>
-  <data name="queue.section.up_next" xml:space="preserve"><value>తదుపరి</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>దీని నుండి ప్లే అవుతోంది</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>మీ లైబ్రరీ</value></data>
-  <data name="queue.shuffle.off" xml:space="preserve"><value>turn off shuffle</value></data>
-  <data name="queue.shuffle.on" xml:space="preserve"><value>shuffle</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>restore code</value></data>
-  <data name="restore.confirm" xml:space="preserve"><value>restore</value></data>
-  <data name="restore.failed" xml:space="preserve"><value>restore failed</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloud నిల్వ</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>ఎన్‌క్రిప్షన్ key (hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>లైబ్రరీ id</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>లైబ్రరీ name (optional)</value></data>
-  <data name="restore.from_cloud" xml:space="preserve"><value>restore from cloud</value></data>
-  <data name="restore.from_cloud_title" xml:space="preserve"><value>restore from cloud</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>restore from code</value></data>
-  <data name="restore.in_progress" xml:space="preserve"><value>restoring…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>restoring {name}…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>invalid restore code</value></data>
-  <data name="s3.field.access_key" xml:space="preserve"><value>access key</value></data>
-  <data name="s3.field.bucket" xml:space="preserve"><value>S3 bucket</value></data>
-  <data name="s3.field.endpoint" xml:space="preserve"><value>endpoint (optional)</value></data>
-  <data name="s3.field.key_prefix" xml:space="preserve"><value>key prefix (optional)</value></data>
-  <data name="s3.field.region" xml:space="preserve"><value>region</value></data>
-  <data name="s3.field.secret_key" xml:space="preserve"><value>secret key</value></data>
-  <data name="search.failed" xml:space="preserve"><value>Search failed</value></data>
-  <data name="search.field.album" xml:space="preserve"><value>album</value></data>
-  <data name="search.field.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>source</value></data>
-  <data name="search.no_matches" xml:space="preserve"><value>no matches</value></data>
-  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs token</value></data>
-  <data name="settings.discogs.recheck" xml:space="preserve"><value>re-check</value></data>
-  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs rejected this key — check it and save again.</value></data>
-  <data name="settings.discogs.remove" xml:space="preserve"><value>remove token</value></data>
-  <data name="settings.discogs.save" xml:space="preserve"><value>save token</value></data>
-  <data name="settings.discogs.save_failed" xml:space="preserve"><value>couldn't save the key — something went wrong.</value></data>
-  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API token</value></data>
-  <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>తర్వాత</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>షఫుల్ ఆఫ్ చేయి</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>షఫుల్</value></data>
+  <data name="queue.title" xml:space="preserve"><value>క్యూ</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>పునరుద్ధరణ కోడ్</value></data>
+  <data name="restore.confirm" xml:space="preserve"><value>పునరుద్ధరించు</value></data>
+  <data name="restore.failed" xml:space="preserve"><value>పునరుద్ధరణ విఫలమైంది</value></data>
+  <data name="restore.field.cloud_storage" xml:space="preserve"><value>క్లౌడ్ నిల్వ</value></data>
+  <data name="restore.field.encryption_key" xml:space="preserve"><value>గుప్తీకరణ కీ (హెక్స్)</value></data>
+  <data name="restore.field.library_id" xml:space="preserve"><value>లైబ్రరీ ID</value></data>
+  <data name="restore.field.library_name" xml:space="preserve"><value>లైబ్రరీ పేరు (ఐచ్చికం)</value></data>
+  <data name="restore.from_cloud" xml:space="preserve"><value>క్లౌడ్ నుంచి పునరుద్ధరించు</value></data>
+  <data name="restore.from_cloud_title" xml:space="preserve"><value>క్లౌడ్ నుంచి పునరుద్ధరించు</value></data>
+  <data name="restore.from_code" xml:space="preserve"><value>కోడ్ నుంచి పునరుద్ధరించు</value></data>
+  <data name="restore.in_progress" xml:space="preserve"><value>పునరుద్ధరిస్తోంది…</value></data>
+  <data name="restore.in_progress_named" xml:space="preserve"><value>{name} పునరుద్ధరిస్తోంది…</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>చెల్లని పునరుద్ధరణ కోడ్</value></data>
+  <data name="s3.field.access_key" xml:space="preserve"><value>ప్రవేశ కీ</value></data>
+  <data name="s3.field.bucket" xml:space="preserve"><value>S3 బకెట్</value></data>
+  <data name="s3.field.endpoint" xml:space="preserve"><value>ముగింపు బిందువు (ఐచ్ఛికం)</value></data>
+  <data name="s3.field.key_prefix" xml:space="preserve"><value>కీ ఉపసర్గ (ఐచ్ఛికం)</value></data>
+  <data name="s3.field.region" xml:space="preserve"><value>ప్రాంతం</value></data>
+  <data name="s3.field.secret_key" xml:space="preserve"><value>రహస్య కీ</value></data>
+  <data name="search.failed" xml:space="preserve"><value>శోధన విఫలమైంది</value></data>
+  <data name="search.field.album" xml:space="preserve"><value>ఆల్బమ్</value></data>
+  <data name="search.field.artist" xml:space="preserve"><value>కళాకారుడు</value></data>
+  <data name="search.field.source" xml:space="preserve"><value>మూలం</value></data>
+  <data name="search.no_matches" xml:space="preserve"><value>సరిపోలికలు లేవు</value></data>
+  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs టోకెన్</value></data>
+  <data name="settings.discogs.recheck" xml:space="preserve"><value>మళ్లీ తనిఖీ చేయి</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs ఈ కీని తిరస్కరించింది — దాన్ని తనిఖీ చేసి మళ్లీ సేవ్ చేయండి.</value></data>
+  <data name="settings.discogs.remove" xml:space="preserve"><value>టోకెన్ తీసివేయి</value></data>
+  <data name="settings.discogs.save" xml:space="preserve"><value>టోకెన్ సేవ్ చేయి</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>కీని సేవ్ చేయలేకపోయింది — ఏదో తప్పు జరిగింది.</value></data>
+  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API టోకెన్</value></data>
+  <data name="settings.discogs.validating" xml:space="preserve"><value>ధృవీకరిస్తోంది…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>వైపుల మధ్య విరామం</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>లైబ్రరీ: {name}</value></data>
-  <data name="settings.lock_library" xml:space="preserve"><value>lock లైబ్రరీ</value></data>
-  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>సైడ్‌ల మధ్య విరామం</value></data>
-  <data name="settings.restore_code.label" xml:space="preserve"><value>restore code (enter on another device)</value></data>
-  <data name="settings.restore_code.show" xml:space="preserve"><value>show restore code</value></data>
-  <data name="settings.restore_code.unavailable" xml:space="preserve"><value>(unavailable — is సింక్ connected?)</value></data>
-  <data name="settings.s3.connect" xml:space="preserve"><value>connect S3</value></data>
-  <data name="settings.s3.connecting" xml:space="preserve"><value>connecting to S3…</value></data>
-  <data name="settings.storage.browsable" xml:space="preserve"><value>browsable — stored unencrypted</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>లైబ్రరీని లాక్ చేయండి</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>రికవరీ</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>ఆమోదించడానికి మీ దగ్గర ఇతర పరికరం లేనప్పుడు, మీ రికవరీ కోడ్ ఈ లైబ్రరీని కొత్త పరికరంలో పునరుద్ధరిస్తుంది. అది ఉన్న ఎవరికైనా పూర్తి యాక్సెస్ ఉంటుంది — దాన్ని రహస్యంగా ఉంచండి.</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>రికవరీ కోడ్</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>రికవరీ కోడ్ చూపించు…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(అందుబాటులో లేదు — సింక్ కనెక్ట్ అయిందా?)</value></data>
+  <data name="settings.s3.connect" xml:space="preserve"><value>S3 కనెక్ట్ చేయి</value></data>
+  <data name="settings.s3.connecting" xml:space="preserve"><value>S3కు కనెక్ట్ అవుతోంది…</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>బ్రౌజ్ చేయదగినది — ఎన్‌క్రిప్ట్ చేయకుండా నిల్వ చేయబడింది</value></data>
   <data name="settings.storage.mode" xml:space="preserve"><value>నిల్వ</value></data>
-  <data name="settings.storage.opaque" xml:space="preserve"><value>opaque — end-to-end encrypted</value></data>
-  <data name="settings.sync.disconnect" xml:space="preserve"><value>disconnect</value></data>
-  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} click disconnect again to confirm.</value></data>
-  <data name="settings.sync.now" xml:space="preserve"><value>సింక్ now</value></data>
-  <data name="settings.title" xml:space="preserve"><value>settings</value></data>
-  <data name="signal.exclude" xml:space="preserve"><value>exclude signal</value></data>
-  <data name="signal.include" xml:space="preserve"><value>include signal</value></data>
-  <data name="signal.kind.barcode" xml:space="preserve"><value>Barcode</value></data>
-  <data name="signal.kind.catalog" xml:space="preserve"><value>Catalog</value></data>
-  <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
-  <data name="sort.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="sort.newest" xml:space="preserve"><value>newest</value></data>
-  <data name="sort.title" xml:space="preserve"><value>title</value></data>
-  <data name="sort.year" xml:space="preserve"><value>year</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Move into లైబ్రరీ</value></data>
-  <data name="storage.action.pin" xml:space="preserve"><value>Pin for offline</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Move out of లైబ్రరీ…</value></data>
-  <data name="storage.action.unpin" xml:space="preserve"><value>Remove local copy</value></data>
-  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# file} other {# files}}</value></data>
-  <data name="storage.load_failed" xml:space="preserve"><value>couldn't load నిల్వ</value></data>
-  <data name="storage.pinned" xml:space="preserve"><value>Pinned</value></data>
-  <data name="storage.read_failed" xml:space="preserve"><value>couldn't read నిల్వ</value></data>
-  <data name="storage.state.managed" xml:space="preserve"><value>Managed</value></data>
-  <data name="storage.state.unmanaged" xml:space="preserve"><value>Unmanaged</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>అపారదర్శకం — చివరి నుంచి చివరి వరకు గుప్తీకరించబడింది</value></data>
+  <data name="settings.sync.disconnect" xml:space="preserve"><value>డిస్‌కనెక్ట్ చేయి</value></data>
+  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} నిర్ధారించడానికి డిస్‌కనెక్ట్‌ను మళ్లీ క్లిక్ చేయండి.</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>ఇప్పుడే సింక్ చేయండి</value></data>
+  <data name="settings.title" xml:space="preserve"><value>సెట్టింగ్‌లు</value></data>
+  <data name="signal.exclude" xml:space="preserve"><value>సంకేతాన్ని మినహాయించు</value></data>
+  <data name="signal.include" xml:space="preserve"><value>సంకేతాన్ని చేర్చు</value></data>
+  <data name="signal.kind.barcode" xml:space="preserve"><value>బార్‌కోడ్</value></data>
+  <data name="signal.kind.catalog" xml:space="preserve"><value>కాటలాగ్</value></data>
+  <data name="signal.kind.disc_id" xml:space="preserve"><value>డిస్క్ ID</value></data>
+  <data name="sort.artist" xml:space="preserve"><value>కళాకారుడు</value></data>
+  <data name="sort.name" xml:space="preserve"><value>పేరు</value></data>
+  <data name="sort.newest" xml:space="preserve"><value>కొత్తవి</value></data>
+  <data name="sort.title" xml:space="preserve"><value>శీర్షిక</value></data>
+  <data name="sort.year" xml:space="preserve"><value>సంవత్సరం</value></data>
+  <data name="storage.action.manage" xml:space="preserve"><value>లైబ్రరీలోకి తరలించండి</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>ఆఫ్‌లైన్ కోసం పిన్ చేయి</value></data>
+  <data name="storage.action.unmanage" xml:space="preserve"><value>లైబ్రరీ నుండి బయటకు తరలించండి…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>లోకల్ కాపీని తీసివేయి</value></data>
+  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# ఫైల్} other {# ఫైల్‌లు}}</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>నిల్వను లోడ్ చేయలేకపోయింది</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>పిన్ చేయబడింది</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>నిల్వను చదవలేకపోయింది</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>నిర్వహించబడుతోంది</value></data>
+  <data name="storage.state.unmanaged" xml:space="preserve"><value>నిర్వహించబడలేదు</value></data>
   <data name="storage.title" xml:space="preserve"><value>నిల్వ</value></data>
-  <data name="sync.error_title" xml:space="preserve"><value>సింక్ error</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>సింక్ లోపం</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>మళ్లీ కనెక్ట్</value></data>
-  <data name="sync.synced" xml:space="preserve"><value>సింక్ed {time}</value></data>
-  <data name="sync.syncing" xml:space="preserve"><value>సింక్ing…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Original</value></data>
-  <data name="welcome.choose_library" xml:space="preserve"><value>choose a లైబ్రరీ</value></data>
-  <data name="welcome.create_library" xml:space="preserve"><value>create లైబ్రరీ</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>no లైబ్రరీ yet</value></data>
-  <data name="welcome.your_libraries" xml:space="preserve"><value>your libraries</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>{time}కి సింక్ చేయబడింది</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>సింక్ చేస్తోంది…</value></data>
+  <data name="track.export.original" xml:space="preserve"><value>అసలు</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>ఎగుమతిని సిద్ధం చేయలేకపోయింది.</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>లైబ్రరీని ఎంచుకోండి</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>లైబ్రరీలో చేరు</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>లైబ్రరీని సృష్టించండి</value></data>
+  <data name="welcome.no_library" xml:space="preserve"><value>ఇంకా లైబ్రరీ లేదు</value></data>
+  <data name="welcome.your_libraries" xml:space="preserve"><value>మీ లైబ్రరీలు</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
-  <data name="settings.discogs.connected" xml:space="preserve"><value>connected</value></data>
-  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>saved — couldn't validate yet (offline). will retry.</value></data>
-  <data name="settings.sync.initializing" xml:space="preserve"><value>initializing</value></data>
-  <data name="settings.sync.not_connected" xml:space="preserve"><value>సింక్: not connected</value></data>
-  <data name="settings.sync.ready" xml:space="preserve"><value>ready</value></data>
+  <data name="settings.discogs.connected" xml:space="preserve"><value>కనెక్ట్ అయింది</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>సేవ్ అయింది — ఇంకా ధృవీకరించలేకపోయింది (ఆఫ్‌లైన్). మళ్లీ ప్రయత్నిస్తుంది.</value></data>
+  <data name="settings.sync.initializing" xml:space="preserve"><value>ప్రారంభిస్తోంది</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>సింక్: కనెక్ట్ కాలేదు</value></data>
+  <data name="settings.sync.ready" xml:space="preserve"><value>సిద్ధం</value></data>
   <data name="settings.sync.status" xml:space="preserve"><value>సింక్: {provider}{account} — {state}</value></data>
-  <data name="download.title" xml:space="preserve"><value>downloads</value></data>
-  <data name="download.paused" xml:space="preserve"><value>paused</value></data>
-  <data name="download.state.queued" xml:space="preserve"><value>queued</value></data>
-  <data name="download.state.downloading" xml:space="preserve"><value>downloading</value></data>
-  <data name="download.state.failed" xml:space="preserve"><value>failed</value></data>
+  <data name="download.title" xml:space="preserve"><value>డౌన్‌లోడ్‌లు</value></data>
+  <data name="download.paused" xml:space="preserve"><value>పాజ్ అయింది</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>క్యూలో ఉంది</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>డౌన్‌లోడ్ అవుతోంది</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>విఫలమైంది</value></data>
   <data name="settings.automation.label" xml:space="preserve"><value>ఆటోమేషన్</value></data>
-  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>MCP సర్వర్‌ను ప్రారంభించండి</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>MCP సర్వర్‌ను ప్రారంభించు</value></data>
   <data name="settings.automation.port" xml:space="preserve"><value>పోర్ట్</value></data>
   <data name="settings.automation.refresh" xml:space="preserve"><value>స్థితిని రిఫ్రెష్ చేయండి</value></data>
   <data name="settings.automation.copy_token" xml:space="preserve"><value>టోకెన్‌ను కాపీ చేయండి</value></data>
   <data name="settings.automation.rotate_token" xml:space="preserve"><value>టోకెన్‌ను మార్చండి</value></data>
   <data name="settings.automation.status.running" xml:space="preserve"><value>MCP సర్వర్: {url}</value></data>
   <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP సర్వర్ నిలిపివేయబడింది</value></data>
-  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>MCP సర్వర్ కాన్ఫిగరేషన్ చెల్లదు</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>చెల్లని MCP సర్వర్ కాన్ఫిగరేషన్</value></data>
   <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP టోకెన్ అందుబాటులో లేదు</value></data>
-  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP సర్వర్ ప్రారంభించలేకపోయింది</value></data>
-  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP సర్వర్ ఆగిపోయింది</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP సర్వర్ ప్రారంభం కాలేకపోయింది</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP సర్వర్ ఆగింది</value></data>
   <data name="settings.automation.invalid_port" xml:space="preserve"><value>1 నుండి 65535 వరకు పోర్ట్‌ను నమోదు చేయండి</value></data>
   <data name="settings.automation.status_unavailable" xml:space="preserve"><value>MCP స్థితి అందుబాటులో లేదు</value></data>
   <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP టోకెన్ అందుబాటులో లేదు</value></data>
   <data name="settings.automation.token_copied" xml:space="preserve"><value>టోకెన్ కాపీ చేయబడింది</value></data>
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>టోకెన్ మార్చి కాపీ చేయబడింది</value></data>
-  <data name="sort.name" xml:space="preserve"><value>name</value></data>
-  <data name="library.mode.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="library.mode.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="library.no_composers" xml:space="preserve"><value>No composers</value></data>
-  <data name="search.section.albums" xml:space="preserve"><value>Albums</value></data>
-  <data name="search.section.tracks" xml:space="preserve"><value>Tracks</value></data>
-  <data name="search.section.composers" xml:space="preserve"><value>Composers</value></data>
-  <data name="search.section.works" xml:space="preserve"><value>Works</value></data>
-  <data name="search.section.releases" xml:space="preserve"><value>Releases</value></data>
-  <data name="search.section.credits" xml:space="preserve"><value>Credits</value></data>
-  <data name="search.section.recordings" xml:space="preserve"><value>Recordings</value></data>
-  <data name="composer.open_failed" xml:space="preserve"><value>Could not open composer detail</value></data>
-  <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
-  <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
-  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Bit depth</value></data>
-  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Source</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>ఆల్బమ్‌లు</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>సంగీతరచయితలు</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>సంగీతరచయితలు లేరు</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>ఆల్బమ్‌లు</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>ట్రాక్‌లు</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>సంగీతరచయితలు</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>కృతులు</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>విడుదలలు</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>క్రెడిట్‌లు</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>రికార్డింగ్‌లు</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>సంగీతరచయిత వివరాన్ని తెరవలేకపోయింది</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>కృతి వివరాన్ని తెరవలేకపోయింది</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} కృతులు</value></data>
+  <data name="settings.export.label" xml:space="preserve"><value>ఎగుమతి</value></data>
+  <data name="settings.export.default_track_format" xml:space="preserve"><value>డిఫాల్ట్ ట్రాక్ ఫార్మాట్</value></data>
+  <data name="settings.export.default_release_format" xml:space="preserve"><value>డిఫాల్ట్ విడుదల ఫార్మాట్</value></data>
+  <data name="settings.export.presets" xml:space="preserve"><value>ప్రీసెట్‌లు</value></data>
+  <data name="settings.export.preset_name" xml:space="preserve"><value>పేరు</value></data>
+  <data name="settings.export.preset_track" xml:space="preserve"><value>ట్రాక్</value></data>
+  <data name="settings.export.preset_release" xml:space="preserve"><value>విడుదల</value></data>
+  <data name="settings.export.preset_pregap" xml:space="preserve"><value>ముందస్తు విరామం</value></data>
+  <data name="settings.export.add_flac" xml:space="preserve"><value>FLAC జోడించు</value></data>
+  <data name="settings.export.add_mp3" xml:space="preserve"><value>MP3 జోడించు</value></data>
+  <data name="settings.export.add_opus" xml:space="preserve"><value>Opus జోడించు</value></data>
+  <data name="settings.export.add_wav" xml:space="preserve"><value>WAV జోడించు</value></data>
+  <data name="settings.export.add_aiff" xml:space="preserve"><value>AIFF జోడించు</value></data>
+  <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>HTOA తప్ప మిగతావి జోడించు</value></data>
+  <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>HTOA సహా జోడించు</value></data>
+  <data name="settings.export.pregap.exclude" xml:space="preserve"><value>మినహాయించు</value></data>
+  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>ఒకే ఫైల్ + CUE</value></data>
+  <data name="action.remove" xml:space="preserve"><value>తీసివేయి</value></data>
+  <data name="settings.export.filename_format" xml:space="preserve"><value>ఫైల్ పేరు ఫార్మాట్</value></data>
+  <data name="settings.export.tokens_help" xml:space="preserve"><value>అందుబాటులో ఉన్న టోకెన్‌లు: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
+  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>బిట్ డెప్త్</value></data>
+  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>మూలం</value></data>
   <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
   <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
-  <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
-  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>ఒకే ఫైల్ + CUE</value></data>
+  <data name="settings.export.bitrate" xml:space="preserve"><value>బిట్‌రేట్</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>ఎగుమతి సెట్టింగ్‌లను సేవ్ చేయలేకపోయింది</value></data>
 </root>
