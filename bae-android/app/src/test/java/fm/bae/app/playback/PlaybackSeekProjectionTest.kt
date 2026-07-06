@@ -228,6 +228,30 @@ class PlaybackSeekProjectionTest {
         )
     }
 
+    @Test
+    fun nextTrackFailureDoesNotEscapeSeekHandler() {
+        val (player, handle) = player()
+        handle.nextTrackFailure = RuntimeException("next failed")
+        player.onQueueUpdated(manual = emptyList(), context = null, hasNext = true, hasPrevious = false)
+
+        player.seekToNext()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(1, handle.nextTrackCalls)
+    }
+
+    @Test
+    fun previousTrackFailureDoesNotEscapeSeekHandler() {
+        val (player, handle) = player()
+        handle.previousTrackFailure = RuntimeException("previous failed")
+        player.onQueueUpdated(manual = emptyList(), context = null, hasNext = false, hasPrevious = true)
+
+        player.seekToPrevious()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(1, handle.previousTrackCalls)
+    }
+
     private fun player(): Pair<BaeCorePlayer, SeekRecordingHandle> {
         val context = RuntimeEnvironment.getApplication()
         val handle = SeekRecordingHandle()
@@ -287,9 +311,23 @@ class PlaybackSeekProjectionTest {
 
     private class SeekRecordingHandle : AppHandle(NoHandle) {
         val seekRatios = mutableListOf<Double>()
+        var nextTrackCalls = 0
+        var previousTrackCalls = 0
+        var nextTrackFailure: RuntimeException? = null
+        var previousTrackFailure: RuntimeException? = null
 
         override fun seekByRatio(ratio: Double) {
             seekRatios += ratio
+        }
+
+        override fun nextTrack() {
+            nextTrackCalls++
+            nextTrackFailure?.let { throw it }
+        }
+
+        override fun previousTrack() {
+            previousTrackCalls++
+            previousTrackFailure?.let { throw it }
         }
 
         override fun savePlaybackState() {}

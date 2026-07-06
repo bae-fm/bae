@@ -49,6 +49,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.formatDurationMs
 import fm.bae.app.positionText
+import fm.bae.app.runLoggedBridgeCommand
 import fm.bae.app.sideHeaderText
 import fm.bae.app.text
 import kotlinx.coroutines.CancellationException
@@ -188,49 +189,81 @@ private fun buildAlbumDetailCallbacks(
     session: OpenLibrary,
     release: BridgeRelease?,
     onSelectRelease: (String) -> Unit,
-): AlbumDetailCallbacks =
-    AlbumDetailCallbacks(
+): AlbumDetailCallbacks {
+    fun runPlayReleaseCommand(
+        operation: (BridgeRelease) -> String,
+        startIndex: UInt?,
+        shuffled: Boolean,
+    ) {
+        release?.let {
+            runLoggedBridgeCommand(logger, operation(it)) {
+                session.appHandle.playRelease(it.id, startIndex, shuffled)
+            }
+        }
+    }
+
+    fun runReleaseTransportCommand(
+        operation: String,
+        command: (String) -> Unit,
+    ) {
+        release?.let {
+            runLoggedBridgeCommand(logger, "$operation ${it.id}") {
+                command(it.id)
+            }
+        }
+    }
+
+    fun runTrackTransportCommand(
+        trackId: String,
+        operation: String,
+        command: (List<String>) -> Unit,
+    ) {
+        runLoggedBridgeCommand(logger, "$operation $trackId") {
+            command(listOf(trackId))
+        }
+    }
+
+    return AlbumDetailCallbacks(
         fetchGalleryBytes = { releaseId, source -> session.appHandle.fetchGalleryBytes(releaseId, source) },
         loadCoverImage = session.library::imageBytes,
         onSelectRelease = onSelectRelease,
         onTogglePlayPause = { session.playback.togglePlayPause() },
         // play_release is a core transport command: ask core to play the release at a track index.
-        onPlayTrackAt = { index -> release?.let { session.appHandle.playRelease(it.id, index.toUInt(), false) } },
-        onPlayRelease = { release?.let { session.appHandle.playRelease(it.id, null, false) } },
-        onShuffleRelease = { release?.let { session.appHandle.playRelease(it.id, null, true) } },
+        onPlayTrackAt = { index ->
+            runPlayReleaseCommand(
+                operation = { "playRelease ${it.id} track $index" },
+                startIndex = index.toUInt(),
+                shuffled = false,
+            )
+        },
+        onPlayRelease = {
+            runPlayReleaseCommand(
+                operation = { "playRelease ${it.id}" },
+                startIndex = null,
+                shuffled = false,
+            )
+        },
+        onShuffleRelease = {
+            runPlayReleaseCommand(
+                operation = { "shuffleRelease ${it.id}" },
+                startIndex = null,
+                shuffled = true,
+            )
+        },
         onPlayReleaseNext = {
-            release?.let {
-                try {
-                    session.appHandle.addReleaseNext(it.id)
-                } catch (e: Exception) {
-                    logger.error("addReleaseNext ${it.id} failed", e)
-                }
-            }
+            runReleaseTransportCommand("addReleaseNext", session.appHandle::addReleaseNext)
         },
         onAddReleaseToQueue = {
-            release?.let {
-                try {
-                    session.appHandle.addReleaseToQueue(it.id)
-                } catch (e: Exception) {
-                    logger.error("addReleaseToQueue ${it.id} failed", e)
-                }
-            }
+            runReleaseTransportCommand("addReleaseToQueue", session.appHandle::addReleaseToQueue)
         },
         onPlayTrackNext = { trackId ->
-            try {
-                session.appHandle.addNext(listOf(trackId))
-            } catch (e: Exception) {
-                logger.error("addNext $trackId failed", e)
-            }
+            runTrackTransportCommand(trackId, "addNext", session.appHandle::addNext)
         },
         onAddTrackToQueue = { trackId ->
-            try {
-                session.appHandle.addToQueue(listOf(trackId))
-            } catch (e: Exception) {
-                logger.error("addToQueue $trackId failed", e)
-            }
+            runTrackTransportCommand(trackId, "addToQueue", session.appHandle::addToQueue)
         },
     )
+}
 
 @Composable
 private fun AlbumDetailContent(

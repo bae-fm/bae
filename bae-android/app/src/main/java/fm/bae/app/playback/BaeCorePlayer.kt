@@ -19,6 +19,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import fm.bae.app.BaeLogger
 import fm.bae.app.formatDurationMs
 import fm.bae.app.formatRemainingMs
+import fm.bae.app.runLoggedBridgeCommand
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -1060,13 +1061,17 @@ class BaeCorePlayer(
             Player.COMMAND_SEEK_TO_NEXT,
             Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
             -> {
-                appHandle.nextTrack()
+                runLoggedBridgeCommand(logger, "nextTrack") {
+                    appHandle.nextTrack()
+                }
             }
 
             Player.COMMAND_SEEK_TO_PREVIOUS,
             Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
             -> {
-                appHandle.previousTrack()
+                runLoggedBridgeCommand(logger, "previousTrack") {
+                    appHandle.previousTrack()
+                }
             }
 
             Player.COMMAND_SEEK_TO_MEDIA_ITEM -> {

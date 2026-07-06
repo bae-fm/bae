@@ -135,3 +135,15 @@ class BaeLogger(
             "$message: ${throwable::class.java.simpleName}: ${throwable.message}"
         }
 }
+
+internal fun runLoggedBridgeCommand(
+    logger: BaeLogger,
+    operation: String,
+    command: () -> Unit,
+) {
+    try {
+        command()
+    } catch (e: Exception) {
+        logger.error("$operation failed", e)
+    }
+}
