@@ -17,6 +17,8 @@ use std::sync::Arc;
 use std::time::Instant;
 use tracing::{debug, info, warn};
 
+const CHANNEL_COUNT_ERROR: &str = "channel count must be greater than zero";
+
 // Thread-local FFmpeg error counter for per-decode error tracking
 thread_local! {
     // clippy::missing_const_for_thread_local fires spuriously on the Android target
@@ -528,6 +530,11 @@ unsafe fn decode_audio_avio(
 
     let sample_rate = (*codec_ctx).sample_rate as u32;
     let channels = (*audio.codecpar).ch_layout.nb_channels as u32;
+    if channels == 0 {
+        avcodec_free_context(&mut (codec_ctx as *mut _));
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+        return Err(CHANNEL_COUNT_ERROR.to_string());
+    }
 
     sink.on_format(sample_rate, channels);
 
@@ -783,6 +790,10 @@ unsafe fn decode_packed_s64_packets_to_sink(
 ) -> Result<(), String> {
     use ffmpeg_sys_next::*;
 
+    if channels == 0 {
+        return Err(CHANNEL_COUNT_ERROR.to_string());
+    }
+
     sink.on_format(sample_rate, channels);
     let in_ch_layout = (*codecpar).ch_layout;
     let mut swr_ctx = allocate_swr_context(
@@ -1028,6 +1039,12 @@ unsafe fn decode_audio_streaming_impl(
 
     let sample_rate = (*codec_ctx).sample_rate as u32;
     let channels = (*audio.codecpar).ch_layout.nb_channels as u32;
+    if channels == 0 {
+        avcodec_free_context(&mut (codec_ctx as *mut _));
+        close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err(StreamingDecodeError::decode(CHANNEL_COUNT_ERROR));
+    }
 
     debug!("Streaming AVIO decoder: {}Hz, {}ch", sample_rate, channels);
 
@@ -1295,4 +1312,56 @@ fn push_samples_to_sink(sink: &mut TrackSink, samples: &[f32]) -> bool {
         sink.push_samples_blocking(chunk);
     }
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Default)]
+    struct TestDecodedSink {
+        format: Option<(u32, u32)>,
+    }
+
+    impl DecodedSink for TestDecodedSink {
+        fn on_format(&mut self, sample_rate: u32, channels: u32) {
+            self.format = Some((sample_rate, channels));
+        }
+
+        fn on_samples(&mut self, _samples: &[i32]) {}
+    }
+
+    #[test]
+    fn packed_s64_decoder_rejects_zero_channels_before_format_signal() {
+        crate::audio_codec::init();
+
+        unsafe {
+            let fmt_ctx = ffmpeg_sys_next::avformat_alloc_context();
+            assert!(!fmt_ctx.is_null());
+            let stream = ffmpeg_sys_next::avformat_new_stream(fmt_ctx, ptr::null());
+            assert!(!stream.is_null());
+            (*stream).time_base = ffmpeg_sys_next::AVRational {
+                num: 1,
+                den: 44_100,
+            };
+            let mut codecpar = ffmpeg_sys_next::avcodec_parameters_alloc();
+            assert!(!codecpar.is_null());
+            (*codecpar).ch_layout.nb_channels = 0;
+
+            let mut sink = TestDecodedSink::default();
+            let result = decode_packed_s64_packets_to_sink(
+                fmt_ctx, 0, stream, codecpar, 44_100, 0, None, None, &mut sink,
+            );
+
+            ffmpeg_sys_next::avcodec_parameters_free(&mut codecpar);
+            ffmpeg_sys_next::avformat_free_context(fmt_ctx);
+
+            let err = result.expect_err("zero-channel PCM should fail");
+            assert!(
+                err.contains("channel count must be greater than zero"),
+                "unexpected decode error: {err}"
+            );
+            assert_eq!(sink.format, None);
+        }
+    }
 }
