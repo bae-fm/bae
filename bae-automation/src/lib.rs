@@ -416,23 +416,19 @@ pub struct AutomationTrackDetail {
     pub track_number: Option<i32>,
     pub duration_ms: Option<i64>,
     pub artist_names: String,
+    pub position_text: String,
     pub position: AutomationTrackPosition,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationTrackPosition {
-    Sided {
-        side_letter: String,
-        number: Option<i32>,
-    },
-    Disc {
-        disc: i32,
-        number: Option<i32>,
-    },
-    Flat {
-        number: Option<i32>,
-    },
+    Sided { side_letter: String, number: i32 },
+    SidedUnnumbered { side_letter: String },
+    Disc { disc: i32, number: i32 },
+    DiscUnnumbered { disc: i32 },
+    Flat { number: i32 },
+    Unnumbered,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -2072,6 +2068,7 @@ fn automation_track_detail(track: TrackDetail) -> AutomationTrackDetail {
         track_number: track.track_number,
         duration_ms: track.duration_ms,
         artist_names: track.artist_names,
+        position_text: track.position_text,
         position: automation_track_position(track.position),
     }
 }
@@ -2085,8 +2082,13 @@ fn automation_track_position(position: TrackPosition) -> AutomationTrackPosition
             side_letter,
             number,
         },
+        TrackPosition::SidedUnnumbered { side_letter } => {
+            AutomationTrackPosition::SidedUnnumbered { side_letter }
+        }
         TrackPosition::Disc { disc, number } => AutomationTrackPosition::Disc { disc, number },
+        TrackPosition::DiscUnnumbered { disc } => AutomationTrackPosition::DiscUnnumbered { disc },
         TrackPosition::Flat { number } => AutomationTrackPosition::Flat { number },
+        TrackPosition::Unnumbered => AutomationTrackPosition::Unnumbered,
     }
 }
 

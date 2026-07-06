@@ -182,8 +182,8 @@ enum PreviewData {
         _ names: [String],
         artist: String,
         side: Int32 = 1,
-        position: (Int) -> BridgeTrackPosition = {
-            .flat(number: Int32($0 + 1))
+        positionText: (Int) -> String = {
+            String($0 + 1)
         },
     ) -> [BridgeTrack] {
         names.enumerated()
@@ -196,14 +196,13 @@ enum PreviewData {
                     trackNumber: Int32(index + 1),
                     durationMs: durationMs,
                     artistNames: artist,
-                    position: position(index),
+                    positionText: positionText(index),
                 )
             }
     }
 
     /// A two-part release's tracks plus the matching per-side groups, so the
-    /// preview renders real "Side A" / "Disc 2" headers. Vinyl sides get
-    /// `.sided` with the letter supplied (A/B); digital gets `.disc` (1/2).
+    /// preview renders real "Side A" / "Disc 2" headers.
     private static func twoSide(
         artist: String,
         isVinyl: Bool,
@@ -217,9 +216,7 @@ enum PreviewData {
         ) -> (tracks: [BridgeTrack], group: BridgeTrackGroup) {
             let tracks = makeTracks(names, artist: artist, side: sideNumber) {
                 index in
-                isVinyl
-                    ? .sided(sideLetter: letter, number: Int32(index + 1))
-                    : .disc(disc: sideNumber, number: Int32(index + 1))
+                isVinyl ? "\(letter)\(index + 1)" : "\(sideNumber)-\(index + 1)"
             }
             let groupSide: BridgeTrackSide =
                 isVinyl ? .sided(sideLetter: letter) : .disc(disc: sideNumber)

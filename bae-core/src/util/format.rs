@@ -1,6 +1,7 @@
 //! Pure formatters: `fn data → String` with no state, no I/O, no context.
 //!
-//! Examples: `compute_track_position(format, side, …) → TrackPosition`.
+//! Examples: `compute_track_position(format, side, …) → TrackPosition`,
+//! `track_position_text(position) → "A1"`.
 //!
 //! Zero dependencies on the database, the filesystem, or any struct
 //! definition outside this file. Tests are `#[cfg(test)]` at the bottom.
@@ -52,8 +53,8 @@ pub fn is_digital_format(format: Option<&str>) -> bool {
 
 /// Compute the structured [`crate::album_detail::TrackPosition`] for a track given the release
 /// format and side count. Picks the case (sided physical / multi-disc digital /
-/// flat) and fills its domain fields; the UI composes the position string and
-/// resolves the header word. `side` is 1-indexed.
+/// flat) and fills its domain fields; core renders the per-track position text
+/// from this and the UI resolves only the header word. `side` is 1-indexed.
 pub fn compute_track_position(
     format: Option<&str>,
     side: i32,
@@ -62,22 +63,44 @@ pub fn compute_track_position(
 ) -> crate::album_detail::TrackPosition {
     use crate::album_detail::TrackPosition;
     match detect_format(format) {
-        FormatKind::Sided(_) => TrackPosition::Sided {
-            side_letter: side_letter(side),
-            number: track_number,
+        FormatKind::Sided(_) => match track_number {
+            Some(number) => TrackPosition::Sided {
+                side_letter: side_letter(side),
+                number,
+            },
+            None => TrackPosition::SidedUnnumbered {
+                side_letter: side_letter(side),
+            },
         },
         FormatKind::Digital => {
             if has_multiple_sides {
-                TrackPosition::Disc {
-                    disc: side,
-                    number: track_number,
+                match track_number {
+                    Some(number) => TrackPosition::Disc { disc: side, number },
+                    None => TrackPosition::DiscUnnumbered { disc: side },
                 }
             } else {
-                TrackPosition::Flat {
-                    number: track_number,
+                match track_number {
+                    Some(number) => TrackPosition::Flat { number },
+                    None => TrackPosition::Unnumbered,
                 }
             }
         }
+    }
+}
+
+/// Render the per-track position label from the structured position.
+pub fn track_position_text(position: &crate::album_detail::TrackPosition) -> String {
+    use crate::album_detail::TrackPosition;
+    match position {
+        TrackPosition::Sided {
+            side_letter,
+            number,
+        } => format!("{side_letter}{number}"),
+        TrackPosition::SidedUnnumbered { side_letter } => side_letter.clone(),
+        TrackPosition::Disc { disc, number } => format!("{disc}-{number}"),
+        TrackPosition::DiscUnnumbered { disc } => format!("{disc}-"),
+        TrackPosition::Flat { number } => number.to_string(),
+        TrackPosition::Unnumbered => "-".to_string(),
     }
 }
 
@@ -87,11 +110,14 @@ pub fn compute_track_position(
 fn track_side(position: &crate::album_detail::TrackPosition) -> crate::album_detail::TrackSide {
     use crate::album_detail::{TrackPosition, TrackSide};
     match position {
-        TrackPosition::Sided { side_letter, .. } => TrackSide::Sided {
+        TrackPosition::Sided { side_letter, .. }
+        | TrackPosition::SidedUnnumbered { side_letter } => TrackSide::Sided {
             side_letter: side_letter.clone(),
         },
-        TrackPosition::Disc { disc, .. } => TrackSide::Disc { disc: *disc },
-        TrackPosition::Flat { .. } => TrackSide::Flat,
+        TrackPosition::Disc { disc, .. } | TrackPosition::DiscUnnumbered { disc } => {
+            TrackSide::Disc { disc: *disc }
+        }
+        TrackPosition::Flat { .. } | TrackPosition::Unnumbered => TrackSide::Flat,
     }
 }
 
@@ -127,7 +153,7 @@ mod tests {
     fn sided(letter: &str, number: i32) -> TrackPosition {
         TrackPosition::Sided {
             side_letter: letter.to_string(),
-            number: Some(number),
+            number,
         }
     }
 
@@ -169,7 +195,7 @@ mod tests {
     fn test_cd_single_disc() {
         assert_eq!(
             compute_track_position(Some("CD"), 1, Some(5), false),
-            TrackPosition::Flat { number: Some(5) }
+            TrackPosition::Flat { number: 5 }
         );
     }
 
@@ -177,10 +203,7 @@ mod tests {
     fn test_cd_multi_disc() {
         assert_eq!(
             compute_track_position(Some("2xCD"), 2, Some(3), true),
-            TrackPosition::Disc {
-                disc: 2,
-                number: Some(3)
-            }
+            TrackPosition::Disc { disc: 2, number: 3 }
         );
     }
 
@@ -188,19 +211,53 @@ mod tests {
     fn test_no_format() {
         assert_eq!(
             compute_track_position(None, 1, Some(1), false),
-            TrackPosition::Flat { number: Some(1) }
+            TrackPosition::Flat { number: 1 }
         );
     }
 
     #[test]
-    fn missing_track_number_stays_absent() {
+    fn missing_track_number_is_explicit_position_state() {
         assert_eq!(
             compute_track_position(Some("Vinyl"), 1, None, true),
-            TrackPosition::Sided {
-                side_letter: "A".to_string(),
-                number: None
+            TrackPosition::SidedUnnumbered {
+                side_letter: "A".to_string()
             }
         );
+        assert_eq!(
+            compute_track_position(Some("2xCD"), 2, None, true),
+            TrackPosition::DiscUnnumbered { disc: 2 }
+        );
+        assert_eq!(
+            compute_track_position(Some("CD"), 1, None, false),
+            TrackPosition::Unnumbered
+        );
+    }
+
+    #[test]
+    fn track_position_text_renders_numbered_and_unnumbered_variants() {
+        assert_eq!(
+            track_position_text(&TrackPosition::Sided {
+                side_letter: "A".to_string(),
+                number: 2
+            }),
+            "A2"
+        );
+        assert_eq!(
+            track_position_text(&TrackPosition::Disc { disc: 2, number: 3 }),
+            "2-3"
+        );
+        assert_eq!(track_position_text(&TrackPosition::Flat { number: 5 }), "5");
+        assert_eq!(
+            track_position_text(&TrackPosition::SidedUnnumbered {
+                side_letter: "A".to_string()
+            }),
+            "A"
+        );
+        assert_eq!(
+            track_position_text(&TrackPosition::DiscUnnumbered { disc: 2 }),
+            "2-"
+        );
+        assert_eq!(track_position_text(&TrackPosition::Unnumbered), "-");
     }
 
     fn track(id: &str, position: TrackPosition) -> TrackDetail {
@@ -211,6 +268,7 @@ mod tests {
             track_number: None,
             duration_ms: None,
             artist_names: String::new(),
+            position_text: track_position_text(&position),
             position,
         }
     }
@@ -245,8 +303,8 @@ mod tests {
     fn group_by_side_single_flat_group() {
         use crate::album_detail::TrackSide;
         let tracks = vec![
-            track("1", TrackPosition::Flat { number: Some(1) }),
-            track("2", TrackPosition::Flat { number: Some(2) }),
+            track("1", TrackPosition::Flat { number: 1 }),
+            track("2", TrackPosition::Flat { number: 2 }),
         ];
         let groups = group_tracks_by_side(&tracks);
         assert_eq!(groups.len(), 1);

@@ -168,6 +168,7 @@ impl ReleaseDetail {
                     entry.track.track_number,
                     has_multiple_sides,
                 );
+                let position_text = crate::util::format::track_position_text(&position);
                 TrackDetail {
                     id: entry.track.id,
                     title: entry.track.title,
@@ -175,6 +176,7 @@ impl ReleaseDetail {
                     track_number: entry.track.track_number,
                     duration_ms: entry.track.duration_ms,
                     artist_names,
+                    position_text,
                     position,
                 }
             })

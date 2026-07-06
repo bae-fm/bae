@@ -2,7 +2,6 @@ package fm.bae.app
 
 import android.content.Context
 import uniffi.bae_bridge.BridgeAudioFormat
-import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.BridgeTrackSide
 import uniffi.bae_bridge.bridgeAudioChannelsKey
 import uniffi.bae_bridge.bridgeTrackHeaderKey
@@ -11,35 +10,10 @@ import java.text.NumberFormat
 private const val HZ_PER_KHZ = 1000.0
 
 // Locale rendering of the structured `Bridge*` shapes bae-core emits. The core
-// owns the structure (the position case, the side discriminant, the audio
-// parts); these compose and format them for the current locale, resolving any
-// translatable word from the shared catalog via the key the core owns. Mirrors
-// the macOS `Bridge*+*.swift` extensions.
-
-/**
- * The track's position string, composed mechanically from the case: "A1"
- * (sided), "2-3" (multi-disc), "5" (flat). No translatable word, so it's built
- * directly; the numbers format per locale. Mirrors macOS
- * `BridgeTrackPosition.positionText`.
- */
-fun BridgeTrackPosition.positionText(context: Context): String {
-    val nf = NumberFormat.getIntegerInstance(context.currentLocale())
-    return when (this) {
-        is BridgeTrackPosition.Sided -> {
-            if (number == null) missingTrackNumber() else "$sideLetter${nf.format(number)}"
-        }
-
-        is BridgeTrackPosition.Disc -> {
-            if (number == null) missingTrackNumber() else "${nf.format(disc)}-${nf.format(number)}"
-        }
-
-        is BridgeTrackPosition.Flat -> {
-            if (number == null) missingTrackNumber() else nf.format(number)
-        }
-    }
-}
-
-private fun missingTrackNumber(): Nothing = error("track position has no track number")
+// owns the structure (the side discriminant, the audio parts); these compose
+// and format them for the current locale, resolving any translatable word from
+// the shared catalog via the key the core owns. Mirrors the macOS
+// `Bridge*+*.swift` extensions.
 
 /**
  * The localized track-group header ("Side A" / "Disc 2"), or empty for the flat

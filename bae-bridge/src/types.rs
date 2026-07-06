@@ -326,45 +326,8 @@ impl BridgeIdentityChoice {
     }
 }
 
-/// Structured track position. The case carries the domain decision (sided
-/// physical medium / multi-disc digital / flat single-disc); the UI composes
-/// the position string ("A1", "2-3", "5") mechanically from the fields and
-/// resolves the "Side"/"Disc" header word from `bridge_track_*` catalog keys.
-/// No prose crosses the bridge — only the side letter, disc number, optional
-/// track number, and the case.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeTrackPosition {
-    /// Vinyl/cassette: header "Side {side_letter}", position "{side_letter}{number}".
-    Sided {
-        side_letter: String,
-        number: Option<i32>,
-    },
-    /// Multi-disc digital: header "Disc {disc}", position "{disc}-{number}".
-    Disc { disc: i32, number: Option<i32> },
-    /// Single-disc digital: position "{number}", no header.
-    Flat { number: Option<i32> },
-}
-
-impl BridgeTrackPosition {
-    pub(crate) fn from_core(p: bae_core::album_detail::TrackPosition) -> Self {
-        use bae_core::album_detail::TrackPosition;
-        match p {
-            TrackPosition::Sided {
-                side_letter,
-                number,
-            } => Self::Sided {
-                side_letter,
-                number,
-            },
-            TrackPosition::Disc { disc, number } => Self::Disc { disc, number },
-            TrackPosition::Flat { number } => Self::Flat { number },
-        }
-    }
-}
-
 /// A track group's side discriminant — the header the UI renders ("Side A" /
-/// "Disc 2"). `Flat` means no header (single-disc digital). Distinct from
-/// `BridgeTrackPosition` because a header carries no per-track number.
+/// "Disc 2"). `Flat` means no header (single-disc digital).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTrackSide {
     Sided { side_letter: String },
@@ -402,8 +365,9 @@ pub struct BridgeTrack {
     /// artists when it has per-track artist rows, otherwise the album
     /// artists). Always populated.
     pub artist_names: String,
-    /// Structured position: the UI composes "A1"/"2-3"/"5" from the case.
-    pub position: BridgeTrackPosition,
+    /// Core-rendered position string: "A1"/"2-3"/"5", or the stable prefix
+    /// when the source has no track number.
+    pub position_text: String,
 }
 
 /// Localization key for a track group's header word, given its side, or `None`

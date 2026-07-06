@@ -20,52 +20,7 @@
 //!  - the exported `bae_*_key` C-ABI functions return the key string directly
 //!    for the cases the C# can't reconstruct (cloud provider, audio channels).
 
-use bae_core::album_detail::TrackPosition;
 use serde::Serialize;
-
-// ── Track position ──────────────────────────────────────────────────────
-//
-// Structured position mirroring `BridgeTrackPosition`. The C# composes the
-// position string ("A1"/"2-3"/"5") mechanically from the fields and resolves
-// the side/disc header word from the `Side` group's catalog key. No prose
-// crosses the bridge — only the side letter, disc/track numbers, and the case.
-
-/// Wire mirror of `bae_core::album_detail::TrackPosition` (and the bridge's
-/// `BridgeTrackPosition`). `kind` tags the case; only that case's fields are
-/// set. The C# renders "A1" from `Sided`, "2-3" from `Disc`, "5" from `Flat`.
-/// A missing `number` means the source track has no per-track number.
-#[derive(Serialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub enum FfiTrackPosition {
-    /// Vinyl/cassette: position "{side_letter}{number}" (e.g. "A1").
-    Sided {
-        side_letter: String,
-        number: Option<i32>,
-    },
-    /// Multi-disc digital: position "{disc}-{number}" (e.g. "2-3").
-    Disc { disc: i32, number: Option<i32> },
-    /// Single-disc digital: position "{number}" (e.g. "5").
-    Flat { number: Option<i32> },
-}
-
-impl FfiTrackPosition {
-    pub fn from_core(p: &TrackPosition) -> Self {
-        match p {
-            TrackPosition::Sided {
-                side_letter,
-                number,
-            } => Self::Sided {
-                side_letter: side_letter.clone(),
-                number: *number,
-            },
-            TrackPosition::Disc { disc, number } => Self::Disc {
-                disc: *disc,
-                number: *number,
-            },
-            TrackPosition::Flat { number } => Self::Flat { number: *number },
-        }
-    }
-}
 
 // ── Audio format ──────────────────────────────────────────────────────────
 //

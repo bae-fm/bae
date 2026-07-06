@@ -39,17 +39,13 @@ public sealed class Track
     public string TrackId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
 
-    /// <summary>Structured position; the locale never crosses the bridge, so the
-    /// position string ("A1"/"2-3"/"5") is composed here from the case.</summary>
-    public TrackPosition Position { get; set; } = new();
-
     /// <summary>Raw track length in milliseconds, or null when unknown.</summary>
     public long? DurationMs { get; set; }
 
     public string Artist { get; set; } = string.Empty;
 
-    /// <summary>The composed position string, e.g. "A1" / "2-3" / "5".</summary>
-    public string PositionLabel => Position.Label;
+    /// <summary>The core-rendered position string, e.g. "A1" / "2-3" / "5".</summary>
+    public string PositionLabel { get; set; } = string.Empty;
 
     /// <summary>The track length formatted for the locale, e.g. "3:07"; empty if
     /// unknown.</summary>
@@ -57,37 +53,6 @@ public sealed class Track
 
     /// <summary>The list row; used as the default item text.</summary>
     public override string ToString() => $"{PositionLabel}  {Title}  {DurationLabel}".Trim();
-}
-
-/// <summary>
-/// A track's structured display position, mirroring the FFI's
-/// <c>FfiTrackPosition</c> (and the bridge's <c>BridgeTrackPosition</c>).
-/// <see cref="Kind"/> tags the case; only that case's fields are set. The UI
-/// composes the position string mechanically — no prose crosses the bridge.
-/// </summary>
-public sealed class TrackPosition
-{
-    /// <summary>"sided" / "disc" / "flat".</summary>
-    public string Kind { get; set; } = "flat";
-
-    /// <summary>Side letter (A/B/C…) for the "sided" case.</summary>
-    public string? SideLetter { get; set; }
-
-    /// <summary>Disc number for the "disc" case.</summary>
-    public int Disc { get; set; }
-
-    /// <summary>Within-side / within-disc / flat track number, if the source has one.</summary>
-    public int? Number { get; set; }
-
-    /// <summary>The composed position string: "{side_letter}{number}" (A1),
-    /// "{disc}-{number}" (2-3), or "{number}" (5).</summary>
-    [JsonIgnore]
-    public string Label => Kind switch
-    {
-        "sided" => Number is int n ? $"{SideLetter}{n}" : throw new InvalidOperationException("track position has no track number"),
-        "disc" => Number is int n ? $"{Disc}-{n}" : throw new InvalidOperationException("track position has no track number"),
-        _ => Number is int n ? n.ToString(System.Globalization.CultureInfo.CurrentCulture) : throw new InvalidOperationException("track position has no track number"),
-    };
 }
 
 /// <summary>

@@ -2183,7 +2183,7 @@ fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeR
         track_number: t.track_number,
         duration_ms: t.duration_ms,
         artist_names: t.artist_names,
-        position: crate::types::BridgeTrackPosition::from_core(t.position),
+        position_text: t.position_text,
     };
     let summary = rel.summary;
     BridgeRelease {

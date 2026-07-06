@@ -2615,9 +2615,9 @@ struct FfiTrack {
     /// The track's id, used to play from this track or queue it individually.
     track_id: String,
     title: String,
-    /// Structured position; the C# composes "A1"/"2-3"/"5" from the case and
-    /// formats nothing locale-specific.
-    position: loc::FfiTrackPosition,
+    /// Core-rendered position string: "A1"/"2-3"/"5", or the stable prefix
+    /// when the source has no track number.
+    position_label: String,
     /// Raw track length in milliseconds, or null when unknown. The C# formats
     /// it for the locale (e.g. "3:07").
     duration_ms: Option<i64>,
@@ -2770,7 +2770,7 @@ pub unsafe extern "C" fn bae_album_detail(
                 .map(|track| FfiTrack {
                     track_id: track.id.clone(),
                     title: track.title.clone(),
-                    position: loc::FfiTrackPosition::from_core(&track.position),
+                    position_label: track.position_text.clone(),
                     duration_ms: track.duration_ms,
                     artist: track.artist_names.clone(),
                 })
@@ -3429,12 +3429,7 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
         | UiBusEvent::ReleaseAdded { .. }
         | UiBusEvent::ReleaseUpdated { .. }
         | UiBusEvent::ReleaseRemoved { .. } => FfiEvent::LibraryChanged,
-        UiBusEvent::QueueUpdated {
-            manual,
-            context,
-            has_next,
-            has_previous,
-        } => {
+        UiBusEvent::QueueUpdated(snapshot) => {
             let to_item = |item: &bae_core::queue::QueueItem| FfiQueueItem {
                 entry_id: item.entry_id.clone(),
                 title: item.title.clone(),
@@ -3444,14 +3439,14 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
                 cover_image_id: item.cover_image_id.clone(),
             };
             FfiEvent::QueueUpdated {
-                manual: manual.iter().map(to_item).collect(),
-                context: context.as_ref().map(|c| FfiPlaybackContext {
+                manual: snapshot.manual.iter().map(to_item).collect(),
+                context: snapshot.context.as_ref().map(|c| FfiPlaybackContext {
                     kind: source_kind_name(&c.source).to_string(),
                     shuffled: c.shuffled,
                     upcoming: c.upcoming.iter().map(to_item).collect(),
                 }),
-                has_next: *has_next,
-                has_previous: *has_previous,
+                has_next: snapshot.has_next,
+                has_previous: snapshot.has_previous,
             }
         }
         UiBusEvent::VolumeChanged { volume } => FfiEvent::VolumeChanged { volume: *volume },
