@@ -117,6 +117,9 @@ enum UiEventReducer {
     @MainActor
     static func reduce(_ event: BridgeUiEvent, into context: ReducerContext) {
         switch event {
+        case .invalidated:
+            break
+
         case .playbackPlaying, .playbackPaused, .playbackLoading,
             .playbackStopped, .playbackError, .playbackProgress,
             .playbackSeeked,

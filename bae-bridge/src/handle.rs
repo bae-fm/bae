@@ -1746,6 +1746,10 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
     use bae_core::ui::UiBusEvent;
 
     match event {
+        UiBusEvent::Invalidated(invalidation) => Some(BridgeUiEvent::Invalidated {
+            invalidation: BridgeInvalidation::from_core(invalidation),
+        }),
+
         // ── Playback ───────────────────────────────────────────────
         UiBusEvent::PlaybackStopped => Some(BridgeUiEvent::PlaybackStopped),
         UiBusEvent::PlaybackError { reason } => Some(BridgeUiEvent::PlaybackError {
@@ -2569,6 +2573,26 @@ mod tests {
                 [crate::types::BridgeUiEvent::MuteChanged { is_muted: true }]
             ),
             "expected the event behind the lag to still be delivered, got: {events:?}",
+        );
+    }
+
+    #[test]
+    fn convert_ui_event_preserves_invalidation_key() {
+        let event = super::convert_ui_event(bae_core::ui::UiBusEvent::Invalidated(
+            bae_core::ui::Invalidation::Release {
+                release_id: "rel-1".to_string(),
+            },
+        ))
+        .expect("invalidation event maps to a bridge event");
+
+        assert!(
+            matches!(
+                event,
+                crate::types::BridgeUiEvent::Invalidated {
+                    invalidation: crate::types::BridgeInvalidation::Release { ref release_id },
+                } if release_id == "rel-1"
+            ),
+            "expected release invalidation, got {event:?}",
         );
     }
 

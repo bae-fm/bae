@@ -85,12 +85,34 @@ impl PlaybackErrorReason {
     }
 }
 
-/// Top-level UI event. One enum for everything — every distinct state is a
-/// top-level variant with fields inlined, no sub-enums.
+/// A scoped state key the UI should requery from core.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Invalidation {
+    AlbumList,
+    Album { album_id: String },
+    Release { release_id: String },
+    ComposerList,
+    Composer { composer_id: String },
+    Queue,
+    Config,
+    SyncStatus,
+    Outbox,
+    DownloadQueue,
+    ExportQueue,
+    ImportCandidateList,
+    ImportCandidate { key: String },
+    WatchedFolders,
+}
+
+/// Top-level UI event. One enum for everything. Events that carry a new value
+/// inline use a top-level variant; query-backed state changes use a scoped
+/// invalidation key.
 /// High-frequency events (PlaybackProgress, PreviewProgress) go to NSViews on
 /// the native side. Everything else goes to the @Observable store.
 #[derive(Debug, Clone)]
 pub enum UiBusEvent {
+    Invalidated(Invalidation),
+
     // ── Playback ───────────────────────────────────────────────────
     PlaybackStopped,
     /// Playback couldn't start or continue — e.g. a cloud-only track that isn't

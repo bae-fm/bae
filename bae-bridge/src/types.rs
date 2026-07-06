@@ -1406,10 +1406,58 @@ pub trait ArtworkAnalyzerCallback: Send + Sync {
     fn analyze(&self, path: String) -> BridgeArtworkAnalysis;
 }
 
+/// A scoped state key the UI should requery from core. Mirrors
+/// `bae_core::ui::Invalidation`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeInvalidation {
+    AlbumList,
+    Album { album_id: String },
+    Release { release_id: String },
+    ComposerList,
+    Composer { composer_id: String },
+    Queue,
+    Config,
+    SyncStatus,
+    Outbox,
+    DownloadQueue,
+    ExportQueue,
+    ImportCandidateList,
+    ImportCandidate { key: String },
+    WatchedFolders,
+}
+
+impl BridgeInvalidation {
+    pub(crate) fn from_core(invalidation: bae_core::ui::Invalidation) -> Self {
+        use bae_core::ui::Invalidation as CoreInvalidation;
+
+        match invalidation {
+            CoreInvalidation::AlbumList => Self::AlbumList,
+            CoreInvalidation::Album { album_id } => Self::Album { album_id },
+            CoreInvalidation::Release { release_id } => Self::Release { release_id },
+            CoreInvalidation::ComposerList => Self::ComposerList,
+            CoreInvalidation::Composer { composer_id } => Self::Composer { composer_id },
+            CoreInvalidation::Queue => Self::Queue,
+            CoreInvalidation::Config => Self::Config,
+            CoreInvalidation::SyncStatus => Self::SyncStatus,
+            CoreInvalidation::Outbox => Self::Outbox,
+            CoreInvalidation::DownloadQueue => Self::DownloadQueue,
+            CoreInvalidation::ExportQueue => Self::ExportQueue,
+            CoreInvalidation::ImportCandidateList => Self::ImportCandidateList,
+            CoreInvalidation::ImportCandidate { key } => Self::ImportCandidate { key },
+            CoreInvalidation::WatchedFolders => Self::WatchedFolders,
+        }
+    }
+}
+
 /// Top-level UI event. Every distinct state is a top-level variant with
-/// fields inlined — no sub-enums.
+/// fields inlined, except query-backed state changes which carry a scoped
+/// invalidation key.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeUiEvent {
+    Invalidated {
+        invalidation: BridgeInvalidation,
+    },
+
     // ── Playback ───────────────────────────────────────────────────
     PlaybackStopped,
     /// Playback couldn't start or continue — e.g. a cloud-only track that isn't
