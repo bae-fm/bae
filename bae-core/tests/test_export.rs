@@ -217,6 +217,7 @@ async fn export_release_from_cloud_only_release() {
         .expect("export wrote a release folder")
         .unwrap()
         .path();
+    assert!(subdir.join(".bae-export").exists());
     let written = fs::read(subdir.join("01.flac")).unwrap();
     assert_eq!(written, original_bytes);
 }
@@ -264,9 +265,11 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
         .expect("export wrote a release folder")
         .unwrap()
         .path();
+    assert!(subdir.join(".bae-export").exists());
     let mut exported_files: Vec<_> = fs::read_dir(&subdir)
         .unwrap()
         .map(|entry| entry.unwrap().file_name().to_string_lossy().to_string())
+        .filter(|name| name != ".bae-export")
         .collect();
     exported_files.sort();
     assert_eq!(exported_files, vec!["album.cue", "album.flac"]);
@@ -312,4 +315,8 @@ async fn export_release_missing_blob_is_hard_error() {
         .export_release(&release_id, &target, ExportSelection::Original)
         .await;
     assert!(result.is_err(), "missing blob must fail the export");
+    assert!(
+        fs::read_dir(&target).unwrap().next().is_none(),
+        "failed export must leave no release folder or marker"
+    );
 }
