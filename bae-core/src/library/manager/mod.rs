@@ -42,9 +42,9 @@ use crate::config::ConfigHandle;
 use crate::db::{
     Database, DbAlbum, DbAlbumArtist, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole,
     DbFile, DbImport, DbLibraryImage, DbRelease, DbTrack, DbTrackArtist, DeleteCleanupPlan,
-    ImportOperationStatus, LibraryImageType, Pressing, SortDirection as DbSortDirection,
-    StorageFilter as DbStorageFilter, StorageSortCriterion as DbStorageSortCriterion,
-    StorageSortField as DbStorageSortField,
+    ImportOperationStatus, InFlightMakeRemoteBlobCleanup, LibraryImageType, Pressing,
+    SortDirection as DbSortDirection, StorageFilter as DbStorageFilter,
+    StorageSortCriterion as DbStorageSortCriterion, StorageSortField as DbStorageSortField,
 };
 use crate::keys::BaeKeyServiceExt;
 use crate::keys::KeyService;
@@ -1301,7 +1301,14 @@ impl LibraryManager {
         let files = self.get_files_for_release(release_id).await?;
         let mut evict_blobs = Vec::new();
         let mut cloud_delete_keys = Vec::new();
+        let mut in_flight_make_remote_blobs = Vec::new();
         let mut external_blob_ids_to_clear = Vec::new();
+        let mut make_remote_release_ids_to_clear = Vec::new();
+        let make_remote_in_flight = !release.remote
+            && self
+                .database
+                .has_make_remote_intent_for_release(release_id)
+                .await?;
 
         if release.remote {
             evict_blobs.extend(files.iter().map(Self::release_file_blob_ref));
@@ -1311,6 +1318,21 @@ impl LibraryManager {
                     .map(|file| self.release_file_cloud_key(file))
                     .collect::<Result<Vec<_>, _>>()?,
             );
+        } else if make_remote_in_flight {
+            evict_blobs.extend(files.iter().map(Self::release_file_blob_ref));
+            in_flight_make_remote_blobs.extend(
+                files
+                    .iter()
+                    .map(|file| {
+                        Ok(InFlightMakeRemoteBlobCleanup {
+                            blob_id: file.id.clone(),
+                            cloud_key: self.release_file_cloud_key(file)?,
+                        })
+                    })
+                    .collect::<Result<Vec<_>, LibraryError>>()?,
+            );
+            external_blob_ids_to_clear.extend(files.iter().map(|file| file.id.clone()));
+            make_remote_release_ids_to_clear.push(release_id.clone());
         } else {
             // Local: the files are the user's own files in place — never delete
             // them. Just clear coven's external refs in the delete transaction so
@@ -1338,7 +1360,9 @@ impl LibraryManager {
         Ok(ReleaseDeletePlan {
             db_cleanup: DeleteCleanupPlan {
                 cloud_delete_keys,
+                in_flight_make_remote_blobs,
                 external_blob_ids_to_clear,
+                make_remote_release_ids_to_clear,
             },
             evict_blobs,
         })

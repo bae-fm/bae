@@ -1086,6 +1086,26 @@ impl Database {
         .await
     }
 
+    pub async fn has_make_remote_intent_for_release(
+        &self,
+        release_id: &str,
+    ) -> Result<bool, DbError> {
+        let release_id = release_id.to_string();
+        self.call(move |conn| {
+            conn.query_row(
+                "SELECT 1 FROM blob_make_remote_intents \
+                 WHERE root_table = 'releases' AND root_id = ? \
+                 LIMIT 1",
+                params![release_id],
+                |_| Ok(()),
+            )
+            .optional()
+            .map(|o| o.is_some())
+            .map_err(DbError::from)
+        })
+        .await
+    }
+
     /// Insert a new import operation record
     pub async fn insert_import(&self, import: &DbImport) -> Result<(), DbError> {
         let import = import.clone();

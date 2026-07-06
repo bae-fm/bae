@@ -75,9 +75,17 @@ fn clear_external_blob_on(conn: &Connection, blob_id: &str) -> Result<(), DbErro
 }
 
 #[derive(Clone, Debug)]
+pub struct InFlightMakeRemoteBlobCleanup {
+    pub blob_id: String,
+    pub cloud_key: String,
+}
+
+#[derive(Clone, Debug)]
 pub struct DeleteCleanupPlan {
     pub cloud_delete_keys: Vec<String>,
+    pub in_flight_make_remote_blobs: Vec<InFlightMakeRemoteBlobCleanup>,
     pub external_blob_ids_to_clear: Vec<String>,
+    pub make_remote_release_ids_to_clear: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -123,8 +131,35 @@ fn apply_delete_cleanup_on(
     for cloud_key in &cleanup.cloud_delete_keys {
         add_cloud_outbox_delete_on(conn, cloud_key, created_at)?;
     }
+    for blob in &cleanup.in_flight_make_remote_blobs {
+        let still_pending = conn
+            .query_row(
+                "SELECT 1 FROM cloud_outbox WHERE operation = 'upload' AND file_id = ?1",
+                [&blob.blob_id],
+                |_| Ok(()),
+            )
+            .optional()
+            .map_err(DbError::from)?
+            .is_some();
+        if still_pending {
+            conn.execute(
+                "DELETE FROM cloud_outbox WHERE operation = 'upload' AND file_id = ?1",
+                [&blob.blob_id],
+            )
+            .map_err(DbError::from)?;
+        } else {
+            add_cloud_outbox_delete_on(conn, &blob.cloud_key, created_at)?;
+        }
+    }
     for blob_id in &cleanup.external_blob_ids_to_clear {
         clear_external_blob_on(conn, blob_id)?;
+    }
+    for release_id in &cleanup.make_remote_release_ids_to_clear {
+        conn.execute(
+            "DELETE FROM blob_make_remote_intents WHERE root_table = 'releases' AND root_id = ?1",
+            [release_id],
+        )
+        .map_err(DbError::from)?;
     }
     Ok(())
 }

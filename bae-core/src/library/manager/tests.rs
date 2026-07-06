@@ -561,6 +561,80 @@ async fn delete_release_tombstones_remote_cloud_blobs() {
     );
 }
 
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn delete_release_cancels_in_flight_make_remote() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
+
+    manager.delete_release(&release.id).await.unwrap();
+
+    assert!(manager
+        .database
+        .find_release_by_id(&release.id)
+        .await
+        .unwrap()
+        .is_none());
+    assert!(
+        manager
+            .database
+            .get_pending_cloud_uploads()
+            .await
+            .unwrap()
+            .is_empty(),
+        "deleting the release cancels unresolved make-Remote uploads"
+    );
+    assert!(!manager
+        .database
+        .has_make_remote_intent_for_release(&release.id)
+        .await
+        .unwrap());
+    let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
+    assert_eq!(
+        deletes.len(),
+        1,
+        "the blob that already reached cloud storage is tombstoned"
+    );
+}
+
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn delete_album_cancels_in_flight_make_remote() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
+
+    manager.delete_album(&release.album_id).await.unwrap();
+
+    assert!(manager
+        .database
+        .find_release_by_id(&release.id)
+        .await
+        .unwrap()
+        .is_none());
+    assert!(
+        manager
+            .database
+            .get_pending_cloud_uploads()
+            .await
+            .unwrap()
+            .is_empty(),
+        "deleting the album cancels unresolved make-Remote uploads"
+    );
+    assert!(!manager
+        .database
+        .has_make_remote_intent_for_release(&release.id)
+        .await
+        .unwrap());
+    let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
+    assert_eq!(
+        deletes.len(),
+        1,
+        "the blob that already reached cloud storage is tombstoned"
+    );
+}
+
 #[tokio::test]
 async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_fails() {
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -1861,6 +1935,75 @@ async fn make_remote_release_with_files(
     files: &[(&str, &[u8])],
     pin: bool,
 ) -> String {
+    let release = insert_local_release_with_files(manager, dir, album_title, files).await;
+    manager.coven_make_remote(&release.id, pin).await.unwrap();
+    let n = manager.drain_uploads_for_test().await.unwrap();
+    assert_eq!(n as usize, files.len(), "each release blob uploaded");
+    release.id
+}
+
+#[cfg(feature = "test-utils")]
+async fn insert_partially_uploaded_make_remote_release(
+    manager: &LibraryManager,
+    temp_dir: &std::path::Path,
+) -> DbRelease {
+    let source_dir = temp_dir.join(Uuid::new_v4().to_string());
+    let release = insert_local_release_with_files(
+        manager,
+        &source_dir,
+        "Partially Uploaded",
+        &[("a.flac", b"uploaded"), ("b.flac", b"missing")],
+    )
+    .await;
+
+    manager.coven_make_remote(&release.id, true).await.unwrap();
+    assert!(manager
+        .database
+        .has_make_remote_intent_for_release(&release.id)
+        .await
+        .unwrap());
+    assert_eq!(
+        manager
+            .database
+            .get_pending_cloud_uploads()
+            .await
+            .unwrap()
+            .len(),
+        2
+    );
+
+    std::fs::remove_file(source_dir.join("b.flac")).unwrap();
+    let uploaded = manager.drain_uploads_for_test().await.unwrap();
+    assert_eq!(uploaded, 1);
+    assert!(
+        !manager
+            .database
+            .find_release_by_id(&release.id)
+            .await
+            .unwrap()
+            .unwrap()
+            .remote,
+        "the release must still be Local while one upload is unresolved"
+    );
+    assert_eq!(
+        manager
+            .database
+            .get_pending_cloud_deletes()
+            .await
+            .unwrap()
+            .len(),
+        0
+    );
+    release
+}
+
+#[cfg(feature = "test-utils")]
+async fn insert_local_release_with_files(
+    manager: &LibraryManager,
+    dir: &std::path::Path,
+    album_title: &str,
+    files: &[(&str, &[u8])],
+) -> DbRelease {
     let mut album = create_test_album();
     album.title = album_title.to_string();
     let mut release = create_test_release(&album.id);
@@ -1886,10 +2029,7 @@ async fn make_remote_release_with_files(
         .register_release_external_refs_for_test(&release.id, &dir.to_string_lossy())
         .await
         .unwrap();
-    manager.coven_make_remote(&release.id, pin).await.unwrap();
-    let n = manager.drain_uploads_for_test().await.unwrap();
-    assert_eq!(n as usize, files.len(), "each release blob uploaded");
-    release.id
+    release
 }
 
 /// Insert a local release whose `local_path` points at a
