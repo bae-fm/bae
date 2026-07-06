@@ -428,6 +428,7 @@ extension BaeApp {
 @Observable
 final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     var appService: AppService?
+    private let mediaControlService = MediaControlService()
     var uiStore = UiStore()
     var screen: AppScreen = .loading
     var loadError: String?
@@ -605,6 +606,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
                 }
                 let service = AppService(
                     appHandle: handle,
+                    mediaControlService: mediaControlService,
                     uiStore: store,
                     config: cfg,
                     initialOutbox: initialOutbox
@@ -649,6 +651,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     /// and replaces `uiStore` so the next library opens with fresh navigation
     /// state. Flipping `hasShell` back to false routes the window from the
     /// main content back to the bootstrap `WelcomeView`.
+    @MainActor
     func closeLibrary() {
         guard let service = appService else { return }
         // Cancel any open still in flight so a parked `initApp` can't resume past
@@ -657,6 +660,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
         openTask?.cancel()
         renameTask?.cancel()
         lockTask?.cancel()
+        mediaControlService.deactivate(playbackStore: service.playbackStore)
         Task { [handle = service.appHandle] in
             await handle.shutdown()
         }

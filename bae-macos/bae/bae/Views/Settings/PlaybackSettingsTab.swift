@@ -50,6 +50,7 @@ private enum PlaybackSettingsPreviewAppService {
     static func make() -> AppService {
         AppService(
             appHandle: PlaybackSettingsPreviewAppHandle(),
+            mediaControlService: MediaControlService(),
             uiStore: UiStore(),
             config: BridgeConfig(
                 libraryId: "lib-preview",

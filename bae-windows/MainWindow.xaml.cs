@@ -83,7 +83,10 @@ public sealed partial class MainWindow : Window
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     };
 
+    private readonly object _handleGate = new();
     private IntPtr _handle;
+    private bool _teardownInProgress;
+    private int _sessionGeneration;
 
     // Releases whose unmanage is running right now. Unmanage is a blocking
     // foreground transfer (unlike pin, which enqueues, or upload, which lives in
@@ -192,11 +195,12 @@ public sealed partial class MainWindow : Window
             new PointerEventHandler((_, _) =>
             {
                 _userSeeking = false;
-                if (_handle != IntPtr.Zero)
-                {
-                    ProjectSeekDrop(NpProgress.Value);
-                    NativeBae.SeekByRatio(_handle, NpProgress.Value);
-                }
+        var handle = CurrentHandleOrZero();
+        if (handle != IntPtr.Zero)
+        {
+            ProjectSeekDrop(NpProgress.Value);
+            NativeBae.SeekByRatio(handle, NpProgress.Value);
+        }
             }), true);
 
         LoadLibrary();
@@ -217,7 +221,7 @@ public sealed partial class MainWindow : Window
 
         // Sort drives the full-library view; search results keep their relevance
         // order. Reload only when no search is active and the library is open.
-        if (_handle != IntPtr.Zero && string.IsNullOrEmpty(SearchBox.Text))
+        if (CurrentHandleOrZero() != IntPtr.Zero && string.IsNullOrEmpty(SearchBox.Text))
         {
             LoadCurrentBrowserMode();
         }
@@ -227,7 +231,7 @@ public sealed partial class MainWindow : Window
     {
         _browserMode = BrowserModeBox.SelectedIndex == 1 ? BrowserMode.Composers : BrowserMode.Albums;
         PopulateSortBox();
-        if (_handle != IntPtr.Zero && string.IsNullOrEmpty(SearchBox.Text))
+        if (CurrentHandleOrZero() != IntPtr.Zero && string.IsNullOrEmpty(SearchBox.Text))
         {
             LoadCurrentBrowserMode();
         }
@@ -289,14 +293,18 @@ public sealed partial class MainWindow : Window
         switch (_browserMode)
         {
             case BrowserMode.Albums:
-                SetAlbums(
-                    NativeBae.AlbumPageJson(
-                        _handle,
+                var (current, json) = WithCurrentHandle(
+                    handle => NativeBae.AlbumPageJson(
+                        handle,
                         0,
                         FirstPageSize,
                         _albumSort.Field,
-                        _albumSort.Ascending),
-                    Loc.Chrome("library.empty"));
+                        _albumSort.Ascending));
+                if (!current)
+                {
+                    return;
+                }
+                SetAlbums(json, Loc.Chrome("library.empty"));
                 break;
             case BrowserMode.Composers:
                 LoadComposers();
@@ -344,22 +352,28 @@ public sealed partial class MainWindow : Window
 
     private void OpenLibrary(string libraryId)
     {
-        _handle = NativeBae.Init(libraryId, PositionUpdateIntervalMs);
-        if (_handle == IntPtr.Zero)
+        var handle = NativeBae.Init(libraryId, PositionUpdateIntervalMs);
+        if (handle == IntPtr.Zero)
         {
             StatusText.Text = Loc.Chrome("library.open_failed");
             return;
         }
 
-        if (!NativeBae.HasEncryptionKey(_handle))
+        if (!NativeBae.HasEncryptionKey(handle))
         {
             // Encrypted library whose key isn't on this device: the handle works
             // locally but sync is deferred. Free it and prompt for the key rather
             // than show a half-open library; unlocking re-opens with sync online.
-            NativeBae.HandleFree(_handle);
-            _handle = IntPtr.Zero;
+            NativeBae.HandleFree(handle);
             _ = ShowUnlock(libraryId);
             return;
+        }
+
+        lock (_handleGate)
+        {
+            _handle = handle;
+            _teardownInProgress = false;
+            _sessionGeneration++;
         }
 
         // Committed to showing this library: drop the welcome chooser if it's up.
@@ -370,13 +384,14 @@ public sealed partial class MainWindow : Window
         LoadCurrentBrowserMode();
 
         _suppressVolume = true;
-        NpVolume.Value = NativeBae.GetVolume(_handle);
+        NpVolume.Value = NativeBae.GetVolume(handle);
         _suppressVolume = false;
 
         RefreshSyncStatus();
 
-        _eventCallback = OnNativeEvent;
-        NativeBae.Subscribe(_handle, _eventCallback);
+        var generation = _sessionGeneration;
+        _eventCallback = jsonPtr => OnNativeEvent(generation, jsonPtr);
+        NativeBae.Subscribe(handle, _eventCallback);
     }
 
     // Clear the toolbar sync indicator back to blank — no current status to
@@ -391,7 +406,11 @@ public sealed partial class MainWindow : Window
 
     private void RefreshSyncStatus()
     {
-        var json = NativeBae.SyncStatusJson(_handle);
+        var (current, json) = WithCurrentHandle(NativeBae.SyncStatusJson);
+        if (!current)
+        {
+            return;
+        }
         if (json is null)
         {
             BaeDiagnostics.Logger.Error("Failed to read sync status snapshot.");
@@ -420,7 +439,7 @@ public sealed partial class MainWindow : Window
         else
         {
             var reconnect = new Button { Content = Loc.Chrome("sync.reconnect") };
-            reconnect.Click += (_, _) => NativeBae.TriggerSync(_handle);
+            reconnect.Click += (_, _) => WithCurrentHandle(NativeBae.TriggerSync);
             SyncBanner.Severity = InfoBarSeverity.Error;
             SyncBanner.Title = Loc.Chrome("sync.error_title");
             SyncBanner.Message = syncLine;
@@ -532,7 +551,7 @@ public sealed partial class MainWindow : Window
     // the libraries on disk so the user can reopen one or create another.
     private async System.Threading.Tasks.Task CloseLibrary()
     {
-        if (_handle == IntPtr.Zero)
+        if (CurrentHandleOrZero() == IntPtr.Zero)
         {
             return;
         }
@@ -543,26 +562,102 @@ public sealed partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShutdownAndFreeCurrentHandle()
     {
-        if (_handle == IntPtr.Zero)
+        IntPtr handle;
+        lock (_handleGate)
         {
-            return;
+            if (_handle == IntPtr.Zero || _teardownInProgress)
+            {
+                return;
+            }
+
+            handle = _handle;
+            _handle = IntPtr.Zero;
+            _teardownInProgress = true;
+            _sessionGeneration++;
         }
 
-        var handle = _handle;
-        _handle = IntPtr.Zero;
         await System.Threading.Tasks.Task.Run(() =>
         {
-            NativeBae.Shutdown(handle);
-            NativeBae.HandleFree(handle);
+            lock (_handleGate)
+            {
+                try
+                {
+                    NativeBae.Shutdown(handle);
+                    NativeBae.HandleFree(handle);
+                }
+                finally
+                {
+                    _teardownInProgress = false;
+                }
+            }
         });
     }
 
     private async System.Threading.Tasks.Task<(bool Current, T Result)>
         RunForCurrentHandle<T>(Func<IntPtr, T> action)
     {
-        var handle = _handle;
-        var result = await System.Threading.Tasks.Task.Run(() => action(handle));
-        return (handle == _handle, result);
+        var response = await System.Threading.Tasks.Task.Run(() =>
+        {
+            lock (_handleGate)
+            {
+                if (_handle == IntPtr.Zero || _teardownInProgress)
+                {
+                    return (Ran: false, Generation: _sessionGeneration, Result: default!);
+                }
+
+                var generation = _sessionGeneration;
+                var result = action(_handle);
+                return (Ran: true, Generation: generation, Result: result);
+            }
+        });
+        return (
+            response.Ran && response.Generation == _sessionGeneration,
+            response.Result);
+    }
+
+    private async System.Threading.Tasks.Task<bool> RunForCurrentHandle(Action<IntPtr> action)
+    {
+        var (current, _) = await RunForCurrentHandle(handle =>
+        {
+            action(handle);
+            return true;
+        });
+        return current;
+    }
+
+    private bool WithCurrentHandle(Action<IntPtr> action)
+    {
+        lock (_handleGate)
+        {
+            if (_handle == IntPtr.Zero || _teardownInProgress)
+            {
+                return false;
+            }
+
+            action(_handle);
+            return true;
+        }
+    }
+
+    private (bool Current, T Result) WithCurrentHandle<T>(Func<IntPtr, T> action)
+    {
+        lock (_handleGate)
+        {
+            if (_handle == IntPtr.Zero || _teardownInProgress)
+            {
+                return (false, default!);
+            }
+
+            return (true, action(_handle));
+        }
+    }
+
+    private IntPtr CurrentHandleOrZero()
+    {
+        lock (_handleGate)
+        {
+            return _teardownInProgress ? IntPtr.Zero : _handle;
+        }
     }
 
     private async void OnCloseLibraryClick(object sender, RoutedEventArgs e)
@@ -576,10 +671,7 @@ public sealed partial class MainWindow : Window
     // other libraries or create another.
     private void OnShuffleLibraryClick(object sender, RoutedEventArgs e)
     {
-        if (_handle != IntPtr.Zero)
-        {
-            NativeBae.PlayLibraryShuffled(_handle);
-        }
+        WithCurrentHandle(NativeBae.PlayLibraryShuffled);
     }
 
     private async void OnLibrariesClick(object sender, RoutedEventArgs e)
@@ -653,7 +745,12 @@ public sealed partial class MainWindow : Window
                     return;
                 }
 
-                var error = NativeBae.RenameLibrary(_handle, id, newName);
+                var (current, error) = WithCurrentHandle(
+                    handle => NativeBae.RenameLibrary(handle, id, newName));
+                if (!current)
+                {
+                    return;
+                }
                 if (error is not null)
                 {
                     renameStatus.Text = error;
@@ -1298,7 +1395,12 @@ public sealed partial class MainWindow : Window
                 error.Visibility = Visibility.Visible;
 
                 var pubkey = info.Pubkey;
-                var code = await System.Threading.Tasks.Task.Run(() => NativeBae.InviteMember(_handle, pubkey));
+                var (current, code) = await RunForCurrentHandle(
+                    handle => NativeBae.InviteMember(handle, pubkey));
+                if (!current)
+                {
+                    return;
+                }
                 if (code is null)
                 {
                     error.Text = Loc.Chrome("members.approve.failed");
@@ -1491,7 +1593,7 @@ public sealed partial class MainWindow : Window
     };
 
     // Fires on a background thread; copy the JSON and hop to the UI thread.
-    private void OnNativeEvent(IntPtr jsonPtr)
+    private void OnNativeEvent(int generation, IntPtr jsonPtr)
     {
         var json = Marshal.PtrToStringUTF8(jsonPtr);
         if (json is null)
@@ -1499,7 +1601,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        DispatcherQueue.TryEnqueue(() => HandleEvent(json));
+        DispatcherQueue.TryEnqueue(() => HandleEvent(generation, json));
     }
 
     // Render the toolbar sync indicator from the accumulated state: an active error
@@ -1682,8 +1784,13 @@ public sealed partial class MainWindow : Window
         NpRemaining.Text = DurationLabel(RemainingDurationMs(evt.PositionMs, evt.DurationMs));
     }
 
-    private void HandleEvent(string json)
+    private void HandleEvent(int generation, string json)
     {
+        if (generation != _sessionGeneration || CurrentHandleOrZero() == IntPtr.Zero)
+        {
+            return;
+        }
+
         var evt = JsonSerializer.Deserialize<BaeEvent>(json, JsonOptions);
         if (evt is null)
         {
@@ -1702,7 +1809,7 @@ public sealed partial class MainWindow : Window
                 NpTitle.Text = evt.TrackTitle ?? string.Empty;
                 NpArtist.Text = evt.Artist ?? string.Empty;
                 NpPlayPause.Content = evt.Type == "PlaybackPlaying" ? "⏸" : "▶";
-                NpCover.Source = CoverImage.LoadImage(_handle, evt.CoverImageId);
+                NpCover.Source = CoverImage.LoadImage(CurrentHandleOrZero(), evt.CoverImageId);
                 // Audio is flowing: drop the buffering spinner, restore the
                 // play/pause control.
                 NpLoading.IsActive = false;
@@ -1873,12 +1980,16 @@ public sealed partial class MainWindow : Window
 
     private async void RefreshImportCandidates()
     {
-        if (_handle == IntPtr.Zero)
+        if (CurrentHandleOrZero() == IntPtr.Zero)
         {
             return;
         }
 
-        var json = await System.Threading.Tasks.Task.Run(() => NativeBae.ImportCandidatesJson(_handle));
+        var (current, json) = await RunForCurrentHandle(NativeBae.ImportCandidatesJson);
+        if (!current)
+        {
+            return;
+        }
         var candidates = json is null
             ? null
             : JsonSerializer.Deserialize<List<ImportCandidate>>(json, JsonOptions);
@@ -1951,7 +2062,7 @@ public sealed partial class MainWindow : Window
     // Shared by the toolbar import button and the folder-drop handler.
     private async System.Threading.Tasks.Task ShowImportDialog()
     {
-        if (_handle == IntPtr.Zero)
+        if (CurrentHandleOrZero() == IntPtr.Zero)
         {
             return;
         }
@@ -2000,7 +2111,8 @@ public sealed partial class MainWindow : Window
 
             if (string.IsNullOrEmpty(candidate.Status))
             {
-                NativeBae.AutoIdentifyFolder(_handle, candidate.Key, candidate.FolderPath);
+                _ = RunForCurrentHandle(
+                    handle => NativeBae.AutoIdentifyFolder(handle, candidate.Key, candidate.FolderPath));
             }
             else
             {
@@ -2026,7 +2138,12 @@ public sealed partial class MainWindow : Window
             status.Text = Loc.Chrome("import.scanning");
             status.Visibility = Visibility.Visible;
             var path = folder.Path;
-            var error = await System.Threading.Tasks.Task.Run(() => NativeBae.ScanFolder(_handle, path, true));
+            var (current, error) = await RunForCurrentHandle(
+                handle => NativeBae.ScanFolder(handle, path, true));
+            if (!current)
+            {
+                return;
+            }
             if (error is not null)
             {
                 status.Text = error;
@@ -2060,7 +2177,7 @@ public sealed partial class MainWindow : Window
     // keep it to the cheap format check; the real work happens in OnWindowDrop.
     private void OnWindowDragOver(object sender, DragEventArgs e)
     {
-        if (_handle != IntPtr.Zero && e.DataView.Contains(StandardDataFormats.StorageItems))
+        if (CurrentHandleOrZero() != IntPtr.Zero && e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             e.AcceptedOperation = DataPackageOperation.Copy;
             // Null for some shell drags; the caption is just a cursor hint.
@@ -2081,7 +2198,7 @@ public sealed partial class MainWindow : Window
     // them. Scanning runs off the UI thread; errors surface in the banner.
     private async void OnWindowDrop(object sender, DragEventArgs e)
     {
-        if (_handle == IntPtr.Zero || !e.DataView.Contains(StandardDataFormats.StorageItems))
+        if (CurrentHandleOrZero() == IntPtr.Zero || !e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             return;
         }
@@ -2121,7 +2238,12 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var error = await System.Threading.Tasks.Task.Run(() => NativeBae.ScanFolder(_handle, folderPath, true));
+        var (current, error) = await RunForCurrentHandle(
+            handle => NativeBae.ScanFolder(handle, folderPath, true));
+        if (!current)
+        {
+            return;
+        }
         if (error is not null)
         {
             ShowImportBanner(error);
@@ -2190,10 +2312,10 @@ public sealed partial class MainWindow : Window
         ToolTipService.SetToolTip(button, Loc.Chrome("import.rerun_identify"));
         button.Click += (_, _) =>
         {
-            if (_handle != IntPtr.Zero)
+            if (CurrentHandleOrZero() != IntPtr.Zero)
             {
-                System.Threading.Tasks.Task.Run(() =>
-                    NativeBae.RerunIdentifyForCandidate(_handle, candidateKey));
+                _ = RunForCurrentHandle(
+                    handle => NativeBae.RerunIdentifyForCandidate(handle, candidateKey));
             }
         };
         return button;
@@ -2297,12 +2419,12 @@ public sealed partial class MainWindow : Window
             signal.Excluded ? Loc.Chrome("signal.include") : Loc.Chrome("signal.exclude"));
         badge.Click += (_, _) =>
         {
-            if (_handle != IntPtr.Zero)
+            if (CurrentHandleOrZero() != IntPtr.Zero)
             {
                 var kind = signal.Kind;
                 var value = signal.Value ?? string.Empty;
-                System.Threading.Tasks.Task.Run(() =>
-                    NativeBae.ToggleSignalForCandidate(_handle, candidateKey, kind, value));
+                _ = RunForCurrentHandle(
+                    handle => NativeBae.ToggleSignalForCandidate(handle, candidateKey, kind, value));
             }
         };
         return badge;
@@ -2435,11 +2557,12 @@ public sealed partial class MainWindow : Window
         if (candidate.AudioPaths.Count > 0)
         {
             var preview = new Button { Content = "▶ " + Loc.Chrome("import.preview") };
-            preview.Click += (_, _) => NativeBae.PreviewPlay(_handle, candidate.AudioPaths[0]);
+            preview.Click += (_, _) => WithCurrentHandle(
+                handle => NativeBae.PreviewPlay(handle, candidate.AudioPaths[0]));
             var pause = new Button { Content = "⏸" };
-            pause.Click += (_, _) => NativeBae.PreviewTogglePause(_handle);
+            pause.Click += (_, _) => WithCurrentHandle(NativeBae.PreviewTogglePause);
             var stop = new Button { Content = "⏹" };
-            stop.Click += (_, _) => NativeBae.PreviewStop(_handle);
+            stop.Click += (_, _) => WithCurrentHandle(NativeBae.PreviewStop);
             // Live preview position, updated by PreviewProgress while the picker is open.
             var previewElapsed = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
             _previewElapsed = previewElapsed;
@@ -2474,9 +2597,13 @@ public sealed partial class MainWindow : Window
             var artist = artistBox.Text;
             var album = albumBox.Text;
             searchButton.IsEnabled = false;
-            var json = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.SearchReleasesJson(_handle, source, artist, album));
+            var (current, json) = await RunForCurrentHandle(
+                handle => NativeBae.SearchReleasesJson(handle, source, artist, album));
             searchButton.IsEnabled = true;
+            if (!current)
+            {
+                return;
+            }
             var parsed = json is null ? null : JsonSerializer.Deserialize<List<Candidate>>(json, JsonOptions);
             if (parsed is null)
             {
@@ -2506,7 +2633,7 @@ public sealed partial class MainWindow : Window
             while (true)
             {
                 var pickerResult = await dialog.ShowAsync();
-                NativeBae.PreviewStop(_handle);
+                WithCurrentHandle(NativeBae.PreviewStop);
                 if (pickerResult != ContentDialogResult.Primary)
                 {
                     return;
@@ -2563,9 +2690,13 @@ public sealed partial class MainWindow : Window
     private async System.Threading.Tasks.Task<bool> ShowImportConfirm(
         ImportCandidate candidate, Candidate chosen)
     {
-        var json = await System.Threading.Tasks.Task.Run(
-            () => NativeBae.PrefetchCandidateEditJson(
-                _handle, chosen.ReleaseId, chosen.Source, candidate.FolderPath));
+        var (current, json) = await RunForCurrentHandle(
+            handle => NativeBae.PrefetchCandidateEditJson(
+                handle, chosen.ReleaseId, chosen.Source, candidate.FolderPath));
+        if (!current)
+        {
+            return false;
+        }
         var prefetched = json is null ? null : JsonSerializer.Deserialize<PrefetchedEdit>(json, JsonOptions);
         if (prefetched is null)
         {
@@ -2573,7 +2704,11 @@ public sealed partial class MainWindow : Window
             return false;
         }
 
-        var settingsJson = await System.Threading.Tasks.Task.Run(() => NativeBae.SettingsJson(_handle));
+        var (settingsCurrent, settingsJson) = await RunForCurrentHandle(NativeBae.SettingsJson);
+        if (!settingsCurrent)
+        {
+            return false;
+        }
         if (settingsJson is null)
         {
             await ShowError(Loc.Chrome("import.error.load_storage_settings"));
@@ -2664,8 +2799,12 @@ public sealed partial class MainWindow : Window
         // tracks release_in_library here. Reads the database — run it off the UI
         // thread. A failure leaves the banner absent; the import still proceeds
         // (the banner is advisory, not a gate).
-        var statusJson = await System.Threading.Tasks.Task.Run(
-            () => NativeBae.CheckReleaseInLibraryJson(_handle, chosen.ReleaseId, chosen.Source));
+        var (statusCurrent, statusJson) = await RunForCurrentHandle(
+            handle => NativeBae.CheckReleaseInLibraryJson(handle, chosen.ReleaseId, chosen.Source));
+        if (!statusCurrent)
+        {
+            return false;
+        }
         var libraryStatus = statusJson is null
             ? null
             : JsonSerializer.Deserialize<LibraryStatus>(statusJson, JsonOptions);
@@ -2688,9 +2827,15 @@ public sealed partial class MainWindow : Window
             var payload = JsonSerializer.Serialize(form.ReadBack(), JsonOptions);
             var storageMode = StorageModeTag();
             var pin = StoragePinSelected();
-            var error = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.ImportCandidate(
-                    _handle, candidate.Key, candidate.FolderPath, chosen.ReleaseId, chosen.Source, storageMode, pin, payload, selectedCoverJson));
+            var (importCurrent, error) = await RunForCurrentHandle(
+                handle => NativeBae.ImportCandidate(
+                    handle, candidate.Key, candidate.FolderPath, chosen.ReleaseId, chosen.Source, storageMode, pin, payload, selectedCoverJson));
+            if (!importCurrent)
+            {
+                args.Cancel = true;
+                deferral.Complete();
+                return;
+            }
             if (error is not null)
             {
                 form.ErrorText.Text = error;
@@ -2905,7 +3050,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnQueueClick(object sender, RoutedEventArgs e)
     {
-        if (_handle == IntPtr.Zero)
+        if (CurrentHandleOrZero() == IntPtr.Zero)
         {
             return;
         }
@@ -2917,7 +3062,7 @@ public sealed partial class MainWindow : Window
             Content = Loc.Chrome("queue.clear"),
             IsEnabled = _queueManual.Count > 0,
         };
-        clear.Click += (_, _) => NativeBae.QueueClear(_handle);
+        clear.Click += (_, _) => WithCurrentHandle(NativeBae.QueueClear);
 
         var content = new StackPanel { Spacing = 8 };
         content.Children.Add(clear);
@@ -2993,7 +3138,8 @@ public sealed partial class MainWindow : Window
             toggle, Loc.Chrome(shuffled ? "queue.shuffle.off" : "queue.shuffle.on"));
         ToolTipService.SetToolTip(
             toggle, Loc.Chrome(shuffled ? "queue.shuffle.off" : "queue.shuffle.on"));
-        toggle.Click += (_, _) => NativeBae.SetShuffle(_handle, !shuffled);
+        toggle.Click += (_, _) => WithCurrentHandle(
+            handle => NativeBae.SetShuffle(handle, !shuffled));
         row.Children.Add(toggle);
         return row;
     }
@@ -3015,7 +3161,8 @@ public sealed partial class MainWindow : Window
                 var beforeEntryId = beforeIndex < queueItems.Count
                     ? queueItems[beforeIndex].EntryId
                     : null;
-                NativeBae.QueueReorder(_handle, moved.EntryId, beforeEntryId);
+                WithCurrentHandle(
+                    handle => NativeBae.QueueReorder(handle, moved.EntryId, beforeEntryId));
             }
         };
 
@@ -3032,7 +3179,7 @@ public sealed partial class MainWindow : Window
         {
             if (args.ClickedItem is QueueItem clicked)
             {
-                NativeBae.QueueSkipTo(_handle, clicked.EntryId);
+                WithCurrentHandle(handle => NativeBae.QueueSkipTo(handle, clicked.EntryId));
             }
         };
         // Right-tap a row to drop it from the queue. Removing locally too keeps the
@@ -3063,7 +3210,7 @@ public sealed partial class MainWindow : Window
                 {
                     return;
                 }
-                NativeBae.QueueRemove(_handle, item.EntryId);
+                WithCurrentHandle(handle => NativeBae.QueueRemove(handle, item.EntryId));
                 queueItems.RemoveAt(idx);
             };
             menu.Items.Add(remove);
@@ -3138,41 +3285,41 @@ public sealed partial class MainWindow : Window
 
     private void OnPlayPause(object sender, RoutedEventArgs e)
     {
-        if (_handle != IntPtr.Zero)
+        if (CurrentHandleOrZero() != IntPtr.Zero)
         {
-            NativeBae.PlayPause(_handle);
+            WithCurrentHandle(NativeBae.PlayPause);
         }
     }
 
     private void OnNext(object sender, RoutedEventArgs e)
     {
-        if (_handle != IntPtr.Zero)
+        if (CurrentHandleOrZero() != IntPtr.Zero)
         {
-            NativeBae.Next(_handle);
+            WithCurrentHandle(NativeBae.Next);
         }
     }
 
     private void OnPrevious(object sender, RoutedEventArgs e)
     {
-        if (_handle != IntPtr.Zero)
+        if (CurrentHandleOrZero() != IntPtr.Zero)
         {
-            NativeBae.Previous(_handle);
+            WithCurrentHandle(NativeBae.Previous);
         }
     }
 
     private void OnRepeat(object sender, RoutedEventArgs e)
     {
-        if (_handle != IntPtr.Zero)
+        if (CurrentHandleOrZero() != IntPtr.Zero)
         {
-            NativeBae.CycleRepeatMode(_handle);
+            WithCurrentHandle(NativeBae.CycleRepeatMode);
         }
     }
 
     private void OnMute(object sender, RoutedEventArgs e)
     {
-        if (_handle != IntPtr.Zero)
+        if (CurrentHandleOrZero() != IntPtr.Zero)
         {
-            NativeBae.ToggleMute(_handle);
+            WithCurrentHandle(NativeBae.ToggleMute);
         }
     }
 
@@ -3189,7 +3336,7 @@ public sealed partial class MainWindow : Window
     {
         args.Handled = true;
         var albumId = _nowPlaying?.AlbumId;
-        if (_handle == IntPtr.Zero || string.IsNullOrEmpty(albumId))
+        if (CurrentHandleOrZero() == IntPtr.Zero || string.IsNullOrEmpty(albumId))
         {
             return;
         }
@@ -3217,24 +3364,24 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (_handle != IntPtr.Zero)
+        if (CurrentHandleOrZero() != IntPtr.Zero)
         {
-            NativeBae.PlayPause(_handle);
+            WithCurrentHandle(NativeBae.PlayPause);
             e.Handled = true;
         }
     }
 
     private void OnVolumeChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
-        if (!_suppressVolume && _handle != IntPtr.Zero)
+        if (!_suppressVolume && CurrentHandleOrZero() != IntPtr.Zero)
         {
-            NativeBae.SetVolume(_handle, (float)NpVolume.Value);
+            WithCurrentHandle(handle => NativeBae.SetVolume(handle, (float)NpVolume.Value));
         }
     }
 
     private void OnSearchSubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
-        if (_handle == IntPtr.Zero)
+        if (CurrentHandleOrZero() == IntPtr.Zero)
         {
             return;
         }
@@ -3246,12 +3393,23 @@ public sealed partial class MainWindow : Window
         }
         else
         {
-            SetSearchResults(NativeBae.SearchJson(_handle, query), query);
+            var (current, json) = WithCurrentHandle(handle => NativeBae.SearchJson(handle, query));
+            if (!current)
+            {
+                return;
+            }
+            SetSearchResults(json, query);
         }
     }
 
     private void SetSearchResults(string? json, string query)
     {
+        var handle = CurrentHandleOrZero();
+        if (handle == IntPtr.Zero)
+        {
+            return;
+        }
+
         ShowSearchBrowser();
         SearchResultsPanel.Children.Clear();
         if (json is null)
@@ -3277,15 +3435,15 @@ public sealed partial class MainWindow : Window
         }
         foreach (var album in results.Albums)
         {
-            album.Handle = _handle;
+            album.Handle = handle;
         }
         foreach (var composer in results.Composers)
         {
-            composer.Handle = _handle;
+            composer.Handle = handle;
         }
         foreach (var work in results.Works)
         {
-            work.Handle = _handle;
+            work.Handle = handle;
         }
 
         if (results.Albums.Count == 0 && results.Tracks.Count == 0
@@ -3354,6 +3512,12 @@ public sealed partial class MainWindow : Window
     /// <summary>Replace the grid's albums from an FFI JSON array (or show a status).</summary>
     private void SetAlbums(string? json, string emptyMessage)
     {
+        var handle = CurrentHandleOrZero();
+        if (handle == IntPtr.Zero)
+        {
+            return;
+        }
+
         ShowAlbumBrowser();
         Albums.Clear();
         if (json is null)
@@ -3368,7 +3532,7 @@ public sealed partial class MainWindow : Window
         {
             // The grid tile fetches its cover bytes by id, which needs the handle;
             // the wire shape carries none, so inject it before the tile binds.
-            album.Handle = _handle;
+            album.Handle = handle;
             Albums.Add(album);
         }
 
@@ -3380,12 +3544,17 @@ public sealed partial class MainWindow : Window
         ShowComposerBrowser();
         Composers.Clear();
         ComposerDetailPane.Children.Clear();
-        var json = NativeBae.ComposerPageJson(
-            _handle,
-            0,
-            FirstPageSize,
-            _composerSort.Field,
-            _composerSort.Ascending);
+        var (current, json) = WithCurrentHandle(
+            handle => NativeBae.ComposerPageJson(
+                handle,
+                0,
+                FirstPageSize,
+                _composerSort.Field,
+                _composerSort.Ascending));
+        if (!current)
+        {
+            return;
+        }
         if (json is null)
         {
             StatusText.Text = Loc.Chrome("library.load_failed");
@@ -3407,9 +3576,14 @@ public sealed partial class MainWindow : Window
             StatusText.Text = Loc.Chrome("library.load_failed");
             return;
         }
+        var handle = CurrentHandleOrZero();
+        if (handle == IntPtr.Zero)
+        {
+            return;
+        }
         foreach (var composer in composers)
         {
-            composer.Handle = _handle;
+            composer.Handle = handle;
             Composers.Add(composer);
         }
         StatusText.Text = composers.Count == 0 ? Loc.Chrome("library.no_composers") : string.Empty;
@@ -3417,7 +3591,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnComposerClick(object sender, ItemClickEventArgs e)
     {
-        if (_handle == IntPtr.Zero || e.ClickedItem is not ComposerSummary composer)
+        if (CurrentHandleOrZero() == IntPtr.Zero || e.ClickedItem is not ComposerSummary composer)
         {
             return;
         }
@@ -3445,16 +3619,21 @@ public sealed partial class MainWindow : Window
             StatusText.Text = Loc.Chrome("composer.open_failed");
             return;
         }
-        detail.Composer.Handle = _handle;
+        var handle = CurrentHandleOrZero();
+        if (handle == IntPtr.Zero)
+        {
+            return;
+        }
+        detail.Composer.Handle = handle;
         foreach (var group in detail.WorkGroups)
         {
             if (group.Parent is not null)
             {
-                group.Parent.Handle = _handle;
+                group.Parent.Handle = handle;
             }
             foreach (var work in group.Works)
             {
-                work.Handle = _handle;
+                work.Handle = handle;
             }
         }
 
@@ -3559,14 +3738,19 @@ public sealed partial class MainWindow : Window
             StatusText.Text = Loc.Chrome("work.open_failed");
             return;
         }
-        detail.Work.Handle = _handle;
+        var handle = CurrentHandleOrZero();
+        if (handle == IntPtr.Zero)
+        {
+            return;
+        }
+        detail.Work.Handle = handle;
         foreach (var work in detail.ChildWorks)
         {
-            work.Handle = _handle;
+            work.Handle = handle;
         }
         foreach (var release in detail.Releases)
         {
-            release.Handle = _handle;
+            release.Handle = handle;
         }
 
         ShowComposerBrowser();
@@ -3608,7 +3792,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnAlbumClick(object sender, ItemClickEventArgs e)
     {
-        if (_handle == IntPtr.Zero || e.ClickedItem is not Album album)
+        if (CurrentHandleOrZero() == IntPtr.Zero || e.ClickedItem is not Album album)
         {
             return;
         }
@@ -3693,7 +3877,8 @@ public sealed partial class MainWindow : Window
         {
             if (!string.IsNullOrEmpty(selectedRelease.ReleaseId))
             {
-                NativeBae.AddReleaseNext(_handle, selectedRelease.ReleaseId);
+                WithCurrentHandle(
+                    handle => NativeBae.AddReleaseNext(handle, selectedRelease.ReleaseId));
             }
         };
         var addQueueItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.add_to_queue") };
@@ -3701,7 +3886,8 @@ public sealed partial class MainWindow : Window
         {
             if (!string.IsNullOrEmpty(selectedRelease.ReleaseId))
             {
-                NativeBae.AddReleaseToQueue(_handle, selectedRelease.ReleaseId);
+                WithCurrentHandle(
+                    handle => NativeBae.AddReleaseToQueue(handle, selectedRelease.ReleaseId));
             }
         };
         // Set the selected release as the album's primary (canonical) one — only
@@ -3768,14 +3954,20 @@ public sealed partial class MainWindow : Window
         {
             if (!string.IsNullOrEmpty(selectedRelease.ReleaseId))
             {
-                NativeBae.PlayRelease(_handle, selectedRelease.ReleaseId, selectedRelease.Tracks.IndexOf(track), false);
+                WithCurrentHandle(
+                    handle => NativeBae.PlayRelease(
+                        handle, selectedRelease.ReleaseId, selectedRelease.Tracks.IndexOf(track), false));
             }
         }
         void QueueTrack(Track track, bool next)
         {
-            var error = next
-                ? NativeBae.AddNext(_handle, new[] { track.TrackId })
-                : NativeBae.AddToQueue(_handle, new[] { track.TrackId });
+            var (current, error) = WithCurrentHandle(handle => next
+                ? NativeBae.AddNext(handle, new[] { track.TrackId })
+                : NativeBae.AddToQueue(handle, new[] { track.TrackId }));
+            if (!current)
+            {
+                return;
+            }
             if (error is not null)
             {
                 StatusText.Text = error;
@@ -3809,7 +4001,11 @@ public sealed partial class MainWindow : Window
                 var picker = new global::Windows.Storage.Pickers.FileSavePicker();
                 WinRT.Interop.InitializeWithWindow.Initialize(
                     picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
-                var settingsJson = await System.Threading.Tasks.Task.Run(() => NativeBae.SettingsJson(_handle));
+                var (settingsCurrent, settingsJson) = await RunForCurrentHandle(NativeBae.SettingsJson);
+                if (!settingsCurrent)
+                {
+                    return;
+                }
                 if (settingsJson is null)
                 {
                     exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
@@ -3828,8 +4024,12 @@ public sealed partial class MainWindow : Window
                     .ToList();
                 var originalSelection = ExportSelection.Original();
                 var originalSelectionJson = JsonSerializer.Serialize(originalSelection, JsonOptions);
-                var originalExtension = await System.Threading.Tasks.Task.Run(
-                    () => NativeBae.ExportTrackExtension(_handle, track.TrackId, originalSelectionJson));
+                var (extensionCurrent, originalExtension) = await RunForCurrentHandle(
+                    handle => NativeBae.ExportTrackExtension(handle, track.TrackId, originalSelectionJson));
+                if (!extensionCurrent)
+                {
+                    return;
+                }
                 if (originalExtension is null)
                 {
                     exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
@@ -3901,8 +4101,13 @@ public sealed partial class MainWindow : Window
                 string? stem;
                 try
                 {
-                    stem = await System.Threading.Tasks.Task.Run(
-                        () => NativeBae.ExportTrackSuggestedName(_handle, track.TrackId));
+                    var (nameCurrent, suggestedName) = await RunForCurrentHandle(
+                        handle => NativeBae.ExportTrackSuggestedName(handle, track.TrackId));
+                    if (!nameCurrent)
+                    {
+                        return;
+                    }
+                    stem = suggestedName;
                 }
                 catch (Exception ex)
                 {
@@ -3924,8 +4129,12 @@ public sealed partial class MainWindow : Window
 
                 var selectionJson = JsonSerializer.Serialize(selectedChoice.Selection, JsonOptions);
                 var path = file.Path;
-                var error = await System.Threading.Tasks.Task.Run(
-                    () => NativeBae.ExportTrack(_handle, track.TrackId, path, selectionJson));
+                var (exportCurrent, error) = await RunForCurrentHandle(
+                    handle => NativeBae.ExportTrack(handle, track.TrackId, path, selectionJson));
+                if (!exportCurrent)
+                {
+                    return;
+                }
                 if (error is not null)
                 {
                     exportStatus.Text = error;
@@ -4029,7 +4238,8 @@ public sealed partial class MainWindow : Window
         {
             if (!string.IsNullOrEmpty(selectedRelease.ReleaseId))
             {
-                NativeBae.PlayRelease(_handle, selectedRelease.ReleaseId, -1, true);
+                WithCurrentHandle(
+                    handle => NativeBae.PlayRelease(handle, selectedRelease.ReleaseId, -1, true));
             }
         }
         else if (changeCoverRequested)
@@ -4046,7 +4256,8 @@ public sealed partial class MainWindow : Window
         }
         else if (result == ContentDialogResult.Primary && !string.IsNullOrEmpty(selectedRelease.ReleaseId))
         {
-            NativeBae.PlayRelease(_handle, selectedRelease.ReleaseId, -1, false);
+            WithCurrentHandle(
+                handle => NativeBae.PlayRelease(handle, selectedRelease.ReleaseId, -1, false));
         }
         else if (result == ContentDialogResult.Secondary)
         {
@@ -4098,7 +4309,11 @@ public sealed partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShowExportRelease(string releaseId)
     {
-        var settingsJson = await System.Threading.Tasks.Task.Run(() => NativeBae.SettingsJson(_handle));
+        var (settingsCurrent, settingsJson) = await RunForCurrentHandle(NativeBae.SettingsJson);
+        if (!settingsCurrent)
+        {
+            return;
+        }
         if (settingsJson is null)
         {
             StatusText.Text = Loc.Chrome("track.export.prepare_failed");
@@ -4175,8 +4390,12 @@ public sealed partial class MainWindow : Window
         }
 
         var selectionJson = JsonSerializer.Serialize(selection, JsonOptions);
-        var error = await System.Threading.Tasks.Task.Run(
-            () => NativeBae.ExportRelease(_handle, releaseId, folder.Path, selectionJson));
+        var (exportCurrent, error) = await RunForCurrentHandle(
+            handle => NativeBae.ExportRelease(handle, releaseId, folder.Path, selectionJson));
+        if (!exportCurrent)
+        {
+            return;
+        }
         if (error is not null)
         {
             StatusText.Text = error;
@@ -4207,7 +4426,12 @@ public sealed partial class MainWindow : Window
         }
 
         // On success an invalidation refreshes the grid.
-        var error = await System.Threading.Tasks.Task.Run(() => NativeBae.DeleteRelease(_handle, releaseId));
+        var (current, error) = await RunForCurrentHandle(
+            handle => NativeBae.DeleteRelease(handle, releaseId));
+        if (!current)
+        {
+            return;
+        }
         if (error is not null)
         {
             await ShowError(Loc.Chrome("album.delete.failed"), error);
@@ -4221,7 +4445,12 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var json = NativeBae.ReleaseEditSeedJson(_handle, releaseId);
+        var (current, json) = WithCurrentHandle(
+            handle => NativeBae.ReleaseEditSeedJson(handle, releaseId));
+        if (!current)
+        {
+            return;
+        }
         var seeded = json is null ? null : JsonSerializer.Deserialize<ReleaseEdit>(json, JsonOptions);
         if (seeded is null)
         {
@@ -4246,7 +4475,13 @@ public sealed partial class MainWindow : Window
         dialog.PrimaryButtonClick += (_, args) =>
         {
             var payload = JsonSerializer.Serialize(form.ReadBack(), JsonOptions);
-            var error = NativeBae.ApplyReleaseEdit(_handle, releaseId, payload);
+            var (editCurrent, error) = WithCurrentHandle(
+                handle => NativeBae.ApplyReleaseEdit(handle, releaseId, payload));
+            if (!editCurrent)
+            {
+                args.Cancel = true;
+                return;
+            }
             if (error is not null)
             {
                 form.ErrorText.Text = error;
@@ -4265,8 +4500,12 @@ public sealed partial class MainWindow : Window
             var deferral = args.GetDeferral();
             try
             {
-                var resetJson = await System.Threading.Tasks.Task.Run(
-                    () => NativeBae.ResetMetadataToSourceJson(_handle, releaseId));
+                var (resetCurrent, resetJson) = await RunForCurrentHandle(
+                    handle => NativeBae.ResetMetadataToSourceJson(handle, releaseId));
+                if (!resetCurrent)
+                {
+                    return;
+                }
                 var fresh = resetJson is null
                     ? null
                     : JsonSerializer.Deserialize<ReleaseEdit>(resetJson, JsonOptions);
@@ -4344,9 +4583,13 @@ public sealed partial class MainWindow : Window
             var artist = artistBox.Text;
             var album = albumBox.Text;
             searchButton.IsEnabled = false;
-            var json = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.SearchReleasesJson(_handle, source, artist, album));
+            var (current, json) = await RunForCurrentHandle(
+                handle => NativeBae.SearchReleasesJson(handle, source, artist, album));
             searchButton.IsEnabled = true;
+            if (!current)
+            {
+                return;
+            }
 
             var parsed = json is null ? null : JsonSerializer.Deserialize<List<Candidate>>(json, JsonOptions);
             if (parsed is null)
@@ -4379,8 +4622,14 @@ public sealed partial class MainWindow : Window
 
             var chosen = candidates[index];
             var deferral = args.GetDeferral();
-            var error = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.ReidentifyRelease(_handle, releaseId, chosen.ReleaseId, chosen.Source));
+            var (current, error) = await RunForCurrentHandle(
+                handle => NativeBae.ReidentifyRelease(handle, releaseId, chosen.ReleaseId, chosen.Source));
+            if (!current)
+            {
+                args.Cancel = true;
+                deferral.Complete();
+                return;
+            }
             if (error is not null)
             {
                 status.Text = error;
@@ -4396,7 +4645,12 @@ public sealed partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShowGallery(string releaseId)
     {
-        var json = NativeBae.GalleryJson(_handle, releaseId);
+        var (current, json) = WithCurrentHandle(
+            handle => NativeBae.GalleryJson(handle, releaseId));
+        if (!current)
+        {
+            return;
+        }
         if (json is null)
         {
             StatusText.Text = Loc.Chrome("gallery.load_failed");
@@ -4423,7 +4677,12 @@ public sealed partial class MainWindow : Window
             var item = images[index];
             // Forward the item's source verbatim; core dispatches the read on its
             // kind (a cover by image id, a release file by file id).
-            image.Source = CoverImage.LoadGalleryBytes(_handle, releaseId, item.Source.GetRawText());
+            var handle = CurrentHandleOrZero();
+            if (handle == IntPtr.Zero)
+            {
+                return;
+            }
+            image.Source = CoverImage.LoadGalleryBytes(handle, releaseId, item.Source.GetRawText());
             label.Text = $"{item.Label} ({index + 1}/{images.Count})";
         }
         Show();
@@ -4471,7 +4730,12 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var imagesJson = NativeBae.GetReleaseImagesJson(_handle, releaseId);
+        var (imagesCurrent, imagesJson) = WithCurrentHandle(
+            handle => NativeBae.GetReleaseImagesJson(handle, releaseId));
+        if (!imagesCurrent)
+        {
+            return;
+        }
         if (imagesJson is null)
         {
             StatusText.Text = Loc.Chrome("cover.images_load_failed");
@@ -4506,8 +4770,12 @@ public sealed partial class MainWindow : Window
         async System.Threading.Tasks.Task Apply(string selectionJson)
         {
             statusText.Visibility = Visibility.Collapsed;
-            var error = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.ChangeCover(_handle, albumId, releaseId, selectionJson));
+            var (current, error) = await RunForCurrentHandle(
+                handle => NativeBae.ChangeCover(handle, albumId, releaseId, selectionJson));
+            if (!current)
+            {
+                return;
+            }
             if (error is null)
             {
                 dialog.Hide();
@@ -4540,7 +4808,12 @@ public sealed partial class MainWindow : Window
             {
                 var sourceJson = JsonSerializer.Serialize(
                     new { kind = "releaseFile", file_id = file.Id });
-                var source = CoverImage.LoadGalleryBytes(_handle, releaseId, sourceJson);
+                var handle = CurrentHandleOrZero();
+                if (handle == IntPtr.Zero)
+                {
+                    return;
+                }
+                var source = CoverImage.LoadGalleryBytes(handle, releaseId, sourceJson);
                 var selection = JsonSerializer.Serialize(
                     new { type = "release_image", file_id = file.Id });
                 fileGrid.Children.Add(Tile(source, file.OriginalFilename, selection));
@@ -4572,8 +4845,12 @@ public sealed partial class MainWindow : Window
         // spinner where the remote covers will land.
         async System.Threading.Tasks.Task LoadRemote()
         {
-            var coversJson = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.FetchRemoteCoversJson(_handle, releaseId));
+            var (current, coversJson) = await RunForCurrentHandle(
+                handle => NativeBae.FetchRemoteCoversJson(handle, releaseId));
+            if (!current)
+            {
+                return;
+            }
             loading.Visibility = Visibility.Collapsed;
             if (coversJson is null)
             {
@@ -4615,7 +4892,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnStorageClick(object sender, RoutedEventArgs e)
     {
-        if (_handle == IntPtr.Zero)
+        if (CurrentHandleOrZero() == IntPtr.Zero)
         {
             return;
         }
@@ -4754,7 +5031,11 @@ public sealed partial class MainWindow : Window
         async System.Threading.Tasks.Task LoadDownloads()
         {
             downloadsPanel.Children.Clear();
-            var json = await System.Threading.Tasks.Task.Run(() => NativeBae.DownloadSnapshotJson(_handle));
+            var (current, json) = await RunForCurrentHandle(NativeBae.DownloadSnapshotJson);
+            if (!current)
+            {
+                return;
+            }
             var snapshot = json is null
                 ? null
                 : JsonSerializer.Deserialize<DownloadSnapshot>(json, JsonOptions);
@@ -4819,7 +5100,7 @@ public sealed partial class MainWindow : Window
             retry.Click += async (_, _) =>
             {
                 retry.IsEnabled = false;
-                await System.Threading.Tasks.Task.Run(() => NativeBae.RetryDownloads(_handle));
+                await RunForCurrentHandle(NativeBae.RetryDownloads);
                 await LoadDownloads();
             };
             band.Children.Add(retry);
@@ -4828,7 +5109,8 @@ public sealed partial class MainWindow : Window
             pause.Click += async (_, _) =>
             {
                 pause.IsEnabled = false;
-                await System.Threading.Tasks.Task.Run(() => NativeBae.SetDownloadsPaused(_handle, !paused));
+                await RunForCurrentHandle(
+                    handle => NativeBae.SetDownloadsPaused(handle, !paused));
                 await LoadDownloads();
             };
             band.Children.Add(pause);
@@ -4867,8 +5149,12 @@ public sealed partial class MainWindow : Window
                 {
                     storageStatus.Visibility = Visibility.Collapsed;
                     cancel.IsEnabled = false;
-                    var error = await System.Threading.Tasks.Task.Run(
-                        () => NativeBae.CancelReleaseTransition(_handle, releaseId));
+                    var (cancelCurrent, error) = await RunForCurrentHandle(
+                        handle => NativeBae.CancelReleaseTransition(handle, releaseId));
+                    if (!cancelCurrent)
+                    {
+                        return;
+                    }
                     if (error is not null)
                     {
                         storageStatus.Text = error;
@@ -4889,7 +5175,11 @@ public sealed partial class MainWindow : Window
         async System.Threading.Tasks.Task LoadOutbox()
         {
             outboxPanel.Children.Clear();
-            var json = await System.Threading.Tasks.Task.Run(() => NativeBae.OutboxSnapshotJson(_handle));
+            var (current, json) = await RunForCurrentHandle(NativeBae.OutboxSnapshotJson);
+            if (!current)
+            {
+                return;
+            }
             if (json is null)
             {
                 storageStatus.Text = Loc.Chrome("outbox.load_failed");
@@ -4923,7 +5213,11 @@ public sealed partial class MainWindow : Window
             {
                 storageStatus.Visibility = Visibility.Collapsed;
                 retry.IsEnabled = false;
-                var error = await System.Threading.Tasks.Task.Run(() => NativeBae.RetryOutbox(_handle));
+                var (retryCurrent, error) = await RunForCurrentHandle(NativeBae.RetryOutbox);
+                if (!retryCurrent)
+                {
+                    return;
+                }
                 if (error is not null)
                 {
                     storageStatus.Text = error;
@@ -4942,7 +5236,7 @@ public sealed partial class MainWindow : Window
             pause.Click += async (_, _) =>
             {
                 pause.IsEnabled = false;
-                await System.Threading.Tasks.Task.Run(() => NativeBae.SetSyncPaused(_handle, !paused));
+                await RunForCurrentHandle(handle => NativeBae.SetSyncPaused(handle, !paused));
                 await LoadOutbox();
             };
             band.Children.Add(pause);
@@ -5014,10 +5308,14 @@ public sealed partial class MainWindow : Window
 
             // Runs `action` off-thread, surfaces any error to the status line, and
             // reloads the panel on success — shared by the row button and menu.
-            async System.Threading.Tasks.Task RunCancel(Func<string?> action)
+            async System.Threading.Tasks.Task RunCancel(Func<IntPtr, string?> action)
             {
                 storageStatus.Visibility = Visibility.Collapsed;
-                var error = await System.Threading.Tasks.Task.Run(action);
+                var (current, error) = await RunForCurrentHandle(action);
+                if (!current)
+                {
+                    return;
+                }
                 if (error is not null)
                 {
                     storageStatus.Text = error;
@@ -5030,7 +5328,7 @@ public sealed partial class MainWindow : Window
 
             // A right-click "Cancel" menu, matching the storage table's per-release
             // cancel. Used for the upload release rows.
-            MenuFlyout CancelFlyout(Func<string?> action)
+            MenuFlyout CancelFlyout(Func<IntPtr, string?> action)
             {
                 var menu = new MenuFlyout();
                 var item = new MenuFlyoutItem { Text = Loc.Chrome("action.cancel") };
@@ -5054,7 +5352,7 @@ public sealed partial class MainWindow : Window
                     }
                     : null;
                 MenuFlyout? menu = group.ReleaseId is string releaseId
-                    ? CancelFlyout(() => NativeBae.CancelReleaseTransition(_handle, releaseId))
+                    ? CancelFlyout(handle => NativeBae.CancelReleaseTransition(handle, releaseId))
                     : null;
                 AddOutboxRow(group.DisplayTitle, progress, trailing: null, contextMenu: menu);
             }
@@ -5064,7 +5362,8 @@ public sealed partial class MainWindow : Window
             {
                 var cancel = new Button { Content = Loc.Chrome("outbox.cancel_item") };
                 var id = delete.Id;
-                cancel.Click += async (_, _) => await RunCancel(() => NativeBae.CancelOutboxItem(_handle, id));
+                cancel.Click += async (_, _) => await RunCancel(
+                    handle => NativeBae.CancelOutboxItem(handle, id));
                 AddOutboxRow(delete.Label, null, trailing: cancel, contextMenu: null);
             }
         }
@@ -5199,8 +5498,12 @@ public sealed partial class MainWindow : Window
             {
                 foreach (var releaseId in transitioning)
                 {
-                    var error = await System.Threading.Tasks.Task.Run(
-                        () => NativeBae.CancelReleaseTransition(_handle, releaseId));
+                    var (current, error) = await RunForCurrentHandle(
+                        handle => NativeBae.CancelReleaseTransition(handle, releaseId));
+                    if (!current)
+                    {
+                        return;
+                    }
                     if (error is not null)
                     {
                         storageStatus.Text = error;
@@ -5244,8 +5547,11 @@ public sealed partial class MainWindow : Window
         List<string> releaseIds,
         TextBlock storageStatus)
     {
-        var json = await System.Threading.Tasks.Task.Run(
-            () => NativeBae.OutboxSnapshotJson(_handle));
+        var (current, json) = await RunForCurrentHandle(NativeBae.OutboxSnapshotJson);
+        if (!current)
+        {
+            return new List<string>();
+        }
         var snapshot = json is null
             ? null
             : JsonSerializer.Deserialize<OutboxSnapshot>(json, JsonOptions);
@@ -5265,8 +5571,11 @@ public sealed partial class MainWindow : Window
     private async System.Threading.Tasks.Task<List<string>> DownloadingReleases(
         List<string> releaseIds)
     {
-        var json = await System.Threading.Tasks.Task.Run(
-            () => NativeBae.DownloadSnapshotJson(_handle));
+        var (current, json) = await RunForCurrentHandle(NativeBae.DownloadSnapshotJson);
+        if (!current)
+        {
+            return new List<string>();
+        }
         var snapshot = json is null
             ? null
             : JsonSerializer.Deserialize<DownloadSnapshot>(json, JsonOptions);
@@ -5312,11 +5621,11 @@ public sealed partial class MainWindow : Window
             }
             try
             {
-                return await System.Threading.Tasks.Task.Run(() =>
+                var (current, error) = await RunForCurrentHandle(handle =>
                 {
                     foreach (var releaseId in releaseIds)
                     {
-                        var error = NativeBae.MakeReleaseLocal(_handle, releaseId, path);
+                        var error = NativeBae.MakeReleaseLocal(handle, releaseId, path);
                         if (error is not null)
                         {
                             return error;
@@ -5325,6 +5634,7 @@ public sealed partial class MainWindow : Window
 
                     return (string?)null;
                 });
+                return current ? error : null;
             }
             finally
             {
@@ -5335,15 +5645,15 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        return await System.Threading.Tasks.Task.Run(() =>
+        var (current, actionError) = await RunForCurrentHandle(handle =>
         {
             foreach (var releaseId in releaseIds)
             {
                 var error = action switch
                 {
-                    "pin" => NativeBae.PinRelease(_handle, releaseId),
-                    "unpin" => NativeBae.UnpinRelease(_handle, releaseId),
-                    "manage" => NativeBae.MakeReleaseRemote(_handle, releaseId, pin: false),
+                    "pin" => NativeBae.PinRelease(handle, releaseId),
+                    "unpin" => NativeBae.UnpinRelease(handle, releaseId),
+                    "manage" => NativeBae.MakeReleaseRemote(handle, releaseId, pin: false),
                     // A null return reads as success; an unknown action is a
                     // UI/core contract mismatch, so surface it rather than
                     // reload as if it worked.
@@ -5357,16 +5667,21 @@ public sealed partial class MainWindow : Window
 
             return (string?)null;
         });
+        return current ? actionError : null;
     }
 
     private async void OnSettingsClick(object sender, RoutedEventArgs e)
     {
-        if (_handle == IntPtr.Zero)
+        if (CurrentHandleOrZero() == IntPtr.Zero)
         {
             return;
         }
 
-        var json = NativeBae.SettingsJson(_handle);
+        var (current, json) = WithCurrentHandle(NativeBae.SettingsJson);
+        if (!current)
+        {
+            return;
+        }
         if (json is null)
         {
             return;
@@ -5445,9 +5760,13 @@ public sealed partial class MainWindow : Window
             discogsBusy = true;
             ClearSettingsError();
             status.Text = Loc.Chrome("settings.discogs.validating");
-            var outcome = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.SaveDiscogsToken(_handle, token));
+            var (current, outcome) = await RunForCurrentHandle(
+                handle => NativeBae.SaveDiscogsToken(handle, token));
             discogsBusy = false;
+            if (!current)
+            {
+                return;
+            }
             switch (outcome)
             {
                 case "valid":
@@ -5477,9 +5796,12 @@ public sealed partial class MainWindow : Window
             discogsBusy = true;
             ClearSettingsError();
             status.Text = Loc.Chrome("settings.discogs.validating");
-            var error = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.RevalidateDiscogsToken(_handle));
+            var (current, error) = await RunForCurrentHandle(NativeBae.RevalidateDiscogsToken);
             discogsBusy = false;
+            if (!current)
+            {
+                return;
+            }
             if (error is not null)
             {
                 ShowSettingsError(error);
@@ -5496,8 +5818,11 @@ public sealed partial class MainWindow : Window
             ClearSettingsError();
             // Removing clears the config flag, firing a config invalidation — the re-read
             // restores the editable input. Nothing is patched inline here.
-            var error = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.DeleteDiscogsToken(_handle));
+            var (current, error) = await RunForCurrentHandle(NativeBae.DeleteDiscogsToken);
+            if (!current)
+            {
+                return;
+            }
             if (error is not null)
             {
                 ShowSettingsError(error);
@@ -5519,7 +5844,11 @@ public sealed partial class MainWindow : Window
         {
             if (!disconnectArmed)
             {
-                var warning = await System.Threading.Tasks.Task.Run(() => NativeBae.DisconnectWarning(_handle));
+                var (current, warning) = await RunForCurrentHandle(NativeBae.DisconnectWarning);
+                if (!current)
+                {
+                    return;
+                }
                 if (warning is not null)
                 {
                     syncStatus.Text = Loc.Chrome("settings.sync.disconnect_confirm", "warning", warning);
@@ -5529,7 +5858,11 @@ public sealed partial class MainWindow : Window
             }
 
             disconnectArmed = false;
-            var error = NativeBae.DisconnectCloud(_handle);
+            var (current, error) = WithCurrentHandle(NativeBae.DisconnectCloud);
+            if (!current)
+            {
+                return;
+            }
             if (error is not null)
             {
                 syncStatus.Text = error;
@@ -5540,7 +5873,7 @@ public sealed partial class MainWindow : Window
             }
         };
         var syncNow = new Button { Content = Loc.Chrome("settings.sync.now") };
-        syncNow.Click += (_, _) => NativeBae.TriggerSync(_handle);
+        syncNow.Click += (_, _) => WithCurrentHandle(NativeBae.TriggerSync);
         var syncButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         syncButtons.Children.Add(disconnect);
         syncButtons.Children.Add(syncNow);
@@ -5569,7 +5902,12 @@ public sealed partial class MainWindow : Window
                 }
                 syncStatus.Text = Loc.Chrome("cloud.signin.in_progress", "provider", label);
                 var storage = SelectedStorage();
-                var error = await System.Threading.Tasks.Task.Run(() => NativeBae.SignInCloud(_handle, provider, storage));
+                var (current, error) = await RunForCurrentHandle(
+                    handle => NativeBae.SignInCloud(handle, provider, storage));
+                if (!current)
+                {
+                    return;
+                }
                 if (error is not null)
                 {
                     syncStatus.Text = error;
@@ -5612,7 +5950,12 @@ public sealed partial class MainWindow : Window
             }
 
             ClearSettingsError();
-            var error = await System.Threading.Tasks.Task.Run(() => NativeBae.SetPauseBetweenSides(_handle, enabled));
+            var (current, error) = await RunForCurrentHandle(
+                handle => NativeBae.SetPauseBetweenSides(handle, enabled));
+            if (!current)
+            {
+                return;
+            }
             if (error is not null)
             {
                 ShowSettingsError(error);
@@ -5914,8 +6257,12 @@ public sealed partial class MainWindow : Window
 
             ClearSettingsError();
             var template = exportTemplate.Text ?? string.Empty;
-            var error = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.SetExportFilenameTemplate(_handle, template));
+            var (current, error) = await RunForCurrentHandle(
+                handle => NativeBae.SetExportFilenameTemplate(handle, template));
+            if (!current)
+            {
+                return;
+            }
             if (error is not null)
             {
                 ShowSettingsError(error);
@@ -5932,8 +6279,12 @@ public sealed partial class MainWindow : Window
 
             ClearSettingsError();
             var json = JsonSerializer.Serialize(presets, JsonOptions);
-            var error = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.SetExportPresets(_handle, json));
+            var (current, error) = await RunForCurrentHandle(
+                handle => NativeBae.SetExportPresets(handle, json));
+            if (!current)
+            {
+                return;
+            }
             if (error is not null)
             {
                 ShowSettingsError(error);
@@ -5950,9 +6301,13 @@ public sealed partial class MainWindow : Window
 
             ClearSettingsError();
             var json = JsonSerializer.Serialize(selection, JsonOptions);
-            var error = await System.Threading.Tasks.Task.Run(() => release
-                ? NativeBae.SetDefaultReleaseExportSelection(_handle, json)
-                : NativeBae.SetDefaultTrackExportSelection(_handle, json));
+            var (current, error) = await RunForCurrentHandle(handle => release
+                ? NativeBae.SetDefaultReleaseExportSelection(handle, json)
+                : NativeBae.SetDefaultTrackExportSelection(handle, json));
+            if (!current)
+            {
+                return;
+            }
             if (error is not null)
             {
                 ShowSettingsError(error);
@@ -6097,8 +6452,12 @@ public sealed partial class MainWindow : Window
             }
 
             ClearSettingsError();
-            var error = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.SetMcpServerConfig(_handle, enabled, port));
+            var (current, error) = await RunForCurrentHandle(
+                handle => NativeBae.SetMcpServerConfig(handle, enabled, port));
+            if (!current)
+            {
+                return;
+            }
             if (error is not null)
             {
                 ShowSettingsError(error);
@@ -6112,7 +6471,11 @@ public sealed partial class MainWindow : Window
 
         async System.Threading.Tasks.Task RefreshMcpStatus()
         {
-            var json = await System.Threading.Tasks.Task.Run(() => NativeBae.McpServerStatusJson(_handle));
+            var (current, json) = await RunForCurrentHandle(NativeBae.McpServerStatusJson);
+            if (!current)
+            {
+                return;
+            }
             var parsed = json is null ? null : JsonSerializer.Deserialize<McpServerStatus>(json, JsonOptions);
             if (parsed is null)
             {
@@ -6122,10 +6485,14 @@ public sealed partial class MainWindow : Window
             mcpStatus.Text = new Settings { McpStatus = parsed }.McpStatusText;
         }
 
-        async System.Threading.Tasks.Task CopyMcpToken(Func<string?> readToken, string successKey)
+        async System.Threading.Tasks.Task CopyMcpToken(Func<IntPtr, string?> readToken, string successKey)
         {
             ClearSettingsError();
-            var token = await System.Threading.Tasks.Task.Run(readToken);
+            var (current, token) = await RunForCurrentHandle(readToken);
+            if (!current)
+            {
+                return;
+            }
             if (token is null)
             {
                 ShowSettingsError(Loc.Chrome("settings.automation.token_unavailable"));
@@ -6140,7 +6507,7 @@ public sealed partial class MainWindow : Window
         saveMcp.Click += async (_, _) => await SetMcpConfig(mcpEnabled.IsChecked == true);
         refreshMcp.Click += async (_, _) => await RefreshMcpStatus();
         copyMcpToken.Click += async (_, _) =>
-            await CopyMcpToken(() => NativeBae.GetMcpToken(_handle), "settings.automation.token_copied");
+            await CopyMcpToken(NativeBae.GetMcpToken, "settings.automation.token_copied");
         rotateMcpToken.Click += async (_, _) =>
         {
             ClearSettingsError();
@@ -6150,7 +6517,12 @@ public sealed partial class MainWindow : Window
                 ShowSettingsError(Loc.Chrome("settings.automation.token_unavailable"));
                 return;
             }
-            var error = await System.Threading.Tasks.Task.Run(() => NativeBae.SetMcpToken(_handle, token));
+            var (current, error) = await RunForCurrentHandle(
+                handle => NativeBae.SetMcpToken(handle, token));
+            if (!current)
+            {
+                return;
+            }
             if (error is not null)
             {
                 ShowSettingsError(error);
@@ -6194,15 +6566,20 @@ public sealed partial class MainWindow : Window
         {
             syncStatus.Text = Loc.Chrome("settings.s3.connecting");
             var storage = SelectedStorage();
-            var error = await System.Threading.Tasks.Task.Run(() => NativeBae.SaveSyncConfig(
-                _handle,
-                s3Bucket.Text ?? string.Empty,
-                s3Region.Text ?? string.Empty,
-                s3Endpoint.Text ?? string.Empty,
-                s3KeyPrefix.Text ?? string.Empty,
-                s3AccessKey.Text ?? string.Empty,
-                s3SecretKey.Password ?? string.Empty,
-                storage));
+            var (current, error) = await RunForCurrentHandle(
+                handle => NativeBae.SaveSyncConfig(
+                    handle,
+                    s3Bucket.Text ?? string.Empty,
+                    s3Region.Text ?? string.Empty,
+                    s3Endpoint.Text ?? string.Empty,
+                    s3KeyPrefix.Text ?? string.Empty,
+                    s3AccessKey.Text ?? string.Empty,
+                    s3SecretKey.Password ?? string.Empty,
+                    storage));
+            if (!current)
+            {
+                return;
+            }
             if (error is not null)
             {
                 syncStatus.Text = error;
@@ -6267,8 +6644,12 @@ public sealed partial class MainWindow : Window
         var showRecoveryCode = new Button { Content = Loc.Chrome("settings.recovery.show") };
         showRecoveryCode.Click += async (_, _) =>
         {
-            recoveryCode.Text = await System.Threading.Tasks.Task.Run(() => NativeBae.GenerateRestoreCode(_handle))
-                ?? Loc.Chrome("settings.recovery.unavailable");
+            var (current, code) = await RunForCurrentHandle(NativeBae.GenerateRestoreCode);
+            if (!current)
+            {
+                return;
+            }
+            recoveryCode.Text = code ?? Loc.Chrome("settings.recovery.unavailable");
             recoveryCode.Visibility = Visibility.Visible;
         };
         content.Children.Add(showRecoveryCode);
@@ -6308,7 +6689,11 @@ public sealed partial class MainWindow : Window
         // them in place instead of requiring a reopen.
         _refreshSettings = () =>
         {
-            var freshJson = NativeBae.SettingsJson(_handle);
+            var (current, freshJson) = WithCurrentHandle(NativeBae.SettingsJson);
+            if (!current)
+            {
+                return;
+            }
             if (freshJson is null)
             {
                 return;
@@ -6334,13 +6719,17 @@ public sealed partial class MainWindow : Window
         // chance to settle it now that there may be connectivity. The core no-ops
         // unless the stored key is actually unvalidated, so call unconditionally;
         // on a result it changes the status, firing a config invalidation.
-        _ = System.Threading.Tasks.Task.Run(() => NativeBae.RevalidateDiscogsToken(_handle));
+        _ = RunForCurrentHandle(NativeBae.RevalidateDiscogsToken);
 
         await dialog.ShowAsync();
         _refreshSettings = null;
         if (lockRequested)
         {
-            var error = await System.Threading.Tasks.Task.Run(() => NativeBae.LockActiveLibrary(_handle));
+            var (current, error) = await RunForCurrentHandle(NativeBae.LockActiveLibrary);
+            if (!current)
+            {
+                return;
+            }
             if (error is not null)
             {
                 StatusText.Text = error;
@@ -6348,11 +6737,7 @@ public sealed partial class MainWindow : Window
             }
 
             // The key is forgotten now, so re-opening lands on the unlock prompt.
-            if (_handle != IntPtr.Zero)
-            {
-                NativeBae.HandleFree(_handle);
-                _handle = IntPtr.Zero;
-            }
+            await ShutdownAndFreeCurrentHandle();
 
             OpenLibrary(s.LibraryId);
             return;
@@ -6375,7 +6760,11 @@ public sealed partial class MainWindow : Window
     // approve flow (which the caller runs once the settings dialog closes).
     private async System.Threading.Tasks.Task LoadMembersInto(StackPanel host, Action onAddDevice)
     {
-        var json = await System.Threading.Tasks.Task.Run(() => NativeBae.GetMembersJson(_handle));
+        var (current, json) = await RunForCurrentHandle(NativeBae.GetMembersJson);
+        if (!current)
+        {
+            return;
+        }
         host.Children.Clear();
 
         var membership = json is null
@@ -6460,7 +6849,12 @@ public sealed partial class MainWindow : Window
 
                 remove.IsEnabled = false;
                 var pubkey = member.Pubkey;
-                var error = await System.Threading.Tasks.Task.Run(() => NativeBae.RemoveMember(_handle, pubkey));
+                var (current, error) = await RunForCurrentHandle(
+                    handle => NativeBae.RemoveMember(handle, pubkey));
+                if (!current)
+                {
+                    return;
+                }
                 if (error is not null)
                 {
                     status.Text = error;
@@ -6487,7 +6881,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnClosed(object sender, WindowEventArgs args)
     {
-        if (_handle != IntPtr.Zero)
+        if (CurrentHandleOrZero() != IntPtr.Zero)
         {
             // Persist the queue / current track / position before freeing the
             // handle, so the next launch can restore where playback left off.

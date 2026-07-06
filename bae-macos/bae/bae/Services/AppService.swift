@@ -18,7 +18,7 @@ final class AppService: @unchecked Sendable, Observable {
     /// Drives macOS Now Playing info and remote control events (play/pause
     /// from AirPods, menubar media keys, etc.). Kept in sync with
     /// `playbackStore.nowPlaying`.
-    let mediaControlService = MediaControlService()
+    let mediaControlService: MediaControlService
 
     /// Playback mirror — `nowPlaying`, queue, volume, mute, repeat mode.
     /// Reducer is the sole writer.
@@ -90,11 +90,13 @@ final class AppService: @unchecked Sendable, Observable {
     /// persistence) lives in `BaeApp.openLibrary` after construction.
     init(
         appHandle: AppHandle,
+        mediaControlService: MediaControlService,
         uiStore: UiStore,
         config: BridgeConfig,
         initialOutbox: BridgeOutboxSnapshot
     ) {
         self.appHandle = appHandle
+        self.mediaControlService = mediaControlService
         self.uiStore = uiStore
         playbackStore = PlaybackStore()
         configStore = ConfigStore(
@@ -145,7 +147,7 @@ final class AppService: @unchecked Sendable, Observable {
             )
         )
         appHandle.registerArtworkAnalyzer(analyzer: VisionArtworkAnalyzer())
-        mediaControlService.setupRemoteCommands(
+        mediaControlService.activate(
             playback: playback,
             previewAudio: previewAudio,
             playbackStore: playbackStore

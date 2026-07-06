@@ -25,43 +25,50 @@ final class MediaControlService: @unchecked Sendable {
     private var artworkTask: Task<Void, Never>?
     private var isShowingPreview = false
     private var currentDurationMs: UInt64?
+    private weak var playback: Playback?
+    private weak var previewAudio: PreviewAudio?
+    private weak var playbackStore: PlaybackStore?
 
-    func setupRemoteCommands(
+    func activate(
         playback: Playback,
         previewAudio: PreviewAudio,
         playbackStore: PlaybackStore
     ) {
+        self.playback = playback
+        self.previewAudio = previewAudio
+        self.playbackStore = playbackStore
+
         guard !commandsRegistered else {
             return
         }
         commandsRegistered = true
 
         let center = MPRemoteCommandCenter.shared()
-        registerPlayPauseCommands(
-            center: center,
-            playback: playback,
-            previewAudio: previewAudio
-        )
-        registerTrackCommands(
-            center: center,
-            playback: playback,
-            previewAudio: previewAudio
-        )
-        registerScrubCommand(
-            center: center,
-            playback: playback,
-            previewAudio: previewAudio,
-            playbackStore: playbackStore
-        )
+        registerPlayPauseCommands(center: center)
+        registerTrackCommands(center: center)
+        registerScrubCommand(center: center)
+    }
+
+    func deactivate(playbackStore: PlaybackStore) {
+        guard self.playbackStore === playbackStore else {
+            return
+        }
+        playback = nil
+        previewAudio = nil
+        self.playbackStore = nil
+        isShowingPreview = false
+        artworkTask?.cancel()
+        artworkTask = nil
+        cachedArtworkImageId = nil
+        cachedArtwork = nil
+        clearNowPlaying(on: MPNowPlayingInfoCenter.default())
     }
 
     private func registerPlayPauseCommands(
-        center: MPRemoteCommandCenter,
-        playback: Playback,
-        previewAudio: PreviewAudio
+        center: MPRemoteCommandCenter
     ) {
         center.playCommand.addTarget { [weak self] _ in
-            guard let self else {
+            guard let self, let playback, let previewAudio else {
                 return .noActionableNowPlayingItem
             }
             if isShowingPreview {
@@ -74,7 +81,7 @@ final class MediaControlService: @unchecked Sendable {
         }
 
         center.pauseCommand.addTarget { [weak self] _ in
-            guard let self else {
+            guard let self, let playback, let previewAudio else {
                 return .noActionableNowPlayingItem
             }
             if isShowingPreview {
@@ -87,7 +94,7 @@ final class MediaControlService: @unchecked Sendable {
         }
 
         center.togglePlayPauseCommand.addTarget { [weak self] _ in
-            guard let self else {
+            guard let self, let playback, let previewAudio else {
                 return .noActionableNowPlayingItem
             }
             if isShowingPreview {
@@ -101,17 +108,21 @@ final class MediaControlService: @unchecked Sendable {
     }
 
     private func registerTrackCommands(
-        center: MPRemoteCommandCenter,
-        playback: Playback,
-        previewAudio: PreviewAudio
+        center: MPRemoteCommandCenter
     ) {
-        center.nextTrackCommand.addTarget { _ in
+        center.nextTrackCommand.addTarget { [weak self] _ in
+            guard let self, let playback, let previewAudio else {
+                return .noActionableNowPlayingItem
+            }
             previewAudio.previewStop()
             playback.nextTrack()
             return .success
         }
 
-        center.previousTrackCommand.addTarget { _ in
+        center.previousTrackCommand.addTarget { [weak self] _ in
+            guard let self, let playback, let previewAudio else {
+                return .noActionableNowPlayingItem
+            }
             previewAudio.previewStop()
             playback.previousTrack()
             return .success
@@ -119,13 +130,13 @@ final class MediaControlService: @unchecked Sendable {
     }
 
     private func registerScrubCommand(
-        center: MPRemoteCommandCenter,
-        playback: Playback,
-        previewAudio: PreviewAudio,
-        playbackStore: PlaybackStore
+        center: MPRemoteCommandCenter
     ) {
         center.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let self,
+                let playback,
+                let previewAudio,
+                let playbackStore,
                 let positionEvent = event
                     as? MPChangePlaybackPositionCommandEvent
             else {
