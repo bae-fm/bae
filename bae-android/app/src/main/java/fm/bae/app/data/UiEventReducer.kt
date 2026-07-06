@@ -161,10 +161,10 @@ object UiEventReducer {
 
             is BridgeUiEvent.QueueUpdated -> {
                 player.onQueueUpdated(
-                    manual = event.manual,
-                    context = event.context,
-                    hasNext = event.hasNext,
-                    hasPrevious = event.hasPrevious,
+                    manual = event.snapshot.manual,
+                    context = event.snapshot.context,
+                    hasNext = event.snapshot.hasNext,
+                    hasPrevious = event.snapshot.hasPrevious,
                 )
             }
 
