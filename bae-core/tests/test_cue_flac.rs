@@ -12,7 +12,7 @@ mod support;
 use crate::support::{
     seed_discogs_test_release, test_config_and_keys, tracing_init, wait_for_import_complete,
 };
-use bae_core::db::Database;
+use bae_core::db::{Database, DbAudioSegmentRole};
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{
     IdentityChoice, ImportCommand, ImportService, MetadataRef, MetadataSource, StorageMode,
@@ -71,8 +71,34 @@ async fn test_cue_flac_records_track_positions() {
             .resolve_track_audio(&track.id)
             .await
             .expect("resolve track audio");
-        assert_eq!(resolved.segments.len(), 1);
-        let segment = &resolved.segments[0];
+        let segment = resolved
+            .segments
+            .iter()
+            .find(|segment| segment.role == DbAudioSegmentRole::Main)
+            .unwrap_or_else(|| panic!("track {} should have a main audio segment", i + 1));
+        let pregap_segment = resolved
+            .segments
+            .iter()
+            .find(|segment| segment.role == DbAudioSegmentRole::AudioPregap);
+        if i == 1 {
+            let pregap = pregap_segment.expect("track 2 should have an audio pregap segment");
+            assert_eq!(
+                pregap.start_sample,
+                8 * 44_100,
+                "track 2 pregap should start at INDEX 00",
+            );
+            assert_eq!(
+                pregap.end_sample,
+                Some(10 * 44_100),
+                "track 2 pregap should end at INDEX 01",
+            );
+        } else {
+            assert!(
+                pregap_segment.is_none(),
+                "track {} should not have an audio pregap segment",
+                i + 1,
+            );
+        }
         if i == 0 {
             assert_eq!(
                 segment.start_sample, 0,
@@ -84,9 +110,7 @@ async fn test_cue_flac_records_track_positions() {
             );
         } else {
             // A deep track records the seektable landing for its start_sample --
-            // the byte playback byte-seeks to. Contiguous tracks share a boundary,
-            // so it equals the prior track's end byte (both are the same seek
-            // landing computed by a binary search over the frames).
+            // the byte playback byte-seeks to.
             let start_byte = segment.start_byte.unwrap_or_else(|| {
                 panic!("deep CUE/FLAC track {} should record a start byte", i + 1)
             });
@@ -129,8 +153,11 @@ async fn test_cue_flac_records_track_positions() {
                 .resolve_track_audio(&tracks[i - 1].id)
                 .await
                 .expect("resolve previous track audio");
-            assert_eq!(prev_resolved.segments.len(), 1);
-            let prev_segment = &prev_resolved.segments[0];
+            let prev_segment = prev_resolved
+                .segments
+                .iter()
+                .find(|segment| segment.role == DbAudioSegmentRole::Main)
+                .expect("previous track should have a main audio segment");
             assert!(
                 segment.start_sample > prev_segment.start_sample,
                 "track {} start_sample ({}) should be > track {} start_sample ({})",
@@ -149,17 +176,33 @@ async fn test_cue_flac_records_track_positions() {
                     i,
                 );
             }
-            // Tracks of one file are back-to-back byte ranges: this track's start
-            // sample is the prior track's end sample, and both the start-byte seek
-            // and the end-byte seek binary-search to that same frame. So the stored
-            // start byte equals the prior track's end byte.
-            assert_eq!(
-                segment.start_byte,
-                prev_segment.end_byte,
-                "track {} start byte should equal track {} end byte (contiguous seek landing)",
-                i + 1,
-                i,
-            );
+            if let Some(pregap) = pregap_segment {
+                assert_eq!(
+                    pregap.start_byte,
+                    prev_segment.end_byte,
+                    "track {} pregap start byte should equal track {} end byte",
+                    i + 1,
+                    i,
+                );
+                assert_eq!(
+                    segment.start_byte,
+                    pregap.end_byte,
+                    "track {} main start byte should equal its pregap end byte",
+                    i + 1,
+                );
+            } else {
+                // Tracks of one file are back-to-back byte ranges: this track's start
+                // sample is the prior track's end sample, and both the start-byte seek
+                // and the end-byte seek binary-search to that same frame. So the stored
+                // start byte equals the prior track's end byte.
+                assert_eq!(
+                    segment.start_byte,
+                    prev_segment.end_byte,
+                    "track {} start byte should equal track {} end byte (contiguous seek landing)",
+                    i + 1,
+                    i,
+                );
+            }
         }
         info!(
             "Track {} '{}': samples {}..{:?}",
