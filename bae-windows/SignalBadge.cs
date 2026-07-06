@@ -1,8 +1,8 @@
 ﻿namespace Bae.Windows;
 
 /// <summary>
-/// One signals-toolbar badge (from a <c>CandidateIdentifyState</c> event) — a
-/// flat, pre-shaped mirror of the FFI's <c>FfiSignal</c>. Core derives all
+/// One signals-toolbar badge — a flat, pre-shaped mirror of the FFI's
+/// <c>FfiSignal</c>. Core derives all
 /// per-signal state; the UI iterates and renders these directly. <see cref="Kind"/>
 /// is the snake_case wire name the badge view maps to an icon / label.
 /// </summary>

@@ -237,16 +237,8 @@ private func routeErrors(
 private func ignoreObsoleteOrDesktopEvent(_ event: BridgeUiEvent) {
     switch event {
     case .previewIdle, .previewPlaying, .previewPaused, .previewProgress,
-        .candidateIdentifyStateChanged, .candidateSignalsUpdated,
-        .candidateImportImporting, .candidateImportLoudnessProgress,
-        .candidateImportComplete, .candidateImportError,
-        .watchedFoldersChanged, .folderCandidateAdded, .invalidCandidate,
-        .scanCandidateRemoved, .candidateSkipChanged, .scanFinished,
-        .albumAdded, .albumUpdated, .albumRemoved, .releaseAdded,
-        .releaseUpdated, .releaseRemoved, .configChanged, .syncError,
-        .syncTimeChanged, .syncingChanged, .outboxChanged,
-        .releaseTransferProgress, .releaseTransferEnded,
-        .downloadQueueChanged, .exportQueueChanged:
+        .candidateImportLoudnessProgress, .releaseTransferProgress,
+        .releaseTransferEnded:
         break
 
     case .invalidated, .playbackStopped, .playbackError, .playbackLoading,

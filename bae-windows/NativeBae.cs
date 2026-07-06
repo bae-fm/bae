@@ -948,16 +948,26 @@ internal static class NativeBae
         [MarshalAs(UnmanagedType.I1)] bool clearFirst);
 
     /// <summary>
-    /// Enqueue a folder scan; null on success, else the error message. Candidates
-    /// arrive asynchronously as CandidateAdded events. May block briefly — call
-    /// off the UI thread.
+    /// Enqueue a folder scan; null on success, else the error message. Candidate
+    /// list changes arrive as invalidations. May block briefly — call off the UI
+    /// thread.
     /// </summary>
     internal static string? ScanFolder(IntPtr handle, string path, bool clearFirst) =>
         ResultMessage(ScanFolderPtr(handle, path, clearFirst));
 
+    [DllImport(Dll, EntryPoint = "bae_import_candidates", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ImportCandidatesPtr(IntPtr handle);
+
+    /// <summary>
+    /// Current folder-import candidates with runtime state as JSON, or null on
+    /// error. Copies and frees.
+    /// </summary>
+    internal static string? ImportCandidatesJson(IntPtr handle) =>
+        CopyAndFree(ImportCandidatesPtr(handle));
+
     /// <summary>
     /// Start auto-identifying a folder candidate. Fire-and-forget; progress and
-    /// results arrive as CandidateIdentifyState events keyed by candidateKey.
+    /// results arrive through candidate invalidations keyed by candidateKey.
     /// </summary>
     [DllImport(Dll, EntryPoint = "bae_auto_identify_folder", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void AutoIdentifyFolder(
@@ -971,8 +981,8 @@ internal static class NativeBae
     /// ("disc_id" / "barcode" / "catalog"); <paramref name="value"/> is the
     /// catalog number naming which catalog candidate to toggle (ignored for the
     /// disc-ID / barcode singletons — pass "" there). Fire-and-forget: the
-    /// candidate re-derives and re-emits its CandidateIdentifyState event, which
-    /// refreshes the badges.
+    /// candidate invalidates after re-deriving so the badges refresh from the
+    /// snapshot.
     /// </summary>
     [DllImport(Dll, EntryPoint = "bae_toggle_signal_for_candidate", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void ToggleSignalForCandidate(
@@ -983,8 +993,8 @@ internal static class NativeBae
 
     /// <summary>
     /// Re-run a candidate's identification lookups, keeping the user's signal
-    /// exclusions. Fire-and-forget; progress and the re-derived outcome arrive as
-    /// CandidateIdentifyState events keyed by candidateKey.
+    /// exclusions. Fire-and-forget; progress and the re-derived outcome arrive
+    /// through candidate invalidations keyed by candidateKey.
     /// </summary>
     [DllImport(Dll, EntryPoint = "bae_rerun_identify_for_candidate", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void RerunIdentifyForCandidate(
@@ -1060,8 +1070,8 @@ internal static class NativeBae
     /// import's default cover. <paramref name="storageMode"/> is <c>unmanaged</c>
     /// (leave the files in place) or <c>managed</c> (upload to the cloud);
     /// <paramref name="pin"/> is the orthogonal "keep offline" choice, meaningful
-    /// only for a managed import. The import runs in the background (progress via
-    /// CandidateImport* events). May block briefly — call off the UI thread.
+    /// only for a managed import. The import runs in the background and updates
+    /// the candidate snapshot. May block briefly — call off the UI thread.
     /// </summary>
     internal static string? ImportCandidate(
         IntPtr handle, string candidateKey, string folderPath, string chosenReleaseId, string source, string storageMode, bool pin, string userEditJson, string selectedCoverJson) =>

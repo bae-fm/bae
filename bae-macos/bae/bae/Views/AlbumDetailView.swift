@@ -512,7 +512,7 @@ extension AlbumDetailView {
         // Pinning enqueues on the in-memory download queue rather than awaiting
         // a per-release transition. The sheet's existing `release.summary.transfer`
         // bar still tracks progress (driven by `ReleaseTransferProgress`); the
-        // storage state flips when the worker emits `ReleaseUpdated` on
+        // storage state flips when the worker invalidates the release on
         // completion, so there's no reload to await here.
         downloads.queuePins([releaseId])
     }

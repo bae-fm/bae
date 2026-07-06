@@ -687,6 +687,7 @@ impl BridgeInvalidReason {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 pub(crate) fn invalid_reason_to_bridge(r: bae_core::import::InvalidReason) -> BridgeInvalidReason {
     use bae_core::import::InvalidReason as R;
     match r {
@@ -739,6 +740,12 @@ pub enum BridgeImportCandidateSnapshot {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeFolderImportCandidateSnapshot {
+    pub candidate: BridgeFolderCandidate,
+    pub runtime: BridgeCandidateRuntimeSnapshot,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateRuntimeSnapshot {
     pub identify_state: BridgeIdentifyState,
     pub signals_toolbar: BridgeSignalsToolbar,
@@ -764,7 +771,7 @@ pub enum BridgeCandidateImportStatus {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportCandidatesSnapshot {
     pub watched_folders: Vec<BridgeWatchedFolder>,
-    pub folder_candidates: Vec<BridgeFolderCandidate>,
+    pub folder_candidates: Vec<BridgeFolderImportCandidateSnapshot>,
     pub invalid_candidates: Vec<BridgeInvalidCandidate>,
 }
 
@@ -881,6 +888,7 @@ pub enum BridgeImportStep {
     Running { phase: BridgeImportPhase },
 }
 
+#[cfg(feature = "desktop")]
 pub(crate) fn import_step_to_bridge(s: bae_core::import::ImportStep) -> BridgeImportStep {
     use bae_core::import::{ImportPhase, ImportStep, PrepareStep};
     match s {
@@ -960,6 +968,7 @@ pub enum BridgeSearchQuery {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 pub(crate) fn library_status_to_bridge(s: bae_core::db::LibraryStatus) -> BridgeLibraryStatus {
     BridgeLibraryStatus {
         release_id: s.release_id,
@@ -1015,6 +1024,7 @@ pub enum BridgeSignalOrigin {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 fn signal_origin_to_bridge(o: bae_core::signals::SignalOrigin) -> BridgeSignalOrigin {
     use bae_core::signals::SignalOrigin;
     match o {
@@ -1036,6 +1046,7 @@ pub struct BridgeSourcedValue {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 fn sourced_value_to_bridge(s: bae_core::signals::SourcedValue) -> BridgeSourcedValue {
     BridgeSourcedValue {
         value: s.value,
@@ -1082,6 +1093,7 @@ pub enum BridgeLookupFailure {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 fn lookup_failure_to_bridge(f: bae_core::signals::LookupFailure) -> BridgeLookupFailure {
     use bae_core::signals::LookupFailure;
     match f {
@@ -1150,6 +1162,7 @@ pub struct BridgeSignalsToolbar {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 fn signal_state_to_bridge(s: bae_core::identify::SignalState) -> BridgeSignalState {
     use bae_core::identify::SignalState;
     match s {
@@ -1165,6 +1178,7 @@ fn signal_state_to_bridge(s: bae_core::identify::SignalState) -> BridgeSignalSta
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 fn toolbar_signal_to_bridge(s: bae_core::identify::ToolbarSignal) -> BridgeToolbarSignal {
     use bae_core::identify::{SignalKind, SignalRole};
     BridgeToolbarSignal {
@@ -1185,6 +1199,7 @@ fn toolbar_signal_to_bridge(s: bae_core::identify::ToolbarSignal) -> BridgeToolb
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 pub(crate) fn toolbar_to_bridge(
     toolbar: Vec<bae_core::identify::ToolbarSignal>,
 ) -> BridgeSignalsToolbar {
@@ -1558,29 +1573,7 @@ pub enum BridgeUiEvent {
         progress: f64,
     },
 
-    // ── Candidate-scoped (key inlined) ─────────────────────────────
-    /// Identify pipeline transitioned. `state` carries the full new state —
-    /// the reducer switches on its variant. `toolbar` is the pre-shaped
-    /// signals badge row projected from the same transition (BridgeIdentifyState
-    /// drops the signals context, so it travels separately); the reducer writes
-    /// it onto the candidate wholesale.
-    CandidateIdentifyStateChanged {
-        key: String,
-        state: BridgeIdentifyState,
-        toolbar: BridgeSignalsToolbar,
-    },
-    /// Full snapshot of a candidate's extracted signals (disc ID, barcodes,
-    /// classified text). Core emits this on every extraction transition; the
-    /// reducer writes the whole snapshot wholesale (no delta logic).
-    CandidateSignalsUpdated {
-        key: String,
-        signals: BridgeSignals,
-    },
-    CandidateImportImporting {
-        key: String,
-        progress_percent: u32,
-        step: Option<BridgeImportStep>,
-    },
+    // ── Import live progress ───────────────────────────────────────
     /// High-frequency loudness-measurement tick — the UI routes it to a native
     /// leaf view (a determinate bar driven by `fraction`, labelled "N / M"), not
     /// the coarse candidate row.
@@ -1590,102 +1583,8 @@ pub enum BridgeUiEvent {
         tracks_total: u32,
         fraction: f32,
     },
-    CandidateImportComplete {
-        key: String,
-        /// The release the import created — the UI's join key for
-        /// candidate-level invalidation (release deleted) and the
-        /// per-release upload queue.
-        release_id: String,
-        album_id: String,
-    },
-    CandidateImportError {
-        key: String,
-        error: BridgeError,
-    },
 
-    // ── Scan ───────────────────────────────────────────────────────
-    /// The watched-folder list changed (loaded, or after add/remove). The
-    /// reducer replaces its list and drops candidates whose watched folder is
-    /// no longer present.
-    WatchedFoldersChanged {
-        folders: Vec<BridgeWatchedFolder>,
-    },
-    FolderCandidateAdded {
-        candidate: BridgeFolderCandidate,
-    },
-    /// A leaf folder looked like a release but failed validation — the reducer
-    /// surfaces it under the Skipped tab with its reason and drops the folder
-    /// from the valid-candidate list if it was there before.
-    InvalidCandidate {
-        candidate: BridgeInvalidCandidate,
-    },
-    /// A candidate's folder was re-scanned and the release is gone — the reducer
-    /// removes it by key.
-    ScanCandidateRemoved {
-        key: String,
-    },
-    /// The user manually skipped or unskipped a candidate — the reducer flips
-    /// its `skipped` flag, re-tabbing it New ↔ Skipped.
-    CandidateSkipChanged {
-        key: String,
-        skipped: bool,
-    },
-    ScanFinished,
-
-    // ── Library ────────────────────────────────────────────────────
-    AlbumAdded {
-        album: BridgeAlbumDetail,
-    },
-    AlbumUpdated {
-        album: BridgeAlbumDetail,
-    },
-    AlbumRemoved {
-        album_id: String,
-        release_ids: Vec<String>,
-    },
-    ReleaseAdded {
-        album: BridgeAlbum,
-        release: BridgeRelease,
-    },
-    ReleaseUpdated {
-        album_id: String,
-        release: BridgeRelease,
-    },
-    ReleaseRemoved {
-        album_id: String,
-        release_id: String,
-        album: Option<BridgeAlbum>,
-    },
-    ConfigChanged {
-        config: BridgeConfig,
-        /// Whether the sync loop is running right now. Runtime status, not
-        /// configuration — carried alongside `config` rather than inside it
-        /// so the UI can land it on the store next to `syncError` instead of
-        /// on the persisted-config mirror.
-        sync_ready: bool,
-    },
-    /// Sync loop's current error state. `None` clears a prior failure. When
-    /// set, it's a `BridgeError::Diagnostic` whose category keys the generic
-    /// line and whose detail is the opaque, log-only error chain offered in a
-    /// copyable disclosure.
-    SyncError {
-        error: Option<BridgeError>,
-    },
-    /// Wall-clock time of the latest successful sync cycle, as Unix epoch
-    /// milliseconds. `None` until the first cycle completes.
-    SyncTimeChanged {
-        time: Option<i64>,
-    },
-    /// Whether the sync loop is currently mid-cycle. Drives the spinner the
-    /// sidebar overlays on the active library row.
-    SyncingChanged {
-        syncing: bool,
-    },
-    /// The cloud outbox processing snapshot changed — the Storage Manager
-    /// re-renders its queue panel from this.
-    OutboxChanged {
-        snapshot: BridgeOutboxSnapshot,
-    },
+    // ── Release transfer ───────────────────────────────────────────
     /// A pin/unpin/manage/unmanage transition started. The UI composes the
     /// localized line and shows an in-flight indicator on the release row until
     /// `ReleaseTransferEnded`.
@@ -1697,16 +1596,6 @@ pub enum BridgeUiEvent {
     /// indicator. Failure text still arrives via the thrown error.
     ReleaseTransferEnded {
         release_id: String,
-    },
-    /// The in-memory download (pin) queue changed — the Storage Manager
-    /// re-renders its Downloads pane from this.
-    DownloadQueueChanged {
-        snapshot: BridgeDownloadSnapshot,
-    },
-    /// The in-memory export queue changed — the Storage Manager re-renders its
-    /// Exporting pane from this.
-    ExportQueueChanged {
-        snapshot: BridgeExportSnapshot,
     },
 
     // ── Errors ─────────────────────────────────────────────────────
@@ -2096,8 +1985,8 @@ pub struct BridgeConfig {
     pub discogs_usable: bool,
     /// The configured cloud provider, present whenever YAML carries one — so
     /// the settings tab can render the previous selection even when sync is
-    /// broken. Does not imply sync is working: that's runtime status carried
-    /// by `BridgeUiEvent::ConfigChanged.sync_ready`, not config.
+    /// broken. Does not imply sync is working: runtime status lives in
+    /// `BridgeSyncStatusSnapshot`, not config.
     pub sync: Option<BridgeSyncConfig>,
 }
 
@@ -3035,6 +2924,7 @@ pub(crate) fn bridge_sort_to_core(c: &BridgeSortCriterion) -> bae_core::db::Albu
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 pub(crate) fn metadata_result_to_bridge(
     r: bae_core::import::search::MetadataResult,
 ) -> BridgeMetadataResult {
@@ -3053,6 +2943,7 @@ pub(crate) fn metadata_result_to_bridge(
     feature = "desktop",
     not(any(target_os = "ios", target_os = "android"))
 ))]
+#[cfg(feature = "desktop")]
 pub(crate) fn remote_cover_data_to_bridge(
     c: bae_core::import::cover_art::RemoteCover,
 ) -> BridgeRemoteCover {
@@ -3068,6 +2959,7 @@ pub(crate) fn remote_cover_data_to_bridge(
     feature = "desktop",
     not(any(target_os = "ios", target_os = "android"))
 ))]
+#[cfg(feature = "desktop")]
 fn bridge_remote_cover_selection(
     url: String,
     source: bae_core::import::MetadataSource,
@@ -3082,6 +2974,7 @@ fn bridge_remote_cover_selection(
     feature = "desktop",
     not(any(target_os = "ios", target_os = "android"))
 ))]
+#[cfg(feature = "desktop")]
 fn remote_cover_choice_to_bridge(
     selection: &BridgeRemoteCoverSelection,
     thumbnail_url: &str,
@@ -3207,6 +3100,7 @@ pub(crate) fn release_detail_from_bridge(
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 pub(crate) fn identify_source_to_bridge(
     s: bae_core::identify::IdentifySource,
 ) -> BridgeIdentifySource {
@@ -3218,6 +3112,7 @@ pub(crate) fn identify_source_to_bridge(
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 fn discid_progress_to_bridge(p: bae_core::identify::DiscidProgress) -> BridgeDiscidProgress {
     use bae_core::identify::DiscidProgress;
     match p {
@@ -3234,6 +3129,7 @@ fn discid_progress_to_bridge(p: bae_core::identify::DiscidProgress) -> BridgeDis
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 fn barcode_progress_to_bridge(p: bae_core::identify::BarcodeProgress) -> BridgeBarcodeProgress {
     use bae_core::identify::BarcodeProgress;
     match p {
@@ -3259,6 +3155,7 @@ fn barcode_progress_to_bridge(p: bae_core::identify::BarcodeProgress) -> BridgeB
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 pub(crate) fn release_group_to_bridge(
     g: bae_core::import::release_group::ReleaseGroup,
 ) -> BridgeReleaseGroup {
@@ -3280,6 +3177,7 @@ pub(crate) fn release_group_to_bridge(
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 pub(crate) fn signals_to_bridge(s: bae_core::signals::Signals) -> BridgeSignals {
     use bae_core::signals::{BarcodeSignal, DiscIdSignal, TextSignal};
 
@@ -3349,6 +3247,7 @@ pub(crate) fn signals_to_bridge(s: bae_core::signals::Signals) -> BridgeSignals 
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 fn provenance_to_bridge(p: bae_core::identify::ResultProvenance) -> BridgeResultProvenance {
     BridgeResultProvenance {
         by_disc_id: p.by_disc_id,
@@ -3359,6 +3258,7 @@ fn provenance_to_bridge(p: bae_core::identify::ResultProvenance) -> BridgeResult
 
 /// Convert a core identify state into its bridge mirror.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 pub(crate) fn identify_state_to_bridge(
     s: bae_core::identify::IdentifyState,
 ) -> BridgeIdentifyState {
@@ -3433,6 +3333,7 @@ pub(crate) fn identify_state_to_bridge(
 /// (display order matters) plus a status map keyed by release id (the UI
 /// looks up each row's status by id).
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 fn results_and_status_map(
     pairs: Vec<(
         bae_core::import::search::MetadataResult,
@@ -3452,6 +3353,7 @@ fn results_and_status_map(
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 fn scanned_file_to_bridge(f: bae_core::import::folder_scanner::ScannedFile) -> BridgeFileInfo {
     BridgeFileInfo {
         name: f.relative_path,
@@ -3463,6 +3365,7 @@ fn scanned_file_to_bridge(f: bae_core::import::folder_scanner::ScannedFile) -> B
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 fn scanned_artwork_to_bridge(
     f: bae_core::import::folder_scanner::ScannedFile,
 ) -> BridgeArtworkFile {
@@ -3479,6 +3382,7 @@ fn scanned_artwork_to_bridge(
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 pub(crate) fn categorized_files_to_bridge(
     files: bae_core::import::folder_scanner::CategorizedFiles,
 ) -> BridgeCandidateFiles {

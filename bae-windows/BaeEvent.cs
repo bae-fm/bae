@@ -58,33 +58,12 @@ public sealed class BaeEvent
     // QueueItemsAdded — count of tracks just appended/inserted, for the +N badge.
     public int? Count { get; set; }
 
-    // Scan-candidate events.
+    // CandidateImportLoudnessProgress routes the high-frequency import bar.
     public string? Key { get; set; }
-    public string? Name { get; set; }
-    public int TrackCount { get; set; }
-    public string? Format { get; set; }
-    public List<string>? AudioPaths { get; set; }
-
-    // Auto-identify events (CandidateIdentifyState).
-    public string? Status { get; set; }
-    public List<Candidate>? Matches { get; set; }
-
-    // Per-signal badge list, carried by CandidateIdentifyState.
-    public List<SignalBadge>? Signals { get; set; }
-
-    // Import progress (CandidateImportProgress): percent + the structured step.
-    public int ProgressPercent { get; set; }
-
-    // Loudness measurement progress (CandidateImportLoudnessProgress): tracks
-    // measured so far of the total, for a determinate "N / M" indicator.
     public int TracksDone { get; set; }
     public int TracksTotal { get; set; }
 
-    /// <summary>The structured import step (CandidateImportProgress); null before
-    /// the first step is known. The handler resolves its localized verb.</summary>
-    public ImportStep? Step { get; set; }
-
-    /// <summary>The structured diagnostic for Error / CandidateImportError.</summary>
+    /// <summary>The structured diagnostic for Error.</summary>
     public DiagnosticError? Error { get; set; }
 
     /// <summary>The structured playback-failure reason (PlaybackError).</summary>

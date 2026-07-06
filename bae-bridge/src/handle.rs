@@ -803,8 +803,8 @@ impl AppHandle {
         convert_sync_status_snapshot(self.services.get_sync_status())
     }
 
-    /// The current cloud outbox processing snapshot. Seeds the Storage Manager
-    /// panel before the first `OutboxChanged` event arrives.
+    /// The current cloud outbox processing snapshot. Outbox invalidations tell
+    /// the Storage Manager to read it again.
     pub fn get_outbox_snapshot(&self) -> Result<crate::types::BridgeOutboxSnapshot, BridgeError> {
         let snapshot = self
             .runtime
@@ -851,8 +851,8 @@ impl AppHandle {
 
     // ── Download (pin) queue ─────────────────────────────────────────
 
-    /// The current download-queue snapshot. Seeds the Downloads pane before the
-    /// first `DownloadQueueChanged` event arrives.
+    /// The current download-queue snapshot. Download invalidations tell the
+    /// Downloads pane to read it again.
     pub fn get_download_snapshot(&self) -> crate::types::BridgeDownloadSnapshot {
         convert_download_snapshot(self.services.library_manager().download_snapshot())
     }
@@ -888,8 +888,8 @@ impl AppHandle {
 
     // ── Export queue ─────────────────────────────────────────────────
 
-    /// The current export-queue snapshot. Seeds the Exporting pane before the
-    /// first `ExportQueueChanged` event arrives.
+    /// The current export-queue snapshot. Export invalidations tell the
+    /// Exporting pane to read it again.
     pub fn get_export_snapshot(&self) -> crate::types::BridgeExportSnapshot {
         convert_export_snapshot(self.services.library_manager().export_snapshot())
     }
@@ -1249,9 +1249,8 @@ impl AppHandle {
             .map_err(BridgeError::import)
     }
 
-    /// Mark the candidate at `path` skipped or unskipped. Persists the change and
-    /// broadcasts a `CandidateSkipChanged` event so the import view re-tabs the
-    /// row.
+    /// Mark the candidate at `path` skipped or unskipped. Persists the change;
+    /// the candidate invalidation makes the import view read the new row.
     pub fn set_candidate_skipped(&self, path: String, skipped: bool) -> Result<(), BridgeError> {
         self.services
             .import()
@@ -1259,9 +1258,8 @@ impl AppHandle {
             .map_err(BridgeError::import)
     }
 
-    /// Scan every watched folder, streaming results back as
-    /// `FolderCandidateAdded` events. The UI calls this when the import view
-    /// appears to populate the candidate list.
+    /// Scan every watched folder. Import invalidations tell the UI to read the
+    /// current candidate list.
     pub fn scan_watched_folders(&self) -> Result<(), BridgeError> {
         self.services
             .import()
@@ -1818,6 +1816,7 @@ fn convert_sync_status_snapshot(
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 fn convert_folder_candidate(
     candidate: bae_core::import::FolderCandidate,
 ) -> crate::types::BridgeFolderCandidate {
@@ -1834,6 +1833,7 @@ fn convert_folder_candidate(
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 fn convert_invalid_candidate(
     candidate: bae_core::import::InvalidCandidate,
 ) -> crate::types::BridgeInvalidCandidate {
@@ -1922,7 +1922,12 @@ fn convert_import_candidates_snapshot(
         folder_candidates: snapshot
             .folder_candidates
             .into_iter()
-            .map(convert_folder_candidate)
+            .map(
+                |snapshot| crate::types::BridgeFolderImportCandidateSnapshot {
+                    candidate: convert_folder_candidate(snapshot.candidate),
+                    runtime: convert_candidate_runtime_snapshot(snapshot.runtime),
+                },
+            )
             .collect(),
         invalid_candidates: snapshot
             .invalid_candidates
@@ -2047,34 +2052,7 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             progress,
         }),
 
-        // ── Candidate-scoped ───────────────────────────────────────
-        // These two carry identify-pipeline payloads, which are desktop-only.
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        UiBusEvent::CandidateIdentifyStateChanged {
-            key,
-            state,
-            toolbar,
-        } => Some(BridgeUiEvent::CandidateIdentifyStateChanged {
-            key,
-            state: crate::types::identify_state_to_bridge(state),
-            toolbar: crate::types::toolbar_to_bridge(toolbar),
-        }),
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        UiBusEvent::CandidateSignalsUpdated { key, signals } => {
-            Some(BridgeUiEvent::CandidateSignalsUpdated {
-                key,
-                signals: crate::types::signals_to_bridge(signals),
-            })
-        }
-        UiBusEvent::CandidateImportImporting {
-            key,
-            progress_percent,
-            step,
-        } => Some(BridgeUiEvent::CandidateImportImporting {
-            key,
-            progress_percent,
-            step: step.map(crate::types::import_step_to_bridge),
-        }),
+        // ── Import live progress ───────────────────────────────────
         UiBusEvent::CandidateImportLoudnessProgress {
             key,
             tracks_done,
@@ -2086,93 +2064,8 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             tracks_total,
             fraction,
         }),
-        UiBusEvent::CandidateImportComplete {
-            key,
-            release_id,
-            album_id,
-        } => Some(BridgeUiEvent::CandidateImportComplete {
-            key,
-            release_id,
-            album_id,
-        }),
-        UiBusEvent::CandidateImportError { key, error } => {
-            Some(BridgeUiEvent::CandidateImportError {
-                key,
-                error: crate::types::bridge_error(error),
-            })
-        }
 
-        // ── Scan ───────────────────────────────────────────────────
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        UiBusEvent::WatchedFoldersChanged { folders } => {
-            Some(BridgeUiEvent::WatchedFoldersChanged {
-                folders: folders
-                    .into_iter()
-                    .map(crate::types::BridgeWatchedFolder::from_core)
-                    .collect(),
-            })
-        }
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        UiBusEvent::FolderCandidateAdded { candidate } => {
-            Some(BridgeUiEvent::FolderCandidateAdded {
-                candidate: convert_folder_candidate(candidate),
-            })
-        }
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        UiBusEvent::InvalidCandidate { candidate } => Some(BridgeUiEvent::InvalidCandidate {
-            candidate: convert_invalid_candidate(candidate),
-        }),
-        UiBusEvent::ScanCandidateRemoved { key } => {
-            Some(BridgeUiEvent::ScanCandidateRemoved { key })
-        }
-        UiBusEvent::CandidateSkipChanged { key, skipped } => {
-            Some(BridgeUiEvent::CandidateSkipChanged { key, skipped })
-        }
-        UiBusEvent::ScanFinished => Some(BridgeUiEvent::ScanFinished),
-
-        // ── Library ────────────────────────────────────────────────
-        UiBusEvent::AlbumAdded { album } => Some(BridgeUiEvent::AlbumAdded {
-            album: convert_album_detail(album),
-        }),
-        UiBusEvent::AlbumUpdated { album } => Some(BridgeUiEvent::AlbumUpdated {
-            album: convert_album_detail(album),
-        }),
-        UiBusEvent::AlbumRemoved {
-            album_id,
-            release_ids,
-        } => Some(BridgeUiEvent::AlbumRemoved {
-            album_id,
-            release_ids,
-        }),
-        UiBusEvent::ReleaseAdded { album, release } => Some(BridgeUiEvent::ReleaseAdded {
-            album: convert_album_summary(album),
-            release: convert_release_detail(release),
-        }),
-        UiBusEvent::ReleaseUpdated { album_id, release } => Some(BridgeUiEvent::ReleaseUpdated {
-            album_id,
-            release: convert_release_detail(release),
-        }),
-        UiBusEvent::ReleaseRemoved {
-            album_id,
-            release_id,
-            album,
-        } => Some(BridgeUiEvent::ReleaseRemoved {
-            album_id,
-            release_id,
-            album: album.map(convert_album_summary),
-        }),
-        UiBusEvent::ConfigChanged { config, sync_ready } => Some(BridgeUiEvent::ConfigChanged {
-            config: build_bridge_config(&config),
-            sync_ready,
-        }),
-        UiBusEvent::SyncError { error } => Some(BridgeUiEvent::SyncError {
-            error: error.map(crate::types::bridge_error),
-        }),
-        UiBusEvent::SyncTimeChanged { time } => Some(BridgeUiEvent::SyncTimeChanged { time }),
-        UiBusEvent::SyncingChanged { syncing } => Some(BridgeUiEvent::SyncingChanged { syncing }),
-        UiBusEvent::OutboxChanged { snapshot } => Some(BridgeUiEvent::OutboxChanged {
-            snapshot: convert_outbox_snapshot(snapshot),
-        }),
+        // ── Release transfer ───────────────────────────────────────
         UiBusEvent::ReleaseTransferProgress { release_id, action } => {
             Some(BridgeUiEvent::ReleaseTransferProgress {
                 release_id,
@@ -2182,14 +2075,6 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
         UiBusEvent::ReleaseTransferEnded { release_id } => {
             Some(BridgeUiEvent::ReleaseTransferEnded { release_id })
         }
-        UiBusEvent::DownloadQueueChanged { snapshot } => {
-            Some(BridgeUiEvent::DownloadQueueChanged {
-                snapshot: convert_download_snapshot(snapshot),
-            })
-        }
-        UiBusEvent::ExportQueueChanged { snapshot } => Some(BridgeUiEvent::ExportQueueChanged {
-            snapshot: convert_export_snapshot(snapshot),
-        }),
 
         // ── Errors ─────────────────────────────────────────────────
         UiBusEvent::Error { error } => Some(BridgeUiEvent::Error {

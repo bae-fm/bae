@@ -34,8 +34,14 @@ pub(super) fn send_event(sender: &broadcast::Sender<ImportEvent>, ev: ImportEven
 #[derive(Debug, Clone)]
 pub struct ImportCandidatesSnapshot {
     pub watched_folders: Vec<WatchedFolder>,
-    pub folder_candidates: Vec<FolderCandidate>,
+    pub folder_candidates: Vec<FolderImportCandidateSnapshot>,
     pub invalid_candidates: Vec<InvalidCandidate>,
+}
+
+#[derive(Debug, Clone)]
+pub struct FolderImportCandidateSnapshot {
+    pub candidate: FolderCandidate,
+    pub runtime: CandidateRuntimeSnapshot,
 }
 
 #[derive(Debug, Clone)]
@@ -254,9 +260,14 @@ impl ImportCandidateState {
         let mut invalid_candidates = Vec::new();
         for (key, candidate) in &self.candidates {
             match candidate {
-                ScannedImportCandidateSnapshot::Folder { candidate, .. } => {
-                    folder_candidates.push((key.as_str(), candidate.clone()))
-                }
+                ScannedImportCandidateSnapshot::Folder { candidate, runtime } => folder_candidates
+                    .push((
+                        key.as_str(),
+                        FolderImportCandidateSnapshot {
+                            candidate: candidate.clone(),
+                            runtime: runtime.clone(),
+                        },
+                    )),
                 ScannedImportCandidateSnapshot::Invalid(candidate) => {
                     invalid_candidates.push((key.as_str(), candidate.clone()))
                 }
@@ -279,7 +290,7 @@ impl ImportCandidateState {
         sort_by_watched_folder(
             &mut folder_candidates,
             &order_for,
-            |candidate: &FolderCandidate| &candidate.watched_folder_path,
+            |candidate: &FolderImportCandidateSnapshot| &candidate.candidate.watched_folder_path,
         );
         sort_by_watched_folder(
             &mut invalid_candidates,

@@ -207,31 +207,7 @@ pub enum UiBusEvent {
         progress: f64,
     },
 
-    // ── Candidate-scoped (key inlined) ─────────────────────────────
-    /// Identify pipeline transitioned to a new state. One variant per state;
-    /// the reducer switches on `state` to update the store. Carries the
-    /// pre-shaped signals toolbar (interactive badge row) projected from the
-    /// same transition, written onto the candidate wholesale.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    CandidateIdentifyStateChanged {
-        key: String,
-        state: crate::identify::IdentifyState,
-        toolbar: Vec<crate::identify::ToolbarSignal>,
-    },
-    /// Full snapshot of a candidate's extracted signals (disc ID, barcodes,
-    /// classified text). Core emits this on extraction start, each source/OCR
-    /// completion, natural end, and cancellation. Reducer writes the whole
-    /// snapshot wholesale.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    CandidateSignalsUpdated {
-        key: String,
-        signals: crate::signals::Signals,
-    },
-    CandidateImportImporting {
-        key: String,
-        progress_percent: u32,
-        step: Option<crate::import::ImportStep>,
-    },
+    // ── Import live progress ───────────────────────────────────────
     /// High-frequency loudness-measurement tick — goes to a native leaf view, not
     /// the @Observable store, so the sub-track cadence never churns the candidate
     /// row. `key` routes it to the importing candidate's confirm pane; `fraction`
@@ -243,107 +219,8 @@ pub enum UiBusEvent {
         tracks_total: u32,
         fraction: f32,
     },
-    CandidateImportComplete {
-        key: String,
-        /// The release the import created. Carried so the import UI can
-        /// invalidate this candidate when that release is deleted and join
-        /// the per-release upload queue while the cloud copy is pending.
-        release_id: String,
-        album_id: String,
-    },
-    CandidateImportError {
-        key: String,
-        error: UiError,
-    },
 
-    // ── Scan ───────────────────────────────────────────────────────
-    /// The watched-folder list changed (loaded, or after add/remove). The
-    /// reducer replaces its copy and drops candidates whose source folder is
-    /// no longer watched.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    WatchedFoldersChanged {
-        folders: Vec<crate::import::WatchedFolder>,
-    },
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    FolderCandidateAdded {
-        candidate: crate::import::FolderCandidate,
-    },
-    /// A leaf folder looked like a release but failed validation. The reducer
-    /// surfaces it under the Skipped tab with its reason, dropping the folder
-    /// from the valid-candidate list if it was there before.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    InvalidCandidate {
-        candidate: crate::import::InvalidCandidate,
-    },
-    /// A candidate's folder was re-scanned by the watcher and the release is
-    /// gone. The reducer removes it by key.
-    ScanCandidateRemoved {
-        key: String,
-    },
-    /// The user manually skipped or unskipped a candidate. The reducer flips the
-    /// candidate's `skipped` flag in place, re-tabbing it New ↔ Skipped.
-    CandidateSkipChanged {
-        key: String,
-        skipped: bool,
-    },
-    ScanFinished,
-
-    // ── Library ────────────────────────────────────────────────────
-    AlbumAdded {
-        album: crate::album_detail::AlbumDetail,
-    },
-    AlbumUpdated {
-        album: crate::album_detail::AlbumDetail,
-    },
-    AlbumRemoved {
-        album_id: String,
-        release_ids: Vec<String>,
-    },
-    ReleaseAdded {
-        album: crate::album_detail::AlbumSummary,
-        release: crate::album_detail::ReleaseDetail,
-    },
-    ReleaseUpdated {
-        album_id: String,
-        release: crate::album_detail::ReleaseDetail,
-    },
-    ReleaseRemoved {
-        album_id: String,
-        release_id: String,
-        album: Option<crate::album_detail::AlbumSummary>,
-    },
-    ConfigChanged {
-        config: crate::config::Config,
-        /// Whether the sync loop is running. Bundled here so every consumer
-        /// sees a consistent (config, sync_ready) pair without a second
-        /// subscription. The producer reads `LibraryManager::is_sync_ready`
-        /// at emit time.
-        sync_ready: bool,
-    },
-    /// Sync loop's current error state. `None` means sync is healthy (clears a
-    /// prior failure). When set, it's a `UiError::Diagnostic` whose category
-    /// keys the generic line and whose detail is the opaque, log-only error
-    /// chain the UI offers in a copyable disclosure under the reconnect banner.
-    SyncError {
-        error: Option<UiError>,
-    },
-    /// Wall-clock time of the latest successful sync cycle, as Unix epoch
-    /// milliseconds. `None` until the first cycle completes; updated whenever
-    /// the timestamp changes.
-    SyncTimeChanged {
-        time: Option<i64>,
-    },
-    /// Whether the sync loop is currently mid-cycle. Drives the spinner the
-    /// sidebar overlays on the active library row from "Sync Now" through to
-    /// the cycle ending.
-    SyncingChanged {
-        syncing: bool,
-    },
-    /// The cloud outbox processing snapshot changed — the Storage Manager
-    /// re-renders its queue panel from this.
-    OutboxChanged {
-        snapshot: crate::library::OutboxSnapshot,
-    },
+    // ── Release transfer ───────────────────────────────────────────
     /// A pin/unpin/manage/unmanage transition started. The UI shows an
     /// in-flight indicator on the release row until `ReleaseTransferEnded`.
     ReleaseTransferProgress {
@@ -354,16 +231,6 @@ pub enum UiBusEvent {
     /// indicator. Failure text still arrives via the thrown error.
     ReleaseTransferEnded {
         release_id: String,
-    },
-    /// The in-memory download (pin) queue changed — the Storage Manager
-    /// re-renders its Downloads pane from this.
-    DownloadQueueChanged {
-        snapshot: crate::library::DownloadSnapshot,
-    },
-    /// The in-memory export queue changed — the Storage Manager re-renders its
-    /// Exporting pane from this.
-    ExportQueueChanged {
-        snapshot: crate::library::ExportSnapshot,
     },
 
     // ── Errors ─────────────────────────────────────────────────────

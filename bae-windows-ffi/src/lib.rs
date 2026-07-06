@@ -10,6 +10,7 @@
 
 use std::{
     ffi::{c_char, CStr, CString},
+    ptr,
     sync::{Arc, OnceLock, RwLock},
 };
 
@@ -2969,10 +2970,10 @@ struct FfiPlaybackContext {
     upcoming: Vec<FfiQueueItem>,
 }
 
-/// One signals-toolbar badge (carried by `CandidateIdentifyState`). A flat,
-/// pre-shaped mirror of `bae_core::identify::ToolbarSignal`: the UI renders it
-/// directly. `kind`/`role`/`origin` are the snake_case wire names; `state` is a
-/// tagged shape (`kind` plus an optional `count`/`message`).
+/// One signals-toolbar badge. A flat, pre-shaped mirror of
+/// `bae_core::identify::ToolbarSignal`: the UI renders it directly.
+/// `kind`/`role`/`origin` are the snake_case wire names; `state` is a tagged
+/// shape (`kind` plus an optional `count`/`message`).
 #[derive(Serialize)]
 struct FfiSignal {
     /// `disc_id` / `barcode` / `catalog`.
@@ -3000,6 +3001,40 @@ struct FfiSignalState {
     kind: &'static str,
     count: Option<u32>,
     failure: Option<loc::FfiLookupFailure>,
+}
+
+#[derive(Serialize)]
+struct FfiImportCandidate {
+    key: String,
+    name: String,
+    track_count: u32,
+    format: String,
+    row_status: FfiImportCandidateRowStatus,
+    matches: Vec<FfiCandidate>,
+    signals: Vec<FfiSignal>,
+    audio_paths: Vec<String>,
+    folder_path: String,
+}
+
+#[derive(Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum FfiImportCandidateRowStatus {
+    Empty,
+    Identifying,
+    Found {
+        count: u32,
+    },
+    Conflict,
+    NotFound,
+    Manual,
+    Importing {
+        progress_percent: u32,
+        step: Option<loc::FfiImportStep>,
+    },
+    Complete,
+    Error {
+        error: loc::FfiError,
+    },
 }
 
 #[derive(Serialize)]
@@ -3128,8 +3163,6 @@ enum FfiEvent {
         /// (`duration_ms - position_ms`) for the locale.
         duration_ms: u64,
     },
-    /// The library changed (album/release add/update/remove) — reload views.
-    LibraryChanged,
     QueueUpdated {
         manual: Vec<FfiQueueItem>,
         context: Option<FfiPlaybackContext>,
@@ -3151,22 +3184,6 @@ enum FfiEvent {
     /// Repeat mode changed: `off` / `track` / `context`.
     RepeatModeChanged {
         mode: String,
-    },
-    /// A sync-loop error, or `null` message when a prior error cleared.
-    /// Sync-loop error state, or `null` when a prior error cleared. When set,
-    /// the structured diagnostic the C# renders as a generic per-category line
-    /// plus the opaque, log-only `detail`.
-    SyncError {
-        error: Option<loc::FfiError>,
-    },
-    /// The sync pipeline started or stopped a pass — drives the toolbar indicator.
-    SyncingChanged {
-        syncing: bool,
-    },
-    /// The last successful sync time changed (`null` when never synced). Unix
-    /// epoch milliseconds the toolbar formats into a local time.
-    SyncTimeChanged {
-        sync_time: Option<i64>,
     },
     /// Playback failed for the current track. `reason` is the structured,
     /// locale-free reason: the actionable cloud-only cases the C# keys, and a
@@ -3194,50 +3211,6 @@ enum FfiEvent {
     },
     /// Import-preview playback stopped/ended — clear its position display.
     PreviewIdle,
-    /// A release candidate was found by a folder scan. `audio_paths` are its
-    /// playable files, for pre-import preview.
-    CandidateAdded {
-        key: String,
-        name: String,
-        track_count: u32,
-        format: String,
-        audio_paths: Vec<String>,
-    },
-    /// A candidate left the scan list.
-    CandidateRemoved {
-        key: String,
-    },
-    /// The folder walk finished.
-    ScanFinished,
-    /// The cloud upload/delete outbox changed; the storage screen re-reads it.
-    OutboxChanged,
-    /// The download (pin) queue changed; the Downloads pane re-reads it.
-    DownloadQueueChanged,
-    /// Library config changed (cloud provider connected/disconnected, sync
-    /// readiness, library rename, Discogs token). The settings screen re-reads
-    /// `bae_settings` so its fields reflect the change without a reopen.
-    ConfigChanged,
-    /// Auto-identification progress/result for a candidate. `status` is one of
-    /// `idle` / `identifying` / `found` / `conflict` / `not_found` / `manual` /
-    /// `error`; `matches` is populated when `found`; `message` carries the reason
-    /// when `error`.
-    CandidateIdentifyState {
-        key: String,
-        status: String,
-        matches: Vec<FfiCandidate>,
-        message: Option<String>,
-        /// The pre-shaped per-signal badge list projected from the same
-        /// transition; the app replaces the candidate's badge row wholesale.
-        signals: Vec<FfiSignal>,
-    },
-    /// Import progress for a candidate. `step` is the structured, locale-free
-    /// step (or `null` before the first step is known); the C# resolves its
-    /// localized verb from the step's catalog key.
-    CandidateImportProgress {
-        key: String,
-        progress_percent: u32,
-        step: Option<loc::FfiImportStep>,
-    },
     /// Per-track loudness measurement progress for a candidate. The C# renders a
     /// determinate "N / M" indicator off these counts, updated per track rather
     /// than re-rendering the candidate list.
@@ -3246,38 +3219,31 @@ enum FfiEvent {
         tracks_done: u32,
         tracks_total: u32,
     },
-    /// A candidate's import finished; the album is in the library.
-    CandidateImportComplete {
-        key: String,
-        /// The release the import created — the UI's join key for
-        /// candidate-level invalidation (release deleted) and the
-        /// per-release upload queue.
-        release_id: String,
-        album_id: String,
-    },
-    /// A candidate's import failed. `error` is the structured diagnostic the C#
-    /// renders as a generic per-category line plus the opaque, log-only detail.
-    CandidateImportError {
-        key: String,
-        error: loc::FfiError,
-    },
 }
 
-/// Reduce an `IdentifyState` to the wire status the candidate row shows, the
-/// match list (populated only when found), and any error message.
-fn identify_state_to_ffi(
-    state: &bae_core::identify::IdentifyState,
-) -> (&'static str, Vec<FfiCandidate>, Option<String>) {
+fn identify_matches_to_ffi(state: &bae_core::identify::IdentifyState) -> Vec<FfiCandidate> {
     use bae_core::identify::IdentifyState;
     match state {
-        IdentifyState::Idle => ("idle", vec![], None),
-        IdentifyState::Triangulating { .. } => ("identifying", vec![], None),
-        IdentifyState::Found { matches, .. } => {
-            ("found", matches.iter().map(metadata_to_ffi).collect(), None)
-        }
-        IdentifyState::Conflict { .. } => ("conflict", vec![], None),
-        IdentifyState::NotFoundAnywhere { .. } => ("not_found", vec![], None),
-        IdentifyState::ManualOnly { .. } => ("manual", vec![], None),
+        IdentifyState::Found { matches, .. } => matches.iter().map(metadata_to_ffi).collect(),
+        IdentifyState::Idle
+        | IdentifyState::Triangulating { .. }
+        | IdentifyState::Conflict { .. }
+        | IdentifyState::NotFoundAnywhere { .. }
+        | IdentifyState::ManualOnly { .. } => Vec::new(),
+    }
+}
+
+fn identify_row_status(state: &bae_core::identify::IdentifyState) -> FfiImportCandidateRowStatus {
+    use bae_core::identify::IdentifyState;
+    match state {
+        IdentifyState::Idle => FfiImportCandidateRowStatus::Empty,
+        IdentifyState::Triangulating { .. } => FfiImportCandidateRowStatus::Identifying,
+        IdentifyState::Found { matches, .. } => FfiImportCandidateRowStatus::Found {
+            count: matches.len() as u32,
+        },
+        IdentifyState::Conflict { .. } => FfiImportCandidateRowStatus::Conflict,
+        IdentifyState::NotFoundAnywhere { .. } => FfiImportCandidateRowStatus::NotFound,
+        IdentifyState::ManualOnly { .. } => FfiImportCandidateRowStatus::Manual,
     }
 }
 
@@ -3368,6 +3334,74 @@ fn candidate_audio_paths(
     }
 }
 
+fn candidate_import_status_to_ffi(
+    status: bae_core::import::CandidateImportStatusSnapshot,
+) -> FfiImportCandidateRowStatus {
+    match status {
+        bae_core::import::CandidateImportStatusSnapshot::Importing {
+            progress_percent,
+            step,
+        } => FfiImportCandidateRowStatus::Importing {
+            progress_percent,
+            step: step.as_ref().map(loc::FfiImportStep::from_core),
+        },
+        bae_core::import::CandidateImportStatusSnapshot::Complete { .. } => {
+            FfiImportCandidateRowStatus::Complete
+        }
+        bae_core::import::CandidateImportStatusSnapshot::Error { error } => {
+            FfiImportCandidateRowStatus::Error {
+                error: loc::FfiError::from_core(&bae_core::ui::UiError::import(error)),
+            }
+        }
+    }
+}
+
+fn folder_candidate_to_ffi(
+    snapshot: bae_core::import::FolderImportCandidateSnapshot,
+) -> FfiImportCandidate {
+    let candidate = snapshot.candidate;
+    let runtime = snapshot.runtime;
+    let row_status = runtime
+        .import_status
+        .map(candidate_import_status_to_ffi)
+        .unwrap_or_else(|| identify_row_status(&runtime.identify_state));
+    let matches = identify_matches_to_ffi(&runtime.identify_state);
+    FfiImportCandidate {
+        key: candidate.path.to_string_lossy().to_string(),
+        name: candidate.name.clone(),
+        track_count: candidate.files.audio.track_count(),
+        format: candidate.files.audio.format_label().to_string(),
+        row_status,
+        matches,
+        signals: runtime.toolbar.iter().map(toolbar_signal_to_ffi).collect(),
+        audio_paths: candidate_audio_paths(&candidate.files),
+        folder_path: candidate.path.to_string_lossy().to_string(),
+    }
+}
+
+fn import_candidates_to_ffi(app: &bae_desktop::DesktopApp) -> Vec<FfiImportCandidate> {
+    let snapshot = app.services.get_import_candidates();
+    snapshot
+        .folder_candidates
+        .into_iter()
+        .map(folder_candidate_to_ffi)
+        .collect()
+}
+
+/// Current folder-import candidates with runtime status, matches, and signal
+/// badges. Copies and frees.
+///
+/// # Safety
+/// `handle` must be a pointer returned by [`bae_init`] and not yet freed.
+#[no_mangle]
+pub unsafe extern "C" fn bae_import_candidates(handle: *const BaeHandle) -> *mut c_char {
+    let Some(handle) = handle.as_ref() else {
+        tracing::error!("bae_import_candidates: null handle");
+        return ptr::null_mut();
+    };
+    json_cstring(&import_candidates_to_ffi(&handle.0))
+}
+
 /// The wire name for a repeat mode.
 fn repeat_mode_name(mode: &bae_core::playback::RepeatMode) -> &'static str {
     use bae_core::playback::RepeatMode;
@@ -3448,11 +3482,6 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             error: loc::FfiError::from_core(error),
         },
         UiBusEvent::ErrorCleared => FfiEvent::ErrorCleared,
-        UiBusEvent::SyncError { error } => FfiEvent::SyncError {
-            error: error.as_ref().map(loc::FfiError::from_core),
-        },
-        UiBusEvent::SyncingChanged { syncing } => FfiEvent::SyncingChanged { syncing: *syncing },
-        UiBusEvent::SyncTimeChanged { time } => FfiEvent::SyncTimeChanged { sync_time: *time },
         UiBusEvent::PlaybackProgress {
             track_id,
             progress,
@@ -3476,12 +3505,6 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             position_ms: *position_ms,
             duration_ms: *duration_ms,
         },
-        UiBusEvent::AlbumAdded { .. }
-        | UiBusEvent::AlbumUpdated { .. }
-        | UiBusEvent::AlbumRemoved { .. }
-        | UiBusEvent::ReleaseAdded { .. }
-        | UiBusEvent::ReleaseUpdated { .. }
-        | UiBusEvent::ReleaseRemoved { .. } => FfiEvent::LibraryChanged,
         UiBusEvent::QueueUpdated(snapshot) => {
             let to_item = |item: &bae_core::queue::QueueItem| FfiQueueItem {
                 entry_id: item.entry_id.clone(),
@@ -3509,41 +3532,6 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
         UiBusEvent::RepeatModeChanged { mode } => FfiEvent::RepeatModeChanged {
             mode: repeat_mode_name(mode).to_string(),
         },
-        UiBusEvent::FolderCandidateAdded { candidate } => FfiEvent::CandidateAdded {
-            key: candidate.path.to_string_lossy().to_string(),
-            name: candidate.name.clone(),
-            track_count: candidate.files.audio.track_count(),
-            format: candidate.files.audio.format_label().to_string(),
-            audio_paths: candidate_audio_paths(&candidate.files),
-        },
-        UiBusEvent::ScanCandidateRemoved { key } => FfiEvent::CandidateRemoved { key: key.clone() },
-        UiBusEvent::ScanFinished => FfiEvent::ScanFinished,
-        UiBusEvent::OutboxChanged { .. } => FfiEvent::OutboxChanged,
-        UiBusEvent::DownloadQueueChanged { .. } => FfiEvent::DownloadQueueChanged,
-        UiBusEvent::ConfigChanged { .. } => FfiEvent::ConfigChanged,
-        UiBusEvent::CandidateIdentifyStateChanged {
-            key,
-            state,
-            toolbar,
-        } => {
-            let (status, matches, message) = identify_state_to_ffi(state);
-            FfiEvent::CandidateIdentifyState {
-                key: key.clone(),
-                status: status.to_string(),
-                matches,
-                message,
-                signals: toolbar.iter().map(toolbar_signal_to_ffi).collect(),
-            }
-        }
-        UiBusEvent::CandidateImportImporting {
-            key,
-            progress_percent,
-            step,
-        } => FfiEvent::CandidateImportProgress {
-            key: key.clone(),
-            progress_percent: *progress_percent,
-            step: step.as_ref().map(loc::FfiImportStep::from_core),
-        },
         UiBusEvent::CandidateImportLoudnessProgress {
             key,
             tracks_done,
@@ -3555,19 +3543,6 @@ fn map_event(event: &UiBusEvent) -> Option<FfiEvent> {
             key: key.clone(),
             tracks_done: *tracks_done,
             tracks_total: *tracks_total,
-        },
-        UiBusEvent::CandidateImportComplete {
-            key,
-            release_id,
-            album_id,
-        } => FfiEvent::CandidateImportComplete {
-            key: key.clone(),
-            release_id: release_id.clone(),
-            album_id: album_id.clone(),
-        },
-        UiBusEvent::CandidateImportError { key, error } => FfiEvent::CandidateImportError {
-            key: key.clone(),
-            error: loc::FfiError::from_core(error),
         },
         UiBusEvent::QueueItemsAdded { count } => FfiEvent::QueueItemsAdded { count: *count },
         _ => return None,
@@ -4779,9 +4754,10 @@ pub unsafe extern "C" fn bae_set_mcp_token(
 /// (Discogs rejected it, nothing stored). Returns null on an internal error
 /// (logged). Free the result with [`bae_string_free`].
 ///
-/// On `"valid"`/`"unvalidated"` the config changes, so a `ConfigChanged` event
-/// follows and the settings screen re-reads the authoritative status; `"rejected"`
-/// persists nothing, so the caller must surface it from this return value.
+/// On `"valid"`/`"unvalidated"` the config changes, so a config invalidation
+/// follows and the settings screen re-reads the authoritative status;
+/// `"rejected"` persists nothing, so the caller must surface it from this
+/// return value.
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
@@ -4825,7 +4801,7 @@ pub unsafe extern "C" fn bae_delete_discogs_token(handle: *const BaeHandle) -> *
         return error_cstring("no app handle");
     };
     // Goes through the import handle (not the raw keyring delete) so the config
-    // flag is cleared in the same step, firing ConfigChanged for the UI.
+    // flag is cleared in the same step, invalidating config for the UI.
     match handle.0.services.import().remove_discogs_token() {
         Ok(()) => std::ptr::null_mut(),
         Err(e) => error_cstring(&e),
@@ -4834,7 +4810,7 @@ pub unsafe extern "C" fn bae_delete_discogs_token(handle: *const BaeHandle) -> *
 
 /// Re-validate a stored-but-unvalidated Discogs token against Discogs (e.g. one
 /// saved while offline). No-op unless a key is stored with `unvalidated` status.
-/// On a result the config status changes, so a `ConfigChanged` event follows and
+/// On a result the config status changes, so a config invalidation follows and
 /// the settings screen re-reads. Returns null on success, or an error-message C
 /// string on failure (free with [`bae_string_free`]).
 ///
@@ -5445,11 +5421,11 @@ pub unsafe extern "C" fn bae_reidentify_release(
 
 /// Add a folder to import from. The folder joins the watched-folder set, which
 /// scans it and reconciles its release candidates as the library changes on
-/// disk; discovered candidates arrive as `CandidateAdded` events and
-/// `ScanFinished` fires when the walk completes. `clear_first` is retained for
-/// ABI compatibility but ignored — the watched-folder model reconciles
-/// candidates rather than clearing them. Returns null on success, or an
-/// error-message C string (free with [`bae_string_free`]).
+/// disk; import invalidations tell the UI to read the candidate snapshot.
+/// `clear_first` is retained for ABI compatibility but ignored — the
+/// watched-folder model reconciles candidates rather than clearing them.
+/// Returns null on success, or an error-message C string (free with
+/// [`bae_string_free`]).
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
@@ -5473,9 +5449,8 @@ pub unsafe extern "C" fn bae_scan_folder(
 }
 
 /// Start auto-identifying a scanned folder candidate. Identification progress
-/// and results arrive as `CandidateIdentifyState` events keyed by
-/// `candidate_key` (which, for a folder candidate, is its folder path). Fire and
-/// forget — the result is delivered through the event stream.
+/// and results arrive through candidate invalidations keyed by `candidate_key`
+/// (which, for a folder candidate, is its folder path). Fire and forget.
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
@@ -5507,9 +5482,9 @@ pub unsafe extern "C" fn bae_auto_identify_folder(
 /// wire kind name (`"disc_id"` / `"barcode"` / `"catalog"`); for `"catalog"`,
 /// `value` is the catalog number that names which candidate to toggle (it is
 /// ignored for disc ID and barcode, which are singletons). The candidate
-/// re-derives its outcome and re-emits its `CandidateIdentifyState` event, so
-/// the UI updates through the event stream. No-op when the candidate isn't
-/// running or `kind` is unrecognized. Fire and forget.
+/// re-derives its outcome and invalidates, so the UI updates from the snapshot.
+/// No-op when the candidate isn't running or `kind` is unrecognized. Fire and
+/// forget.
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
@@ -5549,9 +5524,9 @@ pub unsafe extern "C" fn bae_toggle_signal_for_candidate(
 }
 
 /// Re-run a candidate's identification lookups, preserving the user's signal
-/// exclusions. Progress and the re-derived outcome arrive as
-/// `CandidateIdentifyState` events keyed by
-/// `candidate_key`. No-op when the candidate isn't running. Fire and forget.
+/// exclusions. Progress and the re-derived outcome arrive through candidate
+/// invalidations keyed by `candidate_key`. No-op when the candidate isn't
+/// running. Fire and forget.
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
@@ -5744,8 +5719,8 @@ pub unsafe extern "C" fn bae_check_release_in_library(
     })
 }
 
-/// Import a scanned candidate as the chosen identity (a match from a
-/// `CandidateIdentifyState` event, or a manual search). `storage_mode` is
+/// Import a scanned candidate as the chosen identity (a match from the candidate
+/// snapshot, or a manual search). `storage_mode` is
 /// `"unmanaged"` or `"managed"`; `pin` is the orthogonal "keep offline" choice,
 /// applied only to a remote import. `user_edit_json`
 /// overlays the user's confirmed metadata edits onto the committed release:
@@ -5758,9 +5733,8 @@ pub unsafe extern "C" fn bae_check_release_in_library(
 /// `FfiCoverSelection` JSON (`{"type":"release_image","file_id":"…"}` for a
 /// folder image, `{"type":"remote_cover","url":"…","source":"musicbrainz"}` for
 /// a remote one). The import runs in the background; progress and the result
-/// arrive as `CandidateImportProgress` / `CandidateImportComplete` /
-/// `CandidateImportError` events. Returns null on a successful enqueue, or an
-/// error-message C string (free with [`bae_string_free`]).
+/// arrive through candidate invalidations. Returns null on a successful enqueue,
+/// or an error-message C string (free with [`bae_string_free`]).
 ///
 /// # Safety
 /// `handle` must be a pointer returned by [`bae_init`] and not yet freed; all

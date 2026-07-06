@@ -108,12 +108,11 @@ public sealed partial class MainWindow : Window
     // restarts it, replacing the count and resetting the timer.
     private DispatcherTimer? _queueBadgeTimer;
 
-    // Scan candidates, populated live from CandidateAdded events while the import
-    // dialog is open and bound to its list.
+    // Scan candidates, refreshed from core when import invalidations arrive and
+    // bound to the import dialog list.
     private readonly ObservableCollection<ImportCandidate> _candidates = new();
 
-    // The import dialog's status line, set while it's open so ScanFinished can
-    // update it; null when the dialog is closed.
+    // The import dialog's status line while it is open.
     private TextBlock? _scanStatus;
 
     // Reloads the storage dialog's outbox panel and storage rows; set while that
@@ -1796,45 +1795,6 @@ public sealed partial class MainWindow : Window
                     FlashQueueAddBadge(added);
                 }
                 break;
-            case "CandidateAdded":
-                _candidates.Add(new ImportCandidate
-                {
-                    Key = evt.Key ?? string.Empty,
-                    Name = evt.Name ?? string.Empty,
-                    TrackCount = evt.TrackCount,
-                    Format = evt.Format ?? string.Empty,
-                    AudioPaths = evt.AudioPaths ?? new List<string>(),
-                    FolderPath = evt.Key ?? string.Empty,
-                });
-                break;
-            case "CandidateRemoved":
-                var removed = _candidates.FirstOrDefault(candidate => candidate.Key == evt.Key);
-                if (removed is not null)
-                {
-                    _candidates.Remove(removed);
-                }
-                break;
-            case "ScanFinished":
-                if (_scanStatus is not null)
-                {
-                    _scanStatus.Text = _candidates.Count == 0 ? Loc.Chrome("import.no_releases") : string.Empty;
-                }
-                break;
-            case "CandidateIdentifyState":
-                UpdateCandidate(evt.Key, existing =>
-                {
-                    existing.Matches = evt.Matches ?? new List<Candidate>();
-                    existing.Signals = evt.Signals ?? new List<SignalBadge>();
-                }, DescribeIdentify(evt));
-                break;
-            case "CandidateImportProgress":
-                // The percent is localized as a chrome message; the step (when
-                // known) resolves its localized verb from the catalog.
-                var stepLabel = evt.Step?.LocalizedLabel;
-                var importing = Loc.Chrome("import.progress.percent", "percent", evt.ProgressPercent);
-                UpdateCandidate(evt.Key, null,
-                    string.IsNullOrEmpty(stepLabel) ? importing : $"{importing} — {stepLabel}");
-                break;
             case "CandidateImportLoudnessProgress":
                 // The long-pole loudness pass: replace the candidate's status
                 // with a live "Measuring loudness — N/M" line per track. The
@@ -1847,18 +1807,6 @@ public sealed partial class MainWindow : Window
                         ["done"] = evt.TracksDone,
                         ["total"] = evt.TracksTotal,
                     }));
-                break;
-            case "CandidateImportComplete":
-                UpdateCandidate(evt.Key, null, Loc.Chrome("import.complete"));
-                break;
-            case "CandidateImportError":
-                // The structured diagnostic resolves its generic localized line;
-                // the failure word is chrome.
-                var failLine = evt.Error?.LocalizedLine;
-                UpdateCandidate(evt.Key, null,
-                    failLine is null
-                        ? Loc.Chrome("import.failed")
-                        : $"{Loc.Chrome("import.failed")}: {failLine}");
                 break;
         }
     }
@@ -1896,11 +1844,44 @@ public sealed partial class MainWindow : Window
             case "download_queue":
                 _refreshDownloads?.Invoke();
                 break;
+            case "import_candidate_list":
+            case "import_candidate":
+            case "watched_folders":
+                RefreshImportCandidates();
+                break;
+        }
+    }
+
+    private async void RefreshImportCandidates()
+    {
+        if (_handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var json = await System.Threading.Tasks.Task.Run(() => NativeBae.ImportCandidatesJson(_handle));
+        var candidates = json is null
+            ? null
+            : JsonSerializer.Deserialize<List<ImportCandidate>>(json, JsonOptions);
+        if (candidates is null)
+        {
+            ShowImportBanner(Loc.Chrome("import.failed"));
+            return;
+        }
+
+        _candidates.Clear();
+        foreach (var candidate in candidates)
+        {
+            _candidates.Add(candidate);
+        }
+        if (_scanStatus is not null)
+        {
+            _scanStatus.Text = _candidates.Count == 0 ? Loc.Chrome("import.no_releases") : string.Empty;
         }
     }
 
     // Replace a candidate row in place (ObservableCollection raises Replace so the
-    // bound list re-renders), applying an optional mutation and a new status.
+    // bound list re-renders), applying an optional mutation and a live status.
     private void UpdateCandidate(string? key, Action<ImportCandidate>? mutate, string status)
     {
         var index = IndexOfCandidate(key);
@@ -1920,7 +1901,8 @@ public sealed partial class MainWindow : Window
             Signals = existing.Signals,
             AudioPaths = existing.AudioPaths,
             FolderPath = existing.FolderPath,
-            Status = status,
+            RowStatus = existing.RowStatus,
+            StatusOverride = status,
         };
         mutate?.Invoke(updated);
         _candidates[index] = updated;
@@ -1940,24 +1922,13 @@ public sealed partial class MainWindow : Window
         return -1;
     }
 
-    private static string DescribeIdentify(BaeEvent evt) => evt.Status switch
-    {
-        "identifying" => Loc.Chrome("identify.identifying"),
-        "found" => Loc.Chrome("identify.found", "count", evt.Matches?.Count ?? 0),
-        "conflict" => Loc.Chrome("identify.conflict"),
-        "not_found" => Loc.Chrome("identify.not_found"),
-        "manual" => Loc.Chrome("identify.manual"),
-        "error" => Loc.Chrome("identify.error"),
-        _ => string.Empty,
-    };
-
     private async void OnImportClick(object sender, RoutedEventArgs e)
     {
         await ShowImportDialog();
     }
 
     // Build and show the import dialog: the folder scan source plus the live
-    // candidate list (bound to _candidates, which scan events populate).
+    // candidate list bound to _candidates.
     // Shared by the toolbar import button and the folder-drop handler.
     private async System.Threading.Tasks.Task ShowImportDialog()
     {
@@ -1965,6 +1936,7 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
+        RefreshImportCandidates();
 
         var scanButton = new Button { Content = Loc.Chrome("import.choose_folder") };
         var status = new TextBlock
@@ -1997,9 +1969,9 @@ public sealed partial class MainWindow : Window
         };
 
         // First click on an unidentified candidate kicks off auto-identification;
-        // once it has a result, clicking opens the import dialog (auto matches plus
-        // a manual-search fallback). The row reflects status as
-        // CandidateIdentifyState / CandidateImport* events arrive.
+        // once it has a result, clicking opens the import dialog (auto matches
+        // plus a manual-search fallback). The row reflects status from the
+        // candidate snapshot.
         list.ItemClick += async (_, args) =>
         {
             if (args.ClickedItem is not ImportCandidate candidate)
@@ -2018,8 +1990,8 @@ public sealed partial class MainWindow : Window
         };
 
         // The picker needs the app window's handle in an unpackaged app. Scanning
-        // is fire-and-forget: bae_scan_folder enqueues, candidates stream back as
-        // events into _candidates (bound to the list).
+        // is fire-and-forget: bae_scan_folder enqueues, then invalidations
+        // refresh _candidates.
         scanButton.Click += async (_, _) =>
         {
             var picker = new global::Windows.Storage.Pickers.FolderPicker();
@@ -2039,6 +2011,10 @@ public sealed partial class MainWindow : Window
             if (error is not null)
             {
                 status.Text = error;
+            }
+            else
+            {
+                RefreshImportCandidates();
             }
         };
 
@@ -2183,7 +2159,7 @@ public sealed partial class MainWindow : Window
 
     // The trailing re-run control on the signals row: re-dispatches the
     // candidate's lookups (keeping the user's exclusions). The re-derived state
-    // streams back as CandidateIdentifyState events, so no manual refresh.
+    // arrives through candidate invalidation.
     private Button BuildRerunButton(string candidateKey)
     {
         var button = new Button
@@ -2226,8 +2202,8 @@ public sealed partial class MainWindow : Window
     // state visual (spinner / count / dash / warning). Excluded badges dim and
     // strike through but stay in place so the row's layout is stable. Clicking a
     // badge toggles its signal in/out of triangulation (excluded badges re-include
-    // on click); the re-derived toolbar streams back as a CandidateIdentifyState
-    // event. Mirrors the macOS SignalBadge anatomy in plain WinUI primitives.
+    // on click); the re-derived toolbar arrives through candidate invalidation.
+    // Mirrors the macOS SignalBadge anatomy in plain WinUI primitives.
     private Button BuildSignalBadge(string candidateKey, SignalBadge signal)
     {
         var inner = new StackPanel
@@ -2684,7 +2660,7 @@ public sealed partial class MainWindow : Window
         }
 
         // The import runs in the background; its result updates the candidate row
-        // via CandidateImport* events and refreshes the grid via invalidation.
+        // and library grid through invalidations.
         // Shape (validation) of the edit happens in Rust — on failure keep the
         // dialog open and show the reason.
         dialog.PrimaryButtonClick += async (_, args) =>

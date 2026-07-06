@@ -171,38 +171,14 @@ object UiEventAdapter {
 
     private fun ignoreObsoleteEvent(event: BridgeUiEvent) {
         when (event) {
-            is BridgeUiEvent.AlbumAdded,
-            is BridgeUiEvent.AlbumUpdated,
-            is BridgeUiEvent.AlbumRemoved,
-            is BridgeUiEvent.ReleaseAdded,
-            is BridgeUiEvent.ReleaseUpdated,
-            is BridgeUiEvent.ReleaseRemoved,
-            is BridgeUiEvent.ConfigChanged,
-            is BridgeUiEvent.SyncError,
-            is BridgeUiEvent.SyncTimeChanged,
-            is BridgeUiEvent.SyncingChanged,
-            is BridgeUiEvent.DownloadQueueChanged,
             is BridgeUiEvent.QueueItemsAdded,
             BridgeUiEvent.PreviewIdle,
             is BridgeUiEvent.PreviewPlaying,
             is BridgeUiEvent.PreviewPaused,
             is BridgeUiEvent.PreviewProgress,
-            is BridgeUiEvent.CandidateIdentifyStateChanged,
-            is BridgeUiEvent.CandidateSignalsUpdated,
-            is BridgeUiEvent.CandidateImportImporting,
             is BridgeUiEvent.CandidateImportLoudnessProgress,
-            is BridgeUiEvent.CandidateImportComplete,
-            is BridgeUiEvent.CandidateImportError,
-            is BridgeUiEvent.WatchedFoldersChanged,
-            is BridgeUiEvent.FolderCandidateAdded,
-            is BridgeUiEvent.InvalidCandidate,
-            is BridgeUiEvent.ScanCandidateRemoved,
-            is BridgeUiEvent.CandidateSkipChanged,
-            BridgeUiEvent.ScanFinished,
-            is BridgeUiEvent.OutboxChanged,
             is BridgeUiEvent.ReleaseTransferProgress,
             is BridgeUiEvent.ReleaseTransferEnded,
-            is BridgeUiEvent.ExportQueueChanged,
             -> {
                 logger.debug("ignoring ${event::class.simpleName}")
             }

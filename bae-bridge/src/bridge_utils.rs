@@ -181,8 +181,8 @@ pub(crate) fn core_export_preset(preset: BridgeExportPreset) -> bae_core::config
 /// Convert a core `Config` to `BridgeConfig` for the UI. Pure translation —
 /// `cloud_account_display` is a core method; this just reads it. `sync` is
 /// `Some` whenever a provider is set in YAML. Sync-loop running status is
-/// runtime state, not config — it rides `BridgeUiEvent::ConfigChanged`
-/// separately, not on `BridgeConfig`.
+/// runtime state, not config — it lives in the sync-status snapshot, not on
+/// `BridgeConfig`.
 pub(crate) fn build_bridge_config(config: &bae_core::config::Config) -> BridgeConfig {
     let discogs_status = config.discogs_token_status();
     BridgeConfig {

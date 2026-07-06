@@ -9,8 +9,8 @@ import SwiftUI
 /// performs the chosen transition for every targeted release, reusing the same
 /// `ReleaseEditor` / `Sync` service calls the album-detail "Storage…" sheet
 /// uses. Errors surface through `UiStore` (shown by the Storage Manager
-/// window's alert); the rows themselves refresh reactively when core re-emits
-/// `ReleaseUpdated` / `AlbumUpdated` / `OutboxChanged`.
+/// window's alert); the rows themselves refresh reactively when core invalidates
+/// the affected release, album list, or outbox.
 ///
 /// `manage` (move into library) needs the pin choice, so it stashes the targets
 /// in `pendingManage` and the view presents `ManageConfirmSheet`. `unmanage`

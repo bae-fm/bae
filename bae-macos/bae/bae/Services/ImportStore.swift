@@ -53,7 +53,7 @@ class ImportStore {
     /// The folders being watched for imports, in add order. The candidate list
     /// renders one collapsible group per folder; each candidate's
     /// `watchedFolderPath` matches one of these `path`s. Fetched when the import
-    /// view appears and refreshed on add/remove via `WatchedFoldersChanged`.
+    /// view appears and refreshed on watched-folder invalidation.
     var watchedFolders: [BridgeWatchedFolder] = []
     /// Re-identify candidates — one per active "Re-identify..." sheet.
     /// Keyed by `reidentify:{releaseId}` so identify events route the same
@@ -97,7 +97,8 @@ class ImportStore {
 
         var nextFolderCandidates: OrderedDictionary<String, Candidate> = [:]
         for bridge in snapshot.folderCandidates {
-            let incoming = Candidate(bridge: bridge)
+            var incoming = Candidate(bridge: bridge.candidate)
+            applyRuntime(bridge.runtime, to: &incoming)
             if let existing = folderCandidates[incoming.key] {
                 nextFolderCandidates[incoming.key] = incoming.withSessionState(
                     from: existing

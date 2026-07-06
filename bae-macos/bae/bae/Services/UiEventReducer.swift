@@ -138,17 +138,7 @@ enum UiEventReducer {
                 )
             )
 
-        case .candidateIdentifyStateChanged, .candidateSignalsUpdated,
-            .candidateImportImporting, .candidateImportComplete,
-            .candidateImportError, .candidateSkipChanged,
-            .watchedFoldersChanged, .folderCandidateAdded, .invalidCandidate,
-            .scanCandidateRemoved, .scanFinished,
-            .albumAdded, .albumUpdated, .albumRemoved,
-            .releaseAdded, .releaseUpdated, .releaseRemoved,
-            .releaseTransferProgress, .releaseTransferEnded,
-            .configChanged, .syncError, .syncTimeChanged, .syncingChanged,
-            .outboxChanged, .downloadQueueChanged, .exportQueueChanged,
-            .queueUpdated:
+        case .releaseTransferProgress, .releaseTransferEnded, .queueUpdated:
             break
 
         case .error, .errorCleared:

@@ -58,24 +58,18 @@ impl UiEventBus {
         // Import/scan/identify events come from the desktop-only import service.
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         self.wire_import(app_services, runtime_handle);
-        let lm = app_services.library_manager().clone();
         self.wire_config_changes(
             app_services.library_manager().subscribe_config_changes(),
-            move || lm.is_sync_ready(),
             runtime_handle,
         );
     }
 
-    /// Forward the reactive config-state stream to the bus. `ConfigHandle`
-    /// publishes the whole latest `Config` on every change (Discogs key
-    /// stored/validated, cloud provider, library rename, …);
-    /// each becomes a `ConfigChanged` the native reducer applies wholesale. The
-    /// `watch` channel coalesces to the most recent value, so the UI always sees
-    /// the current config without polling or a restart.
+    /// Forward the reactive config-state stream to the bus as a scoped
+    /// invalidation. `ConfigHandle` publishes the whole latest `Config` on every
+    /// change; the UI reads the current value through the config query.
     fn wire_config_changes(
         &self,
         mut config_rx: tokio::sync::watch::Receiver<crate::config::Config>,
-        sync_ready: impl Fn() -> bool + Send + Sync + 'static,
         runtime_handle: &tokio::runtime::Handle,
     ) {
         let bus = self.clone();
@@ -86,12 +80,9 @@ impl UiEventBus {
                     tracing::debug!("config watch closed; stopping config→UI forwarder");
                     break;
                 }
-                let config = config_rx.borrow_and_update().clone();
+                config_rx.borrow_and_update();
                 bus.invalidate(Invalidation::Config);
-                bus.emit(UiBusEvent::ConfigChanged {
-                    config,
-                    sync_ready: sync_ready(),
-                });
+                bus.invalidate(Invalidation::SyncStatus);
             }
         });
     }
@@ -278,45 +269,27 @@ impl UiEventBus {
                         import.record_candidate_event(&event);
                         match event {
                             ImportEvent::Scan(scan_event) => match scan_event {
-                                ScanEvent::WatchedFoldersChanged { folders } => {
+                                ScanEvent::WatchedFoldersChanged { .. } => {
                                     bus.invalidate(Invalidation::WatchedFolders);
-                                    bus.emit(UiBusEvent::WatchedFoldersChanged { folders });
                                 }
                                 ScanEvent::FolderCandidate(c) => {
                                     bus.invalidate(Invalidation::ImportCandidate {
                                         key: c.path.to_string_lossy().to_string(),
                                     });
                                     bus.invalidate(Invalidation::ImportCandidateList);
-                                    bus.emit(UiBusEvent::FolderCandidateAdded { candidate: c });
                                 }
                                 ScanEvent::InvalidCandidate(c) => {
                                     bus.invalidate(Invalidation::ImportCandidate {
                                         key: c.path.to_string_lossy().to_string(),
                                     });
                                     bus.invalidate(Invalidation::ImportCandidateList);
-                                    bus.emit(UiBusEvent::InvalidCandidate { candidate: c });
                                 }
-                                ScanEvent::CandidateRemoved { candidate_key } => {
+                                ScanEvent::CandidateRemoved { candidate_key }
+                                | ScanEvent::CandidateSkipChanged { candidate_key, .. } => {
                                     bus.invalidate(Invalidation::ImportCandidate {
                                         key: candidate_key.clone(),
                                     });
                                     bus.invalidate(Invalidation::ImportCandidateList);
-                                    bus.emit(UiBusEvent::ScanCandidateRemoved {
-                                        key: candidate_key,
-                                    });
-                                }
-                                ScanEvent::CandidateSkipChanged {
-                                    candidate_key,
-                                    skipped,
-                                } => {
-                                    bus.invalidate(Invalidation::ImportCandidate {
-                                        key: candidate_key.clone(),
-                                    });
-                                    bus.invalidate(Invalidation::ImportCandidateList);
-                                    bus.emit(UiBusEvent::CandidateSkipChanged {
-                                        key: candidate_key,
-                                        skipped,
-                                    });
                                 }
                                 ScanEvent::Failed { error } => {
                                     bus.emit(UiBusEvent::Error {
@@ -324,74 +297,30 @@ impl UiEventBus {
                                     });
                                 }
                                 ScanEvent::Finished => {
-                                    bus.emit(UiBusEvent::ScanFinished);
+                                    bus.invalidate(Invalidation::ImportCandidateList);
                                 }
                             },
                             ImportEvent::ImportProgress {
                                 candidate_key,
                                 progress,
                             } => {
-                                let bus_event = match progress {
-                                    ImportProgress::Preparing { step, .. } => {
+                                match progress {
+                                    ImportProgress::Preparing { .. }
+                                    | ImportProgress::Started { .. }
+                                    | ImportProgress::Progress { .. }
+                                    | ImportProgress::Failed { .. } => {
                                         bus.invalidate(Invalidation::ImportCandidate {
                                             key: candidate_key.clone(),
                                         });
-                                        Some(UiBusEvent::CandidateImportImporting {
-                                            key: candidate_key.clone(),
-                                            progress_percent: 0,
-                                            step: Some(crate::import::ImportStep::Preparing(step)),
-                                        })
                                     }
-                                    ImportProgress::Started { .. } => {
-                                        bus.invalidate(Invalidation::ImportCandidate {
-                                            key: candidate_key.clone(),
-                                        });
-                                        Some(UiBusEvent::CandidateImportImporting {
-                                            key: candidate_key.clone(),
-                                            progress_percent: 0,
-                                            step: None,
-                                        })
-                                    }
-                                    ImportProgress::Progress { percent, phase, .. } => {
-                                        bus.invalidate(Invalidation::ImportCandidate {
-                                            key: candidate_key.clone(),
-                                        });
-                                        Some(UiBusEvent::CandidateImportImporting {
-                                            key: candidate_key.clone(),
-                                            progress_percent: percent as u32,
-                                            step: Some(crate::import::ImportStep::Running(phase)),
-                                        })
-                                    }
-                                    ImportProgress::Complete { id, album_id, .. }
-                                    | ImportProgress::RemoteUploadQueued { id, album_id, .. } => {
+                                    ImportProgress::Complete { .. }
+                                    | ImportProgress::RemoteUploadQueued { .. } => {
                                         bus.invalidate(Invalidation::ImportCandidate {
                                             key: candidate_key.clone(),
                                         });
                                         bus.invalidate(Invalidation::ImportCandidateList);
-                                        Some(UiBusEvent::CandidateImportComplete {
-                                            key: candidate_key.clone(),
-                                            release_id: id,
-                                            album_id,
-                                        })
-                                    }
-                                    ImportProgress::Failed { error, .. } => {
-                                        bus.invalidate(Invalidation::ImportCandidate {
-                                            key: candidate_key.clone(),
-                                        });
-                                        // The import pipeline flattens every failure
-                                        // (scan, metadata, encryption, DB) to a string;
-                                        // the UI shows a generic Import line plus this as
-                                        // copyable, log-only detail.
-                                        Some(UiBusEvent::CandidateImportError {
-                                            key: candidate_key.clone(),
-                                            error: crate::ui::UiError::import(error),
-                                        })
                                     }
                                 };
-
-                                if let Some(event) = bus_event {
-                                    bus.emit(event);
-                                }
                             }
                             #[cfg(not(any(target_os = "ios", target_os = "android")))]
                             ImportEvent::ImportLoudnessProgress {
@@ -408,31 +337,15 @@ impl UiEventBus {
                                 });
                             }
                             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                            ImportEvent::IdentifyStateChanged {
-                                candidate_key,
-                                state,
-                                toolbar,
-                            } => {
+                            ImportEvent::IdentifyStateChanged { candidate_key, .. } => {
                                 bus.invalidate(Invalidation::ImportCandidate {
                                     key: candidate_key.clone(),
-                                });
-                                bus.emit(UiBusEvent::CandidateIdentifyStateChanged {
-                                    key: candidate_key,
-                                    state,
-                                    toolbar,
                                 });
                             }
                             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                            ImportEvent::SignalsUpdated {
-                                candidate_key,
-                                signals,
-                            } => {
+                            ImportEvent::SignalsUpdated { candidate_key, .. } => {
                                 bus.invalidate(Invalidation::ImportCandidate {
                                     key: candidate_key.clone(),
-                                });
-                                bus.emit(UiBusEvent::CandidateSignalsUpdated {
-                                    key: candidate_key,
-                                    signals,
                                 });
                             }
                         }
@@ -474,14 +387,12 @@ impl UiEventBus {
                         bus.invalidate(Invalidation::ComposerList);
                         bus.invalidate(Invalidation::Album { album_id });
                         tracing::info!("wire_library: AlbumAdded for album {}", album.album.id);
-                        bus.emit(UiBusEvent::AlbumAdded { album });
                     }
                     Ok(LibraryEvent::AlbumUpdated { album }) => {
                         let album_id = album.album.id.clone();
                         bus.invalidate(Invalidation::AlbumList);
                         bus.invalidate(Invalidation::ComposerList);
                         bus.invalidate(Invalidation::Album { album_id });
-                        bus.emit(UiBusEvent::AlbumUpdated { album });
                     }
                     Ok(LibraryEvent::AlbumRemoved {
                         album_id,
@@ -497,10 +408,6 @@ impl UiEventBus {
                                 release_id: release_id.clone(),
                             });
                         }
-                        bus.emit(UiBusEvent::AlbumRemoved {
-                            album_id,
-                            release_ids,
-                        });
                     }
                     Ok(LibraryEvent::ReleaseAdded { album, release }) => {
                         bus.invalidate(Invalidation::AlbumList);
@@ -511,7 +418,6 @@ impl UiEventBus {
                         bus.invalidate(Invalidation::Release {
                             release_id: release.summary.id.clone(),
                         });
-                        bus.emit(UiBusEvent::ReleaseAdded { album, release });
                     }
                     Ok(LibraryEvent::ReleaseUpdated { album_id, release }) => {
                         bus.invalidate(Invalidation::AlbumList);
@@ -522,12 +428,11 @@ impl UiEventBus {
                         bus.invalidate(Invalidation::Release {
                             release_id: release.summary.id.clone(),
                         });
-                        bus.emit(UiBusEvent::ReleaseUpdated { album_id, release });
                     }
                     Ok(LibraryEvent::ReleaseRemoved {
                         album_id,
                         release_id,
-                        album,
+                        ..
                     }) => {
                         bus.invalidate(Invalidation::AlbumList);
                         bus.invalidate(Invalidation::ComposerList);
@@ -537,11 +442,6 @@ impl UiEventBus {
                         bus.invalidate(Invalidation::Release {
                             release_id: release_id.clone(),
                         });
-                        bus.emit(UiBusEvent::ReleaseRemoved {
-                            album_id,
-                            release_id,
-                            album,
-                        });
                     }
                     Ok(LibraryEvent::TracksDeleted { .. }) => {
                         // Handled by playback service directly, not the UI bus
@@ -549,21 +449,13 @@ impl UiEventBus {
                     Ok(LibraryEvent::Error { error }) => {
                         bus.emit(UiBusEvent::Error { error });
                     }
-                    Ok(LibraryEvent::SyncError { error }) => {
+                    Ok(LibraryEvent::SyncError { .. })
+                    | Ok(LibraryEvent::SyncTimeChanged { .. })
+                    | Ok(LibraryEvent::SyncingChanged { .. }) => {
                         bus.invalidate(Invalidation::SyncStatus);
-                        bus.emit(UiBusEvent::SyncError { error });
                     }
-                    Ok(LibraryEvent::SyncTimeChanged { time }) => {
-                        bus.invalidate(Invalidation::SyncStatus);
-                        bus.emit(UiBusEvent::SyncTimeChanged { time });
-                    }
-                    Ok(LibraryEvent::SyncingChanged { syncing }) => {
-                        bus.invalidate(Invalidation::SyncStatus);
-                        bus.emit(UiBusEvent::SyncingChanged { syncing });
-                    }
-                    Ok(LibraryEvent::OutboxChanged { snapshot }) => {
+                    Ok(LibraryEvent::OutboxChanged { .. }) => {
                         bus.invalidate(Invalidation::Outbox);
-                        bus.emit(UiBusEvent::OutboxChanged { snapshot });
                     }
                     Ok(LibraryEvent::ReleaseTransferProgress { release_id, action }) => {
                         bus.invalidate(Invalidation::Release {
@@ -577,13 +469,11 @@ impl UiEventBus {
                         });
                         bus.emit(UiBusEvent::ReleaseTransferEnded { release_id });
                     }
-                    Ok(LibraryEvent::DownloadQueueChanged { snapshot }) => {
+                    Ok(LibraryEvent::DownloadQueueChanged { .. }) => {
                         bus.invalidate(Invalidation::DownloadQueue);
-                        bus.emit(UiBusEvent::DownloadQueueChanged { snapshot });
                     }
-                    Ok(LibraryEvent::ExportQueueChanged { snapshot }) => {
+                    Ok(LibraryEvent::ExportQueueChanged { .. }) => {
                         bus.invalidate(Invalidation::ExportQueue);
-                        bus.emit(UiBusEvent::ExportQueueChanged { snapshot });
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                         tracing::warn!("Library event bus lagged by {n} events");
@@ -651,9 +541,7 @@ mod tests {
     }
 
     /// A config change published by the handle is forwarded to the bus as a
-    /// scoped invalidation and a `ConfigChanged` event carrying the whole new
-    /// config, so current reducers keep working while query projections can
-    /// re-read the authoritative value.
+    /// scoped invalidation so projections can re-read the authoritative value.
     #[test]
     fn config_change_invalidates_and_forwards_to_the_ui_bus() {
         let runtime = tokio::runtime::Runtime::new().unwrap();
@@ -668,7 +556,7 @@ mod tests {
         let handle = ConfigHandle::new(config);
 
         let bus = UiEventBus::new();
-        bus.wire_config_changes(handle.subscribe(), || false, runtime.handle());
+        bus.wire_config_changes(handle.subscribe(), runtime.handle());
         let mut rx = bus.subscribe();
 
         handle
@@ -680,15 +568,10 @@ mod tests {
             other => panic!("expected config invalidation, got {other:?}"),
         }
 
-        let config = match recv_ui_event(&runtime, &mut rx) {
-            UiBusEvent::ConfigChanged { config, .. } => config,
-            other => panic!("expected ConfigChanged, got {other:?}"),
-        };
-
-        assert_eq!(
-            config.discogs,
-            Some(crate::config::DiscogsValidation::Valid)
-        );
+        match recv_ui_event(&runtime, &mut rx) {
+            UiBusEvent::Invalidated(Invalidation::SyncStatus) => {}
+            other => panic!("expected sync-status invalidation, got {other:?}"),
+        }
     }
 
     #[test]
@@ -729,7 +612,7 @@ mod tests {
     }
 
     #[test]
-    fn library_event_invalidates_before_delta() {
+    fn library_event_emits_scoped_invalidation() {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let bus = UiEventBus::new();
         let mut ui_rx = bus.subscribe();
@@ -744,14 +627,10 @@ mod tests {
             UiBusEvent::Invalidated(Invalidation::SyncStatus) => {}
             other => panic!("expected sync-status invalidation, got {other:?}"),
         }
-        match recv_ui_event(&runtime, &mut ui_rx) {
-            UiBusEvent::SyncingChanged { syncing: true } => {}
-            other => panic!("expected SyncingChanged delta, got {other:?}"),
-        }
     }
 
     #[test]
-    fn release_removal_invalidates_composer_list_before_delta() {
+    fn release_removal_invalidates_scoped_keys() {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let bus = UiEventBus::new();
         let mut ui_rx = bus.subscribe();
@@ -782,19 +661,6 @@ mod tests {
                 UiBusEvent::Invalidated(actual) => assert_eq!(actual, invalidation),
                 other => panic!("expected invalidation, got {other:?}"),
             }
-        }
-
-        match recv_ui_event(&runtime, &mut ui_rx) {
-            UiBusEvent::ReleaseRemoved {
-                album_id,
-                release_id,
-                album,
-            } => {
-                assert_eq!(album_id, "album-1");
-                assert_eq!(release_id, "release-1");
-                assert!(album.is_none());
-            }
-            other => panic!("expected ReleaseRemoved delta, got {other:?}"),
         }
     }
 
