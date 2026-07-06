@@ -87,7 +87,9 @@ struct ContentView: View {
             // down (that would stop the background audio), so this is the only
             // save point on iOS.
             if phase == .background {
-                holder.appService?.appHandle.savePlaybackState()
+                Task { [handle = holder.appService?.appHandle] in
+                    await handle?.savePlaybackState()
+                }
             }
         }
     }

@@ -47,29 +47,31 @@ final class AppService: Observable {
         // build the read services from the iOS-available closures explicitly
         // rather than the `init(handle:)` convenience that wires it.
         library = Library(
-            getAlbumCount: { try appHandle.getAlbumCount() },
+            getAlbumCount: { try await appHandle.getAlbumCount() },
             getAlbumPage: {
-                try appHandle.getAlbumPage(
+                try await appHandle.getAlbumPage(
                     sortCriteria: $0,
                     offset: $1,
                     limit: $2
                 )
             },
-            getComposerCount: { try appHandle.getComposerCount() },
+            getComposerCount: { try await appHandle.getComposerCount() },
             getComposerPage: {
-                try appHandle.getComposerPage(
+                try await appHandle.getComposerPage(
                     sortCriterion: $0,
                     offset: $1,
                     limit: $2
                 )
             },
             getComposerDetail: {
-                try appHandle.getComposerDetail(artistId: $0)
+                try await appHandle.getComposerDetail(artistId: $0)
             },
-            getWorkDetail: { try appHandle.getWorkDetail(workId: $0) },
+            getWorkDetail: { try await appHandle.getWorkDetail(workId: $0) },
             searchLibrary: { try await appHandle.searchLibrary(query: $0) },
-            findReleaseDetail: { try appHandle.findReleaseDetail(releaseId: $0) },
-            resolveToTrackIds: { try appHandle.resolveToTrackIds(ids: $0) }
+            findReleaseDetail: {
+                try await appHandle.findReleaseDetail(releaseId: $0)
+            },
+            resolveToTrackIds: { try await appHandle.resolveToTrackIds(ids: $0) }
         )
         playback = Playback(handle: appHandle)
         // All nine queue ops are in the common impl block (present on iOS), so
@@ -78,7 +80,7 @@ final class AppService: Observable {
         // `fetchCoverBytes` (remote cover-art search) is desktop-only; iOS has
         // no import flow, so build `MediaPaths` without it.
         mediaPaths = MediaPaths(
-            filePath: { try appHandle.filePath(fileId: $0) },
+            filePath: { try await appHandle.filePath(fileId: $0) },
             fetchCoverImageBytes: {
                 try await appHandle.fetchCoverImageBytes(releaseId: $0)
             },
@@ -190,9 +192,9 @@ final class AppService: Observable {
                         "Release projection received \(invalidation)"
                     )
                 }
-                let release = try await DetachedWork.run {
-                    try appHandle.findReleaseDetail(releaseId: releaseId)
-                }
+                let release = try await appHandle.findReleaseDetail(
+                    releaseId: releaseId
+                )
                 return ReleaseDetailProjectionValue(
                     releaseId: releaseId,
                     release: release

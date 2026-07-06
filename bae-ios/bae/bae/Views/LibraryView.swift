@@ -808,7 +808,7 @@ private struct ComposerDetailScreen: View {
             let getComposerDetail = library.getComposerDetail
             let loaded =
                 try await Task.detached {
-                    try getComposerDetail(artistId)
+                    try await getComposerDetail(artistId)
                 }
                 .value
             try Task.checkCancellation()
@@ -932,7 +932,7 @@ private struct WorkDetailScreen: View {
             let getWorkDetail = library.getWorkDetail
             let loaded =
                 try await Task.detached {
-                    try getWorkDetail(workId)
+                    try await getWorkDetail(workId)
                 }
                 .value
             try Task.checkCancellation()

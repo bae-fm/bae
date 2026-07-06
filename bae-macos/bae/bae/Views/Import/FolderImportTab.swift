@@ -29,6 +29,8 @@ struct FolderImportTab: View {
 
     @State
     private var documentContent: (name: String, text: String)?
+    @State
+    private var importedSourceFolderNames: Set<String> = []
     @Environment(\.openSettings)
     private var openSettings
     @Environment(UiStore.self)
@@ -76,6 +78,9 @@ struct FolderImportTab: View {
                     )
                 )
             }
+        }
+        .task(id: sourceFolderNames) {
+            await refreshImportedSourceFolderNames(sourceFolderNames)
         }
     }
 
@@ -157,25 +162,39 @@ struct FolderImportTab: View {
 
     // MARK: - Candidate list UI
 
+    private var sourceFolderNames: [String] {
+        Array(Set(importStore.folderCandidates.values.map(\.displayName)))
+            .sorted()
+    }
+
     private var candidateList: some View {
         ImportCandidateListContent(
             importStore: importStore,
             selectedKey: candidateSelectionBinding,
-            isLikelyDupe: { name in
-                do {
-                    return try importer.isSourceFolderNameImported(name)
-                }
-                catch {
-                    logger.warning(
-                        "Failed to check if folder is imported: \(error)"
-                    )
-                    return false
-                }
-            },
+            isLikelyDupe: importedSourceFolderNames.contains,
             onAddFolder: { pickFolderAndAdd() },
             onRemoveFolder: { path in removeWatchedFolder(path) },
             onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
         )
+    }
+
+    private func refreshImportedSourceFolderNames(_ names: [String]) async {
+        var imported: Set<String> = []
+        for name in names {
+            do {
+                if try await importer.isSourceFolderNameImported(name) {
+                    imported.insert(name)
+                }
+            }
+            catch {
+                logger.warning(
+                    "Failed to check if folder is imported: \(error)"
+                )
+                uiStore.showError(error.localizedDescription)
+                return
+            }
+        }
+        importedSourceFolderNames = imported
     }
 
     /// Mark the candidate at `key` skipped or unskipped. The reducer re-tabs the

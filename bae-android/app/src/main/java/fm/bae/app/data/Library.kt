@@ -12,34 +12,34 @@ import uniffi.bae_bridge.BridgeWorkDetail
 
 /**
  * Narrow projection of [AppHandle] for library browse and detail reads — DB
- * queries and cover-image reads. The page/detail calls touch the database and
- * must run off the main thread; the suspend calls cross the bridge themselves.
+ * queries and cover-image reads. The page/detail calls suspend across the
+ * bridge; callers invoke them from their existing coroutine.
  * Mirrors the macOS `Library` / `MediaPaths` domain services.
  */
 class Library(
     private val handle: AppHandle,
 ) {
-    fun albumCount(): ULong = handle.getAlbumCount()
+    suspend fun albumCount(): ULong = handle.getAlbumCount()
 
-    fun albumPage(
+    suspend fun albumPage(
         sortCriteria: List<BridgeSortCriterion>,
         offset: ULong,
         limit: ULong,
     ): List<BridgeAlbum> = handle.getAlbumPage(sortCriteria, offset, limit)
 
-    fun albumDetail(albumId: String): BridgeAlbumDetail = handle.getAlbumDetail(albumId)
+    suspend fun albumDetail(albumId: String): BridgeAlbumDetail = handle.getAlbumDetail(albumId)
 
-    fun composerCount(): ULong = handle.getComposerCount()
+    suspend fun composerCount(): ULong = handle.getComposerCount()
 
-    fun composerPage(
+    suspend fun composerPage(
         sortCriterion: BridgeComposerSortCriterion,
         offset: ULong,
         limit: ULong,
     ): List<BridgeComposerSummary> = handle.getComposerPage(sortCriterion, offset, limit)
 
-    fun composerDetail(artistId: String): BridgeComposerDetail? = handle.getComposerDetail(artistId)
+    suspend fun composerDetail(artistId: String): BridgeComposerDetail? = handle.getComposerDetail(artistId)
 
-    fun workDetail(workId: String): BridgeWorkDetail? = handle.getWorkDetail(workId)
+    suspend fun workDetail(workId: String): BridgeWorkDetail? = handle.getWorkDetail(workId)
 
     /** Bytes of a release cover by release id, read through coven's
      *  locality-aware store, or null when no such cover exists. */
@@ -47,8 +47,7 @@ class Library(
 
     /**
      * Search albums and tracks by free-text query. Suspends: the bridge call is
-     * async, so callers invoke it directly from a coroutine (no `Dispatchers.IO`
-     * wrap, unlike the blocking page/cover reads above).
+     * async, so callers invoke it directly from a coroutine.
      */
     suspend fun search(query: String): BridgeSearchResults = handle.searchLibrary(query)
 }

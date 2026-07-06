@@ -15,9 +15,9 @@ final class ReleaseEditor: Sendable, Observable {
         @Sendable (_ releaseId: String, _ pin: Bool) async throws -> Void
     let unmanageRelease:
         @Sendable (_ releaseId: String, _ newPath: String) async throws -> Void
-    let deleteRelease: @Sendable (_ releaseId: String) -> Void
+    let deleteRelease: @Sendable (_ releaseId: String) async -> Void
     let setPrimaryRelease:
-        @Sendable (_ albumId: String, _ releaseId: String) throws -> Void
+        @Sendable (_ albumId: String, _ releaseId: String) async throws -> Void
     let reIdentifyRelease:
         @Sendable (_ releaseId: String, _ identityChoice: BridgeIdentityChoice)
             async throws -> String
@@ -46,9 +46,12 @@ final class ReleaseEditor: Sendable, Observable {
                 _,
                 _ in
             },
-        deleteRelease: @escaping @Sendable (String) -> Void = { _ in },
-        setPrimaryRelease: @escaping @Sendable (String, String) throws -> Void =
-            { _, _ in },
+        deleteRelease: @escaping @Sendable (String) async -> Void = { _ in },
+        setPrimaryRelease:
+            @escaping @Sendable (String, String) async throws -> Void = {
+                _,
+                _ in
+            },
         reIdentifyRelease:
             @escaping @Sendable (String, BridgeIdentityChoice) async throws ->
             String = { _, _ in "" },
@@ -95,9 +98,9 @@ final class ReleaseEditor: Sendable, Observable {
             unmanageRelease: {
                 try await handle.makeReleaseLocal(releaseId: $0, newPath: $1)
             },
-            deleteRelease: { handle.deleteRelease(releaseId: $0) },
+            deleteRelease: { await handle.deleteRelease(releaseId: $0) },
             setPrimaryRelease: {
-                try handle.setPrimaryRelease(albumId: $0, releaseId: $1)
+                try await handle.setPrimaryRelease(albumId: $0, releaseId: $1)
             },
             reIdentifyRelease: {
                 try await handle.reIdentifyRelease(

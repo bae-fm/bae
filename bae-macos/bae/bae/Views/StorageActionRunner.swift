@@ -65,17 +65,19 @@ final class StorageActionRunner {
         else {
             return
         }
-        for releaseId in releaseIds {
-            do {
-                try exports.enqueueExport(
-                    releaseId,
-                    target.targetDir,
-                    target.selection
-                )
-            }
-            catch {
-                uiStore.showError(error.localizedDescription)
-                return
+        Task {
+            for releaseId in releaseIds {
+                do {
+                    try await exports.enqueueExport(
+                        releaseId,
+                        target.targetDir,
+                        target.selection
+                    )
+                }
+                catch {
+                    uiStore.showError(error.localizedDescription)
+                    return
+                }
             }
         }
     }
@@ -94,7 +96,7 @@ final class StorageActionRunner {
             // Pinning routes through the in-memory download queue, which
             // serializes the batch and reports progress via the Downloads pane
             // and per-release transfer events — not an awaited per-release loop.
-            downloads.queuePins(releaseIds)
+            Task { await downloads.queuePins(releaseIds) }
         case .unpin:
             runEach(
                 releaseIds,
@@ -122,18 +124,20 @@ final class StorageActionRunner {
     /// Cancel each release's in-progress transition (pin / upload / unmanage),
     /// leaving it in its prior state — core dispatches to whichever is running.
     func cancelTransitions(releaseIds: [String]) {
-        for id in releaseIds {
-            do {
-                try sync.cancelReleaseTransition(id)
-            }
-            catch {
-                uiStore.showError(
-                    String(
-                        localized:
-                            "Failed to cancel: \(error.localizedDescription)"
+        Task {
+            for id in releaseIds {
+                do {
+                    try await sync.cancelReleaseTransition(id)
+                }
+                catch {
+                    uiStore.showError(
+                        String(
+                            localized:
+                                "Failed to cancel: \(error.localizedDescription)"
+                        )
                     )
-                )
-                return
+                    return
+                }
             }
         }
     }

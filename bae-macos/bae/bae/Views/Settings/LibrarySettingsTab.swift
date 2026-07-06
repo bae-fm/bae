@@ -22,6 +22,8 @@ struct LibrarySettingsTab: View {
     /// when no releases are at risk).
     @State
     private var disconnectExtraWarning: String?
+    @State
+    private var disconnectWarningTask: Task<Void, Never>?
 
     private var isConnected: Bool {
         configStore.syncReady
@@ -104,6 +106,9 @@ struct LibrarySettingsTab: View {
         } message: {
             Text(disconnectMessage)
         }
+        .onDisappear {
+            disconnectWarningTask?.cancel()
+        }
     }
 
     /// Body text for the disconnect confirmation. bae-core pre-formats the
@@ -126,20 +131,27 @@ struct LibrarySettingsTab: View {
     /// still open the alert so the user can choose to continue or cancel.
     private func promptDisconnect() {
         error = nil
-        do {
-            disconnectExtraWarning = try sync.disconnectWarningMessage()
+        disconnectWarningTask?.cancel()
+        disconnectWarningTask = Task {
+            do {
+                disconnectExtraWarning =
+                    try await sync.disconnectWarningMessage()
+            }
+            catch is CancellationError {
+                return
+            }
+            catch {
+                logger.error(
+                    "Failed to compute disconnect warning: \(error.localizedDescription)"
+                )
+                self.error = String(
+                    localized:
+                        "Couldn't check for cloud-only releases: \(error.localizedDescription)"
+                )
+                disconnectExtraWarning = nil
+            }
+            showDisconnectConfirm = true
         }
-        catch {
-            logger.error(
-                "Failed to compute disconnect warning: \(error.localizedDescription)"
-            )
-            self.error = String(
-                localized:
-                    "Couldn't check for cloud-only releases: \(error.localizedDescription)"
-            )
-            disconnectExtraWarning = nil
-        }
-        showDisconnectConfirm = true
     }
 
     private func disconnect() {

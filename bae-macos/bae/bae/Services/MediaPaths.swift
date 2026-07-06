@@ -50,7 +50,7 @@ final class MediaPaths: Sendable, Observable {
     /// Filesystem path for the user's own external file behind a library file
     /// (the DiscID re-read of a rip's LOG/CUE/audio). NOT for images — library
     /// images are read through `fetchImageBytes` and `fetchGalleryBytes`.
-    let filePath: @Sendable (_ fileId: String) throws -> String?
+    let filePath: @Sendable (_ fileId: String) async throws -> String?
     /// Bytes of a release cover by release id, or nil when no such cover exists.
     let fetchCoverImageBytes:
         @Sendable (_ releaseId: String) async throws -> Data?
@@ -75,7 +75,9 @@ final class MediaPaths: Sendable, Observable {
     private let imageCache = LibraryImageCache()
 
     init(
-        filePath: @escaping @Sendable (String) throws -> String? = { _ in nil },
+        filePath: @escaping @Sendable (String) async throws -> String? = {
+            _ in throw MediaPathsUnavailable()
+        },
         fetchCoverImageBytes:
             @escaping @Sendable (String) async throws -> Data? = { _ in nil },
         fetchImageBytes:
@@ -99,7 +101,7 @@ final class MediaPaths: Sendable, Observable {
     #if !os(iOS)
         convenience init(handle: any AppHandleProtocol) {
             self.init(
-                filePath: { try handle.filePath(fileId: $0) },
+                filePath: { try await handle.filePath(fileId: $0) },
                 fetchCoverImageBytes: {
                     try await handle.fetchCoverImageBytes(releaseId: $0)
                 },

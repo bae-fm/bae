@@ -522,7 +522,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
         else {
             return
         }
-        appService.appHandle.shutdown()
+        Task { [handle = appService.appHandle] in
+            await handle.shutdown()
+        }
     }
 
     func applicationDidBecomeActive(_: Notification) {
@@ -590,10 +592,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
                     )
                     return
                 }
+                let initialOutbox: BridgeOutboxSnapshot
+                do {
+                    initialOutbox = try await handle.getOutboxSnapshot()
+                }
+                catch {
+                    logger.error("Failed to seed outbox snapshot: \(error)")
+                    self.loadError = error.localizedDescription
+                    self.screen = .welcome
+                    await handle.shutdown()
+                    return
+                }
                 let service = AppService(
                     appHandle: handle,
                     uiStore: store,
-                    config: cfg
+                    config: cfg,
+                    initialOutbox: initialOutbox
                 )
                 service.wireUp()
                 if handle.isSyncReady() {
@@ -643,7 +657,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
         openTask?.cancel()
         renameTask?.cancel()
         lockTask?.cancel()
-        service.appHandle.shutdown()
+        Task { [handle = service.appHandle] in
+            await handle.shutdown()
+        }
         appService = nil
         uiStore = UiStore()
         welcomeInitialMode = nil

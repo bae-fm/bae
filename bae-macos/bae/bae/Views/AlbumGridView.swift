@@ -200,9 +200,7 @@ extension AlbumGridView {
         let getAlbumIndex = library.getAlbumIndex
         let sort = sortCriteria
         do {
-            let resolved = try await DetachedWork.run {
-                try getAlbumIndex(sort, albumId)
-            }
+            let resolved = try await getAlbumIndex(sort, albumId)
             if Task.isCancelled {
                 return
             }

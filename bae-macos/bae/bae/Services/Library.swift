@@ -5,64 +5,73 @@ import Foundation
 /// queue-input ids to flat track-id lists. The read side of bae-core's
 /// catalog, narrow to what view layers ask for.
 final class Library: Sendable, Observable {
-    let getAlbumCount: @Sendable () throws -> UInt64
+    let getAlbumCount: @Sendable () async throws -> UInt64
     let getAlbumPage:
         @Sendable (
             _ sortCriteria: [BridgeSortCriterion], _ offset: UInt64,
             _ limit: UInt64
-        ) throws -> [BridgeAlbum]
+        ) async throws -> [BridgeAlbum]
     let getAlbumIndex:
         @Sendable (_ sortCriteria: [BridgeSortCriterion], _ albumId: String)
-            throws -> UInt64?
-    let getComposerCount: @Sendable () throws -> UInt64
+            async throws -> UInt64?
+    let getComposerCount: @Sendable () async throws -> UInt64
     let getComposerPage:
         @Sendable (
             _ sortCriterion: BridgeComposerSortCriterion, _ offset: UInt64,
             _ limit: UInt64
-        ) throws -> [BridgeComposerSummary]
+        ) async throws -> [BridgeComposerSummary]
     let getComposerDetail:
-        @Sendable (_ artistId: String) throws -> BridgeComposerDetail?
-    let getWorkDetail: @Sendable (_ workId: String) throws -> BridgeWorkDetail?
+        @Sendable (_ artistId: String) async throws -> BridgeComposerDetail?
+    let getWorkDetail:
+        @Sendable (_ workId: String) async throws -> BridgeWorkDetail?
     let searchLibrary:
         @Sendable (_ query: String) async throws -> BridgeSearchResults
-    let storageCount: @Sendable (_ filter: BridgeStorageFilter) throws -> UInt64
+    let storageCount:
+        @Sendable (_ filter: BridgeStorageFilter) async throws -> UInt64
     let storagePage:
         @Sendable (
             _ sort: BridgeStorageSort, _ filter: BridgeStorageFilter,
             _ offset: UInt64, _ limit: UInt64
-        ) throws -> BridgeStoragePage
+        ) async throws -> BridgeStoragePage
     let findReleaseDetail:
-        @Sendable (_ releaseId: String) throws -> BridgeRelease?
+        @Sendable (_ releaseId: String) async throws -> BridgeRelease?
     let prefetchRelease:
         @Sendable (
             _ releaseId: String, _ source: BridgeMetadataSource,
             _ localTrackCount: UInt32?
         ) async throws -> BridgeReleaseDetail
-    let resolveToTrackIds: @Sendable (_ ids: [String]) throws -> [String]
+    let resolveToTrackIds: @Sendable (_ ids: [String]) async throws -> [String]
 
     init(
-        getAlbumCount: @escaping @Sendable () throws -> UInt64 = { 0 },
+        getAlbumCount: @escaping @Sendable () async throws -> UInt64 = {
+            throw StubError.notImplemented
+        },
         getAlbumPage:
-            @escaping @Sendable ([BridgeSortCriterion], UInt64, UInt64) throws
-            -> [BridgeAlbum] = { _, _, _ in [] },
+            @escaping @Sendable ([BridgeSortCriterion], UInt64, UInt64)
+            async throws
+            -> [BridgeAlbum] = { _, _, _ in
+                throw StubError.notImplemented
+            },
         getAlbumIndex:
-            @escaping @Sendable ([BridgeSortCriterion], String) throws
+            @escaping @Sendable ([BridgeSortCriterion], String) async throws
             -> UInt64? = { _, _ in throw StubError.notImplemented },
-        getComposerCount: @escaping @Sendable () throws -> UInt64 = {
+        getComposerCount: @escaping @Sendable () async throws -> UInt64 = {
             throw StubError.notImplemented
         },
         getComposerPage:
             @escaping @Sendable (BridgeComposerSortCriterion, UInt64, UInt64)
-            throws
+            async throws
             -> [BridgeComposerSummary] = { _, _, _ in
                 throw StubError.notImplemented
             },
         getComposerDetail:
-            @escaping @Sendable (String) throws -> BridgeComposerDetail? = {
+            @escaping @Sendable (String) async throws -> BridgeComposerDetail? =
+            {
                 _ in throw StubError.notImplemented
             },
         getWorkDetail:
-            @escaping @Sendable (String) throws -> BridgeWorkDetail? = { _ in
+            @escaping @Sendable (String) async throws -> BridgeWorkDetail? = {
+                _ in
                 throw StubError.notImplemented
             },
         searchLibrary:
@@ -71,26 +80,29 @@ final class Library: Sendable, Observable {
                 throw StubError.notImplemented
             },
         storageCount:
-            @escaping @Sendable (BridgeStorageFilter) throws -> UInt64 = { _ in
-                0
+            @escaping @Sendable (BridgeStorageFilter) async throws -> UInt64 = {
+                _ in
+                throw StubError.notImplemented
             },
         storagePage:
             @escaping @Sendable (
                 BridgeStorageSort, BridgeStorageFilter, UInt64, UInt64
-            ) throws -> BridgeStoragePage = { _, _, _, _ in
-                BridgeStoragePage(rows: [], totalCount: 0)
+            ) async throws -> BridgeStoragePage = { _, _, _, _ in
+                throw StubError.notImplemented
             },
         findReleaseDetail:
-            @escaping @Sendable (String) throws -> BridgeRelease? = { _ in nil
+            @escaping @Sendable (String) async throws -> BridgeRelease? = { _ in
+                throw StubError.notImplemented
             },
         prefetchRelease:
             @escaping @Sendable (String, BridgeMetadataSource, UInt32?)
             async throws -> BridgeReleaseDetail = { _, _, _ in
                 throw StubError.notImplemented
             },
-        resolveToTrackIds: @escaping @Sendable ([String]) throws -> [String] = {
-            $0
-        }
+        resolveToTrackIds:
+            @escaping @Sendable ([String]) async throws -> [String] = {
+                _ in throw StubError.notImplemented
+            }
     ) {
         self.getAlbumCount = getAlbumCount
         self.getAlbumPage = getAlbumPage
@@ -115,33 +127,36 @@ final class Library: Sendable, Observable {
     #if !os(iOS)
         convenience init(handle: any AppHandleProtocol) {
             self.init(
-                getAlbumCount: { try handle.getAlbumCount() },
+                getAlbumCount: { try await handle.getAlbumCount() },
                 getAlbumPage: {
-                    try handle.getAlbumPage(
+                    try await handle.getAlbumPage(
                         sortCriteria: $0,
                         offset: $1,
                         limit: $2
                     )
                 },
                 getAlbumIndex: {
-                    try handle.getAlbumIndex(sortCriteria: $0, albumId: $1)
+                    try await handle.getAlbumIndex(
+                        sortCriteria: $0,
+                        albumId: $1
+                    )
                 },
-                getComposerCount: { try handle.getComposerCount() },
+                getComposerCount: { try await handle.getComposerCount() },
                 getComposerPage: {
-                    try handle.getComposerPage(
+                    try await handle.getComposerPage(
                         sortCriterion: $0,
                         offset: $1,
                         limit: $2
                     )
                 },
                 getComposerDetail: {
-                    try handle.getComposerDetail(artistId: $0)
+                    try await handle.getComposerDetail(artistId: $0)
                 },
-                getWorkDetail: { try handle.getWorkDetail(workId: $0) },
+                getWorkDetail: { try await handle.getWorkDetail(workId: $0) },
                 searchLibrary: { try await handle.searchLibrary(query: $0) },
-                storageCount: { try handle.storageCount(filter: $0) },
+                storageCount: { try await handle.storageCount(filter: $0) },
                 storagePage: {
-                    try handle.storagePage(
+                    try await handle.storagePage(
                         sort: $0,
                         filter: $1,
                         offset: $2,
@@ -149,7 +164,7 @@ final class Library: Sendable, Observable {
                     )
                 },
                 findReleaseDetail: {
-                    try handle.findReleaseDetail(releaseId: $0)
+                    try await handle.findReleaseDetail(releaseId: $0)
                 },
                 prefetchRelease: {
                     try await handle.prefetchRelease(
@@ -158,7 +173,9 @@ final class Library: Sendable, Observable {
                         localTrackCount: $2
                     )
                 },
-                resolveToTrackIds: { try handle.resolveToTrackIds(ids: $0) }
+                resolveToTrackIds: {
+                    try await handle.resolveToTrackIds(ids: $0)
+                }
             )
         }
     #endif

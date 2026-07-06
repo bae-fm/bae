@@ -54,6 +54,8 @@ struct AlbumDetailView: View {
     @State
     private var changeCoverTask: Task<Void, Never>?
     @State
+    private var coverSheetTask: Task<Void, Never>?
+    @State
     private var transferError: String?
     @State
     private var storageTask: Task<Void, Never>?
@@ -189,6 +191,7 @@ struct AlbumDetailView: View {
             exportTask?.cancel()
             storageTask?.cancel()
             changeCoverTask?.cancel()
+            coverSheetTask?.cancel()
         }
         .errorAlert("Cover Change Failed", message: $coverChangeError)
         .errorAlert("Transfer Failed", message: $transferError)
@@ -198,7 +201,7 @@ struct AlbumDetailView: View {
                 if let releaseId = releaseIdPendingDelete {
                     let releaseEditor = releaseEditor
                     Task.detached {
-                        releaseEditor.deleteRelease(releaseId)
+                        await releaseEditor.deleteRelease(releaseId)
                     }
                     releaseIdPendingDelete = nil
                 }
@@ -276,41 +279,55 @@ extension AlbumDetailView {
         summary: AlbumSummary,
         selectedReleaseId: String
     ) {
-        let releaseImages = summary.releaseIds
-            .compactMap { libraryStore.releaseDetails[$0] }
-            .flatMap(\.imageFiles)
-            .map {
-                ReleaseImageOption(
-                    id: $0.id,
-                    name: $0.originalFilename,
-                    path: try? mediaPaths.filePath($0.id)
-                )
-            }
         let releaseEditor = releaseEditor
-        uiStore.presentModal {
-            CoverSheetView(
-                releaseImages: releaseImages,
-                fetchRemoteCovers: {
-                    try await releaseEditor.fetchRemoteCovers(selectedReleaseId)
-                },
-                onSelectRemote: { cover in
-                    changeCover(
-                        albumId: albumId,
-                        releaseId: selectedReleaseId,
-                        selection: cover.coverChoice.selection,
+        coverSheetTask?.cancel()
+        coverSheetTask = Task { @MainActor in
+            do {
+                var releaseImages: [ReleaseImageOption] = []
+                for image in summary.releaseIds
+                    .compactMap({ libraryStore.releaseDetails[$0] })
+                    .flatMap(\.imageFiles)
+                {
+                    releaseImages.append(
+                        ReleaseImageOption(
+                            id: image.id,
+                            name: image.originalFilename,
+                            path: try await mediaPaths.filePath(image.id)
+                        )
                     )
-                },
-                onSelectReleaseImage: { fileId in
-                    changeCover(
-                        albumId: albumId,
-                        releaseId: selectedReleaseId,
-                        selection: .releaseImage(fileId: fileId),
+                }
+                uiStore.presentModal {
+                    CoverSheetView(
+                        releaseImages: releaseImages,
+                        fetchRemoteCovers: {
+                            try await releaseEditor.fetchRemoteCovers(
+                                selectedReleaseId
+                            )
+                        },
+                        onSelectRemote: { cover in
+                            changeCover(
+                                albumId: albumId,
+                                releaseId: selectedReleaseId,
+                                selection: cover.coverChoice.selection,
+                            )
+                        },
+                        onSelectReleaseImage: { fileId in
+                            changeCover(
+                                albumId: albumId,
+                                releaseId: selectedReleaseId,
+                                selection: .releaseImage(fileId: fileId),
+                            )
+                        },
+                        onDone: { uiStore.dismissModal() },
                     )
-                },
-                onDone: { uiStore.dismissModal() },
-            )
-            .frame(width: 500, height: 450)
-            .background(Theme.background)
+                    .frame(width: 500, height: 450)
+                    .background(Theme.background)
+                }
+            }
+            catch is CancellationError {}
+            catch {
+                coverChangeError = error.localizedDescription
+            }
         }
     }
 
@@ -417,15 +434,17 @@ extension AlbumDetailView {
         else {
             return
         }
-        do {
-            try exports.enqueueExport(
-                releaseId,
-                target.targetDir,
-                target.selection
-            )
-        }
-        catch {
-            exportError = error.localizedDescription
+        Task {
+            do {
+                try await exports.enqueueExport(
+                    releaseId,
+                    target.targetDir,
+                    target.selection
+                )
+            }
+            catch {
+                exportError = error.localizedDescription
+            }
         }
     }
 
@@ -514,7 +533,7 @@ extension AlbumDetailView {
         // bar still tracks progress (driven by `ReleaseTransferProgress`); the
         // storage state flips when the worker invalidates the release on
         // completion, so there's no reload to await here.
-        downloads.queuePins([releaseId])
+        Task { await downloads.queuePins([releaseId]) }
     }
 
     private func unpinRelease(releaseId: String) {
@@ -555,7 +574,7 @@ extension AlbumDetailView {
         let albumId = albumId
         Task.detached {
             do {
-                try releaseEditor.setPrimaryRelease(albumId, releaseId)
+                try await releaseEditor.setPrimaryRelease(albumId, releaseId)
             }
             catch {
                 await MainActor.run {

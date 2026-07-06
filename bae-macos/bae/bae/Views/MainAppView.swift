@@ -142,7 +142,7 @@ struct MainAppView: View {
         let queue = queue
         Task.detached {
             do {
-                let trackIds = try library.resolveToTrackIds(ids)
+                let trackIds = try await library.resolveToTrackIds(ids)
                 if !trackIds.isEmpty {
                     await MainActor.run {
                         queue.insertInQueue(trackIds, UInt32(index))
@@ -162,7 +162,7 @@ struct MainAppView: View {
         let queue = queue
         Task.detached {
             do {
-                let trackIds = try library.resolveToTrackIds(ids)
+                let trackIds = try await library.resolveToTrackIds(ids)
                 if !trackIds.isEmpty {
                     await MainActor.run {
                         queue.addToQueue(trackIds)

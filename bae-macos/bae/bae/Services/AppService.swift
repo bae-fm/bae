@@ -91,7 +91,8 @@ final class AppService: @unchecked Sendable, Observable {
     init(
         appHandle: AppHandle,
         uiStore: UiStore,
-        config: BridgeConfig
+        config: BridgeConfig,
+        initialOutbox: BridgeOutboxSnapshot
     ) {
         self.appHandle = appHandle
         self.uiStore = uiStore
@@ -105,18 +106,6 @@ final class AppService: @unchecked Sendable, Observable {
             appHandle.getImportCandidates()
         )
         libraryStore = LibraryStore()
-        // Seed the queue panel with the current outbox so it renders correct
-        // state on first open, before any `outboxChanged` event arrives. A
-        // read failure isn't fatal — log it and start empty; the next event
-        // refreshes the panel.
-        let initialOutbox: BridgeOutboxSnapshot
-        do {
-            initialOutbox = try appHandle.getOutboxSnapshot()
-        }
-        catch {
-            logger.error("Failed to seed outbox snapshot: \(error)")
-            initialOutbox = OutboxStore.emptySnapshot
-        }
         outboxStore = OutboxStore(snapshot: initialOutbox)
         // Seed the Downloads pane from the in-memory download queue. The read is
         // infallible — `getDownloadSnapshot` never throws — so unlike the outbox
@@ -184,9 +173,7 @@ final class AppService: @unchecked Sendable, Observable {
         Projection(
             domain: .queue,
             query: { [appHandle] _ in
-                try await DetachedWork.run {
-                    try appHandle.getQueueSnapshot()
-                }
+                try await appHandle.getQueueSnapshot()
             },
             apply: { [self] snapshot in
                 applyQueueSnapshot(snapshot)
@@ -242,9 +229,7 @@ final class AppService: @unchecked Sendable, Observable {
         Projection(
             domain: .outbox,
             query: { [appHandle] _ in
-                try await DetachedWork.run {
-                    try appHandle.getOutboxSnapshot()
-                }
+                try await appHandle.getOutboxSnapshot()
             },
             apply: { [outboxStore] snapshot in
                 outboxStore.applySnapshot(snapshot)
@@ -370,9 +355,9 @@ final class AppService: @unchecked Sendable, Observable {
                         "Release projection received \(invalidation)"
                     )
                 }
-                let release = try await DetachedWork.run {
-                    try appHandle.findReleaseDetail(releaseId: releaseId)
-                }
+                let release = try await appHandle.findReleaseDetail(
+                    releaseId: releaseId
+                )
                 return ReleaseDetailProjectionValue(
                     releaseId: releaseId,
                     release: release

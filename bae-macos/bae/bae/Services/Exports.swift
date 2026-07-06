@@ -14,7 +14,7 @@ final class Exports: Sendable, Observable {
         @Sendable (
             _ releaseId: String, _ targetDir: String,
             _ selection: BridgeExportSelection
-        ) throws -> Void
+        ) async throws -> Void
     /// Pause or resume the export queue. The in-flight export finishes; the
     /// queue stops starting new ones until resumed.
     let setExportsPaused: @Sendable (_ paused: Bool) -> Void
@@ -41,8 +41,8 @@ final class Exports: Sendable, Observable {
 
     init(
         enqueueExport:
-            @escaping @Sendable (String, String, BridgeExportSelection) throws
-            -> Void =
+            @escaping @Sendable (String, String, BridgeExportSelection)
+            async throws -> Void =
             { _, _, _ in
             },
         setExportsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
@@ -78,7 +78,7 @@ final class Exports: Sendable, Observable {
     convenience init(handle: any AppHandleProtocol) {
         self.init(
             enqueueExport: {
-                try handle.enqueueExport(
+                try await handle.enqueueExport(
                     releaseId: $0,
                     targetDir: $1,
                     selection: $2

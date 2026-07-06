@@ -67,7 +67,8 @@ private enum PlaybackSettingsPreviewAppService {
                 discogsTokenStatus: .notConfigured,
                 discogsUsable: false,
                 sync: nil
-            )
+            ),
+            initialOutbox: OutboxStore.emptySnapshot
         )
     }
 }
@@ -85,10 +86,6 @@ private final class PlaybackSettingsPreviewAppHandle: AppHandle,
 
     override func isSyncReady() -> Bool {
         false
-    }
-
-    override func getOutboxSnapshot() throws -> BridgeOutboxSnapshot {
-        OutboxStore.emptySnapshot
     }
 
     override func getDownloadSnapshot() -> BridgeDownloadSnapshot {

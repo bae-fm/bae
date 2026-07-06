@@ -37,7 +37,9 @@ final class Importer: Sendable, Observable {
             _ identityChoice: BridgeIdentityChoice,
             _ userEdit: BridgeReleaseUserEdit?
         ) throws -> Void
-    let isSourceFolderNameImported: @Sendable (_ name: String) throws -> Bool
+    let isSourceFolderNameImported:
+        @Sendable (_ name: String) async throws
+            -> Bool
 
     init(
         addWatchedFolder: @escaping @Sendable (String) throws -> Void = { _ in
@@ -76,7 +78,7 @@ final class Importer: Sendable, Observable {
                 BridgeIdentityChoice, BridgeReleaseUserEdit?
             ) throws -> Void = { _, _, _, _, _, _, _ in },
         isSourceFolderNameImported:
-            @escaping @Sendable (String) throws -> Bool = { _ in false }
+            @escaping @Sendable (String) async throws -> Bool = { _ in false }
     ) {
         self.addWatchedFolder = addWatchedFolder
         self.removeWatchedFolder = removeWatchedFolder
@@ -130,7 +132,7 @@ final class Importer: Sendable, Observable {
                 )
             },
             isSourceFolderNameImported: {
-                try handle.isSourceFolderNameImported(name: $0)
+                try await handle.isSourceFolderNameImported(name: $0)
             }
         )
     }

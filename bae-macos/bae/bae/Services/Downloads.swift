@@ -9,7 +9,7 @@ final class Downloads: Sendable, Observable {
     /// Enqueue releases to pin for offline. They join the serial download
     /// queue; the worker drains them one at a time. Fire-and-forget — progress
     /// and queue state arrive via `downloadQueueChanged` events.
-    let queuePins: @Sendable (_ releaseIds: [String]) -> Void
+    let queuePins: @Sendable (_ releaseIds: [String]) async -> Void
     /// Pause or resume the download queue. In-flight downloads finish; the
     /// queue stops starting new ones until resumed.
     let setDownloadsPaused: @Sendable (_ paused: Bool) -> Void
@@ -20,7 +20,7 @@ final class Downloads: Sendable, Observable {
     let retryDownloads: @Sendable () -> Void
 
     init(
-        queuePins: @escaping @Sendable ([String]) -> Void = { _ in },
+        queuePins: @escaping @Sendable ([String]) async -> Void = { _ in },
         setDownloadsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
         cancelDownload: @escaping @Sendable (String) -> Void = { _ in },
         retryDownloads: @escaping @Sendable () -> Void = {}
@@ -33,7 +33,7 @@ final class Downloads: Sendable, Observable {
 
     convenience init(handle: any AppHandleProtocol) {
         self.init(
-            queuePins: { handle.queuePinReleases(releaseIds: $0) },
+            queuePins: { await handle.queuePinReleases(releaseIds: $0) },
             setDownloadsPaused: { handle.setDownloadsPaused(paused: $0) },
             cancelDownload: { handle.cancelDownload(releaseId: $0) },
             retryDownloads: { handle.retryDownloads() }

@@ -495,23 +495,18 @@ public sealed partial class MainWindow : Window
     // target as the new active library; a locked target lands on the unlock
     // prompt. Used for switching to an existing library and for a freshly
     // created one.
-    private void SwitchLibrary(string libraryId)
+    private async System.Threading.Tasks.Task SwitchLibrary(string libraryId)
     {
-        TearDownLibrary();
+        await TearDownLibrary();
         OpenLibrary(libraryId);
     }
 
     // Tear down the open library: shut down and free its handle, and reset every
     // piece of per-library view state so nothing from it bleeds into the next
     // library or the welcome chooser. Leaves the window with no library open.
-    private void TearDownLibrary()
+    private async System.Threading.Tasks.Task TearDownLibrary()
     {
-        if (_handle != IntPtr.Zero)
-        {
-            NativeBae.Shutdown(_handle);
-            NativeBae.HandleFree(_handle);
-            _handle = IntPtr.Zero;
-        }
+        await ShutdownAndFreeCurrentHandle();
 
         _eventCallback = null;
         _queueManual = new List<QueueItem>();
@@ -535,20 +530,44 @@ public sealed partial class MainWindow : Window
 
     // Close the open library and return to the welcome chooser, which now lists
     // the libraries on disk so the user can reopen one or create another.
-    private void CloseLibrary()
+    private async System.Threading.Tasks.Task CloseLibrary()
     {
         if (_handle == IntPtr.Zero)
         {
             return;
         }
 
-        TearDownLibrary();
+        await TearDownLibrary();
         ShowWelcome();
     }
 
-    private void OnCloseLibraryClick(object sender, RoutedEventArgs e)
+    private async System.Threading.Tasks.Task ShutdownAndFreeCurrentHandle()
     {
-        CloseLibrary();
+        if (_handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var handle = _handle;
+        _handle = IntPtr.Zero;
+        await System.Threading.Tasks.Task.Run(() =>
+        {
+            NativeBae.Shutdown(handle);
+            NativeBae.HandleFree(handle);
+        });
+    }
+
+    private async System.Threading.Tasks.Task<(bool Current, T Result)>
+        RunForCurrentHandle<T>(Func<IntPtr, T> action)
+    {
+        var handle = _handle;
+        var result = await System.Threading.Tasks.Task.Run(() => action(handle));
+        return (handle == _handle, result);
+    }
+
+    private async void OnCloseLibraryClick(object sender, RoutedEventArgs e)
+    {
+        await CloseLibrary();
     }
 
     // The library manager: switch between the libraries on this device, or add a
@@ -603,10 +622,10 @@ public sealed partial class MainWindow : Window
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 IsEnabled = !isActive,
             };
-            switchButton.Click += (_, _) =>
+            switchButton.Click += async (_, _) =>
             {
                 dialog.Hide();
-                SwitchLibrary(id);
+                await SwitchLibrary(id);
             };
             Grid.SetColumn(switchButton, 0);
             row.Children.Add(switchButton);
@@ -662,7 +681,7 @@ public sealed partial class MainWindow : Window
             Content = Loc.Chrome("libraries.new"),
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        newButton.Click += (_, _) =>
+        newButton.Click += async (_, _) =>
         {
             var newId = CreateLibraryOrReport(message =>
             {
@@ -675,7 +694,7 @@ public sealed partial class MainWindow : Window
             }
 
             dialog.Hide();
-            SwitchLibrary(newId);
+            await SwitchLibrary(newId);
         };
         list.Children.Add(newButton);
 
@@ -3408,7 +3427,12 @@ public sealed partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShowComposerDetail(string artistId)
     {
-        var json = NativeBae.ComposerDetailJson(_handle, artistId);
+        var (current, json) = await RunForCurrentHandle(
+            handle => NativeBae.ComposerDetailJson(handle, artistId));
+        if (!current)
+        {
+            return;
+        }
         if (json is null)
         {
             StatusText.Text = Loc.Chrome("composer.open_failed");
@@ -3517,7 +3541,12 @@ public sealed partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShowWorkDetail(string workId, bool replacePane = true)
     {
-        var json = NativeBae.WorkDetailJson(_handle, workId);
+        var (current, json) = await RunForCurrentHandle(
+            handle => NativeBae.WorkDetailJson(handle, workId));
+        if (!current)
+        {
+            return;
+        }
         if (json is null)
         {
             StatusText.Text = Loc.Chrome("work.open_failed");
@@ -3599,7 +3628,12 @@ public sealed partial class MainWindow : Window
         string? scrollToTrackId = null,
         string? initialReleaseId = null)
     {
-        var json = NativeBae.AlbumDetailJson(_handle, albumId);
+        var (current, json) = await RunForCurrentHandle(
+            handle => NativeBae.AlbumDetailJson(handle, albumId));
+        if (!current)
+        {
+            return;
+        }
         if (json is null)
         {
             StatusText.Text = Loc.Chrome("album.open_failed");
@@ -3673,9 +3707,17 @@ public sealed partial class MainWindow : Window
         // Set the selected release as the album's primary (canonical) one — only
         // meaningful when the album has more than one release.
         var setPrimaryItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.set_primary") };
-        setPrimaryItem.Click += (_, _) =>
+        setPrimaryItem.Click += async (_, _) =>
         {
-            var error = NativeBae.SetPrimaryRelease(_handle, detail.Id, selectedRelease.ReleaseId);
+            var (current, error) = await RunForCurrentHandle(
+                handle => NativeBae.SetPrimaryRelease(
+                    handle,
+                    detail.Id,
+                    selectedRelease.ReleaseId));
+            if (!current)
+            {
+                return;
+            }
             StatusText.Text = error ?? Loc.Chrome("menu.set_primary_done");
         };
         var changeCoverItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.change_cover") };
@@ -4602,7 +4644,12 @@ public sealed partial class MainWindow : Window
         // release.
         async System.Threading.Tasks.Task LoadStorageRows()
         {
-            var json = NativeBae.StorageJson(_handle);
+            var (current, json) = await RunForCurrentHandle(
+                handle => NativeBae.StorageJson(handle));
+            if (!current)
+            {
+                return;
+            }
             if (json is null)
             {
                 storageStatus.Text = Loc.Chrome("storage.load_failed");
@@ -6438,15 +6485,13 @@ public sealed partial class MainWindow : Window
         return row;
     }
 
-    private void OnClosed(object sender, WindowEventArgs args)
+    private async void OnClosed(object sender, WindowEventArgs args)
     {
         if (_handle != IntPtr.Zero)
         {
             // Persist the queue / current track / position before freeing the
             // handle, so the next launch can restore where playback left off.
-            NativeBae.Shutdown(_handle);
-            NativeBae.HandleFree(_handle);
-            _handle = IntPtr.Zero;
+            await ShutdownAndFreeCurrentHandle();
         }
         BaeDiagnostics.Flush();
     }

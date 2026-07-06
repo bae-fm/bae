@@ -33,10 +33,10 @@ final class Sync: Sendable, Observable {
     /// Warning text for the disconnect-sync confirmation: `nil` when no
     /// releases will become unplayable, otherwise a pre-formatted sentence
     /// the UI appends to the base "this will stop syncing" message.
-    let disconnectWarningMessage: @Sendable () throws -> String?
+    let disconnectWarningMessage: @Sendable () async throws -> String?
     /// Retry failed cloud-outbox uploads now (clears their backoff and kicks
     /// the sync loop).
-    let retryOutbox: @Sendable () throws -> Void
+    let retryOutbox: @Sendable () async throws -> Void
     /// Rename a library by id. If the id matches the active library the
     /// reactive `ConfigState` handles the rename; for any other local
     /// library the on-disk `config.yaml` is edited in place. The sidebar
@@ -44,13 +44,15 @@ final class Sync: Sendable, Observable {
     let renameLibrary:
         @Sendable (_ libraryId: String, _ newName: String) throws -> Void
     /// Cancel one queued outbox entry by id (dequeues it; the local file stays).
-    let cancelOutboxItem: @Sendable (_ id: Int64) throws -> Void
+    let cancelOutboxItem: @Sendable (_ id: Int64) async throws -> Void
     /// Cancel whatever transition a release is mid-flight — pin, upload, or
     /// unmanage — leaving it in its prior state. A no-op if nothing's running.
-    let cancelReleaseTransition: @Sendable (_ releaseId: String) throws -> Void
+    let cancelReleaseTransition:
+        @Sendable (_ releaseId: String) async throws
+            -> Void
     /// Pause or resume the cloud-upload pipeline. In-flight uploads finish; the
     /// queue stops draining until resumed.
-    let setSyncPaused: @Sendable (_ paused: Bool) -> Void
+    let setSyncPaused: @Sendable (_ paused: Bool) async -> Void
     // periphery:ignore - called from the iOS pull-to-refresh / sync-retry; the
     // macOS target periphery analyzes doesn't use it (sync is automatic there).
     /// Re-kick the sync loop now (manual pull-to-refresh / retry). Non-throwing.
@@ -89,20 +91,21 @@ final class Sync: Sendable, Observable {
             _ in
             throw StubError.notImplemented
         },
-        disconnectWarningMessage: @escaping @Sendable () throws -> String? = {
-            nil
-        },
-        retryOutbox: @escaping @Sendable () throws -> Void = {},
+        disconnectWarningMessage:
+            @escaping @Sendable () async throws
+            -> String? = { throw StubError.notImplemented },
+        retryOutbox: @escaping @Sendable () async throws -> Void = {},
         renameLibrary: @escaping @Sendable (String, String) throws -> Void = {
             _,
             _ in
             throw StubError.notImplemented
         },
-        cancelOutboxItem: @escaping @Sendable (Int64) throws -> Void = { _ in },
-        cancelReleaseTransition: @escaping @Sendable (String) throws -> Void = {
+        cancelOutboxItem: @escaping @Sendable (Int64) async throws -> Void = {
             _ in
         },
-        setSyncPaused: @escaping @Sendable (Bool) -> Void = { _ in },
+        cancelReleaseTransition:
+            @escaping @Sendable (String) async throws -> Void = { _ in },
+        setSyncPaused: @escaping @Sendable (Bool) async -> Void = { _ in },
         triggerSync: @escaping @Sendable () -> Void = {},
         lockActiveLibrary: @escaping @Sendable () throws -> Void = {
             throw StubError.notImplemented
@@ -163,16 +166,18 @@ final class Sync: Sendable, Observable {
                 )
             },
             removeMember: { try await handle.removeMember(publicKeyHex: $0) },
-            disconnectWarningMessage: { try handle.disconnectWarningMessage() },
-            retryOutbox: { try handle.retryOutbox() },
+            disconnectWarningMessage: {
+                try await handle.disconnectWarningMessage()
+            },
+            retryOutbox: { try await handle.retryOutbox() },
             renameLibrary: {
                 try handle.renameLibrary(libraryId: $0, name: $1)
             },
-            cancelOutboxItem: { try handle.cancelOutboxItem(id: $0) },
+            cancelOutboxItem: { try await handle.cancelOutboxItem(id: $0) },
             cancelReleaseTransition: {
-                try handle.cancelReleaseTransition(releaseId: $0)
+                try await handle.cancelReleaseTransition(releaseId: $0)
             },
-            setSyncPaused: { handle.setSyncPaused(paused: $0) },
+            setSyncPaused: { await handle.setSyncPaused(paused: $0) },
             triggerSync: { handle.triggerSync() },
             lockActiveLibrary: { try handle.lockActiveLibrary() }
         )

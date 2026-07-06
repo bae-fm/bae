@@ -67,119 +67,101 @@ impl AppHandle {
     // Library
     // =========================================================================
 
-    pub fn get_album_page(
+    pub async fn get_album_page(
         &self,
         sort_criteria: Vec<BridgeSortCriterion>,
         offset: u64,
         limit: u64,
     ) -> Result<Vec<BridgeAlbum>, BridgeError> {
-        // Local SQLite read — shallow and instant, so it polls inline on the
-        // caller via block_on. Staying synchronous keeps it usable from the
-        // synchronous SwiftUI render path (e.g. image/file-path lookups feeding
-        // `NSImage(contentsOfFile:)`), which has no `await` point.
-        self.runtime.block_on(async {
-            let sort: Vec<bae_core::db::AlbumSortCriterion> =
-                sort_criteria.iter().map(bridge_sort_to_core).collect();
-            let albums = self
-                .services
-                .library_manager()
-                .get_album_page(&sort, offset, limit)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))?;
+        let sort: Vec<bae_core::db::AlbumSortCriterion> =
+            sort_criteria.iter().map(bridge_sort_to_core).collect();
+        let albums = self
+            .services
+            .library_manager()
+            .get_album_page(&sort, offset, limit)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))?;
 
-            Ok(albums.into_iter().map(convert_album_summary).collect())
-        })
+        Ok(albums.into_iter().map(convert_album_summary).collect())
     }
 
     /// 0-based position of `album_id` under the given sort, matching
     /// `get_album_page`'s ordering, or `None` if the album isn't present.
     /// Lets the grid load the page containing an album and scroll to it
     /// without depending on that page already being fetched.
-    pub fn get_album_index(
+    pub async fn get_album_index(
         &self,
         sort_criteria: Vec<BridgeSortCriterion>,
         album_id: String,
     ) -> Result<Option<u64>, BridgeError> {
-        self.runtime.block_on(async {
-            let sort: Vec<bae_core::db::AlbumSortCriterion> =
-                sort_criteria.iter().map(bridge_sort_to_core).collect();
-            self.services
-                .library_manager()
-                .get_album_index(&sort, &album_id)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))
-        })
+        let sort: Vec<bae_core::db::AlbumSortCriterion> =
+            sort_criteria.iter().map(bridge_sort_to_core).collect();
+        self.services
+            .library_manager()
+            .get_album_index(&sort, &album_id)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))
     }
 
-    pub fn get_album_count(&self) -> Result<u64, BridgeError> {
-        self.runtime.block_on(async {
-            self.services
-                .library_manager()
-                .get_album_count()
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))
-        })
+    pub async fn get_album_count(&self) -> Result<u64, BridgeError> {
+        self.services
+            .library_manager()
+            .get_album_count()
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))
     }
 
-    pub fn get_composer_count(&self) -> Result<u64, BridgeError> {
-        self.runtime.block_on(async {
-            self.services
-                .library_manager()
-                .get_composer_count()
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))
-        })
+    pub async fn get_composer_count(&self) -> Result<u64, BridgeError> {
+        self.services
+            .library_manager()
+            .get_composer_count()
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))
     }
 
-    pub fn get_composer_page(
+    pub async fn get_composer_page(
         &self,
         sort_criterion: BridgeComposerSortCriterion,
         offset: u64,
         limit: u64,
     ) -> Result<Vec<BridgeComposerSummary>, BridgeError> {
-        self.runtime.block_on(async {
-            let sort = bridge_composer_sort_to_core(&sort_criterion);
-            let composers = self
-                .services
-                .library_manager()
-                .get_composer_page(sort, offset, limit)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))?;
-            Ok(composers
-                .into_iter()
-                .map(convert_composer_summary)
-                .collect())
-        })
+        let sort = bridge_composer_sort_to_core(&sort_criterion);
+        let composers = self
+            .services
+            .library_manager()
+            .get_composer_page(sort, offset, limit)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))?;
+        Ok(composers
+            .into_iter()
+            .map(convert_composer_summary)
+            .collect())
     }
 
-    pub fn get_composer_detail(
+    pub async fn get_composer_detail(
         &self,
         artist_id: String,
     ) -> Result<Option<BridgeComposerDetail>, BridgeError> {
-        self.runtime.block_on(async {
-            let detail = self
-                .services
-                .library_manager()
-                .get_composer_detail(&artist_id)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))?;
-            Ok(detail.map(convert_composer_detail))
-        })
+        let detail = self
+            .services
+            .library_manager()
+            .get_composer_detail(&artist_id)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))?;
+        Ok(detail.map(convert_composer_detail))
     }
 
-    pub fn get_work_detail(
+    pub async fn get_work_detail(
         &self,
         work_id: String,
     ) -> Result<Option<BridgeWorkDetail>, BridgeError> {
-        self.runtime.block_on(async {
-            let detail = self
-                .services
-                .library_manager()
-                .get_work_detail(&work_id)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))?;
-            Ok(detail.map(convert_work_detail))
-        })
+        let detail = self
+            .services
+            .library_manager()
+            .get_work_detail(&work_id)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))?;
+        Ok(detail.map(convert_work_detail))
     }
 
     /// Filesystem path for the user's own external file behind a library file
@@ -187,90 +169,83 @@ impl AppHandle {
     /// file has no readable local location (e.g. cloud-only and not cached).
     /// Returns `Err` on DB failures so callers can distinguish a missing file
     /// from a broken library state. NOT a substitute for a coven byte read.
-    pub fn file_path(&self, file_id: String) -> Result<Option<String>, BridgeError> {
-        self.runtime.block_on(async {
-            let path = self
-                .services
-                .library_manager()
-                .file_local_path(&file_id)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))?;
-            Ok(path.and_then(|p| p.to_str().map(|s| s.to_string())))
-        })
+    pub async fn file_path(&self, file_id: String) -> Result<Option<String>, BridgeError> {
+        let path = self
+            .services
+            .library_manager()
+            .file_local_path(&file_id)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))?;
+        Ok(path.and_then(|p| p.to_str().map(|s| s.to_string())))
     }
 
-    pub fn get_album_detail(&self, album_id: String) -> Result<BridgeAlbumDetail, BridgeError> {
-        self.runtime.block_on(async {
-            let detail = self
-                .services
-                .library_manager()
-                .find_album_detail(&album_id)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))?
-                .ok_or_else(|| BridgeError::NotFound {
-                    entity: crate::types::BridgeEntityKind::Album,
-                    id: album_id.to_string(),
-                })?;
+    pub async fn get_album_detail(
+        &self,
+        album_id: String,
+    ) -> Result<BridgeAlbumDetail, BridgeError> {
+        let detail = self
+            .services
+            .library_manager()
+            .find_album_detail(&album_id)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))?
+            .ok_or_else(|| BridgeError::NotFound {
+                entity: crate::types::BridgeEntityKind::Album,
+                id: album_id.to_string(),
+            })?;
 
-            Ok(convert_album_detail(detail))
-        })
+        Ok(convert_album_detail(detail))
     }
 
     /// Fat release detail (tracks, files, gallery) for the album-detail
     /// view. Returns `Ok(None)` when the release doesn't exist.
-    pub fn find_release_detail(
+    pub async fn find_release_detail(
         &self,
         release_id: String,
     ) -> Result<Option<BridgeRelease>, BridgeError> {
-        self.runtime.block_on(async {
-            let detail = self
-                .services
-                .library_manager()
-                .find_release_detail(&release_id)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))?;
-            Ok(detail.map(convert_release_detail))
-        })
+        let detail = self
+            .services
+            .library_manager()
+            .find_release_detail(&release_id)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))?;
+        Ok(detail.map(convert_release_detail))
     }
 
     /// One page of the Storage Manager list, pre-sorted and
     /// pre-filtered. Rows carry both halves (release + parent album) so
     /// the UI can populate its normalized slices from a single call.
-    pub fn storage_page(
+    pub async fn storage_page(
         &self,
         sort: BridgeStorageSort,
         filter: BridgeStorageFilter,
         offset: u64,
         limit: u64,
     ) -> Result<BridgeStoragePage, BridgeError> {
-        self.runtime.block_on(async {
-            let core_sort = crate::types::bridge_storage_sort_to_core(&sort);
-            let core_filter = crate::types::bridge_storage_filter_to_core(filter);
-            let page = self
-                .services
-                .library_manager()
-                .get_storage_page(&core_sort, core_filter, offset, limit)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))?;
+        let core_sort = crate::types::bridge_storage_sort_to_core(&sort);
+        let core_filter = crate::types::bridge_storage_filter_to_core(filter);
+        let page = self
+            .services
+            .library_manager()
+            .get_storage_page(&core_sort, core_filter, offset, limit)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))?;
 
-            Ok(BridgeStoragePage {
-                rows: page.rows.into_iter().map(convert_storage_row).collect(),
-                total_count: page.total_count,
-            })
+        Ok(BridgeStoragePage {
+            rows: page.rows.into_iter().map(convert_storage_row).collect(),
+            total_count: page.total_count,
         })
     }
 
     /// Count of storage rows matching `filter`. Matches
     /// `storage_page`'s `total_count` for the same filter.
-    pub fn storage_count(&self, filter: BridgeStorageFilter) -> Result<u64, BridgeError> {
-        self.runtime.block_on(async {
-            let core_filter = crate::types::bridge_storage_filter_to_core(filter);
-            self.services
-                .library_manager()
-                .get_storage_count(core_filter)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))
-        })
+    pub async fn storage_count(&self, filter: BridgeStorageFilter) -> Result<u64, BridgeError> {
+        let core_filter = crate::types::bridge_storage_filter_to_core(filter);
+        self.services
+            .library_manager()
+            .get_storage_count(core_filter)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))
     }
 
     pub async fn search_library(&self, query: String) -> Result<BridgeSearchResults, BridgeError> {
@@ -399,22 +374,22 @@ impl AppHandle {
     }
 
     /// Graceful shutdown: saves playback state to disk, then stops the playback service.
-    pub fn shutdown(&self) {
+    pub async fn shutdown(&self) {
         #[cfg(feature = "desktop")]
         {
             self.app.shutdown_mcp();
-            self.runtime.block_on(self.services.playback().shutdown());
+            self.services.playback().shutdown().await;
         }
         #[cfg(not(feature = "desktop"))]
-        self.runtime.block_on(self.services.playback().shutdown());
+        self.services.playback().shutdown().await;
     }
 
     /// Persist the current playback state without stopping playback. Mobile
     /// calls this when the app is backgrounded so the queue, current track, and
     /// position survive a later cold launch — it can't call `shutdown`, which
     /// would stop the background audio.
-    pub fn save_playback_state(&self) {
-        self.runtime.block_on(self.services.playback().save_state());
+    pub async fn save_playback_state(&self) {
+        self.services.playback().save_state().await;
     }
 
     // =========================================================================
@@ -437,24 +412,23 @@ impl AppHandle {
         self.services.playback().add_release_next(release_id);
     }
 
-    pub fn get_queue_snapshot(&self) -> Result<BridgeQueueSnapshot, BridgeError> {
+    pub async fn get_queue_snapshot(&self) -> Result<BridgeQueueSnapshot, BridgeError> {
         let snapshot = self
-            .runtime
-            .block_on(self.services.get_queue_snapshot())
+            .services
+            .get_queue_snapshot()
+            .await
             .map_err(BridgeError::internal)?;
         Ok(convert_queue_snapshot(snapshot))
     }
 
     /// Resolve a list of IDs (album or track) to track IDs.
     /// Album IDs are expanded to the primary release's tracks.
-    pub fn resolve_to_track_ids(&self, ids: Vec<String>) -> Result<Vec<String>, BridgeError> {
-        self.runtime.block_on(async {
-            self.services
-                .library_manager()
-                .resolve_to_track_ids(&ids)
-                .await
-                .map_err(BridgeError::database)
-        })
+    pub async fn resolve_to_track_ids(&self, ids: Vec<String>) -> Result<Vec<String>, BridgeError> {
+        self.services
+            .library_manager()
+            .resolve_to_track_ids(&ids)
+            .await
+            .map_err(BridgeError::database)
     }
 
     pub fn insert_in_queue(&self, track_ids: Vec<String>, index: u32) {
@@ -626,18 +600,16 @@ impl AppHandle {
             .map_err(|e| BridgeError::internal(format!("{e}")))
     }
 
-    pub fn set_primary_release(
+    pub async fn set_primary_release(
         &self,
         album_id: String,
         release_id: String,
     ) -> Result<(), BridgeError> {
-        self.runtime.block_on(async {
-            self.services
-                .library_manager()
-                .set_album_primary_release(&album_id, &release_id)
-                .await
-                .map_err(|e| BridgeError::internal(format!("{e}")))
-        })
+        self.services
+            .library_manager()
+            .set_album_primary_release(&album_id, &release_id)
+            .await
+            .map_err(|e| BridgeError::internal(format!("{e}")))
     }
 
     // =========================================================================
@@ -676,13 +648,12 @@ impl AppHandle {
             .map_err(BridgeError::internal)
     }
 
-    pub fn delete_release(&self, release_id: String) {
-        let result = self.runtime.block_on(async {
-            self.services
-                .library_manager()
-                .delete_release(&release_id)
-                .await
-        });
+    pub async fn delete_release(&self, release_id: String) {
+        let result = self
+            .services
+            .library_manager()
+            .delete_release(&release_id)
+            .await;
 
         if let Err(e) = result {
             self.services
@@ -728,9 +699,11 @@ impl AppHandle {
     /// only in the cloud. `None` means no releases are at risk; `Some(msg)`
     /// is a pre-formatted (singular/plural, full sentence) warning the UI
     /// appends to its base "this will stop syncing" message.
-    pub fn disconnect_warning_message(&self) -> Result<Option<String>, BridgeError> {
-        self.runtime
-            .block_on(self.services.library_manager().disconnect_warning_message())
+    pub async fn disconnect_warning_message(&self) -> Result<Option<String>, BridgeError> {
+        self.services
+            .library_manager()
+            .disconnect_warning_message()
+            .await
             .map_err(BridgeError::internal)
     }
 
@@ -805,25 +778,33 @@ impl AppHandle {
 
     /// The current cloud outbox processing snapshot. Outbox invalidations tell
     /// the Storage Manager to read it again.
-    pub fn get_outbox_snapshot(&self) -> Result<crate::types::BridgeOutboxSnapshot, BridgeError> {
+    pub async fn get_outbox_snapshot(
+        &self,
+    ) -> Result<crate::types::BridgeOutboxSnapshot, BridgeError> {
         let snapshot = self
-            .runtime
-            .block_on(self.services.library_manager().outbox_snapshot())
+            .services
+            .library_manager()
+            .outbox_snapshot()
+            .await
             .map_err(BridgeError::internal)?;
         Ok(convert_outbox_snapshot(snapshot))
     }
 
     /// Retry failed uploads now (clears their backoff and kicks the sync loop).
-    pub fn retry_outbox(&self) -> Result<(), BridgeError> {
-        self.runtime
-            .block_on(self.services.library_manager().retry_outbox_now())
+    pub async fn retry_outbox(&self) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .retry_outbox_now()
+            .await
             .map_err(BridgeError::internal)
     }
 
     /// Cancel one queued outbox entry by id (dequeues it; the local file stays).
-    pub fn cancel_outbox_item(&self, id: i64) -> Result<(), BridgeError> {
-        self.runtime
-            .block_on(self.services.library_manager().cancel_outbox_item(id))
+    pub async fn cancel_outbox_item(&self, id: i64) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .cancel_outbox_item(id)
+            .await
             .map_err(BridgeError::internal)
     }
 
@@ -831,22 +812,22 @@ impl AppHandle {
     /// remote upload, or an unmanage — leaving it in its prior state. The UI
     /// calls this from the storage row and the queue pane without knowing which
     /// is running; a no-op if nothing is in progress.
-    pub fn cancel_release_transition(&self, release_id: String) -> Result<(), BridgeError> {
-        self.runtime
-            .block_on(
-                self.services
-                    .library_manager()
-                    .cancel_release_transition(&release_id),
-            )
+    pub async fn cancel_release_transition(&self, release_id: String) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .cancel_release_transition(&release_id)
+            .await
             .map_err(BridgeError::internal)
     }
 
     /// Pause or resume the cloud-upload pipeline. While paused, new enqueues
     /// still land in the outbox but the sync cycle won't drain them; the
     /// snapshot's `paused` field flips so the UI can render the toggle.
-    pub fn set_sync_paused(&self, paused: bool) {
-        self.runtime
-            .block_on(self.services.library_manager().set_sync_paused(paused));
+    pub async fn set_sync_paused(&self, paused: bool) {
+        self.services
+            .library_manager()
+            .set_sync_paused(paused)
+            .await;
     }
 
     // ── Download (pin) queue ─────────────────────────────────────────
@@ -859,12 +840,13 @@ impl AppHandle {
 
     /// Enqueue releases to pin for offline. They join the in-memory serial
     /// download queue; the worker drains them one at a time. The DB lookups
-    /// (resolving each release's title/size for its pane row) are shallow, so
-    /// this polls inline via block_on — the deep cloud download runs on the
-    /// queue worker, not here.
-    pub fn queue_pin_releases(&self, release_ids: Vec<String>) {
-        self.runtime
-            .block_on(self.services.library_manager().enqueue_pins(release_ids));
+    /// (resolving each release's title/size for its pane row) happen here; the
+    /// deep cloud download runs on the queue worker.
+    pub async fn queue_pin_releases(&self, release_ids: Vec<String>) {
+        self.services
+            .library_manager()
+            .enqueue_pins(release_ids)
+            .await;
     }
 
     /// Pause or resume the download queue. In-flight downloads finish; the queue
@@ -896,21 +878,22 @@ impl AppHandle {
 
     /// Enqueue a release export to `target_dir`. It joins
     /// the in-memory serial export queue; the worker drains it one release at a
-    /// time. The storage-summary lookup (resolving the pane row's title/size) is
-    /// shallow, so this polls inline via block_on — the deep cloud read + copy
-    /// runs on the queue worker, not here.
-    pub fn enqueue_export(
+    /// time. The storage-summary lookup (resolving the pane row's title/size)
+    /// happens here; the deep cloud read + copy runs on the queue worker.
+    pub async fn enqueue_export(
         &self,
         release_id: String,
         target_dir: String,
         selection: crate::types::BridgeExportSelection,
     ) -> Result<(), BridgeError> {
-        self.runtime
-            .block_on(self.services.library_manager().enqueue_export(
+        self.services
+            .library_manager()
+            .enqueue_export(
                 &release_id,
                 std::path::PathBuf::from(target_dir),
                 crate::bridge_utils::core_export_selection(selection),
-            ))
+            )
+            .await
             .map_err(BridgeError::export)
     }
 
@@ -1335,14 +1318,12 @@ impl AppHandle {
         })
     }
 
-    pub fn is_source_folder_name_imported(&self, name: String) -> Result<bool, BridgeError> {
-        self.runtime.block_on(async {
-            self.services
-                .library_manager()
-                .is_source_folder_name_imported(&name)
-                .await
-                .map_err(|e| BridgeError::database(format!("{e}")))
-        })
+    pub async fn is_source_folder_name_imported(&self, name: String) -> Result<bool, BridgeError> {
+        self.services
+            .library_manager()
+            .is_source_folder_name_imported(&name)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))
     }
 
     // The bridge boundary surface is wide on purpose — uniffi flattens

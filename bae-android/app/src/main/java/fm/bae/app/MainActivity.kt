@@ -8,7 +8,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
 import fm.bae.app.ui.ContentView
+import kotlinx.coroutines.launch
 
 private const val TAG = "bae.MainActivity"
 private val logger = BaeLogger(TAG)
@@ -47,6 +49,8 @@ class MainActivity : ComponentActivity() {
         // Persist playback so the queue, current track, and position survive
         // process death while backgrounded. We can't shut core down (that would
         // stop the background audio), so this is the save point on Android.
-        AppSessionHolder.currentSession()?.appHandle?.savePlaybackState()
+        lifecycleScope.launch {
+            AppSessionHolder.currentSession()?.appHandle?.savePlaybackState()
+        }
     }
 }

@@ -13,11 +13,11 @@ struct LibraryAlbumPageSource: PageSource {
     let sort: [BridgeSortCriterion]
 
     func count() async throws -> Int {
-        try Int(library.getAlbumCount())
+        Int(try await library.getAlbumCount())
     }
 
     func page(offset: Int, limit: Int) async throws -> [BridgeAlbum] {
-        try library.getAlbumPage(sort, UInt64(offset), UInt64(limit))
+        try await library.getAlbumPage(sort, UInt64(offset), UInt64(limit))
     }
 }
 
@@ -42,11 +42,11 @@ struct LibraryComposerPageSource: PageSource {
     let sort: BridgeComposerSortCriterion
 
     func count() async throws -> Int {
-        try Int(library.getComposerCount())
+        Int(try await library.getComposerCount())
     }
 
     func page(offset: Int, limit: Int) async throws -> [BridgeComposerSummary] {
-        try library.getComposerPage(sort, UInt64(offset), UInt64(limit))
+        try await library.getComposerPage(sort, UInt64(offset), UInt64(limit))
     }
 }
 
@@ -68,11 +68,11 @@ struct StoragePageSource: PageSource {
     let filter: BridgeStorageFilter
 
     func count() async throws -> Int {
-        try Int(library.storageCount(filter))
+        Int(try await library.storageCount(filter))
     }
 
     func page(offset: Int, limit: Int) async throws -> [BridgeStorageRow] {
-        let page = try library.storagePage(
+        let page = try await library.storagePage(
             sort,
             filter,
             UInt64(offset),
@@ -319,7 +319,7 @@ final class LibraryStore {
             let findReleaseDetail = library.findReleaseDetail
             let bridge =
                 try await Task.detached {
-                    try findReleaseDetail(releaseId)
+                    try await findReleaseDetail(releaseId)
                 }
                 .value
             if Task.isCancelled {
@@ -348,7 +348,7 @@ final class LibraryStore {
             let findReleaseDetail = library.findReleaseDetail
             let bridge =
                 try await Task.detached {
-                    try findReleaseDetail(releaseId)
+                    try await findReleaseDetail(releaseId)
                 }
                 .value
             if Task.isCancelled {

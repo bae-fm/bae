@@ -572,17 +572,19 @@ private struct OutboxSection: View {
             }
             Spacer()
             Button(snapshot.paused ? "Resume" : "Pause") {
-                sync.setSyncPaused(!snapshot.paused)
+                Task { await sync.setSyncPaused(!snapshot.paused) }
             }
             Button("Retry now") {
-                do { try sync.retryOutbox() }
-                catch {
-                    uiStore.showError(
-                        String(
-                            localized:
-                                "Failed to retry uploads: \(error.localizedDescription)"
+                Task {
+                    do { try await sync.retryOutbox() }
+                    catch {
+                        uiStore.showError(
+                            String(
+                                localized:
+                                    "Failed to retry uploads: \(error.localizedDescription)"
+                            )
                         )
-                    )
+                    }
                 }
             }
             .disabled(snapshot.total.failed == 0)
@@ -615,25 +617,31 @@ private struct OutboxSection: View {
 
     /// Cancel a release's in-progress transition, surfacing any failure.
     private func cancelTransition(_ releaseId: String) {
-        do { try sync.cancelReleaseTransition(releaseId) }
-        catch {
-            uiStore.showError(
-                String(
-                    localized: "Failed to cancel: \(error.localizedDescription)"
+        Task {
+            do { try await sync.cancelReleaseTransition(releaseId) }
+            catch {
+                uiStore.showError(
+                    String(
+                        localized:
+                            "Failed to cancel: \(error.localizedDescription)"
+                    )
                 )
-            )
+            }
         }
     }
 
     /// Remove a queued delete, surfacing any failure.
     private func cancel(_ id: Int64) {
-        do { try sync.cancelOutboxItem(id) }
-        catch {
-            uiStore.showError(
-                String(
-                    localized: "Failed to cancel: \(error.localizedDescription)"
+        Task {
+            do { try await sync.cancelOutboxItem(id) }
+            catch {
+                uiStore.showError(
+                    String(
+                        localized:
+                            "Failed to cancel: \(error.localizedDescription)"
+                    )
                 )
-            )
+            }
         }
     }
 }

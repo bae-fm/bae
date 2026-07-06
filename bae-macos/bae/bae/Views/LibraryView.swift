@@ -435,10 +435,7 @@ extension LibraryView {
         }
         do {
             let getComposerDetail = library.getComposerDetail
-            let detail =
-                try await DetachedWork.run {
-                    try getComposerDetail(selectedComposerId)
-                }
+            let detail = try await getComposerDetail(selectedComposerId)
             guard !Task.isCancelled else {
                 return
             }
@@ -473,10 +470,7 @@ extension LibraryView {
         }
         do {
             let getWorkDetail = library.getWorkDetail
-            let detail =
-                try await DetachedWork.run {
-                    try getWorkDetail(selectedWorkId)
-                }
+            let detail = try await getWorkDetail(selectedWorkId)
             guard !Task.isCancelled else {
                 return
             }
