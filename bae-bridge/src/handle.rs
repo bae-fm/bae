@@ -509,17 +509,6 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
-    /// Set which metadata tags a single-track export embeds.
-    pub fn set_export_metadata(
-        &self,
-        metadata: crate::types::BridgeExportMetadata,
-    ) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .set_export_metadata(crate::bridge_utils::core_export_metadata(metadata))
-            .map_err(BridgeError::config)
-    }
-
     pub fn set_export_presets(
         &self,
         presets: Vec<crate::types::BridgeExportPreset>,

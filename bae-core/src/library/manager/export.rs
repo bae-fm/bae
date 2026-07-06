@@ -336,9 +336,9 @@ impl LibraryManager {
 
     /// Assemble everything `ExportService::export_track` needs for a
     /// track in one pass: source audio bytes, tag fields, cover image bytes,
-    /// neighbour counts, the metadata selection, and the raw audio-format
-    /// aggregate for decoding. Cloud-only tracks download + decrypt here —
-    /// export never requires a local copy.
+    /// neighbour counts, and the raw audio-format aggregate for decoding.
+    /// Cloud-only tracks download + decrypt here — export never requires a
+    /// local copy.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn get_export_track_plan(
         &self,
@@ -356,22 +356,12 @@ impl LibraryManager {
                     ))
                 })?;
 
-        let selection = self.export_metadata();
-
-        // Read the cover only when the user selected it: the album's primary
-        // release carries it, reached through the id `resolve_export_tags`
-        // already carried out. Skipping this when cover art is off
-        // short-circuits the cloud image fetch + resize entirely.
-        let cover_image_bytes = if selection.cover_art {
-            match resolved.primary_release_id.as_deref() {
-                Some(rid) => match self.cover_ref(rid).await? {
-                    Some(image) => self.read_image_blob(&image).await?,
-                    None => None,
-                },
+        let cover_image_bytes = match resolved.primary_release_id.as_deref() {
+            Some(rid) => match self.cover_ref(rid).await? {
+                Some(image) => self.read_image_blob(&image).await?,
                 None => None,
-            }
-        } else {
-            None
+            },
+            None => None,
         };
 
         let ResolvedExportTags {
@@ -389,7 +379,6 @@ impl LibraryManager {
             track_number,
             total_tracks,
             is_digital,
-            metadata: selection,
             audio_window: export_window_from_meta(&meta),
             audio_meta: meta,
         })
@@ -469,7 +458,6 @@ impl LibraryManager {
                         ))
                     })?;
                 let mut plan = self.get_export_track_plan(track_id).await?;
-                plan.metadata = preset.metadata;
                 let release_tracks = self
                     .database
                     .get_tracks_for_release(&plan.audio_meta.release.id)
@@ -535,7 +523,6 @@ impl LibraryManager {
 
         for (index, track) in tracks.iter().enumerate() {
             let mut plan = self.get_export_track_plan(&track.id).await?;
-            plan.metadata = preset.metadata;
             let next_meta = if index + 1 < tracks.len() {
                 Some(TrackAudioMeta::resolve(&self.database, &tracks[index + 1].id).await?)
             } else {
@@ -587,7 +574,6 @@ impl LibraryManager {
         let mut plans = Vec::with_capacity(tracks.len());
         for track in tracks {
             let mut plan = self.get_export_track_plan(&track.id).await?;
-            plan.metadata = preset.metadata;
             plan.audio_window =
                 export_window_for_single_file_cue_audio_format(&plan.audio_meta.audio_format);
             plans.push(plan);

@@ -359,7 +359,6 @@ pub struct ExportPreset {
     pub name: String,
     pub codec: ExportPresetCodec,
     pub filename_template: String,
-    pub metadata: ExportMetadata,
     #[serde(default = "default_export_pregap_placement")]
     pub pregap_placement: ExportPregapPlacement,
     pub applies_to_track: bool,
@@ -424,35 +423,6 @@ impl ExportPreset {
     }
 }
 
-/// Which metadata tags a single-track export embeds. All default on. Track
-/// total rides `track_number`; the disc tag is additionally gated on digital
-/// media inside `write_tags`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ExportMetadata {
-    pub title: bool,
-    pub artist: bool,
-    pub album: bool,
-    pub year: bool,
-    pub track_number: bool,
-    pub disc_number: bool,
-    pub cover_art: bool,
-}
-
-/// The serde default for `ConfigYaml.export_metadata`: every tag on. Structs
-/// carry no `#[derive(Default)]` in this project, so the default is named
-/// explicitly.
-fn default_export_metadata() -> ExportMetadata {
-    ExportMetadata {
-        title: true,
-        artist: true,
-        album: true,
-        year: true,
-        track_number: true,
-        disc_number: true,
-        cover_art: true,
-    }
-}
-
 fn default_export_presets() -> Vec<ExportPreset> {
     vec![
         ExportPreset {
@@ -462,7 +432,6 @@ fn default_export_presets() -> Vec<ExportPreset> {
                 bit_depth: ExportBitDepth::Source,
             },
             filename_template: default_export_filename_template(),
-            metadata: default_export_metadata(),
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
             applies_to_release: true,
@@ -472,7 +441,6 @@ fn default_export_presets() -> Vec<ExportPreset> {
             name: "MP3".to_string(),
             codec: ExportPresetCodec::Mp3 { bitrate_kbps: 320 },
             filename_template: default_export_filename_template(),
-            metadata: default_export_metadata(),
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
             applies_to_release: true,
@@ -631,9 +599,6 @@ pub struct ConfigYaml {
     /// Template for the default filename a single-track export suggests.
     #[serde(default = "default_export_filename_template")]
     pub export_filename_template: String,
-    /// Which metadata tags a single-track export embeds. All default on.
-    #[serde(default = "default_export_metadata")]
-    pub export_metadata: ExportMetadata,
     /// Configured export presets offered by release and track export.
     #[serde(default = "default_export_presets")]
     pub export_presets: Vec<ExportPreset>,
@@ -679,7 +644,6 @@ impl ConfigYaml {
             replay_gain_mode: self.replay_gain_mode,
             export_location: self.export_location,
             export_filename_template: self.export_filename_template,
-            export_metadata: self.export_metadata,
             export_presets: self.export_presets,
             default_track_export_selection: self.default_track_export_selection,
             default_release_export_selection: self.default_release_export_selection,
@@ -702,7 +666,6 @@ impl From<&Config> for ConfigYaml {
             replay_gain_mode: config.replay_gain_mode,
             export_location: config.export_location.clone(),
             export_filename_template: config.export_filename_template.clone(),
-            export_metadata: config.export_metadata,
             export_presets: config.export_presets.clone(),
             default_track_export_selection: config.default_track_export_selection.clone(),
             default_release_export_selection: config.default_release_export_selection.clone(),
@@ -744,8 +707,6 @@ pub struct Config {
     pub export_location: ExportLocation,
     /// Template for the default filename a single-track export suggests.
     pub export_filename_template: String,
-    /// Which metadata tags a single-track export embeds. All default on.
-    pub export_metadata: ExportMetadata,
     /// Configured export presets offered by release and track export.
     pub export_presets: Vec<ExportPreset>,
     /// Default selected option in the track export picker.
@@ -958,7 +919,6 @@ impl Config {
             replay_gain_mode: default_replay_gain_mode(),
             export_location: default_export_location(),
             export_filename_template: default_export_filename_template(),
-            export_metadata: default_export_metadata(),
             export_presets: default_export_presets(),
             default_track_export_selection: default_export_selection(),
             default_release_export_selection: default_export_selection(),
@@ -1272,22 +1232,12 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut config = make_test_config("lib", tmp.path().to_path_buf());
         config.export_filename_template = "{artist} - {title}".to_string();
-        config.export_metadata = ExportMetadata {
-            title: true,
-            artist: false,
-            album: true,
-            year: false,
-            track_number: true,
-            disc_number: false,
-            cover_art: false,
-        };
         config.save_to_config_yaml().unwrap();
 
         let yaml: ConfigYaml =
             serde_yaml::from_str(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
                 .unwrap();
         assert_eq!(yaml.export_filename_template, "{artist} - {title}");
-        assert_eq!(yaml.export_metadata, config.export_metadata);
         assert_eq!(yaml.export_presets, config.export_presets);
         assert_eq!(
             yaml.default_track_export_selection,
@@ -1310,7 +1260,6 @@ mod tests {
             config.export_filename_template,
             default_export_filename_template()
         );
-        assert_eq!(config.export_metadata, default_export_metadata());
         assert_eq!(config.export_presets, default_export_presets());
         assert_eq!(
             config.default_track_export_selection,
@@ -1331,7 +1280,6 @@ mod tests {
                 bit_depth: ExportBitDepth::Source,
             },
             filename_template: default_export_filename_template(),
-            metadata: default_export_metadata(),
             pregap_placement: ExportPregapPlacement::SingleFileWithCue,
             applies_to_track: true,
             applies_to_release: true,
@@ -1353,7 +1301,6 @@ mod tests {
             name: "Opus image".to_string(),
             codec: ExportPresetCodec::OpusOgg { bitrate_kbps: 192 },
             filename_template: default_export_filename_template(),
-            metadata: default_export_metadata(),
             pregap_placement: ExportPregapPlacement::SingleFileWithCue,
             applies_to_track: false,
             applies_to_release: true,

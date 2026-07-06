@@ -305,19 +305,11 @@
   <data name="action.remove" xml:space="preserve"><value>Remove</value></data>
   <data name="settings.export.filename_format" xml:space="preserve"><value>Filename format</value></data>
   <data name="settings.export.tokens_help" xml:space="preserve"><value>Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
-  <data name="settings.export.metadata.title" xml:space="preserve"><value>Title</value></data>
-  <data name="settings.export.metadata.artist" xml:space="preserve"><value>Artist</value></data>
-  <data name="settings.export.metadata.album" xml:space="preserve"><value>Album</value></data>
-  <data name="settings.export.metadata.year" xml:space="preserve"><value>Year</value></data>
-  <data name="settings.export.metadata.track_number" xml:space="preserve"><value>Track number</value></data>
-  <data name="settings.export.metadata.disc_number" xml:space="preserve"><value>Disc number</value></data>
-  <data name="settings.export.metadata.cover_art" xml:space="preserve"><value>Cover art</value></data>
   <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Bit depth</value></data>
   <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Source</value></data>
   <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
   <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
-  <data name="settings.export.metadata_label" xml:space="preserve"><value>Metadata</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>Export settings could not be saved</value></data>
 </root>

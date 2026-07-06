@@ -5593,13 +5593,6 @@ public sealed partial class MainWindow : Window
             TextWrapping = TextWrapping.Wrap,
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
         };
-        var exportTitle = new CheckBox { Content = Loc.Chrome("settings.export.metadata.title"), IsChecked = s.ExportMetadata.Title };
-        var exportArtist = new CheckBox { Content = Loc.Chrome("settings.export.metadata.artist"), IsChecked = s.ExportMetadata.Artist };
-        var exportAlbum = new CheckBox { Content = Loc.Chrome("settings.export.metadata.album"), IsChecked = s.ExportMetadata.Album };
-        var exportYear = new CheckBox { Content = Loc.Chrome("settings.export.metadata.year"), IsChecked = s.ExportMetadata.Year };
-        var exportTrackNumber = new CheckBox { Content = Loc.Chrome("settings.export.metadata.track_number"), IsChecked = s.ExportMetadata.TrackNumber };
-        var exportDiscNumber = new CheckBox { Content = Loc.Chrome("settings.export.metadata.disc_number"), IsChecked = s.ExportMetadata.DiscNumber };
-        var exportCoverArt = new CheckBox { Content = Loc.Chrome("settings.export.metadata.cover_art"), IsChecked = s.ExportMetadata.CoverArt };
         var defaultTrackExport = new ComboBox { Header = Loc.Chrome("settings.export.default_track_format") };
         var defaultReleaseExport = new ComboBox { Header = Loc.Chrome("settings.export.default_release_format") };
         var presetPanel = new StackPanel { Spacing = 8 };
@@ -5624,13 +5617,6 @@ public sealed partial class MainWindow : Window
 
             refreshingSettings = true;
             exportTemplate.Text = settings.ExportFilenameTemplate;
-            exportTitle.IsChecked = settings.ExportMetadata.Title;
-            exportArtist.IsChecked = settings.ExportMetadata.Artist;
-            exportAlbum.IsChecked = settings.ExportMetadata.Album;
-            exportYear.IsChecked = settings.ExportMetadata.Year;
-            exportTrackNumber.IsChecked = settings.ExportMetadata.TrackNumber;
-            exportDiscNumber.IsChecked = settings.ExportMetadata.DiscNumber;
-            exportCoverArt.IsChecked = settings.ExportMetadata.CoverArt;
             PopulateExportSelection(defaultTrackExport, settings, release: false);
             PopulateExportSelection(defaultReleaseExport, settings, release: true);
             RenderExportPresets(settings);
@@ -5735,7 +5721,6 @@ public sealed partial class MainWindow : Window
                 }
                 pregap.SelectionChanged += (_, _) => ApplyPregapApplicability();
                 ApplyPregapApplicability();
-                var metadataEditor = BuildPresetMetadataEditor(preset.Metadata);
                 var save = new Button { Content = Loc.Chrome("action.save") };
                 var remove = new Button { Content = Loc.Chrome("action.remove") };
                 var editor = new StackPanel { Spacing = 6 };
@@ -5744,7 +5729,6 @@ public sealed partial class MainWindow : Window
                 editor.Children.Add(row);
                 editor.Children.Add(codecEditor.View);
                 editor.Children.Add(pregap);
-                editor.Children.Add(metadataEditor);
                 var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
                 buttons.Children.Add(save);
                 buttons.Children.Add(remove);
@@ -5767,7 +5751,6 @@ public sealed partial class MainWindow : Window
                         preset.PregapPlacement = placement;
                     }
                     codecEditor.Apply();
-                    preset.Metadata = ReadPresetMetadata(metadataEditor);
                     await SaveExportPresets(settings.ExportPresets);
                 };
                 remove.Click += async (_, _) =>
@@ -5832,74 +5815,6 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        StackPanel BuildPresetMetadataEditor(ExportMetadata metadata)
-        {
-            var panel = new StackPanel { Spacing = 4 };
-            panel.Children.Add(new TextBlock { Text = Loc.Chrome("settings.export.metadata_label") });
-            panel.Children.Add(new CheckBox
-            {
-                Content = Loc.Chrome("settings.export.metadata.title"),
-                IsChecked = metadata.Title,
-                Tag = "title",
-            });
-            panel.Children.Add(new CheckBox
-            {
-                Content = Loc.Chrome("settings.export.metadata.artist"),
-                IsChecked = metadata.Artist,
-                Tag = "artist",
-            });
-            panel.Children.Add(new CheckBox
-            {
-                Content = Loc.Chrome("settings.export.metadata.album"),
-                IsChecked = metadata.Album,
-                Tag = "album",
-            });
-            panel.Children.Add(new CheckBox
-            {
-                Content = Loc.Chrome("settings.export.metadata.year"),
-                IsChecked = metadata.Year,
-                Tag = "year",
-            });
-            panel.Children.Add(new CheckBox
-            {
-                Content = Loc.Chrome("settings.export.metadata.track_number"),
-                IsChecked = metadata.TrackNumber,
-                Tag = "track_number",
-            });
-            panel.Children.Add(new CheckBox
-            {
-                Content = Loc.Chrome("settings.export.metadata.disc_number"),
-                IsChecked = metadata.DiscNumber,
-                Tag = "disc_number",
-            });
-            panel.Children.Add(new CheckBox
-            {
-                Content = Loc.Chrome("settings.export.metadata.cover_art"),
-                IsChecked = metadata.CoverArt,
-                Tag = "cover_art",
-            });
-            return panel;
-        }
-
-        ExportMetadata ReadPresetMetadata(StackPanel panel)
-        {
-            bool Checked(string tag) => panel.Children
-                .OfType<CheckBox>()
-                .First(box => box.Tag is string value && value == tag)
-                .IsChecked == true;
-
-            return new ExportMetadata
-            {
-                Title = Checked("title"),
-                Artist = Checked("artist"),
-                Album = Checked("album"),
-                Year = Checked("year"),
-                TrackNumber = Checked("track_number"),
-                DiscNumber = Checked("disc_number"),
-                CoverArt = Checked("cover_art"),
-            };
-        }
-
         List<(string Label, string Value)> ExportPregapChoices(ExportPresetCodec codec)
         {
             var choices = new List<(string Label, string Value)>
@@ -5953,38 +5868,6 @@ public sealed partial class MainWindow : Window
                 ShowSettingsError(error);
             }
             // On success a ConfigChanged re-read settles the field via RenderExport.
-        }
-
-        async System.Threading.Tasks.Task SaveExportMetadata()
-        {
-            if (refreshingSettings)
-            {
-                return;
-            }
-
-            ClearSettingsError();
-            // Send the whole set (set-state), not the one field that toggled.
-            var metadata = new ExportMetadata
-            {
-                Title = exportTitle.IsChecked == true,
-                Artist = exportArtist.IsChecked == true,
-                Album = exportAlbum.IsChecked == true,
-                Year = exportYear.IsChecked == true,
-                TrackNumber = exportTrackNumber.IsChecked == true,
-                DiscNumber = exportDiscNumber.IsChecked == true,
-                CoverArt = exportCoverArt.IsChecked == true,
-            };
-            var json = JsonSerializer.Serialize(metadata, JsonOptions);
-            var error = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.SetExportMetadata(_handle, json));
-            if (error is not null)
-            {
-                ShowSettingsError(error);
-                // Nothing persisted — restore every checkbox from the stored state
-                // so the UI matches config.
-                _refreshSettings?.Invoke();
-            }
-            // On success a ConfigChanged re-read settles the checkboxes via RenderExport.
         }
 
         async System.Threading.Tasks.Task SaveExportPresets(List<ExportPreset> presets)
@@ -6057,16 +5940,6 @@ public sealed partial class MainWindow : Window
                 Codec = codec,
                 Extension = extension,
                 FilenameTemplate = exportTemplate.Text ?? string.Empty,
-                Metadata = new ExportMetadata
-                {
-                    Title = exportTitle.IsChecked == true,
-                    Artist = exportArtist.IsChecked == true,
-                    Album = exportAlbum.IsChecked == true,
-                    Year = exportYear.IsChecked == true,
-                    TrackNumber = exportTrackNumber.IsChecked == true,
-                    DiscNumber = exportDiscNumber.IsChecked == true,
-                    CoverArt = exportCoverArt.IsChecked == true,
-                },
                 PregapPlacement = "append_to_previous_except_htoa",
                 AppliesToTrack = true,
                 AppliesToRelease = true,
@@ -6082,20 +5955,6 @@ public sealed partial class MainWindow : Window
                 await SaveExportTemplate();
             }
         };
-        exportTitle.Checked += async (_, _) => await SaveExportMetadata();
-        exportTitle.Unchecked += async (_, _) => await SaveExportMetadata();
-        exportArtist.Checked += async (_, _) => await SaveExportMetadata();
-        exportArtist.Unchecked += async (_, _) => await SaveExportMetadata();
-        exportAlbum.Checked += async (_, _) => await SaveExportMetadata();
-        exportAlbum.Unchecked += async (_, _) => await SaveExportMetadata();
-        exportYear.Checked += async (_, _) => await SaveExportMetadata();
-        exportYear.Unchecked += async (_, _) => await SaveExportMetadata();
-        exportTrackNumber.Checked += async (_, _) => await SaveExportMetadata();
-        exportTrackNumber.Unchecked += async (_, _) => await SaveExportMetadata();
-        exportDiscNumber.Checked += async (_, _) => await SaveExportMetadata();
-        exportDiscNumber.Unchecked += async (_, _) => await SaveExportMetadata();
-        exportCoverArt.Checked += async (_, _) => await SaveExportMetadata();
-        exportCoverArt.Unchecked += async (_, _) => await SaveExportMetadata();
         defaultTrackExport.SelectionChanged += async (_, _) =>
             await SaveDefaultExportSelection(defaultTrackExport, release: false);
         defaultReleaseExport.SelectionChanged += async (_, _) =>
@@ -6256,13 +6115,6 @@ public sealed partial class MainWindow : Window
         content.Children.Add(exportTokensHelp);
         content.Children.Add(defaultTrackExport);
         content.Children.Add(defaultReleaseExport);
-        content.Children.Add(exportTitle);
-        content.Children.Add(exportArtist);
-        content.Children.Add(exportAlbum);
-        content.Children.Add(exportYear);
-        content.Children.Add(exportTrackNumber);
-        content.Children.Add(exportDiscNumber);
-        content.Children.Add(exportCoverArt);
         content.Children.Add(new TextBlock { Text = Loc.Chrome("settings.export.presets"), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         content.Children.Add(addPresetButtons);
         content.Children.Add(presetPanel);

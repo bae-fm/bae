@@ -4212,9 +4212,6 @@ struct FfiSettings {
     pause_between_sides: bool,
     /// Template rendering a single-track export's suggested filename.
     export_filename_template: String,
-    /// Which metadata tags a single-track export embeds — the seven booleans
-    /// serialized straight from core's `ExportMetadata`.
-    export_metadata: bae_core::config::ExportMetadata,
     /// Configured export presets offered by release and track export.
     export_presets: Vec<FfiExportPreset>,
     /// Default selected option in the track export picker.
@@ -4236,7 +4233,6 @@ struct FfiExportPreset {
     codec: FfiExportPresetCodec,
     extension: String,
     filename_template: String,
-    metadata: bae_core::config::ExportMetadata,
     pregap_placement: FfiExportPregapPlacement,
     applies_to_track: bool,
     applies_to_release: bool,
@@ -4396,7 +4392,6 @@ fn ffi_export_preset(preset: &bae_core::config::ExportPreset) -> FfiExportPreset
         codec: ffi_export_preset_codec(&preset.codec),
         extension: preset.codec.extension().to_string(),
         filename_template: preset.filename_template.clone(),
-        metadata: preset.metadata,
         pregap_placement: ffi_export_pregap_placement(preset.pregap_placement),
         applies_to_track: preset.applies_to_track,
         applies_to_release: preset.applies_to_release,
@@ -4410,7 +4405,6 @@ impl FfiExportPreset {
             name: self.name,
             codec: self.codec.into_core(),
             filename_template: self.filename_template,
-            metadata: self.metadata,
             pregap_placement: self.pregap_placement.into_core(),
             applies_to_track: self.applies_to_track,
             applies_to_release: self.applies_to_release,
@@ -4452,7 +4446,6 @@ pub unsafe extern "C" fn bae_settings(handle: *const BaeHandle) -> *mut c_char {
         sync_ready: manager.is_sync_ready(),
         pause_between_sides: config.pause_between_sides,
         export_filename_template: config.export_filename_template.clone(),
-        export_metadata: config.export_metadata,
         export_presets: config
             .export_presets
             .iter()
@@ -4518,40 +4511,6 @@ pub unsafe extern "C" fn bae_set_export_filename_template(
         .services
         .library_manager()
         .set_export_filename_template(template)
-    {
-        Ok(()) => std::ptr::null_mut(),
-        Err(error) => error_cstring(&error.to_string()),
-    }
-}
-
-/// Set which metadata tags a single-track export embeds. `metadata_json` is a
-/// JSON object of the seven booleans (`title`, `artist`, `album`, `year`,
-/// `track_number`, `disc_number`, `cover_art`). Returns null on success, or an
-/// error-message C string (free with [`bae_string_free`]).
-///
-/// # Safety
-/// `handle` must be a pointer returned by [`bae_init`] and not yet freed;
-/// `metadata_json` must be a valid NUL-terminated UTF-8 C string.
-#[no_mangle]
-pub unsafe extern "C" fn bae_set_export_metadata(
-    handle: *const BaeHandle,
-    metadata_json: *const c_char,
-) -> *mut c_char {
-    let Some(handle) = handle.as_ref() else {
-        return error_cstring("no app handle");
-    };
-    let Some(metadata_json) = cstr(metadata_json) else {
-        return error_cstring("invalid export metadata JSON");
-    };
-    let metadata: bae_core::config::ExportMetadata = match serde_json::from_str(&metadata_json) {
-        Ok(metadata) => metadata,
-        Err(e) => return error_cstring(&format!("invalid export metadata JSON: {e}")),
-    };
-    match handle
-        .0
-        .services
-        .library_manager()
-        .set_export_metadata(metadata)
     {
         Ok(()) => std::ptr::null_mut(),
         Err(error) => error_cstring(&error.to_string()),

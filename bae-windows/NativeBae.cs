@@ -684,21 +684,6 @@ internal static class NativeBae
     internal static string? SetExportFilenameTemplate(IntPtr handle, string template) =>
         ResultMessage(SetExportFilenameTemplatePtr(handle, template));
 
-    [DllImport(Dll, EntryPoint = "bae_set_export_metadata", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SetExportMetadataPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string metadataJson);
-
-    /// <summary>
-    /// Set which metadata tags a single-track export embeds. <paramref name="metadataJson"/>
-    /// is a JSON object of the seven booleans with snake_case keys (<c>title</c>,
-    /// <c>artist</c>, <c>album</c>, <c>year</c>, <c>track_number</c>,
-    /// <c>disc_number</c>, <c>cover_art</c>) — the whole set, not one field. Null on
-    /// success, else the error.
-    /// </summary>
-    internal static string? SetExportMetadata(IntPtr handle, string metadataJson) =>
-        ResultMessage(SetExportMetadataPtr(handle, metadataJson));
-
     [DllImport(Dll, EntryPoint = "bae_set_export_presets", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr SetExportPresetsPtr(
         IntPtr handle,

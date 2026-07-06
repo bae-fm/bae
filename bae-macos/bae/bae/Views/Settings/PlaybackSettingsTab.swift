@@ -60,7 +60,6 @@ private enum PlaybackSettingsPreviewAppService {
                 pauseBetweenSides: false,
                 exportLocation: .askEachTime,
                 exportFilenameTemplate: PreviewData.exportFilenameTemplate,
-                exportMetadata: .allEnabled,
                 exportPresets: PreviewData.exportPresets,
                 defaultTrackExportSelection: .original,
                 defaultReleaseExportSelection: .original,

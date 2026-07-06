@@ -9,7 +9,6 @@ import uniffi.bae_bridge.BridgeDiscogsTokenStatus
 import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeExportLocation
-import uniffi.bae_bridge.BridgeExportMetadata
 import uniffi.bae_bridge.BridgeExportSelection
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeMcpConfig
@@ -173,16 +172,6 @@ object BridgeFixtures {
             pauseBetweenSides = false,
             exportLocation = BridgeExportLocation.AskEachTime,
             exportFilenameTemplate = "{track_number} - {title}",
-            exportMetadata =
-                BridgeExportMetadata(
-                    title = true,
-                    artist = true,
-                    album = true,
-                    year = true,
-                    trackNumber = true,
-                    discNumber = true,
-                    coverArt = true,
-                ),
             exportPresets = emptyList(),
             defaultTrackExportSelection = BridgeExportSelection.Original,
             defaultReleaseExportSelection = BridgeExportSelection.Original,

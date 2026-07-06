@@ -67,13 +67,6 @@ struct ExportSettingsTab: View {
                         Button("Save", action: saveTemplate)
                     }
                 }
-                Toggle("Title", isOn: metadataBinding(\.title))
-                Toggle("Artist", isOn: metadataBinding(\.artist))
-                Toggle("Album", isOn: metadataBinding(\.album))
-                Toggle("Year", isOn: metadataBinding(\.year))
-                Toggle("Track number", isOn: metadataBinding(\.trackNumber))
-                Toggle("Disc number", isOn: metadataBinding(\.discNumber))
-                Toggle("Cover art", isOn: metadataBinding(\.coverArt))
             } header: {
                 Text("Track exports")
             } footer: {
@@ -135,27 +128,10 @@ struct ExportSettingsTab: View {
                 codec: codec,
                 extension: codec.fileExtension,
                 filenameTemplate: templateDraft,
-                metadata: configStore.config.exportMetadata,
                 pregapPlacement: .appendToPreviousExceptHtoa,
                 appliesToTrack: true,
                 appliesToRelease: true
             )
-        )
-    }
-
-    /// A toggle binding that reads one metadata field and, on change, sends the
-    /// whole updated selection to core (set-state, not toggle). The change
-    /// round-trips through `configChanged`.
-    private func metadataBinding(
-        _ field: WritableKeyPath<BridgeExportMetadata, Bool>
-    ) -> Binding<Bool> {
-        Binding(
-            get: { configStore.config.exportMetadata[keyPath: field] },
-            set: { enabled in
-                var updated = configStore.config.exportMetadata
-                updated[keyPath: field] = enabled
-                set { try exports.setExportMetadata(updated) }
-            }
         )
     }
 
@@ -228,7 +204,6 @@ private struct ExportPresetRow: View {
                     .tag(BridgeExportPregapPlacement.singleFileWithCue)
                     .disabled(!preset.codec.supportsSingleFileCue)
             }
-            PresetMetadataEditor(preset: $preset)
             HStack {
                 Button("Delete", role: .destructive, action: delete)
             }
@@ -373,34 +348,6 @@ private struct PresetCodecEditor: View {
                 case .flac, .wav, .aiff:
                     break
                 }
-            }
-        )
-    }
-}
-
-private struct PresetMetadataEditor: View {
-    @Binding
-    var preset: BridgeExportPreset
-
-    var body: some View {
-        DisclosureGroup("Metadata") {
-            Toggle("Title", isOn: metadataBinding(\.title))
-            Toggle("Artist", isOn: metadataBinding(\.artist))
-            Toggle("Album", isOn: metadataBinding(\.album))
-            Toggle("Year", isOn: metadataBinding(\.year))
-            Toggle("Track number", isOn: metadataBinding(\.trackNumber))
-            Toggle("Disc number", isOn: metadataBinding(\.discNumber))
-            Toggle("Cover art", isOn: metadataBinding(\.coverArt))
-        }
-    }
-
-    private func metadataBinding(
-        _ field: WritableKeyPath<BridgeExportMetadata, Bool>
-    ) -> Binding<Bool> {
-        Binding(
-            get: { preset.metadata[keyPath: field] },
-            set: { enabled in
-                preset.metadata[keyPath: field] = enabled
             }
         )
     }

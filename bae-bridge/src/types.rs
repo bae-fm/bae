@@ -1795,20 +1795,6 @@ pub enum BridgeExportLocation {
     Fixed { dir: String },
 }
 
-/// Which metadata tags a single-track export embeds. Mirror of bae-core's
-/// `ExportMetadata` — the FFI boundary requires a `uniffi::Record`, so the
-/// fields are restated here rather than reusing the core type.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeExportMetadata {
-    pub title: bool,
-    pub artist: bool,
-    pub album: bool,
-    pub year: bool,
-    pub track_number: bool,
-    pub disc_number: bool,
-    pub cover_art: bool,
-}
-
 /// A release's pending uploads, grouped for the queue pane's per-release rows.
 /// Mirror of bae-core's `UploadReleaseGroup`. `release_id` is `None` for the
 /// orphaned-files bucket; `display_title` is the row's label, resolved by core.
@@ -2028,8 +2014,6 @@ pub struct BridgeConfig {
     pub export_location: BridgeExportLocation,
     /// Template rendering a single-track export's suggested filename.
     pub export_filename_template: String,
-    /// Which metadata tags a single-track export embeds.
-    pub export_metadata: BridgeExportMetadata,
     /// Configured export presets offered by release and track export.
     pub export_presets: Vec<BridgeExportPreset>,
     /// Default selected option in the track export picker.
@@ -2599,7 +2583,6 @@ pub struct BridgeExportPreset {
     pub codec: BridgeExportPresetCodec,
     pub extension: String,
     pub filename_template: String,
-    pub metadata: BridgeExportMetadata,
     pub pregap_placement: BridgeExportPregapPlacement,
     pub applies_to_track: bool,
     pub applies_to_release: bool,

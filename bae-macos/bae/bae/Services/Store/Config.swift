@@ -45,8 +45,6 @@ struct Config: Equatable {
     /// Template for the default filename a single-track export suggests. Core
     /// renders the tokens; the UI edits the raw string.
     let exportFilenameTemplate: String
-    /// Which metadata tags a single-track export embeds.
-    let exportMetadata: BridgeExportMetadata
     /// Configured export presets offered by release and track export.
     let exportPresets: [BridgeExportPreset]
     /// Default selected option in the track export picker.
@@ -69,7 +67,6 @@ struct Config: Equatable {
         pauseBetweenSides = bridge.pauseBetweenSides
         exportLocation = bridge.exportLocation
         exportFilenameTemplate = bridge.exportFilenameTemplate
-        exportMetadata = bridge.exportMetadata
         exportPresets = bridge.exportPresets
         defaultTrackExportSelection = bridge.defaultTrackExportSelection
         defaultReleaseExportSelection = bridge.defaultReleaseExportSelection

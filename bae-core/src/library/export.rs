@@ -199,14 +199,12 @@ impl ExportService {
             ));
         }
 
-        let metadata = plan.metadata;
         Self::export_track_with_codec(
             plan,
             output_path,
             crate::config::ExportPresetCodec::Flac {
                 bit_depth: crate::config::ExportBitDepth::Source,
             },
-            metadata,
         )
         .await
     }
@@ -224,7 +222,7 @@ impl ExportService {
         output_path: &Path,
         preset: crate::config::ExportPreset,
     ) -> Result<(), String> {
-        Self::export_track_with_codec(plan, output_path, preset.codec, preset.metadata).await
+        Self::export_track_with_codec(plan, output_path, preset.codec).await
     }
 
     pub async fn export_release_image_with_cue(
@@ -353,9 +351,6 @@ impl ExportService {
         let output_cue_path_owned = output_cue_path.to_path_buf();
         let cancel_for_blocking = Arc::clone(&cancel);
         let codec = preset.codec;
-        let mut image_metadata = preset.metadata;
-        image_metadata.track_number = false;
-        image_metadata.disc_number = false;
         let tags = crate::library::manager::ExportTags {
             title: release_title.clone(),
             artist: release_performer,
@@ -403,7 +398,6 @@ impl ExportService {
                 total_tracks,
                 is_digital,
                 cover_image_bytes.as_deref(),
-                &image_metadata,
             )?;
 
             if cancel_for_blocking.load(Ordering::Relaxed) {
@@ -423,7 +417,6 @@ impl ExportService {
         mut plan: ExportTrackPlan,
         output_path: &Path,
         codec: crate::config::ExportPresetCodec,
-        metadata: crate::config::ExportMetadata,
     ) -> Result<(), String> {
         let track_id = plan.audio_meta.track.id.clone();
         info!("Exporting track {} to {}", track_id, output_path.display());
@@ -472,7 +465,6 @@ impl ExportService {
                 plan.total_tracks as u32,
                 plan.is_digital,
                 cover_data,
-                &metadata,
             )?;
 
             if cancel_for_blocking.load(Ordering::Relaxed) {
@@ -670,10 +662,9 @@ fn is_lossless_original_source(content_type: &ContentType) -> bool {
     )
 }
 
-/// Write metadata tags to an encoded audio file. Each tag is written only when
-/// the user's `metadata` selection includes it; cover art is governed by
-/// `cover_data` being `Some` (the plan omits the bytes when it's deselected),
-/// so presence *is* the selection and there is no separate cover guard here.
+/// Write every known metadata tag that describes this exported file. Cover art
+/// is written when the export plan found cover bytes; disc number is only
+/// written for digital media because side-based media do not map to ID3 discs.
 fn write_tags(
     path: &Path,
     tag_type: lofty::tag::TagType,
@@ -682,7 +673,6 @@ fn write_tags(
     total_tracks: u32,
     is_digital: bool,
     cover_data: Option<&[u8]>,
-    metadata: &crate::config::ExportMetadata,
 ) -> Result<(), String> {
     use lofty::config::WriteOptions;
     use lofty::picture::{Picture, PictureType};
@@ -693,39 +683,29 @@ fn write_tags(
         .map_err(|e| format!("Failed to read file for tagging: {}", e))?;
 
     let mut tag = Tag::new(tag_type);
-    if metadata.title {
-        tag.set_title(tags.title.clone());
-    }
-    if metadata.artist {
-        tag.set_artist(tags.artist.clone());
-    }
-    if metadata.album {
-        tag.set_album(tags.album.clone());
+    tag.set_title(tags.title.clone());
+    tag.set_artist(tags.artist.clone());
+    tag.set_album(tags.album.clone());
+
+    if let Some(year) = tags.year {
+        tag.set_date(Timestamp {
+            year: year as u16,
+            month: None,
+            day: None,
+            hour: None,
+            minute: None,
+            second: None,
+        });
     }
 
-    if metadata.year {
-        if let Some(year) = tags.year {
-            tag.set_date(Timestamp {
-                year: year as u16,
-                month: None,
-                day: None,
-                hour: None,
-                minute: None,
-                second: None,
-            });
-        }
-    }
-    if metadata.track_number {
-        if let Some(n) = track_number {
-            tag.set_track(n);
-        }
+    if let Some(n) = track_number {
+        tag.set_track(n);
         tag.set_track_total(total_tracks);
     }
 
     // Skip the disc tag on vinyl / cassette: ID3 "disc number" doesn't
-    // describe a physical side, and writing it mislabels side B as disc 2. The
-    // digital gate stays an AND with the user's disc-number selection.
-    if metadata.disc_number && is_digital {
+    // describe a physical side, and writing it mislabels side B as disc 2.
+    if is_digital {
         if let Some(disc) = tags.disc {
             tag.set_disk(disc as u32);
         }
@@ -817,7 +797,6 @@ async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<Arc<DecodedPcm>,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::ExportMetadata;
     use crate::library::manager::{ExportTags, ResolvedExportTags};
 
     fn resolved(
@@ -966,11 +945,10 @@ mod tests {
         assert!(cue.contains("REM DATE 2024\n"));
     }
 
-    /// Exercises the real `write_tags` against an encoded FLAC: a selection that
-    /// turns off artist and cover art must leave those absent, while everything
-    /// on embeds them all.
+    /// Exercises the real `write_tags` against an encoded FLAC: every known tag
+    /// and the cover image are embedded.
     #[test]
-    fn write_tags_honors_the_metadata_selection() {
+    fn write_tags_writes_every_known_field() {
         use lofty::prelude::*;
         use lofty::tag::TagType;
 
@@ -1000,72 +978,29 @@ mod tests {
 
         let dir = tempfile::TempDir::new().unwrap();
 
-        // Artist off suppresses the artist tag via the selection guard. Cover is
-        // presence-driven in write_tags: passing None writes no picture — the
-        // cover_art selection that withholds those bytes lives upstream in
-        // get_export_track_plan, not here.
-        let selection_off = ExportMetadata {
-            title: true,
-            artist: false,
-            album: true,
-            year: true,
-            track_number: true,
-            disc_number: true,
-            cover_art: false,
-        };
-        let off_path = dir.path().join("off.flac");
-        std::fs::write(&off_path, &flac).unwrap();
+        let path = dir.path().join("tagged.flac");
+        std::fs::write(&path, &flac).unwrap();
         write_tags(
-            &off_path,
-            TagType::VorbisComments,
-            &tags,
-            Some(3),
-            10,
-            true,
-            None,
-            &selection_off,
-        )
-        .unwrap();
-
-        let tagged = lofty::read_from_path(&off_path).unwrap();
-        let tag = tagged
-            .tag(TagType::VorbisComments)
-            .expect("VorbisComments tag present");
-        assert_eq!(tag.title().as_deref(), Some("Track Title"));
-        assert!(tag.artist().is_none(), "artist tag suppressed when off");
-        assert!(tag.pictures().is_empty(), "no cover when off");
-
-        // Everything on: title, artist, album, and an embedded cover.
-        let selection_on = ExportMetadata {
-            title: true,
-            artist: true,
-            album: true,
-            year: true,
-            track_number: true,
-            disc_number: true,
-            cover_art: true,
-        };
-        let on_path = dir.path().join("on.flac");
-        std::fs::write(&on_path, &flac).unwrap();
-        write_tags(
-            &on_path,
+            &path,
             TagType::VorbisComments,
             &tags,
             Some(3),
             10,
             true,
             Some(&cover_bytes),
-            &selection_on,
         )
         .unwrap();
 
-        let tagged = lofty::read_from_path(&on_path).unwrap();
+        let tagged = lofty::read_from_path(&path).unwrap();
         let tag = tagged
             .tag(TagType::VorbisComments)
             .expect("VorbisComments tag present");
         assert_eq!(tag.title().as_deref(), Some("Track Title"));
         assert_eq!(tag.artist().as_deref(), Some("Artist Name"));
         assert_eq!(tag.album().as_deref(), Some("Album Title"));
-        assert!(!tag.pictures().is_empty(), "cover embedded when on");
+        assert_eq!(tag.track(), Some(3));
+        assert_eq!(tag.track_total(), Some(10));
+        assert_eq!(tag.disk(), Some(1));
+        assert!(!tag.pictures().is_empty(), "cover embedded");
     }
 }

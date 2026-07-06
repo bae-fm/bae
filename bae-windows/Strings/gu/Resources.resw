@@ -249,7 +249,6 @@
   <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
-  <data name="settings.export.metadata_label" xml:space="preserve"><value>Metadata</value></data>
   <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>એક ફાઇલ + CUE</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>નિકાસ સેટિંગ્સ સાચવી શકાઈ નહીં</value></data>
 </root>

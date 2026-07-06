@@ -51,20 +51,6 @@ impl LibraryManager {
             .update(|c| c.export_filename_template = template)
     }
 
-    /// Which metadata tags a single-track export embeds.
-    pub fn export_metadata(&self) -> crate::config::ExportMetadata {
-        self.config_handle.config().export_metadata
-    }
-
-    /// Set which metadata tags a single-track export embeds. Persisted in the
-    /// config file.
-    pub fn set_export_metadata(
-        &self,
-        metadata: crate::config::ExportMetadata,
-    ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle.update(|c| c.export_metadata = metadata)
-    }
-
     /// Configured export presets for track and release export.
     pub fn export_presets(&self) -> Vec<crate::config::ExportPreset> {
         self.config_handle.config().export_presets.clone()

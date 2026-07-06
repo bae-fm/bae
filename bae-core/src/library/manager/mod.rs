@@ -356,10 +356,6 @@ pub struct ExportTrackPlan {
     /// media like vinyl or cassette. Gates writing an ID3 disc-number tag:
     /// disc numbers don't map to vinyl / cassette sides.
     pub is_digital: bool,
-    /// Which of the resolved tags to actually embed, from config. `write_tags`
-    /// applies it per field; cover art is already reflected in
-    /// `cover_image_bytes` being `None` when deselected.
-    pub metadata: crate::config::ExportMetadata,
     /// The source/silence window to encode for this export. Playback uses the
     /// stored audio format directly; export can exclude or move CUE pregaps.
     pub(crate) audio_window: ExportAudioWindow,

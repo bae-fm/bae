@@ -26,9 +26,6 @@ public sealed class Settings
     /// <summary>Template rendering a single-track export's suggested filename.</summary>
     public string ExportFilenameTemplate { get; set; } = string.Empty;
 
-    /// <summary>Which metadata tags a single-track export embeds.</summary>
-    public ExportMetadata ExportMetadata { get; set; } = new();
-
     /// <summary>Configured export presets offered by release and track export.</summary>
     public List<ExportPreset> ExportPresets { get; set; } = new();
 
@@ -137,25 +134,6 @@ public sealed class Settings
     };
 }
 
-/// <summary>
-/// Which metadata tags a single-track export embeds — the seven booleans from
-/// core's <c>ExportMetadata</c>. The JSON keys are snake_case
-/// (<c>title</c>, <c>artist</c>, <c>album</c>, <c>year</c>, <c>track_number</c>,
-/// <c>disc_number</c>, <c>cover_art</c>) via the shared snake_case naming policy,
-/// so the PascalCase properties map without per-property attributes. All default
-/// on, matching core's default.
-/// </summary>
-public sealed class ExportMetadata
-{
-    public bool Title { get; set; } = true;
-    public bool Artist { get; set; } = true;
-    public bool Album { get; set; } = true;
-    public bool Year { get; set; } = true;
-    public bool TrackNumber { get; set; } = true;
-    public bool DiscNumber { get; set; } = true;
-    public bool CoverArt { get; set; } = true;
-}
-
 public sealed class ExportPreset
 {
     public string Id { get; set; } = string.Empty;
@@ -163,7 +141,6 @@ public sealed class ExportPreset
     public ExportPresetCodec Codec { get; set; } = new();
     public string Extension { get; set; } = string.Empty;
     public string FilenameTemplate { get; set; } = string.Empty;
-    public ExportMetadata Metadata { get; set; } = new();
     public string PregapPlacement { get; set; } = "append_to_previous_except_htoa";
     public bool AppliesToTrack { get; set; }
     public bool AppliesToRelease { get; set; }

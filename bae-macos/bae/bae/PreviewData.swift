@@ -724,7 +724,6 @@ enum PreviewData {
             codec: .flac(bitDepth: .source),
             extension: "flac",
             filenameTemplate: exportFilenameTemplate,
-            metadata: .allEnabled,
             pregapPlacement: .appendToPreviousExceptHtoa,
             appliesToTrack: true,
             appliesToRelease: true
@@ -735,7 +734,6 @@ enum PreviewData {
             codec: .mp3(bitrateKbps: 320),
             extension: "mp3",
             filenameTemplate: exportFilenameTemplate,
-            metadata: .allEnabled,
             pregapPlacement: .appendToPreviousExceptHtoa,
             appliesToTrack: true,
             appliesToRelease: true
@@ -756,7 +754,6 @@ enum PreviewData {
                 pauseBetweenSides: false,
                 exportLocation: .askEachTime,
                 exportFilenameTemplate: exportFilenameTemplate,
-                exportMetadata: .allEnabled,
                 exportPresets: exportPresets,
                 defaultTrackExportSelection: .original,
                 defaultReleaseExportSelection: .original,
@@ -1381,19 +1378,5 @@ enum PreviewData {
                 excluded: false
             ),
         ]),
-    )
-}
-
-extension BridgeExportMetadata {
-    /// Every metadata field enabled — the default selection, for seeding
-    /// preview configs.
-    static let allEnabled = BridgeExportMetadata(
-        title: true,
-        artist: true,
-        album: true,
-        year: true,
-        trackNumber: true,
-        discNumber: true,
-        coverArt: true
     )
 }

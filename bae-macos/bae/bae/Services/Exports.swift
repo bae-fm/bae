@@ -31,10 +31,6 @@ final class Exports: Sendable, Observable {
     /// Set the template for a single-track export's suggested filename. The
     /// change round-trips back through a `configChanged` event.
     let setExportFilenameTemplate: @Sendable (_ template: String) throws -> Void
-    /// Set which metadata tags a single-track export embeds. The change
-    /// round-trips back through a `configChanged` event.
-    let setExportMetadata:
-        @Sendable (_ metadata: BridgeExportMetadata) throws -> Void
     /// Replace configured export presets.
     let setExportPresets:
         @Sendable (_ presets: [BridgeExportPreset]) throws -> Void
@@ -56,9 +52,6 @@ final class Exports: Sendable, Observable {
             },
         setExportFilenameTemplate:
             @escaping @Sendable (String) throws -> Void = { _ in },
-        setExportMetadata:
-            @escaping @Sendable (BridgeExportMetadata) throws -> Void = { _ in
-            },
         setExportPresets:
             @escaping @Sendable ([BridgeExportPreset]) throws -> Void = { _ in
             },
@@ -75,7 +68,6 @@ final class Exports: Sendable, Observable {
         self.retryExports = retryExports
         self.setExportLocation = setExportLocation
         self.setExportFilenameTemplate = setExportFilenameTemplate
-        self.setExportMetadata = setExportMetadata
         self.setExportPresets = setExportPresets
         self.setDefaultTrackExportSelection = setDefaultTrackExportSelection
         self.setDefaultReleaseExportSelection =
@@ -98,7 +90,6 @@ final class Exports: Sendable, Observable {
             setExportFilenameTemplate: {
                 try handle.setExportFilenameTemplate(template: $0)
             },
-            setExportMetadata: { try handle.setExportMetadata(metadata: $0) },
             setExportPresets: { try handle.setExportPresets(presets: $0) },
             setDefaultTrackExportSelection: {
                 try handle.setDefaultTrackExportSelection(selection: $0)
