@@ -17,8 +17,8 @@ internal static class MemberFormat
 }
 
 /// <summary>
-/// This device's join-request code and the fingerprint it encodes (from
-/// <c>bae_generate_join_request</c>), to hand to an existing member for approval.
+/// This device's join-request code and the fingerprint it encodes, to hand to an
+/// existing member for approval.
 /// </summary>
 public sealed class JoinRequest
 {
@@ -29,9 +29,8 @@ public sealed class JoinRequest
 }
 
 /// <summary>
-/// What a join-request code decodes to (from <c>bae_decode_join_request</c>):
-/// the joining device's public key, its fingerprint, and an optional contact
-/// email it included.
+/// What a join-request code decodes to: the joining device's public key, its
+/// fingerprint, and an optional contact email it included.
 /// </summary>
 public sealed class JoinRequestInfo
 {
@@ -43,7 +42,7 @@ public sealed class JoinRequestInfo
     public string? Email { get; set; }
 }
 
-/// <summary>What an invite code decodes to (from <c>bae_decode_invite_code</c>).</summary>
+/// <summary>What an invite code decodes to.</summary>
 public sealed class InviteCodeInfo
 {
     public string LibraryId { get; set; } = string.Empty;

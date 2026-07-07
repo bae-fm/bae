@@ -1,6 +1,6 @@
 ﻿namespace Bae.Windows;
 
-/// <summary>What a restore code decodes to (from <c>bae_decode_restore_code</c>).</summary>
+/// <summary>What a restore code decodes to.</summary>
 public sealed class RestoreCodeInfo
 {
     public string LibraryId { get; set; } = string.Empty;
@@ -9,7 +9,7 @@ public sealed class RestoreCodeInfo
     public bool NeedsOauth { get; set; }
 }
 
-/// <summary>The outcome of <c>bae_restore_from_code</c>: an id, or an error.</summary>
+/// <summary>The outcome of restoring from a code: an id, or an error.</summary>
 public sealed class RestoreResult
 {
     public string? LibraryId { get; set; }

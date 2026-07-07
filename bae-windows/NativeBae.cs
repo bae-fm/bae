@@ -225,9 +225,6 @@ internal static class NativeBae
     /// <summary>Create a new library; returns its id.</summary>
     internal static string CreateLibrary() => BaeBridgeMethods.CreateLibrary(name: null).Id;
 
-    [DllImport(Dll, EntryPoint = "bae_decode_restore_code", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr DecodeRestoreCodePtr([MarshalAs(UnmanagedType.LPUTF8Str)] string code);
-
     [DllImport(Dll, EntryPoint = "bae_oauth_authorize", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr OAuthAuthorizePtr([MarshalAs(UnmanagedType.LPUTF8Str)] string provider);
 
@@ -245,8 +242,18 @@ internal static class NativeBae
     /// </summary>
     internal static string? OAuthAuthorize(string provider) => CopyAndFree(OAuthAuthorizePtr(provider));
 
-    /// <summary>Decode a restore code to its info JSON, or null if malformed.</summary>
-    internal static string? DecodeRestoreCode(string code) => CopyAndFree(DecodeRestoreCodePtr(code));
+    /// <summary>Decode a restore code for UI preview.</summary>
+    internal static RestoreCodeInfo DecodeRestoreCode(string code)
+    {
+        var info = BaeBridgeMethods.DecodeRestoreCode(code);
+        return new RestoreCodeInfo
+        {
+            LibraryId = info.LibraryId,
+            LibraryName = info.LibraryName,
+            Provider = CloudProviderTag(info.CloudProvider),
+            NeedsOauth = info.NeedsOauth,
+        };
+    }
 
     /// <summary>
     /// Restore a library from a code; returns a result JSON (<c>{library_id,
@@ -257,40 +264,54 @@ internal static class NativeBae
     internal static string? RestoreFromCode(string code, string? oauthTokenJson) =>
         CopyAndFree(RestoreFromCodePtr(code, oauthTokenJson));
 
-    [DllImport(Dll, EntryPoint = "bae_generate_join_request", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr GenerateJoinRequestPtr(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string? email);
-
     /// <summary>
-    /// This device's join-request code and the fingerprint it encodes, as JSON
-    /// (<c>{code, fingerprint}</c>), to hand to an existing member for approval,
-    /// or null on error. The joining device has no library yet, so this needs no
-    /// handle; it only requires <see cref="Startup"/>. Copies and frees.
+    /// This device's join-request code and the fingerprint it encodes, to hand
+    /// to an existing member for approval. The joining device has no library yet,
+    /// so this needs no handle; it only requires <see cref="Startup"/>.
     /// </summary>
     /// <param name="email">The OAuth account address the joiner authenticated as,
     /// baked into the code so the approver can share the OAuth folder to it; null
     /// for S3, which shares no folder.</param>
-    internal static string? GenerateJoinRequest(string? email = null) =>
-        CopyAndFree(GenerateJoinRequestPtr(email));
-
-    [DllImport(Dll, EntryPoint = "bae_decode_join_request", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr DecodeJoinRequestPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string code);
-
-    /// <summary>
-    /// Decode a join-request code to its info JSON (<c>{pubkey, fingerprint,
-    /// email}</c>), or null if malformed. Copies and frees.
-    /// </summary>
-    internal static string? DecodeJoinRequest(string code) => CopyAndFree(DecodeJoinRequestPtr(code));
-
-    [DllImport(Dll, EntryPoint = "bae_decode_invite_code", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr DecodeInviteCodePtr([MarshalAs(UnmanagedType.LPUTF8Str)] string code);
+    internal static JoinRequest GenerateJoinRequest(string? email = null)
+    {
+        var request = BaeBridgeMethods.GenerateJoinRequest(email);
+        return new JoinRequest
+        {
+            Code = request.Code,
+            Fingerprint = request.Fingerprint,
+        };
+    }
 
     /// <summary>
-    /// Decode an invite code to its info JSON (<c>{library_id, library_name,
-    /// owner_pubkey, owner_fingerprint, provider, needs_oauth}</c>), or null if
-    /// malformed. Copies and frees.
+    /// Decode a join-request code for owner-side approval.
     /// </summary>
-    internal static string? DecodeInviteCode(string code) => CopyAndFree(DecodeInviteCodePtr(code));
+    internal static JoinRequestInfo DecodeJoinRequest(string code)
+    {
+        var info = BaeBridgeMethods.DecodeJoinRequest(code);
+        return new JoinRequestInfo
+        {
+            Pubkey = info.Pubkey,
+            Fingerprint = info.Fingerprint,
+            Email = info.Email,
+        };
+    }
+
+    /// <summary>
+    /// Decode an invite code for UI preview.
+    /// </summary>
+    internal static InviteCodeInfo DecodeInviteCode(string code)
+    {
+        var info = BaeBridgeMethods.DecodeInviteCode(code);
+        return new InviteCodeInfo
+        {
+            LibraryId = info.LibraryId,
+            LibraryName = info.LibraryName,
+            OwnerPubkey = info.OwnerPubkey,
+            OwnerFingerprint = info.OwnerFingerprint,
+            Provider = CloudProviderTag(info.CloudProvider),
+            NeedsOauth = info.NeedsOauth,
+        };
+    }
 
     [DllImport(Dll, EntryPoint = "bae_join_from_code", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr JoinFromCodePtr(

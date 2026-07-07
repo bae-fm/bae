@@ -904,10 +904,14 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var infoJson = NativeBae.DecodeRestoreCode(code);
-        var info = infoJson is null ? null : JsonSerializer.Deserialize<RestoreCodeInfo>(infoJson, JsonOptions);
-        if (info is null)
+        RestoreCodeInfo info;
+        try
         {
+            info = NativeBae.DecodeRestoreCode(code);
+        }
+        catch (BridgeException exception)
+        {
+            BaeDiagnostics.Logger.Error("Failed to decode restore code.", exception);
             StatusText.Text = Loc.Chrome("restore.invalid_code");
             return;
         }
@@ -1130,12 +1134,14 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            var infoJson = NativeBae.DecodeInviteCode(code);
-            var info = infoJson is null
-                ? null
-                : JsonSerializer.Deserialize<InviteCodeInfo>(infoJson, JsonOptions);
-            if (info is null)
+            InviteCodeInfo info;
+            try
             {
+                info = NativeBae.DecodeInviteCode(code);
+            }
+            catch (BridgeException exception)
+            {
+                BaeDiagnostics.Logger.Error("Failed to decode invite code.", exception);
                 ShowStatus(Loc.Chrome("join.invalid_invite"));
                 return;
             }
@@ -1237,13 +1243,15 @@ public sealed partial class MainWindow : Window
     // the UI thread.
     private async System.Threading.Tasks.Task GenerateJoinCode(StackPanel host)
     {
-        var requestJson = await System.Threading.Tasks.Task.Run(() => NativeBae.GenerateJoinRequest());
-        var request = requestJson is null
-            ? null
-            : JsonSerializer.Deserialize<JoinRequest>(requestJson, JsonOptions);
-        host.Children.Clear();
-        if (request is null)
+        JoinRequest request;
+        try
         {
+            request = await System.Threading.Tasks.Task.Run(() => NativeBae.GenerateJoinRequest());
+        }
+        catch (BridgeException exception)
+        {
+            BaeDiagnostics.Logger.Error("Failed to generate join request.", exception);
+            host.Children.Clear();
             host.Children.Add(new TextBlock
             {
                 Text = Loc.Chrome("join.generate_failed"),
@@ -1252,6 +1260,8 @@ public sealed partial class MainWindow : Window
             });
             return;
         }
+
+        host.Children.Clear();
 
         host.Children.Add(BuildCodeDisplay(request.Code));
 
@@ -1318,12 +1328,14 @@ public sealed partial class MainWindow : Window
                     return;
                 }
 
-                var infoJson = NativeBae.DecodeJoinRequest(code);
-                var info = infoJson is null
-                    ? null
-                    : JsonSerializer.Deserialize<JoinRequestInfo>(infoJson, JsonOptions);
-                if (info is null)
+                JoinRequestInfo info;
+                try
                 {
+                    info = NativeBae.DecodeJoinRequest(code);
+                }
+                catch (BridgeException exception)
+                {
+                    BaeDiagnostics.Logger.Error("Failed to decode join request.", exception);
                     error.Text = Loc.Chrome("members.approve.invalid_request");
                     error.Visibility = Visibility.Visible;
                     return;
