@@ -114,7 +114,7 @@ check() {
 # ── Helpers for complex multi-step commands ────────────────────────────────────
 
 _swift_format_lint() {
-  find "$1" -name "*.swift" ! -name bae_bridge.swift -print0 \
+  find "$1" -name "*.swift" ! -name 'bae_bridge_*.swift' -print0 \
     | xargs -0 xcrun swift-format lint -s
 }
 
@@ -178,8 +178,8 @@ check "loc chrome orphans"             python3 scripts/loc-chrome-orphans.py
 section "macOS"
 
 check "bridge build" ./bae-bridge/build-macos.sh
-check "copy macOS bridge binding" \
-  cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+check "install macOS bridge binding" \
+  ./bae-bridge/install-swift-bindings.sh macos
 check "xcodegen" bash -c 'cd bae-macos/bae && xcodegen'
 check "xcodebuild" \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
@@ -196,8 +196,13 @@ check "xcodebuild test (baeTests)" \
     -disableAutomaticPackageResolution test
 
 check "swift-format lint" _swift_format_lint bae-macos/bae/bae
+# The shared package is built inside both app builds above; lint it once here
+# (its sources are platform-invariant text, so one run covers both apps).
+check "swift-format lint (BaeKit)" _swift_format_lint BaeKit/Sources/BaeKit
 
 check "swiftlint" swiftlint lint --strict --config .swiftlint.yml bae-macos/bae/bae
+check "swiftlint (BaeKit)" \
+  swiftlint lint --strict --config .swiftlint.yml BaeKit/Sources/BaeKit
 
 check "periphery" bash -c '
   cd bae-macos/bae && periphery scan --strict --skip-build \

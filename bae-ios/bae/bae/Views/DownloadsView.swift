@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// Download-queue management: every queued/active/failed pin with progress,

@@ -1,3 +1,4 @@
+import BaeKit
 import Foundation
 
 /// Automation server settings and credentials, used by the Automation settings

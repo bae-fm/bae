@@ -2,6 +2,7 @@
 // completes the full provider configuration or cancels. No half-configured
 // sync state is ever visible in the settings view.
 
+import BaeKit
 import SwiftUI
 import os.log
 

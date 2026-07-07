@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// Full-screen now-playing player, presented as a `.sheet` (swipe down to

@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// Banner at the top of the Library settings Sync section when the sync loop

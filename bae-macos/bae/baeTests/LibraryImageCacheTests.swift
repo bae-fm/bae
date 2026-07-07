@@ -1,6 +1,7 @@
 import AppKit
 import Testing
 
+@testable import BaeKit
 @testable import bae
 
 private func makeDecodedImage(width: Int, height: Int) throws -> NSImage {

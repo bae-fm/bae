@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// The interactive signals toolbar shown above the identify results. Each

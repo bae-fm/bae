@@ -17,7 +17,10 @@ struct AutocompleteTextFieldTests {
         complete("ab", in: field)
 
         #expect(field.stringValue == "abcd")
-        #expect(field.currentEditor()?.selectedRange == NSRange(location: 2, length: 2))
+        #expect(
+            field.currentEditor()?.selectedRange
+                == NSRange(location: 2, length: 2)
+        )
     }
 
     @MainActor
@@ -68,7 +71,10 @@ struct AutocompleteTextFieldTests {
     private func complete(_ text: String, in field: NSTextField) {
         field.stringValue = text
         field.delegate?.controlTextDidChange?(
-            Notification(name: NSControl.textDidChangeNotification, object: field)
+            Notification(
+                name: NSControl.textDidChangeNotification,
+                object: field
+            )
         )
     }
 }

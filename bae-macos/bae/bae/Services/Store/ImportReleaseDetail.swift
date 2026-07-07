@@ -1,3 +1,4 @@
+import BaeKit
 import Foundation
 
 /// Release detail as returned by the auto-identify / search pipeline

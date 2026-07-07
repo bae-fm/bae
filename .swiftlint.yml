@@ -31,8 +31,8 @@ function_body_length:
   warning: 60
 
 excluded:
-  - bae-macos/bae/bae/bae_bridge.swift
-  - bae-ios/bae/bae/bae_bridge.swift
+  # The generated uniffi bindings (os()-gated flavor files in the BaeBridge target).
+  - BaeKit/Sources/BaeBridge
   # Preview/sample-data scaffolding: one long sample-data namespace and
   # many-param sample builders that mirror the fixture rows they stand in for.
   # The structural rules measure production complexity, not fixture shape.

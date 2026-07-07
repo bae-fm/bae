@@ -1,3 +1,4 @@
+import BaeKit
 import Foundation
 
 /// User's identity claim from the import flow.

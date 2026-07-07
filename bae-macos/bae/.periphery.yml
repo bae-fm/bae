@@ -4,7 +4,8 @@ schemes:
 targets:
   - bae
 index_exclude:
-  - bae/bae_bridge.swift
+  # The generated uniffi bindings, now in the BaeBridge target of the BaeKit package.
+  - "**/BaeKit/Sources/BaeBridge/**"
 retain_assign_only_property_types:
   - SPUStandardUpdaterController
 disable_update_check: true

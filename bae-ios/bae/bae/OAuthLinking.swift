@@ -1,6 +1,7 @@
 #if BAE_OAUTH_PROVIDERS
 
 import AuthenticationServices
+import BaeKit
 import Foundation
 import os.log
 

@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// Persistent now-playing bar. Reads transport state from the shared

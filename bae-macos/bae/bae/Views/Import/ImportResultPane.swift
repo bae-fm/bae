@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// Search/results filling the available space, with the result detail docked

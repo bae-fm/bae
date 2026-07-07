@@ -1,3 +1,4 @@
+import BaeKit
 import Foundation
 
 /// Import-flow operations: watched-folder management, scan, identify,

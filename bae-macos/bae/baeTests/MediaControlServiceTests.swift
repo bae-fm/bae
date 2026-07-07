@@ -16,7 +16,10 @@ struct MediaControlServiceTests {
         let service = MediaControlService()
 
         service.updateNowPlayingForPreview(
-            state: .playing(path: "/tmp/Preview Track.flac", durationMs: 120_000)
+            state: .playing(
+                path: "/tmp/Preview Track.flac",
+                durationMs: 120_000
+            )
         )
         #expect(infoCenter.nowPlayingInfo != nil)
 

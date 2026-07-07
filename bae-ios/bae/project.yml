@@ -8,9 +8,11 @@ options:
     iOS: "17.0"
   xcodeVersion: "26.0"
 packages:
-  Sentry:
-    url: https://github.com/getsentry/sentry-cocoa
-    exactVersion: "9.18.0"
+  # The shared data/service/domain layer plus the generated bridge bindings and
+  # the platform-conditional BaeBridgeFFI xcframework. BaeKit re-exports the
+  # bridge types and depends on Sentry, so both come in transitively.
+  BaeKit:
+    path: ../../BaeKit
 targets:
   bae:
     type: application
@@ -23,78 +25,23 @@ targets:
       Debug: Config.xcconfig
       Release: Config.xcconfig
     sources:
-      # iOS app sources (includes the gitignored bae_bridge.swift bindings,
-      # which build-ios.sh copies here — built with BAE_BRIDGE_FEATURES
-      # (default oauth-providers,cloudkit), matching the iOS xcframework's
-      # exported symbols).
-      - bae
-      # Shared data/service/domain layer compiled directly from the macOS app
-      # — one copy serves both platforms. Each is AppKit-free and references
-      # only bridge methods present on the iOS xcframework (or guards the
-      # desktop-only ones behind `#if !os(iOS)`).
-      - path: ../../bae-macos/bae/bae/BaeDiagnostics.swift
-      - path: ../../bae-macos/bae/bae/BaeCrashReporting.swift
-      - path: ../../bae-macos/bae/bae/BaeLogger.swift
-      - path: ../../bae-macos/bae/bae/Theme.swift
-      # AppKit/UIKit-bridged via a `PlatformImage` typealias behind
-      # `#if canImport`, so it compiles AppKit-free on iOS.
-      - path: ../../bae-macos/bae/bae/ImageLoader.swift
-      - path: ../../bae-macos/bae/bae/BridgeSortField+CaseIterable.swift
-      - path: ../../bae-macos/bae/bae/BridgeComposerSortField+CaseIterable.swift
-      - path: ../../bae-macos/bae/bae/BridgeDownloadTransferProgress+Derived.swift
-      - path: ../../bae-macos/bae/bae/DownloadTransferProgressView.swift
-      - path: ../../bae-macos/bae/bae/DurationClock.swift
-      - path: ../../bae-macos/bae/bae/Concurrency/DetachedWork.swift
-      - path: ../../bae-macos/bae/bae/Services/Downloads.swift
-      - path: ../../bae-macos/bae/bae/Services/Store/DownloadStore.swift
-      - path: ../../bae-macos/bae/bae/QueueSummary.swift
-      - path: ../../bae-macos/bae/bae/BridgeDownloadOp+Size.swift
-      - path: ../../bae-macos/bae/bae/Services/PlaybackStore.swift
-      - path: ../../bae-macos/bae/bae/Services/PlaybackPositionEvent.swift
-      - path: ../../bae-macos/bae/bae/Services/ConfigStore.swift
-      - path: ../../bae-macos/bae/bae/Services/LibraryStore.swift
-      - path: ../../bae-macos/bae/bae/Services/PaginatedList.swift
-      - path: ../../bae-macos/bae/bae/Services/Projection.swift
-      - path: ../../bae-macos/bae/bae/Services/Library.swift
-      - path: ../../bae-macos/bae/bae/Services/Playback.swift
-      - path: ../../bae-macos/bae/bae/Services/Queue.swift
-      - path: ../../bae-macos/bae/bae/Services/MediaPaths.swift
-      - path: ../../bae-macos/bae/bae/Services/Sync.swift
-      - path: ../../bae-macos/bae/bae/Services/CloudKitService.swift
-      - path: ../../bae-macos/bae/bae/Services/KeychainService.swift
-      - path: ../../bae-macos/bae/bae/Services/Store/OutboxStore.swift
-      # Typed core failures rendered for the locale. DisplayError builds a
-      # localized line + opaque detail from a BridgeError / BridgePlaybackError-
-      # Reason; BridgeError+Localized resolves the generic per-category line
-      # through the generated Core string table. Both AppKit-free.
-      - path: ../../bae-macos/bae/bae/Services/DisplayError.swift
-      - path: ../../bae-macos/bae/bae/BridgeError+Localized.swift
-      # Locale rendering of a cloud provider's name. Foundation-only (a Core
-      # string table + bridge label-key fn); shared with the membership invite
-      # preview and any sync-provider display.
-      - path: ../../bae-macos/bae/bae/BridgeCloudProvider+DisplayName.swift
-      - path: ../../bae-macos/bae/bae/Services/Store/Config.swift
-      - path: ../../bae-macos/bae/bae/Services/Store/AlbumSummary.swift
-      - path: ../../bae-macos/bae/bae/Services/Store/ReleaseSummary.swift
-      - path: ../../bae-macos/bae/bae/Services/Store/ReleaseDetail.swift
-      - path: ../../bae-macos/bae/bae/Services/Store/Track.swift
-      - path: ../../bae-macos/bae/bae/Services/Store/TrackGroup.swift
-      - path: ../../bae-macos/bae/bae/Services/Store/QueueItem.swift
-      - path: ../../bae-macos/bae/bae/Services/Store/RepeatMode.swift
-      - path: ../../bae-macos/bae/bae/Services/Store/SearchResults.swift
-      - path: ../../bae-macos/bae/bae/Views/UnlockView.swift
-      - path: ../../bae-macos/bae/bae/Views/Settings/CloudProviderConnectedSection.swift
-      - path: ../../bae-macos/bae/bae/Views/PlayPauseControl.swift
-      - path: ../../bae-macos/bae/bae/Views/PauseBetweenSidesToggle.swift
-      - path: ../../bae-macos/bae/bae/Views/SidePausePromptAlert.swift
+      # iOS app sources. The shared data/service/domain layer and the generated
+      # bridge bindings now live in the BaeKit package (see packages/BaeKit),
+      # imported as a module rather than pulled in as cross-tree file references.
+      # A tree that built before the package move still has the old gitignored
+      # bae/bae_bridge.swift on disk; excluding it keeps xcodegen from sweeping
+      # it in and colliding with the BaeBridge module.
+      - path: bae
+        excludes:
+          - bae_bridge.swift
     preBuildScripts:
       - name: Build Rust Bridge
         basedOnDependencyAnalysis: false
         script: |
           cd "$SRCROOT/../.."
-          MARKER="bae-ios/BaeBridgeFFI-ios.xcframework/Info.plist"
+          MARKER="BaeKit/Frameworks/BaeBridgeFFI-ios.xcframework/Info.plist"
           BINDINGS_SOURCE="bae-bridge/swift-bindings-ios/bae_bridge.swift"
-          BINDINGS="bae-ios/bae/bae/bae_bridge.swift"
+          BINDINGS="BaeKit/Sources/BaeBridge/bae_bridge_ios.swift"
           NEEDS_BUILD=0
           if [ ! -f "$MARKER" ] || [ ! -f "$BINDINGS_SOURCE" ]; then
             NEEDS_BUILD=1
@@ -110,16 +57,16 @@ targets:
             echo "Bridge sources changed, rebuilding..."
             ./bae-bridge/build-ios.sh
           fi
-          # Always ensure the iOS-flavored bindings are in the source tree.
-          # Without this, a fresh worktree (xcframework cached, bindings file
-          # absent) skips the copy and the build fails to find generated types.
+          # Always ensure the iOS-flavored bindings are installed into the
+          # BaeBridge target. Without this, a fresh worktree (xcframework cached,
+          # bindings file absent) skips the install and the build fails to find
+          # generated types.
           if [ ! -f "$BINDINGS" ] || [ "$BINDINGS_SOURCE" -nt "$BINDINGS" ]; then
-            cp "$BINDINGS_SOURCE" "$BINDINGS"
+            ./bae-bridge/install-swift-bindings.sh ios
           fi
           cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-ios/bae/bae
     dependencies:
-      - framework: ../BaeBridgeFFI-ios.xcframework
-      - package: Sentry
+      - package: BaeKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fm.bae.bae

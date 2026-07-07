@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 // MARK: - Shared sidebar layout

@@ -1,0 +1,66 @@
+import SwiftUI
+
+/// Mirror of core's cloud outbox processing snapshot, rendered by the Storage
+/// Manager's queue panel and used by every storage row to read its
+/// per-release upload count (no cached `pendingUploads` field on
+/// `ReleaseSummary`). UI event and projection paths land the whole
+/// `BridgeOutboxSnapshot`; views read it at the leaf. The snapshot is swapped
+/// wholesale (no per-item interning) because core exposes it in full.
+@Observable
+public class OutboxStore {
+    public var snapshot: BridgeOutboxSnapshot
+
+    public init(snapshot: BridgeOutboxSnapshot) {
+        self.snapshot = snapshot
+    }
+
+    public func applySnapshot(_ snapshot: BridgeOutboxSnapshot) {
+        self.snapshot = snapshot
+    }
+
+    /// Per-release upload progress, or nil if the release has no work in
+    /// flight. Storage rows read this to render their badge and to suppress
+    /// storage actions while uploads are in flight.
+    public func progress(forRelease releaseId: String) -> BridgeUploadProgress?
+    {
+        snapshot.perRelease[releaseId]
+    }
+
+    /// Whether the release has upload work queued or in flight. Drives the
+    /// storage row's "Cancel Upload" affordance and the suppression of other
+    /// storage actions while a transfer is mid-flight. Idle releases are absent
+    /// from the per-release map, so presence is the signal.
+    public func isUploading(forRelease releaseId: String) -> Bool {
+        snapshot.perRelease[releaseId] != nil
+    }
+
+    /// Whether any cloud writes are still queued or in flight — uploads or
+    /// deletes that haven't reached the cloud home. Drives the extra
+    /// data-loss warning on the remove-library confirmation.
+    public var hasPendingCloudWork: Bool {
+        !snapshot.uploadGroups.isEmpty || snapshot.pendingDeletes > 0
+    }
+
+    /// The idle (empty) queue. Seeds the store before the first snapshot read
+    /// and serves as the fallback if that read fails.
+    public static var emptySnapshot: BridgeOutboxSnapshot {
+        BridgeOutboxSnapshot(
+            uploadGroups: [],
+            deletes: [],
+            perRelease: [:],
+            total: BridgeUploadProgress(
+                queued: 0,
+                active: 0,
+                failed: 0,
+                bytesDone: 0,
+                bytesTotal: 0,
+                activity: nil,
+            ),
+            activeBytesTotal: 0,
+            pendingDeletes: 0,
+            paused: false,
+            throughputBps: 0,
+            etaSeconds: nil,
+        )
+    }
+}

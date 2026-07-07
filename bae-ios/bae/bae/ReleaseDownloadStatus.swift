@@ -1,3 +1,4 @@
+import BaeKit
 import Foundation
 
 /// What the album-detail download control shows for one release, joined from

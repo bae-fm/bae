@@ -113,6 +113,32 @@ echo "Writing Swift compilation conditions: ${SWIFT_CONDITIONS:-(none)}"
     [ -n "$ENTITLEMENTS_OVERRIDE" ] && echo "$ENTITLEMENTS_OVERRIDE"
 } > "$FEATURES_XCCONFIG"
 
+# The BaeKit package can't inherit SWIFT_ACTIVE_COMPILATION_CONDITIONS from the
+# app's xcconfig, so emit the same conditions as JSON next to Package.swift; the
+# manifest reads it and maps each to a .define. SwiftPM evaluates the manifest
+# once per resolve and caches the result by manifest content, so Features.json
+# is re-read on a fresh resolve (a CI checkout, a first build, or after a clean)
+# — which is every automated flow, each building a single edition, so the
+# conditions always match the bridge that was just built. Touch Package.swift as
+# a cheap hint, but a warm build tree that already resolved the other edition
+# needs both its DerivedData and the SwiftPM manifest cache
+# (~/Library/Caches/org.swift.swiftpm/manifests) cleared for new conditions to
+# take — SwiftPM keys the cached evaluation on manifest content, which is
+# identical across editions.
+FEATURES_JSON="BaeKit/Features.json"
+echo "Writing package compilation conditions to $FEATURES_JSON"
+{
+    printf '['
+    first=1
+    for cond in $SWIFT_CONDITIONS; do
+        [ "$first" -eq 0 ] && printf ', '
+        printf '"%s"' "$cond"
+        first=0
+    done
+    printf ']\n'
+} > "$FEATURES_JSON"
+touch BaeKit/Package.swift
+
 echo "Generating Swift bindings..."
 SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-ios"
 mkdir -p "$SWIFT_BINDINGS_DIR"
@@ -124,11 +150,11 @@ cargo run --bin uniffi-bindgen generate \
 echo "Generating localization String Catalog (Apple)..."
 cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-ios/bae/bae
 
-# Copy the iOS-flavored bindings into the iOS app source tree. The iOS app must
-# compile against the bindings whose checksum symbols the iOS xcframework
-# exports, so this script writes a platform-specific scratch directory instead
-# of sharing one with the macOS bridge build.
-cp "$SWIFT_BINDINGS_DIR/bae_bridge.swift" bae-ios/bae/bae/bae_bridge.swift
+# Install the iOS-flavored bindings into the BaeBridge target (os(iOS)-gated).
+# The iOS app must compile against the bindings whose checksum symbols the iOS
+# xcframework exports, so build-ios.sh generates into its own scratch directory
+# (swift-bindings-ios) and the install step wraps it in its own os-gated file.
+./bae-bridge/install-swift-bindings.sh ios
 
 # Merge the FFmpeg static libs into the bridge staticlib per-arch. A Rust
 # staticlib (libbae_bridge.a) does NOT bundle its C dependencies — it only
@@ -153,7 +179,7 @@ libtool -static -o "$SIM_MERGED" \
     "$FFMPEG_SIM/lib/libswresample.a"
 
 echo "Creating iOS XCFramework..."
-rm -rf bae-ios/BaeBridgeFFI-ios.xcframework
+rm -rf BaeKit/Frameworks/BaeBridgeFFI-ios.xcframework
 
 mkdir -p "$SWIFT_BINDINGS_DIR/headers"
 cp "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.h" "$SWIFT_BINDINGS_DIR/headers/"
@@ -164,9 +190,9 @@ xcodebuild -create-xcframework \
     -headers "$SWIFT_BINDINGS_DIR/headers" \
     -library "$SIM_MERGED" \
     -headers "$SWIFT_BINDINGS_DIR/headers" \
-    -output bae-ios/BaeBridgeFFI-ios.xcframework
+    -output BaeKit/Frameworks/BaeBridgeFFI-ios.xcframework
 
 echo ""
 echo "Done ($CARGO_PROFILE). Outputs:"
-echo "  bae-ios/BaeBridgeFFI-ios.xcframework/"
-echo "  $SWIFT_BINDINGS_DIR/bae_bridge.swift"
+echo "  BaeKit/Frameworks/BaeBridgeFFI-ios.xcframework/"
+echo "  BaeKit/Sources/BaeBridge/bae_bridge_ios.swift"

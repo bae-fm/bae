@@ -33,7 +33,8 @@ struct UiStoreLibraryBrowserModeTests {
         let store = UiStore()
         store.navigateToComposer("artist-1")
 
-        guard case .composer("artist-1") = store.libraryNavigationRequest?.target
+        guard
+            case .composer("artist-1") = store.libraryNavigationRequest?.target
         else {
             Issue.record("expected composer navigation target")
             return
@@ -122,7 +123,9 @@ struct UiStoreLibraryBrowserModeTests {
         #expect(second! > first!)
     }
 
-    @Test("repeat navigation to the same album produces two distinct seq values")
+    @Test(
+        "repeat navigation to the same album produces two distinct seq values"
+    )
     func navigateToSameAlbumTwiceRefires() {
         let store = UiStore()
         store.navigateToAlbum("album-1")

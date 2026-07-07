@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// App root. Drives the `AppScreen` lifecycle: discover an existing library and

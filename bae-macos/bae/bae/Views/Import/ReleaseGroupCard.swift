@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import SwiftUI
 
 /// Header card for a release group: the album's cover, title, and artist on

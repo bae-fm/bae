@@ -73,6 +73,32 @@ echo "Writing Swift compilation conditions: ${SWIFT_CONDITIONS:-(none)}"
     [ -n "$ENTITLEMENTS_OVERRIDE" ] && echo "$ENTITLEMENTS_OVERRIDE"
 } > "$FEATURES_XCCONFIG"
 
+# The BaeKit package can't inherit SWIFT_ACTIVE_COMPILATION_CONDITIONS from the
+# app's xcconfig, so emit the same conditions as JSON next to Package.swift; the
+# manifest reads it and maps each to a .define. SwiftPM evaluates the manifest
+# once per resolve and caches the result by manifest content, so Features.json
+# is re-read on a fresh resolve (a CI checkout, a first build, or after a clean)
+# — which is every automated flow, each building a single edition, so the
+# conditions always match the bridge that was just built. Touch Package.swift as
+# a cheap hint, but a warm build tree that already resolved the other edition
+# needs both its DerivedData and the SwiftPM manifest cache
+# (~/Library/Caches/org.swift.swiftpm/manifests) cleared for new conditions to
+# take — SwiftPM keys the cached evaluation on manifest content, which is
+# identical across editions.
+FEATURES_JSON="BaeKit/Features.json"
+echo "Writing package compilation conditions to $FEATURES_JSON"
+{
+    printf '['
+    first=1
+    for cond in $SWIFT_CONDITIONS; do
+        [ "$first" -eq 0 ] && printf ', '
+        printf '"%s"' "$cond"
+        first=0
+    done
+    printf ']\n'
+} > "$FEATURES_JSON"
+touch BaeKit/Package.swift
+
 echo "Generating Swift bindings..."
 SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-macos"
 mkdir -p "$SWIFT_BINDINGS_DIR"
@@ -81,13 +107,13 @@ cargo run --bin uniffi-bindgen generate \
     --language swift \
     --out-dir "$SWIFT_BINDINGS_DIR/"
 
-cp "$SWIFT_BINDINGS_DIR/bae_bridge.swift" bae-macos/bae/bae/bae_bridge.swift
+./bae-bridge/install-swift-bindings.sh macos
 
 echo "Generating localization String Catalog (Apple)..."
 cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-macos/bae/bae
 
 echo "Creating XCFramework..."
-rm -rf bae-macos/BaeBridgeFFI.xcframework
+rm -rf BaeKit/Frameworks/BaeBridgeFFI.xcframework
 
 mkdir -p "$SWIFT_BINDINGS_DIR/headers"
 cp "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.h" "$SWIFT_BINDINGS_DIR/headers/"
@@ -96,9 +122,9 @@ cp "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.modulemap" "$SWIFT_BINDINGS_DIR/headers/mo
 xcodebuild -create-xcframework \
     -library "$CARGO_TARGET_DIR/aarch64-apple-darwin/$CARGO_PROFILE/libbae_bridge.a" \
     -headers "$SWIFT_BINDINGS_DIR/headers" \
-    -output bae-macos/BaeBridgeFFI.xcframework
+    -output BaeKit/Frameworks/BaeBridgeFFI.xcframework
 
 echo ""
 echo "Done ($CARGO_PROFILE). Outputs:"
-echo "  bae-macos/BaeBridgeFFI.xcframework/"
-echo "  $SWIFT_BINDINGS_DIR/bae_bridge.swift"
+echo "  BaeKit/Frameworks/BaeBridgeFFI.xcframework/"
+echo "  BaeKit/Sources/BaeBridge/bae_bridge_macos.swift"

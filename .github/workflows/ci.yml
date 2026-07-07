@@ -35,7 +35,7 @@ jobs:
       run: |
         brew install xcodegen peripheryapp/periphery/periphery
         ./bae-bridge/build-macos.sh
-        cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+        ./bae-bridge/install-swift-bindings.sh macos
         cd bae-macos/bae && xcodegen
         xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
@@ -57,14 +57,16 @@ jobs:
     - name: Check Swift formatting
       if: ${{ !cancelled() }}
       run: |
-        find bae-macos/bae/bae -name "*.swift" -not -name bae_bridge.swift -print0 \
+        find bae-macos/bae/bae BaeKit/Sources/BaeKit -name "*.swift" \
+          -not -name 'bae_bridge_*.swift' -print0 \
           | xargs -0 xcrun swift-format lint -s
 
     - name: Swift lint (swiftlint)
       if: ${{ !cancelled() }}
       run: |
         brew install swiftlint
-        swiftlint lint --strict --config .swiftlint.yml bae-macos/bae/bae
+        swiftlint lint --strict --config .swiftlint.yml \
+          bae-macos/bae/bae BaeKit/Sources/BaeKit
 
     - name: Dead code check (periphery)
       if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}
@@ -124,7 +126,7 @@ jobs:
       run: |
         brew install xcodegen
         BAE_BRIDGE_FEATURES=desktop ./bae-bridge/build-macos.sh
-        cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+        ./bae-bridge/install-swift-bindings.sh macos
         cd bae-macos/bae && xcodegen
         xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
