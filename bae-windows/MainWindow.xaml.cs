@@ -4756,20 +4756,17 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var (imagesCurrent, imagesJson) = WithCurrentHandle(
-            handle => NativeBae.GetReleaseImagesJson(handle, releaseId));
+        var (imagesCurrent, releaseImages) = WithCurrentHandle(
+            handle => NativeBae.GetReleaseImages(handle, releaseId).Images);
         if (!imagesCurrent)
         {
             return;
         }
-        if (imagesJson is null)
+        if (releaseImages is null)
         {
             StatusText.Text = Loc.Chrome("cover.images_load_failed");
             return;
         }
-
-        var releaseImages = JsonSerializer.Deserialize<List<ReleaseImage>>(imagesJson, JsonOptions)
-            ?? new List<ReleaseImage>();
 
         var content = new StackPanel { Spacing = 8, MinWidth = 460 };
 
@@ -4821,7 +4818,7 @@ public sealed partial class MainWindow : Window
             return button;
         }
 
-        if (releaseImages.Count > 0)
+        if (releaseImages.Length > 0)
         {
             content.Children.Add(new TextBlock { Text = Loc.Chrome("cover.release_files") });
             var fileGrid = new VariableSizedWrapGrid

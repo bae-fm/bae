@@ -614,11 +614,11 @@ internal static class NativeBae
     internal static string? ExportTrackExtension(AppHandle handle, string trackId, string selectionJson) =>
         CaptureValue(() => Await(handle.ExportTrackExtension(trackId, ExportSelection(selectionJson))));
 
-    internal static string? GetReleaseImagesJson(AppHandle handle, string releaseId) =>
-        CaptureValue(() =>
+    internal static (BridgeFile[]? Images, string? Error) GetReleaseImages(AppHandle handle, string releaseId) =>
+        CaptureBridgeValue(() =>
         {
             var detail = Await(handle.FindReleaseDetail(releaseId));
-            return detail is null ? null : Json(ReleaseImages(detail.ImageFiles));
+            return detail?.ImageFiles.Where(file => file.IsImage).ToArray() ?? [];
         });
 
     internal static string? FetchRemoteCoversJson(AppHandle handle, string releaseId) =>
@@ -1011,16 +1011,6 @@ internal static class NativeBae
         }
         return new BridgeCoverSelection.ReleaseImage(root.GetProperty("file_id").GetString() ?? string.Empty);
     }
-
-    private static object[] ReleaseImages(IEnumerable<BridgeFile> files) =>
-        files
-            .Where(file => file.IsImage)
-            .Select(file => new
-            {
-                id = file.Id,
-                original_filename = file.OriginalFilename,
-            })
-            .ToArray();
 
     private static object Settings(
         BridgeConfig config,
