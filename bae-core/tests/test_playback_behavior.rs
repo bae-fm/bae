@@ -127,6 +127,41 @@ async fn wait_for_track_position(
     None
 }
 
+/// Wait for the next `RepeatModeChanged` and return its mode, or panic on
+/// timeout.
+async fn wait_for_repeat_mode(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    timeout_duration: Duration,
+) -> RepeatMode {
+    let deadline = Instant::now() + timeout_duration;
+    while Instant::now() < deadline {
+        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::RepeatModeChanged { mode })) => return mode,
+            Ok(Some(_)) => continue,
+            Ok(None) => panic!("progress channel closed before a repeat-mode change"),
+            Err(_) => continue,
+        }
+    }
+    panic!("no RepeatModeChanged arrived within the timeout");
+}
+
+/// Wait for the next `MuteChanged` and return its flag, or panic on timeout.
+async fn wait_for_mute(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    timeout_duration: Duration,
+) -> bool {
+    let deadline = Instant::now() + timeout_duration;
+    while Instant::now() < deadline {
+        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::MuteChanged { is_muted })) => return is_muted,
+            Ok(Some(_)) => continue,
+            Ok(None) => panic!("progress channel closed before a mute change"),
+            Err(_) => continue,
+        }
+    }
+    panic!("no MuteChanged arrived within the timeout");
+}
+
 /// What a track boundary looked like on the wire. A *gapless* handoff crosses
 /// inside the running stream: `handle_track_crossed` reports the finishing
 /// track's `DecodeStats` but no `TrackCompleted` (that fires only when nothing
@@ -2249,6 +2284,449 @@ async fn test_remove_entry_refreshes_preloaded_track() {
     .await;
 }
 
+// ============================================================================
+// Service command coverage
+// ============================================================================
+// One focused test per PlaybackCommand / LibraryEvent branch that had no
+// coverage, driven through the PlaybackHandle like the rest of the suite. Where
+// a command's effect is a queue-shape change, the serial command loop lets a
+// following queue_projection() read reflect it (the projection query is
+// processed after the mutation it follows).
+
+/// The release id of the currently-playing context, read off the projection.
+async fn current_release_id(handle: &bae_core::playback::PlaybackHandle) -> String {
+    let proj = handle.queue_projection().await.expect("queue projection");
+    match proj.context.expect("a playing context").source {
+        bae_core::playback::ContextSource::Release(id) => id,
+        bae_core::playback::ContextSource::Library => {
+            panic!("expected a release context, got the whole-library context")
+        }
+    }
+}
+
+#[tokio::test]
+async fn set_shuffle_materializes_then_re_derives_context_order() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    let second = fixture.track_ids[1].clone();
+    let third = fixture.track_ids[2].clone();
+    fixture.playback_handle.play(first.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the release starts playing");
+
+    // Shuffle on re-materializes the playing context into a shuffled order —
+    // not merely a persisted seed.
+    fixture.playback_handle.set_shuffle(true);
+    let shuffled = fixture
+        .playback_handle
+        .queue_projection()
+        .await
+        .expect("queue projection");
+    assert!(
+        shuffled.context.as_ref().is_some_and(|c| c.shuffled),
+        "SetShuffle(true) materializes a shuffled context"
+    );
+
+    // Shuffle off re-derives the sequential order: the not-yet-played tail is the
+    // two tracks after the current one, in release order.
+    fixture.playback_handle.set_shuffle(false);
+    let sequential = fixture
+        .playback_handle
+        .queue_projection()
+        .await
+        .expect("queue projection");
+    let ctx = sequential.context.expect("still a playing context");
+    assert!(
+        !ctx.shuffled,
+        "SetShuffle(false) re-derives the sequential order"
+    );
+    let upcoming: Vec<String> = ctx.upcoming.iter().map(|e| e.track_id.clone()).collect();
+    assert_eq!(
+        upcoming,
+        vec![second, third],
+        "sequential upcoming is source order after the current track"
+    );
+}
+
+#[tokio::test]
+async fn play_library_shuffled_plays_a_shuffled_library_context() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    fixture.playback_handle.play_library_shuffled();
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { .. }),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("a library track starts playing");
+    let proj = fixture
+        .playback_handle
+        .queue_projection()
+        .await
+        .expect("queue projection");
+    let ctx = proj.context.expect("a library context");
+    assert!(
+        matches!(ctx.source, bae_core::playback::ContextSource::Library),
+        "PlayLibraryShuffled plays from the whole library"
+    );
+    assert!(ctx.shuffled, "the library context is shuffled");
+}
+
+#[tokio::test]
+async fn play_library_shuffled_is_a_no_op_on_an_empty_library() {
+    let (library_manager, runtime_handle, _temp) = empty_test_library().await;
+    let (handle, _capture_rx) = start_capture_service(library_manager, runtime_handle);
+    let mut progress = handle.subscribe_progress();
+    handle.play_library_shuffled();
+    let played = wait_for_state_on(
+        &mut progress,
+        |s| matches!(s, PlaybackState::Playing { .. }),
+        Duration::from_secs(1),
+    )
+    .await;
+    assert!(
+        played.is_none(),
+        "an empty library has nothing to shuffle-play"
+    );
+    handle.stop();
+}
+
+#[tokio::test]
+async fn cycle_repeat_mode_walks_off_context_track_off() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    // Default is Off; each cycle advances Off → Context → Track → Off.
+    for expected in [RepeatMode::Context, RepeatMode::Track, RepeatMode::Off] {
+        fixture.playback_handle.cycle_repeat_mode();
+        let mode = wait_for_repeat_mode(&mut fixture.progress_rx, Duration::from_secs(3)).await;
+        assert_eq!(
+            mode, expected,
+            "CycleRepeatMode order is Off → Context → Track → Off"
+        );
+    }
+}
+
+#[tokio::test]
+async fn toggle_mute_round_trips_and_set_volume_clears_mute() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    fixture.playback_handle.set_volume(0.5);
+
+    fixture.playback_handle.toggle_mute();
+    assert!(
+        wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await,
+        "ToggleMute mutes"
+    );
+    fixture.playback_handle.toggle_mute();
+    assert!(
+        !wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await,
+        "ToggleMute again unmutes"
+    );
+
+    // Mute again, then a non-zero SetVolume clears the mute.
+    fixture.playback_handle.toggle_mute();
+    assert!(
+        wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await,
+        "muted again"
+    );
+    fixture.playback_handle.set_volume(0.7);
+    assert!(
+        !wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await,
+        "SetVolume above zero clears the mute"
+    );
+}
+
+#[tokio::test]
+async fn skip_to_entry_jumps_to_that_queue_entry() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    let third = fixture.track_ids[2].clone();
+    fixture.playback_handle.play(first.clone());
+    let (played, entries) = fixture
+        .wait_for_playing_capturing_queue(Duration::from_secs(5))
+        .await;
+    assert!(played, "the release starts playing");
+    let target = entries
+        .iter()
+        .find(|e| e.track_id == third)
+        .expect("the third track is queued in the context");
+    fixture.playback_handle.skip_to_entry(target.id.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == third),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("SkipTo jumps to the targeted entry");
+}
+
+#[tokio::test]
+async fn clear_queue_empties_the_manual_lane_keeping_the_context() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    let second = fixture.track_ids[1].clone();
+    fixture.playback_handle.play(first.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the release starts playing");
+    fixture.playback_handle.add_to_queue(vec![second]);
+    let before = fixture
+        .playback_handle
+        .queue_projection()
+        .await
+        .expect("queue projection");
+    assert!(
+        !before.manual.is_empty(),
+        "the manual lane has the added track"
+    );
+
+    fixture.playback_handle.clear_queue();
+    let after = fixture
+        .playback_handle
+        .queue_projection()
+        .await
+        .expect("queue projection");
+    assert!(
+        after.manual.is_empty(),
+        "ClearQueue empties the manual lane"
+    );
+    assert!(
+        after.context.is_some(),
+        "ClearQueue leaves the playing context intact"
+    );
+}
+
+#[tokio::test]
+async fn add_release_to_queue_appends_its_tracks_to_the_manual_lane() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    fixture.playback_handle.play(first.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the release starts playing");
+    let release_id = current_release_id(&fixture.playback_handle).await;
+    fixture.playback_handle.add_release_to_queue(release_id);
+    let proj = fixture
+        .playback_handle
+        .queue_projection()
+        .await
+        .expect("queue projection");
+    assert_eq!(
+        proj.manual.len(),
+        3,
+        "the release's three tracks are appended to the manual lane"
+    );
+}
+
+#[tokio::test]
+async fn add_release_next_puts_its_tracks_at_the_front_of_the_manual_lane() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    let second = fixture.track_ids[1].clone();
+    fixture.playback_handle.play(first.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the release starts playing");
+    // A marker already in the manual lane: AddReleaseNext must land before it.
+    fixture.playback_handle.add_to_queue(vec![second.clone()]);
+    let release_id = current_release_id(&fixture.playback_handle).await;
+    fixture.playback_handle.add_release_next(release_id);
+    let proj = fixture
+        .playback_handle
+        .queue_projection()
+        .await
+        .expect("queue projection");
+    assert_eq!(proj.manual.len(), 4, "three release tracks plus the marker");
+    assert_eq!(
+        proj.manual.last().unwrap().track_id,
+        second,
+        "AddReleaseNext inserts the release before the existing marker"
+    );
+}
+
+#[tokio::test]
+async fn remove_currently_playing_entry_stops_playback() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    let second = fixture.track_ids[1].clone();
+    fixture.playback_handle.play(first.clone());
+    let (played, entries) = fixture
+        .wait_for_playing_capturing_queue(Duration::from_secs(5))
+        .await;
+    assert!(played, "the release starts playing");
+
+    // Skip onto the second track so it's the current context entry, then remove
+    // that very entry: the handler compares the removed entry's track to the
+    // playing track and stops.
+    let entry = entries
+        .iter()
+        .find(|e| e.track_id == second)
+        .expect("the second track is queued in the context")
+        .clone();
+    fixture.playback_handle.skip_to_entry(entry.id.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("SkipTo makes the second track current");
+
+    fixture.playback_handle.remove_entry(entry.id.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Stopped),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("removing the currently-playing entry stops playback");
+}
+
+#[tokio::test]
+async fn toggle_play_pause_flips_between_playing_and_paused() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    fixture.playback_handle.play(first.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { .. }),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the track starts playing");
+    fixture.playback_handle.toggle_play_pause();
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Paused { .. }),
+            Duration::from_secs(3),
+        )
+        .await
+        .expect("TogglePlayPause pauses a playing track");
+    fixture.playback_handle.toggle_play_pause();
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { .. }),
+            Duration::from_secs(3),
+        )
+        .await
+        .expect("TogglePlayPause resumes a paused track");
+}
+
+#[tokio::test]
+async fn play_release_clamps_an_out_of_range_start_index() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    let third = fixture.track_ids[2].clone();
+    // Start on the third track so a clamp-to-first is observable.
+    fixture.playback_handle.play(third.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == third),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the third track plays");
+    let release_id = current_release_id(&fixture.playback_handle).await;
+    fixture
+        .playback_handle
+        .play_release(release_id, Some(99), false);
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("an out-of-range start index clamps to the first track");
+}
+
+/// LibraryEvent::TracksDeleted, both branches. Two releases share one library so
+/// the current track (release A) and a preloaded next (release B) can be deleted
+/// independently: deleting B clears the preloaded next and purges its queued
+/// track while A keeps playing; deleting A deletes the current track and stops.
+#[tokio::test]
+async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
+    let lib = restore_test_library().await;
+    let first = lib.track_ids[0].clone();
+    let a_release_id = lib
+        .library_manager
+        .get_releases_for_album(&lib.library_manager.get_albums(&[]).await.unwrap()[0].id)
+        .await
+        .unwrap()[0]
+        .id
+        .clone();
+    let (b_release_id, b_tracks, _b_source) = import_second_release(&lib).await;
+    let b_first = b_tracks[0].clone();
+
+    let (handle, _capture_rx) =
+        start_capture_service(lib.library_manager.clone(), lib.runtime_handle.clone());
+    let mut progress = handle.subscribe_progress();
+
+    handle.play(first.clone());
+    wait_for_state_on(
+        &mut progress,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+        Duration::from_secs(5),
+    )
+    .await
+    .expect("release A starts playing");
+
+    // Queue B's first track as the preloaded next.
+    handle.add_next(vec![b_first.clone()]);
+    let queued = handle.queue_projection().await.expect("queue projection");
+    assert!(
+        queued.manual.iter().any(|e| e.track_id == b_first),
+        "B's track is queued as the next up"
+    );
+
+    // Delete B: current (A) survives, the preloaded next (B) is cleared and its
+    // queued entry purged — no stop.
+    lib.library_manager
+        .delete_release(&b_release_id)
+        .await
+        .expect("delete release B");
+    let still_playing =
+        wait_for_track_position(&mut progress, &first, Duration::from_secs(3)).await;
+    assert!(
+        still_playing.is_some(),
+        "deleting only the preloaded-next release leaves the current track playing"
+    );
+    let after = handle.queue_projection().await.expect("queue projection");
+    assert!(
+        !after.manual.iter().any(|e| e.track_id == b_first),
+        "the deleted release's queued track is purged"
+    );
+
+    // Delete A: the current track is deleted → playback stops.
+    lib.library_manager
+        .delete_release(&a_release_id)
+        .await
+        .expect("delete release A");
+    wait_for_state_on(
+        &mut progress,
+        |s| matches!(s, PlaybackState::Stopped),
+        Duration::from_secs(5),
+    )
+    .await
+    .expect("deleting the current track's release stops playback");
+
+    handle.stop();
+}
+
 // Note: test_playback_error_emitted_when_storage_offline was removed because it relied
 // on MockCloudStorage injection which was removed with CloudStorageManager.
 
@@ -4186,6 +4664,69 @@ async fn restore_test_library() -> RestoreTestLibrary {
         track_ids,
         _temp_dir: temp_dir,
     }
+}
+
+/// A library with no imports, for the empty-library no-op paths. Returns the
+/// manager, runtime handle, and temp dir (kept alive for the DB file).
+async fn empty_test_library() -> (LibraryManager, tokio::runtime::Handle, TempDir) {
+    tracing_init();
+    let temp_dir = TempDir::new().unwrap();
+    let db_path = temp_dir.path().join("test.db");
+    let database = Database::new_test(
+        db_path.to_str().unwrap(),
+        std::sync::Arc::new(coven::SystemClock),
+    )
+    .await
+    .unwrap();
+    let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let library_manager = LibraryManager::new(
+        database,
+        config_handle,
+        key_service,
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
+        tokio::runtime::Handle::current(),
+    );
+    (library_manager, tokio::runtime::Handle::current(), temp_dir)
+}
+
+/// Import a second, distinct-content release (the CUE/FLAC album) into `lib`'s
+/// library so a test can have a current track in one release and a
+/// preloaded/queued track in another — needed to delete one without the other.
+/// Returns the new release's id and track ids; the source `TempDir` is returned
+/// so the caller keeps it alive.
+async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>, TempDir) {
+    let source = TempDir::new().unwrap();
+    generate_cue_flac_files(source.path());
+    let release_key = seed_discogs_test_release(create_cue_flac_test_album());
+    let import_handle = start_test_import(lib.runtime_handle.clone(), lib.library_manager.clone());
+    let import_id = uuid::Uuid::new_v4().to_string();
+    import_handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key: "second".to_string(),
+            folder: source.path().to_path_buf(),
+            selected_cover: None,
+            storage_mode: StorageMode::Local,
+            pin: false,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(release_key, MetadataSource::Discogs),
+            },
+            user_edit: None,
+        })
+        .unwrap();
+    let mut progress_rx = import_handle.subscribe_import(import_id);
+    let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
+    let tracks = lib
+        .library_manager
+        .get_tracks(&release_id)
+        .await
+        .unwrap()
+        .iter()
+        .map(|t| t.id.clone())
+        .collect();
+    (release_id, tracks, source)
 }
 
 /// A resume cache whose context release is gone (its `get_track_ids` is empty)
