@@ -1,5 +1,11 @@
-//! bae's sync: coven's sync substrate re-exported, with bae's blob-transition
-//! observer and a `SyncManager` wrapper layered on top.
+//! bae's sync boundary around coven.
+//!
+//! coven owns the sync engine, cloud homes, keys, storage, and the DB
+//! connection. This module keeps bae's side of that boundary: coven's
+//! join/restore entry points re-exported at `crate::sync`, the upload observer
+//! that turns coven blob transitions into UI events, the membership DTOs used by
+//! platform join/invite screens, the synced-table declarations, and bae's blob
+//! namespaces plus cache budgets.
 
 // The sync substrate lives in coven; these resolve `crate::sync::<item>`
 // unchanged. `CloudCipher` is what a test hands to `connect_sync_with_test_home`;
@@ -13,7 +19,7 @@ pub use coven::{
 // make-Remote / make-Local completions (coven owns the lifecycle itself).
 pub mod upload_observer;
 
-// bae's SyncManager wrapper owns and drives coven's SyncManager.
+// bae's membership DTOs and join-request helpers for the UI.
 pub mod sync_manager;
 
 use coven::{BlobDecl, SyncedTable};
