@@ -76,60 +76,79 @@ fn truncated_flac_packet_stream() -> Vec<u8> {
     flac_data
 }
 
+/// Each PCM sample format decodes to full-range i32: the low input sample
+/// lands near `i32::MIN`, the mid sample near zero, the high sample near
+/// `i32::MAX`. Covers the unsigned-8-bit, 64-bit-float, and signed-64-bit
+/// (`WAVE_FORMAT_EXTENSIBLE`) conversion paths.
 #[test]
-fn decode_audio_decodes_unsigned_8_bit_wav_as_full_range_pcm() {
+fn decode_audio_scales_pcm_sample_formats_to_full_range_i32() {
     init();
-    let wav = wav_with_fmt(1, 8, 1, 44_100, &[0, 128, 255]);
-    let decoded = decode_audio(&wav, None, None).unwrap();
 
-    assert_eq!(decoded.samples.len(), 3);
-    assert!(decoded.samples[0] < -2_000_000_000, "{:?}", decoded.samples);
-    assert!(
-        decoded.samples[1].abs() < 20_000_000,
-        "{:?}",
-        decoded.samples
-    );
-    assert!(decoded.samples[2] > 2_000_000_000, "{:?}", decoded.samples);
-}
-
-#[test]
-fn decode_audio_decodes_64_bit_float_wav_as_full_range_pcm() {
-    init();
-    let mut data = Vec::new();
-    for sample in [-0.5f64, 0.0, 0.5] {
-        data.extend_from_slice(&sample.to_le_bytes());
+    struct Case {
+        name: &'static str,
+        wav: Vec<u8>,
+        min_below: i32,
+        max_above: i32,
     }
-    let wav = wav_with_fmt(3, 64, 1, 44_100, &data);
-    let decoded = decode_audio(&wav, None, None).unwrap();
 
-    assert_eq!(decoded.samples.len(), 3);
-    assert!(decoded.samples[0] < -1_000_000_000, "{:?}", decoded.samples);
-    assert!(
-        decoded.samples[1].abs() < 20_000_000,
-        "{:?}",
-        decoded.samples
-    );
-    assert!(decoded.samples[2] > 1_000_000_000, "{:?}", decoded.samples);
-}
+    let float64 = {
+        let mut d = Vec::new();
+        for sample in [-0.5f64, 0.0, 0.5] {
+            d.extend_from_slice(&sample.to_le_bytes());
+        }
+        d
+    };
+    let signed64 = {
+        let mut d = Vec::new();
+        for sample in [i64::MIN / 2, 0, i64::MAX / 2] {
+            d.extend_from_slice(&sample.to_le_bytes());
+        }
+        d
+    };
 
-#[test]
-fn decode_audio_decodes_signed_64_bit_wav_as_full_range_pcm() {
-    init();
-    let mut data = Vec::new();
-    for sample in [i64::MIN / 2, 0, i64::MAX / 2] {
-        data.extend_from_slice(&sample.to_le_bytes());
+    let cases = [
+        Case {
+            name: "unsigned 8-bit",
+            wav: wav_with_fmt(1, 8, 1, 44_100, &[0, 128, 255]),
+            min_below: -2_000_000_000,
+            max_above: 2_000_000_000,
+        },
+        Case {
+            name: "64-bit float",
+            wav: wav_with_fmt(3, 64, 1, 44_100, &float64),
+            min_below: -1_000_000_000,
+            max_above: 1_000_000_000,
+        },
+        Case {
+            name: "signed 64-bit extensible",
+            wav: wav_extensible_pcm(64, 1, 44_100, &signed64),
+            min_below: -1_000_000_000,
+            max_above: 1_000_000_000,
+        },
+    ];
+
+    for case in cases {
+        let decoded = decode_audio(&case.wav, None, None).unwrap();
+        assert_eq!(decoded.samples.len(), 3, "{}", case.name);
+        assert!(
+            decoded.samples[0] < case.min_below,
+            "{}: {:?}",
+            case.name,
+            decoded.samples
+        );
+        assert!(
+            decoded.samples[1].abs() < 20_000_000,
+            "{}: {:?}",
+            case.name,
+            decoded.samples
+        );
+        assert!(
+            decoded.samples[2] > case.max_above,
+            "{}: {:?}",
+            case.name,
+            decoded.samples
+        );
     }
-    let wav = wav_extensible_pcm(64, 1, 44_100, &data);
-    let decoded = decode_audio(&wav, None, None).unwrap();
-
-    assert_eq!(decoded.samples.len(), 3);
-    assert!(decoded.samples[0] < -1_000_000_000, "{:?}", decoded.samples);
-    assert!(
-        decoded.samples[1].abs() < 20_000_000,
-        "{:?}",
-        decoded.samples
-    );
-    assert!(decoded.samples[2] > 1_000_000_000, "{:?}", decoded.samples);
 }
 
 /// `seek_landing_bytes` actually opens the file, seeks (no decode), and
