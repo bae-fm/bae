@@ -701,6 +701,26 @@ mod tests {
         assert_eq!(sides, vec![1, 2, 3, 4]);
     }
 
+    #[test]
+    fn parse_duration_to_ms_handles_mm_ss_and_hh_mm_ss() {
+        // (input, expected)
+        let ok: &[(&str, u64)] = &[
+            ("0:00", 0),
+            ("3:45", 225_000),
+            ("59:59", 3_599_000),
+            ("1:02:03", 3_723_000),
+            ("0:00:30", 30_000),
+        ];
+        for (input, expected) in ok {
+            assert_eq!(parse_duration_to_ms(input), Some(*expected), "{input}");
+        }
+
+        // Wrong shape or non-numeric parts yield None.
+        for input in ["", "45", "3:45:67:89", "a:b", "3:xy", ":", "1::2"] {
+            assert_eq!(parse_duration_to_ms(input), None, "{input}");
+        }
+    }
+
     /// A multi-side medium track without a leading side letter is malformed MB
     /// data. The search detail path propagates the error rather than bucketing
     /// the track onto side 0.

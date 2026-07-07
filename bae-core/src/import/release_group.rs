@@ -215,14 +215,29 @@ mod tests {
         assert_eq!(groups[0].pressings.len(), 3);
     }
 
+    /// Two results carrying the same `source_group_id` string but different
+    /// sources (MB vs Discogs) do not collide — the group key is
+    /// `(source, source_group_id)`, so they become two separate cards.
     #[test]
-    fn year_span_collapses_when_equal() {
-        let groups = group_results(vec![
-            result("rel-1", Some("g"), Some(1994)),
-            result("rel-2", Some("g"), Some(1994)),
-        ]);
-        assert_eq!(groups[0].year_min, Some(1994));
-        assert_eq!(groups[0].year_max, Some(1994));
+    fn same_group_id_across_sources_does_not_collide() {
+        let mut mb = result("rel-mb", Some("shared-id"), Some(2001));
+        mb.source = MetadataSource::MusicBrainz;
+        let mut discogs = result("rel-dg", Some("shared-id"), Some(2001));
+        discogs.source = MetadataSource::Discogs;
+
+        let groups = group_results(vec![mb, discogs]);
+
+        assert_eq!(
+            groups.len(),
+            2,
+            "same group_id across sources stays separate"
+        );
+        assert!(groups
+            .iter()
+            .any(|g| g.source_label == "MusicBrainz" && g.pressings[0].release_id == "rel-mb"));
+        assert!(groups
+            .iter()
+            .any(|g| g.source_label == "Discogs" && g.pressings[0].release_id == "rel-dg"));
     }
 
     #[test]

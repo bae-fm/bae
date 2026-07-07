@@ -557,21 +557,68 @@ mod tests {
         }
     }
 
-    /// `CueAudioAnalysis` carries one FFmpeg probe for every CUE-backed
-    /// container, and `container_duration_ms` reads its duration directly.
-    #[test]
-    fn test_cue_audio_analysis_probe_duration() {
-        let analysis = CueAudioAnalysis {
-            probe: crate::audio_codec::ProbeResult {
-                content_type: crate::util::content_type::ContentType::Alac,
-                duration: std::time::Duration::from_millis(100),
-                sample_rate: 44100,
-                channels: 2,
-                bits_per_sample: Some(16),
+    fn analyzed_file(
+        file_reference: &str,
+        content_type: crate::util::content_type::ContentType,
+        sample_rate: u32,
+        channels: u32,
+        bits_per_sample: Option<u32>,
+    ) -> CueAnalyzedAudioFile {
+        CueAnalyzedAudioFile {
+            file_reference: file_reference.to_string(),
+            path: PathBuf::from(format!("/rip/{file_reference}")),
+            analysis: CueAudioAnalysis {
+                probe: crate::audio_codec::ProbeResult {
+                    content_type,
+                    duration: std::time::Duration::from_millis(1000),
+                    sample_rate,
+                    channels,
+                    bits_per_sample,
+                },
             },
-        };
+        }
+    }
 
-        assert_eq!(container_duration_ms(&analysis), Some(100));
+    /// A multi-FILE CUE whose containers agree on codec, sample rate, bit
+    /// depth, and channel count passes; any divergence is rejected — the disc
+    /// image is treated as one homogeneous stream.
+    #[test]
+    fn ensure_cue_segment_formats_match_rejects_divergent_containers() {
+        use crate::util::content_type::ContentType;
+
+        // Empty and single-file inputs are trivially consistent.
+        assert!(ensure_cue_segment_formats_match(&[]).is_ok());
+        assert!(ensure_cue_segment_formats_match(&[analyzed_file(
+            "a.flac",
+            ContentType::Flac,
+            44_100,
+            2,
+            Some(16),
+        )])
+        .is_ok());
+
+        // Two matching containers pass.
+        let matching = [
+            analyzed_file("a.flac", ContentType::Flac, 44_100, 2, Some(16)),
+            analyzed_file("b.flac", ContentType::Flac, 44_100, 2, Some(16)),
+        ];
+        assert!(ensure_cue_segment_formats_match(&matching).is_ok());
+
+        // Each mismatched dimension is rejected.
+        for mismatched in [
+            analyzed_file("b.flac", ContentType::Alac, 44_100, 2, Some(16)),
+            analyzed_file("b.flac", ContentType::Flac, 48_000, 2, Some(16)),
+            analyzed_file("b.flac", ContentType::Flac, 44_100, 1, Some(16)),
+            analyzed_file("b.flac", ContentType::Flac, 44_100, 2, Some(24)),
+        ] {
+            let files = [
+                analyzed_file("a.flac", ContentType::Flac, 44_100, 2, Some(16)),
+                mismatched,
+            ];
+            let err = ensure_cue_segment_formats_match(&files)
+                .expect_err("divergent container formats must be rejected");
+            assert!(err.contains("incompatible formats"), "got: {err}");
+        }
     }
 
     /// A 2xLP vinyl ripped as a single continuous CUE+FLAC pair. The release's

@@ -781,21 +781,6 @@ mod edit_shaping_tests {
         assert_eq!(form.shape(), Err(EditValidationError::InvalidYear));
     }
 
-    /// `shape().is_ok()` is the editor's Save-enabled gate: valid forms
-    /// shape, invalid ones don't.
-    #[test]
-    fn shape_ok_gates_save() {
-        assert!(valid_form().shape().is_ok());
-
-        let mut blank_title = valid_form();
-        blank_title.album_title = "".to_string();
-        assert!(blank_title.shape().is_err());
-
-        let mut no_artist = valid_form();
-        no_artist.album_artist_text = "".to_string();
-        assert!(no_artist.shape().is_err());
-    }
-
     /// Seeding a form from a wire edit then shaping it back recovers the
     /// original wire edit: `from_user_edit` and `shape` are inverses.
     #[test]
@@ -837,5 +822,59 @@ mod edit_shaping_tests {
         assert_eq!(raw.pressing.label, "");
 
         assert_eq!(raw.shape().expect("re-shapes"), original);
+    }
+}
+
+#[cfg(test)]
+mod metadata_source_tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn from_str_round_trips_known_sources() {
+        assert_eq!(
+            MetadataSource::from_str("musicbrainz"),
+            Ok(MetadataSource::MusicBrainz)
+        );
+        assert_eq!(
+            MetadataSource::from_str("discogs"),
+            Ok(MetadataSource::Discogs)
+        );
+        // as_str is the inverse of from_str.
+        assert_eq!(
+            MetadataSource::from_str(MetadataSource::MusicBrainz.as_str()),
+            Ok(MetadataSource::MusicBrainz)
+        );
+    }
+
+    #[test]
+    fn from_str_rejects_unknown_source() {
+        let err = MetadataSource::from_str("bandcamp").expect_err("unknown source should error");
+        assert!(
+            err.contains("unknown metadata source") && err.contains("bandcamp"),
+            "unexpected error: {err}"
+        );
+        // The match is exact — casing isn't accepted.
+        assert!(MetadataSource::from_str("MusicBrainz").is_err());
+    }
+
+    #[test]
+    fn release_and_group_urls_are_source_specific() {
+        assert_eq!(
+            MetadataSource::MusicBrainz.release_url("rel-1"),
+            "https://musicbrainz.org/release/rel-1"
+        );
+        assert_eq!(
+            MetadataSource::MusicBrainz.group_url("rg-1"),
+            "https://musicbrainz.org/release-group/rg-1"
+        );
+        assert_eq!(
+            MetadataSource::Discogs.release_url("42"),
+            "https://www.discogs.com/release/42"
+        );
+        assert_eq!(
+            MetadataSource::Discogs.group_url("master-7"),
+            "https://www.discogs.com/master/master-7"
+        );
     }
 }
