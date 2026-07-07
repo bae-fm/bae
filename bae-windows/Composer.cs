@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Text.Json.Serialization;
+using System.Linq;
 using Microsoft.UI.Xaml.Media;
 using uniffi.bae_bridge;
 
@@ -8,114 +7,167 @@ namespace Bae.Windows;
 
 public sealed class LibrarySearchResults
 {
-    public required List<Album> Albums { get; set; }
-    public required List<TrackSearchResult> Tracks { get; set; }
-    public required List<ComposerSummary> Composers { get; set; }
-    public required List<WorkSummary> Works { get; set; }
+    public LibrarySearchResults(BridgeSearchResults results)
+    {
+        Albums = results.Albums.Select(album => new Album(album)).ToList();
+        Tracks = results.Tracks.Select(track => new TrackSearchResult(track)).ToList();
+        Composers = results.Composers.Select(composer => new ComposerSummary(composer)).ToList();
+        Works = results.Works.Select(work => new WorkSummary(work)).ToList();
+    }
+
+    public List<Album> Albums { get; }
+    public List<TrackSearchResult> Tracks { get; }
+    public List<ComposerSummary> Composers { get; }
+    public List<WorkSummary> Works { get; }
 }
 
 public sealed class TrackSearchResult
 {
-    public required string Id { get; set; }
-    public required string Title { get; set; }
-    public long? DurationMs { get; set; }
-    public required string AlbumId { get; set; }
-    public required string AlbumTitle { get; set; }
-    public required string ArtistName { get; set; }
+    private readonly BridgeTrackSearchResult _track;
+
+    public TrackSearchResult(BridgeTrackSearchResult track)
+    {
+        _track = track;
+    }
+
+    public string Id => _track.Id;
+    public string Title => _track.Title;
+    public long? DurationMs => _track.DurationMs;
+    public string AlbumId => _track.AlbumId;
+    public string AlbumTitle => _track.AlbumTitle;
+    public string ArtistName => _track.ArtistName;
     public string DurationLabel => Loc.Duration(DurationMs);
 }
 
 public sealed class ComposerSummary
 {
-    [SetsRequiredMembers]
-    public ComposerSummary()
+    private readonly BridgeComposerSummary _composer;
+
+    public ComposerSummary(BridgeComposerSummary composer)
     {
-        ArtistId = string.Empty;
-        Name = string.Empty;
+        _composer = composer;
     }
 
-    public required string ArtistId { get; set; }
-    public required string Name { get; set; }
-    public string? SortName { get; set; }
-    public long WorkCount { get; set; }
-    public long LinkedReleaseCount { get; set; }
-    public long UnlinkedCreditCount { get; set; }
-    public ImageRef? Image { get; set; }
+    public string ArtistId => _composer.ArtistId;
+    public string Name => _composer.Name;
+    public string? SortName => _composer.SortName;
+    public long WorkCount => _composer.WorkCount;
+    public long LinkedReleaseCount => _composer.LinkedReleaseCount;
+    public long UnlinkedCreditCount => _composer.UnlinkedCreditCount;
 
-    [JsonIgnore]
     internal AppHandle? Handle { get; set; }
 
-    public ImageSource? Cover => CoverImage.LoadByImageRef(Handle, Image);
+    public ImageSource? Cover => CoverImage.LoadByImageRef(Handle, _composer.Image);
     public string WorkCountText => Loc.Chrome("work.count", "count", Loc.Number(WorkCount));
 }
 
 public sealed class WorkSummary
 {
-    public required string WorkId { get; set; }
-    public required string Title { get; set; }
-    public string? Disambiguation { get; set; }
-    public string? WorkType { get; set; }
-    public string? ParentWorkId { get; set; }
-    public string? ComposerNames { get; set; }
-    public long LinkedReleaseCount { get; set; }
-    public string? RepresentativeReleaseId { get; set; }
-    public ImageRef? RepresentativeCover { get; set; }
+    private readonly BridgeWorkSummary _work;
 
-    [JsonIgnore]
+    public WorkSummary(BridgeWorkSummary work)
+    {
+        _work = work;
+    }
+
+    public string WorkId => _work.WorkId;
+    public string Title => _work.Title;
+    public string? Disambiguation => _work.Disambiguation;
+    public string? WorkType => _work.WorkType;
+    public string? ParentWorkId => _work.ParentWorkId;
+    public string? ComposerNames => _work.ComposerNames;
+    public long LinkedReleaseCount => _work.LinkedReleaseCount;
+    public string? RepresentativeReleaseId => _work.RepresentativeReleaseId;
+
     internal AppHandle? Handle { get; set; }
 
-    public ImageSource? Cover => CoverImage.LoadByImageRef(Handle, RepresentativeCover);
+    public ImageSource? Cover => CoverImage.LoadByImageRef(Handle, _work.RepresentativeCover);
 }
 
 public sealed class ComposerWorkGroup
 {
-    public required string Id { get; set; }
-    public WorkSummary? Parent { get; set; }
-    public required List<WorkSummary> Works { get; set; }
+    public ComposerWorkGroup(BridgeComposerWorkGroup group)
+    {
+        Id = group.Id;
+        Parent = group.Parent is null ? null : new WorkSummary(group.Parent);
+        Works = group.Works.Select(work => new WorkSummary(work)).ToList();
+    }
+
+    public string Id { get; }
+    public WorkSummary? Parent { get; }
+    public List<WorkSummary> Works { get; }
 }
 
 public sealed class ComposerDetail
 {
-    public required ComposerSummary Composer { get; set; }
-    public required List<ComposerWorkGroup> WorkGroups { get; set; }
-    public required List<ReleaseRoleSummary> UnlinkedReleaseRoles { get; set; }
-    public required List<TrackRoleSummary> UnlinkedTrackRoles { get; set; }
-    public string? DefaultWorkId { get; set; }
+    public ComposerDetail(BridgeComposerDetail detail)
+    {
+        Composer = new ComposerSummary(detail.Composer);
+        WorkGroups = detail.WorkGroups.Select(group => new ComposerWorkGroup(group)).ToList();
+        UnlinkedReleaseRoles = detail.UnlinkedReleaseRoles.Select(role => new ReleaseRoleSummary(role)).ToList();
+        UnlinkedTrackRoles = detail.UnlinkedTrackRoles.Select(role => new TrackRoleSummary(role)).ToList();
+        DefaultWorkId = detail.DefaultWorkId;
+    }
+
+    public ComposerSummary Composer { get; }
+    public List<ComposerWorkGroup> WorkGroups { get; }
+    public List<ReleaseRoleSummary> UnlinkedReleaseRoles { get; }
+    public List<TrackRoleSummary> UnlinkedTrackRoles { get; }
+    public string? DefaultWorkId { get; }
 }
 
 public sealed class ReleaseRoleSummary
 {
-    public required string ReleaseId { get; set; }
-    public required string AlbumId { get; set; }
-    public required string AlbumTitle { get; set; }
-    public string? SourceCredit { get; set; }
+    private readonly BridgeReleaseRoleSummary _role;
+
+    public ReleaseRoleSummary(BridgeReleaseRoleSummary role)
+    {
+        _role = role;
+    }
+
+    public string ReleaseId => _role.ReleaseId;
+    public string AlbumId => _role.AlbumId;
+    public string AlbumTitle => _role.AlbumTitle;
+    public string? SourceCredit => _role.SourceCredit;
 }
 
 public sealed class TrackRoleSummary
 {
-    public required string TrackId { get; set; }
-    public required string TrackTitle { get; set; }
-    public required string ReleaseId { get; set; }
-    public required string AlbumId { get; set; }
-    public required string AlbumTitle { get; set; }
-    public required string ArtistId { get; set; }
-    public required string ArtistName { get; set; }
-    public string? SourceCredit { get; set; }
+    private readonly BridgeTrackRoleSummary _role;
+
+    public TrackRoleSummary(BridgeTrackRoleSummary role)
+    {
+        _role = role;
+    }
+
+    public string TrackId => _role.TrackId;
+    public string TrackTitle => _role.TrackTitle;
+    public string ReleaseId => _role.ReleaseId;
+    public string AlbumId => _role.AlbumId;
+    public string AlbumTitle => _role.AlbumTitle;
+    public string ArtistId => _role.ArtistId;
+    public string ArtistName => _role.ArtistName;
+    public string? SourceCredit => _role.SourceCredit;
 }
 
 public sealed class WorkReleaseSummary
 {
-    public required string ReleaseId { get; set; }
-    public required string AlbumId { get; set; }
-    public required string AlbumTitle { get; set; }
-    public required string DisplayName { get; set; }
-    public string? Format { get; set; }
-    public ImageRef? Cover { get; set; }
+    private readonly BridgeWorkReleaseSummary _release;
 
-    [JsonIgnore]
+    public WorkReleaseSummary(BridgeWorkReleaseSummary release)
+    {
+        _release = release;
+    }
+
+    public string ReleaseId => _release.ReleaseId;
+    public string AlbumId => _release.AlbumId;
+    public string AlbumTitle => _release.AlbumTitle;
+    public string DisplayName => _release.DisplayName;
+    public string? Format => _release.Format;
+
     internal AppHandle? Handle { get; set; }
 
-    public ImageSource? CoverImage => Bae.Windows.CoverImage.LoadByImageRef(Handle, Cover);
+    public ImageSource? CoverImage => Bae.Windows.CoverImage.LoadByImageRef(Handle, _release.Cover);
     public string DisplaySubtitle =>
         string.IsNullOrWhiteSpace(Format)
             ? DisplayName
@@ -124,17 +176,32 @@ public sealed class WorkReleaseSummary
 
 public sealed class WorkTrackSummary
 {
-    public required string TrackId { get; set; }
-    public required string TrackTitle { get; set; }
-    public required string ReleaseId { get; set; }
-    public required string AlbumId { get; set; }
-    public required string AlbumTitle { get; set; }
+    private readonly BridgeWorkTrackSummary _track;
+
+    public WorkTrackSummary(BridgeWorkTrackSummary track)
+    {
+        _track = track;
+    }
+
+    public string TrackId => _track.TrackId;
+    public string TrackTitle => _track.TrackTitle;
+    public string ReleaseId => _track.ReleaseId;
+    public string AlbumId => _track.AlbumId;
+    public string AlbumTitle => _track.AlbumTitle;
 }
 
 public sealed class WorkDetail
 {
-    public required WorkSummary Work { get; set; }
-    public required List<WorkSummary> ChildWorks { get; set; }
-    public required List<WorkReleaseSummary> Releases { get; set; }
-    public required List<WorkTrackSummary> Tracks { get; set; }
+    public WorkDetail(BridgeWorkDetail detail)
+    {
+        Work = new WorkSummary(detail.Work);
+        ChildWorks = detail.ChildWorks.Select(work => new WorkSummary(work)).ToList();
+        Releases = detail.Releases.Select(release => new WorkReleaseSummary(release)).ToList();
+        Tracks = detail.Tracks.Select(track => new WorkTrackSummary(track)).ToList();
+    }
+
+    public WorkSummary Work { get; }
+    public List<WorkSummary> ChildWorks { get; }
+    public List<WorkReleaseSummary> Releases { get; }
+    public List<WorkTrackSummary> Tracks { get; }
 }

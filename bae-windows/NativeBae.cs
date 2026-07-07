@@ -11,10 +11,6 @@ namespace Bae.Windows;
 internal static class NativeBae
 {
     private static BridgeDiagnostics? Diagnostics;
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-    };
 
     /// <summary>One-time startup: register the OS credential store.</summary>
     internal static void Startup() => BaeBridgeMethods.InitKeyring();
@@ -633,14 +629,18 @@ internal static class NativeBae
     internal static string? ChangeCover(AppHandle handle, string albumId, string releaseId, BridgeCoverSelection selection) =>
         CaptureError(() => Await(handle.ChangeCover(albumId, releaseId, selection)));
 
-    internal static string? AlbumPageJson(AppHandle handle, ulong offset, ulong limit, string sortField, bool ascending) =>
-        CaptureValue(() => Json(Await(handle.GetAlbumPage(SortCriteria(sortField, ascending), offset, limit))));
+    internal static (List<Album>? Albums, string? Error) AlbumPage(AppHandle handle, ulong offset, ulong limit, string sortField, bool ascending) =>
+        CaptureBridgeValue(() => Await(handle.GetAlbumPage(SortCriteria(sortField, ascending), offset, limit))
+            .Select(album => new Album(album))
+            .ToList());
 
     internal static long ComposerCount(AppHandle handle) =>
         checked((long)Await(handle.GetComposerCount()));
 
-    internal static string? ComposerPageJson(AppHandle handle, ulong offset, ulong limit, string sortField, bool ascending) =>
-        CaptureValue(() => Json(Await(handle.GetComposerPage(ComposerSort(sortField, ascending), offset, limit))));
+    internal static (List<ComposerSummary>? Composers, string? Error) ComposerPage(AppHandle handle, ulong offset, ulong limit, string sortField, bool ascending) =>
+        CaptureBridgeValue(() => Await(handle.GetComposerPage(ComposerSort(sortField, ascending), offset, limit))
+            .Select(composer => new ComposerSummary(composer))
+            .ToList());
 
     internal static (BridgeGalleryItem[]? Items, string? Error) Gallery(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() =>
@@ -694,17 +694,25 @@ internal static class NativeBae
     internal static string? CancelReleaseTransition(AppHandle handle, string releaseId) =>
         CaptureError(() => Await(handle.CancelReleaseTransition(releaseId)));
 
-    internal static string? SearchJson(AppHandle handle, string query) =>
-        CaptureValue(() => Json(SearchResults(Await(handle.SearchLibrary(query)))));
+    internal static (LibrarySearchResults? Results, string? Error) Search(AppHandle handle, string query) =>
+        CaptureBridgeValue(() => new LibrarySearchResults(Await(handle.SearchLibrary(query))));
 
-    internal static string? AlbumDetailJson(AppHandle handle, string albumId) =>
-        CaptureValue(() => Json(AlbumDetail(Await(handle.GetAlbumDetail(albumId)))));
+    internal static (AlbumDetail? Detail, string? Error) GetAlbumDetail(AppHandle handle, string albumId) =>
+        CaptureBridgeValue(() => new AlbumDetail(Await(handle.GetAlbumDetail(albumId))));
 
-    internal static string? ComposerDetailJson(AppHandle handle, string artistId) =>
-        CaptureValue(() => Json(Await(handle.GetComposerDetail(artistId))));
+    internal static (ComposerDetail? Detail, string? Error) GetComposerDetail(AppHandle handle, string artistId) =>
+        CaptureBridgeValue(() =>
+        {
+            var detail = Await(handle.GetComposerDetail(artistId));
+            return detail is null ? null : new ComposerDetail(detail);
+        });
 
-    internal static string? WorkDetailJson(AppHandle handle, string workId) =>
-        CaptureValue(() => Json(Await(handle.GetWorkDetail(workId))));
+    internal static (WorkDetail? Detail, string? Error) GetWorkDetail(AppHandle handle, string workId) =>
+        CaptureBridgeValue(() =>
+        {
+            var detail = Await(handle.GetWorkDetail(workId));
+            return detail is null ? null : new WorkDetail(detail);
+        });
 
     internal static Settings GetSettings(AppHandle handle) =>
         Settings(handle.GetConfig(), handle.GetMcpServerStatus(), handle.GetSyncStatus());
@@ -850,8 +858,8 @@ internal static class NativeBae
             new BridgeIdentityChoice.Exact(chosenReleaseId, source),
             ReleaseUserEdit(userEdit)));
 
-    internal static byte[]? ImageBytes(AppHandle? handle, ImageRef image) =>
-        handle is null ? null : CaptureBytes(() => Await(handle.FetchImageBytes(new BridgeImageRef(image.Id, image.Version, LibraryImageType(image.ImageType)))));
+    internal static byte[]? ImageBytes(AppHandle? handle, BridgeImageRef image) =>
+        handle is null ? null : CaptureBytes(() => Await(handle.FetchImageBytes(image)));
 
     internal static byte[]? CoverImageBytes(AppHandle? handle, string imageId) =>
         handle is null ? null : CaptureBytes(() => Await(handle.FetchCoverImageBytes(imageId)));
@@ -909,8 +917,6 @@ internal static class NativeBae
     private static T Await<T>(System.Threading.Tasks.Task<T> task) => task.GetAwaiter().GetResult();
 
     private static void Await(System.Threading.Tasks.Task task) => task.GetAwaiter().GetResult();
-
-    private static string Json<T>(T value) => JsonSerializer.Serialize(value, JsonOptions);
 
     private static string? CaptureError(Action action)
     {
@@ -1019,45 +1025,6 @@ internal static class NativeBae
             McpPort = config.Mcp.Port,
             McpStatus = mcpStatus,
         };
-
-    private static object SearchResults(BridgeSearchResults results) =>
-        new
-        {
-            albums = results.Albums.Select(album => new
-            {
-                id = album.Id,
-                title = album.Title,
-                artist = album.ArtistName,
-                cover = album.Cover,
-            }).ToArray(),
-            tracks = results.Tracks,
-            composers = results.Composers,
-            works = results.Works,
-        };
-
-    private static object AlbumDetail(BridgeAlbumDetail detail) =>
-        new
-        {
-            id = detail.Album.Id,
-            title = detail.Album.Title,
-            artist = detail.Album.ArtistNames,
-            primary_release_id = detail.Album.PrimaryReleaseId,
-            cover = detail.Album.Cover,
-            releases = detail.Releases.Select(release => new
-            {
-                release_id = release.Id,
-                display_name = release.DisplayName,
-                tracks = release.Tracks.Select(track => new
-                {
-                    track_id = track.Id,
-                    title = track.Title,
-                    position_label = track.PositionText,
-                    duration_ms = track.DurationMs,
-                    artist = track.ArtistNames,
-                }).ToArray(),
-            files = release.Files.Select(FileJson).ToArray(),
-        }).ToArray(),
-    };
 
     private static List<ReleaseCandidateChoice> CandidateChoices(BridgeCandidateSearchResults results) =>
         results.Groups
@@ -1241,17 +1208,6 @@ internal static class NativeBae
             _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown cover image source"),
         };
 
-    private static object FileJson(BridgeFile file) =>
-        new
-        {
-            id = file.Id,
-            original_filename = file.OriginalFilename,
-            file_size = file.FileSize,
-            content_type = file.ContentType,
-            is_image = file.IsImage,
-            audio_format = file.AudioFormat,
-        };
-
     private static ExportPreset ExportPreset(BridgeExportPreset preset) =>
         new()
         {
@@ -1420,15 +1376,6 @@ internal static class NativeBae
             "append_to_previous_except_htoa" => BridgeExportPregapPlacement.AppendToPreviousExceptHtoa,
             _ => throw new ArgumentOutOfRangeException(nameof(placement), placement, "Unknown pregap placement"),
         };
-
-    private static string RequiredString(JsonElement element, string field) =>
-        element.GetString() ?? throw new JsonException($"{field} must be a string");
-
-    private static string LibraryImageTypeTag(BridgeLibraryImageType imageType) =>
-        imageType == BridgeLibraryImageType.Artist ? "artist" : "cover";
-
-    private static BridgeLibraryImageType LibraryImageType(string imageType) =>
-        imageType == "artist" ? BridgeLibraryImageType.Artist : BridgeLibraryImageType.Cover;
 
     private static BridgeMetadataSource MetadataSource(string source) =>
         source == "discogs" ? BridgeMetadataSource.Discogs : BridgeMetadataSource.MusicBrainz;

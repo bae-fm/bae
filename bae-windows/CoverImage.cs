@@ -39,7 +39,7 @@ internal static class CoverImage
     /// <paramref name="cover"/> is null or the bytes can't be read or decoded.
     /// Used by the grid tile and the gallery's cover slot.
     /// </summary>
-    public static BitmapImage? LoadByImageRef(AppHandle? handle, ImageRef? cover)
+    public static BitmapImage? LoadByImageRef(AppHandle? handle, BridgeImageRef? cover)
     {
         if (cover is null)
         {

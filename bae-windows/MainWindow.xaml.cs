@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
-using System.Text.Json;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -84,11 +83,6 @@ public sealed partial class MainWindow : Window
         string? AlbumId,
         string? TrackId,
         PlaybackPositionState? Position);
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-    };
 
     private readonly object _handleGate = new();
     private AppHandle? _handle;
@@ -299,8 +293,8 @@ public sealed partial class MainWindow : Window
         switch (_browserMode)
         {
             case BrowserMode.Albums:
-                var (current, json) = WithCurrentHandle(
-                    handle => NativeBae.AlbumPageJson(
+                var (current, page) = WithCurrentHandle(
+                    handle => NativeBae.AlbumPage(
                         handle,
                         0,
                         FirstPageSize,
@@ -310,7 +304,7 @@ public sealed partial class MainWindow : Window
                 {
                     return;
                 }
-                SetAlbums(json, Loc.Chrome("library.empty"));
+                SetAlbums(page.Albums, page.Error, Loc.Chrome("library.empty"));
                 break;
             case BrowserMode.Composers:
                 LoadComposers();
@@ -3396,16 +3390,16 @@ public sealed partial class MainWindow : Window
         }
         else
         {
-            var (current, json) = WithCurrentHandle(handle => NativeBae.SearchJson(handle, query));
+            var (current, search) = WithCurrentHandle(handle => NativeBae.Search(handle, query));
             if (!current)
             {
                 return;
             }
-            SetSearchResults(json, query);
+            SetSearchResults(search.Results, search.Error, query);
         }
     }
 
-    private void SetSearchResults(string? json, string query)
+    private void SetSearchResults(LibrarySearchResults? results, string? error, string query)
     {
         var handle = CurrentHandleOrNull();
         if (handle == null)
@@ -3415,25 +3409,9 @@ public sealed partial class MainWindow : Window
 
         ShowSearchBrowser();
         SearchResultsPanel.Children.Clear();
-        if (json is null)
+        if (error is not null || results is null)
         {
-            StatusText.Text = Loc.Chrome("search.failed");
-            return;
-        }
-
-        LibrarySearchResults? results;
-        try
-        {
-            results = JsonSerializer.Deserialize<LibrarySearchResults>(json, JsonOptions);
-        }
-        catch (JsonException)
-        {
-            StatusText.Text = Loc.Chrome("search.failed");
-            return;
-        }
-        if (results is null)
-        {
-            StatusText.Text = Loc.Chrome("search.failed");
+            StatusText.Text = error ?? Loc.Chrome("search.failed");
             return;
         }
         foreach (var album in results.Albums)
@@ -3512,8 +3490,8 @@ public sealed partial class MainWindow : Window
         return button;
     }
 
-    /// <summary>Replace the grid's albums from an generated bridge JSON array (or show a status).</summary>
-    private void SetAlbums(string? json, string emptyMessage)
+    /// <summary>Replace the grid's albums from generated bridge rows.</summary>
+    private void SetAlbums(List<Album>? albums, string? error, string emptyMessage)
     {
         var handle = CurrentHandleOrNull();
         if (handle == null)
@@ -3523,18 +3501,14 @@ public sealed partial class MainWindow : Window
 
         ShowAlbumBrowser();
         Albums.Clear();
-        if (json is null)
+        if (error is not null || albums is null)
         {
-            StatusText.Text = Loc.Chrome("library.load_failed");
+            StatusText.Text = error ?? Loc.Chrome("library.load_failed");
             return;
         }
 
-        var albums = JsonSerializer.Deserialize<List<Album>>(json, JsonOptions)
-            ?? new List<Album>();
         foreach (var album in albums)
         {
-            // The grid tile fetches its cover bytes by id, which needs the handle;
-            // the wire shape carries none, so inject it before the tile binds.
             album.Handle = handle;
             Albums.Add(album);
         }
@@ -3547,8 +3521,8 @@ public sealed partial class MainWindow : Window
         ShowComposerBrowser();
         Composers.Clear();
         ComposerDetailPane.Children.Clear();
-        var (current, json) = WithCurrentHandle(
-            handle => NativeBae.ComposerPageJson(
+        var (current, page) = WithCurrentHandle(
+            handle => NativeBae.ComposerPage(
                 handle,
                 0,
                 FirstPageSize,
@@ -3558,25 +3532,9 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
-        if (json is null)
+        if (page.Error is not null || page.Composers is null)
         {
-            StatusText.Text = Loc.Chrome("library.load_failed");
-            return;
-        }
-
-        List<ComposerSummary>? composers;
-        try
-        {
-            composers = JsonSerializer.Deserialize<List<ComposerSummary>>(json, JsonOptions);
-        }
-        catch (JsonException)
-        {
-            StatusText.Text = Loc.Chrome("library.load_failed");
-            return;
-        }
-        if (composers is null)
-        {
-            StatusText.Text = Loc.Chrome("library.load_failed");
+            StatusText.Text = page.Error ?? Loc.Chrome("library.load_failed");
             return;
         }
         var handle = CurrentHandleOrNull();
@@ -3584,12 +3542,12 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
-        foreach (var composer in composers)
+        foreach (var composer in page.Composers)
         {
             composer.Handle = handle;
             Composers.Add(composer);
         }
-        StatusText.Text = composers.Count == 0 ? Loc.Chrome("library.no_composers") : string.Empty;
+        StatusText.Text = page.Composers.Count == 0 ? Loc.Chrome("library.no_composers") : string.Empty;
     }
 
     private async void OnComposerClick(object sender, ItemClickEventArgs e)
@@ -3604,24 +3562,19 @@ public sealed partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShowComposerDetail(string artistId)
     {
-        var (current, json) = await RunForCurrentHandle(
-            handle => NativeBae.ComposerDetailJson(handle, artistId));
+        var (current, response) = await RunForCurrentHandle(
+            handle => NativeBae.GetComposerDetail(handle, artistId));
         if (!current)
         {
             return;
         }
-        if (json is null)
+        if (response.Error is not null || response.Detail is null)
         {
-            StatusText.Text = Loc.Chrome("composer.open_failed");
+            StatusText.Text = response.Error ?? Loc.Chrome("composer.open_failed");
             return;
         }
 
-        var detail = JsonSerializer.Deserialize<ComposerDetail>(json, JsonOptions);
-        if (detail is null)
-        {
-            StatusText.Text = Loc.Chrome("composer.open_failed");
-            return;
-        }
+        var detail = response.Detail;
         var handle = CurrentHandleOrNull();
         if (handle == null)
         {
@@ -3723,24 +3676,19 @@ public sealed partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShowWorkDetail(string workId, bool replacePane = true)
     {
-        var (current, json) = await RunForCurrentHandle(
-            handle => NativeBae.WorkDetailJson(handle, workId));
+        var (current, response) = await RunForCurrentHandle(
+            handle => NativeBae.GetWorkDetail(handle, workId));
         if (!current)
         {
             return;
         }
-        if (json is null)
+        if (response.Error is not null || response.Detail is null)
         {
-            StatusText.Text = Loc.Chrome("work.open_failed");
+            StatusText.Text = response.Error ?? Loc.Chrome("work.open_failed");
             return;
         }
 
-        var detail = JsonSerializer.Deserialize<WorkDetail>(json, JsonOptions);
-        if (detail is null)
-        {
-            StatusText.Text = Loc.Chrome("work.open_failed");
-            return;
-        }
+        var detail = response.Detail;
         var handle = CurrentHandleOrNull();
         if (handle == null)
         {
@@ -3815,24 +3763,19 @@ public sealed partial class MainWindow : Window
         string? scrollToTrackId = null,
         string? initialReleaseId = null)
     {
-        var (current, json) = await RunForCurrentHandle(
-            handle => NativeBae.AlbumDetailJson(handle, albumId));
+        var (current, response) = await RunForCurrentHandle(
+            handle => NativeBae.GetAlbumDetail(handle, albumId));
         if (!current)
         {
             return;
         }
-        if (json is null)
+        if (response.Error is not null || response.Detail is null)
         {
-            StatusText.Text = Loc.Chrome("album.open_failed");
+            StatusText.Text = response.Error ?? Loc.Chrome("album.open_failed");
             return;
         }
 
-        var detail = JsonSerializer.Deserialize<AlbumDetail>(json, JsonOptions);
-        if (detail is null)
-        {
-            StatusText.Text = Loc.Chrome("album.open_failed");
-            return;
-        }
+        var detail = response.Detail;
 
         if (detail.Releases.Count == 0)
         {

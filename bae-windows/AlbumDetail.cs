@@ -1,33 +1,43 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
+﻿using System.Collections.Generic;
+using System.Linq;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
-/// <summary>
-/// One album's detail, deserialized from the FFI's <c>bae_album_detail</c> JSON.
-/// Header fields plus every release with its tracks; the view shows
-/// <see cref="PrimaryReleaseId"/> first and lets the user switch releases.
-/// </summary>
+/// <summary>One album's detail plus every release with its tracks.</summary>
 public sealed class AlbumDetail
 {
-    public string Id { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public string Artist { get; set; } = string.Empty;
-    public string PrimaryReleaseId { get; set; } = string.Empty;
-    public List<Release> Releases { get; set; } = new();
+    private readonly BridgeAlbumDetail _detail;
+
+    public AlbumDetail(BridgeAlbumDetail detail)
+    {
+        _detail = detail;
+        Releases = detail.Releases.Select(release => new Release(release)).ToList();
+    }
+
+    public string Id => _detail.Album.Id;
+    public string Title => _detail.Album.Title;
+    public string Artist => _detail.Album.ArtistNames;
+    public string PrimaryReleaseId => _detail.Album.PrimaryReleaseId;
+    public List<Release> Releases { get; }
 }
 
 /// <summary>One release within an album's detail, shown in the release picker.</summary>
 public sealed class Release
 {
-    public string ReleaseId { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public List<Track> Tracks { get; set; } = new();
+    private readonly BridgeRelease _release;
 
-    /// <summary>The release's files (audio + images), each carrying its
-    /// structured audio format where applicable.</summary>
-    public List<ReleaseFile> Files { get; set; } = new();
+    public Release(BridgeRelease release)
+    {
+        _release = release;
+        Tracks = release.Tracks.Select(track => new Track(track)).ToList();
+        Files = release.Files.Select(file => new ReleaseFile(file)).ToList();
+    }
+
+    public string ReleaseId => _release.Id;
+    public string DisplayName => _release.DisplayName;
+    public List<Track> Tracks { get; }
+    public List<ReleaseFile> Files { get; }
 
     /// <summary>The picker label.</summary>
     public override string ToString() => DisplayName;
@@ -36,63 +46,61 @@ public sealed class Release
 /// <summary>One track row in an album's detail.</summary>
 public sealed class Track
 {
-    public string TrackId { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
+    private readonly BridgeTrack _track;
 
-    /// <summary>Raw track length in milliseconds, or null when unknown.</summary>
-    public long? DurationMs { get; set; }
+    public Track(BridgeTrack track)
+    {
+        _track = track;
+    }
 
-    public string Artist { get; set; } = string.Empty;
-
-    /// <summary>The core-rendered position string, e.g. "A1" / "2-3" / "5".</summary>
-    public string PositionLabel { get; set; } = string.Empty;
-
-    /// <summary>The track length formatted for the locale, e.g. "3:07"; empty if
-    /// unknown.</summary>
+    public string TrackId => _track.Id;
+    public string Title => _track.Title;
+    public long? DurationMs => _track.DurationMs;
+    public string Artist => _track.ArtistNames;
+    public string PositionLabel => _track.PositionText;
     public string DurationLabel => Loc.Duration(DurationMs);
 
     /// <summary>The list row; used as the default item text.</summary>
     public override string ToString() => $"{PositionLabel}  {Title}  {DurationLabel}".Trim();
 }
 
-/// <summary>
-/// One file in a release, mirroring the FFI's <c>FfiFile</c> (and the bridge's
-/// <c>BridgeFile</c>). <see cref="AudioFormat"/> is null for non-audio files.
-/// </summary>
+/// <summary>One file in a release.</summary>
 public sealed class ReleaseFile
 {
-    public string Id { get; set; } = string.Empty;
-    public string OriginalFilename { get; set; } = string.Empty;
-    public long FileSize { get; set; }
-    public string ContentType { get; set; } = string.Empty;
-    public bool IsImage { get; set; }
+    private readonly BridgeFile _file;
 
-    /// <summary>Structured audio format for an audio file; null otherwise.</summary>
-    public AudioFormat? AudioFormat { get; set; }
+    public ReleaseFile(BridgeFile file)
+    {
+        _file = file;
+        AudioFormat = file.AudioFormat is null ? null : new AudioFormat(file.AudioFormat);
+    }
 
-    /// <summary>File size formatted for the locale, e.g. "12.4 MB".</summary>
+    public string Id => _file.Id;
+    public string OriginalFilename => _file.OriginalFilename;
+    public long FileSize => _file.FileSize;
+    public string ContentType => _file.ContentType;
+    public bool IsImage => _file.IsImage;
+    public AudioFormat? AudioFormat { get; }
     public string SizeLabel => Loc.Bytes(FileSize);
 }
 
-/// <summary>
-/// A file's structured audio format, mirroring the FFI's <c>FfiAudioFormat</c>
-/// (and the bridge's <c>BridgeAudioFormat</c>). The one-line descriptor is
-/// composed here from the parts: the codec is a proper noun, numbers format per
-/// locale, and the channel count maps to a localized word.
-/// <see cref="BitsPerSample"/> present means lossless (show the bit depth);
-/// absent means lossy (show <see cref="BitrateKbps"/>).
-/// </summary>
+/// <summary>A file's structured audio format.</summary>
 public sealed class AudioFormat
 {
-    public string Codec { get; set; } = string.Empty;
-    public long SampleRateHz { get; set; }
-    public long? BitsPerSample { get; set; }
-    public long? BitrateKbps { get; set; }
-    public long Channels { get; set; }
+    private readonly BridgeAudioFormat _format;
 
-    /// <summary>The one-line descriptor, e.g. "FLAC · 44.1 kHz · 16-bit · stereo"
-    /// (lossless) or "MP3 · 320 kbps · 44.1 kHz · stereo" (lossy).</summary>
-    [JsonIgnore]
+    public AudioFormat(BridgeAudioFormat format)
+    {
+        _format = format;
+    }
+
+    public string Codec => _format.Codec;
+    public long SampleRateHz => _format.SampleRateHz;
+    public long? BitsPerSample => _format.BitsPerSample;
+    public long? BitrateKbps => _format.BitrateKbps;
+    public long Channels => _format.Channels;
+
+    /// <summary>The one-line descriptor, e.g. codec, rate, bit depth, channels.</summary>
     public string Text
     {
         get
@@ -114,9 +122,6 @@ public sealed class AudioFormat
         }
     }
 
-    /// <summary>The localized channel word ("mono"/"stereo") or "{n}ch" for
-    /// counts with no word. The key comes from the FFI (one source for the
-    /// mapping), resolved through the Core catalog.</summary>
     private string ChannelsText
     {
         get
