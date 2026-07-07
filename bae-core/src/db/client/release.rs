@@ -879,12 +879,15 @@ impl Database {
     /// release was never announced to the library, and its audio files are the
     /// user's in-place source files, so this clears coven's external refs without
     /// queuing file deletion.
+    /// Returns the cover and artist-image blobs this rollback orphaned, so the
+    /// caller can evict them from coven's on-device store (the transaction
+    /// drops the rows but cannot reach the blob store).
     pub async fn fail_import_and_delete_release(
         &self,
         import_id: &str,
         release_id: &str,
         error: &str,
-    ) -> Result<(), DbError> {
+    ) -> Result<Vec<OrphanedImageBlob>, DbError> {
         let import_id = import_id.to_string();
         let release_id = release_id.to_string();
         let error = error.to_string();
@@ -979,6 +982,26 @@ impl Database {
                 }
             }
 
+            // The cover blob finalize wrote for this release, captured before
+            // the release cascade drops its `covers` row. The failed release
+            // never went remote, so its blob lives only in coven's on-device
+            // store — the caller evicts it.
+            let mut orphaned_images: Vec<OrphanedImageBlob> = Vec::new();
+            if let Some(cloud_path) = conn
+                .query_row(
+                    "SELECT cloud_path FROM covers WHERE id = ?",
+                    params![release_id],
+                    |row| row.get::<_, Option<String>>(0),
+                )
+                .optional()?
+            {
+                orphaned_images.push(OrphanedImageBlob {
+                    namespace: crate::sync::COVERS_NAMESPACE,
+                    id: release_id.clone(),
+                    cloud_path,
+                });
+            }
+
             conn.execute(
                 "DELETE FROM local_blob_refs
                  WHERE namespace = ?
@@ -1045,7 +1068,16 @@ impl Database {
             // has no ON DELETE CASCADE, so this guard is also what keeps the
             // delete from violating that foreign key.
             for artist_id in &candidate_artist_ids {
-                conn.execute(
+                // Read the artist's image row before the delete cascades it, so
+                // a deleted artist's orphaned image blob can be evicted.
+                let image_cloud_path: Option<Option<String>> = conn
+                    .query_row(
+                        "SELECT cloud_path FROM artist_images WHERE id = ?",
+                        params![artist_id],
+                        |row| row.get::<_, Option<String>>(0),
+                    )
+                    .optional()?;
+                let deleted = conn.execute(
                     "DELETE FROM artists WHERE id = ?1
                        AND NOT EXISTS (SELECT 1 FROM albums WHERE artist_id = ?1)
                        AND NOT EXISTS (SELECT 1 FROM album_artists WHERE artist_id = ?1)
@@ -1055,9 +1087,18 @@ impl Database {
                        AND NOT EXISTS (SELECT 1 FROM track_artist_roles WHERE artist_id = ?1)",
                     params![artist_id],
                 )?;
+                if deleted == 1 {
+                    if let Some(cloud_path) = image_cloud_path {
+                        orphaned_images.push(OrphanedImageBlob {
+                            namespace: crate::sync::ARTIST_IMAGES_NAMESPACE,
+                            id: artist_id.clone(),
+                            cloud_path,
+                        });
+                    }
+                }
             }
 
-            Ok(())
+            Ok(orphaned_images)
         })
         .await
     }

@@ -142,10 +142,18 @@ impl LibraryManager {
         release_id: &str,
         error: &str,
     ) -> Result<(), LibraryError> {
-        Ok(self
+        let orphaned_images = self
             .database
             .fail_import_and_delete_release(import_id, release_id, error)
-            .await?)
+            .await?;
+        // The rollback dropped the cover/artist-image rows; evict their blobs
+        // from coven's on-device store so the failed import leaves nothing.
+        let evict_blobs = orphaned_images
+            .into_iter()
+            .map(|image| Self::image_blob_ref(image.namespace, &image.id, image.cloud_path))
+            .collect();
+        self.evict_delete_blobs(evict_blobs).await;
+        Ok(())
     }
 
     /// Get all active (non-complete, non-failed) imports

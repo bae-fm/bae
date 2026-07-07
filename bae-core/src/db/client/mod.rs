@@ -94,6 +94,17 @@ pub struct DeleteCleanupPlan {
     pub make_remote_release_ids_to_clear: Vec<String>,
 }
 
+/// A host-provided image blob (a cover keyed by release id, or an artist image
+/// keyed by artist id) that a failed-import rollback orphaned by deleting its
+/// row. The DB transaction drops the row but cannot reach coven's on-device
+/// blob store; the manager evicts these after the transaction commits.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OrphanedImageBlob {
+    pub namespace: &'static str,
+    pub id: String,
+    pub cloud_path: Option<String>,
+}
+
 #[derive(Clone, Debug)]
 pub struct ImportReplacementDelete {
     pub release_id: String,

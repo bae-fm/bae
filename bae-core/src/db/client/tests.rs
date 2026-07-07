@@ -1134,6 +1134,214 @@ mod composer_mode_tests {
         );
     }
 
+    /// A failed remote import's cover and artist-image blobs live only in
+    /// coven's on-device store (the release never went remote). The DB
+    /// transaction drops their rows but cannot reach the blob store, so
+    /// `fail_import_and_delete_release` returns the blobs it orphaned for the
+    /// caller to evict — the cover and each deleted artist's image, but not the
+    /// image of an artist a surviving release still references.
+    #[tokio::test]
+    async fn fail_import_and_delete_release_returns_orphaned_image_blobs_to_evict() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+
+        let artist = |id: &str| DbArtist {
+            id: id.to_string(),
+            name: id.to_string(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: now,
+        };
+        db.insert_artist(&artist("artist-exclusive")).await.unwrap();
+        db.insert_artist(&artist("artist-shared")).await.unwrap();
+
+        let pressing = || Pressing {
+            year: Some(2026),
+            format: Some("FLAC".to_string()),
+            label: None,
+            catalog_number: None,
+            country: None,
+            barcode: None,
+        };
+        let album = |id: &str, artist_id: &str| DbAlbum {
+            id: id.to_string(),
+            title: id.to_string(),
+            artist_id: artist_id.to_string(),
+            year: Some(2026),
+            primary_release_id: None,
+            is_compilation: false,
+            created_at: now,
+        };
+        let release = |id: &str, album_id: &str| DbRelease {
+            id: id.to_string(),
+            album_id: album_id.to_string(),
+            release_name: None,
+            pressing: pressing(),
+            disc_id: None,
+            metadata_source: ReleaseMetadataSource::FileTags,
+            metadata_source_release_id: None,
+            remote: false,
+            source_folder_name: None,
+            content_hash: None,
+            album_loudness_lufs: None,
+            album_peak_linear: None,
+            created_at: now,
+        };
+        let track = |id: &str, release_id: &str| DbTrack {
+            id: id.to_string(),
+            release_id: release_id.to_string(),
+            title: id.to_string(),
+            side: 1,
+            track_number: Some(1),
+            duration_ms: Some(1000),
+            discogs_position: None,
+            created_at: now,
+        };
+
+        // A prior surviving album references artist-shared, so the failed
+        // import below must keep artist-shared and its image.
+        db.insert_album_with_release_and_tracks(
+            &album("album-prior", "artist-shared"),
+            &release("release-prior", "album-prior"),
+            &[track("track-prior", "release-prior")],
+            &[],
+            &[],
+        )
+        .await
+        .unwrap();
+
+        db.insert_import(&DbImport::new(
+            "import-a",
+            "Album A",
+            "artist-exclusive",
+            tmp.path().to_str().unwrap(),
+            now,
+        ))
+        .await
+        .unwrap();
+
+        let album_a = album("album-a", "artist-exclusive");
+        let release_a = release("release-a", "album-a");
+        let file_a = DbFile::new(
+            "release-a",
+            "Track A.flac",
+            1024,
+            ContentType::Flac,
+            "file-a".to_string(),
+            now,
+        );
+        let track_files = vec![crate::import::TrackFile::Standalone {
+            db_track: track("track-a", "release-a"),
+            file_path: tmp.path().join("Track A.flac"),
+        }];
+        // The failed release also credits artist-shared, so both artists are
+        // rollback candidates; only artist-exclusive should be deleted.
+        let album_artists = vec![DbAlbumArtist {
+            id: "aa-shared".to_string(),
+            album_id: "album-a".to_string(),
+            artist_id: "artist-shared".to_string(),
+            position: 1,
+            created_at: now,
+        }];
+        let image = |id: &str, image_type: LibraryImageType| DbLibraryImage {
+            id: id.to_string(),
+            image_type,
+            content_type: ContentType::Jpeg,
+            file_size: 3,
+            width: None,
+            height: None,
+            source: "local".to_string(),
+            source_url: None,
+            cloud_path: None,
+            created_at: now,
+        };
+        let cover = image("release-a", LibraryImageType::Cover);
+        let img_exclusive = image("artist-exclusive", LibraryImageType::Artist);
+        let img_shared = image("artist-shared", LibraryImageType::Artist);
+        let bytes = [1u8, 2, 3];
+
+        db.finalize_import_atomic(
+            Some(&album_a),
+            &release_a,
+            &track_files,
+            &[],
+            &[],
+            &album_artists,
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[file_a],
+            &[],
+            &[],
+            Some((&cover, &bytes)),
+            &[(&img_exclusive, &bytes), (&img_shared, &bytes)],
+            Some((&album_a.id, &release_a.id)),
+            "import-a",
+            ImportOperationStatus::Complete,
+            &[],
+            tmp.path().to_str().unwrap(),
+            crate::config::HomeStorage::Opaque,
+            &[],
+        )
+        .await
+        .unwrap();
+
+        let orphaned = db
+            .fail_import_and_delete_release("import-a", "release-a", "remote upload failed")
+            .await
+            .unwrap();
+
+        assert!(
+            orphaned.contains(&OrphanedImageBlob {
+                namespace: crate::sync::COVERS_NAMESPACE,
+                id: "release-a".to_string(),
+                cloud_path: None,
+            }),
+            "the cover blob is returned for eviction: {orphaned:?}"
+        );
+        assert!(
+            orphaned.contains(&OrphanedImageBlob {
+                namespace: crate::sync::ARTIST_IMAGES_NAMESPACE,
+                id: "artist-exclusive".to_string(),
+                cloud_path: None,
+            }),
+            "the deleted artist's image blob is returned for eviction: {orphaned:?}"
+        );
+        assert!(
+            !orphaned.iter().any(|b| b.id == "artist-shared"),
+            "the shared artist survives, so its image is not evicted: {orphaned:?}"
+        );
+        assert_eq!(
+            orphaned.len(),
+            2,
+            "only the cover and the deleted artist's image: {orphaned:?}"
+        );
+
+        // The shared artist and its image row survive; the exclusive one is gone.
+        assert!(db
+            .find_artist_by_id("artist-shared")
+            .await
+            .unwrap()
+            .is_some());
+        assert!(db
+            .find_artist_by_id("artist-exclusive")
+            .await
+            .unwrap()
+            .is_none());
+    }
+
     #[tokio::test]
     async fn complete_import_for_release_marks_active_release_import_complete() {
         let tmp = tempfile::TempDir::new().unwrap();
