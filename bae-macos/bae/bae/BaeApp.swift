@@ -1,3 +1,4 @@
+import BaeKit
 import Combine
 import Sparkle
 import SwiftUI

@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// The pane's Exact / Metadata-only choice, present only for a source-backed

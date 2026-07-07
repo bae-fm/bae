@@ -15,28 +15,32 @@ Install the Rust target if you haven't:
 
     rustup target add aarch64-apple-darwin
 
+## Shared package
+
+The data/service/domain layer and the generated bridge bindings live in the
+`BaeKit` Swift package at the repo root, shared with the iOS app. The app
+depends on it as a local package (`packages.BaeKit: ../../BaeKit` in
+`bae/project.yml`), so a
+single `import BaeKit` brings both the shared layer and the re-exported bridge
+types. `build-macos.sh` produces the package's inputs: it installs the macOS
+uniffi bindings into `BaeKit/Sources/BaeBridge` and writes the
+`BaeKit/Frameworks/BaeBridgeFFI.xcframework` binary target.
+
 ## Build
 
 All commands run from the repo root.
 
-1. Build the Rust FFI bridge:
+1. Build the Rust FFI bridge and install its outputs into BaeKit:
 
-       cd bae-bridge
-       ./build-macos.sh
-       cd ..
+       ./bae-bridge/build-macos.sh
 
-2. Copy outputs into the Xcode project:
-
-       cp -r bae-bridge/BaeBridgeFFI.xcframework bae-macos/
-       cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/
-
-3. Generate the Xcode project:
+2. Generate the Xcode project:
 
        cd bae-macos/bae
        xcodegen
        cd ../..
 
-4. Open in Xcode:
+3. Open in Xcode:
 
        open bae-macos/bae/bae.xcodeproj
 

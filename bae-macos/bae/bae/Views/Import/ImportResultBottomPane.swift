@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import SwiftUI
 
 /// Sizing for the docked confirm pane, shared between the pane (drag clamp) and

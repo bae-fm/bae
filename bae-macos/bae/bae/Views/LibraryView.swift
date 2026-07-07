@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 private let composerLoadBatchSize = 50

@@ -131,12 +131,15 @@ jobs:
     - name: Check Swift formatting
       if: ${{ inputs.edition == 'full' && !cancelled() }}
       run: |
-        find bae-ios/bae/bae -name "*.swift" -not -name bae_bridge.swift -print0 \
+        find bae-ios/bae/bae BaeKit/Sources/BaeKit -name "*.swift" \
+          -not -name 'bae_bridge_*.swift' -print0 \
           | xargs -0 xcrun swift-format lint -s
 
     - name: Swift lint (swiftlint)
       if: ${{ inputs.edition == 'full' && !cancelled() }}
-      run: swiftlint lint --strict --config .swiftlint.yml bae-ios/bae/bae
+      run: |
+        swiftlint lint --strict --config .swiftlint.yml \
+          bae-ios/bae/bae BaeKit/Sources/BaeKit
 
     - name: Dead code check (periphery)
       if: ${{ inputs.edition == 'full' && !cancelled() && steps.build_ios.conclusion == 'success' }}

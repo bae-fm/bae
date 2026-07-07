@@ -116,23 +116,25 @@ if has_changes_in "bae-bridge" || has_changes_in "bae-core"; then
     }
 fi
 
-# bae-macos checks (depends on bae-bridge)
-if has_changes_in "bae-macos" || has_changes_in "bae-bridge"; then
+# bae-macos checks (depends on bae-bridge and the shared BaeKit package)
+if has_changes_in "bae-macos" || has_changes_in "bae-bridge" \
+    || has_changes_in "BaeKit"; then
     if xcrun --find swift-format &> /dev/null; then
-        run_check "swift-format format (bae-macos)" bash -c '
-            find bae-macos/bae/bae -name "*.swift" -not -name bae_bridge.swift -print0 \
+        run_check "swift-format format (bae-macos + BaeKit)" bash -c '
+            find bae-macos/bae/bae BaeKit/Sources/BaeKit -name "*.swift" -print0 \
                 | xargs -0 xcrun swift-format format -i -p
         ' || {
             echo "swift-format format failed"
             exit 1
         }
         restage_and_fail_if_changed "swift-format" "bae-macos/"
+        restage_and_fail_if_changed "swift-format" "BaeKit/"
 
         # Lint catches structural rules the formatter does not auto-fix
         # (e.g. OnlyOneTrailingClosureArgument, TypeNamesShouldBeCapitalized,
         # EndOfLineComment). These need a manual fix.
-        run_check "swift-format lint (bae-macos)" bash -c '
-            find bae-macos/bae/bae -name "*.swift" -not -name bae_bridge.swift -print0 \
+        run_check "swift-format lint (bae-macos + BaeKit)" bash -c '
+            find bae-macos/bae/bae BaeKit/Sources/BaeKit -name "*.swift" -print0 \
                 | xargs -0 xcrun swift-format lint -s
         ' || {
             echo "swift-format lint failed — fix the violations above and commit again"
@@ -145,7 +147,7 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge"; then
         exit 1
     }
 
-    cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+    ./bae-bridge/install-swift-bindings.sh macos
 
     if ! command -v xcodegen &> /dev/null; then
         echo "⚠️  xcodegen not installed, skipping macOS build check"

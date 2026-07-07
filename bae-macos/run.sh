@@ -77,7 +77,7 @@ if [[ "$SKIP_RUST" == false ]]; then
     else
         BAE_BRIDGE_FEATURES="$BAE_BRIDGE_FEATURES_VALUE" ./bae-bridge/build-macos.sh
     fi
-    cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+    ./bae-bridge/install-swift-bindings.sh macos
 fi
 
 if [[ "$RELEASE" == true ]]; then

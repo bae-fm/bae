@@ -78,13 +78,20 @@ def windows_ref(k, src):
 
 PLATFORMS = [
     # (label, keys, is-referenced predicate, source dirs, source extensions)
+    # Both apps compile the shared BaeKit package (Sources/BaeKit), so a key may
+    # be referenced from package code (UnlockView, PauseBetweenSidesToggle, etc.)
+    # rather than app-owned source — shared code resolves keys from each app's
+    # bundle catalog (NSLocalizedString(..., bundle: .main)), so BaeKit's
+    # references count for both catalogs.
     ("macOS", xcstrings_keys("bae-macos/bae/bae/Localizable.xcstrings"),
-     apple_ref, ["bae-macos/bae/bae"], {".swift"}),
-    # The iOS app compiles shared macOS sources (project.yml's ../../bae-macos
-    # entries — UnlockView etc.), so a key may be referenced there, not in
-    # iOS-owned source. Grep both.
+     apple_ref, ["bae-macos/bae/bae", "BaeKit/Sources/BaeKit"], {".swift"}),
+    # The iOS chrome catalog overlaps with strings authored for the macOS app
+    # (shared onboarding/restore-code chrome). The check is permissive by design
+    # (extra scan roots only ever make a key read as more-referenced, never as a
+    # false orphan), so the iOS scan includes the macOS tree as well as BaeKit.
     ("iOS", xcstrings_keys("bae-ios/bae/bae/Localizable.xcstrings"),
-     apple_ref, ["bae-ios/bae/bae", "bae-macos/bae/bae"], {".swift"}),
+     apple_ref, ["bae-ios/bae/bae", "bae-macos/bae/bae", "BaeKit/Sources/BaeKit"],
+     {".swift"}),
     ("Android", android_keys("bae-android/app/src/main/res/values/strings.xml"),
      lambda k, src: (f"R.string.{k}" in src) or (f"@string/{k}" in src),
      ["bae-android/app/src/main/java", "bae-android/app/src/main/res/layout"], {".kt", ".xml"}),

@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// Library search results. Album and track rows open album detail; composer and

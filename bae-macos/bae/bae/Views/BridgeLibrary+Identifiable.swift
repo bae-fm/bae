@@ -1,3 +1,4 @@
+import BaeKit
 import Foundation
 
 /// `BridgeLibrary` already carries an `id: String`. Declaring conformance

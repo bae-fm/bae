@@ -52,7 +52,8 @@ private final class CodeShareResultHolder {
 }
 
 private struct CodeShareHarness: View {
-    @Bindable var holder: CodeShareResultHolder
+    @Bindable
+    var holder: CodeShareResultHolder
 
     var body: some View {
         CodeShareSheet(result: $holder.result, onDismiss: {})

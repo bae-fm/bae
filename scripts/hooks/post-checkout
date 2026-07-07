@@ -66,7 +66,7 @@ done
 # fails when the xcframework is absent, and xcodegen globs the source tree, so it
 # drops bae_bridge.swift if the project is generated before the bindings land.
 ./bae-bridge/build-macos.sh
-cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+./bae-bridge/install-swift-bindings.sh macos
 (cd bae-macos/bae && xcodegen generate)
 # xcodegen writes a fresh xcodeproj with no resolved SwiftPM set, but the build
 # below runs with -disableAutomaticPackageResolution (matching the pre-commit

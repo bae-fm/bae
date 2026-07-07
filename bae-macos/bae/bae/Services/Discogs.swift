@@ -1,3 +1,4 @@
+import BaeKit
 import Foundation
 
 /// Discogs API-key persistence — used by the Discogs settings tab. `save`

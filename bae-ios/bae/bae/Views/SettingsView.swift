@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// Minimal per-device settings: the library's sync status, and a destructive

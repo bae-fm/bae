@@ -4,6 +4,6 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 ./bae-bridge/build-macos.sh
-cp bae-bridge/swift-bindings-macos/bae_bridge.swift bae-macos/bae/bae/bae_bridge.swift
+./bae-bridge/install-swift-bindings.sh macos
 cd bae-macos/bae && xcodegen
 open bae.xcodeproj
