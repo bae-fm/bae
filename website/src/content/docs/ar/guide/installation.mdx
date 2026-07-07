@@ -1,0 +1,55 @@
+---
+title: التثبيت
+description: نزّل وثبّت bae أو baeium على كل منصة
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## إصداران
+
+يصدر كل نظام بإصدارين، مبنيين من المصدر نفسه:
+
+- **bae**، التطبيق الكامل: مزامنة S3، وGoogle Drive، وDropbox، وOneDrive، وiCloud.
+- **baeium**، بلا أجزاء مملوكة: تخزين متوافق مع S3 فقط، بلا مزودي OAuth، ولا iCloud/CloudKit، ولا telemetry.
+
+يُثبَّتان جنبًا إلى جنب، ولكل واحد مكتبته ومفاتيحه الخاصة (المتزامنة عبر iCloud Keychain). اختر ما تريد أدناه.
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">نزّل bae لنظام macOS</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">نزّل baeium لنظام macOS</DownloadButton>
+
+1. افتح ملف `.dmg` الذي نزلته
+2. اسحب التطبيق إلى مجلد Applications
+3. افتحه من Applications
+
+يتحدث كلا الإصدارين تلقائيًا عبر موجز Sparkle الخاص به.
+
+## iOS
+
+بُنى iOS هي **ملفات `.ipa` غير موقعة للتحميل الجانبي**. ثبّتها باستخدام [AltStore](https://altstore.io) أو [Sideloadly](https://sideloadly.io)، أو أعد توقيعها في Xcode باستخدام Apple ID الخاص بك (يعمل Apple ID مجاني مع baeium). توزيع App Store غير معد بعد.
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">نزّل bae لنظام iOS</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">نزّل baeium لنظام iOS</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">نزّل bae لنظام Android</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">نزّل baeium لنظام Android</DownloadButton>
+
+فعّل التثبيت من المتصفح/الملفات عندما يُطلب منك، ثم افتح `.apk`.
+
+## Windows
+
+بُنى Windows هي ملفات zip **غير موقعة** للتطبيق غير المحزوم. استخرجها وشغّل `bae.exe` / `baeium.exe`. قد يحذر SmartScreen عند أول تشغيل.
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">نزّل bae لنظام Windows</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">نزّل baeium لنظام Windows</DownloadButton>
+
+## Linux
+
+قادم لاحقًا.
+
+## البناء من المصدر
+
+لا يحتاج baeium إلى أي شيء مملوك للبناء. راجع [README المستودع](https://github.com/bae-fm/bae#building-baeium-yourself) لتعليمات البناء الذاتي لكل منصة، بما في ذلك iOS ضمن free provisioning.
