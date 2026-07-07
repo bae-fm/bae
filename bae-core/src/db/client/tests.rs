@@ -307,6 +307,33 @@ mod aggregate_ordering_tests {
 }
 
 #[cfg(test)]
+mod connection_boundary_tests {
+    use super::super::*;
+    use coven::SystemClock;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn coven_connection_enforces_foreign_keys_for_bae_schema() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+
+        let track = DbTrack::new_test("missing-release", "track-a", "Track Title A", Some(1));
+        let error = db
+            .insert_track(&track)
+            .await
+            .expect_err("track insert without a release must violate the foreign key");
+
+        assert!(
+            error.0.contains("FOREIGN KEY constraint failed"),
+            "expected a foreign-key violation, got {error}"
+        );
+    }
+}
+
+#[cfg(test)]
 mod readable_cloud_path_tests {
     use super::super::*;
 

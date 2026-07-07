@@ -669,6 +669,10 @@ pub struct ExternalBlob {
 /// All reads and writes run through [`CovenHandle::sql`]. Writes to synced
 /// tables are captured by coven's attached session for changeset sync; reads
 /// share the same serialized connection.
+///
+/// coven also owns connection pragmas such as `foreign_keys` and `journal_mode`.
+/// bae never opens a production SQLite connection or sets a production
+/// connection pragma; it inherits those guarantees from the coven handle.
 #[derive(Clone)]
 pub struct Database {
     inner: Arc<DatabaseInner>,
