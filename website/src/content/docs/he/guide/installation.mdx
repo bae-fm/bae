@@ -1,0 +1,55 @@
+---
+title: התקנה
+description: הורדה והתקנה של bae או baeium בכל פלטפורמה
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## שתי מהדורות
+
+כל פלטפורמה נשלחת בשתי מהדורות, שנבנות מאותו מקור:
+
+- **bae**, היישום המלא: סנכרון S3, Google Drive, Dropbox, OneDrive ו-iCloud.
+- **baeium**, בלי חלקים קנייניים: אחסון תואם S3 בלבד, בלי ספקי OAuth, בלי iCloud/CloudKit, בלי טלמטריה.
+
+הן מותקנות זו לצד זו, כל אחת עם הספרייה שלה והמפתחות שלה (שמסונכרנים דרך iCloud Keychain). בחר למטה את מה שמתאים לך.
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">הורדת bae ל-macOS</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">הורדת baeium ל-macOS</DownloadButton>
+
+1. פתח את קובץ ה-`.dmg` שהורדת
+2. גרור את היישום לתיקיית Applications
+3. פתח אותו מתוך Applications
+
+שתי המהדורות מתעדכנות אוטומטית דרך ערוץ Sparkle משלהן.
+
+## iOS
+
+בניות iOS הן **קובצי `.ipa` לא חתומים להתקנה צדדית**. התקן עם [AltStore](https://altstore.io) או [Sideloadly](https://sideloadly.io), או חתום מחדש ב-Xcode עם Apple ID משלך (Apple ID חינמי עובד עבור baeium). הפצה ב-App Store עדיין לא מוגדרת.
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">הורדת bae ל-iOS</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">הורדת baeium ל-iOS</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">הורדת bae ל-Android</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">הורדת baeium ל-Android</DownloadButton>
+
+אפשר התקנה מהדפדפן או מהקבצים שלך כשהמערכת מבקשת, ואז פתח את ה-`.apk`.
+
+## Windows
+
+בניות Windows הן קובצי zip **לא חתומים** של היישום הלא ארוז. חלץ והרץ `bae.exe` / `baeium.exe`. SmartScreen עשוי להזהיר בהפעלה הראשונה.
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">הורדת bae ל-Windows</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">הורדת baeium ל-Windows</DownloadButton>
+
+## Linux
+
+בקרוב.
+
+## בנייה מהמקור
+
+baeium לא צריך שום דבר קנייני כדי להיבנות. ראה את [README של המאגר](https://github.com/bae-fm/bae#building-baeium-yourself) להוראות בנייה עצמית לכל פלטפורמה, כולל iOS תחת הקצאה חינמית.
