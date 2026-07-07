@@ -13,6 +13,10 @@ runs:
     - name: Install Linux dependencies
       shell: bash
       run: |
+        sudo rm -f \
+          /etc/apt/sources.list.d/azure-cli.* \
+          /etc/apt/sources.list.d/microsoft-prod.* \
+          /etc/apt/sources.list.d/packages-microsoft-prod.*
         sudo apt-get update
         # libasound2-dev: cpal builds its ALSA backend on Linux.
         # libdiscid-dev: the discid binding links system libdiscid.

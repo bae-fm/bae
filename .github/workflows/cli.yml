@@ -76,7 +76,7 @@ jobs:
           targets: x86_64-pc-windows-msvc
 
       - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Enable sccache for Rust builds
         shell: pwsh
