@@ -88,6 +88,13 @@ struct OAuthLinking {
         catch {
             throw OAuthLinkingError.unreadableConfig(error.localizedDescription)
         }
+        return try parse(data)
+    }
+
+    /// Decode the raw `oauth-creds.json` bytes into per-provider client config.
+    /// Split out from `load()` so the JSON shape rules (missing/empty/malformed)
+    /// are exercised without a file bundled into `Bundle.main`.
+    static func parse(_ data: Data) throws -> OAuthLinking {
         let decoded: Any
         do {
             decoded = try JSONSerialization.jsonObject(with: data)
@@ -227,35 +234,7 @@ final class WebAuthCoordinator: NSObject, ASWebAuthenticationPresentationContext
                         continuation.resume(throwing: error)
                         return
                     }
-                    guard let callbackURL,
-                        let queryItems = URLComponents(
-                            url: callbackURL,
-                            resolvingAgainstBaseURL: false
-                        )?
-                        .queryItems
-                    else {
-                        continuation.resume(throwing: OAuthLinkingError.noCode)
-                        return
-                    }
-                    guard
-                        let code =
-                            queryItems
-                            .first(where: { $0.name == "code" })?
-                            .value
-                    else {
-                        continuation.resume(throwing: OAuthLinkingError.noCode)
-                        return
-                    }
-                    guard
-                        let state =
-                            queryItems
-                            .first(where: { $0.name == "state" })?
-                            .value
-                    else {
-                        continuation.resume(throwing: OAuthLinkingError.noState)
-                        return
-                    }
-                    continuation.resume(returning: Callback(code: code, state: state))
+                    continuation.resume(with: Result { try Self.parseCallback(callbackURL) })
                 }
                 session.presentationContextProvider = self
                 session.prefersEphemeralWebBrowserSession = false
@@ -270,6 +249,38 @@ final class WebAuthCoordinator: NSObject, ASWebAuthenticationPresentationContext
                 self?.activeSession?.session.cancel()
             }
         }
+    }
+
+    /// Extract the authorization `code` and `state` from the redirect the
+    /// provider sends back. Split out from the session callback so the required
+    /// query params are validated without driving a live `ASWebAuthenticationSession`.
+    nonisolated static func parseCallback(_ callbackURL: URL?) throws -> Callback {
+        guard let callbackURL,
+            let queryItems = URLComponents(
+                url: callbackURL,
+                resolvingAgainstBaseURL: false
+            )?
+            .queryItems
+        else {
+            throw OAuthLinkingError.noCode
+        }
+        guard
+            let code =
+                queryItems
+                .first(where: { $0.name == "code" })?
+                .value
+        else {
+            throw OAuthLinkingError.noCode
+        }
+        guard
+            let state =
+                queryItems
+                .first(where: { $0.name == "state" })?
+                .value
+        else {
+            throw OAuthLinkingError.noState
+        }
+        return Callback(code: code, state: state)
     }
 
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
