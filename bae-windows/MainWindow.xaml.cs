@@ -2719,14 +2719,13 @@ public sealed partial class MainWindow : Window
     private async System.Threading.Tasks.Task<bool> ShowImportConfirm(
         ImportCandidate candidate, Candidate chosen)
     {
-        var (current, json) = await RunForCurrentHandle(
-            handle => NativeBae.PrefetchCandidateEditJson(
-                handle, chosen.ReleaseId, chosen.Source, candidate.FolderPath));
+        var (current, prefetched) = await RunForCurrentHandle(
+            handle => NativeBae.PrefetchCandidateEdit(
+                handle, chosen.ReleaseId, chosen.Source, candidate.FolderPath).Prefetched);
         if (!current)
         {
             return false;
         }
-        var prefetched = json is null ? null : JsonSerializer.Deserialize<PrefetchedEdit>(json, JsonOptions);
         if (prefetched is null)
         {
             await ShowError(Loc.Chrome("import.error.load_release"));
@@ -2923,7 +2922,7 @@ public sealed partial class MainWindow : Window
     /// can't open over the confirm dialog).
     /// </summary>
     private static StackPanel BuildCoverPicker(
-        List<RemoteCover> remoteCovers, List<LocalArtwork> localArtwork, Action<string> onPick)
+        List<BridgeRemoteCover> remoteCovers, List<LocalArtwork> localArtwork, Action<string> onPick)
     {
         var section = new StackPanel { Spacing = 4 };
         section.Children.Add(new TextBlock { Text = Loc.Chrome("cover.section_title") });
@@ -2984,15 +2983,14 @@ public sealed partial class MainWindow : Window
             BitmapImage source;
             try
             {
-                source = new BitmapImage(new Uri(cover.ThumbnailUrl));
+                source = new BitmapImage(new Uri(NativeBae.RemoteCoverThumbnailUrl(cover)));
             }
             catch (UriFormatException)
             {
                 continue;
             }
 
-            var selection = JsonSerializer.Serialize(
-                new { type = "remote_cover", url = cover.Url, source = cover.Source });
+            var selection = NativeBae.RemoteCoverSelectionJson(cover);
             AddTile(source, cover.Label, selection);
         }
 

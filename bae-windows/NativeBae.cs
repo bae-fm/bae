@@ -828,8 +828,12 @@ internal static class NativeBae
 
     internal static void PreviewTogglePause(AppHandle handle) => handle.PreviewTogglePause();
 
-    internal static string? PrefetchCandidateEditJson(AppHandle handle, string releaseId, string source, string folderPath) =>
-        CaptureValue(() => Json(PrefetchedEdit(handle, releaseId, MetadataSource(source), folderPath)));
+    internal static (PrefetchedEdit? Prefetched, string? Error) PrefetchCandidateEdit(
+        AppHandle handle,
+        string releaseId,
+        string source,
+        string folderPath) =>
+        CaptureBridgeValue(() => PrefetchedEdit(handle, releaseId, MetadataSource(source), folderPath));
 
     internal static (BridgeLibraryStatus? Status, string? Error) CheckReleaseInLibrary(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() =>
@@ -1108,20 +1112,7 @@ internal static class NativeBae
             country = pressing.Country,
         };
 
-    private static object RemoteCoverJson(BridgeRemoteCover cover)
-    {
-        var selection = cover.CoverChoice.Selection as BridgeCoverSelection.RemoteCover
-            ?? throw new JsonException("remote cover choice did not carry a remote selection");
-        return new
-        {
-            url = selection.Selection.Url,
-            thumbnail_url = CoverImageSourceUrl(cover.CoverChoice.ThumbnailSource),
-            label = cover.Label,
-            source = MetadataSourceTag(selection.Selection.Source),
-        };
-    }
-
-    private static object PrefetchedEdit(
+    private static PrefetchedEdit PrefetchedEdit(
         AppHandle handle,
         string releaseId,
         BridgeMetadataSource source,
@@ -1133,11 +1124,11 @@ internal static class NativeBae
         var edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(
             BaeBridgeMethods.ShapeUserEditFromReleaseDetail(detail, choice),
             "prefetch-track");
-        return new
+        return new PrefetchedEdit
         {
-            edit,
-            remote_covers = detail.CoverArt.Select(RemoteCoverJson).ToArray(),
-            local_artwork = LocalArtwork(handle.GetCandidate(folderPath)),
+            Edit = ReleaseEdit(edit),
+            RemoteCovers = detail.CoverArt.ToList(),
+            LocalArtwork = LocalArtwork(handle.GetCandidate(folderPath)),
         };
     }
 
@@ -1146,21 +1137,45 @@ internal static class NativeBae
             ? folder.Candidate.TrackCount
             : null;
 
-    private static object[] LocalArtwork(BridgeImportCandidateSnapshot? snapshot) =>
+    private static List<LocalArtwork> LocalArtwork(BridgeImportCandidateSnapshot? snapshot) =>
         snapshot is BridgeImportCandidateSnapshot.Folder folder
-            ? folder.Candidate.Files.Artwork.Select(LocalArtworkJson).ToArray()
-            : Array.Empty<object>();
+            ? folder.Candidate.Files.Artwork.Select(LocalArtwork).ToList()
+            : [];
 
-    private static object LocalArtworkJson(BridgeArtworkFile artwork)
+    private static LocalArtwork LocalArtwork(BridgeArtworkFile artwork)
     {
         var releaseImage = artwork.CoverChoice.Selection as BridgeCoverSelection.ReleaseImage
             ?? throw new JsonException("local artwork did not carry a release-image selection");
-        return new
+        return new LocalArtwork
         {
-            file_id = releaseImage.FileId,
-            path = artwork.File.LocalPath,
+            FileId = releaseImage.FileId,
+            Path = artwork.File.LocalPath,
         };
     }
+
+    private static ReleaseEdit ReleaseEdit(BridgeRawReleaseEdit edit) =>
+        new()
+        {
+            AlbumTitle = edit.AlbumTitle,
+            AlbumArtistText = edit.AlbumArtistText,
+            Pressing = new PressingEdit
+            {
+                Year = edit.Pressing.Year,
+                Format = edit.Pressing.Format,
+                Label = edit.Pressing.Label,
+                CatalogNumber = edit.Pressing.CatalogNumber,
+                Country = edit.Pressing.Country,
+                Barcode = edit.Pressing.Barcode,
+            },
+            Tracks = edit.Tracks.Select(track => new TrackEdit
+            {
+                Id = track.Id,
+                Title = track.Title,
+                ArtistText = track.ArtistText,
+                Side = track.Side,
+                TrackNumber = track.TrackNumber,
+            }).ToList(),
+        };
 
     private static object[] ImportCandidates(BridgeImportCandidatesSnapshot snapshot)
     {

@@ -1,19 +1,18 @@
 ﻿using System.Collections.Generic;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
 /// <summary>
-/// The import confirmation seed, deserialized from the FFI's
-/// <c>bae_prefetch_candidate_edit</c> JSON. <see cref="Edit"/> seeds the
-/// metadata editor; <see cref="RemoteCovers"/> (from the prefetched release
-/// detail) and <see cref="LocalArtwork"/> (image files in the candidate's
-/// folder) are the cover choices the confirm pane's picker offers before
-/// committing the import.
+/// The import confirmation seed. <see cref="Edit"/> seeds the metadata editor;
+/// <see cref="RemoteCovers"/> (from the prefetched release detail) and
+/// <see cref="LocalArtwork"/> (image files in the candidate's folder) are the
+/// cover choices the confirm pane's picker offers before committing the import.
 /// </summary>
-public sealed class PrefetchedEdit
+internal sealed class PrefetchedEdit
 {
     public ReleaseEdit Edit { get; set; } = new();
-    public List<RemoteCover> RemoteCovers { get; set; } = new();
+    public List<BridgeRemoteCover> RemoteCovers { get; set; } = new();
     public List<LocalArtwork> LocalArtwork { get; set; } = new();
 }
 
@@ -23,7 +22,7 @@ public sealed class PrefetchedEdit
 /// <see cref="FileId"/> back as the <c>release_image</c> cover selection when
 /// the user picks it.
 /// </summary>
-public sealed class LocalArtwork
+internal sealed class LocalArtwork
 {
     /// <summary>Folder-relative path the import worker matches when selected.</summary>
     public string FileId { get; set; } = string.Empty;
