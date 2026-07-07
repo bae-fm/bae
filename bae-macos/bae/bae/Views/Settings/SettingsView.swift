@@ -6,13 +6,17 @@ enum SettingsTab: Hashable {
 
 struct SettingsView: View {
     let checkForUpdatesViewModel: CheckForUpdatesViewModel
+    /// Remove the active library from this device. Implemented by
+    /// AppDelegate: runs the bridge forget, tears down the open service,
+    /// and returns the main window to the welcome chooser.
+    let onForgetLibrary: () -> Void
 
     @State
     private var selectedTab: SettingsTab = .library
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            LibrarySettingsTab()
+            LibrarySettingsTab(onForgetLibrary: onForgetLibrary)
                 .tag(SettingsTab.library)
                 .tabItem { Label("Library", systemImage: "books.vertical") }
             PlaybackSettingsTab()

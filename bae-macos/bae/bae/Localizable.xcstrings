@@ -89458,6 +89458,1534 @@
           }
         }
       }
+    },
+    "Remove this library from this Mac...": {
+      "comment": "Library settings: destructive button to remove the active library from this Mac",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove this library from this Mac..."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar esta biblioteca de este Mac..."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer cette bibliothèque de ce Mac…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Bibliothek von diesem Mac entfernen …"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover esta biblioteca deste Mac..."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このライブラリをこの Mac から削除…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从此 Mac 移除此库…"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إزالة هذه المكتبة من هذا الـ Mac..."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "להסיר את הספרייה הזו מה‑Mac הזה…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вилучити цю бібліотеку з цього Mac…"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Премахване на тази библиотека от този Mac…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń tę bibliotekę z tego Maca…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odebrat tuto knihovnu z tohoto Macu…"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ukloni ovu fonoteku s ovog Maca…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Mac에서 이 라이브러리 제거…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "從這部 Mac 移除此資料庫…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovi questa libreria da questo Mac..."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu kitaplığı bu Mac'ten kaldır..."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gỡ thư viện này khỏi máy Mac này..."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwijder deze bibliotheek van deze Mac..."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस Mac से यह लाइब्रेरी हटाएं…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই Mac থেকে এই লাইব্রেরি সরান…"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இந்த Mac-இலிருந்து இந்த நூலகத்தை அகற்று…"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఈ Mac నుండి ఈ లైబ్రరీని తీసివేయి…"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "या Mac वरून ही लायब्ररी काढा…"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس Mac سے یہ لائبریری ہٹائیں…"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "આ Mac માંથી આ લાઇબ્રેરી દૂર કરો…"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಈ Mac ನಿಂದ ಈ ಗ್ರಂಥಾಲಯವನ್ನು ತೆಗೆದುಹಾಕಿ…"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഈ Mac-ൽ നിന്ന് ഈ ലൈബ്രറി നീക്കംചെയ്യുക…"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਇਸ Mac ਤੋਂ ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਹਟਾਓ…"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นำคลังนี้ออกจาก Mac นี้…"
+          }
+        }
+      }
+    },
+    "Remove this library from this Mac?": {
+      "comment": "Library settings: title of the remove-library confirmation alert",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove this library from this Mac?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Quitar esta biblioteca de este Mac?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer cette bibliothèque de ce Mac ?"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Bibliothek von diesem Mac entfernen?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover esta biblioteca deste Mac?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このライブラリをこの Mac から削除しますか？"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从此 Mac 移除此库？"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إزالة هذه المكتبة من هذا الـ Mac؟"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "להסיר את הספרייה הזו מה‑Mac הזה?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вилучити цю бібліотеку з цього Mac?"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Премахване на тази библиотека от този Mac?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usunąć tę bibliotekę z tego Maca?"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odebrat tuto knihovnu z tohoto Macu?"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ukloniti ovu fonoteku s ovog Maca?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Mac에서 이 라이브러리를 제거할까요?"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要從這部 Mac 移除此資料庫嗎？"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovere questa libreria da questo Mac?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu kitaplık bu Mac'ten kaldırılsın mı?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gỡ thư viện này khỏi máy Mac này?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze bibliotheek van deze Mac verwijderen?"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस Mac से यह लाइब्रेरी हटाएं?"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই Mac থেকে এই লাইব্রেরি সরাবেন?"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இந்த Mac-இலிருந்து இந்த நூலகத்தை அகற்றவா?"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఈ Mac నుండి ఈ లైబ్రరీని తీసివేయాలా?"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "या Mac वरून ही लायब्ररी काढायची?"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس Mac سے یہ لائبریری ہٹائیں؟"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "આ Mac માંથી આ લાઇબ્રેરી દૂર કરવી છે?"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಈ Mac ನಿಂದ ಈ ಗ್ರಂಥಾಲಯವನ್ನು ತೆಗೆದುಹಾಕಬೇಕೇ?"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഈ Mac-ൽ നിന്ന് ഈ ലൈബ്രറി നീക്കംചെയ്യണോ?"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਇਸ Mac ਤੋਂ ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਹਟਾਉਣੀ ਹੈ?"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นำคลังนี้ออกจาก Mac นี้หรือไม่"
+          }
+        }
+      }
+    },
+    "Removes this library and its downloaded files from this Mac. Your library in the cloud is untouched — you can restore it here later.": {
+      "comment": "Library settings: remove-library footer for a synced library whose cloud copy survives",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removes this library and its downloaded files from this Mac. Your library in the cloud is untouched — you can restore it here later."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quita esta biblioteca y sus archivos descargados de este Mac. Tu biblioteca en la nube permanece intacta — puedes restaurarla aquí más tarde."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retire cette bibliothèque et ses fichiers téléchargés de ce Mac. Votre bibliothèque dans le cloud reste intacte — vous pourrez la restaurer ici plus tard."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernt diese Bibliothek und ihre heruntergeladenen Dateien von diesem Mac. Deine Bibliothek in der Cloud bleibt unberührt — du kannst sie hier später wiederherstellen."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove esta biblioteca e seus arquivos baixados deste Mac. Sua biblioteca na nuvem permanece intacta — você pode restaurá-la aqui mais tarde."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このライブラリとダウンロード済みファイルをこの Mac から削除します。クラウド内のライブラリはそのまま残ります。後でここから復元できます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将此库及其下载的文件从此 Mac 移除。云端的库不受影响——你可以稍后在此恢复。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يزيل هذه المكتبة وملفاتها التي تم تنزيلها من هذا الـ Mac. تبقى مكتبتك في السحابة دون تغيير — يمكنك استعادتها هنا لاحقًا."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מסיר את הספרייה הזו ואת הקבצים שהורדו שלה מה‑Mac הזה. הספרייה שלך בענן נשארת ללא שינוי — תוכל לשחזר אותה כאן מאוחר יותר."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вилучає цю бібліотеку та її завантажені файли з цього Mac. Ваша бібліотека у хмарі залишається недоторканою — ви зможете відновити її тут пізніше."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Премахва тази библиотека и изтеглените ѝ файлове от този Mac. Библиотеката ви в облака остава непокътната — можете да я възстановите тук по-късно."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuwa tę bibliotekę i jej pobrane pliki z tego Maca. Twoja biblioteka w chmurze pozostaje nienaruszona — możesz ją później przywrócić tutaj."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odebere tuto knihovnu a její stažené soubory z tohoto Macu. Vaše knihovna v cloudu zůstane nedotčena — později ji zde můžete obnovit."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uklanja ovu fonoteku i njezine preuzete datoteke s ovog Maca. Vaša fonoteka u oblaku ostaje netaknuta — kasnije je ovdje možete vratiti."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 라이브러리와 다운로드된 파일을 이 Mac에서 제거합니다. 클라우드의 라이브러리는 그대로 유지되며 나중에 여기서 복원할 수 있습니다."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將此資料庫及其已下載的檔案從這部 Mac 移除。雲端中的資料庫不受影響——你可以稍後在此還原。"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuove questa libreria e i relativi file scaricati da questo Mac. La tua libreria nel cloud rimane intatta — potrai ripristinarla qui in seguito."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu kitaplığı ve indirilen dosyalarını bu Mac'ten kaldırır. Buluttaki kitaplığınıza dokunulmaz — daha sonra buradan geri yükleyebilirsiniz."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gỡ thư viện này và các tệp đã tải xuống của nó khỏi máy Mac này. Thư viện của bạn trên đám mây vẫn được giữ nguyên — bạn có thể khôi phục nó tại đây sau."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwijdert deze bibliotheek en de gedownloade bestanden van deze Mac. Je bibliotheek in de cloud blijft ongewijzigd — je kunt deze hier later herstellen."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "यह लाइब्रेरी और इसकी डाउनलोड की गई फ़ाइलें इस Mac से हटाती है। क्लाउड में आपकी लाइब्रेरी अछूती रहती है — आप इसे बाद में यहाँ पुनर्स्थापित कर सकते हैं।"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই লাইব্রেরি এবং এর ডাউনলোড করা ফাইলগুলি এই Mac থেকে সরিয়ে দেয়। ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে — আপনি পরে এটি এখানে পুনরুদ্ধার করতে পারেন।"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இந்த நூலகத்தையும் அதன் பதிவிறக்கிய கோப்புகளையும் இந்த Mac-இலிருந்து அகற்றுகிறது. மேகத்தில் உள்ள உங்கள் நூலகம் அப்படியே இருக்கும் — பின்னர் அதை இங்கே மீட்டெடுக்கலாம்."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఈ లైబ్రరీని మరియు దాని డౌన్‌లోడ్ చేసిన ఫైళ్లను ఈ Mac నుండి తీసివేస్తుంది. క్లౌడ్‌లోని మీ లైబ్రరీ అలాగే ఉంటుంది — తర్వాత దీన్ని ఇక్కడ పునరుద్ధరించవచ్చు."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ही लायब्ररी आणि तिच्या डाउनलोड केलेल्या फायली या Mac वरून काढते. क्लाउडमधील तुमची लायब्ररी अबाधित राहते — तुम्ही ती नंतर येथे पुनर्संचयित करू शकता."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہ لائبریری اور اس کی ڈاؤن لوڈ کردہ فائلیں اس Mac سے ہٹا دیتی ہے۔ کلاؤڈ میں آپ کی لائبریری برقرار رہتی ہے — آپ بعد میں اسے یہاں بحال کر سکتے ہیں۔"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "આ લાઇબ્રેરી અને તેની ડાઉનલોડ કરેલી ફાઇલોને આ Mac માંથી દૂર કરે છે. ક્લાઉડમાં તમારી લાઇબ્રેરી અકબંધ રહે છે — તમે તેને પછીથી અહીં પુનઃસ્થાપિત કરી શકો છો."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಈ ಗ್ರಂಥಾಲಯ ಮತ್ತು ಅದರ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ ಫೈಲ್‌ಗಳನ್ನು ಈ Mac ನಿಂದ ತೆಗೆದುಹಾಕುತ್ತದೆ. ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಗ್ರಂಥಾಲಯ ಹಾಗೇ ಉಳಿಯುತ್ತದೆ — ನೀವು ಅದನ್ನು ನಂತರ ಇಲ್ಲಿ ಮರುಸ್ಥಾಪಿಸಬಹುದು."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഈ ലൈബ്രറിയും അതിന്റെ ഡൗൺലോഡ് ചെയ്ത ഫയലുകളും ഈ Mac-ൽ നിന്ന് നീക്കംചെയ്യുന്നു. ക്ലൗഡിലുള്ള നിങ്ങളുടെ ലൈബ്രറി മാറ്റമില്ലാതെ തുടരും — നിങ്ങൾക്ക് പിന്നീട് ഇവിടെ അത് പുനഃസ്ഥാപിക്കാം."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਅਤੇ ਇਸ ਦੀਆਂ ਡਾਊਨਲੋਡ ਕੀਤੀਆਂ ਫ਼ਾਈਲਾਂ ਨੂੰ ਇਸ Mac ਤੋਂ ਹਟਾ ਦਿੰਦਾ ਹੈ। ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਬਰਕਰਾਰ ਰਹਿੰਦੀ ਹੈ — ਤੁਸੀਂ ਇਸਨੂੰ ਬਾਅਦ ਵਿੱਚ ਇੱਥੇ ਮੁੜ-ਬਹਾਲ ਕਰ ਸਕਦੇ ਹੋ।"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นำคลังนี้และไฟล์ที่ดาวน์โหลดออกจาก Mac นี้ คลังของคุณในคลาวด์จะไม่ถูกแตะต้อง — คุณสามารถกู้คืนได้ที่นี่ในภายหลัง"
+          }
+        }
+      }
+    },
+    "This library isn't synced. Removing it permanently deletes its catalog — albums, metadata edits, and play history. Audio files in your folders aren't deleted.": {
+      "comment": "Library settings: remove-library footer for a never-synced library whose catalog is deleted",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This library isn't synced. Removing it permanently deletes its catalog — albums, metadata edits, and play history. Audio files in your folders aren't deleted."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta biblioteca no está sincronizada. Al quitarla se elimina permanentemente su catálogo — álbumes, ediciones de metadatos e historial de reproducción. Los archivos de audio de tus carpetas no se eliminan."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette bibliothèque n'est pas synchronisée. La retirer supprime définitivement son catalogue — albums, modifications de métadonnées et historique d'écoute. Les fichiers audio de vos dossiers ne sont pas supprimés."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Bibliothek ist nicht synchronisiert. Beim Entfernen wird ihr Katalog dauerhaft gelöscht — Alben, Metadaten-Änderungen und Wiedergabeverlauf. Audiodateien in deinen Ordnern werden nicht gelöscht."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta biblioteca não está sincronizada. Removê-la exclui permanentemente seu catálogo — álbuns, edições de metadados e histórico de reprodução. Os arquivos de áudio nas suas pastas não são excluídos."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このライブラリは同期されていません。削除すると、そのカタログ（アルバム、メタデータの編集、再生履歴）が完全に削除されます。フォルダ内のオーディオファイルは削除されません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此库尚未同步。移除它将永久删除其目录——专辑、元数据编辑和播放历史。你文件夹中的音频文件不会被删除。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذه المكتبة غير متزامنة. تؤدي إزالتها إلى حذف فهرسها نهائيًا — الألبومات وتعديلات البيانات الوصفية وسجل التشغيل. لا يتم حذف الملفات الصوتية الموجودة في مجلداتك."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הספרייה הזו אינה מסונכרנת. הסרתה מוחקת לצמיתות את הקטלוג שלה — אלבומים, עריכות מטא‑נתונים והיסטוריית השמעה. קובצי האודיו בתיקיות שלך אינם נמחקים."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ця бібліотека не синхронізована. Її вилучення назавжди видалить її каталог — альбоми, зміни метаданих та історію відтворення. Аудіофайли у ваших теках не видаляються."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тази библиотека не е синхронизирана. Премахването ѝ изтрива окончателно нейния каталог — албуми, редакции на метаданни и история на възпроизвеждане. Аудиофайловете във вашите папки не се изтриват."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta biblioteka nie jest zsynchronizowana. Jej usunięcie trwale usuwa jej katalog — albumy, zmiany metadanych i historię odtwarzania. Pliki audio w Twoich folderach nie są usuwane."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tato knihovna není synchronizovaná. Jejím odebráním se trvale odstraní její katalog — alba, úpravy metadat a historie přehrávání. Zvukové soubory ve vašich složkách se neodstraní."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ova fonoteka nije sinkronizirana. Njezinim uklanjanjem trajno se briše njezin katalog — albumi, uređivanja metapodataka i povijest reprodukcije. Audiodatoteke u vašim mapama ne brišu se."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 라이브러리는 동기화되지 않았습니다. 제거하면 카탈로그(앨범, 메타데이터 편집, 재생 기록)가 영구적으로 삭제됩니다. 폴더의 오디오 파일은 삭제되지 않습니다."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此資料庫尚未同步。移除它將永久刪除其目錄——專輯、中繼資料編輯與播放記錄。你資料夾中的音訊檔案不會被刪除。"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa libreria non è sincronizzata. Rimuovendola si elimina definitivamente il suo catalogo — album, modifiche ai metadati e cronologia di riproduzione. I file audio nelle tue cartelle non vengono eliminati."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu kitaplık eşitlenmedi. Kaldırıldığında kataloğu — albümler, meta veri düzenlemeleri ve çalma geçmişi — kalıcı olarak silinir. Klasörlerinizdeki ses dosyaları silinmez."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thư viện này chưa được đồng bộ. Việc gỡ nó sẽ xóa vĩnh viễn danh mục của nó — album, chỉnh sửa siêu dữ liệu và lịch sử phát. Các tệp âm thanh trong thư mục của bạn không bị xóa."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze bibliotheek is niet gesynchroniseerd. Als je deze verwijdert, wordt de catalogus — albums, metadatabewerkingen en afspeelgeschiedenis — definitief verwijderd. Audiobestanden in je mappen worden niet verwijderd."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "यह लाइब्रेरी सिंक नहीं है। इसे हटाने से इसका कैटलॉग — एल्बम, मेटाडेटा संपादन और प्ले इतिहास — स्थायी रूप से हट जाता है। आपके फ़ोल्डर की ऑडियो फ़ाइलें नहीं हटाई जातीं।"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই লাইব্রেরি সিঙ্ক করা নেই। এটি সরালে এর ক্যাটালগ — অ্যালবাম, মেটাডেটা সম্পাদনা এবং প্লে ইতিহাস — স্থায়ীভাবে মুছে যায়। আপনার ফোল্ডারের অডিও ফাইল মুছে ফেলা হয় না।"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இந்த நூலகம் ஒத்திசைக்கப்படவில்லை. அதை அகற்றினால் அதன் அட்டவணை — ஆல்பங்கள், மெட்டாடேட்டா திருத்தங்கள் மற்றும் இயக்க வரலாறு — நிரந்தரமாக நீக்கப்படும். உங்கள் கோப்புறைகளில் உள்ள ஆடியோ கோப்புகள் நீக்கப்படாது."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఈ లైబ్రరీ సింక్ కాలేదు. దీన్ని తీసివేస్తే దాని కేటలాగ్ — ఆల్బమ్‌లు, మెటాడేటా సవరణలు మరియు ప్లే చరిత్ర — శాశ్వతంగా తొలగించబడుతుంది. మీ ఫోల్డర్‌లలోని ఆడియో ఫైళ్లు తొలగించబడవు."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ही लायब्ररी समक्रमित केलेली नाही. ती काढल्याने तिचा कॅटलॉग — अल्बम, मेटाडेटा संपादने आणि प्ले इतिहास — कायमचा हटवला जातो. तुमच्या फोल्डरमधील ऑडिओ फायली हटवल्या जात नाहीत."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہ لائبریری مطابقت پذیر نہیں ہے۔ اسے ہٹانے سے اس کا کیٹلاگ — البمز، میٹا ڈیٹا ترامیم اور پلے کی سرگزشت — مستقل طور پر حذف ہو جاتا ہے۔ آپ کے فولڈرز کی آڈیو فائلیں حذف نہیں ہوتیں۔"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "આ લાઇબ્રેરી સિંક કરેલી નથી. તેને દૂર કરવાથી તેનું કૅટલૉગ — આલ્બમ, મેટાડેટા સંપાદનો અને પ્લે ઇતિહાસ — કાયમ માટે કાઢી નાખવામાં આવે છે. તમારા ફોલ્ડરની ઑડિયો ફાઇલો કાઢી નાખવામાં આવતી નથી."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಈ ಗ್ರಂಥಾಲಯವನ್ನು ಸಿಂಕ್ ಮಾಡಲಾಗಿಲ್ಲ. ಇದನ್ನು ತೆಗೆದುಹಾಕಿದರೆ ಅದರ ಕ್ಯಾಟಲಾಗ್ — ಆಲ್ಬಮ್‌ಗಳು, ಮೆಟಾಡೇಟಾ ಸಂಪಾದನೆಗಳು ಮತ್ತು ಪ್ಲೇ ಇತಿಹಾಸ — ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಲಾಗುತ್ತದೆ. ನಿಮ್ಮ ಫೋಲ್ಡರ್‌ಗಳಲ್ಲಿನ ಆಡಿಯೊ ಫೈಲ್‌ಗಳು ಅಳಿಸಲಾಗುವುದಿಲ್ಲ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഈ ലൈബ്രറി സിങ്ക് ചെയ്തിട്ടില്ല. ഇത് നീക്കംചെയ്യുന്നത് അതിന്റെ കാറ്റലോഗ് — ആൽബങ്ങൾ, മെറ്റാഡാറ്റ എഡിറ്റുകൾ, പ്ലേ ചരിത്രം — ശാശ്വതമായി ഇല്ലാതാക്കും. നിങ്ങളുടെ ഫോൾഡറുകളിലെ ഓഡിയോ ഫയലുകൾ ഇല്ലാതാക്കില്ല."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਸਿੰਕ ਨਹੀਂ ਹੈ। ਇਸਨੂੰ ਹਟਾਉਣ ਨਾਲ ਇਸਦਾ ਕੈਟਾਲਾਗ — ਐਲਬਮ, ਮੈਟਾਡਾਟਾ ਸੰਪਾਦਨ ਅਤੇ ਪਲੇ ਇਤਿਹਾਸ — ਪੱਕੇ ਤੌਰ 'ਤੇ ਮਿਟਾ ਦਿੱਤਾ ਜਾਂਦਾ ਹੈ। ਤੁਹਾਡੇ ਫੋਲਡਰਾਂ ਦੀਆਂ ਆਡੀਓ ਫ਼ਾਈਲਾਂ ਨਹੀਂ ਮਿਟਾਈਆਂ ਜਾਂਦੀਆਂ।"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คลังนี้ยังไม่ได้ซิงค์ การนำออกจะลบแคตตาล็อกอย่างถาวร — อัลบั้ม การแก้ไขข้อมูลเมตา และประวัติการเล่น ไฟล์เสียงในโฟลเดอร์ของคุณจะไม่ถูกลบ"
+          }
+        }
+      }
+    },
+    "Your library in the cloud is untouched — you can restore it from the welcome screen later.": {
+      "comment": "Library settings: remove-library confirmation body for a synced library; a pending-upload warning may be appended",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your library in the cloud is untouched — you can restore it from the welcome screen later."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu biblioteca en la nube permanece intacta — puedes restaurarla desde la pantalla de bienvenida más tarde."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre bibliothèque dans le cloud reste intacte — vous pourrez la restaurer depuis l'écran d'accueil plus tard."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Bibliothek in der Cloud bleibt unberührt — du kannst sie später über den Willkommensbildschirm wiederherstellen."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua biblioteca na nuvem permanece intacta — você pode restaurá-la na tela de boas-vindas mais tarde."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クラウド内のライブラリはそのまま残ります。後でようこそ画面から復元できます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "云端的库不受影响——你可以稍后从欢迎屏幕恢复。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تبقى مكتبتك في السحابة دون تغيير — يمكنك استعادتها من شاشة الترحيب لاحقًا."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הספרייה שלך בענן נשארת ללא שינוי — תוכל לשחזר אותה ממסך הפתיחה מאוחר יותר."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваша бібліотека у хмарі залишається недоторканою — ви зможете відновити її з екрана привітання пізніше."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Библиотеката ви в облака остава непокътната — можете да я възстановите от началния екран по-късно."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoja biblioteka w chmurze pozostaje nienaruszona — możesz ją później przywrócić z ekranu powitalnego."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vaše knihovna v cloudu zůstane nedotčena — později ji můžete obnovit z úvodní obrazovky."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vaša fonoteka u oblaku ostaje netaknuta — kasnije je možete vratiti s početnog zaslona."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클라우드의 라이브러리는 그대로 유지되며 나중에 시작 화면에서 복원할 수 있습니다."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雲端中的資料庫不受影響——你可以稍後從歡迎畫面還原。"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua libreria nel cloud rimane intatta — potrai ripristinarla in seguito dalla schermata di benvenuto."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buluttaki kitaplığınıza dokunulmaz — daha sonra karşılama ekranından geri yükleyebilirsiniz."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thư viện của bạn trên đám mây vẫn được giữ nguyên — bạn có thể khôi phục nó từ màn hình chào mừng sau."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je bibliotheek in de cloud blijft ongewijzigd — je kunt deze later herstellen via het welkomstscherm."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "क्लाउड में आपकी लाइब्रेरी अछूती रहती है — आप इसे बाद में वेलकम स्क्रीन से पुनर्स्थापित कर सकते हैं।"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে — আপনি পরে ওয়েলকাম স্ক্রিন থেকে এটি পুনরুদ্ধার করতে পারেন।"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "மேகத்தில் உள்ள உங்கள் நூலகம் அப்படியே இருக்கும் — பின்னர் வரவேற்பு திரையிலிருந்து அதை மீட்டெடுக்கலாம்."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "క్లౌడ్‌లోని మీ లైబ్రరీ అలాగే ఉంటుంది — తర్వాత స్వాగత స్క్రీన్ నుండి దీన్ని పునరుద్ధరించవచ్చు."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "क्लाउडमधील तुमची लायब्ररी अबाधित राहते — तुम्ही ती नंतर स्वागत स्क्रीनवरून पुनर्संचयित करू शकता."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کلاؤڈ میں آپ کی لائبریری برقرار رہتی ہے — آپ بعد میں خوش آمدید اسکرین سے اسے بحال کر سکتے ہیں۔"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ક્લાઉડમાં તમારી લાઇબ્રેરી અકબંધ રહે છે — તમે તેને પછીથી સ્વાગત સ્ક્રીનમાંથી પુનઃસ્થાપિત કરી શકો છો."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಗ್ರಂಥಾಲಯ ಹಾಗೇ ಉಳಿಯುತ್ತದೆ — ನೀವು ಅದನ್ನು ನಂತರ ಸ್ವಾಗತ ಪರದೆಯಿಂದ ಮರುಸ್ಥಾಪಿಸಬಹುದು."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ക്ലൗഡിലുള്ള നിങ്ങളുടെ ലൈബ്രറി മാറ്റമില്ലാതെ തുടരും — നിങ്ങൾക്ക് പിന്നീട് സ്വാഗത സ്ക്രീനിൽ നിന്ന് അത് പുനഃസ്ഥാപിക്കാം."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਬਰਕਰਾਰ ਰਹਿੰਦੀ ਹੈ — ਤੁਸੀਂ ਇਸਨੂੰ ਬਾਅਦ ਵਿੱਚ ਸੁਆਗਤ ਸਕ੍ਰੀਨ ਤੋਂ ਮੁੜ-ਬਹਾਲ ਕਰ ਸਕਦੇ ਹੋ।"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คลังของคุณในคลาวด์จะไม่ถูกแตะต้อง — คุณสามารถกู้คืนจากหน้าจอต้อนรับได้ในภายหลัง"
+          }
+        }
+      }
+    },
+    "Some changes haven't finished uploading and will be lost.": {
+      "comment": "Library settings: appended to the remove-library confirmation when uploads are still pending",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some changes haven't finished uploading and will be lost."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algunos cambios no han terminado de subirse y se perderán."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certaines modifications n'ont pas fini d'être téléversées et seront perdues."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einige Änderungen wurden noch nicht vollständig hochgeladen und gehen verloren."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algumas alterações não terminaram de ser enviadas e serão perdidas."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一部の変更はアップロードが完了しておらず、失われます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分更改尚未完成上传，将会丢失。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم تنتهِ بعض التغييرات من التحميل وسيتم فقدانها."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חלק מהשינויים לא סיימו להעלות ויאבדו."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Деякі зміни не завершили вивантаження та будуть втрачені."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Някои промени не са завършили качването си и ще бъдат загубени."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niektóre zmiany nie zakończyły przesyłania i zostaną utracone."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Některé změny se nedokončily nahrávat a budou ztraceny."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neke promjene nisu dovršile prijenos i bit će izgubljene."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일부 변경 사항이 업로드를 완료하지 못해 손실됩니다."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分變更尚未完成上傳，將會遺失。"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alcune modifiche non hanno completato il caricamento e andranno perse."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bazı değişikliklerin yüklenmesi tamamlanmadı; bu değişiklikler kaybolacak."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một số thay đổi chưa tải lên xong và sẽ bị mất."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sommige wijzigingen zijn nog niet volledig geüpload en gaan verloren."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कुछ बदलाव अपलोड पूरे नहीं हुए और खो जाएंगे।"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কিছু পরিবর্তন আপলোড শেষ হয়নি এবং হারিয়ে যাবে।"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "சில மாற்றங்கள் பதிவேற்றத்தை முடிக்கவில்லை, அவை இழக்கப்படும்."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "కొన్ని మార్పులు అప్‌లోడ్ పూర్తి కాలేదు, అవి పోతాయి."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "काही बदल अपलोड पूर्ण झाले नाहीत आणि ते गमावले जातील."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کچھ تبدیلیاں اپ لوڈ مکمل نہیں ہوئیں اور ضائع ہو جائیں گی۔"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "કેટલાક ફેરફારો અપલોડ પૂરા થયા નથી અને ખોવાઈ જશે."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಕೆಲವು ಬದಲಾವಣೆಗಳು ಅಪ್‌ಲೋಡ್ ಪೂರ್ಣಗೊಂಡಿಲ್ಲ ಮತ್ತು ಕಳೆದುಹೋಗುತ್ತವೆ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ചില മാറ്റങ്ങൾ അപ്‌ലോഡ് പൂർത്തിയായില്ല, അവ നഷ്ടപ്പെടും."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਕੁਝ ਤਬਦੀਲੀਆਂ ਅੱਪਲੋਡ ਪੂਰੀਆਂ ਨਹੀਂ ਹੋਈਆਂ ਅਤੇ ਗੁਆਚ ਜਾਣਗੀਆਂ।"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การเปลี่ยนแปลงบางอย่างยังอัปโหลดไม่เสร็จและจะสูญหาย"
+          }
+        }
+      }
+    },
+    "This library has never been synced. Its catalog will be permanently deleted; audio files in your folders aren't deleted.": {
+      "comment": "Library settings: remove-library confirmation body for a never-synced library",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This library has never been synced. Its catalog will be permanently deleted; audio files in your folders aren't deleted."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta biblioteca nunca se ha sincronizado. Su catálogo se eliminará permanentemente; los archivos de audio de tus carpetas no se eliminan."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette bibliothèque n'a jamais été synchronisée. Son catalogue sera définitivement supprimé ; les fichiers audio de vos dossiers ne sont pas supprimés."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Bibliothek wurde nie synchronisiert. Ihr Katalog wird dauerhaft gelöscht; Audiodateien in deinen Ordnern werden nicht gelöscht."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta biblioteca nunca foi sincronizada. Seu catálogo será excluído permanentemente; os arquivos de áudio nas suas pastas não são excluídos."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このライブラリは一度も同期されていません。カタログは完全に削除されます。フォルダ内のオーディオファイルは削除されません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此库从未同步过。其目录将被永久删除；你文件夹中的音频文件不会被删除。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم تتم مزامنة هذه المكتبة مطلقًا. سيتم حذف فهرسها نهائيًا؛ لا يتم حذف الملفات الصوتية الموجودة في مجلداتك."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הספרייה הזו מעולם לא סונכרנה. הקטלוג שלה יימחק לצמיתות; קובצי האודיו בתיקיות שלך אינם נמחקים."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ця бібліотека ніколи не синхронізувалася. Її каталог буде назавжди видалено; аудіофайли у ваших теках не видаляються."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тази библиотека никога не е била синхронизирана. Нейният каталог ще бъде изтрит окончателно; аудиофайловете във вашите папки не се изтриват."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta biblioteka nigdy nie była synchronizowana. Jej katalog zostanie trwale usunięty; pliki audio w Twoich folderach nie są usuwane."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tato knihovna nikdy nebyla synchronizována. Její katalog bude trvale odstraněn; zvukové soubory ve vašich složkách se neodstraní."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ova fonoteka nikada nije sinkronizirana. Njezin će se katalog trajno izbrisati; audiodatoteke u vašim mapama ne brišu se."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 라이브러리는 한 번도 동기화된 적이 없습니다. 카탈로그가 영구적으로 삭제됩니다. 폴더의 오디오 파일은 삭제되지 않습니다."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此資料庫從未同步過。其目錄將被永久刪除；你資料夾中的音訊檔案不會被刪除。"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa libreria non è mai stata sincronizzata. Il suo catalogo verrà eliminato definitivamente; i file audio nelle tue cartelle non vengono eliminati."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu kitaplık hiç eşitlenmedi. Kataloğu kalıcı olarak silinecek; klasörlerinizdeki ses dosyaları silinmez."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thư viện này chưa bao giờ được đồng bộ. Danh mục của nó sẽ bị xóa vĩnh viễn; các tệp âm thanh trong thư mục của bạn không bị xóa."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze bibliotheek is nog nooit gesynchroniseerd. De catalogus wordt definitief verwijderd; audiobestanden in je mappen worden niet verwijderd."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "यह लाइब्रेरी कभी सिंक नहीं हुई। इसका कैटलॉग स्थायी रूप से हटा दिया जाएगा; आपके फ़ोल्डर की ऑडियो फ़ाइलें नहीं हटाई जातीं।"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই লাইব্রেরি কখনও সিঙ্ক করা হয়নি। এর ক্যাটালগ স্থায়ীভাবে মুছে ফেলা হবে; আপনার ফোল্ডারের অডিও ফাইল মুছে ফেলা হয় না।"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இந்த நூலகம் ஒருபோதும் ஒத்திசைக்கப்படவில்லை. அதன் அட்டவணை நிரந்தரமாக நீக்கப்படும்; உங்கள் கோப்புறைகளில் உள்ள ஆடியோ கோப்புகள் நீக்கப்படாது."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఈ లైబ్రరీ ఎప్పుడూ సింక్ కాలేదు. దాని కేటలాగ్ శాశ్వతంగా తొలగించబడుతుంది; మీ ఫోల్డర్‌లలోని ఆడియో ఫైళ్లు తొలగించబడవు."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ही लायब्ररी कधीही समक्रमित केली गेली नाही. तिचा कॅटलॉग कायमचा हटवला जाईल; तुमच्या फोल्डरमधील ऑडिओ फायली हटवल्या जात नाहीत."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہ لائبریری کبھی مطابقت پذیر نہیں ہوئی۔ اس کا کیٹلاگ مستقل طور پر حذف کر دیا جائے گا؛ آپ کے فولڈرز کی آڈیو فائلیں حذف نہیں ہوتیں۔"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "આ લાઇબ્રેરી ક્યારેય સિંક થઈ નથી. તેનું કૅટલૉગ કાયમ માટે કાઢી નાખવામાં આવશે; તમારા ફોલ્ડરની ઑડિયો ફાઇલો કાઢી નાખવામાં આવતી નથી."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಈ ಗ್ರಂಥಾಲಯವನ್ನು ಎಂದಿಗೂ ಸಿಂಕ್ ಮಾಡಿಲ್ಲ. ಅದರ ಕ್ಯಾಟಲಾಗ್ ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಲಾಗುತ್ತದೆ; ನಿಮ್ಮ ಫೋಲ್ಡರ್‌ಗಳಲ್ಲಿನ ಆಡಿಯೊ ಫೈಲ್‌ಗಳು ಅಳಿಸಲಾಗುವುದಿಲ್ಲ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഈ ലൈബ്രറി ഒരിക്കലും സിങ്ക് ചെയ്തിട്ടില്ല. അതിന്റെ കാറ്റലോഗ് ശാശ്വതമായി ഇല്ലാതാക്കും; നിങ്ങളുടെ ഫോൾഡറുകളിലെ ഓഡിയോ ഫയലുകൾ ഇല്ലാതാക്കില്ല."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਕਦੇ ਵੀ ਸਿੰਕ ਨਹੀਂ ਹੋਈ। ਇਸਦਾ ਕੈਟਾਲਾਗ ਪੱਕੇ ਤੌਰ 'ਤੇ ਮਿਟਾ ਦਿੱਤਾ ਜਾਵੇਗਾ; ਤੁਹਾਡੇ ਫੋਲਡਰਾਂ ਦੀਆਂ ਆਡੀਓ ਫ਼ਾਈਲਾਂ ਨਹੀਂ ਮਿਟਾਈਆਂ ਜਾਂਦੀਆਂ।"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คลังนี้ไม่เคยซิงค์เลย แคตตาล็อกจะถูกลบอย่างถาวร ไฟล์เสียงในโฟลเดอร์ของคุณจะไม่ถูกลบ"
+          }
+        }
+      }
+    },
+    "Couldn't remove library: %@": {
+      "comment": "Error shown when removing the active library from this Mac fails",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't remove library: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo quitar la biblioteca: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de retirer la bibliothèque : %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bibliothek konnte nicht entfernt werden: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível remover a biblioteca: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライブラリを削除できませんでした: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法移除库：%@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر إزالة المكتبة: %@"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא ניתן היה להסיר את הספרייה: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося вилучити бібліотеку: %@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Библиотеката не можа да бъде премахната: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się usunąć biblioteki: %@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Knihovnu se nepodařilo odebrat: %@"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nije moguće ukloniti fonoteku: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리를 제거할 수 없습니다: %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法移除資料庫：%@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile rimuovere la libreria: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitaplık kaldırılamadı: %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thể gỡ thư viện: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan bibliotheek niet verwijderen: %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "लाइब्रेरी हटाई नहीं जा सकी: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লাইব্রেরি সরানো যায়নি: %@"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "நூலகத்தை அகற்ற முடியவில்லை: %@"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "లైబ్రరీని తీసివేయడం సాధ్యం కాలేదు: %@"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "लायब्ररी काढता आली नाही: %@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لائبریری کو ہٹایا نہیں جا سکا: %@"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "લાઇબ્રેરી દૂર કરી શકાઈ નથી: %@"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಗ್ರಂಥಾಲಯವನ್ನು ತೆಗೆದುಹಾಕಲಾಗಲಿಲ್ಲ: %@"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ലൈബ്രറി നീക്കംചെയ്യാനായില്ല: %@"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਲਾਇਬ੍ਰੇਰੀ ਹਟਾਈ ਨਹੀਂ ਜਾ ਸਕੀ: %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่สามารถนำคลังออกได้: %@"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -4,12 +4,17 @@ import os.log
 private let logger = Logger.bae("LibrarySettings")
 
 struct LibrarySettingsTab: View {
+    /// Remove the active library from this device. Implemented by AppDelegate.
+    let onForgetLibrary: () -> Void
+
     @Environment(Sync.self)
     var sync
     @Environment(ConfigStore.self)
     var configStore
     @Environment(UiStore.self)
     var uiStore
+    @Environment(OutboxStore.self)
+    var outboxStore
 
     @State
     private var error: String?
@@ -17,6 +22,8 @@ struct LibrarySettingsTab: View {
     private var showSyncSetup = false
     @State
     private var showDisconnectConfirm = false
+    @State
+    private var showForgetConfirm = false
     /// Captured at the moment the user clicks Disconnect: bae-core's
     /// pre-formatted warning when releases live only in the cloud (`nil`
     /// when no releases are at risk).
@@ -77,6 +84,18 @@ struct LibrarySettingsTab: View {
                 MembersSection()
                 RecoveryCodeSection(generate: sync.generateRestoreCode)
             }
+
+            Section("Remove") {
+                Text(removeFooter)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button(
+                    "Remove this library from this Mac...",
+                    role: .destructive
+                ) {
+                    showForgetConfirm = true
+                }
+            }
         }
         .formStyle(.grouped)
         .sheet(isPresented: $showSyncSetup) {
@@ -106,9 +125,70 @@ struct LibrarySettingsTab: View {
         } message: {
             Text(disconnectMessage)
         }
+        .alert(
+            "Remove this library from this Mac?",
+            isPresented: $showForgetConfirm
+        ) {
+            Button("Remove", role: .destructive) {
+                onForgetLibrary()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                Self.forgetConfirmationMessage(
+                    hasCloudHome: configStore.config.hasCloudHome,
+                    hasPendingCloudWork: outboxStore.hasPendingCloudWork
+                )
+            )
+        }
         .onDisappear {
             disconnectWarningTask?.cancel()
         }
+    }
+
+    /// Section footer for the remove-library control. A synced library's cloud
+    /// copy survives and can be restored; a never-synced library's catalog is
+    /// gone for good, though the audio files bae indexed in place are left
+    /// alone.
+    private var removeFooter: String {
+        if configStore.config.hasCloudHome {
+            return String(
+                localized:
+                    "Removes this library and its downloaded files from this Mac. Your library in the cloud is untouched — you can restore it here later."
+            )
+        }
+        return String(
+            localized:
+                "This library isn't synced. Removing it permanently deletes its catalog — albums, metadata edits, and play history. Audio files in your folders aren't deleted."
+        )
+    }
+
+    /// Body text for the remove-library confirmation. A synced library's cloud
+    /// copy survives and can be restored later; queued cloud writes that
+    /// haven't landed are called out because they are lost with the local
+    /// data. A never-synced library's catalog is gone for good — though the
+    /// audio files bae indexed in place stay in the user's folders. The
+    /// pending-work flag is ignored without a cloud home (no outbox exists).
+    static func forgetConfirmationMessage(
+        hasCloudHome: Bool,
+        hasPendingCloudWork: Bool
+    ) -> String {
+        guard hasCloudHome else {
+            return String(
+                localized:
+                    "This library has never been synced. Its catalog will be permanently deleted; audio files in your folders aren't deleted."
+            )
+        }
+        let base = String(
+            localized:
+                "Your library in the cloud is untouched — you can restore it from the welcome screen later."
+        )
+        guard hasPendingCloudWork else { return base }
+        let extra = String(
+            localized:
+                "Some changes haven't finished uploading and will be lost."
+        )
+        return "\(base) \(extra)"
     }
 
     /// Body text for the disconnect confirmation. bae-core pre-formats the

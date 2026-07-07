@@ -33,6 +33,13 @@ class OutboxStore {
         snapshot.perRelease[releaseId] != nil
     }
 
+    /// Whether any cloud writes are still queued or in flight — uploads or
+    /// deletes that haven't reached the cloud home. Drives the extra
+    /// data-loss warning on the remove-library confirmation.
+    var hasPendingCloudWork: Bool {
+        !snapshot.uploadGroups.isEmpty || snapshot.pendingDeletes > 0
+    }
+
     /// The idle (empty) queue. Seeds the store before the first snapshot read
     /// and serves as the fallback if that read fails.
     static var emptySnapshot: BridgeOutboxSnapshot {

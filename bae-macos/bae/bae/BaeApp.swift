@@ -354,18 +354,22 @@ extension BaeApp {
     private var settingsWindow: some Scene {
         Settings {
             if let appService = appDelegate.appService {
-                SettingsView(checkForUpdatesViewModel: checkForUpdatesViewModel)
-                    .environment(appService.configStore)
-                    .environment(appService.libraryStore)
-                    .environment(appService.playback)
-                    .environment(appService.sync)
-                    .environment(appService.exports)
-                    .environment(appService.discogs)
-                    .environment(appService.automation)
-                    .environment(\.playbackPositionPublisher, playbackPublisher)
-                    .environment(\.previewProgressPublisher, previewPublisher)
-                    .environment(appDelegate.uiStore)
-                    .errorAlert(appDelegate.uiStore)
+                SettingsView(
+                    checkForUpdatesViewModel: checkForUpdatesViewModel,
+                    onForgetLibrary: { appDelegate.forgetActiveLibrary() }
+                )
+                .environment(appService.configStore)
+                .environment(appService.libraryStore)
+                .environment(appService.playback)
+                .environment(appService.sync)
+                .environment(appService.exports)
+                .environment(appService.discogs)
+                .environment(appService.automation)
+                .environment(appService.outboxStore)
+                .environment(\.playbackPositionPublisher, playbackPublisher)
+                .environment(\.previewProgressPublisher, previewPublisher)
+                .environment(appDelegate.uiStore)
+                .errorAlert(appDelegate.uiStore)
             }
             else {
                 ContentUnavailableView(
@@ -465,6 +469,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     private var renameTask: Task<Void, Never>?
     @ObservationIgnored
     private var lockTask: Task<Void, Never>?
+    /// In-flight forget, cancelled on library close.
+    @ObservationIgnored
+    private var forgetTask: Task<Void, Never>?
 
     private var skipsApplicationServices: Bool {
         AppRuntime.skipsApplicationServices(
@@ -638,6 +645,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
         openTask?.cancel()
         renameTask?.cancel()
         lockTask?.cancel()
+        forgetTask?.cancel()
         mediaControlService.deactivate(playbackStore: service.playbackStore)
         Task { [handle = service.appHandle] in
             await handle.shutdown()
@@ -737,6 +745,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
                 )
                 loadError = error.localizedDescription
             }
+        }
+    }
+}
+
+extension AppDelegate {
+    /// Remove the active library from this device: the bridge deletes its data
+    /// directory, active-library pointer, and encryption key (the cloud copy,
+    /// if the library syncs, is untouched), then the open service is torn down
+    /// and the window returns to the welcome chooser. The bridge call must be
+    /// the handle's last operation — the database lives in the removed
+    /// directory — so teardown follows unconditionally on success. Errors
+    /// surface through the global error alert and leave the library open. The
+    /// master encryption key is dropped by core, not by a KeychainService call
+    /// here; the restore-code entry is left intact so a synced library can be
+    /// re-paired from the welcome screen.
+    func forgetActiveLibrary() {
+        guard let service = appService else {
+            logger.warning(
+                "Ignoring remove-library request: no library is open."
+            )
+            return
+        }
+        forgetTask?.cancel()
+        forgetTask = Task { @MainActor in
+            do {
+                try await DetachedWork.run { [handle = service.appHandle] in
+                    try handle.forgetLibrary()
+                }
+            }
+            catch is CancellationError {
+                logger.debug("forget cancelled")
+                return
+            }
+            catch {
+                logger.error(
+                    "Failed to remove library: \(error.localizedDescription)"
+                )
+                uiStore.showError(
+                    String(
+                        localized:
+                            "Couldn't remove library: \(error.localizedDescription)"
+                    )
+                )
+                return
+            }
+            closeLibrary()
+            reloadLibraries()
         }
     }
 }
