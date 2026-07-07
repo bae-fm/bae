@@ -56,8 +56,12 @@ internal static class NativeBae
     internal static string? FlushDiagnostics() =>
         CaptureError(() => Diagnostics?.Flush().GetAwaiter().GetResult());
 
+#if BAE_FULL_BRIDGE
     internal static string? SetOauthClientCreds(string credsJson) =>
         CaptureError(() => BaeBridgeMethods.SetOauthClientCreds(credsJson));
+#else
+    internal static string? SetOauthClientCreds(string credsJson) => throw new InvalidOperationException();
+#endif
 
     /// <summary>
     /// The cloud-provider wire tags this generated bridge build supports. Always
@@ -101,6 +105,7 @@ internal static class NativeBae
             _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unknown cloud provider"),
         };
 
+#if BAE_FULL_BRIDGE
     private static BridgeCloudProvider CloudProvider(string provider) =>
         provider switch
         {
@@ -111,6 +116,7 @@ internal static class NativeBae
             "cloudkit" => BridgeCloudProvider.CloudKit,
             _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unknown cloud provider"),
         };
+#endif
 
     /// <summary>The catalog key for a cloud provider's display name, or null for
     /// the brand-name providers the UI passes through verbatim. <paramref name="provider"/>
@@ -142,8 +148,12 @@ internal static class NativeBae
     /// authenticated session. <paramref name="provider"/> is the wire tag
     /// ("google_drive"/…).
     /// </summary>
+#if BAE_FULL_BRIDGE
     internal static string FetchAccountEmail(string provider, string oauthTokenJson) =>
         BaeBridgeMethods.FetchAccountEmail(CloudProvider(provider), oauthTokenJson);
+#else
+    internal static string FetchAccountEmail(string provider, string oauthTokenJson) => throw new InvalidOperationException();
+#endif
 
     /// <summary>The catalog key for a channel count's word ("mono"/"stereo"), or
     /// null for counts the UI renders as "{n}ch".</summary>
@@ -209,11 +219,17 @@ internal static class NativeBae
     /// The core opens the system browser and runs the 127.0.0.1 callback listener,
     /// so call off the UI thread.
     /// </summary>
+#if BAE_FULL_BRIDGE
     internal static string OAuthAuthorize(string provider) =>
         BaeBridgeMethods.OauthAuthorize(CloudProvider(provider));
 
     internal static string OAuthAuthorize(BridgeCloudProvider provider) =>
         BaeBridgeMethods.OauthAuthorize(provider);
+#else
+    internal static string OAuthAuthorize(string provider) => throw new InvalidOperationException();
+
+    internal static string OAuthAuthorize(BridgeCloudProvider provider) => throw new InvalidOperationException();
+#endif
 
     /// <summary>Decode a restore code for UI preview.</summary>
     internal static BridgeRestoreCodeInfo DecodeRestoreCode(string code) =>
@@ -311,6 +327,9 @@ internal static class NativeBae
 
     internal static string? LockActiveLibrary(AppHandle handle) =>
         CaptureError(() => handle.LockActiveLibrary());
+
+    internal static string? UnlockLibrary(string libraryId, string keyHex) =>
+        CaptureError(() => BaeBridgeMethods.UnlockLibrary(libraryId, keyHex));
 
     internal static string? RenameLibrary(AppHandle handle, string libraryId, string name) =>
         CaptureError(() => handle.RenameLibrary(libraryId, name));
@@ -489,8 +508,12 @@ internal static class NativeBae
     internal static string? DisconnectWarning(AppHandle handle) =>
         CaptureValue(() => Await(handle.DisconnectWarningMessage()));
 
+#if BAE_FULL_BRIDGE
     internal static string? SignInCloud(AppHandle handle, string provider, string storage) =>
         CaptureError(() => Await(handle.SignInCloudProvider(CloudProvider(provider), HomeStorage(storage))));
+#else
+    internal static string? SignInCloud(AppHandle handle, string provider, string storage) => throw new InvalidOperationException();
+#endif
 
     internal static string? DisconnectCloud(AppHandle handle) =>
         CaptureError(handle.DisconnectCloudProvider);

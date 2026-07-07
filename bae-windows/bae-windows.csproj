@@ -57,6 +57,10 @@
     <BridgeBindingsDir Condition="'$(BridgeBindingsDir)' == ''">..\bae-bridge\csharp-bindings-full</BridgeBindingsDir>
   </PropertyGroup>
 
+  <PropertyGroup Condition="$([System.String]::Copy('$(BridgeBindingsDir)').Contains('csharp-bindings-full'))">
+    <DefineConstants>$(DefineConstants);BAE_FULL_BRIDGE</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)\$(BridgeBindingsDir)')">
     <Compile Include="$(MSBuildProjectDirectory)\$(BridgeBindingsDir)\**\*.cs" Link="GeneratedBridge\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>

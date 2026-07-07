@@ -195,11 +195,10 @@ public sealed partial class MainWindow : Window
             new PointerEventHandler((_, _) =>
             {
                 _userSeeking = false;
-                var handle = CurrentHandleOrNull();
-                if (handle != null)
+                if (CurrentHandleOrNull() != null)
                 {
                     ProjectSeekDrop(NpProgress.Value);
-                    NativeBae.SeekByRatio(handle, NpProgress.Value);
+                    WithCurrentHandle(handle => NativeBae.SeekByRatio(handle, NpProgress.Value));
                 }
             }), true);
 
@@ -3094,7 +3093,7 @@ public sealed partial class MainWindow : Window
             content.Children.Add(BuildQueueLaneList(_queueManual));
         }
 
-        if (_queueContext is { Upcoming.Count: > 0 } ctx)
+        if (_queueContext is { Upcoming.Length: > 0 } ctx)
         {
             // The context section names what's playing — a release ("Playing From")
             // vs the whole library — by the source kind the wire shape carries.
@@ -6179,7 +6178,7 @@ public sealed partial class MainWindow : Window
                     {
                         BridgeExportPresetCodec.Mp3 current => current.BitrateKbps,
                         BridgeExportPresetCodec.OpusOgg current => current.BitrateKbps,
-                        _ => 0,
+                        _ => 0u,
                     };
                     var bitrate = new TextBox
                     {
@@ -6318,7 +6317,7 @@ public sealed partial class MainWindow : Window
 
         ExportPreset MakeExportPreset(string kind)
         {
-            var codec = kind switch
+            BridgeExportPresetCodec codec = kind switch
             {
                 "mp3" => new BridgeExportPresetCodec.Mp3(320),
                 "opus_ogg" => new BridgeExportPresetCodec.OpusOgg(192),
