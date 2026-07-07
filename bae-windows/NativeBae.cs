@@ -828,7 +828,8 @@ internal static class NativeBae
 
     internal static string? GenerateRestoreCode(AppHandle handle) => CaptureValue(handle.GenerateRestoreCode);
 
-    internal static string? GetMembersJson(AppHandle handle) => CaptureValue(() => Json(Membership(Await(handle.GetMembers()))));
+    internal static (BridgeMembership? Membership, string? Error) GetMembers(AppHandle handle) =>
+        CaptureBridgeValue(() => Await(handle.GetMembers()));
 
     internal static string? InviteMember(AppHandle handle, string publicKeyHex) =>
         CaptureValue(() => Await(handle.InviteMember(publicKeyHex, providerAccountEmail: null)));
@@ -1137,20 +1138,6 @@ internal static class NativeBae
             files = release.Files.Select(FileJson).ToArray(),
         }).ToArray(),
     };
-
-    private static object Membership(BridgeMembership membership) =>
-        new
-        {
-            members = membership.Members.Select(member => new
-            {
-                pubkey = member.Pubkey,
-                role = MemberRoleTag(member.Role),
-                is_self = member.IsSelf,
-                fingerprint = member.Fingerprint,
-                can_remove = member.CanRemove,
-            }).ToArray(),
-            self_is_owner = membership.SelfIsOwner,
-        };
 
     private static object[] Candidates(BridgeCandidateSearchResults results) =>
         results.Groups
@@ -1481,14 +1468,6 @@ internal static class NativeBae
             BridgeSyncProvider.OneDrive => "onedrive",
             BridgeSyncProvider.CloudKit => "cloudkit",
             _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unknown sync provider"),
-        };
-
-    private static string MemberRoleTag(BridgeMemberRole role) =>
-        role switch
-        {
-            BridgeMemberRole.Owner => "owner",
-            BridgeMemberRole.Follower => "follower",
-            _ => "member",
         };
 
     private static string MetadataSourceTag(BridgeMetadataSource source) =>

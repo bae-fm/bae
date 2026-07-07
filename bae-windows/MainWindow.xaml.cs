@@ -6823,16 +6823,25 @@ public sealed partial class MainWindow : Window
     // approve flow (which the caller runs once the settings dialog closes).
     private async System.Threading.Tasks.Task LoadMembersInto(StackPanel host, Action onAddDevice)
     {
-        var (current, json) = await RunForCurrentHandle(NativeBae.GetMembersJson);
+        var (current, result) = await RunForCurrentHandle(NativeBae.GetMembers);
         if (!current)
         {
             return;
         }
         host.Children.Clear();
 
-        var membership = json is null
-            ? null
-            : JsonSerializer.Deserialize<Membership>(json, JsonOptions);
+        if (result.Error is not null)
+        {
+            host.Children.Add(new TextBlock
+            {
+                Text = result.Error,
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
+                TextWrapping = TextWrapping.Wrap,
+            });
+            return;
+        }
+
+        var membership = result.Membership;
         if (membership is null)
         {
             host.Children.Add(new TextBlock
@@ -6861,7 +6870,7 @@ public sealed partial class MainWindow : Window
     // two-step Remove for the owner on every other device. Removing rotates the
     // library key, so it confirms inline (a second click) — a nested ContentDialog
     // can't open over the settings dialog.
-    private FrameworkElement BuildMemberRow(Member member, StackPanel host, Action onAddDevice)
+    private FrameworkElement BuildMemberRow(BridgeMember member, StackPanel host, Action onAddDevice)
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
 

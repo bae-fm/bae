@@ -1,4 +1,6 @@
-﻿namespace Bae.Windows;
+﻿using uniffi.bae_bridge;
+
+namespace Bae.Windows;
 
 /// <summary>
 /// UI-side formatting for device membership: the localized role label the member
@@ -6,13 +8,13 @@
 /// </summary>
 internal static class MemberFormat
 {
-    /// <summary>The localized display name for a wire role tag.</summary>
-    internal static string RoleLabel(string role) => role switch
+    /// <summary>The localized display name for a generated member role.</summary>
+    internal static string RoleLabel(BridgeMemberRole role) => role switch
     {
-        "owner" => Loc.Chrome("members.role.owner"),
-        "member" => Loc.Chrome("members.role.member"),
-        "follower" => Loc.Chrome("members.role.follower"),
-        _ => role,
+        BridgeMemberRole.Owner => Loc.Chrome("members.role.owner"),
+        BridgeMemberRole.Member => Loc.Chrome("members.role.member"),
+        BridgeMemberRole.Follower => Loc.Chrome("members.role.follower"),
+        _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unknown member role"),
     };
 }
 
@@ -57,32 +59,4 @@ public sealed class InviteCodeInfo
 
     public string Provider { get; set; } = string.Empty;
     public bool NeedsOauth { get; set; }
-}
-
-/// <summary>
-/// The library's membership (from <c>bae_get_members</c>): its devices and
-/// whether the running device is an owner (the gate for inviting and removing).
-/// </summary>
-public sealed class Membership
-{
-    public List<Member> Members { get; set; } = [];
-    public bool SelfIsOwner { get; set; }
-}
-
-/// <summary>One device in the library (from <c>bae_get_members</c>).</summary>
-public sealed class Member
-{
-    public string Pubkey { get; set; } = string.Empty;
-
-    /// <summary>Lowercase wire role: "owner" / "member" / "follower".</summary>
-    public string Role { get; set; } = string.Empty;
-
-    /// <summary>True for the device this app is running on.</summary>
-    public bool IsSelf { get; set; }
-
-    /// <summary>Short display identity — the first 8 characters of the pubkey.</summary>
-    public string Fingerprint { get; set; } = string.Empty;
-
-    /// <summary>Whether the running device may remove this one (owner-only, never self).</summary>
-    public bool CanRemove { get; set; }
 }
