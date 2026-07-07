@@ -378,3 +378,145 @@ fn dispatch_effect(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{Config, ConfigHandle};
+    use crate::db::Database;
+    use crate::identify::IdentifyState;
+    use crate::keys::KeyService;
+    use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
+    use std::time::Duration;
+
+    async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+        let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
+            .await
+            .unwrap();
+        let library_dir = coven::LibraryDir::new(temp_dir.path());
+        let library_id = format!("test-{}", temp_dir.path().display());
+        let config = Config::with_defaults(
+            library_id.clone(),
+            "test-device".to_string(),
+            library_dir,
+            "Test Library".to_string(),
+        );
+        crate::config::install_test_keyring();
+        let manager = LibraryManager::new(
+            database,
+            Arc::new(ConfigHandle::new(config)),
+            KeyService::new(library_id),
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::UuidProvider),
+            tokio::runtime::Handle::current(),
+        );
+        let (event_tx, _) = broadcast::channel(64);
+        let inner = Arc::new(IdentifyServiceInner {
+            library_manager: manager,
+            runtime_handle: tokio::runtime::Handle::current(),
+            event_tx,
+            cover_art_archive: CoverArtArchiveClient::new(),
+            drivers: Mutex::new(HashMap::new()),
+        });
+        (inner, temp_dir)
+    }
+
+    /// Signals with neither a disc-ID artifact nor a barcode source: the
+    /// reducer settles on `ManualOnly` and dispatches no network effect, so the
+    /// driver loop runs end-to-end without touching MB/Discogs.
+    fn absent_signals() -> Signals {
+        Signals {
+            disc_id: DiscIdSignal::Absent { track_count: 7 },
+            barcode: BarcodeSignal::Absent,
+            text: TextSignal::Settled {
+                catalogs: vec![],
+                free_text: vec![],
+            },
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn remove_driver_if_current_only_evicts_the_registered_inbox() {
+        let (inner, _tmp) = setup_inner().await;
+        let (tx_registered, _rx_registered) = mpsc::unbounded_channel::<IdentifyEvent>();
+        let (tx_stale, _rx_stale) = mpsc::unbounded_channel::<IdentifyEvent>();
+
+        inner.drivers.lock().unwrap().insert(
+            "k".to_string(),
+            CandidateDriver {
+                token: CancellationToken::new(),
+                inbox: tx_registered.clone(),
+            },
+        );
+
+        // A superseding driver's inbox (different channel) must not evict the
+        // one currently registered — that's the "if current" guard.
+        remove_driver_if_current(&inner, "k", &tx_stale);
+        assert!(inner.drivers.lock().unwrap().contains_key("k"));
+
+        // Removing an unknown key is a no-op.
+        remove_driver_if_current(&inner, "absent", &tx_registered);
+        assert!(inner.drivers.lock().unwrap().contains_key("k"));
+
+        // The registered inbox evicts it.
+        remove_driver_if_current(&inner, "k", &tx_registered);
+        assert!(!inner.drivers.lock().unwrap().contains_key("k"));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn driver_settles_manual_only_and_cancel_deregisters() {
+        let (inner, _tmp) = setup_inner().await;
+        let handle = IdentifyServiceHandle {
+            inner: inner.clone(),
+        };
+        let mut bus_rx = inner.event_tx.subscribe();
+
+        handle.start("k".to_string());
+
+        // Feed the candidate's signals over the import bus, as the extraction
+        // service would.
+        inner
+            .event_tx
+            .send(ImportEvent::SignalsUpdated {
+                candidate_key: "k".to_string(),
+                signals: absent_signals(),
+            })
+            .unwrap();
+
+        // The driver broadcasts each state transition; wait for the terminal
+        // ManualOnly for our key.
+        let mut saw_manual_only = false;
+        for _ in 0..50 {
+            match tokio::time::timeout(Duration::from_secs(2), bus_rx.recv()).await {
+                Ok(Ok(ImportEvent::IdentifyStateChanged {
+                    candidate_key,
+                    state,
+                    ..
+                })) if candidate_key == "k" => {
+                    if matches!(state, IdentifyState::ManualOnly { .. }) {
+                        saw_manual_only = true;
+                        break;
+                    }
+                }
+                Ok(Ok(_)) => continue,
+                Ok(Err(broadcast::error::RecvError::Lagged(_))) => continue,
+                Ok(Err(broadcast::error::RecvError::Closed)) => break,
+                Err(_) => break,
+            }
+        }
+        assert!(
+            saw_manual_only,
+            "driver should broadcast a terminal ManualOnly state"
+        );
+
+        // ManualOnly is non-terminal for the driver — it stays alive so the
+        // user can still toggle a signal or re-run.
+        assert!(inner.drivers.lock().unwrap().contains_key("k"));
+
+        // Cancel deregisters the driver.
+        handle.cancel("k");
+        assert!(!inner.drivers.lock().unwrap().contains_key("k"));
+    }
+}
