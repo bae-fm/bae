@@ -378,28 +378,6 @@ impl Database {
         })
         .await
     }
-    /// Delete an album by ID
-    ///
-    /// This will cascade delete all related records:
-    /// - Releases (via FOREIGN KEY ON DELETE CASCADE)
-    /// - Album artists (via FOREIGN KEY ON DELETE CASCADE)
-    /// - Album discogs (via FOREIGN KEY ON DELETE CASCADE)
-    /// - All tracks, files, etc. from releases (via cascading)
-    /// - Import records referencing this album's releases (cleared before delete)
-    pub async fn delete_album(&self, album_id: &str) -> Result<(), DbError> {
-        let album_id = album_id.to_string();
-        self
-            .call(move |conn| {
-                let tx = conn;
-                tx.execute(
-                    "UPDATE imports SET release_id = NULL WHERE release_id IN (SELECT id FROM releases WHERE album_id = ?)",
-                    params![album_id],
-                )?;
-                tx.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
-                Ok(())
-            })
-            .await
-    }
 
     pub async fn delete_album_with_cleanup(
         &self,
@@ -436,24 +414,6 @@ impl Database {
             conn.execute(
                 "UPDATE albums SET primary_release_id = ?, _updated_at = ? WHERE id = ?",
                 params![primary_release_id, reg, album_id],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
-    /// Clear an album's primary_release_id so summary queries fall back
-    /// to the first surviving release. Called after deleting the release
-    /// that primary_release_id pointed at.
-    pub async fn clear_album_primary_release(&self, album_id: &str) -> Result<(), DbError> {
-        let album_id = album_id.to_string();
-        self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            let conn = sql.tx();
-            conn.execute(
-                "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
-                params![reg, album_id],
             )
             .map(|_| ())
             .map_err(DbError::from)

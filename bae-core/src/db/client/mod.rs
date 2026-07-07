@@ -181,6 +181,41 @@ fn apply_delete_cleanup_on(
     Ok(())
 }
 
+/// After `removed_release_id` has left `album_id` inside the current
+/// transaction (its row deleted, or its `album_id` repointed): delete the
+/// album when it has no releases left, otherwise clear a
+/// `primary_release_id` that pointed at the removed release.
+/// `primary_release_id` is the user's cover-release choice; when the chosen
+/// release leaves, the choice is gone (NULL) and read paths fall back to the
+/// album's first release. Does not touch `imports` — delete flows clear
+/// `imports.release_id` before the release row goes, and a moved release
+/// keeps its import row.
+/// Precondition: the release row must already be gone from / repointed away
+/// from `album_id` when this runs — it counts what remains.
+/// Returns true when the album row was deleted.
+fn cleanup_album_after_release_removal_on(
+    conn: &Connection,
+    album_id: &str,
+    removed_release_id: &str,
+    reg: &str,
+) -> Result<bool, DbError> {
+    let remaining: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM releases WHERE album_id = ?",
+        params![album_id],
+        |row| row.get(0),
+    )?;
+    if remaining == 0 {
+        conn.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
+        return Ok(true);
+    }
+    conn.execute(
+        "UPDATE albums SET primary_release_id = NULL, _updated_at = ? \
+         WHERE id = ? AND primary_release_id = ?",
+        params![reg, album_id, removed_release_id],
+    )?;
+    Ok(false)
+}
+
 fn composer_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
     let release_unlinked = unlinked_release_composer_role_predicate("rar");
     let track_unlinked = unlinked_track_composer_role_predicate("tar");

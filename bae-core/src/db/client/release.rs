@@ -598,30 +598,12 @@ impl Database {
                             params![replacement.release_id],
                         )?;
 
-                        let remaining_release_count: i64 = tx.query_row(
-                            "SELECT COUNT(*) FROM releases WHERE album_id = ?",
-                            params![replacement.album_id],
-                            |row| row.get(0),
+                        let album_deleted = cleanup_album_after_release_removal_on(
+                            tx,
+                            &replacement.album_id,
+                            &replacement.release_id,
+                            &reg,
                         )?;
-                        let album_deleted = remaining_release_count == 0;
-                        if album_deleted {
-                            tx.execute(
-                                "DELETE FROM albums WHERE id = ?",
-                                params![replacement.album_id],
-                            )?;
-                        } else {
-                            let primary_release_id: Option<String> = tx.query_row(
-                                "SELECT primary_release_id FROM albums WHERE id = ?",
-                                params![replacement.album_id],
-                                |row| row.get(0),
-                            )?;
-                            if primary_release_id.as_deref() == Some(&replacement.release_id) {
-                                tx.execute(
-                                    "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
-                                    params![reg, replacement.album_id],
-                                )?;
-                            }
-                        }
                         replacement_outcomes_for_write
                             .lock()
                             .expect("replacement outcomes mutex not poisoned")
@@ -808,27 +790,6 @@ impl Database {
             .expect("replacement outcomes mutex not poisoned"))
     }
 
-    /// Delete a release by ID
-    ///
-    /// This will cascade delete all related records:
-    /// - Tracks (via FOREIGN KEY ON DELETE CASCADE)
-    /// - Files (via FOREIGN KEY ON DELETE CASCADE)
-    /// - Track artists, audio formats (via FOREIGN KEY ON DELETE CASCADE)
-    /// - Import records referencing this release (cleared before delete)
-    pub async fn delete_release(&self, release_id: &str) -> Result<(), DbError> {
-        let release_id = release_id.to_string();
-        self.call(move |conn| {
-            let tx = conn;
-            tx.execute(
-                "UPDATE imports SET release_id = NULL WHERE release_id = ?",
-                params![release_id],
-            )?;
-            tx.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
-            Ok(())
-        })
-        .await
-    }
-
     pub async fn delete_release_with_cleanup(
         &self,
         release_id: &str,
@@ -847,27 +808,8 @@ impl Database {
             )?;
             conn.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
 
-            let remaining_release_count: i64 = conn.query_row(
-                "SELECT COUNT(*) FROM releases WHERE album_id = ?",
-                params![album_id],
-                |row| row.get(0),
-            )?;
-            let album_deleted = remaining_release_count == 0;
-            if album_deleted {
-                conn.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
-            } else {
-                let primary_release_id: Option<String> = conn.query_row(
-                    "SELECT primary_release_id FROM albums WHERE id = ?",
-                    params![album_id],
-                    |row| row.get(0),
-                )?;
-                if primary_release_id.as_deref() == Some(&release_id) {
-                    conn.execute(
-                        "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
-                        params![reg, album_id],
-                    )?;
-                }
-            }
+            let album_deleted =
+                cleanup_album_after_release_removal_on(conn, &album_id, &release_id, &reg)?;
 
             Ok(album_deleted)
         })
@@ -903,17 +845,6 @@ impl Database {
                 )
                 .optional()?
                 .ok_or_else(|| DbError(format!("release not found: {release_id}")))?;
-
-            let remaining_release_count: i64 = conn.query_row(
-                "SELECT COUNT(*) FROM releases WHERE album_id = ? AND id != ?",
-                params![album_id, release_id],
-                |row| row.get(0),
-            )?;
-            let primary_release_id: Option<String> = conn.query_row(
-                "SELECT primary_release_id FROM albums WHERE id = ?",
-                params![album_id],
-                |row| row.get(0),
-            )?;
 
             // Every artist this release/album references, captured before the
             // cascade below removes those link rows. After the release (and its
@@ -1023,14 +954,7 @@ impl Database {
             )?;
             conn.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
 
-            if remaining_release_count == 0 {
-                conn.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
-            } else if primary_release_id.as_deref() == Some(&release_id) {
-                conn.execute(
-                    "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
-                    params![reg, album_id],
-                )?;
-            }
+            cleanup_album_after_release_removal_on(conn, &album_id, &release_id, &reg)?;
 
             // Delete the works this release owned, now that its track_works are
             // gone. A work still reachable from a surviving track — directly, or

@@ -3921,21 +3921,19 @@ async fn set_identity_to_fresh_album_preserves_album_artists() {
 }
 
 #[tokio::test]
-async fn set_identity_moves_primary_release_id_to_remaining_release() {
+async fn set_identity_clears_primary_when_it_pointed_at_moved_release() {
     let (manager, _temp_dir) = setup_test_manager().await;
+    let now = Utc::now();
+    let beta_track_id = "track-beta".to_string();
 
     // album_a carries two releases on g1 and points
-    // primary_release_id at release_alpha. Move release_alpha out
-    // and the pointer should be repaired to release_beta — anything
-    // less leaves the FK pointing at a release that no longer
-    // belongs to the album.
+    // primary_release_id at release_alpha. Move release_alpha out.
+    // The chosen release is gone, so primary_release_id becomes NULL
+    // and the read path falls back to the remaining release_beta.
     let album_a = create_test_album();
     manager.database.insert_album(&album_a).await.unwrap();
     let release_alpha = create_test_release(&album_a.id);
-    // Older `created_at` for beta so it wins the
-    // ORDER BY created_at ASC tiebreak.
-    let mut release_beta = create_test_release(&album_a.id);
-    release_beta.created_at = release_alpha.created_at - chrono::Duration::seconds(60);
+    let release_beta = create_test_release(&album_a.id);
 
     manager
         .database
@@ -3947,6 +3945,20 @@ async fn set_identity_moves_primary_release_id_to_remaining_release() {
         .insert_release(&release_beta)
         .await
         .unwrap();
+
+    // A track on release_beta so the read-path resolution below has an
+    // identifiable target: the fallback should surface beta's tracks.
+    let beta_track = crate::db::DbTrack {
+        id: beta_track_id.clone(),
+        release_id: release_beta.id.clone(),
+        title: "Track Title".to_string(),
+        side: 1,
+        track_number: Some(1),
+        duration_ms: Some(180_000),
+        discogs_position: None,
+        created_at: now,
+    };
+    manager.database.insert_track(&beta_track).await.unwrap();
 
     // Point album_a.primary_release_id at release_alpha — the
     // release we're about to move out.
@@ -3980,7 +3992,8 @@ async fn set_identity_moves_primary_release_id_to_remaining_release() {
         .await
         .unwrap();
 
-    // album_a survives, primary_release_id moved to release_beta.
+    // album_a survives; its primary_release_id is cleared to NULL now
+    // that the release it pointed at has left.
     let surviving_album = manager
         .database
         .find_album_by_id(&album_a.id)
@@ -3988,9 +4001,21 @@ async fn set_identity_moves_primary_release_id_to_remaining_release() {
         .unwrap()
         .expect("album should still exist with release_beta");
     assert_eq!(
-        surviving_album.primary_release_id.as_deref(),
-        Some(release_beta.id.as_str()),
-        "primary_release_id should repoint to the remaining release",
+        surviving_album.primary_release_id, None,
+        "primary_release_id should be cleared when its release moves out",
+    );
+
+    // Read path falls back to the first remaining release: album_a now
+    // resolves its primary to release_beta.
+    let resolved_track_ids = manager
+        .database
+        .get_primary_release_track_ids_for_album(&album_a.id)
+        .await
+        .unwrap();
+    assert_eq!(
+        resolved_track_ids,
+        Some(vec![beta_track_id.clone()]),
+        "read path should resolve the cleared primary to release_beta",
     );
 }
 

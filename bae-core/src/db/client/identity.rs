@@ -233,8 +233,9 @@ impl Database {
     /// 3. UPDATE the release's `album_id` and metadata-source columns.
     /// 4. If the release vacated `current_album_id` (the source), check
     ///    inside the transaction whether any releases remain. None →
-    ///    delete the source album. Some → repair `primary_release_id`
-    ///    if it pointed at the moved release.
+    ///    delete the source album. Some → clear `primary_release_id`
+    ///    if it pointed at the moved release (read paths fall back to
+    ///    the first release).
     ///
     /// The post-move recheck on `current_album_id` closes a TOCTOU
     /// window: a separate writer could have inserted a release into the
@@ -360,61 +361,14 @@ impl Database {
             }
 
             // 5. Source-album cleanup. Only runs when the release actually
-            //    moved; same-album updates don't vacate anything.
-            let mut source_album_deleted = false;
-            if target_album_id != current_album_id {
-                // Recheck inside the transaction: how many releases does the
-                // source album hold now (after the UPDATE above)?
-                let remaining: i64 = tx.query_row(
-                    "SELECT COUNT(*) FROM releases WHERE album_id = ?",
-                    params![current_album_id],
-                    |row| row.get(0),
-                )?;
-
-                if remaining == 0 {
-                    // No releases left → delete the album. There can be no
-                    // imports to clear because the only way `releases` is
-                    // empty is if every prior release left the album, and
-                    // imports reference releases (not albums) — moving a
-                    // release elsewhere keeps the import row pointing at the
-                    // same release, just with a different `album_id`.
-                    tx.execute("DELETE FROM albums WHERE id = ?", params![current_album_id])?;
-                    source_album_deleted = true;
-                } else {
-                    // Album survives. If its `primary_release_id` pointed at
-                    // the moved release, repoint it at the oldest remaining
-                    // release (matching the "first release" fallback used
-                    // elsewhere in the read path).
-                    let dangling: Option<String> = tx
-                        .query_row(
-                            "SELECT primary_release_id FROM albums \
-                                 WHERE id = ? AND primary_release_id = ?",
-                            params![current_album_id, release_id],
-                            |row| row.get::<_, Option<String>>(0),
-                        )
-                        .optional()?
-                        .flatten();
-
-                    if dangling.is_some() {
-                        let new_primary: Option<String> = tx
-                            .query_row(
-                                "SELECT id FROM releases \
-                                     WHERE album_id = ? \
-                                     ORDER BY created_at ASC, id ASC \
-                                     LIMIT 1",
-                                params![current_album_id],
-                                |row| row.get::<_, String>(0),
-                            )
-                            .optional()?;
-
-                        tx.execute(
-                            "UPDATE albums SET primary_release_id = ?, _updated_at = ? \
-                                 WHERE id = ?",
-                            params![new_primary, reg, current_album_id],
-                        )?;
-                    }
-                }
-            }
+            //    moved; same-album updates don't vacate anything. Recheck
+            //    inside the transaction (TOCTOU: a writer may have added a
+            //    release to the source since the manager's pre-flight read).
+            let source_album_deleted = if target_album_id != current_album_id {
+                cleanup_album_after_release_removal_on(tx, &current_album_id, &release_id, &reg)?
+            } else {
+                false
+            };
 
             Ok(SetIdentityOutcome {
                 source_album_deleted,

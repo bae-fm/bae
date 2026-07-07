@@ -763,6 +763,139 @@ mod composer_mode_tests {
     use super::super::*;
     use coven::SystemClock;
 
+    /// A replacement with no blob/outbox cleanup — the released-in-place local
+    /// files these album-cleanup tests use carry no cloud state to tear down.
+    fn empty_cleanup_plan() -> DeleteCleanupPlan {
+        DeleteCleanupPlan {
+            cloud_delete_keys: Vec::new(),
+            in_flight_make_remote_blobs: Vec::new(),
+            external_blob_ids_to_clear: Vec::new(),
+            make_remote_release_ids_to_clear: Vec::new(),
+        }
+    }
+
+    /// Shared arrange for the two reimport-replacement tests. Seeds `album-old`
+    /// with `existing_release_ids` (its `primary_release_id` set to
+    /// `replaced_release_id`), then finalizes a reimport whose new release
+    /// `rel-new` lands in the fresh `album-new`, carrying an
+    /// `ImportReplacementDelete` for `replaced_release_id`. Returns the
+    /// finalize outcomes so each test asserts the album fate on its own.
+    async fn finalize_reimport_replacing_release(
+        db: &Database,
+        tmp: &tempfile::TempDir,
+        now: chrono::DateTime<chrono::Utc>,
+        existing_release_ids: &[&str],
+        replaced_release_id: &str,
+    ) -> Vec<ImportReplacementOutcome> {
+        let artist = DbArtist {
+            id: "artist-a".to_string(),
+            name: "Artist Name A".to_string(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: now,
+        };
+        db.insert_artist(&artist).await.unwrap();
+
+        let album_old = DbAlbum {
+            id: "album-old".to_string(),
+            title: "Album Title Old".to_string(),
+            artist_id: artist.id.clone(),
+            year: Some(2026),
+            primary_release_id: None,
+            is_compilation: false,
+            created_at: now,
+        };
+        db.insert_album(&album_old).await.unwrap();
+        for id in existing_release_ids {
+            db.insert_release(&DbRelease::new_test(&album_old.id, id))
+                .await
+                .unwrap();
+        }
+        db.set_album_primary_release(&album_old.id, replaced_release_id)
+            .await
+            .unwrap();
+
+        // The reimport lands its new release in a fresh album.
+        db.insert_import(&DbImport::new(
+            "import-new",
+            "Album Title New",
+            "Artist Name A",
+            tmp.path().to_str().unwrap(),
+            now,
+        ))
+        .await
+        .unwrap();
+        let album_new = DbAlbum {
+            id: "album-new".to_string(),
+            title: "Album Title New".to_string(),
+            artist_id: artist.id.clone(),
+            year: Some(2026),
+            primary_release_id: None,
+            is_compilation: false,
+            created_at: now,
+        };
+        let release_new = DbRelease::new_test(&album_new.id, "rel-new");
+        let track = DbTrack {
+            id: "track-new".to_string(),
+            release_id: release_new.id.clone(),
+            title: "Track Title New".to_string(),
+            side: 1,
+            track_number: Some(1),
+            duration_ms: Some(1000),
+            discogs_position: None,
+            created_at: now,
+        };
+        let file = DbFile::new(
+            &release_new.id,
+            "Track Title New.flac",
+            1024,
+            ContentType::Flac,
+            "file-new".to_string(),
+            now,
+        );
+        let track_files = vec![crate::import::TrackFile::Standalone {
+            db_track: track,
+            file_path: tmp.path().join("Track Title New.flac"),
+        }];
+
+        let replacement = ImportReplacementDelete {
+            release_id: replaced_release_id.to_string(),
+            album_id: album_old.id.clone(),
+            cleanup: empty_cleanup_plan(),
+        };
+        db.finalize_import_atomic(
+            Some(&album_new),
+            &release_new,
+            &track_files,
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[file],
+            &[],
+            &[],
+            None,
+            &[],
+            None,
+            "import-new",
+            ImportOperationStatus::Complete,
+            &[],
+            tmp.path().to_str().unwrap(),
+            crate::config::HomeStorage::Opaque,
+            &[replacement],
+        )
+        .await
+        .unwrap()
+    }
+
     async fn seeded_db() -> (Database, tempfile::TempDir) {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
@@ -1132,6 +1265,195 @@ mod composer_mode_tests {
             import.error_message.as_deref(),
             Some("remote upload failed")
         );
+    }
+
+    /// Reimport replacing one of several releases in an album: the prior
+    /// release leaves but the album survives, so a `primary_release_id`
+    /// pointing at the departed release is cleared to NULL (read paths fall
+    /// back to the first remaining release).
+    #[tokio::test]
+    async fn finalize_replacement_in_surviving_album_clears_dangling_primary() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+
+        // album-old holds rel-one (primary) and rel-two; the reimport replaces
+        // rel-one, so the album survives on rel-two.
+        let outcomes =
+            finalize_reimport_replacing_release(&db, &tmp, now, &["rel-one", "rel-two"], "rel-one")
+                .await;
+
+        assert_eq!(outcomes.len(), 1);
+        assert_eq!(outcomes[0].album_id, "album-old");
+        assert_eq!(outcomes[0].release_id, "rel-one");
+        assert!(!outcomes[0].album_deleted);
+
+        let surviving = db
+            .find_album_by_id("album-old")
+            .await
+            .unwrap()
+            .expect("album survives while rel-two remains");
+        assert_eq!(surviving.primary_release_id, None);
+        assert!(db.find_release_by_id("rel-one").await.unwrap().is_none());
+        assert!(db.find_release_by_id("rel-two").await.unwrap().is_some());
+    }
+
+    /// Reimport replacing the sole release of an album, landing in a new
+    /// album: the prior album empties and is deleted; the outcome reports it.
+    #[tokio::test]
+    async fn finalize_replacement_of_last_release_deletes_prior_album() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+
+        // album-old holds only rel-old; replacing it empties and deletes it.
+        let outcomes =
+            finalize_reimport_replacing_release(&db, &tmp, now, &["rel-old"], "rel-old").await;
+
+        assert_eq!(outcomes.len(), 1);
+        assert_eq!(outcomes[0].album_id, "album-old");
+        assert!(outcomes[0].album_deleted);
+
+        assert!(db.find_album_by_id("album-old").await.unwrap().is_none());
+        assert!(db.find_release_by_id("rel-old").await.unwrap().is_none());
+        assert!(db.find_album_by_id("album-new").await.unwrap().is_some());
+        assert!(db.find_release_by_id("rel-new").await.unwrap().is_some());
+    }
+
+    /// Failed-import rollback of one of several releases in an album: the
+    /// album survives, so a `primary_release_id` pointing at the failed
+    /// release is cleared to NULL and the sibling release is untouched.
+    #[tokio::test]
+    async fn fail_import_and_delete_release_in_surviving_album_clears_dangling_primary() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+
+        db.insert_import(&DbImport::new(
+            "import-a",
+            "Album Title A",
+            "Artist Name A",
+            tmp.path().to_str().unwrap(),
+            now,
+        ))
+        .await
+        .unwrap();
+
+        let artist = DbArtist {
+            id: "artist-a".to_string(),
+            name: "Artist Name A".to_string(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: now,
+        };
+        db.insert_artist(&artist).await.unwrap();
+
+        let album = DbAlbum {
+            id: "album-a".to_string(),
+            title: "Album Title A".to_string(),
+            artist_id: artist.id.clone(),
+            year: Some(2026),
+            primary_release_id: None,
+            is_compilation: false,
+            created_at: now,
+        };
+        let release = DbRelease::new_test(&album.id, "rel-a");
+        let track = DbTrack {
+            id: "track-a".to_string(),
+            release_id: release.id.clone(),
+            title: "Track Title A".to_string(),
+            side: 1,
+            track_number: Some(1),
+            duration_ms: Some(1000),
+            discogs_position: None,
+            created_at: now,
+        };
+        let file = DbFile::new(
+            &release.id,
+            "Track Title A.flac",
+            1024,
+            ContentType::Flac,
+            "file-a".to_string(),
+            now,
+        );
+        let track_files = vec![crate::import::TrackFile::Standalone {
+            db_track: track,
+            file_path: tmp.path().join("Track Title A.flac"),
+        }];
+
+        // Finalize the import, pointing the album's primary at the release
+        // this import created.
+        db.finalize_import_atomic(
+            Some(&album),
+            &release,
+            &track_files,
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[file],
+            &[],
+            &[],
+            None,
+            &[],
+            Some((&album.id, &release.id)),
+            "import-a",
+            ImportOperationStatus::Complete,
+            &[],
+            tmp.path().to_str().unwrap(),
+            crate::config::HomeStorage::Opaque,
+            &[],
+        )
+        .await
+        .unwrap();
+
+        // A sibling release in the same album keeps it alive through the
+        // rollback.
+        let sibling = DbRelease::new_test(&album.id, "rel-b");
+        db.insert_release(&sibling).await.unwrap();
+
+        db.fail_import_and_delete_release("import-a", "rel-a", "remote upload failed")
+            .await
+            .unwrap();
+
+        let surviving = db
+            .find_album_by_id("album-a")
+            .await
+            .unwrap()
+            .expect("album survives while sibling remains");
+        assert_eq!(surviving.primary_release_id, None);
+        assert!(db.find_release_by_id("rel-a").await.unwrap().is_none());
+        assert!(db.find_release_by_id("rel-b").await.unwrap().is_some());
+        let import = db
+            .find_import_by_id("import-a")
+            .await
+            .unwrap()
+            .expect("import remains visible as failed");
+        assert_eq!(import.status, ImportOperationStatus::Failed);
+        assert!(import.release_id.is_none());
     }
 
     /// A failed remote import's cover and artist-image blobs live only in
