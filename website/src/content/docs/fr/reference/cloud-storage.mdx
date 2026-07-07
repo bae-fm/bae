@@ -1,0 +1,37 @@
+---
+title: Stockage cloud
+description: Fournisseurs, authentification et forme de l’emplacement cloud
+---
+
+L’emplacement cloud est un emplacement unique dans un stockage que l’utilisateur possède déjà. Chaque fournisseur est piloté via la même interface de stockage dans [coven](https://coven.bae.fm) ; ce qui change selon le fournisseur est l’authentification et la manière dont un second appareil reçoit l’accès.
+
+## Fournisseurs
+
+| Provider | Auth | Access for a new device |
+|---|---|---|
+| S3-compatible | Access key + secret | Credentials embedded in the invite |
+| Google Drive | OAuth (PKCE) | Folder shared to the joiner's account |
+| Dropbox | OAuth (PKCE) | Folder shared to the joiner's account |
+| OneDrive | OAuth (PKCE) | Folder shared to the joiner's account |
+| iCloud (CloudKit) | Apple ID, no sign-in | CloudKit share accepted by the joiner |
+
+Compatible S3 couvre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO et tout autre service qui parle l’API ; bucket, région, endpoint et préfixe de clé sont configurables, et le bucket est sondé avant l’enregistrement de la configuration afin qu’une faute de frappe échoue à la configuration, pas à la première synchronisation. Les fournisseurs OAuth existent seulement dans l’édition complète **bae** ; les versions **baeium** les excluent à la compilation.
+
+## OAuth
+
+La connexion est un flux de code d’autorisation avec PKCE, en tant que client public. Sur ordinateur, la redirection arrive sur un serveur loopback lié à un port local pour l’unique callback ; sur mobile, l’application capture plutôt une redirection de schéma personnalisé. bae demande la portée la plus étroite que le fournisseur offre pour le travail ; sur Google Drive, c’est seulement l’accès aux fichiers créés par l’application elle-même. Les jetons sont stockés dans le trousseau du système d’exploitation, actualisés avec l’autorisation d’actualisation du fournisseur, et un refus d’actualisation apparaît comme une invite de reconnexion plutôt qu’une boucle de nouvel essai silencieuse.
+
+CloudKit n’a besoin d’aucun flux : le pilote CloudKit de la plateforme, implémenté dans l’application et remis au cœur, fonctionne comme l’Apple ID connecté.
+
+## Disposition de l’emplacement
+
+Dans l’emplacement, coven dispose les flux de jeux de changements par appareil, les générations d’instantanés, les enregistrements d’appartenance et les espaces de noms de blobs. bae apporte trois espaces de noms de blobs : `release_files`, `covers` et `artist_images`.
+
+La manière dont les objets sont clés dépend du mode de stockage de l’emplacement, fixé à la création :
+
+- **Opaque** : les objets sont chiffrés et stockés sous des clés dérivées du contenu qui ne révèlent rien. C’est le mode de confiance complète dans la cryptographie ; consultez [Chiffrement](/fr/reference/encryption).
+- **Navigable** : les objets sont en clair à des chemins lisibles enregistrés par blob au moment de l’envoi : `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Le bucket sert aussi d’arborescence de fichiers utilisable ; la contrepartie est l’absence de chiffrement et d’appartenance, donc les emplacements navigables ne peuvent pas être partagés avec d’autres personnes.
+
+## Comportement sur de vrais réseaux
+
+Les lectures pour la lecture audio sont par plages : le lecteur diffuse les fenêtres d’octets dont il a besoin plutôt que des fichiers entiers. Les envois au-dessus d’un seuil de taille utilisent le multipart là où le fournisseur le prend en charge. Les limites de débit et les erreurs temporaires du fournisseur sont réessayées avec attente exponentielle, en respectant le retry-after du fournisseur quand il est donné ; les jetons OAuth expirés sont actualisés sur place. La boîte d’envoi de synchronisation survit aux redémarrages : un envoi interrompu par la fermeture de l’application reprend au lieu de recommencer.

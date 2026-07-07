@@ -1,0 +1,44 @@
+---
+title: Premiers pas
+description: Créer une bibliothèque, importer votre premier album et le lire
+---
+
+bae est un espace pour les albums que vous possédez. Vous construisez la bibliothèque sur votre ordinateur, puis elle vous suit sur chaque appareil : synchronisée via le stockage cloud que vous avez déjà, chiffrée pour que seuls vos appareils puissent la lire.
+
+Les applications de bureau (macOS, Windows) sont l’outil complet : elles créent les bibliothèques, importent la musique et modifient les métadonnées. Les applications téléphone (iOS, Android) sont des lecteurs : elles rejoignent une bibliothèque créée par votre ordinateur, puis parcourent, téléchargent et lisent.
+
+## Créer une bibliothèque
+
+Ouvrez bae sur votre ordinateur. Quand aucune bibliothèque n’est présente sur la machine, l’écran d’accueil propose trois choix :
+
+- **Créer une nouvelle bibliothèque**, si c’est votre premier appareil.
+- **Rejoindre une bibliothèque**, si un autre appareil en possède déjà une et que son propriétaire vous approuvera. Consultez [Appareils et membres](/fr/guide/devices).
+- **Restaurer depuis le cloud**, si c’est votre propre bibliothèque et que vous avez son code de récupération. Consultez [Appareils et membres](/fr/guide/devices#recovery-codes).
+
+Créez-en une. Une bibliothèque commence en local : tout vit sur cette machine, aucun compte n’est nécessaire, et aucun cloud n’intervient tant que vous n’en connectez pas un.
+
+## Importer votre premier album
+
+1. Passez à la section **Import** dans la barre de titre.
+2. Ajoutez un dossier de musique. Vous pouvez le choisir, le faire glisser sur la fenêtre ou appuyer sur <kbd>⌘I</kbd>.
+3. bae analyse le dossier et liste les sorties qu’il trouve. Sélectionnez-en une.
+4. bae l’identifie avec MusicBrainz et Discogs et affiche la correspondance. Confirmez le pressage, choisissez une pochette, ajustez les détails nécessaires.
+5. Cliquez sur **Import**.
+
+Vos fichiers ne sont ni déplacés, ni copiés, ni réécrits. bae les catalogue là où ils se trouvent. Le flux complet, y compris quoi faire quand l’identification a besoin d’aide, se trouve dans [Importation](/fr/guide/importing).
+
+## Le lire
+
+De retour dans la section **Library**, l’album est dans la grille. Cliquez dessus, puis lancez la lecture. La lecture utilise vos fichiers originaux, avec leur qualité d’origine. [Lecture](/fr/guide/playback) couvre la file d’attente, la lecture aléatoire et la répétition, ainsi que les détails que bae conserve : pregaps de CD, séparations de faces vinyle, albums sans blanc.
+
+## L’emporter partout
+
+Quand vous voulez la bibliothèque sur plus d’un appareil, connectez un emplacement cloud : votre propre Google Drive, Dropbox, OneDrive, iCloud ou tout bucket compatible S3. Tout ce que bae y place est chiffré avant l’envoi ; le fournisseur le stocke mais ne peut pas le lire.
+
+- [Synchronisation](/fr/guide/sync) : connecter un emplacement cloud et choisir ce qu’il stocke.
+- [Appareils et membres](/fr/guide/devices) : ajouter votre téléphone ou un autre ordinateur.
+- [Stockage et hors ligne](/fr/guide/storage) : garder la musique sur l’appareil, ou la diffuser depuis votre cloud et épingler ce dont vous avez besoin hors ligne.
+
+## Où vivent les éléments
+
+Chaque bibliothèque conserve sa base de données et ses réglages sous `~/.bae/libraries/` sur ordinateur. Votre audio reste là d’où vous l’avez importé, sauf si vous demandez à bae de le gérer dans votre cloud. Les clés et identifiants vivent dans le trousseau du système d’exploitation, pas dans des fichiers.

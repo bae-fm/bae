@@ -1,0 +1,36 @@
+---
+title: Stockage et hors ligne
+description: Où vit votre musique, et ce qui se lit sans réseau
+---
+
+Vos fichiers restent les vôtres. bae ne les déplace, ne les renomme et ne les réécrit jamais ; la question à laquelle répond le stockage est seulement celle de l’endroit où vit la *copie lisible* de chaque sortie : sur l’appareil, dans votre cloud, ou les deux.
+
+## Non géré et géré
+
+Chaque sortie est l’un ou l’autre, choix fait à l’importation et modifiable à tout moment :
+
+- **Non géré** : bae catalogue vos fichiers là où ils sont et les lit depuis cet emplacement. Rien n’est copié. La sortie existe dans le catalogue sur chaque appareil synchronisé, mais son audio vit seulement sur la machine qui l’a importée.
+- **Géré** : les fichiers sont chiffrés et envoyés vers l’emplacement cloud. Chaque appareil peut alors lire la sortie, en la diffusant à la demande ou en la téléchargeant pour le hors ligne. Vos fichiers originaux ne sont pas touchés par l’envoi ; à vous de choisir s’ils continuent d’être utilisés localement (**Keep local copy** à l’importation les épingle).
+
+Passer de l’un à l’autre est une action au niveau de la sortie : **Manage** envoie une sortie non gérée ; **Make local** télécharge les fichiers d’une sortie gérée vers le dossier que vous choisissez, et ils redeviennent des fichiers ordinaires à vous.
+
+## Diffusion et cache
+
+Les sorties gérées se lisent partout, si le réseau le permet : la lecture diffuse le fichier depuis votre cloud, et les octets sont conservés dans un cache local afin que la lecture suivante soit immédiate et sans transfert. Le cache se gère dans une limite (20 Go pour l’audio sur chaque appareil), en évacuant ce que vous n’avez pas lu quand l’espace manque. Les pochettes et images d’artistes sont mises en cache séparément, donc un gros album ne peut pas chasser vos illustrations.
+
+## Épingler pour le hors ligne
+
+Épingler une sortie la télécharge entièrement et la garde : la musique épinglée n’est jamais évacuée et se lit toujours hors ligne. Épinglez depuis la fiche de stockage de la sortie ou depuis le Storage Manager ; retirer l’épingle remet les fichiers dans le cache normal, où ils restent lisibles mais récupérables. Sur téléphone, les téléchargements épinglés affichent leur progression directement dans la bibliothèque.
+
+## Le Storage Manager
+
+Le Storage Manager du bureau (<kbd>⌘0</kbd>) donne l’ensemble dans une seule fenêtre :
+
+- Chaque sortie avec sa taille et son état : non gérée, gérée, en envoi. Filtrez, triez, sélectionnez plusieurs éléments, agissez sur tous à la fois.
+- **Downloads** : téléchargements épinglés en cours, que l’on peut mettre en pause et réessayer.
+- **Exports** : la file d’exportation. Consultez [Exportation](/fr/guide/exporting).
+- **Uploads** : la boîte d’envoi de synchronisation, avec progression par sortie, débit et temps restant, suppressions en attente, pause et reprise.
+
+## Suppression
+
+Supprimer une sortie gérée la retire de la bibliothèque et de l’emplacement cloud. Supprimer une sortie non gérée retire seulement l’entrée du catalogue : bae ne supprime jamais les fichiers qu’il n’a pas placés là.

@@ -1,0 +1,43 @@
+---
+title: Modèle de données
+description: Le schéma, ce qui se synchronise et ce qui reste sur l’appareil
+---
+
+Le catalogue de bae est du SQLite ordinaire, déclaré à [coven](https://coven.bae.fm) table par table : les tables synchronisées portent une horloge de conflit et vont sur chaque appareil ; les tables non déclarées ne quittent jamais l’appareil. Cette séparation est la décision la plus déterminante du modèle de données, donc cette page est organisée autour d’elle.
+
+## Le graphe du catalogue
+
+Le cœur synchronisé du schéma :
+
+- **`artists`**, **`albums`**, **`works`** : la couche de groupement. Un album agrège ses sorties et pointe vers une sortie principale ; les œuvres forment un graphe parent/enfant pour la structure classique.
+- **`releases`** : l’entité centrale, une ligne par pressage. Porte les faits de pressage (label, numéro de catalogue, code-barres, pays, format, année), la source des métadonnées, un hash de contenu du dossier importé et le niveau sonore mesuré de l’album.
+- **`release_identities`** : ce qu’une sortie *est*, par source. Aucune ligne signifie inconnue ; une ligne MusicBrainz ou Discogs avec un ID de sortie signifie exacte ; sans ID, approximative. Une sortie peut porter des identités dans les deux sources à la fois.
+- **`tracks`** avec **`track_artists`**, plus **`release_artist_roles`** et **`track_artist_roles`** : listes de pistes et crédits, chaque crédit étant marqué avec sa source.
+- **`track_works`**, **`work_parts`**, **`work_artists`** : enregistrements liés aux œuvres qu’ils interprètent.
+- **`audio_formats`** et **`audio_format_segments`** : les spécifications de lecture. Par piste : codec, fréquence d’échantillonnage, profondeur de bits, canaux, niveau sonore et pic mesurés, et longueurs de pregap. Les segments placent une piste sur des fenêtres d’octets et d’échantillons ordonnées de ses fichiers sources ; c’est ainsi que la piste d’un rip CUE, pregap compris, peut couvrir des régions d’un gros fichier, ou de plusieurs fichiers.
+- **`release_files`**, **`covers`**, **`artist_images`** : tables portant des blobs. Les lignes sont des entrées de catalogue ; les octets vivent dans la couche de blobs de coven (voir ci-dessous).
+
+## Synchronisé, limité, local
+
+Tout ce qui précède se synchronise, mais pas sans condition. `releases` est déclarée comme racine limitée sur sa colonne `remote` : une ligne de sortie et tout son sous-arbre (pistes, fichiers, crédits, formats, pochette) se synchronisent seulement tant que `remote` vaut true, c’est-à-dire tant que la sortie est gérée dans le cloud. Passer une sortie en gérée publie le sous-arbre ; une sortie non gérée reste entièrement sur l’appareil importateur, même si son schéma est synchronisé. Les tables ancêtres (`artists`, `albums`, `works`) se synchronisent seulement tant qu’une sortie synchronisée les référence encore, donc un appareil ne reçoit jamais un artiste sans rien dessous.
+
+Tables entièrement locales, jamais déclarées à coven :
+
+- **`playback_state`** : piste en cours, position, file d’attente, volume, lecture aléatoire et répétition. La lecture est un fait d’appareil.
+- **`imports`** : suivi des opérations d’importation.
+- **`release_metadata`** : JSON brut archivé depuis MusicBrainz et Discogs, conservé pour une future réinterprétation.
+- **`attribution_names`** : noms d’affichage pour les clés de membres.
+
+Chaque table synchronisée porte une colonne `_updated_at` d’horloge logique hybride, le registre par lequel la fusion champ par champ de coven ordonne les modifications concurrentes ; un test impose que l’ensemble synchronisé et l’ensemble portant l’horloge soient exactement égaux.
+
+## Blobs
+
+Audio et images passent par la couche de blobs de coven dans trois espaces de noms, chacun avec sa propre limite de cache par appareil : `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+
+Les fichiers de sortie sont fournis par l’utilisateur et mis en cache à la demande : pour une sortie non gérée, le blob est une référence externe au fichier de l’utilisateur à son chemin d’origine ; pour une sortie gérée, c’est un objet envoyé qui est récupéré dans le cache à la première lecture. Les pochettes et images d’artistes sont fournies par l’hôte et mises en cache d’avance : bae produit les octets (les pochettes sont rerendues en vignettes JPEG d’au plus 600 px de large), et chaque appareil les récupère lors du pull pour que les grilles s’affichent localement.
+
+Sur un emplacement opaque, les blobs sont envoyés sous des clés de contenu sans signification. Sur un emplacement navigable, chaque ligne de blob enregistre un chemin cloud lisible (`{artist}/{album}/{filename}` pour l’audio, `{album}/{release}/cover.{ext}` pour les pochettes), calculé une fois à l’envoi afin qu’un renommage ultérieur ne déplace jamais l’objet.
+
+## Identité d’un rip
+
+`releases.content_hash` est un SHA-256 sur la structure de fichiers du dossier importé (chemins relatifs et tailles), indépendant de l’endroit où le dossier se trouve sur disque. C’est ainsi que bae reconnaît un rip déjà importé quand il réapparaît dans un dossier surveillé, et que les réimportations trouvent la sortie qu’elles doivent remplacer.

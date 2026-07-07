@@ -1,0 +1,43 @@
+---
+title: Pipeline d’importation
+description: Analyse, indices, triangulation et validation atomique
+---
+
+L’importation transforme un dossier de fichiers en entrée de catalogue fidèle à la sortie sans modifier un seul octet des fichiers. Cette page décrit le pipeline derrière le flux présenté dans le [guide d’utilisation](/fr/guide/importing).
+
+## Analyse
+
+Les dossiers surveillés sont suivis par les événements de système de fichiers de la plateforme, temporisés, puis réanalysés en cas de changement ; les analyses se réconcilient avec la liste de candidats existante au lieu de recommencer. Le scanner classe un dossier comme une seule sortie (audio directement à l’intérieur, ou sous-dossiers en forme de disque comme `CD1`/`CD2`), ou descend dedans comme dans une collection. Les fichiers sont classés par extension en audio, illustrations et documents, puis l’audio est sondé : le codec qui compte est celui que FFmpeg trouve dans les octets, pas l’extension de fichier. Les dossiers qui contiennent des marqueurs de téléchargement partiel sont exclus jusqu’à la fin du téléchargement.
+
+Une fiche CUE transforme une image audio en liste de pistes. Le parseur gère pregaps et postgaps, interprètes et ISRC par piste, ainsi que les dispositions CUE à image unique et à un fichier par piste. Les limites de pistes sont converties depuis les frames CUE (1/75e de seconde) vers des positions d’échantillon exactes, qui deviennent ensuite les fenêtres d’octets et d’échantillons utilisées par la lecture.
+
+## Indices, pas tags
+
+L’identification lit trois types d’indices dans le dossier en une seule passe :
+
+- un **Disc ID**, l’empreinte MusicBrainz de la disposition exacte des pistes d’un CD, calculée depuis un journal de rip ou depuis la fiche CUE ;
+- des **codes-barres**, décodés depuis les scans d’illustrations par le cadre de vision de la plateforme et lus depuis les champs de catalogue CUE ;
+- du **texte** : numéros de catalogue et texte libre issus de la reconnaissance de texte des illustrations, des noms de dossiers et de fichiers, et des fichiers texte du rip.
+
+Les tags audio intégrés ne sont volontairement pas des indices : ils décrivent ce qu’un tagueur croyait, pas ce qu’est le pressage. (Ils alimentent les métadonnées de repli quand l’utilisateur importe une sortie comme inconnue.)
+
+Disc ID et code-barres sont recherchés en concurrence, le Disc ID dans MusicBrainz, le code-barres dans MusicBrainz et Discogs à la fois, puis les résultats sont triangulés : les résultats qui s’accordent sur un groupe de sorties convergent, les correspondances de numéro de catalogue resserrent la liste des pressages, et le désaccord entre signaux apparaît comme un conflit explicite pour l’utilisateur plutôt qu’une meilleure supposition silencieuse. Chaque résultat porte sa provenance (trouvé par Disc ID, par code-barres, par correspondance de catalogue) afin que l’interface puisse dire pourquoi une ligne est proposée.
+
+## Sources
+
+MusicBrainz est interrogé anonymement avec un rythme strict d’une requête par seconde. Discogs s’authentifie avec le jeton personnel de l’utilisateur depuis le trousseau, en respectant son débit et en réessayant dans ses limites, et un jeton refusé est signalé comme tel afin que l’interface puisse l’indiquer plutôt que de laisser les recherches échouer en silence. Les réponses sont mises en cache par session, et le JSON brut de la source qui gagne est archivé dans la base de données pour une future réinterprétation.
+
+## Validation
+
+Confirmer une importation exécute, dans l’ordre :
+
+1. **Vérification du décodage** : chaque piste est décodée de bout en bout ; un rip qui ne peut pas se décoder entièrement fait échouer l’importation avant toute écriture (un indicateur de configuration peut désactiver cela).
+2. **Analyse du niveau sonore** : le niveau sonore intégré et le pic vrai sont mesurés par piste et par album pendant cette même passe de décodage, stockés pour l’usage du replay gain.
+3. **Sélection de la pochette** : l’illustration choisie (distante, image du dossier ou intégrée) est rerendue en vignette d’affichage ; l’original est conservé parmi les fichiers de la sortie s’il venait du dossier.
+4. **Écriture atomique** : la sortie, les pistes, les crédits, les identités, les formats, les segments, les fichiers et la pochette sont validés dans une transaction. Il n’existe aucun état à moitié importé.
+
+La sortie arrive en référençant les fichiers de l’utilisateur en place. Si l’utilisateur a choisi une gestion dans le cloud, l’envoi se produit après la validation comme transition de stockage, et les octets originaux des fichiers restent la source de vérité tout du long ; rien de ce que l’utilisateur a donné à bae n’est jamais supprimé ou modifié.
+
+## Reconnaître les rips
+
+Chaque sortie enregistre un hash de contenu sur la structure de son dossier importé (chemins relatifs et tailles, indépendant de l’emplacement). Les nouvelles analyses l’utilisent pour marquer les dossiers déjà dans la bibliothèque, et les réimportations du même rip trouvent et remplacent leur sortie précédente au lieu de la dupliquer.

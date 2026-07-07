@@ -1,0 +1,43 @@
+---
+title: Appareils et membres
+description: Ajouter votre téléphone, approuver un appareil, récupérer votre bibliothèque
+---
+
+Il n’y a pas de compte bae. L’identité d’un appareil est une paire de clés qu’il génère pour lui-même et conserve dans le trousseau du système d’exploitation ; la bibliothèque reconnaît les appareils par leurs clés. Ajouter un appareil signifie qu’un appareil existant se porte garant du nouveau, cryptographiquement, sans intermédiaire.
+
+Deux portes différentes, pour deux situations différentes :
+
+- **Rejoindre** : un nouvel appareil est approuvé par un appareil qui possède déjà la bibliothèque. Utilisez cela pour ajouter votre téléphone ou l’appareil d’une autre personne.
+- **Restaurer** : votre propre appareil neuf ou réinstallé récupère la bibliothèque directement depuis l’emplacement cloud, à l’aide d’un code de récupération. Aucun approbateur n’intervient.
+
+## Ajouter un appareil
+
+Sur le nouvel appareil, choisissez **Join a library**. Il affiche un code court, aussi sous forme de QR : la demande de jonction, qui porte la clé publique de l’appareil et une empreinte que vous pouvez lire à voix haute.
+
+Sur un appareil qui possède déjà la bibliothèque, un propriétaire ouvre Réglages, Appareils, **Add a device**, puis scanne ou colle cette demande. bae affiche l’empreinte de l’appareil qui rejoint ; confirmez qu’elle correspond à ce que le nouvel appareil affiche. L’approbation produit un code d’invitation : remettez-le au nouvel appareil (scannez le QR ou collez-le), et le nouvel appareil télécharge la bibliothèque puis commence la synchronisation.
+
+Derrière cette poignée de main : l’appareil approbateur accorde au nouvel arrivant l’accès à l’emplacement cloud (les clouds grand public partagent le dossier avec le compte du nouvel arrivant ; les invitations S3 embarquent des identifiants) et scelle la clé de chiffrement de la bibliothèque avec la clé publique du nouvel arrivant. L’invitation ne sert à aucun autre appareil. Détails dans [Identité et appartenance](/fr/reference/membership).
+
+## Membres et rôles
+
+Réglages, Appareils liste chaque membre : empreinte, rôle, et lequel est cet appareil. L’appareil fondateur est un **propriétaire** ; les appareils qu’il approuve rejoignent comme **membres**. Les deux lisent et écrivent la bibliothèque ; seuls les propriétaires approuvent et retirent des appareils.
+
+## Retirer un appareil
+
+Les propriétaires peuvent retirer n’importe quel membre. Le retrait ne ferme pas seulement la porte : la clé de chiffrement de la bibliothèque fait l’objet d’une rotation, et l’appareil retiré ne reçoit jamais la nouvelle clé. Ce qu’il a déjà copié, il le garde, rien ne peut annuler l’envoi de données, mais tout ce que la bibliothèque écrit à partir de ce moment-là lui est illisible.
+
+## Codes de récupération
+
+Un code de récupération est un secret porteur pour votre propre bibliothèque : coordonnées de l’emplacement cloud plus clé de chiffrement, en une seule chaîne. **Show recovery code** dans Réglages l’affiche ; stockez-le dans un endroit sûr, comme un gestionnaire de mots de passe. Sur un nouvel appareil, **Restore from cloud** avec le code reconstruit la bibliothèque, sans approbateur.
+
+Sur les plateformes Apple, le code est aussi conservé automatiquement dans le trousseau iCloud, donc un nouveau Mac ou iPhone connecté à votre Apple ID peut restaurer en un geste.
+
+Toute personne qui détient le code détient la bibliothèque, donc traitez-le comme la clé qu’il est.
+
+## Verrouillage
+
+**Lock Library** retire la clé de chiffrement du trousseau de l’appareil. La bibliothèque reste sur disque, illisible, jusqu’à ce que quelqu’un saisisse de nouveau la clé ; bae la vérifie avec une empreinte stockée avant de l’accepter. Utilisez cela pour un ordinateur portable qui quitte la maison.
+
+## Sur le téléphone
+
+iOS et Android rejoignent et restaurent exactement ainsi ; c’est tout leur accueil. Un téléphone peut aussi retirer sa copie de la bibliothèque (Réglages, retirer de cet appareil), ce qui supprime les fichiers locaux et ne touche à rien dans le cloud.

@@ -1,0 +1,41 @@
+---
+title: Lecture
+description: Qualité d’origine et détails avec lesquels les sorties ont été faites
+---
+
+Les disques ont été faits avec une structure que les lecteurs de fichiers ont tendance à aplatir : faces qui se terminent, audio caché avant la première piste, morceaux qui s’enchaînent. bae conserve les détails de lecture d’une sortie et les lit comme la sortie le prévoit, depuis vos fichiers originaux, intacts.
+
+## Qualité d’origine
+
+La lecture décode vos fichiers tels qu’ils ont été importés. Il n’y a pas de transcodage, pas de réécriture du niveau sonore, pas de réencodage serveur ; le périphérique audio est piloté à la fréquence d’échantillonnage du fichier. Ce que vous avez rippé est ce qui est lu. Tous les formats que bae importe, il les lit : FLAC, MP3, APE, ALAC, AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack, DSD.
+
+## Sans blanc
+
+Les albums mixés comme une pièce continue sont lus de cette manière. La piste suivante est préparée pendant la lecture de la piste en cours, et quand les deux partagent un format, l’audio ne s’arrête jamais à la limite : pas de blanc, pas de clic.
+
+## Pregaps de CD
+
+Les CD peuvent cacher de l’audio dans l’intervalle avant le début d’une piste, y compris avant la piste un, le procédé classique de la piste cachée. Quand une sortie est importée depuis un rip avec fiche CUE, bae sait où se trouve chaque pregap et les lit : l’affichage du temps de la piste commence à zéro là où la piste proprement dite commence, et l’audio caché avant elle est lu dans l’intervalle, exactement comme sur le CD. Les exportations peuvent conserver, supprimer ou rattacher les pregaps ; consultez [Exportation](/fr/guide/exporting).
+
+## Séparations de faces
+
+Les sorties vinyle et cassette ont des faces, et certains disques utilisent délibérément la pause entre elles. Activez **Pause between sides** dans les réglages de lecture et bae met la lecture en pause à chaque limite de face, en vous demandant de continuer : le retournement sans retourner le support. Les listes de pistes sont groupées par face et par disque, ce qui rend la structure visible pendant la navigation.
+
+## La file d’attente
+
+La lecture a toujours un contexte : la sortie que vous avez lancée, ou toute la bibliothèque si vous l’avez mélangée. La file d’attente montre deux voies :
+
+- **Up Next** : les pistes que vous avez mises en file à la main, lues en premier. Faites glisser des pistes, réordonnez-les, retirez-les.
+- **Playing from** : le reste du contexte, avec son propre bouton de lecture aléatoire.
+
+**Play Next** et **Add to Queue** sont disponibles sur chaque piste et chaque album. La répétition alterne entre désactivée, répétition du contexte et répétition d’une piste.
+
+## Commandes
+
+Lecture/pause avec <kbd>Space</kbd>, suivant et précédent au clavier, la barre de progression pour se déplacer. bae s’intègre au système : touches multimédias, Centre de contrôle sur les plateformes Apple, notifications multimédias sur Android, commandes sur l’écran verrouillé du téléphone, avec pochette et informations de piste là où le système les affiche.
+
+À la fermeture, l’application de bureau peut enregistrer ce qui était en lecture, file d’attente et position comprises, et le reprendre au lancement suivant : **Restore on launch** dans les réglages de lecture.
+
+## Hors ligne
+
+Une sortie se lit partout où ses octets sont accessibles : les fichiers locaux sont lus directement, les sorties gérées dans le cloud sont diffusées pendant la lecture, et les sorties épinglées sont toujours sur l’appareil. Consultez [Stockage et hors ligne](/fr/guide/storage).

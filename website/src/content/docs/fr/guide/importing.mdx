@@ -1,0 +1,64 @@
+---
+title: Importation
+description: Associer vos dossiers à de vraies sorties
+---
+
+Un dossier de rips sait très peu de choses sur lui-même. La sortie dont il vient, le pressage, le label, les crédits, l’endroit où la piste 12 se termine réellement : tout cela vit dans des bases de données comme MusicBrainz et Discogs, pas dans vos noms de fichiers. L’importation est la manière dont bae relie les deux : vous lui indiquez votre musique, il détermine quelle sortie correspond à chaque dossier, et la bibliothèque enregistre le dossier comme cette sortie.
+
+L’importation se fait sur ordinateur (macOS, Windows). Vos fichiers sont lus, jamais modifiés : bae ne déplace, ne renomme, ne retague et ne réencode rien. Consultez [Stockage et hors ligne](/fr/guide/storage) pour savoir où les fichiers vivent après l’importation.
+
+## Dossiers surveillés
+
+Passez à la section **Import** et ajoutez un dossier : choisissez-le, faites-le glisser sur la fenêtre ou appuyez sur <kbd>⌘I</kbd>. bae surveille ensuite ce dossier. La nouvelle musique que vous y déposez apparaît d’elle-même comme nouveaux candidats ; vous ne relancez pas l’analyse à la main. Les dossiers encore en téléchargement sont ignorés jusqu’à la fin du téléchargement.
+
+Une analyse reconnaît les sorties dans les formes que prennent réellement les rips :
+
+| Disposition | Aspect |
+|--------|-------------------|
+| Fichier par piste | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE + image | `album.cue` + `album.flac`, un fichier pour tout le disque |
+| Multi-disque | Sous-dossiers `CD1/`, `CD2/`, avec l’une ou l’autre forme à l’intérieur |
+| Collections | un dossier de dossiers, chacun étant sa propre sortie |
+
+bae importe les formats qu’il lit : FLAC, MP3, APE, ALAC et AAC dans `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack et DSD (`.dsf`/`.dff`). Les illustrations et documents (fiches CUE, journaux de rip, fichiers texte) dans le dossier sont reconnus et conservés avec la sortie.
+
+## Identifier une sortie
+
+Sélectionnez un candidat et bae commence à l’identifier. Au lieu de deviner à partir des tags, il lit les indices dans le dossier et recherche chaque élément :
+
+- **Disc ID.** Une empreinte de la disposition exacte des pistes du CD, calculée depuis le journal de rip ou la fiche CUE. Quand elle correspond, elle identifie l’édition CD précise.
+- **Code-barres.** Lu sur les scans de pochette dans le dossier à l’aide de la reconnaissance de texte, ou depuis la fiche CUE.
+- **Numéros de catalogue et texte.** Numéros de catalogue trouvés sur les illustrations et dans les noms de fichiers et de dossiers, utilisés pour réduire les résultats.
+
+Les signaux sont recherchés en même temps dans MusicBrainz et Discogs, puis les résultats sont vérifiés entre eux. Chaque signal apparaît sous forme de badge au-dessus des résultats : vous pouvez voir ce qui a été trouvé, d’où cela vient (survolez pour voir l’origine : table des matières du disque, fiche CUE, scan de pochette, nom de dossier), et désactiver des signaux individuels si l’un d’eux induit en erreur.
+
+Trois résultats possibles :
+
+- **Trouvé.** Les indices s’accordent sur un groupe de sorties. Vous choisissez le pressage exact dans sa liste.
+- **Conflit.** Deux signaux pointent vers des sorties différentes, par exemple si le Disc ID et le code-barres ne sont pas d’accord. bae affiche les deux côtés et vous choisissez lequel croire, ou ignorez un signal.
+- **Rien trouvé.** Recherchez à la main : artiste et album, numéro de catalogue ou code-barres, dans l’une ou l’autre base de données. Le texte reconnu dans les illustrations est proposé en saisie semi-automatique.
+
+Vous pouvez aussi **ignorer l’identification** et importer comme sortie inconnue. bae se replie alors sur les tags intégrés de vos fichiers pour les noms, et vous pouvez réidentifier plus tard, quand la sortie existe dans une base de données ou quand vous avez de meilleurs indices.
+
+## Exact ou approximatif
+
+Quand vous sélectionnez une correspondance, bae la compare à vos fichiers et signale une différence de nombre de pistes. Vous déclarez ensuite la nature de la correspondance :
+
+- **Exact** : vos fichiers sont ce pressage.
+- **Métadonnées seulement** : le bon album, mais pas nécessairement ce pressage exact. bae utilise les métadonnées et mémorise que le pressage est approximatif.
+
+Si la sortie est déjà dans votre bibliothèque, ou si un autre pressage du même album l’est, bae vous le signale avant que vous n’importiez un doublon.
+
+## Confirmer et importer
+
+Le volet de confirmation montre tout ce que l’importation écrira :
+
+- **Pochette.** Choisie parmi les illustrations des bases de données, les images de votre dossier ou les illustrations intégrées dans les fichiers. Vous pouvez la modifier plus tard.
+- **Métadonnées.** Album, artiste, année, label, numéro de catalogue, pays, code-barres et chaque piste : tout est modifiable ici avant l’enregistrement.
+- **Stockage.** Si un emplacement cloud est connecté, choisissez si bae doit gérer les fichiers dans votre cloud et s’il doit aussi garder une copie locale. Consultez [Stockage et hors ligne](/fr/guide/storage).
+
+L’importation s’exécute en arrière-plan : bae vérifie que chaque piste se décode correctement, mesure le niveau sonore de l’album et de chaque piste, enregistre la sortie et, pour les importations gérées, lance l’envoi. La liste des candidats passe au dossier suivant, et la sortie est lisible immédiatement.
+
+## Sources de données
+
+**MusicBrainz** n’a besoin ni de compte ni de clé. **Discogs** nécessite votre propre jeton d’API gratuit ; collez-le dans Réglages, et bae vous indique s’il cesse de fonctionner. Sans jeton, la recherche Discogs et les métadonnées provenant de Discogs sont indisponibles, et tout le reste fonctionne. Les deux services limitent leur débit ; bae espace ses requêtes pour rester dans les limites.

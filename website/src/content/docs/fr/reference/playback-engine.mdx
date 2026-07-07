@@ -1,0 +1,34 @@
+---
+title: Moteur de lecture
+description: Décodage, sans blanc, pregaps et niveau sonore, précisément
+---
+
+Le contrat du moteur de lecture est la fidélité à la source : décoder les octets originaux de l’utilisateur, au propre débit de la source, avec la structure de la sortie intacte. Cette page en est la spécification.
+
+## Décodage
+
+Tout le décodage est FFmpeg, dans le processus, sur chaque plateforme : FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack et DSD sont ce que l’importation accepte, et le codec de référence est ce que FFmpeg signale depuis les octets, pas l’extension de fichier. Les échantillons sortent en flottants 32 bits pour l’étage de sortie ; la conversion du format d’échantillon est la seule conversion effectuée.
+
+La sortie utilise l’API audio native de la plateforme (Core Audio via cpal sur ordinateur et iOS, AAudio sur Android). Le flux de sortie est configuré à la **fréquence d’échantillonnage et au nombre de canaux de la source** : un fichier 96 kHz est lu à 96 kHz. Il n’y a pas d’étape de rééchantillonnage. Le périphérique de sortie par défaut est résolu à chaque construction de flux, donc la lecture suit les changements de périphérique du système. Sur Android, les codecs pris en charge par le matériel peuvent contourner entièrement FFmpeg pour le décodage déchargé.
+
+## Lectures en diffusion
+
+La lecture n’a pas besoin de fichiers entiers. L’audio est lu via un tampon clairsemé qui récupère des plages d’octets à la demande, depuis un fichier local, le cache ou le cloud, et la recherche associe l’échantillon cible à une position d’octet afin qu’une recherche dans une région non récupérée parte de là. Un arbitre de récupération priorise les lectures de la piste en cours sur le préchargement, donc une piste à venir ne retarde jamais la piste en cours.
+
+## Pistes comme fenêtres
+
+Une piste n’est pas un fichier ; c’est une liste ordonnée de fenêtres d’échantillons sur un ou plusieurs fichiers, construite à l’importation depuis la fiche CUE ou l’étendue propre du fichier. Cette représentation unique porte toutes les formes de disque : un fichier par piste, tout un disque dans une image, un pregap vivant à la fin d’un fichier et au début d’un autre, et des rips avec perte coupés en un fichier par piste.
+
+Les fenêtres de pregap sont marquées comme telles. La lecture entre dans une piste par son pregap quand elle en a un (index 00, audio de piste cachée inclus) tandis que l’horloge affiche le temps de piste : la position est bloquée à zéro jusqu’au début de la piste proprement dite, et la durée affichée exclut le pregap, comme le comportement d’un lecteur CD.
+
+## Sans blanc
+
+La piste suivante est ouverte et mise en tampon pendant la lecture de la piste en cours. Quand les deux partagent fréquence d’échantillonnage et nombre de canaux, le moteur les enchaîne dans le callback audio actif : le flux ne s’arrête jamais, et la limite est exacte à l’échantillon. Quand les formats diffèrent, le flux est reconstruit, ce qui est le cas où un changement de format rend de toute façon une limite audible.
+
+## Niveau sonore
+
+L’importation mesure le niveau sonore intégré (EBU R128) et le pic vrai, par piste et par album, pendant la passe de vérification du décodage. Le replay gain est dérivé de ces mesures au moment de la lecture, jamais inscrit dans les fichiers : cible −18 LUFS, plafonné pour que le pic vrai ne sature pas, appliqué par piste ou par album, avec un changement net aux limites sans blanc. Le mode est actuellement livré sans interface de réglages et désactivé par défaut ; il peut être défini dans le fichier de configuration de la bibliothèque.
+
+## Pauses entre faces
+
+Les listes de pistes portent leur structure de face et de disque, et le moteur peut attendre à une limite de face, en affichant une invite pour continuer, quand l’utilisateur active la pause entre faces. L’attente est un état du service de lecture, pas un silence décodé, donc la reprise est immédiate.

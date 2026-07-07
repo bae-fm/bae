@@ -1,0 +1,41 @@
+---
+title: Architecture
+description: Applications natives sur un cœur Rust, sur coven
+---
+
+bae est un cœur Rust porté par quatre applications natives. Tout ce qui définit le produit, le modèle de bibliothèque, l’importation, la lecture, la synchronisation et le chiffrement vit en Rust et se comporte de la même manière sur chaque plateforme ; chaque application est une interface native fine au-dessus de lui.
+
+## Les couches
+
+- **`bae-core`** : le produit. Modèle de bibliothèque et de métadonnées, pipelines d’importation et d’identification, moteur de lecture FFmpeg, analyse du niveau sonore, exportation et intégration avec coven en dessous. L’importation et l’identification ne compilent que sur ordinateur ; les versions mobiles sont des clients de synchronisation et de lecture.
+- **[coven](https://coven.bae.fm)** : la couche de données, une bibliothèque séparée. coven possède la connexion SQLite, capture chaque changement que bae valide et synchronise ces changements chiffrés de bout en bout via le stockage cloud de l’utilisateur. Il possède aussi le stockage des blobs (octets audio, illustrations), le cache local, les clés d’identité et l’appartenance. bae épingle une révision exacte de coven et l’inscrit dans chaque binaire ; elle définit la génération de compatibilité de synchronisation entre versions.
+- **`bae-bridge`** : la limite UniFFI. Les types de pont sont définis une fois en Rust et générés en Swift et Kotlin au moment de la construction.
+- **Les applications** : SwiftUI sur macOS et iOS, Jetpack Compose sur Android, et une application Windows native. Chacune implémente aussi les éléments de plateforme demandés par le cœur : sortie audio, reconnaissance de texte dans les illustrations, commandes multimédias, accès au trousseau, rapports de crash.
+
+À côté des applications : `bae-mcp` (le serveur MCP), `bae-cli` (ligne de commande) et `bae-automation` (la couche d’outils partagée utilisée par les deux).
+
+## Une bibliothèque sur disque
+
+Une bibliothèque vit dans `~/.bae/libraries/<library-id>/` (un dossier de données de plateforme sur mobile) :
+
+```
+~/.bae/libraries/<id>/
+  library.db        # SQLite: catalog, credits, playback specs
+  config.yaml       # device-local settings, never synced
+  storage/
+    local/          # blobs this device owns (covers, artist images)
+    cache/          # evictable copies of cloud blobs
+    pinned/         # pinned-for-offline copies, never evicted
+```
+
+La base de données n’est ouverte que via coven, qui ajoute ses propres tables de suivi (curseurs de synchronisation, boîte d’envoi, état des blobs) à côté du schéma de bae et exécute les migrations de bae. Les fichiers audio importés comme non gérés ne sont pas du tout sous `~/.bae` : la base de données les référence aux chemins où ils ont été importés.
+
+Les secrets ne vivent jamais dans ces fichiers. Clés d’identité, clé de chiffrement de la bibliothèque, identifiants cloud et jetons d’API vivent dans le trousseau du système d’exploitation (Keychain sur les plateformes Apple, synchronisé via le trousseau iCloud ; les équivalents de plateforme ailleurs).
+
+## Éditions
+
+Deux éditions définies à la construction existent sur chaque plateforme. **bae** compile les fournisseurs OAuth (Google Drive, Dropbox, OneDrive), CloudKit et la télémétrie. **baeium** compile sans tout cela : stockage compatible S3 seulement, pas de télémétrie, rien de propriétaire dans l’arbre des dépendances. Les éditions partagent le même code source et le même cœur ; un indicateur de fonctionnalité décide la liste des fournisseurs et le branchement des diagnostics.
+
+## Gestion de versions
+
+Les applications utilisent des versions `MAJOR.MINOR` par plateforme. Le majeur est l’ère de compatibilité, partagée par chaque application : les appareils sur le même majeur peuvent synchroniser une bibliothèque. Il augmente seulement lorsqu’un format de communication ou de disque casse, le plus souvent la révision épinglée de coven. Les mineurs comptent les versions par application et ne sont pas comparables entre plateformes.

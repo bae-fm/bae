@@ -1,0 +1,35 @@
+---
+title: Identité et appartenance
+description: Clés comme identités, échange de jonction, rôles et révocation
+---
+
+Il n’y a aucun système de compte dans bae. L’identité d’un appareil est une paire de clés Ed25519 qu’il génère pour lui-même et conserve dans le trousseau du système d’exploitation ; la clé publique *est* l’identité. Les membres d’une bibliothèque sont un ensemble d’enregistrements signés dans l’emplacement cloud, vérifiables par toute personne qui les détient, émis par aucun serveur. La mécanique est celle de [coven](https://coven.bae.fm) ; cette page explique comment bae l’utilise.
+
+## Enregistrements d’appartenance
+
+Chaque propriétaire écrit un flux append-only d’entrées d’appartenance signées dans l’emplacement cloud : cette clé a été ajoutée avec ce rôle, cette clé a été retirée. Chaque entrée pointe vers la précédente, et chaque propriétaire signe une tête déclarant la pointe de son flux ; ainsi, un fournisseur qui supprime ou réordonne des enregistrements est détecté au lieu d’être cru. Ce que la bibliothèque accepte est l’union de chaque flux de propriétaire vérifié.
+
+À chaque pull, l’auteur de chaque jeu de changements est vérifié avec cet enregistrement : signé par un membre actuel, avec un rôle autorisé à écrire. Les jeux de changements d’appareils retirés, de clés jamais ajoutées, ou avec des signatures invalides ne s’appliquent pas. Le fournisseur stocke les enregistrements mais ne peut pas les falsifier ; seuls les détenteurs de clés de propriétaire peuvent modifier l’appartenance.
+
+## Rôles
+
+**Owner** et **Member** lisent et écrivent tous les deux la bibliothèque ; les propriétaires approuvent et retirent en plus des appareils. L’appareil fondateur de bae est propriétaire et chaque appareil qu’il approuve rejoint comme membre. (Un troisième rôle existe dans la mécanique sous-jacente, un suiveur en lecture seule, que bae n’assigne pas actuellement.)
+
+## L’échange de jonction
+
+Ajouter un appareil est un échange à deux codes avec vérification humaine explicite au milieu :
+
+1. L’appareil qui rejoint génère sa paire de clés et affiche une **join request** : sa clé publique, une courte empreinte de celle-ci et (pour les fournisseurs OAuth) le compte cloud avec lequel partager le dossier.
+2. Un propriétaire décode la demande, et les deux écrans affichent la même empreinte. L’humain vérifie qu’elles correspondent ; c’est l’étape qui empêche une clé remplacée.
+3. L’approbation fait trois choses à la fois : accorder au compte du nouvel arrivant l’accès à l’emplacement cloud (partage de dossier sur les clouds grand public, identifiants embarqués sur S3, partage CloudKit sur iCloud), sceller la clé de bibliothèque avec la clé publique du nouvel arrivant et signer une entrée d’appartenance qui l’ajoute. Tout cela est empaqueté dans un **invite code**.
+4. L’appareil qui rejoint consomme l’invitation, déscelle la clé, s’amorce depuis le dernier instantané et se synchronise.
+
+L’invitation est scellée pour la clé qui l’a demandée : l’intercepter n’accorde rien.
+
+## Révocation
+
+Retirer un membre ajoute un retrait signé et fait tourner la clé de bibliothèque vers une nouvelle génération que la clé retirée ne reçoit jamais (consultez [Chiffrement](/fr/reference/encryption#generations)). Sur les stockages qui peuvent révoquer l’accès, l’accès est aussi retiré. Ce qui était déjà synchronisé sur l’appareil retiré reste avec lui ; les données ne peuvent pas être rappelées. Tout ce qui suit la rotation est hors de sa portée.
+
+## Codes de récupération
+
+Un code de récupération contourne volontairement l’appartenance : ce sont les coordonnées de l’emplacement cloud plus la clé de bibliothèque, en une seule chaîne porteuse, pour restaurer votre propre bibliothèque sans approbateur restant. Il est généré à la demande, stocké automatiquement dans le trousseau iCloud sur les plateformes Apple, et est exactement aussi sensible que la bibliothèque elle-même.

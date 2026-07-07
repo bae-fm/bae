@@ -1,0 +1,40 @@
+---
+title: Synchronisation
+description: Comment les changements circulent entre appareils, et comment ils fusionnent
+---
+
+La synchronisation de bae est celle de [coven](https://coven.bae.fm) : bae déclare ses tables et blobs, et coven fait le reste. Cette page décrit la mécanique telle qu’elle s’applique à bae ; la propre documentation de coven couvre chaque partie en détail.
+
+## Capture
+
+coven possède la connexion SQLite, donc chaque écriture validée par bae passe par lui. L’extension session de SQLite enregistre exactement ce qui a changé dans chaque transaction ; les changements aux tables synchronisées deviennent un **changeset**, scellé avec la clé de bibliothèque et signé avec la clé d’identité de l’appareil. Pas de comparaison de diff, pas d’indicateurs de saleté : la capture est une propriété de la connexion, et une écriture ne peut pas être manquée.
+
+## Flux
+
+Chaque appareil ajoute ses jeux de changements à son propre flux dans l’emplacement cloud, numérotés séquentiellement. Les appareils n’écrivent jamais dans les flux des autres, donc il n’y a pas de conflits d’écriture dans le stockage, et chaque appareil suit un curseur par flux pair. Un cycle de synchronisation pousse la boîte d’envoi locale, puis tire chaque flux pair depuis son curseur, en vérifiant la signature de chaque jeu de changements et l’appartenance de son auteur avant de l’appliquer.
+
+Le cycle s’exécute après les changements locaux, sur un minuteur d’inactivité avec attente progressive (jusqu’à cinq minutes entre interrogations), et immédiatement avec **Sync Now**. Les échecs attendent puis réessaient ; la boucle rapporte le résultat de chaque cycle à l’interface sous forme d’état, de texte d’erreur et de nombre de lignes appliquées.
+
+## Fusion
+
+Deux appareils qui modifient la même bibliothèque pendant qu’ils sont séparés sont le cas normal, pas l’exception. Quand leurs changements se rencontrent :
+
+- Les modifications de **lignes différentes ou de colonnes différentes** s’appliquent toutes les deux. Modifier l’année d’une sortie sur le portable et son label sur l’ordinateur de bureau donne les deux.
+- Les modifications de la **même colonne de la même ligne** sont ordonnées par l’horloge logique hybride `_updated_at` de la ligne : la modification la plus tardive gagne, de façon déterministe et identique sur chaque appareil.
+- **Les suppressions gagnent** sur les modifications concurrentes : une sortie supprimée sur un appareil reste supprimée même si un autre appareil l’a modifiée dans le même intervalle.
+
+Il n’y a pas d’interface de conflit parce qu’il n’y a pas d’état non résolu : chaque appareil converge vers le même résultat quel que soit l’ordre d’application.
+
+## Amorçage
+
+Un appareil qui rejoint ou restaure ne rejoue pas l’historique depuis le début. Il télécharge un **instantané**, une image SQLite complète publiée périodiquement dans l’emplacement cloud, puis applique seulement les jeux de changements accumulés par chaque flux après celui-ci. Les métadonnées de l’instantané enregistrent la version de schéma et les curseurs par flux qu’il incarne.
+
+## Versions de schéma
+
+Le schéma de bae migre par une échelle numérotée, et l’échelon supérieur de l’échelle est inscrit sur chaque jeu de changements que l’appareil écrit. Un appareil qui tire un jeu de changements d’un schéma plus récent que le sien met ce flux de côté, sans rien appliquer au-delà, jusqu’à ce que l’application soit mise à jour ; rien n’est perdu et rien n’est appliqué au mauvais format. Le fichier de base de données lui-même refuse de s’ouvrir avec un binaire plus ancien que son schéma.
+
+Au-dessus de la version de schéma se trouve l’**ère de compatibilité** : la révision de coven épinglée dans chaque binaire. Deux versions ne synchronisent qu’au sein d’une ère ; une rupture de format de communication coven est une nouvelle ère et une augmentation de version majeure sur chaque application. Avant la 1.0, chaque version est en ère zéro et les formats changent sans migration.
+
+## Ce que le fournisseur voit
+
+Sur un emplacement opaque, le fournisseur stocke des jeux de changements chiffrés, des blobs chiffrés et des enregistrements d’appartenance signés ; il peut compter les objets et observer tailles et timings, et ne rien lire de leur contenu. Chaque objet tiré par un appareil est vérifié, signature et appartenance, avant que quoi que ce soit ne touche la base de données : le stockage est une boîte aux lettres passive et non fiable. Consultez [Chiffrement](/fr/reference/encryption) et [Identité et appartenance](/fr/reference/membership).

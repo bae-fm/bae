@@ -1,0 +1,39 @@
+---
+title: Sorties et métadonnées
+description: Une bibliothèque fidèle aux sorties, et comment la garder correcte
+---
+
+La plupart des applications de musique modélisent « un album » : un titre, une pochette, une liste de pistes. Les vraies collections ne fonctionnent pas ainsi. Vous pouvez posséder le CD original, le remaster et un pressage vinyle du même disque, et ils diffèrent par leurs listes de pistes, durées, illustrations et crédits. bae modélise des **sorties** : chaque importation est un pressage précis, et les pressages du même album sont groupés ensemble.
+
+## Les albums groupent les sorties
+
+Dans la bibliothèque, un album avec plusieurs pressages est une seule entrée. La page de l’album affiche un sélecteur de sortie ; chaque sortie conserve sa propre liste de pistes, pochette, année, label, numéro de catalogue et ses crédits. Une sortie est la **principale** : celle utilisée par défaut dans la grille d’albums et la lecture. Définissez n’importe quelle sortie comme principale depuis le menu de l’album, et choisissez à tout moment une autre sortie pour l’écoute ; bae mémorise votre choix par album.
+
+## Ce qu’une sortie sait
+
+Les sorties identifiées portent la connaissance des bases de données, pas seulement les noms de pistes :
+
+- Détails de pressage : label, numéro de catalogue, code-barres, pays, format, année.
+- Crédits : interprètes, producteurs, ingénieurs, par sortie et par piste.
+- Structure classique : compositeurs, œuvres et leurs parties, liées à leurs enregistrements. La vue compositeur de la bibliothèque est construite depuis cela ; consultez [Navigation et recherche](/fr/guide/browsing).
+- Identité : quelle entrée MusicBrainz ou Discogs correspond, et si la correspondance est exacte ou approximative.
+
+Les enregistrements sources bruts sont aussi conservés, afin que la sortie puisse être réinterprétée plus tard sans redemander aux bases de données.
+
+## Modification
+
+Les métadonnées sont à vous de corriger. **Edit metadata** sur n’importe quelle sortie ouvre le même formulaire que la confirmation d’importation : titre et artiste de l’album, détails de pressage, et titre, artiste et numérotation de chaque piste. **Reset to source** revient à ce que la base de données indiquait.
+
+Les modifications vivent seulement dans la base de données de bae. Les tags intégrés de vos fichiers ne sont jamais réécrits ; les fichiers restent octet pour octet tels qu’importés.
+
+## Réidentifier
+
+Si une sortie a été importée comme inconnue, associée au mauvais pressage, ou si la base de données s’est améliorée depuis, **Re-identify** relance le flux d’identification sur la sortie existante : mêmes signaux, mêmes outils de recherche. Une fois la nouvelle correspondance validée, bae demande s’il doit actualiser les métadonnées depuis la nouvelle source (en écrasant vos modifications) ou garder ce que vous avez.
+
+## Pochettes
+
+Chaque sortie a une pochette d’affichage. **Change cover** propose les illustrations des bases de données et les fichiers image venus avec la sortie. bae garde sa propre copie de la pochette choisie, dimensionnée pour l’affichage, donc le scan original dans votre dossier reste intact. Touchez une pochette n’importe où pour ouvrir la galerie complète des images d’une sortie.
+
+## Suppression
+
+Supprimer une sortie la retire de la bibliothèque et, pour les sorties gérées, de votre emplacement cloud. Les fichiers importés en place, non gérés, ne sont jamais supprimés : bae les oublie seulement.
