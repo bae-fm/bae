@@ -799,197 +799,95 @@ FILE "test.ape" WAVE
 }
 
 #[test]
-fn test_detect_cue_flac_from_paths_lowercase() {
+fn detect_cue_flac_from_paths_pairs_by_stem_and_extension() {
     use std::path::PathBuf;
 
-    let paths = vec![
-        PathBuf::from("/music/album.flac"),
-        PathBuf::from("/music/album.cue"),
-        PathBuf::from("/music/cover.jpg"),
+    // Detection is extension-only and case-insensitive: any `.flac`/`.ape`/`.m4a`
+    // audio file pairs with a same-stem, same-directory `.cue`, regardless of the
+    // case of either extension. Non-audio siblings (covers) are ignored, and a
+    // `.cue` whose stem matches no audio file yields no pair.
+    struct Case {
+        paths: &'static [&'static str],
+        expected: Option<(&'static str, &'static str)>,
+    }
+    let cases = [
+        // FLAC across lower / upper / mixed extension casing.
+        Case {
+            paths: &["/music/album.flac", "/music/album.cue", "/music/cover.jpg"],
+            expected: Some(("/music/album.flac", "/music/album.cue")),
+        },
+        Case {
+            paths: &["/music/album.FLAC", "/music/album.CUE", "/music/cover.jpg"],
+            expected: Some(("/music/album.FLAC", "/music/album.CUE")),
+        },
+        Case {
+            paths: &["/music/album.Flac", "/music/album.Cue"],
+            expected: Some(("/music/album.Flac", "/music/album.Cue")),
+        },
+        // APE lower / upper.
+        Case {
+            paths: &["/music/album.ape", "/music/album.cue", "/music/cover.jpg"],
+            expected: Some(("/music/album.ape", "/music/album.cue")),
+        },
+        Case {
+            paths: &["/music/album.APE", "/music/album.CUE"],
+            expected: Some(("/music/album.APE", "/music/album.CUE")),
+        },
+        // ALAC lives in an `.m4a` (MP4) container, lower / upper. Detection is
+        // extension-only here; the codec is confirmed later by the analyzer.
+        Case {
+            paths: &["/music/album.m4a", "/music/album.cue", "/music/cover.jpg"],
+            expected: Some(("/music/album.m4a", "/music/album.cue")),
+        },
+        Case {
+            paths: &["/music/album.M4A", "/music/album.CUE"],
+            expected: Some(("/music/album.M4A", "/music/album.CUE")),
+        },
+        // Spaces and dashes in the shared stem.
+        Case {
+            paths: &[
+                "/music/Some Artist - Some Album.cue",
+                "/music/Some Artist - Some Album.flac",
+                "/music/front.jpg",
+            ],
+            expected: Some((
+                "/music/Some Artist - Some Album.flac",
+                "/music/Some Artist - Some Album.cue",
+            )),
+        },
+        // A `.cue` whose stem matches no audio file: no pair (FLAC and APE).
+        Case {
+            paths: &["/music/album.flac", "/music/different.cue"],
+            expected: None,
+        },
+        Case {
+            paths: &["/music/album.ape", "/music/different.cue"],
+            expected: None,
+        },
     ];
 
-    let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
-
-    assert_eq!(pairs.len(), 1);
-    assert_eq!(pairs[0].audio_path, PathBuf::from("/music/album.flac"));
-    assert_eq!(pairs[0].cue_path, PathBuf::from("/music/album.cue"));
-}
-
-#[test]
-fn test_detect_cue_flac_from_paths_uppercase() {
-    use std::path::PathBuf;
-
-    let paths = vec![
-        PathBuf::from("/music/album.FLAC"),
-        PathBuf::from("/music/album.CUE"),
-        PathBuf::from("/music/cover.jpg"),
-    ];
-
-    let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
-
-    assert_eq!(
-        pairs.len(),
-        1,
-        "Should detect CUE/FLAC pair with uppercase extensions"
-    );
-    assert_eq!(pairs[0].audio_path, PathBuf::from("/music/album.FLAC"));
-    assert_eq!(pairs[0].cue_path, PathBuf::from("/music/album.CUE"));
-}
-
-#[test]
-fn test_detect_cue_flac_from_paths_mixed_case() {
-    use std::path::PathBuf;
-
-    let paths = vec![
-        PathBuf::from("/music/album.Flac"),
-        PathBuf::from("/music/album.Cue"),
-    ];
-
-    let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
-
-    assert_eq!(
-        pairs.len(),
-        1,
-        "Should detect CUE/FLAC pair with mixed case extensions"
-    );
-}
-
-#[test]
-fn test_detect_cue_flac_from_paths_no_match() {
-    use std::path::PathBuf;
-
-    let paths = vec![
-        PathBuf::from("/music/album.flac"),
-        PathBuf::from("/music/different.cue"),
-    ];
-
-    let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
-
-    assert_eq!(
-        pairs.len(),
-        0,
-        "Should not match CUE/FLAC with different stems"
-    );
-}
-
-#[test]
-fn test_detect_cue_flac_from_paths_multiple_pairs() {
-    use std::path::PathBuf;
-
-    let paths = vec![
-        PathBuf::from("/music/disc1.flac"),
-        PathBuf::from("/music/disc1.cue"),
-        PathBuf::from("/music/disc2.flac"),
-        PathBuf::from("/music/disc2.cue"),
-    ];
-
-    let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
-
-    assert_eq!(pairs.len(), 2, "Should detect multiple CUE/FLAC pairs");
-}
-
-#[test]
-fn test_detect_cue_flac_from_paths_with_spaces_and_dashes() {
-    use std::path::PathBuf;
-
-    let paths = vec![
-        PathBuf::from("/music/Some Artist - Some Album.cue"),
-        PathBuf::from("/music/Some Artist - Some Album.flac"),
-        PathBuf::from("/music/front.jpg"),
-    ];
-
-    let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
-
-    assert_eq!(
-        pairs.len(),
-        1,
-        "Should detect CUE/FLAC pair with spaces and dashes in filename"
-    );
-    assert!(pairs[0]
-        .audio_path
-        .to_string_lossy()
-        .contains("Some Artist"));
-    assert!(pairs[0].cue_path.to_string_lossy().contains("Some Artist"));
-}
-
-#[test]
-fn test_detect_cue_ape_pair() {
-    use std::path::PathBuf;
-
-    let paths = vec![
-        PathBuf::from("/music/album.ape"),
-        PathBuf::from("/music/album.cue"),
-        PathBuf::from("/music/cover.jpg"),
-    ];
-
-    let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
-
-    assert_eq!(pairs.len(), 1);
-    assert_eq!(pairs[0].audio_path, PathBuf::from("/music/album.ape"));
-    assert_eq!(pairs[0].cue_path, PathBuf::from("/music/album.cue"));
-}
-
-#[test]
-fn test_detect_cue_ape_uppercase() {
-    use std::path::PathBuf;
-
-    let paths = vec![
-        PathBuf::from("/music/album.APE"),
-        PathBuf::from("/music/album.CUE"),
-    ];
-
-    let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
-
-    assert_eq!(pairs.len(), 1);
-    assert_eq!(pairs[0].audio_path, PathBuf::from("/music/album.APE"));
-}
-
-#[test]
-fn test_detect_cue_ape_no_match_different_stems() {
-    use std::path::PathBuf;
-
-    let paths = vec![
-        PathBuf::from("/music/album.ape"),
-        PathBuf::from("/music/different.cue"),
-    ];
-
-    let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
-    assert_eq!(pairs.len(), 0);
-}
-
-#[test]
-fn test_detect_cue_alac_pair() {
-    use std::path::PathBuf;
-
-    // `.m4a` is the MP4 container extension for CUE+ALAC rips. Detection
-    // is extension-only at this layer; the codec is confirmed later by
-    // the analyzer.
-    let paths = vec![
-        PathBuf::from("/music/album.m4a"),
-        PathBuf::from("/music/album.cue"),
-        PathBuf::from("/music/cover.jpg"),
-    ];
-
-    let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
-
-    assert_eq!(pairs.len(), 1);
-    assert_eq!(pairs[0].audio_path, PathBuf::from("/music/album.m4a"));
-    assert_eq!(pairs[0].cue_path, PathBuf::from("/music/album.cue"));
-}
-
-#[test]
-fn test_detect_cue_alac_uppercase() {
-    use std::path::PathBuf;
-
-    let paths = vec![
-        PathBuf::from("/music/album.M4A"),
-        PathBuf::from("/music/album.CUE"),
-    ];
-
-    let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
-
-    assert_eq!(pairs.len(), 1);
-    assert_eq!(pairs[0].audio_path, PathBuf::from("/music/album.M4A"));
+    for (i, case) in cases.iter().enumerate() {
+        let paths: Vec<PathBuf> = case.paths.iter().map(PathBuf::from).collect();
+        let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
+        match case.expected {
+            Some((audio, cue)) => {
+                assert_eq!(
+                    pairs.len(),
+                    1,
+                    "case {i} {:?} should detect one pair",
+                    case.paths
+                );
+                assert_eq!(pairs[0].audio_path, PathBuf::from(audio), "case {i} audio");
+                assert_eq!(pairs[0].cue_path, PathBuf::from(cue), "case {i} cue");
+            }
+            None => assert_eq!(
+                pairs.len(),
+                0,
+                "case {i} {:?} should detect no pair",
+                case.paths
+            ),
+        }
+    }
 }
 
 #[test]
