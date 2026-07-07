@@ -78,13 +78,11 @@ internal static class CoverImage
     }
 
     /// <summary>
-    /// The decoded image for a gallery slot, given the item's <c>source</c> JSON
-    /// forwarded verbatim to the generated bridge, which dispatches the read on its kind (a
-    /// cover or a release file). Decoded fresh each call; null when the bytes can't
-    /// be read or decoded.
+    /// The decoded image for a gallery slot, given the item's generated source.
+    /// Decoded fresh each call; null when the bytes can't be read or decoded.
     /// </summary>
-    public static BitmapImage? LoadGalleryBytes(AppHandle? handle, string releaseId, string sourceJson) =>
-        Decode(NativeBae.GalleryBytes(handle, releaseId, sourceJson));
+    public static BitmapImage? LoadGalleryBytes(AppHandle? handle, string releaseId, BridgeGallerySource source) =>
+        Decode(NativeBae.GalleryBytes(handle, releaseId, source));
 
     /// <summary>
     /// Decode image bytes into a <see cref="BitmapImage"/> through an in-memory

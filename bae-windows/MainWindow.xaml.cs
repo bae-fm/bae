@@ -4671,26 +4671,19 @@ public sealed partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShowGallery(string releaseId)
     {
-        var (current, json) = WithCurrentHandle(
-            handle => NativeBae.GalleryJson(handle, releaseId));
+        var (current, images) = WithCurrentHandle(
+            handle => NativeBae.Gallery(handle, releaseId).Items);
         if (!current)
         {
             return;
         }
-        if (json is null)
+        if (images is null)
         {
             StatusText.Text = Loc.Chrome("gallery.load_failed");
             return;
         }
 
-        var images = JsonSerializer.Deserialize<List<GalleryImage>>(json, JsonOptions);
-        if (images is null)
-        {
-            StatusText.Text = Loc.Chrome("gallery.read_failed");
-            return;
-        }
-
-        if (images.Count == 0)
+        if (images.Length == 0)
         {
             return;
         }
@@ -4701,22 +4694,20 @@ public sealed partial class MainWindow : Window
         void Show()
         {
             var item = images[index];
-            // Forward the item's source verbatim; core dispatches the read on its
-            // kind (a cover by image id, a release file by file id).
             var handle = CurrentHandleOrNull();
             if (handle == null)
             {
                 return;
             }
-            image.Source = CoverImage.LoadGalleryBytes(handle, releaseId, item.Source.GetRawText());
-            label.Text = $"{item.Label} ({index + 1}/{images.Count})";
+            image.Source = CoverImage.LoadGalleryBytes(handle, releaseId, item.Source);
+            label.Text = $"{item.Label} ({index + 1}/{images.Length})";
         }
         Show();
 
         var prev = new Button { Content = "‹" };
         var next = new Button { Content = "›" };
-        prev.Click += (_, _) => { index = (index - 1 + images.Count) % images.Count; Show(); };
-        next.Click += (_, _) => { index = (index + 1) % images.Count; Show(); };
+        prev.Click += (_, _) => { index = (index - 1 + images.Length) % images.Length; Show(); };
+        next.Click += (_, _) => { index = (index + 1) % images.Length; Show(); };
 
         var nav = new StackPanel
         {
@@ -4829,14 +4820,13 @@ public sealed partial class MainWindow : Window
             };
             foreach (var file in releaseImages)
             {
-                var sourceJson = JsonSerializer.Serialize(
-                    new { kind = "releaseFile", file_id = file.Id });
                 var handle = CurrentHandleOrNull();
                 if (handle == null)
                 {
                     return;
                 }
-                var source = CoverImage.LoadGalleryBytes(handle, releaseId, sourceJson);
+                var source = CoverImage.LoadGalleryBytes(
+                    handle, releaseId, new BridgeGallerySource.ReleaseFile(file.Id));
                 var selection = JsonSerializer.Serialize(
                     new { type = "release_image", file_id = file.Id });
                 fileGrid.Children.Add(Tile(source, file.OriginalFilename, selection));

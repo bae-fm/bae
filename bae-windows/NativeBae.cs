@@ -636,11 +636,11 @@ internal static class NativeBae
     internal static string? ComposerPageJson(AppHandle handle, ulong offset, ulong limit, string sortField, bool ascending) =>
         CaptureValue(() => Json(Await(handle.GetComposerPage(ComposerSort(sortField, ascending), offset, limit))));
 
-    internal static string? GalleryJson(AppHandle handle, string releaseId) =>
-        CaptureValue(() =>
+    internal static (BridgeGalleryItem[]? Items, string? Error) Gallery(AppHandle handle, string releaseId) =>
+        CaptureBridgeValue(() =>
         {
             var detail = Await(handle.FindReleaseDetail(releaseId));
-            return detail is null ? null : Json(GalleryItems(detail.GalleryItems));
+            return detail?.GalleryItems ?? [];
         });
 
     internal static (BridgeStorageRow[]? Rows, string? Error) StorageRows(AppHandle handle) =>
@@ -842,8 +842,8 @@ internal static class NativeBae
     internal static byte[]? CoverImageBytes(AppHandle? handle, string imageId) =>
         handle is null ? null : CaptureBytes(() => Await(handle.FetchCoverImageBytes(imageId)));
 
-    internal static byte[]? GalleryBytes(AppHandle? handle, string releaseId, string sourceJson) =>
-        handle is null ? null : CaptureBytes(() => Await(handle.FetchGalleryBytes(releaseId, GallerySource(sourceJson))));
+    internal static byte[]? GalleryBytes(AppHandle? handle, string releaseId, BridgeGallerySource source) =>
+        handle is null ? null : CaptureBytes(() => Await(handle.FetchGalleryBytes(releaseId, source)));
 
     internal static void PlayRelease(AppHandle handle, string releaseId, long startTrackIndex, bool shuffle) =>
         handle.PlayRelease(releaseId, startTrackIndex < 0 ? null : checked((uint)startTrackIndex), shuffle);
@@ -1302,16 +1302,6 @@ internal static class NativeBae
             audio_format = file.AudioFormat,
         };
 
-    private static object[] GalleryItems(IEnumerable<BridgeGalleryItem> items) =>
-        items
-            .Select(item => new
-            {
-                id = item.Id,
-                label = item.Label,
-                source = GallerySourceJson(item.Source),
-            })
-            .ToArray();
-
     private static object ExportPresetJson(BridgeExportPreset preset) =>
         new
         {
@@ -1507,47 +1497,6 @@ internal static class NativeBae
             "append_to_previous_except_htoa" => BridgeExportPregapPlacement.AppendToPreviousExceptHtoa,
             _ => throw new ArgumentOutOfRangeException(nameof(placement), placement, "Unknown pregap placement"),
         };
-
-    private static object GallerySourceJson(BridgeGallerySource source) =>
-        source switch
-        {
-            BridgeGallerySource.Cover cover => new
-            {
-                kind = "cover",
-                cover = new
-                {
-                    id = cover.Image.Id,
-                    version = cover.Image.Version,
-                    image_type = LibraryImageTypeTag(cover.Image.ImageType),
-                },
-            },
-            BridgeGallerySource.ReleaseFile file => new
-            {
-                kind = "releaseFile",
-                file_id = file.FileId,
-            },
-            _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown gallery source"),
-        };
-
-    private static BridgeGallerySource GallerySource(string json)
-    {
-        using var doc = JsonDocument.Parse(json);
-        var root = doc.RootElement;
-        var kind = root.TryGetProperty("kind", out var kindElement) ? kindElement.GetString() : null;
-        if (kind == "releaseFile")
-        {
-            return new BridgeGallerySource.ReleaseFile(RequiredString(root.GetProperty("file_id"), "file_id"));
-        }
-
-        var cover = root.GetProperty("cover");
-        var imageType = cover.TryGetProperty("image_type", out var imageTypeElement)
-            ? LibraryImageType(imageTypeElement.GetString() ?? "cover")
-            : BridgeLibraryImageType.Cover;
-        return new BridgeGallerySource.Cover(new BridgeImageRef(
-            RequiredString(cover.GetProperty("id"), "cover.id"),
-            RequiredString(cover.GetProperty("version"), "cover.version"),
-            imageType));
-    }
 
     private static string RequiredString(JsonElement element, string field) =>
         element.GetString() ?? throw new JsonException($"{field} must be a string");
