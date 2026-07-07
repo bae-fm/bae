@@ -111,7 +111,7 @@ public sealed class LookupFailure
     {
         get
         {
-            var key = NativeBae.LookupFailureKey(Kind, Status is not null);
+            var key = NativeBae.LookupFailureKey(Kind, Status);
             if (key is null)
             {
                 // Diagnostic carries no translated copy — show the generic line; Detail

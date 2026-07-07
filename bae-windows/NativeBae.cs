@@ -111,23 +111,27 @@ internal static class NativeBae
             _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unknown cloud provider"),
         };
 
-    // ── Catalog-key selection ────────────────────────────────────────────────
-    //
-    // The enum→key mapping macOS gets free from uniffi's bridge_*_key() functions
-    // is hand-mirrored in bae-windows-ffi (src/loc.rs) and exported as these
-    // entry points, so the key strings have one source (Rust), not a duplicate in
-    // C#. Each returns the core.* catalog key for the value, or null when the
-    // value has no key (the caller falls back to a passthrough / generic line).
-    // The C# resolves the returned key through Loc.Core.
-
-    [DllImport(Dll, EntryPoint = "bae_cloud_provider_label_key", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr CloudProviderLabelKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string? provider);
-
     /// <summary>The catalog key for a cloud provider's display name, or null for
     /// the brand-name providers the UI passes through verbatim. <paramref name="provider"/>
     /// is the wire tag ("s3"/"google_drive"/…) or null/"" for local-only.</summary>
-    internal static string? CloudProviderLabelKey(string? provider) =>
-        CopyAndFree(CloudProviderLabelKeyPtr(provider));
+    internal static string? CloudProviderLabelKey(string? provider)
+    {
+        BridgeCloudProvider? bridgeProvider = provider switch
+        {
+            null or "" => null,
+            "s3" => BridgeCloudProvider.S3,
+            "google_drive" => BridgeCloudProvider.GoogleDrive,
+            "dropbox" => BridgeCloudProvider.Dropbox,
+            "onedrive" => BridgeCloudProvider.OneDrive,
+            "cloudkit" => BridgeCloudProvider.CloudKit,
+            _ => null,
+        };
+        if (bridgeProvider is null && provider is not null and not "")
+        {
+            return null;
+        }
+        return BaeBridgeMethods.BridgeCloudProviderLabelKey(bridgeProvider);
+    }
 
     /// <summary>
     /// The joiner's account email for an OAuth provider, fetched from its
@@ -137,72 +141,122 @@ internal static class NativeBae
     internal static string FetchAccountEmail(string provider, string oauthTokenJson) =>
         BaeBridgeMethods.FetchAccountEmail(CloudProvider(provider), oauthTokenJson);
 
-    [DllImport(Dll, EntryPoint = "bae_audio_channels_key", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr AudioChannelsKeyPtr(long channels);
-
     /// <summary>The catalog key for a channel count's word ("mono"/"stereo"), or
     /// null for counts the UI renders as "{n}ch".</summary>
     internal static string? AudioChannelsKey(long channels) =>
-        CopyAndFree(AudioChannelsKeyPtr(channels));
-
-    [DllImport(Dll, EntryPoint = "bae_error_category_key", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ErrorCategoryKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string category);
+        BaeBridgeMethods.BridgeAudioChannelsKey(channels);
 
     /// <summary>The catalog key for a diagnostic error category's generic line
     /// (the wire tag an FfiError carries), or null for an unknown tag.</summary>
-    internal static string? ErrorCategoryKey(string category) =>
-        CopyAndFree(ErrorCategoryKeyPtr(category));
-
-    [DllImport(Dll, EntryPoint = "bae_entity_not_found_key", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr EntityNotFoundKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string entity);
+    internal static string? ErrorCategoryKey(string category)
+    {
+        BridgeErrorCategory? bridgeCategory = category switch
+        {
+            "database" => BridgeErrorCategory.Database,
+            "config" => BridgeErrorCategory.Config,
+            "internal" => BridgeErrorCategory.Internal,
+            "import" => BridgeErrorCategory.Import,
+            "export" => BridgeErrorCategory.Export,
+            _ => null,
+        };
+        return bridgeCategory is null ? null : BaeBridgeMethods.BridgeErrorCategoryKey(bridgeCategory.Value);
+    }
 
     /// <summary>The catalog key for a missing entity's "… not found" line (the
     /// wire tag an FfiError carries), or null for an unknown tag.</summary>
-    internal static string? EntityNotFoundKey(string entity) =>
-        CopyAndFree(EntityNotFoundKeyPtr(entity));
-
-    [DllImport(Dll, EntryPoint = "bae_lookup_failure_key", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr LookupFailureKeyPtr(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string kind,
-        [MarshalAs(UnmanagedType.I1)] bool hasStatus);
+    internal static string? EntityNotFoundKey(string entity)
+    {
+        BridgeEntityKind? bridgeEntity = entity switch
+        {
+            "library" => BridgeEntityKind.Library,
+            "album" => BridgeEntityKind.Album,
+            "release" => BridgeEntityKind.Release,
+            "track" => BridgeEntityKind.Track,
+            "file" => BridgeEntityKind.File,
+            _ => null,
+        };
+        return bridgeEntity is null ? null : BaeBridgeMethods.BridgeEntityNotFoundKey(bridgeEntity.Value);
+    }
 
     /// <summary>The catalog key for a lookup-failure line (the wire tag an
     /// FfiLookupFailure carries), or null for diagnostic/unknown tags.</summary>
-    internal static string? LookupFailureKey(string kind, bool hasStatus) =>
-        CopyAndFree(LookupFailureKeyPtr(kind, hasStatus));
+    internal static string? LookupFailureKey(string kind, int? status)
+    {
+        ushort? bridgeStatus = null;
+        if (status is not null)
+        {
+            bridgeStatus = checked((ushort)status.Value);
+        }
 
-    [DllImport(Dll, EntryPoint = "bae_playback_error_reason_key", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr PlaybackErrorReasonKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string kind);
+        BridgeLookupFailure? bridgeFailure = kind switch
+        {
+            "network" => new BridgeLookupFailure.Network(),
+            "provider" => new BridgeLookupFailure.Provider(bridgeStatus),
+            "timeout" => new BridgeLookupFailure.Timeout(),
+            "artwork_analysis" => new BridgeLookupFailure.ArtworkAnalysis(),
+            _ => null,
+        };
+        return bridgeFailure is null ? null : BaeBridgeMethods.BridgeLookupFailureKey(bridgeFailure);
+    }
 
     /// <summary>The catalog key for an actionable playback-error reason (the wire
     /// tag the reason carries), or null for the "diagnostic" reason (rendered
     /// through the error-category path) and unknown tags.</summary>
-    internal static string? PlaybackErrorReasonKey(string kind) =>
-        CopyAndFree(PlaybackErrorReasonKeyPtr(kind));
-
-    [DllImport(Dll, EntryPoint = "bae_prepare_step_key", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr PrepareStepKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string step);
+    internal static string? PlaybackErrorReasonKey(string kind)
+    {
+        BridgePlaybackErrorReason? bridgeReason = kind switch
+        {
+            "sync_disconnected" => new BridgePlaybackErrorReason.SyncDisconnected(),
+            "upload_pending" => new BridgePlaybackErrorReason.UploadPending(),
+            _ => null,
+        };
+        return bridgeReason is null ? null : BaeBridgeMethods.BridgePlaybackErrorReasonKey(bridgeReason);
+    }
 
     /// <summary>The catalog key for an import prepare-step wire tag, or null for
     /// an unknown tag.</summary>
-    internal static string? PrepareStepKey(string step) =>
-        CopyAndFree(PrepareStepKeyPtr(step));
-
-    [DllImport(Dll, EntryPoint = "bae_import_phase_key", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ImportPhaseKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string phase);
+    internal static string? PrepareStepKey(string step)
+    {
+        BridgePrepareStep? bridgeStep = step switch
+        {
+            "parsing_metadata" => BridgePrepareStep.ParsingMetadata,
+            "writing_cover_art" => BridgePrepareStep.WritingCoverArt,
+            "discovering_files" => BridgePrepareStep.DiscoveringFiles,
+            "validating_tracks" => BridgePrepareStep.ValidatingTracks,
+            "saving_to_database" => BridgePrepareStep.SavingToDatabase,
+            _ => null,
+        };
+        return bridgeStep is null ? null : BaeBridgeMethods.BridgePrepareStepKey(bridgeStep.Value);
+    }
 
     /// <summary>The catalog key for an import-phase wire tag, or null for an
     /// unknown tag.</summary>
-    internal static string? ImportPhaseKey(string phase) =>
-        CopyAndFree(ImportPhaseKeyPtr(phase));
-
-    [DllImport(Dll, EntryPoint = "bae_transfer_action_key", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr TransferActionKeyPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string action);
+    internal static string? ImportPhaseKey(string phase)
+    {
+        BridgeImportPhase? bridgePhase = phase switch
+        {
+            "referencing_files" => BridgeImportPhase.ReferencingFiles,
+            "measuring_loudness" => BridgeImportPhase.MeasuringLoudness,
+            "finalizing" => BridgeImportPhase.Finalizing,
+            _ => null,
+        };
+        return bridgePhase is null ? null : BaeBridgeMethods.BridgeImportPhaseKey(bridgePhase.Value);
+    }
 
     /// <summary>The catalog key for a transfer action's progress verb (a wire tag
     /// from a storage row's actions), or null for an unknown tag.</summary>
-    internal static string? TransferActionKey(string action) =>
-        CopyAndFree(TransferActionKeyPtr(action));
+    internal static string? TransferActionKey(string action)
+    {
+        BridgeReleaseStorageAction? bridgeAction = action switch
+        {
+            "pin" => BridgeReleaseStorageAction.Pin,
+            "unpin" => BridgeReleaseStorageAction.Unpin,
+            "manage" => BridgeReleaseStorageAction.MakeRemote,
+            "unmanage" => BridgeReleaseStorageAction.MakeLocal,
+            _ => null,
+        };
+        return bridgeAction is null ? null : BaeBridgeMethods.BridgeTransferActionKey(bridgeAction.Value);
+    }
 
     /// <summary>The libraries discovered on this device.</summary>
     internal static List<Library> Libraries() =>
