@@ -72,6 +72,37 @@ fn start_test_import(
     )
 }
 
+/// Run the `ffmpeg` command-line tool to generate a fixture, failing loudly
+/// with an actionable message if it is missing.
+///
+/// This is the `ffmpeg` *binary* — a hard dependency of these tests, distinct
+/// from the FFmpeg *libraries* bae-core links against. It must be on PATH:
+/// `scripts/setup-ffmpeg.sh` fetches it into `bae-ffmpeg/dist/bin` (put that on
+/// PATH), or install it system-wide (`brew install ffmpeg` on macOS, your
+/// package manager on Linux).
+fn run_ffmpeg(args: &[&str], fixture: &str) {
+    use std::process::Command;
+
+    let output = Command::new("ffmpeg")
+        .args(args)
+        .output()
+        .unwrap_or_else(|e| {
+            panic!(
+                "could not run the `ffmpeg` command-line tool needed to generate the {fixture} \
+                 fixture: {e}\nPut `ffmpeg` on PATH: run scripts/setup-ffmpeg.sh (it fetches \
+                 ffmpeg into bae-ffmpeg/dist/bin — add that to PATH), or install it system-wide \
+                 (`brew install ffmpeg` on macOS, your package manager on Linux)."
+            )
+        });
+
+    assert!(
+        output.status.success(),
+        "ffmpeg failed to generate the {fixture} fixture:\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+}
+
 /// Generate a CUE/FLAC fixture: one 90s 96kHz/24-bit stereo FLAC split into
 /// three 30s tracks by the CUE sheet — a high-resolution vinyl-rip format.
 /// Validated against a real 96kHz/24-bit FLAC: brown noise at this rate measures
@@ -81,13 +112,12 @@ fn start_test_import(
 /// work every frame (silence decodes trivially).
 fn generate_cue_flac_files(dir: &std::path::Path) {
     use std::fs;
-    use std::process::Command;
 
     let flac_path = dir.join("Test Album.flac");
     let cue_path = dir.join("Test Album.cue");
 
-    let output = Command::new("ffmpeg")
-        .args([
+    run_ffmpeg(
+        &[
             "-y",
             "-f",
             "lavfi",
@@ -102,17 +132,9 @@ fn generate_cue_flac_files(dir: &std::path::Path) {
             "-compression_level",
             "0", // Fast compression
             flac_path.to_str().unwrap(),
-        ])
-        .output()
-        .expect("Failed to run ffmpeg");
-
-    if !output.status.success() {
-        panic!(
-            "ffmpeg failed to generate FLAC:\nstdout: {}\nstderr: {}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
+        ],
+        "CUE/FLAC",
+    );
 
     // Three 30s tracks; track one is INDEX 00:00:00..00:30:00.
     let cue_content = r#"REM GENRE Test
@@ -139,13 +161,12 @@ FILE "Test Album.flac" WAVE
 /// Generate per-track MP3 files: three 30s 44.1kHz stereo tracks at 320kbps CBR.
 fn generate_mp3_track_files(dir: &std::path::Path) {
     use std::fs;
-    use std::process::Command;
 
     for i in 1..=3 {
         let mp3_path = dir.join(format!("{:02} Track {}.mp3", i, i));
 
-        let output = Command::new("ffmpeg")
-            .args([
+        run_ffmpeg(
+            &[
                 "-y",
                 "-f",
                 "lavfi",
@@ -158,17 +179,9 @@ fn generate_mp3_track_files(dir: &std::path::Path) {
                 "-b:a",
                 "320k",
                 mp3_path.to_str().unwrap(),
-            ])
-            .output()
-            .expect("Failed to run ffmpeg");
-
-        if !output.status.success() {
-            panic!(
-                "ffmpeg failed to generate MP3:\nstdout: {}\nstderr: {}",
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr)
-            );
-        }
+            ],
+            "MP3",
+        );
     }
 
     // Minimal log file so the folder scanner doesn't complain.
