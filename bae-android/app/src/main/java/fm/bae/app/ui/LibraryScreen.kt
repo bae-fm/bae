@@ -1,6 +1,7 @@
 package fm.bae.app.ui
 
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,6 +51,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,29 +91,6 @@ internal class PageError(
 internal enum class LibraryBrowserMode {
     ALBUMS,
     COMPOSERS,
-}
-
-private data class AlbumTarget(
-    val albumId: String,
-    val initialReleaseId: String? = null,
-)
-
-private sealed interface LibraryDestination {
-    data class Album(
-        val target: AlbumTarget,
-    ) : LibraryDestination
-
-    data class Work(
-        val workId: String,
-    ) : LibraryDestination
-
-    data class Composer(
-        val artistId: String,
-    ) : LibraryDestination
-
-    data object Members : LibraryDestination
-
-    data object Settings : LibraryDestination
 }
 
 /**
@@ -220,63 +199,35 @@ fun LibraryScreen(
     session: OpenLibrary,
     onLeaveLibrary: () -> Unit,
 ) {
-    var destination by remember { mutableStateOf<LibraryDestination?>(null) }
-    when (val activeDestination = destination) {
-        is LibraryDestination.Album -> {
-            val selected = activeDestination.target
-            AlbumDetailScreen(
-                session = session,
-                albumId = selected.albumId,
-                initialReleaseId = selected.initialReleaseId,
-                onBack = { destination = null },
-            )
-        }
-
-        is LibraryDestination.Work -> {
-            WorkDetailScreen(
-                session = session,
-                workId = activeDestination.workId,
-                onBack = { destination = null },
-                onSelectWork = { destination = LibraryDestination.Work(it) },
-                onSelectAlbum = { albumId, releaseId ->
-                    destination = LibraryDestination.Album(AlbumTarget(albumId, releaseId))
-                },
-            )
-        }
-
-        is LibraryDestination.Composer -> {
-            ComposerDetailScreen(
-                session = session,
-                artistId = activeDestination.artistId,
-                onBack = { destination = null },
-                onSelectWork = { destination = LibraryDestination.Work(it) },
-                onSelectAlbum = { albumId, releaseId ->
-                    destination = LibraryDestination.Album(AlbumTarget(albumId, releaseId))
-                },
-            )
-        }
-
-        LibraryDestination.Members -> {
-            MembersScreen(session = session, onBack = { destination = null })
-        }
-
-        LibraryDestination.Settings -> {
-            SettingsScreen(
-                session = session,
-                onBack = { destination = null },
-                onManageDevices = { destination = LibraryDestination.Members },
-                onLeaveLibrary = onLeaveLibrary,
-            )
-        }
-
+    val navigator = remember { LibraryNavigator() }
+    val browserState = remember { LibraryBrowserState() }
+    val stateHolder = rememberSaveableStateHolder()
+    val popEntry: () -> Unit = {
+        navigator.pop()?.let { stateHolder.removeState(it.key) }
+    }
+    BackHandler(enabled = navigator.entries.isNotEmpty()) { popEntry() }
+    when (val entry = navigator.top) {
         null -> {
             LibraryBrowser(
                 session = session,
-                onSelectAlbum = { destination = LibraryDestination.Album(AlbumTarget(it)) },
-                onSelectComposer = { destination = LibraryDestination.Composer(it) },
-                onSelectWork = { destination = LibraryDestination.Work(it) },
-                onSettings = { destination = LibraryDestination.Settings },
+                state = browserState,
+                onSelectAlbum = { navigator.push(LibraryDestination.Album(AlbumTarget(it))) },
+                onSelectComposer = { navigator.push(LibraryDestination.Composer(it)) },
+                onSelectWork = { navigator.push(LibraryDestination.Work(it)) },
+                onSettings = { navigator.push(LibraryDestination.Settings) },
             )
+        }
+
+        else -> {
+            stateHolder.SaveableStateProvider(entry.key) {
+                LibraryDestinationScreen(
+                    session = session,
+                    destination = entry.destination,
+                    onBack = popEntry,
+                    onPush = navigator::push,
+                    onLeaveLibrary = onLeaveLibrary,
+                )
+            }
         }
     }
 }

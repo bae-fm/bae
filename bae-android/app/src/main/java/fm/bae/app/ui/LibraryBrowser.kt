@@ -1,13 +1,13 @@
 package fm.bae.app.ui
 
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -16,7 +16,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -48,45 +47,56 @@ private val DEFAULT_ALBUM_SORT =
 private val DEFAULT_COMPOSER_SORT =
     BridgeComposerSortCriterion(BridgeComposerSortField.NAME, BridgeSortDirection.ASCENDING)
 
+/**
+ * Browser chrome state, owned above the stack in [LibraryScreen] so tab, sort,
+ * search, and grid scroll survive while a pushed destination hides the browser.
+ */
+internal class LibraryBrowserState {
+    var searchOpen by mutableStateOf(false)
+    var searchQuery by mutableStateOf("")
+    var mode by mutableStateOf(LibraryBrowserMode.ALBUMS)
+    var sortCriterion by mutableStateOf(DEFAULT_ALBUM_SORT)
+    var composerSortCriterion by mutableStateOf(DEFAULT_COMPOSER_SORT)
+    val gridState = LazyGridState()
+
+    fun closeSearch() {
+        searchOpen = false
+        searchQuery = ""
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LibraryBrowser(
     session: OpenLibrary,
+    state: LibraryBrowserState,
     onSelectAlbum: (String) -> Unit,
     onSelectComposer: (String) -> Unit,
     onSelectWork: (String) -> Unit,
     onSettings: () -> Unit,
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var searchOpen by remember { mutableStateOf(false) }
-    var mode by remember { mutableStateOf(LibraryBrowserMode.ALBUMS) }
-    var sortCriterion by remember { mutableStateOf(DEFAULT_ALBUM_SORT) }
-    var composerSortCriterion by remember { mutableStateOf(DEFAULT_COMPOSER_SORT) }
     val generation by session.libraryStore.generation.collectAsState()
     val composerGeneration by session.libraryStore.composerGeneration.collectAsState()
     val syncing by session.configStore.syncing.collectAsState()
     val syncError by session.configStore.syncError.collectAsState()
     val appError by session.configStore.error.collectAsState()
-    val gridState = rememberLazyGridState()
     val appContext = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
+    BackHandler(enabled = state.searchOpen) { state.closeSearch() }
     Column(modifier = Modifier.fillMaxSize()) {
         LibraryBrowserChrome(
-            searchOpen = searchOpen,
-            searchQuery = searchQuery,
-            onSearchQueryChange = { searchQuery = it },
-            onOpenSearch = { searchOpen = true },
-            onCloseSearch = {
-                searchOpen = false
-                searchQuery = ""
-            },
-            mode = mode,
-            onModeChange = { mode = it },
-            sortCriterion = sortCriterion,
-            onSortChange = { sortCriterion = it },
-            composerSortCriterion = composerSortCriterion,
-            onComposerSortChange = { composerSortCriterion = it },
+            searchOpen = state.searchOpen,
+            searchQuery = state.searchQuery,
+            onSearchQueryChange = { state.searchQuery = it },
+            onOpenSearch = { state.searchOpen = true },
+            onCloseSearch = state::closeSearch,
+            mode = state.mode,
+            onModeChange = { state.mode = it },
+            sortCriterion = state.sortCriterion,
+            onSortChange = { state.sortCriterion = it },
+            composerSortCriterion = state.composerSortCriterion,
+            onComposerSortChange = { state.composerSortCriterion = it },
             syncing = syncing,
             onShuffleLibrary = { session.playLibraryShuffledOrReport(appContext, coroutineScope) },
             onSettings = onSettings,
@@ -95,15 +105,15 @@ internal fun LibraryBrowser(
         LibraryBrowserContent(
             modifier = Modifier.fillMaxWidth().weight(1f),
             session = session,
-            searchQuery = searchQuery,
-            mode = mode,
+            searchQuery = state.searchQuery,
+            mode = state.mode,
             generation = generation,
             composerGeneration = composerGeneration,
-            sortCriterion = sortCriterion,
-            composerSortCriterion = composerSortCriterion,
+            sortCriterion = state.sortCriterion,
+            composerSortCriterion = state.composerSortCriterion,
             appError = appError,
             syncError = syncError,
-            gridState = gridState,
+            gridState = state.gridState,
             onSelectAlbum = onSelectAlbum,
             onSelectComposer = onSelectComposer,
             onSelectWork = onSelectWork,
