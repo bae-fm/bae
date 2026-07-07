@@ -359,7 +359,7 @@ impl LibraryManager {
 
         let mut audio_bytes = Vec::new();
         for audio_file in &meta.audio_files {
-            let bytes = crate::storage::local::transfer::read_release_file_bytes(audio_file, self)
+            let bytes = crate::storage::transfer::read_release_file_bytes(audio_file, self)
                 .await
                 .map_err(|e| {
                     LibraryError::TrackMapping(format!(

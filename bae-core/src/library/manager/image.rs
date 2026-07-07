@@ -41,7 +41,7 @@ impl LibraryManager {
                     "Image file {file_id} is not part of release {release_id}"
                 ))
             })?;
-        crate::storage::local::transfer::read_release_file_bytes(&file, self)
+        crate::storage::transfer::read_release_file_bytes(&file, self)
             .await
             .map_err(|e| LibraryError::Import(e.to_string()))
     }

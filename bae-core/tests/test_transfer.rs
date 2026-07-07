@@ -14,9 +14,7 @@ mod support;
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::db::{Database, DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource};
 use bae_core::library::{CancellationToken, LibraryEvent, LibraryManager};
-use bae_core::storage::local::transfer::{
-    read_release_file_bytes, TransferProgress, TransferService,
-};
+use bae_core::storage::transfer::{read_release_file_bytes, TransferProgress, TransferService};
 use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;

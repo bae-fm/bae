@@ -272,7 +272,7 @@ impl LibraryManager {
     /// close, and we check whether the entry is still present before recording a
     /// failure — a cancelled download isn't a failure.
     async fn run_queued_pin(&self, op: &crate::library::DownloadOp) {
-        use crate::storage::local::transfer::TransferService;
+        use crate::storage::transfer::TransferService;
 
         let release_id = op.release_id.as_str();
         let initial_progress = match self.initial_download_progress(release_id).await {
@@ -335,7 +335,7 @@ impl LibraryManager {
 
     /// Unpin a release: delete local copies, mark as cloud-only.
     pub async fn unpin_release(&self, release_id: &str) -> Result<(), String> {
-        let transfer_service = crate::storage::local::transfer::TransferService::new(self.clone());
+        let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.unpin_release(release_id.to_string());
         let result = self
             .drive_transfer(release_id, ReleaseStorageAction::Unpin, rx)
@@ -348,7 +348,7 @@ impl LibraryManager {
     /// evictable cache. The in-place source is always deleted once the upload lands
     /// (a remote release has no local path).
     pub async fn make_release_remote(&self, release_id: &str, pin: bool) -> Result<(), String> {
-        let transfer_service = crate::storage::local::transfer::TransferService::new(self.clone());
+        let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.make_release_remote(release_id.to_string(), pin);
         self.drive_transfer(release_id, ReleaseStorageAction::MakeRemote, rx)
             .await
@@ -370,7 +370,7 @@ impl LibraryManager {
             release_id: release_id.to_string(),
         };
 
-        let transfer_service = crate::storage::local::transfer::TransferService::new(self.clone());
+        let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.make_release_local(
             release_id.to_string(),
             new_path.to_string(),
@@ -432,11 +432,9 @@ impl LibraryManager {
         &self,
         release_id: &str,
         action: ReleaseStorageAction,
-        mut rx: tokio::sync::mpsc::UnboundedReceiver<
-            crate::storage::local::transfer::TransferProgress,
-        >,
+        mut rx: tokio::sync::mpsc::UnboundedReceiver<crate::storage::transfer::TransferProgress>,
     ) -> Result<(), String> {
-        use crate::storage::local::transfer::TransferProgress;
+        use crate::storage::transfer::TransferProgress;
 
         // The bridge transfer future is abortable: a view dismiss / re-trigger
         // can drop this future between progress events, before its terminal
