@@ -1,13 +1,15 @@
 name: Release Windows
 
 # Cuts a Windows release of both editions: an independent 0.N version line
-# (windows-v* tags). Each versioned release carries an UNSIGNED self-contained zip
-# per edition (bae-windows-x64.zip + baeium-windows-x64.zip) of the unpackaged
-# WinUI 3 app plus the native runtime DLLs. Unsigned for now — Authenticode
-# signing needs a Windows code-signing certificate the owner doesn't have yet;
-# SmartScreen warns on first launch until then. Edition differs only by exe/folder
-# name (unpackaged app → no OS-level package identity to collide); the baeium dll
-# omits the OAuth entry points, which the C# app already detects at runtime via
+# (windows-v* tags). Each versioned release carries a Velopack build per edition:
+# a Setup.exe that installs per-user and auto-updates, a Portable.zip that runs in
+# place, and the update feed (releases.<channel>.json + the .nupkg) the in-app
+# updater reads. Editions use distinct channels (full = win, baeium = baeium-win)
+# so their feeds don't collide in the one shared windows-v* release. Signing
+# engages when the WINDOWS_CODESIGN_PFX_BASE64 secret is set; a build without
+# it is unsigned and SmartScreen warns on first launch.
+# Edition differs only by exe/packId/channel; the baeium dll omits the
+# OAuth entry points, which the C# app detects at runtime via
 # NativeBae.SupportsOAuthProviders().
 
 on:
@@ -28,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.calc.outputs.version }}
+      pack_version: ${{ steps.calc.outputs.pack_version }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
@@ -50,10 +53,18 @@ jobs:
           fi
         fi
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-        echo "::notice::Windows release version $VERSION (build ${{ github.run_number }})"
+        # Velopack requires a full SemVer; the tag stays windows-v0.N but the
+        # package version is normalized to 0.N.0.
+        if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+          PACK_VERSION="$VERSION.0"
+        else
+          PACK_VERSION="$VERSION"
+        fi
+        echo "pack_version=$PACK_VERSION" >> "$GITHUB_OUTPUT"
+        echo "::notice::Windows release version $VERSION (pack $PACK_VERSION, build ${{ github.run_number }})"
 
   build:
-    name: Build ${{ matrix.edition }} zip
+    name: Build ${{ matrix.edition }} package
     runs-on: windows-latest
     needs: calculate-version
     env:
@@ -68,25 +79,34 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Resolve edition (cargo features, exe + zip names)
+      - name: Resolve edition (cargo features, exe + packaging names)
         shell: pwsh
         run: |
           # full = OAuth providers on (bae.exe); baeium = no features (baeium.exe).
           # The C# app is identical for both; only the dll's exported symbols differ.
+          # PACK_ID/CHANNEL are baked into the Velopack package so each installed
+          # edition reads only its own feed; SETUP_NAME/PORTABLE_NAME give the
+          # website stable asset URLs.
           if ("${{ matrix.edition }}" -eq "baeium") {
             "BAE_BRIDGE_FEATURES=desktop" | Out-File $env:GITHUB_ENV -Append
             "BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium" | Out-File $env:GITHUB_ENV -Append
             "MSBUILD_BRIDGE_BINDINGS_DIR=..\bae-bridge\csharp-bindings-baeium" | Out-File $env:GITHUB_ENV -Append
             "EXE_NAME=baeium.exe" | Out-File $env:GITHUB_ENV -Append
-            "ZIP_NAME=baeium-windows-x64.zip" | Out-File $env:GITHUB_ENV -Append
             "STAGE_DIR=baeium" | Out-File $env:GITHUB_ENV -Append
+            "PACK_ID=baeium" | Out-File $env:GITHUB_ENV -Append
+            "CHANNEL=baeium-win" | Out-File $env:GITHUB_ENV -Append
+            "SETUP_NAME=baeium-windows-x64-setup.exe" | Out-File $env:GITHUB_ENV -Append
+            "PORTABLE_NAME=baeium-windows-x64-portable.zip" | Out-File $env:GITHUB_ENV -Append
           } else {
             "BAE_BRIDGE_FEATURES=oauth-providers,desktop" | Out-File $env:GITHUB_ENV -Append
             "BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full" | Out-File $env:GITHUB_ENV -Append
             "MSBUILD_BRIDGE_BINDINGS_DIR=..\bae-bridge\csharp-bindings-full" | Out-File $env:GITHUB_ENV -Append
             "EXE_NAME=bae.exe" | Out-File $env:GITHUB_ENV -Append
-            "ZIP_NAME=bae-windows-x64.zip" | Out-File $env:GITHUB_ENV -Append
             "STAGE_DIR=bae" | Out-File $env:GITHUB_ENV -Append
+            "PACK_ID=bae" | Out-File $env:GITHUB_ENV -Append
+            "CHANNEL=win" | Out-File $env:GITHUB_ENV -Append
+            "SETUP_NAME=bae-windows-x64-setup.exe" | Out-File $env:GITHUB_ENV -Append
+            "PORTABLE_NAME=bae-windows-x64-portable.zip" | Out-File $env:GITHUB_ENV -Append
           }
 
       - name: Install Rust (pinned toolchain)
@@ -158,6 +178,7 @@ jobs:
             /p:Configuration=Release /p:Platform=x64 `
             /p:SelfContained=true /p:RuntimeIdentifier=win-x64 `
             /p:PublishDir=publish\ `
+            /p:Version=${{ needs.calculate-version.outputs.pack_version }} `
             /p:BAE_ENVIRONMENT="$env:BAE_ENVIRONMENT" `
             /p:BAE_DATADOG_SITE="$env:BAE_DATADOG_SITE" `
             /p:BAE_DATADOG_CLIENT_TOKEN="$env:BAE_DATADOG_CLIENT_TOKEN" `
@@ -211,13 +232,12 @@ jobs:
             Copy-Item $crashpadHandler.FullName $stage -Force
           }
 
-          # Name the launcher per edition (bae.exe / baeium.exe).
+          # Name the launcher per edition (bae.exe / baeium.exe); vpk packs the
+          # staged dir into the installer/portable/feed below.
           $exe = Get-ChildItem $stage -Filter "bae-windows.exe" | Select-Object -First 1
           if (-not $exe) { Write-Host "FAIL: bae-windows.exe not found in staged output"; exit 1 }
           Rename-Item $exe.FullName $env:EXE_NAME
-
-          Compress-Archive -Path "$PWD\stage\$env:STAGE_DIR" -DestinationPath "$PWD\$env:ZIP_NAME" -Force
-          Write-Host "PASS: built $env:ZIP_NAME"
+          Write-Host "PASS: staged $env:STAGE_DIR"
 
       - name: Upload Windows symbols to Sentry
         if: matrix.edition == 'full'
@@ -234,11 +254,72 @@ jobs:
           npm install -g @sentry/cli
           sentry-cli debug-files upload --org "$env:SENTRY_ORG" --project "$env:SENTRY_PROJECT" "$PWD\stage\$env:STAGE_DIR"
 
-      - name: Upload zip artifact
+      - name: Install the Velopack CLI (vpk)
+        # Must match the Velopack NuGet version the app references; the library
+        # and CLI are released in lockstep. Global dotnet tools are on PATH here.
+        run: dotnet tool install --global vpk --version 1.2.0
+
+      - name: Prepare code-signing material
+        shell: pwsh
+        env:
+          WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+        run: |
+          # Signing runs when WINDOWS_CODESIGN_PFX_BASE64 is set: decode it to a
+          # .pfx the pack step signs with. Unset: builds are unsigned and
+          # SmartScreen warns on first launch (noted in the release body).
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CODESIGN_PFX_BASE64)) {
+            Write-Host "code signing skipped: WINDOWS_CODESIGN_PFX_BASE64 unset"
+            exit 0
+          }
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\codesign.pfx", [Convert]::FromBase64String($env:WINDOWS_CODESIGN_PFX_BASE64))
+          Write-Host "code signing enabled"
+
+      - name: Pack the Velopack release (installer + portable + feed)
+        shell: pwsh
+        env:
+          WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+        run: |
+          $packArgs = @(
+            "pack",
+            "--packId", $env:PACK_ID,
+            "--packVersion", "${{ needs.calculate-version.outputs.pack_version }}",
+            "--packDir", "$PWD\stage\$env:STAGE_DIR",
+            "--mainExe", $env:EXE_NAME,
+            "--channel", $env:CHANNEL,
+            "--packTitle", $env:PACK_ID,
+            "--outputDir", "$PWD\velopack"
+          )
+          if (Test-Path "$env:RUNNER_TEMP\codesign.pfx") {
+            $packArgs += @("--signParams", "/f $env:RUNNER_TEMP\codesign.pfx /p $env:WINDOWS_CODESIGN_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256")
+          }
+          vpk @packArgs
+          if ($LASTEXITCODE -ne 0) { Write-Host "FAIL: vpk pack exited $LASTEXITCODE"; exit 1 }
+
+          # Rename ONLY the Setup and Portable outputs for stable website URLs.
+          # releases.<channel>.json references the .nupkg by name, so the feed and
+          # nupkg keep vpk's names.
+          $setup = Get-ChildItem "$PWD\velopack" -Filter "*Setup.exe" | Select-Object -First 1
+          $portable = Get-ChildItem "$PWD\velopack" -Filter "*Portable.zip" | Select-Object -First 1
+          if (-not $setup) { Write-Host "FAIL: Setup.exe not produced"; exit 1 }
+          if (-not $portable) { Write-Host "FAIL: Portable.zip not produced"; exit 1 }
+          Rename-Item $setup.FullName $env:SETUP_NAME
+          Rename-Item $portable.FullName $env:PORTABLE_NAME
+
+          # Pin the naming assumptions at release time: fail loud if the feed, the
+          # package, or the renamed outputs are missing, rather than shipping a
+          # broken feed.
+          $nupkg = Get-ChildItem "$PWD\velopack" -Filter "*.nupkg" | Select-Object -First 1
+          if (-not (Test-Path "$PWD\velopack\releases.$env:CHANNEL.json")) { Write-Host "FAIL: releases.$env:CHANNEL.json missing"; exit 1 }
+          if (-not $nupkg) { Write-Host "FAIL: .nupkg missing"; exit 1 }
+          if (-not (Test-Path "$PWD\velopack\$env:SETUP_NAME")) { Write-Host "FAIL: $env:SETUP_NAME missing"; exit 1 }
+          if (-not (Test-Path "$PWD\velopack\$env:PORTABLE_NAME")) { Write-Host "FAIL: $env:PORTABLE_NAME missing"; exit 1 }
+          Write-Host "PASS: packed $env:PACK_ID ($env:CHANNEL)"
+
+      - name: Upload release artifacts
         uses: actions/upload-artifact@v7
         with:
           name: bae-windows-release-${{ matrix.edition }}
-          path: ${{ env.ZIP_NAME }}
+          path: velopack/
           retention-days: 30
 
   publish:
@@ -253,10 +334,13 @@ jobs:
       with:
         ref: ${{ github.sha }}
 
-    - name: Download both editions' zips
+    - name: Download both editions' packages
+      # Filenames are distinct across editions (packId/channel are in them), so
+      # merging both editions' velopack/ dirs into one is collision-free.
       uses: actions/download-artifact@v8
       with:
         pattern: bae-windows-release-*
+        path: release-assets
         merge-multiple: true
 
     - name: Create git tag
@@ -269,20 +353,42 @@ jobs:
           git push origin "windows-v$VERSION"
         fi
 
+    # One immutable release per windows-v* tag carries both editions, so `vpk
+    # upload github` (which creates/publishes its own release, once per channel)
+    # can't be used — two invocations against one immutable tag would collide.
+    # Create the release once with every asset via softprops instead, mirroring
+    # release-macos.yml.
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
         tag_name: windows-v${{ needs.calculate-version.outputs.version }}
-        files: |
-          bae-windows-x64.zip
-          baeium-windows-x64.zip
+        files: release-assets/*
         body: |
-          Windows builds are **unsigned** zips of the unpackaged app — extract and
-          run bae.exe / baeium.exe. Windows SmartScreen may warn on first launch
-          (no code-signing certificate yet).
+          Windows builds. The setup installer installs bae per-user and keeps
+          itself up to date; the portable zip runs in place. These builds are
+          not code-signed, so SmartScreen may warn on first launch.
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Verify the update feeds and installers are attached
+      # The in-app updater's GithubSource scans releases newest-first for one
+      # carrying releases.<channel>.json; a release missing it (other platforms')
+      # is skipped. Confirm both channels' feeds and setup installers resolve as
+      # release assets before the website redeploys against them.
+      run: |
+        TAG="windows-v${{ needs.calculate-version.outputs.version }}"
+        base="https://github.com/${{ github.repository }}/releases/download/$TAG"
+        for asset in \
+          releases.win.json \
+          releases.baeium-win.json \
+          bae-windows-x64-setup.exe \
+          baeium-windows-x64-setup.exe; do
+          url="$base/$asset"
+          curl -fsIL --retry 5 --retry-delay 3 "$url" -o /dev/null
+          echo "asset reachable: $url"
+        done
+        echo "PASS: both feeds and setup installers are attached"
 
   refresh-website:
     # Republish the website so its build-time latest.json and download buttons

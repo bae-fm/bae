@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>校验中…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>面之间暂停</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>库：{name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>更新</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>版本 {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>检查更新</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>正在检查…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>已是最新</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>正在下载… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>版本 {version} 已就绪 — 重启以更新</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>立即重启</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>无法检查更新</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>锁定库</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>恢复</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>当你没有其他可用于批准的设备时，你的恢复代码可在新设备上恢复此曲库。任何拥有它的人都能完全访问——请保密。</value></data>

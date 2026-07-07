@@ -32,6 +32,15 @@
     <WindowsPackageType>None</WindowsPackageType>
 
     <!--
+      Hand-written entry point (Program.Main) instead of WinUI's generated one so
+      Velopack's install/update/uninstall hook runs before any UI starts.
+      DISABLE_XAML_GENERATED_MAIN suppresses the generated Main; StartupObject
+      points at the replacement.
+    -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <StartupObject>Bae.Windows.Program</StartupObject>
+
+    <!--
       The localization .resw are included explicitly (the Strings/**/*.resw
       PRIResource group below). Turn off the SDK's default PRIResource
       auto-include so the same files aren't added twice (NETSDK1022). The
@@ -83,6 +92,13 @@
     -->
     <PackageReference Include="QRCoder" Version="1.6.0" />
     <PackageReference Include="ZXing.Net" Version="0.16.9" />
+    <!--
+      Installer + auto-update. Builds the Setup.exe / Portable.zip and the update
+      feed (releases.<channel>.json + .nupkg) in the release workflow, and drives
+      the in-app check/download/apply from the GitHub release assets. The vpk CLI
+      that packs the release must match this version exactly.
+    -->
+    <PackageReference Include="Velopack" Version="1.2.0" />
   </ItemGroup>
 
   <ItemGroup>

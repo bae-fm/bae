@@ -104,6 +104,11 @@ public sealed partial class MainWindow : Window
     // dialog is open so config invalidations refresh it live, null when closed.
     private Action? _refreshSettings;
 
+    // Drives the settings "updates" section: a launch-time background check and
+    // the manual check/download/apply from settings. Inert on a dev run or a
+    // loose-zip copy (IsAvailable is false).
+    private readonly UpdateService _updateService = new();
+
     // Reloads the storage dialog's release rows; set while that dialog is open so
     // album/release invalidations refresh each row's state badge and actions, not
     // just the album grid.
@@ -188,6 +193,11 @@ public sealed partial class MainWindow : Window
         RegisterProjections();
 
         LoadLibrary();
+
+        // Check for an update in the background at launch, like macOS's Sparkle
+        // check-on-appear. Fire-and-forget: the service catches and logs every
+        // failure and this is async I/O, so it never blocks startup.
+        _ = _updateService.CheckInBackgroundAsync();
     }
 
     // Wire core's invalidations to the reloads they drive. Static consumers (the
@@ -6121,6 +6131,75 @@ public sealed partial class MainWindow : Window
         content.Children.Add(showRecoveryCode);
         content.Children.Add(recoveryCode);
 
+        // Updates: the installed version, and — for a Velopack install — a manual
+        // check that downloads in the background and applies on restart. A dev run
+        // or a loose-zip copy is not an install, so only the version line shows.
+        content.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("settings.updates.title"),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+        });
+        var installedVersion = _updateService.InstalledVersion is { } version
+            ? UpdateFlowDisplay.VersionDisplay(version)
+            : AppMetadata.ConfiguredString("BaeGitCommit");
+        content.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("settings.updates.version", "version", installedVersion),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+        });
+
+        var restartUpdateRequested = false;
+        Button? updateRestartButton = null;
+        Action? unsubscribeUpdates = null;
+        if (_updateService.IsAvailable)
+        {
+            var updateStatus = new TextBlock
+            {
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+            };
+            var checkUpdates = new Button { Content = Loc.Chrome("settings.updates.check") };
+            var restartUpdate = new Button { Content = Loc.Chrome("settings.updates.restart") };
+            updateRestartButton = restartUpdate;
+
+            void RenderUpdates(UpdateFlowState state)
+            {
+                if (UpdateFlowDisplay.StatusFor(state) is { } mapped)
+                {
+                    updateStatus.Text = mapped.Args is { } args
+                        ? Loc.Chrome(mapped.Key, args)
+                        : Loc.Chrome(mapped.Key);
+                    updateStatus.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    updateStatus.Text = string.Empty;
+                    updateStatus.Visibility = Visibility.Collapsed;
+                }
+                checkUpdates.IsEnabled = UpdateFlowDisplay.CheckEnabled(state);
+                restartUpdate.Visibility = UpdateFlowDisplay.RestartVisible(state)
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
+
+            checkUpdates.Click += async (_, _) => await _updateService.CheckAsync();
+
+            // State transitions arrive on a worker thread; marshal to the UI
+            // thread. Subscribed for the dialog's lifetime, so reopening settings
+            // reflects a background download that finished while it was closed
+            // (the phase lives on the service, not the dialog).
+            void OnUpdateStateChanged(UpdateFlowState state) =>
+                DispatcherQueue.TryEnqueue(() => RenderUpdates(state));
+            _updateService.StateChanged += OnUpdateStateChanged;
+            unsubscribeUpdates = () => _updateService.StateChanged -= OnUpdateStateChanged;
+
+            RenderUpdates(_updateService.State);
+            content.Children.Add(updateStatus);
+            content.Children.Add(checkUpdates);
+            content.Children.Add(restartUpdate);
+        }
+
         // Lock this library: forget its encryption key on this device. Sync stops
         // and the library reopens to the unlock prompt; local files stay.
         var lockRequested = false;
@@ -6139,6 +6218,18 @@ public sealed partial class MainWindow : Window
             lockRequested = true;
             dialog.Hide();
         };
+
+        // The restart button applies a staged update: hide the dialog and run the
+        // apply after ShowAsync returns (a nested dialog can't open over this one,
+        // same as the lock dance). Only wired when the updates section rendered it.
+        if (updateRestartButton is not null)
+        {
+            updateRestartButton.Click += (_, _) =>
+            {
+                restartUpdateRequested = true;
+                dialog.Hide();
+            };
+        }
 
         // Now that the dialog exists, load the device list into its placeholder.
         // The add-device button (owner-only) arms the approve flow and closes the
@@ -6179,6 +6270,18 @@ public sealed partial class MainWindow : Window
 
         await dialog.ShowAsync();
         _refreshSettings = null;
+        unsubscribeUpdates?.Invoke();
+
+        if (restartUpdateRequested)
+        {
+            // ApplyUpdatesAndRestart exits the process, so persist playback state
+            // and flush diagnostics first — the work OnClosed would otherwise do.
+            await ShutdownAndFreeCurrentHandle();
+            BaeDiagnostics.Flush();
+            _updateService.ApplyAndRestart();
+            return;
+        }
+
         if (lockRequested)
         {
             var (lockCurrent, error) = await RunForCurrentHandle(NativeBae.LockActiveLibrary);

@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>Weryfikowanie…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pauza między stronami</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Biblioteka: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>aktualizacje</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>wersja {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Sprawdź aktualizacje</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>sprawdzanie…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>aktualne</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>pobieranie… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>wersja {version} jest gotowa — uruchom ponownie, aby zaktualizować</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>Uruchom ponownie teraz</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>nie udało się sprawdzić aktualizacji</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>zablokuj bibliotekę</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>odzyskiwanie</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>twój kod odzyskiwania przywraca tę bibliotekę na nowym urządzeniu, gdy nie masz dostępnego innego urządzenia, aby je zatwierdzić. każdy, kto go ma, ma pełny dostęp — zachowaj go w tajemnicy.</value></data>

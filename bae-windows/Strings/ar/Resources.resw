@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>جارٍ التحقق…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>إيقاف مؤقت بين الجانبين</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>المكتبة: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>تحديثات</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>الإصدار {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>التحقق من التحديثات</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>جارٍ التحقق…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>محدَّث</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>جارٍ التنزيل… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>الإصدار {version} جاهز — أعد التشغيل للتحديث</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>إعادة التشغيل الآن</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>تعذّر التحقق من التحديثات</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>قفل المكتبة</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>الاسترداد</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>رمز الاسترداد الخاص بك يستعيد هذه المكتبة على جهاز جديد عندما لا يتوفر لديك جهاز آخر للموافقة عليه. أي شخص لديه هذا الرمز يملك وصولًا كاملًا — أبقه سريًا.</value></data>

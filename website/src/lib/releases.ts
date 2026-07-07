@@ -19,7 +19,7 @@ const ASSETS: Record<Platform, Record<Edition, string>> = {
   macos: { full: 'bae-macos.dmg', baeium: 'baeium-macos.dmg' },
   ios: { full: 'bae-ios.ipa', baeium: 'baeium-ios.ipa' },
   android: { full: 'bae-android.apk', baeium: 'baeium-android.apk' },
-  windows: { full: 'bae-windows-x64.zip', baeium: 'baeium-windows-x64.zip' },
+  windows: { full: 'bae-windows-x64-setup.exe', baeium: 'baeium-windows-x64-setup.exe' },
 };
 
 export interface EditionDownload {

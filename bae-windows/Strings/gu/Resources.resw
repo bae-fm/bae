@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>માન્ય થઈ રહ્યું છે…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>બાજુઓ વચ્ચે વિરામ</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>લાઇબ્રેરી: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>અપડેટ્સ</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>આવૃત્તિ {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>અપડેટ્સ તપાસો</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>તપાસી રહ્યું છે…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>અદ્યતન</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>ડાઉનલોડ થઈ રહ્યું છે… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>આવૃત્તિ {version} તૈયાર છે — અપડેટ કરવા પુનઃપ્રારંભ કરો</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>હમણાં પુનઃપ્રારંભ કરો</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>અપડેટ્સ તપાસી શકાયું નહીં</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>લાઇબ્રેરી લૉક કરો</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>પુનઃપ્રાપ્તિ</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>તમારો પુનઃપ્રાપ્તિ કોડ આ લાઇબ્રેરીને નવા ઉપકરણ પર પુનઃસ્થાપિત કરે છે જ્યારે તેને મંજૂર કરવા માટે તમારી પાસે બીજું ઉપકરણ ઉપલબ્ધ ન હોય. જેની પાસે તે હશે તેને સંપૂર્ણ ઍક્સેસ મળશે — તેને ગુપ્ત રાખો.</value></data>

@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validating…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pause between sides</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Library: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>updates</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>version {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>checking…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>up to date</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>downloading… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>version {version} is ready — restart to update</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>Restart now</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>couldn't check for updates</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>lock library</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>recovery</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>your recovery code restores this library on a new device when you have no other device available to approve it. anyone with it has full access — keep it secret.</value></data>

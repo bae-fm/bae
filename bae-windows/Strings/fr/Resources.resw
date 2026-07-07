@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>Validation…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Pause entre les faces</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Bibliothèque : {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>mises à jour</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>version {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Rechercher des mises à jour</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>vérification…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>à jour</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>téléchargement… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>la version {version} est prête — redémarrez pour mettre à jour</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>Redémarrer maintenant</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>impossible de rechercher des mises à jour</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>verrouiller la bibliothèque</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>récupération</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>votre code de récupération restaure cette bibliothèque sur un nouvel appareil lorsque vous n’avez aucun autre appareil disponible pour l’approuver. toute personne qui le possède a un accès complet — gardez-le secret.</value></data>

@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>กำลังตรวจสอบ…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>หยุดพักระหว่างด้าน</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>ไลบรารี: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>การอัปเดต</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>เวอร์ชัน {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>ตรวจหาการอัปเดต</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>กำลังตรวจสอบ…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>เป็นเวอร์ชันล่าสุด</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>กำลังดาวน์โหลด… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>เวอร์ชัน {version} พร้อมแล้ว — รีสตาร์ทเพื่ออัปเดต</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>รีสตาร์ทตอนนี้</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>ตรวจหาการอัปเดตไม่สำเร็จ</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>ล็อกคลัง</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>การกู้คืน</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>รหัสกู้คืนของคุณใช้คืนค่าคลังนี้บนอุปกรณ์ใหม่เมื่อคุณไม่มีอุปกรณ์อื่นให้อนุมัติ ผู้ที่มีรหัสนี้จะเข้าถึงได้เต็มรูปแบบ — เก็บไว้เป็นความลับ</value></data>

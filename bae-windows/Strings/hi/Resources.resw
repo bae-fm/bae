@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>सत्यापित हो रहा है…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>पक्षों के बीच रोकें</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>लाइब्रेरी: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>अपडेट</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>संस्करण {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>अपडेट जांचें</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>जांच हो रही है…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>अद्यतित</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>डाउनलोड हो रहा है… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>संस्करण {version} तैयार है — अपडेट के लिए पुनः आरंभ करें</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>अभी पुनः आरंभ करें</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>अपडेट जांच नहीं सके</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>लाइब्रेरी लॉक करें</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>पुनर्प्राप्ति</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>आपका पुनर्प्राप्ति कोड इस लाइब्रेरी को नए उपकरण पर बहाल करता है जब मंजूर करने के लिए कोई दूसरा उपकरण उपलब्ध नहीं होता। जिसके पास यह होगा उसे पूरी पहुंच होगी — इसे गुप्त रखें।</value></data>

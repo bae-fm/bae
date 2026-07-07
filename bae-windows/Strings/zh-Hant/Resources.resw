@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>正在驗證…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>面與面之間暫停</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>資料庫: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>更新</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>版本 {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>檢查更新</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>正在檢查…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>已是最新</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>正在下載… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>版本 {version} 已就緒 — 重新啟動以更新</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>立即重新啟動</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>無法檢查更新</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>鎖定資料庫</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>復原</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>當你沒有其他可用裝置核准時，復原碼可在新裝置上還原此資料庫。任何持有它的人都能完整存取 — 請保密。</value></data>

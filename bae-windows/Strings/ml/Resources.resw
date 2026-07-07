@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>സാധൂകരിക്കുന്നു…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>വശങ്ങൾക്കിടയിൽ താൽക്കാലികമായി നിർത്തുക</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>ലൈബ്രറി: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>അപ്‌ഡേറ്റുകൾ</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>പതിപ്പ് {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>അപ്‌ഡേറ്റുകൾ പരിശോധിക്കുക</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>പരിശോധിക്കുന്നു…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>കാലികം</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>ഡൗൺലോഡ് ചെയ്യുന്നു… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>പതിപ്പ് {version} തയ്യാറാണ് — അപ്‌ഡേറ്റ് ചെയ്യാൻ പുനരാരംഭിക്കുക</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>ഇപ്പോൾ പുനരാരംഭിക്കുക</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>അപ്‌ഡേറ്റുകൾ പരിശോധിക്കാനായില്ല</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>ലൈബ്രറി ലോക്ക് ചെയ്യുക</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>വീണ്ടെടുപ്പ്</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>അംഗീകരിക്കാൻ മറ്റൊരു ഉപകരണം ലഭ്യമല്ലാത്തപ്പോൾ നിങ്ങളുടെ വീണ്ടെടുപ്പ് കോഡ് ഈ ശേഖരം പുതിയ ഉപകരണത്തിൽ പുനഃസ്ഥാപിക്കുന്നു. അത് ഉള്ള ഏവർക്കും പൂർണ്ണ പ്രവേശനമുണ്ട് — രഹസ്യമായി സൂക്ഷിക്കുക.</value></data>

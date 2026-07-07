@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>검증 중…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>면 사이에 일시정지</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>라이브러리: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>업데이트</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>버전 {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>업데이트 확인</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>확인 중…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>최신 상태</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>다운로드 중… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>버전 {version} 준비 완료 — 업데이트하려면 다시 시작</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>지금 다시 시작</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>업데이트를 확인할 수 없습니다</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>라이브러리 잠금</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>복구</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>승인할 수 있는 다른 기기가 없을 때 복구 코드로 이 라이브러리를 새 기기에 복원할 수 있습니다. 이 코드를 가진 사람은 누구나 완전히 접근할 수 있으니 비밀로 보관하세요.</value></data>

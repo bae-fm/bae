@@ -19,6 +19,11 @@
       now-playing-bar seek/position math and the sync-indicator precedence, split
       out of MainWindow as plain BCL types (the stores that hold bridge snapshots
       and the WinUI views that render them are verified by compilation).
+    - The update-flow layer (UpdateFlow) — the state machine and display mapping
+      behind the settings "updates" section (status keys, percent clamping,
+      button gating, version-string normalization), over plain BCL types with no
+      WinUI or Velopack dependency (the Velopack shell that produces its states
+      lives in UpdateService and is verified by compilation).
 
     The rest of bae-windows' pure logic (ReleaseCandidateChoice.Summary,
     ImportCandidate status/ToString, BridgeDisplay) depends on the generated
@@ -44,6 +49,7 @@
     <Compile Include="../bae-windows/MediaControlState.cs" Link="MediaControlState.cs" />
     <Compile Include="../bae-windows/Stores/PlaybackPositionModel.cs" Link="PlaybackPositionModel.cs" />
     <Compile Include="../bae-windows/Stores/SyncIndicatorModel.cs" Link="SyncIndicatorModel.cs" />
+    <Compile Include="../bae-windows/UpdateFlow.cs" Link="UpdateFlow.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>Перевірка…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>Пауза між сторонами</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>Бібліотека: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>оновлення</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>версія {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Перевірити оновлення</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>перевіряється…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>актуально</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>завантаження… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>версія {version} готова — перезапустіть, щоб оновити</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>Перезапустити зараз</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>не вдалося перевірити оновлення</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>заблокувати бібліотеку</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>відновлення</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>ваш код відновлення відновлює цю бібліотеку на новому пристрої, коли немає іншого пристрою, щоб схвалити його. будь-хто з ним має повний доступ — тримайте його в таємниці.</value></data>

@@ -44,9 +44,9 @@ internal static class BaeCrashReporting
             return null;
         }
         var appVersion = AppAssembly.GetName().Version;
-        var dsn = ConfiguredString("BaeSentryDsn");
-        var environment = ConfiguredString("BaeEnvironment");
-        var gitCommit = ConfiguredString("BaeGitCommit");
+        var dsn = AppMetadata.ConfiguredString("BaeSentryDsn");
+        var environment = AppMetadata.ConfiguredString("BaeEnvironment");
+        var gitCommit = AppMetadata.ConfiguredString("BaeGitCommit");
         if (appVersion is null || dsn is null || environment is null || gitCommit is null)
         {
             return null;
@@ -101,20 +101,6 @@ internal static class BaeCrashReporting
         {
             BaeDiagnostics.Logger.Error("Failed to load native crash reporting", exception);
         }
-    }
-
-    private static string? ConfiguredString(string name)
-    {
-        var value = AppAssembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(attribute => attribute.Key == name)
-            ?.Value;
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        var trimmed = value.Trim();
-        return trimmed.StartsWith("$(", StringComparison.Ordinal) ? null : trimmed;
     }
 }
 

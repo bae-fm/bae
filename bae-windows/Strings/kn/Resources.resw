@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>ಮಾನ್ಯಗೊಳಿಸಲಾಗುತ್ತಿದೆ…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>ಬದಿಗಳ ನಡುವೆ ವಿರಾಮ</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>ಲೈಬ್ರರಿ: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>ನವೀಕರಣಗಳು</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>ಆವೃತ್ತಿ {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>ನವೀಕರಣಗಳನ್ನು ಪರಿಶೀಲಿಸಿ</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>ಅಪ್‌ಟುಡೇಟ್</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>ಡೌನ್‌ಲೋಡ್ ಆಗುತ್ತಿದೆ… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>ಆವೃತ್ತಿ {version} ಸಿದ್ಧವಾಗಿದೆ — ನವೀಕರಿಸಲು ಮರುಪ್ರಾರಂಭಿಸಿ</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>ಈಗ ಮರುಪ್ರಾರಂಭಿಸಿ</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>ನವೀಕರಣಗಳನ್ನು ಪರಿಶೀಲಿಸಲಾಗಲಿಲ್ಲ</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ ಲಾಕ್ ಮಾಡಿ</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>ಮರುಪಡೆಯುವಿಕೆ</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>ಅನುಮೋದಿಸಲು ಬೇರೆ ಸಾಧನ ಲಭ್ಯವಿಲ್ಲದಾಗ, ನಿಮ್ಮ ಮರುಪಡೆಯುವ ಕೋಡ್ ಈ ಲೈಬ್ರರಿಯನ್ನು ಹೊಸ ಸಾಧನದಲ್ಲಿ ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ. ಅದಿರುವ ಯಾರಿಗಾದರೂ ಪೂರ್ಣ ಪ್ರವೇಶವಿರುತ್ತದೆ — ಅದನ್ನು ರಹಸ್ಯವಾಗಿಡಿ.</value></data>

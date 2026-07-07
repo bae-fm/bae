@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>சரிபார்க்கப்படுகிறது…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>பக்கங்களுக்கு இடையில் இடைநிறுத்து</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>நூலகம்: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>புதுப்பிப்புகள்</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>பதிப்பு {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>புதுப்பிப்புகளைச் சரிபார்க்கவும்</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>சரிபார்க்கிறது…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>புதுப்பித்த நிலையில்</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>பதிவிறக்குகிறது… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>பதிப்பு {version} தயார் — புதுப்பிக்க மீண்டும் தொடங்கவும்</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>இப்போது மீண்டும் தொடங்கு</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>புதுப்பிப்புகளைச் சரிபார்க்க முடியவில்லை</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>நூலகத்தைப் பூட்டு</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>மீட்பு</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>ஒப்புதல் அளிக்க வேறு சாதனம் இல்லாதபோது, உங்கள் மீட்பு குறியீடு இந்த நூலகத்தை புதிய சாதனத்தில் மீட்டமைக்கும். அது உள்ள யாருக்கும் முழு அணுகல் இருக்கும் — அதை ரகசியமாக வைத்திருங்கள்.</value></data>

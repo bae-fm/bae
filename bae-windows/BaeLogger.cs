@@ -19,14 +19,14 @@ internal static class BaeDiagnostics
         }
 
         var error = NativeBae.ConfigureDiagnostics(
-            ConfiguredString("BaeDatadogSite"),
-            ConfiguredString("BaeDatadogClientToken"),
+            AppMetadata.ConfiguredString("BaeDatadogSite"),
+            AppMetadata.ConfiguredString("BaeDatadogClientToken"),
             "windows",
             "bae",
-            ConfiguredString("BaeEnvironment"),
+            AppMetadata.ConfiguredString("BaeEnvironment"),
             appVersion.ToString(),
             NativeBae.SupportsOAuthProviders() ? "bae" : "baeium",
-            ConfiguredString("BaeGitCommit"));
+            AppMetadata.ConfiguredString("BaeGitCommit"));
         if (error is not null)
         {
             Trace.TraceError($"Failed to configure diagnostics: {error}");
@@ -40,20 +40,6 @@ internal static class BaeDiagnostics
         {
             Trace.TraceError($"Failed to flush diagnostics: {error}");
         }
-    }
-
-    private static string? ConfiguredString(string name)
-    {
-        var value = AppAssembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(attribute => attribute.Key == name)
-            ?.Value;
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        var trimmed = value.Trim();
-        return trimmed.StartsWith("$(", StringComparison.Ordinal) ? null : trimmed;
     }
 }
 

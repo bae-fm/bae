@@ -191,6 +191,15 @@
   <data name="settings.discogs.validating" xml:space="preserve"><value>ధృవీకరిస్తోంది…</value></data>
   <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>వైపుల మధ్య విరామం</value></data>
   <data name="settings.library_label" xml:space="preserve"><value>లైబ్రరీ: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>నవీకరణలు</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>సంస్కరణ {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>నవీకరణల కోసం తనిఖీ చేయండి</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>తనిఖీ చేస్తోంది…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>తాజాగా ఉంది</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>డౌన్‌లోడ్ అవుతోంది… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>సంస్కరణ {version} సిద్ధంగా ఉంది — నవీకరించడానికి పునఃప్రారంభించండి</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>ఇప్పుడు పునఃప్రారంభించండి</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>నవీకరణల కోసం తనిఖీ చేయలేకపోయాం</value></data>
   <data name="settings.lock_library" xml:space="preserve"><value>లైబ్రరీని లాక్ చేయండి</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>రికవరీ</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>ఆమోదించడానికి మీ దగ్గర ఇతర పరికరం లేనప్పుడు, మీ రికవరీ కోడ్ ఈ లైబ్రరీని కొత్త పరికరంలో పునరుద్ధరిస్తుంది. అది ఉన్న ఎవరికైనా పూర్తి యాక్సెస్ ఉంటుంది — దాన్ని రహస్యంగా ఉంచండి.</value></data>
