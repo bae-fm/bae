@@ -23,6 +23,12 @@ mod track;
 #[cfg(test)]
 mod tests;
 
+pub(crate) const SQL_MAX_IN_VARS: usize = 900;
+
+fn in_clause_placeholders(count: usize) -> String {
+    (0..count).map(|_| "?").collect::<Vec<_>>().join(",")
+}
+
 /// The table a host-provided image blob's row lives in. The image type IS the
 /// table (`covers` / `artist_images`), so there is no `type` column. A fixed
 /// match over the enum, so the interpolated name is always a trusted literal.

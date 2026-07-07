@@ -70,15 +70,18 @@ impl Database {
         }
         let track_ids = track_ids.to_vec();
         self.call(move |conn| {
-            let placeholders = track_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            let query = format!("SELECT id FROM tracks WHERE id IN ({placeholders})");
-            let mut stmt = conn.prepare(&query)?;
-            let rows = stmt
-                .query_map(coven::rusqlite::params_from_iter(track_ids.iter()), |row| {
-                    row.get::<_, String>("id")
-                })?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
+            let mut existing = Vec::new();
+            for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
+                let placeholders = in_clause_placeholders(chunk.len());
+                let query = format!("SELECT id FROM tracks WHERE id IN ({placeholders})");
+                let mut stmt = conn.prepare(&query)?;
+                let rows = stmt
+                    .query_map(coven::rusqlite::params_from_iter(chunk.iter()), |row| {
+                        row.get::<_, String>("id")
+                    })?;
+                existing.extend(rows.collect::<coven::rusqlite::Result<Vec<_>>>()?);
+            }
+            Ok(existing)
         })
         .await
     }

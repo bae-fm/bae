@@ -52,6 +52,102 @@ mod queue_ordering_tests {
 }
 
 #[cfg(test)]
+mod in_clause_chunking_tests {
+    use super::super::*;
+    use crate::playback::QueueEntryId;
+    use coven::SystemClock;
+    use std::sync::Arc;
+
+    async fn chunked_track_db() -> (Database, tempfile::TempDir, Vec<String>) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        let track_count = SQL_MAX_IN_VARS * 45;
+        let track_ids: Vec<String> = (0..track_count)
+            .map(|index| format!("track-{index}"))
+            .collect();
+        db.call(move |conn| {
+            conn.execute_batch(
+                "
+                INSERT INTO artists (id, name, _updated_at, created_at)
+                VALUES ('artist-primary', 'Artist Name Primary', 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
+                VALUES ('album-a', 'Album Title A', 'artist-primary', 2026, 'release-a', 0, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+                VALUES ('release-a', 'album-a', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z');
+                ",
+            )?;
+            conn.execute(
+                "WITH RECURSIVE track_numbers(n) AS ( \
+                     SELECT 0 \
+                     UNION ALL \
+                     SELECT n + 1 FROM track_numbers WHERE n < ?1 \
+                 ) \
+                 INSERT INTO tracks \
+                     (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at) \
+                 SELECT \
+                     'track-' || n, \
+                     'release-a', \
+                     'Track Title ' || n, \
+                     1, \
+                     n, \
+                     1000, \
+                     NULL, \
+                     'stamp', \
+                     '2026-01-01T00:00:00Z' \
+                 FROM track_numbers",
+                [track_count as i64 - 1],
+            )?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+        (db, tmp, track_ids)
+    }
+
+    #[tokio::test]
+    async fn track_id_queries_merge_chunks() {
+        let (db, _tmp, track_ids) = chunked_track_db().await;
+        let mut requested = track_ids.clone();
+        requested.insert(SQL_MAX_IN_VARS / 2, "missing-track".to_string());
+
+        let mut existing = db.filter_existing_track_ids(&requested).await.unwrap();
+        existing.sort();
+        let mut expected_existing = track_ids.clone();
+        expected_existing.sort();
+        assert_eq!(existing, expected_existing);
+
+        let album_ids = db.get_album_ids_for_tracks(&requested).await.unwrap();
+        assert_eq!(album_ids.len(), track_ids.len());
+        for track_id in &track_ids {
+            assert_eq!(album_ids.get(track_id).map(String::as_str), Some("album-a"));
+        }
+
+        let entries: Vec<QueueEntry> = requested
+            .iter()
+            .enumerate()
+            .map(|(index, track_id)| QueueEntry {
+                id: QueueEntryId(format!("entry-{index}")),
+                track_id: track_id.clone(),
+            })
+            .collect();
+        let items = db.get_queue_items(&entries).await.unwrap();
+        let resolved_track_ids: Vec<&str> =
+            items.iter().map(|item| item.track_id.as_str()).collect();
+        let expected_track_ids: Vec<&str> = requested
+            .iter()
+            .filter(|track_id| track_id.as_str() != "missing-track")
+            .map(String::as_str)
+            .collect();
+        assert_eq!(resolved_track_ids, expected_track_ids);
+    }
+}
+
+#[cfg(test)]
 mod aggregate_ordering_tests {
     use super::super::*;
     use crate::playback::QueueEntryId;

@@ -37,22 +37,25 @@ impl Database {
 
         let track_ids = track_ids.to_vec();
         self.call(move |conn| {
-            let placeholders = track_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            let sql = format!(
-                "SELECT t.id AS track_id, r.album_id FROM tracks t \
-                     JOIN releases r ON t.release_id = r.id \
-                     WHERE t.id IN ({placeholders})"
-            );
-            let mut stmt = conn.prepare(&sql)?;
-            let rows =
-                stmt.query_map(coven::rusqlite::params_from_iter(track_ids.iter()), |row| {
-                    Ok((
-                        row.get::<_, String>("track_id")?,
-                        row.get::<_, String>("album_id")?,
-                    ))
-                })?;
-            rows.collect::<coven::rusqlite::Result<HashMap<_, _>>>()
-                .map_err(DbError::from)
+            let mut album_ids = HashMap::new();
+            for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
+                let placeholders = in_clause_placeholders(chunk.len());
+                let sql = format!(
+                    "SELECT t.id AS track_id, r.album_id FROM tracks t \
+                         JOIN releases r ON t.release_id = r.id \
+                         WHERE t.id IN ({placeholders})"
+                );
+                let mut stmt = conn.prepare(&sql)?;
+                let rows =
+                    stmt.query_map(coven::rusqlite::params_from_iter(chunk.iter()), |row| {
+                        Ok((
+                            row.get::<_, String>("track_id")?,
+                            row.get::<_, String>("album_id")?,
+                        ))
+                    })?;
+                album_ids.extend(rows.collect::<coven::rusqlite::Result<HashMap<_, _>>>()?);
+            }
+            Ok(album_ids)
         })
         .await
     }
