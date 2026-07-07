@@ -31,10 +31,10 @@ public sealed class Settings
     public List<ExportPreset> ExportPresets { get; set; } = new();
 
     /// <summary>Default selected option in the track export picker.</summary>
-    public ExportSelection DefaultTrackExportSelection { get; set; } = ExportSelection.Original();
+    public BridgeExportSelection DefaultTrackExportSelection { get; set; } = new BridgeExportSelection.Original();
 
     /// <summary>Default selected option in the release export picker.</summary>
-    public ExportSelection DefaultReleaseExportSelection { get; set; } = ExportSelection.Original();
+    public BridgeExportSelection DefaultReleaseExportSelection { get; set; } = new BridgeExportSelection.Original();
 
     public bool McpEnabled { get; set; }
     public ushort McpPort { get; set; }
@@ -173,21 +173,4 @@ public sealed class ExportPresetCodec
     public string Kind { get; set; } = string.Empty;
     public string BitDepth { get; set; } = "source";
     public uint BitrateKbps { get; set; }
-}
-
-public sealed class ExportSelection
-{
-    public string Kind { get; set; } = "original";
-    public string? PresetId { get; set; }
-
-    public static ExportSelection Original() => new() { Kind = "original" };
-
-    public static ExportSelection Preset(string presetId) => new()
-    {
-        Kind = "preset",
-        PresetId = presetId,
-    };
-
-    [JsonIgnore]
-    public bool IsOriginal => Kind == "original";
 }

@@ -602,17 +602,17 @@ internal static class NativeBae
     internal static string? SetPrimaryRelease(AppHandle handle, string albumId, string releaseId) =>
         CaptureError(() => Await(handle.SetPrimaryRelease(albumId, releaseId)));
 
-    internal static string? ExportTrack(AppHandle handle, string trackId, string outputPath, string selectionJson) =>
-        CaptureError(() => Await(handle.ExportTrack(trackId, outputPath, ExportSelection(selectionJson))));
+    internal static string? ExportTrack(AppHandle handle, string trackId, string outputPath, BridgeExportSelection selection) =>
+        CaptureError(() => Await(handle.ExportTrack(trackId, outputPath, selection)));
 
-    internal static string? ExportRelease(AppHandle handle, string releaseId, string targetDir, string selectionJson) =>
-        CaptureError(() => Await(handle.EnqueueExport(releaseId, targetDir, ExportSelection(selectionJson))));
+    internal static string? ExportRelease(AppHandle handle, string releaseId, string targetDir, BridgeExportSelection selection) =>
+        CaptureError(() => Await(handle.EnqueueExport(releaseId, targetDir, selection)));
 
     internal static string? ExportTrackSuggestedName(AppHandle handle, string trackId) =>
         CaptureValue(() => Await(handle.ExportTrackSuggestedName(trackId)));
 
-    internal static string? ExportTrackExtension(AppHandle handle, string trackId, string selectionJson) =>
-        CaptureValue(() => Await(handle.ExportTrackExtension(trackId, ExportSelection(selectionJson))));
+    internal static string? ExportTrackExtension(AppHandle handle, string trackId, BridgeExportSelection selection) =>
+        CaptureValue(() => Await(handle.ExportTrackExtension(trackId, selection)));
 
     internal static (BridgeFile[]? Images, string? Error) GetReleaseImages(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() =>
@@ -721,11 +721,11 @@ internal static class NativeBae
             .Select(ExportPresetBridge)
             .ToArray()));
 
-    internal static string? SetDefaultTrackExportSelection(AppHandle handle, string selectionJson) =>
-        CaptureError(() => handle.SetDefaultTrackExportSelection(ExportSelection(selectionJson)));
+    internal static string? SetDefaultTrackExportSelection(AppHandle handle, BridgeExportSelection selection) =>
+        CaptureError(() => handle.SetDefaultTrackExportSelection(selection));
 
-    internal static string? SetDefaultReleaseExportSelection(AppHandle handle, string selectionJson) =>
-        CaptureError(() => handle.SetDefaultReleaseExportSelection(ExportSelection(selectionJson)));
+    internal static string? SetDefaultReleaseExportSelection(AppHandle handle, BridgeExportSelection selection) =>
+        CaptureError(() => handle.SetDefaultReleaseExportSelection(selection));
 
     internal static string? SetMcpServerConfig(AppHandle handle, bool enabled, ushort port) =>
         CaptureError(() => handle.SetMcpServerConfig(enabled, port));
@@ -999,16 +999,6 @@ internal static class NativeBae
             },
             ascending ? BridgeSortDirection.Ascending : BridgeSortDirection.Descending);
 
-    private static BridgeExportSelection ExportSelection(string json)
-    {
-        using var doc = JsonDocument.Parse(json);
-        var root = doc.RootElement;
-        var kind = root.TryGetProperty("kind", out var kindElement) ? kindElement.GetString() : "original";
-        return kind == "preset" && root.TryGetProperty("preset_id", out var presetId)
-            ? new BridgeExportSelection.Preset(RequiredString(presetId, "preset_id"))
-            : new BridgeExportSelection.Original();
-    }
-
     private static Settings Settings(
         BridgeConfig config,
         BridgeMcpServerStatus mcpStatus,
@@ -1025,8 +1015,8 @@ internal static class NativeBae
             PauseBetweenSides = config.PauseBetweenSides,
             ExportFilenameTemplate = config.ExportFilenameTemplate,
             ExportPresets = config.ExportPresets.Select(ExportPreset).ToList(),
-            DefaultTrackExportSelection = ExportSelection(config.DefaultTrackExportSelection),
-            DefaultReleaseExportSelection = ExportSelection(config.DefaultReleaseExportSelection),
+            DefaultTrackExportSelection = config.DefaultTrackExportSelection,
+            DefaultReleaseExportSelection = config.DefaultReleaseExportSelection,
             McpEnabled = config.Mcp.Enabled,
             McpPort = config.Mcp.Port,
             McpStatus = mcpStatus,
@@ -1308,14 +1298,6 @@ internal static class NativeBae
             BridgeExportPresetCodec.Wav wav => new() { Kind = "wav", BitDepth = ExportBitDepthTag(wav.BitDepth) },
             BridgeExportPresetCodec.Aiff aiff => new() { Kind = "aiff", BitDepth = ExportBitDepthTag(aiff.BitDepth) },
             _ => throw new ArgumentOutOfRangeException(nameof(codec), codec, "Unknown export codec"),
-        };
-
-    private static ExportSelection ExportSelection(BridgeExportSelection selection) =>
-        selection switch
-        {
-            BridgeExportSelection.Original => ExportSelection.Original(),
-            BridgeExportSelection.Preset preset => ExportSelection.Preset(preset.PresetId),
-            _ => throw new ArgumentOutOfRangeException(nameof(selection), selection, "Unknown export selection"),
         };
 
     private static string DiscogsStatusTag(BridgeDiscogsTokenStatus status) =>

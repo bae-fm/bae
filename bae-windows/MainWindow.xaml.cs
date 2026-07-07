@@ -4012,10 +4012,9 @@ public sealed partial class MainWindow : Window
                 var trackPresets = settings.ExportPresets
                     .Where(preset => preset.AppliesToTrack)
                     .ToList();
-                var originalSelection = ExportSelection.Original();
-                var originalSelectionJson = JsonSerializer.Serialize(originalSelection, JsonOptions);
+                var originalSelection = OriginalExportSelection();
                 var (extensionCurrent, originalExtension) = await RunForCurrentHandle(
-                    handle => NativeBae.ExportTrackExtension(handle, track.TrackId, originalSelectionJson));
+                    handle => NativeBae.ExportTrackExtension(handle, track.TrackId, originalSelection));
                 if (!extensionCurrent)
                 {
                     return;
@@ -4026,14 +4025,14 @@ public sealed partial class MainWindow : Window
                     exportStatus.Visibility = Visibility.Visible;
                     return;
                 }
-                var choices = new List<(string Label, string Extension, ExportSelection Selection)>
+                var choices = new List<(string Label, string Extension, BridgeExportSelection Selection)>
                 {
                     (Loc.Chrome("track.export.original"), $".{originalExtension}", originalSelection),
                 };
                 choices.AddRange(trackPresets.Select(preset => (
                     preset.TrackPickerLabel,
                     preset.FileExtension,
-                    ExportSelection.Preset(preset.Id))));
+                    PresetExportSelection(preset.Id))));
                 var formatPicker = new ComboBox
                 {
                     Header = Loc.Chrome("settings.export.default_track_format"),
@@ -4117,10 +4116,9 @@ public sealed partial class MainWindow : Window
                     return;
                 }
 
-                var selectionJson = JsonSerializer.Serialize(selectedChoice.Selection, JsonOptions);
                 var path = file.Path;
                 var (exportCurrent, error) = await RunForCurrentHandle(
-                    handle => NativeBae.ExportTrack(handle, track.TrackId, path, selectionJson));
+                    handle => NativeBae.ExportTrack(handle, track.TrackId, path, selectedChoice.Selection));
                 if (!exportCurrent)
                 {
                     return;
@@ -4304,13 +4302,13 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
-        var choices = new List<(string Label, ExportSelection Selection)>
+        var choices = new List<(string Label, BridgeExportSelection Selection)>
         {
-            (Loc.Chrome("track.export.original"), ExportSelection.Original()),
+            (Loc.Chrome("track.export.original"), OriginalExportSelection()),
         };
         choices.AddRange(settings.ExportPresets
             .Where(preset => preset.AppliesToRelease)
-            .Select(preset => (preset.Name, ExportSelection.Preset(preset.Id))));
+            .Select(preset => (preset.Name, PresetExportSelection(preset.Id))));
 
         var formatPicker = new ComboBox
         {
@@ -4352,7 +4350,7 @@ public sealed partial class MainWindow : Window
             return;
         }
         if (formatPicker.SelectedItem is not ComboBoxItem selectedItem
-            || selectedItem.Tag is not ExportSelection selection)
+            || selectedItem.Tag is not BridgeExportSelection selection)
         {
             StatusText.Text = Loc.Chrome("track.export.prepare_failed");
             return;
@@ -4368,9 +4366,8 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var selectionJson = JsonSerializer.Serialize(selection, JsonOptions);
         var (exportCurrent, error) = await RunForCurrentHandle(
-            handle => NativeBae.ExportRelease(handle, releaseId, folder.Path, selectionJson));
+            handle => NativeBae.ExportRelease(handle, releaseId, folder.Path, selection));
         if (!exportCurrent)
         {
             return;
@@ -4381,8 +4378,18 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private static bool ExportSelectionsEqual(ExportSelection a, ExportSelection b) =>
-        a.Kind == b.Kind && a.PresetId == b.PresetId;
+    private static BridgeExportSelection OriginalExportSelection() => new BridgeExportSelection.Original();
+
+    private static BridgeExportSelection PresetExportSelection(string presetId) =>
+        new BridgeExportSelection.Preset(presetId);
+
+    private static bool ExportSelectionsEqual(BridgeExportSelection a, BridgeExportSelection b) =>
+        (a, b) switch
+        {
+            (BridgeExportSelection.Original, BridgeExportSelection.Original) => true,
+            (BridgeExportSelection.Preset left, BridgeExportSelection.Preset right) => left.PresetId == right.PresetId,
+            _ => false,
+        };
 
     private async System.Threading.Tasks.Task ConfirmDeleteRelease(string releaseId)
     {
@@ -6023,7 +6030,7 @@ public sealed partial class MainWindow : Window
         void PopulateExportSelection(ComboBox combo, Settings settings, bool release)
         {
             combo.Items.Clear();
-            var original = ExportSelection.Original();
+            var original = OriginalExportSelection();
             var selected = release ? settings.DefaultReleaseExportSelection : settings.DefaultTrackExportSelection;
             combo.Items.Add(new ComboBoxItem
             {
@@ -6033,7 +6040,7 @@ public sealed partial class MainWindow : Window
             });
             foreach (var preset in settings.ExportPresets.Where(p => release ? p.AppliesToRelease : p.AppliesToTrack))
             {
-                var selection = ExportSelection.Preset(preset.Id);
+                var selection = PresetExportSelection(preset.Id);
                 combo.Items.Add(new ComboBoxItem
                 {
                     Content = preset.Name,
@@ -6043,8 +6050,8 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        bool SameExportSelection(ExportSelection a, ExportSelection b) =>
-            a.Kind == b.Kind && a.PresetId == b.PresetId;
+        bool SameExportSelection(BridgeExportSelection a, BridgeExportSelection b) =>
+            ExportSelectionsEqual(a, b);
 
         string CodecLabel(ExportPresetCodec codec) => codec.Kind switch
         {
@@ -6295,16 +6302,15 @@ public sealed partial class MainWindow : Window
 
         async System.Threading.Tasks.Task SaveDefaultExportSelection(ComboBox combo, bool release)
         {
-            if (refreshingSettings || combo.SelectedItem is not ComboBoxItem item || item.Tag is not ExportSelection selection)
+            if (refreshingSettings || combo.SelectedItem is not ComboBoxItem item || item.Tag is not BridgeExportSelection selection)
             {
                 return;
             }
 
             ClearSettingsError();
-            var json = JsonSerializer.Serialize(selection, JsonOptions);
             var (current, error) = await RunForCurrentHandle(handle => release
-                ? NativeBae.SetDefaultReleaseExportSelection(handle, json)
-                : NativeBae.SetDefaultTrackExportSelection(handle, json));
+                ? NativeBae.SetDefaultReleaseExportSelection(handle, selection)
+                : NativeBae.SetDefaultTrackExportSelection(handle, selection));
             if (!current)
             {
                 return;
