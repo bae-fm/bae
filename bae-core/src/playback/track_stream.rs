@@ -478,4 +478,95 @@ mod tests {
         assert!(result.is_ok(), "Ready signal should fire on finish");
         assert!(result.unwrap().is_ok(), "Oneshot should succeed");
     }
+
+    /// The production producer pushes more samples than the ring holds, so it
+    /// parks when the ring fills and resumes as a draining consumer frees space.
+    /// Every sample is delivered in order across the park boundary.
+    #[test]
+    fn push_samples_blocking_parks_until_consumer_drains() {
+        use std::thread;
+        use std::time::Duration;
+
+        // Ring capacity (8) is far below the total pushed (40), so the producer
+        // must park on full at least once.
+        let (mut sink, mut source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 8);
+        let total = 40usize;
+        let samples: Vec<f32> = (0..total).map(|i| i as f32).collect();
+        let expected = samples.clone();
+
+        let consumer = thread::spawn(move || {
+            let mut got: Vec<f32> = Vec::new();
+            while got.len() < total {
+                let mut buf = [0.0f32; 4];
+                let n = source.pull_samples(&mut buf);
+                if n == 0 {
+                    thread::sleep(Duration::from_millis(1));
+                    continue;
+                }
+                got.extend_from_slice(&buf[..n]);
+            }
+            got
+        });
+
+        let pushed = sink.push_samples_blocking(&samples);
+        assert_eq!(pushed, total, "every sample is eventually pushed");
+        assert_eq!(
+            consumer.join().unwrap(),
+            expected,
+            "samples arrive in order across the park boundary"
+        );
+    }
+
+    /// A blocked producer (ring full, no consumer draining) returns from
+    /// `push_samples_blocking` when the stream is cancelled mid-push, having
+    /// pushed fewer than all its samples.
+    #[test]
+    fn push_samples_blocking_returns_on_cancel_mid_push() {
+        use std::thread;
+        use std::time::Duration;
+
+        let (mut sink, source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 8);
+        let samples = vec![1.0f32; 100];
+
+        // Nobody drains, so the producer fills the ring and parks; cancel wakes it.
+        let canceller = thread::spawn(move || {
+            thread::sleep(Duration::from_millis(30));
+            source.cancel();
+        });
+
+        let pushed = sink.push_samples_blocking(&samples);
+        canceller.join().unwrap();
+
+        assert!(sink.is_cancelled(), "the stream is cancelled");
+        assert!(
+            pushed < samples.len(),
+            "cancel interrupts the blocked push before all samples land"
+        );
+    }
+
+    /// Silence frames are pushed as zeroed samples, `channels` per frame.
+    #[test]
+    fn push_silence_frames_blocking_pushes_zeroed_frames() {
+        let (mut sink, mut source, _ready) =
+            create_track_stream_pair_with_capacity(44100, 2, 10000);
+
+        let pushed = sink.push_silence_frames_blocking(100);
+        assert_eq!(pushed, 100, "100 frames pushed");
+
+        let mut out = vec![0.5f32; 200]; // 100 frames * 2 channels
+        let n = source.pull_samples(&mut out);
+        assert_eq!(n, 200);
+        assert!(
+            out[..200].iter().all(|&s| s == 0.0),
+            "silence frames are zeroed"
+        );
+    }
+
+    /// A stream with zero channels can't form frames, so silence-frame pushing is
+    /// a no-op rather than dividing by zero.
+    #[test]
+    fn push_silence_frames_blocking_zero_channels_is_noop() {
+        let (mut sink, _source, _ready) = create_track_stream_pair_with_capacity(44100, 0, 100);
+        assert_eq!(sink.push_silence_frames_blocking(50), 0);
+    }
 }
