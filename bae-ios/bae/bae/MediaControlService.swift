@@ -394,12 +394,14 @@ extension MediaControlService {
         let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in
             box.value
         }
-        cachedArtworkImageId = imageId
-        cachedArtwork = artwork
-        let infoCenter = MPNowPlayingInfoCenter.default()
-        var info = infoCenter.nowPlayingInfo ?? [:]
-        info[MPMediaItemPropertyArtwork] = artwork
-        infoCenter.nowPlayingInfo = info
+        await MainActor.run {
+            cachedArtworkImageId = imageId
+            cachedArtwork = artwork
+            let infoCenter = MPNowPlayingInfoCenter.default()
+            var info = infoCenter.nowPlayingInfo ?? [:]
+            info[MPMediaItemPropertyArtwork] = artwork
+            infoCenter.nowPlayingInfo = info
+        }
     }
 }
 
