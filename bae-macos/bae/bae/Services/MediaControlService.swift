@@ -150,38 +150,55 @@ final class MediaControlService: @unchecked Sendable {
         center: MPRemoteCommandCenter
     ) {
         center.changePlaybackPositionCommand.addTarget { [weak self] event in
-            guard let self,
-                let activeSession,
-                let playback = activeSession.playback,
-                let previewAudio = activeSession.previewAudio,
-                let playbackStore = activeSession.playbackStore,
+            guard
                 let positionEvent = event
                     as? MPChangePlaybackPositionCommandEvent
             else {
                 return .noActionableNowPlayingItem
             }
-            guard let durationMs = currentDurationMs, durationMs > 0 else {
-                logger.error(
-                    "Scrubber seek ignored: no current duration tracked"
-                )
-                return .commandFailed
+            let positionTime = positionEvent.positionTime
+            guard let service = self else {
+                return .noActionableNowPlayingItem
             }
-            let ratio =
-                positionEvent.positionTime / (Double(durationMs) / 1000.0)
-            if isShowingPreview {
-                previewAudio.previewSeekByRatio(ratio)
+            nonisolated(unsafe) let commandService = service
+            return MainActor.assumeIsolated {
+                commandService.handleScrubCommand(positionTime: positionTime)
             }
-            else {
-                if let snapshot = playbackStore.projectSeek(ratio: ratio) {
-                    updatePosition(
-                        positionMs: snapshot.positionMs,
-                        durationMs: snapshot.durationMs
-                    )
-                }
-                playback.seekByRatio(ratio)
-            }
-            return .success
         }
+    }
+
+    @MainActor
+    private func handleScrubCommand(
+        positionTime: TimeInterval
+    ) -> MPRemoteCommandHandlerStatus {
+        guard let activeSession,
+            let playback = activeSession.playback,
+            let previewAudio = activeSession.previewAudio,
+            let playbackStore = activeSession.playbackStore
+        else {
+            return .noActionableNowPlayingItem
+        }
+        guard let durationMs = currentDurationMs, durationMs > 0 else {
+            logger.error(
+                "Scrubber seek ignored: no current duration tracked"
+            )
+            return .commandFailed
+        }
+        let ratio =
+            positionTime / (Double(durationMs) / 1000.0)
+        if isShowingPreview {
+            previewAudio.previewSeekByRatio(ratio)
+        }
+        else {
+            if let snapshot = playbackStore.projectSeek(ratio: ratio) {
+                updatePosition(
+                    positionMs: snapshot.positionMs,
+                    durationMs: snapshot.durationMs
+                )
+            }
+            playback.seekByRatio(ratio)
+        }
+        return .success
     }
 }
 
