@@ -415,7 +415,8 @@ fn composer_order_by(sort: ComposerSortCriterion) -> String {
         SortDirection::Ascending => "ASC",
         SortDirection::Descending => "DESC",
     };
-    format!("{field} {direction}, composer.name ASC")
+    // Pagination needs a total order; composer.name is not unique.
+    format!("{field} {direction}, composer.name ASC, composer.id ASC")
 }
 
 #[cfg(any(test, feature = "test-utils"))]

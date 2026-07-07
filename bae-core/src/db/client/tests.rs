@@ -1283,6 +1283,55 @@ mod composer_mode_tests {
         assert_eq!(release.format.as_deref(), Some("CD"));
         assert_eq!(release.release_index, 1);
     }
+
+    #[tokio::test]
+    async fn composer_page_uses_id_tiebreaker() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        db.call(|conn| {
+            conn.execute_batch(
+                "
+                INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+                VALUES
+                    ('composer-c', 'Composer Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('composer-a', 'Composer Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('composer-b', 'Composer Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO works (id, title, work_type, _updated_at, created_at)
+                VALUES
+                    ('work-a', 'Work Title A', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('work-b', 'Work Title B', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('work-c', 'Work Title C', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
+                VALUES
+                    ('work-artist-c', 'work-c', 'composer-c', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('work-artist-a', 'work-a', 'composer-a', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('work-artist-b', 'work-b', 'composer-b', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+
+        let sort = ComposerSortCriterion {
+            field: ComposerSortField::WorkCount,
+            direction: SortDirection::Descending,
+        };
+        let mut page_ids = Vec::new();
+        for offset in 0..3 {
+            let page = db.get_composer_page(sort, offset, 1).await.unwrap();
+            assert_eq!(page.len(), 1);
+            page_ids.push(page[0].artist.id.clone());
+        }
+
+        assert_eq!(page_ids, vec!["composer-a", "composer-b", "composer-c"]);
+    }
 }
 
 #[cfg(test)]
