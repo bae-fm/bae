@@ -871,8 +871,14 @@ internal static class NativeBae
     internal static string? PrefetchCandidateEditJson(AppHandle handle, string releaseId, string source, string folderPath) =>
         CaptureValue(() => Json(PrefetchedEdit(handle, releaseId, MetadataSource(source), folderPath)));
 
-    internal static string? CheckReleaseInLibraryJson(AppHandle handle, string releaseId, string source) =>
-        CaptureValue(() => Json(Await(handle.FindReleaseDetail(releaseId)) is not null));
+    internal static (BridgeLibraryStatus? Status, string? Error) CheckReleaseInLibrary(AppHandle handle, string releaseId) =>
+        CaptureBridgeValue(() =>
+        {
+            var detail = Await(handle.FindReleaseDetail(releaseId));
+            return detail is null
+                ? new BridgeLibraryStatus(releaseId, false, false, null, null)
+                : new BridgeLibraryStatus(releaseId, true, true, null, detail.AlbumId);
+        });
 
     internal static string? ImportCandidate(
         AppHandle handle, string candidateKey, string folderPath, string chosenReleaseId, string source, string storageMode, bool pin, string userEditJson, string selectedCoverJson) =>

@@ -2803,15 +2803,12 @@ public sealed partial class MainWindow : Window
         // tracks release_in_library here. Reads the database — run it off the UI
         // thread. A failure leaves the banner absent; the import still proceeds
         // (the banner is advisory, not a gate).
-        var (statusCurrent, statusJson) = await RunForCurrentHandle(
-            handle => NativeBae.CheckReleaseInLibraryJson(handle, chosen.ReleaseId, chosen.Source));
+        var (statusCurrent, libraryStatus) = await RunForCurrentHandle(
+            handle => NativeBae.CheckReleaseInLibrary(handle, chosen.ReleaseId).Status);
         if (!statusCurrent)
         {
             return false;
         }
-        var libraryStatus = statusJson is null
-            ? null
-            : JsonSerializer.Deserialize<LibraryStatus>(statusJson, JsonOptions);
         if (libraryStatus is not null && libraryStatus.ReleaseInLibrary)
         {
             panel.Children.Insert(0, BuildLibraryStatusBanner(libraryStatus, () =>
@@ -2867,11 +2864,11 @@ public sealed partial class MainWindow : Window
 
     /// <summary>
     /// The already-in-library banner shown at the top of the import confirmation
-    /// when the chosen release (<see cref="LibraryStatus.ReleaseInLibrary"/>) is
+    /// when the chosen release (<see cref="BridgeLibraryStatus.ReleaseInLibrary"/>) is
     /// already in the library. When an album id is present it offers a "view in
     /// library" button that invokes <paramref name="onViewInLibrary"/>.
     /// </summary>
-    private static InfoBar BuildLibraryStatusBanner(LibraryStatus status, Action onViewInLibrary)
+    private static InfoBar BuildLibraryStatusBanner(BridgeLibraryStatus status, Action onViewInLibrary)
     {
         var banner = new InfoBar
         {
