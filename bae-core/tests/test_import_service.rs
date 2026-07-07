@@ -1465,21 +1465,29 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
     assert_eq!(import.status, bae_core::db::ImportOperationStatus::Failed);
     assert!(import.release_id.is_none());
 
-    // The rollback deleted the finalized remote release and its album; only the
-    // prior release and album remain.
-    let (release_count, album_count): (i64, i64) =
+    // The rollback deleted the finalized remote release, its album, and the
+    // artist row that finalize inserted for it; only the prior release, album,
+    // and artist remain. The remote import's artist is referenced by nothing
+    // else, so leaving it behind would orphan a row on every failed remote
+    // import.
+    let (release_count, album_count, artist_count): (i64, i64, i64) =
         f.db.handle()
             .sql(|sql| {
                 let conn = sql.tx();
                 Ok::<_, coven::CovenError>((
                     conn.query_row("SELECT COUNT(*) FROM releases", [], |row| row.get(0))?,
                     conn.query_row("SELECT COUNT(*) FROM albums", [], |row| row.get(0))?,
+                    conn.query_row("SELECT COUNT(*) FROM artists", [], |row| row.get(0))?,
                 ))
             })
             .await
             .unwrap();
     assert_eq!(release_count, 1, "only the prior release remains");
     assert_eq!(album_count, 1, "only the prior album remains");
+    assert_eq!(
+        artist_count, 1,
+        "only the prior artist remains; the rolled-back import's artist row is gone",
+    );
     assert!(
         f.db.find_release_by_id(&prior_release_id)
             .await

@@ -912,6 +912,31 @@ impl Database {
                 |row| row.get(0),
             )?;
 
+            // Every artist this release/album references, captured before the
+            // cascade below removes those link rows. After the release (and its
+            // album) are gone, any of these left referenced by nothing is a row
+            // finalize inserted purely for this import; the reference check when
+            // deleting spares any artist another release/album still points at.
+            let candidate_artist_ids: Vec<String> = {
+                let mut stmt = conn.prepare(
+                    "SELECT artist_id FROM album_artists WHERE album_id = ?1
+                     UNION
+                     SELECT artist_id FROM track_artists
+                       WHERE track_id IN (SELECT id FROM tracks WHERE release_id = ?2)
+                     UNION
+                     SELECT artist_id FROM release_artist_roles WHERE release_id = ?2
+                     UNION
+                     SELECT artist_id FROM track_artist_roles
+                       WHERE track_id IN (SELECT id FROM tracks WHERE release_id = ?2)
+                     UNION
+                     SELECT artist_id FROM albums WHERE id = ?1 AND artist_id IS NOT NULL",
+                )?;
+                let ids = stmt
+                    .query_map(params![album_id, release_id], |row| row.get(0))?
+                    .collect::<coven::rusqlite::Result<Vec<String>>>()?;
+                ids
+            };
+
             conn.execute(
                 "DELETE FROM local_blob_refs
                  WHERE namespace = ?
@@ -939,6 +964,25 @@ impl Database {
                 conn.execute(
                     "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
                     params![reg, album_id],
+                )?;
+            }
+
+            // Delete each candidate artist now that the release/album cascade
+            // has cleared this import's links, but only if no surviving
+            // album, album_artist, track_artist, work_artist, or artist role
+            // still points at it — a shared artist stays. `albums.artist_id`
+            // has no ON DELETE CASCADE, so this guard is also what keeps the
+            // delete from violating that foreign key.
+            for artist_id in &candidate_artist_ids {
+                conn.execute(
+                    "DELETE FROM artists WHERE id = ?1
+                       AND NOT EXISTS (SELECT 1 FROM albums WHERE artist_id = ?1)
+                       AND NOT EXISTS (SELECT 1 FROM album_artists WHERE artist_id = ?1)
+                       AND NOT EXISTS (SELECT 1 FROM track_artists WHERE artist_id = ?1)
+                       AND NOT EXISTS (SELECT 1 FROM work_artists WHERE artist_id = ?1)
+                       AND NOT EXISTS (SELECT 1 FROM release_artist_roles WHERE artist_id = ?1)
+                       AND NOT EXISTS (SELECT 1 FROM track_artist_roles WHERE artist_id = ?1)",
+                    params![artist_id],
                 )?;
             }
 
