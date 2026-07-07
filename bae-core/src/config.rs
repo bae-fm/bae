@@ -1389,8 +1389,7 @@ mod tests {
     fn export_settings_default_when_absent_from_yaml() {
         // A config.yaml with neither export field loads the named defaults
         // rather than failing — the greenfield defaults ride serde.
-        let yaml =
-            "library_id: abc-123\nlibrary_name: Test\nmcp:\n  enabled: false\n  port: 47777\n";
+        let yaml = "library_id: abc-123\nlibrary_name: Test\nstorage: opaque\nmcp:\n  enabled: false\n  port: 47777\n";
         let config: ConfigYaml = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(
             config.export_filename_template,
@@ -1547,12 +1546,22 @@ mod tests {
 
     #[test]
     fn config_yaml_parses_with_library_id() {
-        let yaml =
-            "library_id: abc-123\nlibrary_name: Test\nmcp:\n  enabled: false\n  port: 47777\n";
+        let yaml = "library_id: abc-123\nlibrary_name: Test\nstorage: opaque\nmcp:\n  enabled: false\n  port: 47777\n";
         let config: ConfigYaml = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(config.library_id, "abc-123");
         assert_eq!(config.library_name, "Test");
         assert_eq!(config.mcp, McpConfig::disabled_default());
+    }
+
+    #[test]
+    fn config_yaml_requires_storage() {
+        // `storage` rides the flattened coven CloudHomeConfig and carries no
+        // serde default: a config file without it fails to load rather than
+        // silently assuming a cipher/path scheme.
+        let yaml =
+            "library_id: abc-123\nlibrary_name: Test\nmcp:\n  enabled: false\n  port: 47777\n";
+        let result: Result<ConfigYaml, _> = serde_yaml::from_str(yaml);
+        assert!(result.is_err(), "ConfigYaml should fail without storage");
     }
 
     #[test]
