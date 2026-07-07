@@ -923,9 +923,8 @@ public sealed partial class MainWindow : Window
         string? oauthTokenJson = null;
         if (info.NeedsOauth)
         {
-            // The baeium (S3-only) native library has no OAuth entry points, so a
-            // code for an OAuth provider can't be restored here — check the
-            // supported set before reaching the (absent) sign-in call.
+            // The provider list is the build's support boundary: an S3-only
+            // build cannot restore an OAuth-provider code here.
             if (!NativeBae.AvailableCloudProviders().Contains(info.Provider))
             {
                 StatusText.Text = Loc.Chrome("cloud.unsupported_provider", "provider", ProviderDisplayName(info.Provider));
@@ -938,14 +937,16 @@ public sealed partial class MainWindow : Window
                 return;
             }
             StatusText.Text = Loc.Chrome("cloud.signin.in_progress", "provider", ProviderDisplayName(info.Provider));
-            var oauthJson = await System.Threading.Tasks.Task.Run(() => NativeBae.OAuthAuthorize(info.Provider));
-            var oauth = oauthJson is null ? null : JsonSerializer.Deserialize<OAuthResult>(oauthJson, JsonOptions);
-            if (oauth?.Token is null)
+            try
             {
-                StatusText.Text = oauth?.Error ?? Loc.Chrome("cloud.signin.failed");
+                oauthTokenJson = await System.Threading.Tasks.Task.Run(() => NativeBae.OAuthAuthorize(info.Provider));
+            }
+            catch (BridgeException exception)
+            {
+                BaeDiagnostics.Logger.Error("Failed to authorize cloud provider for restore.", exception);
+                StatusText.Text = Loc.Chrome("cloud.signin.failed");
                 return;
             }
-            oauthTokenJson = oauth.Token;
         }
 
         StatusText.Text = Loc.Chrome("restore.in_progress_named", "name", info.LibraryName);
@@ -1200,16 +1201,18 @@ public sealed partial class MainWindow : Window
                 joinButton.IsEnabled = false;
                 status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
                 ShowStatus(Loc.Chrome("cloud.signin.in_progress", "provider", ProviderDisplayName(info.Provider)));
-                var oauthJson = await System.Threading.Tasks.Task.Run(() => NativeBae.OAuthAuthorize(info.Provider));
-                var oauth = oauthJson is null ? null : JsonSerializer.Deserialize<OAuthResult>(oauthJson, JsonOptions);
-                if (oauth?.Token is null)
+                try
                 {
+                    oauthTokenJson = await System.Threading.Tasks.Task.Run(() => NativeBae.OAuthAuthorize(info.Provider));
+                }
+                catch (BridgeException exception)
+                {
+                    BaeDiagnostics.Logger.Error("Failed to authorize cloud provider for join.", exception);
                     status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
-                    ShowStatus(oauth?.Error ?? Loc.Chrome("cloud.signin.failed"));
+                    ShowStatus(Loc.Chrome("cloud.signin.failed"));
                     Revalidate();
                     return;
                 }
-                oauthTokenJson = oauth.Token;
             }
 
             joinButton.IsEnabled = false;
@@ -5938,9 +5941,7 @@ public sealed partial class MainWindow : Window
         }
 
         // Only offer the OAuth providers this build's native library supports.
-        // The baeium (S3-only) DLL exports no OAuth entry points, so its available
-        // set is just S3 and no sign-in button renders — there's no path to call a
-        // missing symbol, independent of whether oauth-creds.json is present.
+        // An S3-only build returns just S3, so no sign-in button renders.
         var available = NativeBae.AvailableCloudProviders();
         var oauthButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         foreach (var wire in new[] { "google_drive", "dropbox", "onedrive" })

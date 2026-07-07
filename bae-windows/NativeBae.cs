@@ -58,35 +58,22 @@ internal static class NativeBae
     internal static string? FlushDiagnostics() =>
         CaptureError(() => Diagnostics?.Flush().GetAwaiter().GetResult());
 
-    /// <summary>
-    /// Register the OAuth client credentials JSON so coven can build authorization
-    /// URLs and refresh tokens. Call once at startup before any OAuth flow. Returns
-    /// null on success, else an error message.
-    /// </summary>
-    [DllImport(Dll, EntryPoint = "bae_set_oauth_client_creds", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SetOauthClientCredsPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string credsJson);
-
     internal static string? SetOauthClientCreds(string credsJson) =>
-        ResultMessage(SetOauthClientCredsPtr(credsJson));
+        CaptureError(() => BaeBridgeMethods.SetOauthClientCreds(credsJson));
 
     /// <summary>
     /// The cloud-provider wire tags this build's native library supports. Always
     /// includes <c>"s3"</c>; <c>"google_drive"</c>/<c>"dropbox"</c>/<c>"onedrive"</c>
     /// are present only when bae_windows_ffi.dll was built with the oauth-providers
-    /// feature (the baeium build omits them, and with it the OAuth entry points). The
-    /// UI offers only these providers, so it never calls an OAuth entry point a
-    /// baeium build doesn't export. This bridge function is always exported.
+    /// feature. The UI offers only these providers, so an S3-only build has no
+    /// path to start an OAuth flow. This bridge function is always exported.
     /// </summary>
     internal static string[] AvailableCloudProviders() =>
         BaeBridgeMethods.AvailableCloudProviders().Select(CloudProviderTag).ToArray();
 
-    /// <summary>
-    /// Whether this build's native library supports any OAuth cloud provider (i.e. it
-    /// was built with the oauth-providers feature). When false, the OAuth entry points
-    /// are absent and no OAuth flow — including credential registration — must run.
-    /// </summary>
+    /// <summary>Whether this build's native library supports any OAuth cloud provider.</summary>
     internal static bool SupportsOAuthProviders() =>
-        AvailableCloudProviders().Any(provider => provider is not "s3");
+        AvailableCloudProviders().Any(provider => provider is "google_drive" or "dropbox" or "onedrive");
 
     private static BridgeDiagnosticField[] DiagnosticFields(IEnumerable<KeyValuePair<string, string>>? fields) =>
         (fields ?? []).Select(field => new BridgeDiagnosticField(field.Key, field.Value)).ToArray();
@@ -113,6 +100,17 @@ internal static class NativeBae
             _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unknown cloud provider"),
         };
 
+    private static BridgeCloudProvider CloudProvider(string provider) =>
+        provider switch
+        {
+            "s3" => BridgeCloudProvider.S3,
+            "google_drive" => BridgeCloudProvider.GoogleDrive,
+            "dropbox" => BridgeCloudProvider.Dropbox,
+            "onedrive" => BridgeCloudProvider.OneDrive,
+            "cloudkit" => BridgeCloudProvider.CloudKit,
+            _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unknown cloud provider"),
+        };
+
     // ── Catalog-key selection ────────────────────────────────────────────────
     //
     // The enum→key mapping macOS gets free from uniffi's bridge_*_key() functions
@@ -131,18 +129,13 @@ internal static class NativeBae
     internal static string? CloudProviderLabelKey(string? provider) =>
         CopyAndFree(CloudProviderLabelKeyPtr(provider));
 
-    [DllImport(Dll, EntryPoint = "bae_fetch_account_email", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr FetchAccountEmailPtr(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string provider,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string oauthTokenJson);
-
     /// <summary>
     /// The joiner's account email for an OAuth provider, fetched from its
-    /// authenticated session, as JSON (<c>{email, error}</c>), or null on error.
-    /// <paramref name="provider"/> is the wire tag ("google_drive"/…). Copies and frees.
+    /// authenticated session. <paramref name="provider"/> is the wire tag
+    /// ("google_drive"/…).
     /// </summary>
-    internal static string? FetchAccountEmail(string provider, string oauthTokenJson) =>
-        CopyAndFree(FetchAccountEmailPtr(provider, oauthTokenJson));
+    internal static string FetchAccountEmail(string provider, string oauthTokenJson) =>
+        BaeBridgeMethods.FetchAccountEmail(CloudProvider(provider), oauthTokenJson);
 
     [DllImport(Dll, EntryPoint = "bae_audio_channels_key", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr AudioChannelsKeyPtr(long channels);
@@ -225,17 +218,14 @@ internal static class NativeBae
     /// <summary>Create a new library; returns its id.</summary>
     internal static string CreateLibrary() => BaeBridgeMethods.CreateLibrary(name: null).Id;
 
-    [DllImport(Dll, EntryPoint = "bae_oauth_authorize", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr OAuthAuthorizePtr([MarshalAs(UnmanagedType.LPUTF8Str)] string provider);
-
     /// <summary>
     /// Run the desktop OAuth flow for a provider (google_drive / dropbox / onedrive)
-    /// and return a result JSON (<c>{token, error}</c>): <c>token</c> is the provider's
-    /// token JSON for <see cref="RestoreFromCode"/>, <c>error</c> the reason it failed.
-    /// The core opens the system browser and runs the 127.0.0.1 callback listener —
-    /// blocks until the user finishes, so call off the UI thread. Copies and frees.
+    /// and return the provider token JSON for <see cref="RestoreFromCode"/>.
+    /// The core opens the system browser and runs the 127.0.0.1 callback listener,
+    /// so call off the UI thread.
     /// </summary>
-    internal static string? OAuthAuthorize(string provider) => CopyAndFree(OAuthAuthorizePtr(provider));
+    internal static string OAuthAuthorize(string provider) =>
+        BaeBridgeMethods.OauthAuthorize(CloudProvider(provider));
 
     /// <summary>Decode a restore code for UI preview.</summary>
     internal static RestoreCodeInfo DecodeRestoreCode(string code)
