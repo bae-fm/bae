@@ -76,6 +76,31 @@ where
     states
 }
 
+/// Drain progress for `settle` wall time, returning the most recent adjusted
+/// `position_ms` seen. With a real-time capture sink wall time tracks playback
+/// time, so this reads "where the position bar sits `settle` into playback" —
+/// the signal that distinguishes a skipped pregap (position climbs from 0
+/// immediately) from a played pregap (position pinned at 0 for the pregap's
+/// length, then climbs). Panics if no position update arrives in the window.
+async fn position_after(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    settle: Duration,
+) -> u64 {
+    let deadline = Instant::now() + settle;
+    let mut latest = None;
+    while Instant::now() < deadline {
+        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. })) => {
+                latest = Some(position_ms)
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) => panic!("progress channel closed before a position update arrived"),
+            Err(_) => continue,
+        }
+    }
+    latest.expect("a position update should arrive during playback")
+}
+
 fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
     library_manager: LibraryManager,
@@ -2056,146 +2081,129 @@ async fn test_remove_entry_refreshes_preloaded_track() {
 // ============================================================================
 // Pregap behavior tests
 // ============================================================================
-// These tests verify CD-like pregap behavior:
-// - Direct selection (play, next, previous button): skip pregap, start at INDEX 01
-// - Natural transition (auto-advance): play pregap from INDEX 00, show negative time
+// These exercise CD-like pregap behavior against the CUE/FLAC fixture, whose
+// track 2 carries a real 2s pregap (INDEX 00 at 8s, INDEX 01 at 10s):
+// - Direct selection (play / next): skip the pregap, start at INDEX 01, so the
+//   adjusted position climbs from 0 the moment audio flows.
+// - Natural transition (auto-advance): play the pregap from INDEX 00, so the
+//   adjusted position stays pinned at 0 across the pregap, then climbs.
+// The distinguishing signal is *where the position sits partway in*: a skipped
+// pregap is already climbing; a played pregap is still at 0. (A no-pregap FLAC
+// can't tell these apart — both start at 0 — which is why these use the CUE
+// fixture, not the plain FLAC one.)
 
 #[tokio::test]
 async fn test_direct_play_skips_pregap() {
-    // When directly playing a track with pregap_ms set,
-    // playback should start at pregap_ms offset (INDEX 01), not 0 (INDEX 00)
-
-    let mut fixture = PlaybackTestFixture::new().await;
-
-    let track_id = &fixture.track_ids[0];
-    fixture.playback_handle.play(track_id.clone());
-
-    let playing_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
-        .await;
-    assert!(playing_state.is_some(), "Should reach Playing state");
-
-    // position_ms is pregap-adjusted: for direct play, position starts at 0
-    // regardless of whether the track has a pregap (the pregap offset is subtracted).
-    let position_ms = fixture
-        .wait_for_position_update(Duration::from_secs(2))
+    let mut fixture = CueFlacTestFixture::with_realtime_capture()
         .await
-        .expect("Position update after play");
+        .expect("set up CUE/FLAC realtime capture fixture");
+    let pregapped_track_id = fixture.track_ids[1].clone();
+
+    fixture.playback_handle.play(pregapped_track_id.clone());
+    wait_for_state_on(
+        &mut fixture.progress_rx,
+        |s| {
+            matches!(s, PlaybackState::Playing { track_info, .. }
+                if track_info.track_id == pregapped_track_id)
+        },
+        Duration::from_secs(5),
+    )
+    .await
+    .expect("the pregapped track should start playing");
+
+    let position_ms = position_after(&mut fixture.progress_rx, Duration::from_millis(1200)).await;
     assert!(
-        position_ms < 500,
-        "Position should start near 0, got {position_ms}",
+        position_ms > 600,
+        "direct play should skip the 2s pregap and let position climb from 0; \
+         got {position_ms}ms ~1.2s in (a played pregap would keep it pinned at 0)",
     );
 }
 
 #[tokio::test]
 async fn test_next_button_skips_pregap() {
-    // When pressing Next button, the next track should start at INDEX 01 (skip pregap)
-
-    let mut fixture = PlaybackTestFixture::new().await;
-
-    let first_track_id = fixture.track_ids[0].clone();
-    let second_track_id = fixture.track_ids[1].clone();
-
-    // Start playing first track
-    fixture.playback_handle.play(first_track_id.clone());
-    let _first_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
-        .await;
-
-    // Press Next (direct selection)
-    fixture.playback_handle.next();
-
-    let second_track_state = fixture
-        .wait_for_state(
-            |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == second_track_id
-                } else {
-                    false
-                }
-            },
-            Duration::from_secs(5),
-        )
-        .await;
-    assert!(
-        second_track_state.is_some(),
-        "Should reach Playing state for second track",
-    );
-
-    // Verify position starts at pregap_ms (or 0 if no pregap)
-    // position_ms is pregap-adjusted: for direct selection (Next button),
-    // the position starts at 0 (pregap is skipped and subtracted).
-    let position_ms = fixture
-        .wait_for_position_update(Duration::from_secs(2))
+    let mut fixture = CueFlacTestFixture::with_realtime_capture()
         .await
-        .expect("Position update on second track");
+        .expect("set up CUE/FLAC realtime capture fixture");
+    let first_track_id = fixture.track_ids[0].clone();
+    let pregapped_track_id = fixture.track_ids[1].clone();
+
+    fixture.playback_handle.play(first_track_id.clone());
+    wait_for_state_on(
+        &mut fixture.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { .. }),
+        Duration::from_secs(5),
+    )
+    .await
+    .expect("the first track should start playing");
+
+    // Next is a direct selection: it skips the incoming track's pregap.
+    fixture.playback_handle.next();
+    wait_for_state_on(
+        &mut fixture.progress_rx,
+        |s| {
+            matches!(s, PlaybackState::Playing { track_info, .. }
+                if track_info.track_id == pregapped_track_id)
+        },
+        Duration::from_secs(5),
+    )
+    .await
+    .expect("Next should switch to the pregapped track");
+
+    let position_ms = position_after(&mut fixture.progress_rx, Duration::from_millis(1200)).await;
     assert!(
-        position_ms < 500,
-        "Next button should skip pregap: adjusted position should start near 0, got {position_ms}",
+        position_ms > 600,
+        "Next should skip the 2s pregap and let position climb from 0; \
+         got {position_ms}ms ~1.2s in (a played pregap would keep it pinned at 0)",
     );
 }
 
 #[tokio::test]
 async fn test_auto_advance_plays_pregap() {
-    // When a track naturally ends and auto-advances, the next track should
-    // start at INDEX 00 (play pregap), with position showing negative time initially
-
-    let mut fixture = PlaybackTestFixture::new().await;
-
-    let first_track_id = fixture.track_ids[0].clone();
-    let second_track_id = fixture.track_ids[1].clone();
-
-    // Start playing first track
-    fixture.playback_handle.play(first_track_id.clone());
-    let _first_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
-        .await;
-
-    // Seek near end to trigger auto-advance
-    // Test fixture tracks are ~5 seconds, so seek to 4.5s
-    fixture
-        .playback_handle
-        .seek(Duration::from_secs(4) + Duration::from_millis(800));
-
-    // Wait for auto-advance to second track
-    let second_track_state = fixture
-        .wait_for_state(
-            |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == second_track_id
-                } else {
-                    false
-                }
-            },
-            Duration::from_secs(10),
-        )
-        .await;
-
-    assert!(
-        second_track_state.is_some(),
-        "playback should auto-advance to the second track when the first ends"
-    );
-    // For natural transition (auto-advance), position should start at 0 (INDEX 00)
-    // to play the pregap (showing negative time in UI)
-    // For auto-advance (natural transition), position_ms starts at 0 in the
-    // adjusted view. The pregap is being played, but position_ms is adjusted
-    // to show 0 until the pregap passes.
-    let position_ms = fixture
-        .wait_for_position_update(Duration::from_secs(2))
+    let mut fixture = CueFlacTestFixture::with_realtime_capture()
         .await
-        .expect("Position update on auto-advance");
+        .expect("set up CUE/FLAC realtime capture fixture");
+    let first_track_id = fixture.track_ids[0].clone();
+    let pregapped_track_id = fixture.track_ids[1].clone();
+
+    fixture.playback_handle.play(first_track_id.clone());
+    wait_for_state_on(
+        &mut fixture.progress_rx,
+        |s| {
+            matches!(s, PlaybackState::Playing { track_info, .. }
+                if track_info.track_id == first_track_id)
+        },
+        Duration::from_secs(5),
+    )
+    .await
+    .expect("the first track should start playing");
+
+    // Track 1 runs 0–8s; seek near its end so it completes and crosses into
+    // track 2's pregap within a second or so.
+    fixture.playback_handle.seek(Duration::from_secs(7));
+    wait_for_state_on(
+        &mut fixture.progress_rx,
+        |s| {
+            matches!(s, PlaybackState::Playing { track_info, .. }
+                if track_info.track_id == pregapped_track_id)
+        },
+        Duration::from_secs(10),
+    )
+    .await
+    .expect("playback should auto-advance into the pregapped track");
+
+    // ~1s into track 2 the 2s pregap is still playing: adjusted position pinned at 0.
+    let during_pregap = position_after(&mut fixture.progress_rx, Duration::from_millis(1000)).await;
     assert!(
-        position_ms < 500,
-        "Auto-advance should start with adjusted position near 0, got {position_ms}",
+        during_pregap < 600,
+        "auto-advance should play the pregap: position stays pinned at 0 across it, \
+         got {during_pregap}ms ~1s in (a skipped pregap would already be climbing)",
+    );
+
+    // Past the 2s pregap, INDEX 01 content plays and position climbs.
+    let after_pregap = position_after(&mut fixture.progress_rx, Duration::from_millis(2500)).await;
+    assert!(
+        after_pregap > 600,
+        "once the pregap passes, position should climb into the track; got {after_pregap}ms",
     );
 }
 
