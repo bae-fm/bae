@@ -728,14 +728,14 @@ pub struct BridgeInvalidCandidate {
 pub enum BridgeImportCandidateSnapshot {
     Folder {
         candidate: BridgeFolderCandidate,
-        runtime: BridgeCandidateRuntimeSnapshot,
+        runtime_snapshot: BridgeCandidateRuntimeSnapshot,
     },
     Invalid {
         candidate: BridgeInvalidCandidate,
     },
     Runtime {
         key: String,
-        runtime: BridgeCandidateRuntimeSnapshot,
+        runtime_snapshot: BridgeCandidateRuntimeSnapshot,
     },
 }
 

@@ -1834,7 +1834,7 @@ fn convert_import_candidate_snapshot(
         bae_core::import::ImportCandidateSnapshot::Folder { candidate, runtime } => {
             crate::types::BridgeImportCandidateSnapshot::Folder {
                 candidate: convert_folder_candidate(candidate),
-                runtime: convert_candidate_runtime_snapshot(runtime),
+                runtime_snapshot: convert_candidate_runtime_snapshot(runtime),
             }
         }
         bae_core::import::ImportCandidateSnapshot::Invalid(candidate) => {
@@ -1845,7 +1845,7 @@ fn convert_import_candidate_snapshot(
         bae_core::import::ImportCandidateSnapshot::Runtime { key, runtime } => {
             crate::types::BridgeImportCandidateSnapshot::Runtime {
                 key,
-                runtime: convert_candidate_runtime_snapshot(runtime),
+                runtime_snapshot: convert_candidate_runtime_snapshot(runtime),
             }
         }
     }
