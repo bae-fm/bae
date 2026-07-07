@@ -1,0 +1,41 @@
+---
+title: 架構
+description: 一個 Rust 核心上的原生 App，建在 coven 之上
+---
+
+bae 是一個 Rust 核心，外面套著四個原生 App。定義產品的所有內容、資料庫模型、匯入、播放、同步、加密，都在 Rust 中，並在每個平台上行為一致；每個 App 都是其上的薄原生 UI。
+
+## 層次
+
+- **`bae-core`**：產品本體。資料庫與中繼資料模型、匯入與識別管線、FFmpeg 播放引擎、響度分析、匯出，以及與下方 coven 的整合。匯入與識別只在桌面端編譯；行動版建置是同步與播放用戶端。
+- **[coven](https://coven.bae.fm)**：資料層，是一個獨立函式庫。coven 擁有 SQLite 連線、捕捉 bae 提交的每個變更，並透過使用者的雲端儲存對這些變更進行端對端加密同步。它也擁有 blob 儲存（音訊位元組、圖片）、本機快取、身分金鑰與成員資格。bae 會固定精確的 coven 修訂版並把它標記到每個二進位程式中；它定義建置之間的同步相容世代。
+- **`bae-bridge`**：UniFFI 邊界。橋接型別在 Rust 中定義一次，建置時產生到 Swift 與 Kotlin。
+- **App**：macOS 與 iOS 使用 SwiftUI，Android 使用 Jetpack Compose，Windows 使用原生 App。每個 App 也實作核心要求的平台部分：音訊輸出、圖片文字辨識、媒體控制、鑰匙圈存取、當機報告。
+
+App 旁邊還有：`bae-mcp`（MCP 伺服器）、`bae-cli`（命令列），以及 `bae-automation`（兩者共用的工具層）。
+
+## 磁碟上的一個資料庫
+
+資料庫位於 `~/.bae/libraries/<library-id>/`（行動裝置上為平台資料目錄）：
+
+```
+~/.bae/libraries/<id>/
+  library.db        # SQLite: catalog, credits, playback specs
+  config.yaml       # device-local settings, never synced
+  storage/
+    local/          # blobs this device owns (covers, artist images)
+    cache/          # evictable copies of cloud blobs
+    pinned/         # pinned-for-offline copies, never evicted
+```
+
+資料庫只透過 coven 開啟；coven 會在 bae 的 schema 旁加入自己的簿記表（同步游標、寄件匣、blob 狀態），並執行 bae 的遷移。不受管理匯入的音訊檔完全不在 `~/.bae` 下：資料庫會引用它們匯入時所在的路徑。
+
+秘密永遠不存放在這些檔案中。身分金鑰、資料庫加密金鑰、雲端憑證與 API token 都存在 OS 鑰匙圈中（Apple 平台上是 Keychain，透過 iCloud Keychain 同步；其他平台使用對應機制）。
+
+## 版本
+
+每個平台都有兩個建置期版本。**bae** 編譯進 OAuth 提供者（Google Drive、Dropbox、OneDrive）、CloudKit 與遙測。**baeium** 會把這些全部編譯出去：只有 S3 相容儲存，沒有遙測，依賴樹中沒有專有內容。兩個版本使用同一份原始碼與同一個核心；feature flag 決定提供者清單與診斷接線。
+
+## 版本編號
+
+App 依平台以 `MAJOR.MINOR` 編號。major 是相容時代，由每個 App 共用：同一 major 上的裝置可以同步資料庫。它只在傳輸格式或磁碟格式破壞相容時增加，最常見是固定的 coven 修訂版。minor 計算各 App 的發行次數，跨平台之間不可比較。

@@ -1,0 +1,37 @@
+---
+title: 雲端儲存
+description: 提供者、驗證，以及雲端主目錄的形狀
+---
+
+雲端主目錄是使用者已擁有儲存空間中的一個位置。每個提供者都透過 [coven](https://coven.bae.fm) 中相同的儲存介面驅動；各提供者不同的是驗證方式，以及第二台裝置如何取得存取權。
+
+## 提供者
+
+| 提供者 | 驗證 | 新裝置的存取權 |
+|---|---|---|
+| S3-compatible | Access key + secret | 憑證嵌入邀請中 |
+| Google Drive | OAuth (PKCE) | 資料夾分享給加入者的帳號 |
+| Dropbox | OAuth (PKCE) | 資料夾分享給加入者的帳號 |
+| OneDrive | OAuth (PKCE) | 資料夾分享給加入者的帳號 |
+| iCloud (CloudKit) | Apple ID，無需登入 | 加入者接受 CloudKit share |
+
+S3-compatible 涵蓋 AWS、Backblaze B2、Cloudflare R2、Wasabi、MinIO，以及任何使用該 API 的服務；bucket、region、endpoint 與 key prefix 可設定，而且 bucket 會在儲存設定前被探測，讓打字錯誤在設定時失敗，而不是第一次同步時才失敗。OAuth 提供者只存在於完整 **bae** 版本；**baeium** 建置會把它們編譯出去。
+
+## OAuth
+
+登入是帶 PKCE 的 authorization-code flow，作為 public client。桌面端的 redirect 會落到綁定本機連接埠的 loopback 伺服器，只用於那一次 callback；行動端則由 App 捕捉 custom-scheme redirect。bae 會要求提供者為該工作提供的最窄 scope；在 Google Drive 上，這表示只存取 App 自己建立的檔案。Token 儲存在 OS 鑰匙圈中，透過提供者的 refresh grant 更新；被拒絕的更新會顯示為重新連接提示，而不是無聲重試迴圈。
+
+CloudKit 完全不需要 flow：平台的 CloudKit driver 由 App 實作並交給核心，使用已登入的 Apple ID 運作。
+
+## 主目錄的版面
+
+在主目錄內，coven 會配置各裝置 changeset 流、snapshot 世代、成員資格記錄與 blob namespace。bae 貢獻三個 blob namespace：`release_files`、`covers`、`artist_images`。
+
+物件如何作為 key 取決於主目錄的儲存模式，建立時固定：
+
+- **不透明**：物件會加密，並以不揭露任何資訊的內容衍生 key 儲存。這是完全信任密碼學的模式；請見[加密](/zh-hant/reference/encryption)。
+- **可瀏覽**：物件是明文，位於每個 blob 上傳時記錄的可讀路徑：`release_files/{artist}/{album}/{filename}`、`covers/{album}/{release}/cover.{ext}`、`artist_images/{artist}/artist.{ext}`。bucket 同時也是可用的檔案樹；取捨是沒有加密與成員資格，因此可瀏覽主目錄不能分享給其他人。
+
+## 實際網路下的行為
+
+播放讀取會使用範圍請求：播放器串流它需要的位元組區段，而不是整個檔案。超過大小門檻的上傳會在提供者支援時使用 multipart。速率限制與暫時性提供者錯誤會以指數退避重試，並在提供者給出 retry-after 時遵守；過期的 OAuth token 會就地更新。同步寄件匣會跨重啟保留：結束 App 中斷的上傳會繼續，而不是重新開始。

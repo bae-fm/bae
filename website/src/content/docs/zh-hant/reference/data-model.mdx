@@ -1,0 +1,43 @@
+---
+title: 資料模型
+description: Schema、同步內容，以及留在裝置上的內容
+---
+
+bae 的目錄是一般 SQLite，逐表宣告給 [coven](https://coven.bae.fm)：同步表帶有衝突時鐘並前往每個裝置；未宣告的表永遠不離開裝置。這個分割是資料模型最承重的決定，因此本頁圍繞它組織。
+
+## 目錄圖
+
+Schema 中會同步的核心：
+
+- **`artists`**、**`albums`**、**`works`**：群組層。專輯聚合其發行版本並指向一個主要版本；作品形成古典結構的父子圖。
+- **`releases`**：中心實體，每個壓片一列。帶有壓片事實（廠牌、目錄編號、條碼、國家、格式、年份）、中繼資料來源、匯入資料夾的內容雜湊，以及測得的專輯響度。
+- **`release_identities`**：發行版本*是什麼*，依來源記錄。沒有列代表未知；MusicBrainz 或 Discogs 列帶有 release ID 代表精確；沒有 release ID 則代表近似。一個發行版本可同時持有兩個來源的身分。
+- **`tracks`** 搭配 **`track_artists`**，以及 **`release_artist_roles`** 與 **`track_artist_roles`**：曲目清單與名單，每個名單都標記其來源。
+- **`track_works`**、**`work_parts`**、**`work_artists`**：錄音連到它們演出的作品。
+- **`audio_formats`** 與 **`audio_format_segments`**：播放規格。每曲：編解碼器、取樣率、位元深度、聲道、測得響度與峰值，以及 pregap 長度。Segments 將曲目映射到其來源檔案中有序的位元組與樣本區段；這就是 CUE 擷取的曲目（包含 pregap）能跨越一個大型檔案或多個檔案區域的方式。
+- **`release_files`**、**`covers`**、**`artist_images`**：帶有 blob 的表。列是目錄項目；位元組存在 coven 的 blob 層中（見下方）。
+
+## 同步、受門控、本機
+
+以上全都會同步，但不是無條件同步。`releases` 以其 `remote` 欄位宣告為 gated root：發行版本列與其整個子樹（曲目、檔案、名單、格式、封面）只在 `remote` 為 true 時同步，也就是發行版本由雲端管理時。將發行版本切到受管理會發布子樹；不受管理的發行版本即使其 schema 會同步，也會完全留在匯入裝置上。祖先表（`artists`、`albums`、`works`）只在仍有某個已同步發行版本引用它們時同步，因此裝置永遠不會收到下面沒有任何內容的藝人。
+
+完全本機且永不宣告給 coven 的表：
+
+- **`playback_state`**：目前曲目、位置、佇列、音量、隨機播放與重複播放。播放是裝置事實。
+- **`imports`**：匯入操作追蹤。
+- **`release_metadata`**：從 MusicBrainz 與 Discogs 封存的原始 JSON，供未來重新解讀。
+- **`attribution_names`**：成員金鑰的顯示名稱。
+
+每個同步表都帶有 `_updated_at` hybrid-logical-clock 欄位，也就是 coven 逐欄合併並行編輯時排序的 register；測試會強制同步表集合與帶有 clock 的表集合完全相等。
+
+## Blob
+
+音訊與圖片會經過 coven 的 blob 層，位於三個 namespace，各自有裝置快取預算：`release_files`（20 GiB）、`covers`（512 MiB）、`artist_images`（256 MiB）。
+
+發行版本檔案由使用者提供並延遲快取：不受管理發行版本的 blob 是對使用者原始路徑檔案的外部引用；受管理發行版本則是上傳物件，在第一次讀取時抓入快取。封面與藝人圖片由主機提供並主動快取：bae 產生位元組（封面會重新算圖為最寬 600px 的 JPEG 縮圖），每個裝置在 取得時抓取它們，讓格狀清單可在本機呈現。
+
+在不透明主目錄上，blob 會以無意義內容 key 上傳。在可瀏覽主目錄上，每個 blob 列都記錄可讀的雲端路徑（音訊為 `{artist}/{album}/{filename}`，封面為 `{album}/{release}/cover.{ext}`），並在上傳時計算一次，因此稍後重新命名不會移動物件。
+
+## 擷取的身分
+
+`releases.content_hash` 是對匯入資料夾檔案結構（相對路徑與大小）的 SHA-256，與資料夾在磁碟上的位置無關。這讓 bae 能在同一份擷取再次出現在監看資料夾時辨識它，也讓重新匯入找到應替換的發行版本。
