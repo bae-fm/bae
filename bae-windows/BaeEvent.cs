@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
 /// <summary>
-/// A UI event from the core, deserialized from the FFI's tagged JSON. A single
-/// flat shape covers every event: <see cref="Type"/> names the FfiEvent variant
-/// and only that variant's fields are set; the handler switches on it.
+/// A UI event from the generated bridge, flattened for the existing handler.
+/// <see cref="Type"/> names the event variant and only that variant's fields are
+/// set; the handler switches on it.
 ///
 /// The locale never crosses the bridge: progress/duration are raw milliseconds
 /// formatted here, and failures are structured (<see cref="Reason"/>,
@@ -50,8 +51,8 @@ public sealed class BaeEvent
     public string? Mode { get; set; }
     // The queue's two lanes (QueueUpdated): the manual lane ("Up Next") and the
     // context (the release being played from), rendered as distinct sections.
-    public List<QueueItem>? Manual { get; set; }
-    public PlaybackContext? Context { get; set; }
+    public List<BridgeQueueEntry>? Manual { get; set; }
+    public BridgePlaybackContext? Context { get; set; }
     public bool HasNext { get; set; }
     public bool HasPrevious { get; set; }
 

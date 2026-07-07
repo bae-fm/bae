@@ -454,8 +454,8 @@ internal static class NativeBae
             BridgeUiEvent.QueueUpdated queue => new BaeEvent
             {
                 Type = "QueueUpdated",
-                Manual = queue.Snapshot.Manual.Select(ToQueueItem).ToList(),
-                Context = ToPlaybackContext(queue.Snapshot.Context),
+                Manual = queue.Snapshot.Manual.ToList(),
+                Context = queue.Snapshot.Context,
                 HasNext = queue.Snapshot.HasNext,
                 HasPrevious = queue.Snapshot.HasPrevious,
             },
@@ -516,29 +516,6 @@ internal static class NativeBae
             BridgeInvalidation.WatchedFolders => new BaeInvalidation { Kind = "watched_folders" },
             _ => new BaeInvalidation { Kind = string.Empty },
         };
-
-    private static QueueItem ToQueueItem(BridgeQueueEntry entry) => new()
-    {
-        EntryId = entry.EntryId,
-        Title = entry.Title,
-        Artist = entry.ArtistNames,
-        DurationMs = entry.DurationMs,
-    };
-
-    private static PlaybackContext? ToPlaybackContext(BridgePlaybackContext? context) =>
-        context is null
-            ? null
-            : new PlaybackContext
-            {
-                Kind = context.Kind switch
-                {
-                    BridgePlaybackSourceKind.Release => "release",
-                    BridgePlaybackSourceKind.Library => "library",
-                    _ => string.Empty,
-                },
-                Shuffled = context.Shuffled,
-                Upcoming = context.Upcoming.Select(ToQueueItem).ToList(),
-            };
 
     private static string RepeatModeTag(BridgeRepeatMode mode) =>
         mode switch

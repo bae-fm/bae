@@ -36,6 +36,13 @@ public sealed partial class MainWindow : Window
     // time; Field is the locale-free sort identifier the generated bridge expects (never
     // localized).
     private sealed record SortOption(string LabelKey, string Field, bool Ascending);
+    private sealed record QueueEntryRow(BridgeQueueEntry Entry)
+    {
+        internal string EntryId => Entry.EntryId;
+        public override string ToString() =>
+            $"{Entry.Title} — {Entry.ArtistNames} · {Loc.Duration(Entry.DurationMs)}".Trim();
+    }
+
     private enum BrowserMode
     {
         Albums,
@@ -103,8 +110,8 @@ public sealed partial class MainWindow : Window
     // The two lanes are kept separate so the dialog renders them as distinct
     // sections: the manual lane ("Up Next") and the context (the release being
     // played from), or null when nothing plays from a release.
-    private List<QueueItem> _queueManual = new();
-    private PlaybackContext? _queueContext;
+    private List<BridgeQueueEntry> _queueManual = new();
+    private BridgePlaybackContext? _queueContext;
 
     // Holds the +N queue badge visible for ~1.4s after the last add; a fresh add
     // restarts it, replacing the count and resetting the timer.
@@ -535,7 +542,7 @@ public sealed partial class MainWindow : Window
         await ShutdownAndFreeCurrentHandle();
 
         _eventCallback = null;
-        _queueManual = new List<QueueItem>();
+        _queueManual = new List<BridgeQueueEntry>();
         _queueContext = null;
         _userSeeking = false;
         _nowPlaying = null;
@@ -1933,7 +1940,7 @@ public sealed partial class MainWindow : Window
                 NpLoading.Visibility = Visibility.Visible;
                 break;
             case "QueueUpdated":
-                _queueManual = evt.Manual ?? new List<QueueItem>();
+                _queueManual = evt.Manual ?? new List<BridgeQueueEntry>();
                 _queueContext = evt.Context;
                 NpPrev.IsEnabled = evt.HasPrevious;
                 NpNext.IsEnabled = evt.HasNext;
@@ -3099,7 +3106,7 @@ public sealed partial class MainWindow : Window
         {
             // The context section names what's playing — a release ("Playing From")
             // vs the whole library — by the source kind the wire shape carries.
-            var labelKey = ctx.Kind == "library"
+            var labelKey = ctx.Kind == BridgePlaybackSourceKind.Library
                 ? "queue.section.your_library"
                 : "queue.section.playing_from";
             content.Children.Add(ContextSectionLabel(Loc.Chrome(labelKey), ctx.Shuffled));
@@ -3165,9 +3172,9 @@ public sealed partial class MainWindow : Window
 
     // One lane's reorderable list: click skips, right-tap removes, drag reorders
     // within the lane (the framework raises a Move, forwarded to core by entry id).
-    private ListView BuildQueueLaneList(IEnumerable<QueueItem> items)
+    private ListView BuildQueueLaneList(IEnumerable<BridgeQueueEntry> items)
     {
-        var queueItems = new ObservableCollection<QueueItem>(items);
+        var queueItems = new ObservableCollection<QueueEntryRow>(items.Select(item => new QueueEntryRow(item)));
         queueItems.CollectionChanged += (_, args) =>
         {
             if (args.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Move)
@@ -3196,7 +3203,7 @@ public sealed partial class MainWindow : Window
         };
         list.ItemClick += (_, args) =>
         {
-            if (args.ClickedItem is QueueItem clicked)
+            if (args.ClickedItem is QueueEntryRow clicked)
             {
                 WithCurrentHandle(handle => NativeBae.QueueSkipTo(handle, clicked.EntryId));
             }
@@ -3206,7 +3213,7 @@ public sealed partial class MainWindow : Window
         list.RightTapped += (_, args) =>
         {
             if (args.OriginalSource is not FrameworkElement element
-                || element.DataContext is not QueueItem item)
+                || element.DataContext is not QueueEntryRow item)
             {
                 return;
             }
