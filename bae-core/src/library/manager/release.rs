@@ -758,12 +758,10 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Remove any releases whose stored content hash equals `hash` — full
-    /// remote-file cleanup, primary-release reassignment, album cascade, and
-    /// removal events, via [`delete_release`](Self::delete_release) per match.
-    /// The import worker calls this before inserting a re-import of the same
-    /// folder tree, so the re-import overwrites the prior release(s) instead of
-    /// duplicating them.
+    /// Remove any releases whose stored content hash equals `hash`, via
+    /// [`delete_release`](Self::delete_release) per match. Re-imports do not use
+    /// this destructive helper; they prepare replacement plans and commit the
+    /// prior-release delete inside the finalize transaction.
     pub async fn delete_releases_with_content_hash(&self, hash: &str) -> Result<(), LibraryError> {
         for release_id in self.database.release_ids_for_content_hash(hash).await? {
             self.delete_release(&release_id).await?;
