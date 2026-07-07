@@ -510,4 +510,183 @@ mod tests {
             sink.done_frames,
         );
     }
+
+    // ── measure_loudness ───────────────────────────────────────────
+
+    fn now() -> chrono::DateTime<chrono::Utc> {
+        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc)
+    }
+
+    fn audio_format(track_id: &str, id: &str) -> crate::db::DbAudioFormat {
+        crate::db::DbAudioFormat::new(
+            track_id,
+            crate::util::content_type::ContentType::Flac,
+            44_100,
+            Some(16),
+            2,
+            id.to_string(),
+            now(),
+        )
+    }
+
+    fn whole_file_main_segment(format_id: &str, file_id: &str) -> crate::db::DbAudioSegment {
+        crate::db::DbAudioSegment {
+            id: format!("seg-{format_id}"),
+            audio_format_id: format_id.to_string(),
+            segment_index: 0,
+            role: crate::db::DbAudioSegmentRole::Main,
+            file_id: file_id.to_string(),
+            start_sample: 0,
+            end_sample: None,
+            start_byte: None,
+            end_byte: None,
+            created_at: now(),
+        }
+    }
+
+    fn standalone_track(track_id: &str, path: &std::path::Path) -> TrackFile {
+        TrackFile::Standalone {
+            db_track: crate::db::DbTrack::new_test("release-id", track_id, "Track Title", Some(1)),
+            file_path: path.to_path_buf(),
+        }
+    }
+
+    fn cue_flac_fixture(name: &str) -> PathBuf {
+        PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/cue_flac"
+        ))
+        .join(name)
+    }
+
+    /// A track whose source file can't be read is counted done (the bar still
+    /// reaches N/N) but stays unmeasured, and never fails the import.
+    #[tokio::test]
+    async fn measure_loudness_skips_unreadable_source() {
+        let (event_tx, _rx) = broadcast::channel(16);
+        let missing = PathBuf::from("/nonexistent/track.flac");
+        let mut audio_formats = vec![audio_format("track-0", "af-0")];
+        let audio_segments = vec![whole_file_main_segment("af-0", "file-0")];
+        let file_ids = HashMap::from([(missing.clone(), "file-0".to_string())]);
+        let tracks = vec![standalone_track("track-0", &missing)];
+
+        let result = measure_loudness(
+            &event_tx,
+            &mut audio_formats,
+            &audio_segments,
+            &file_ids,
+            &tracks,
+            "cand",
+        )
+        .await;
+
+        assert!(result.album_loudness_lufs.is_none());
+        assert!(result.album_peak_linear.is_none());
+        assert!(
+            result.broken.is_empty(),
+            "an unreadable source is not broken"
+        );
+        assert!(audio_formats[0].track_loudness_lufs.is_none());
+        assert!(audio_formats[0].track_peak_linear.is_none());
+    }
+
+    /// A track whose audio format has no segments is skipped (nothing to
+    /// decode) and stays unmeasured.
+    #[tokio::test]
+    async fn measure_loudness_skips_track_with_no_segments() {
+        let (event_tx, _rx) = broadcast::channel(16);
+        let mut audio_formats = vec![audio_format("track-0", "af-0")];
+        let audio_segments: Vec<crate::db::DbAudioSegment> = Vec::new();
+        let file_ids = HashMap::new();
+        let tracks = vec![standalone_track("track-0", &PathBuf::from("/unused.flac"))];
+
+        let result = measure_loudness(
+            &event_tx,
+            &mut audio_formats,
+            &audio_segments,
+            &file_ids,
+            &tracks,
+            "cand",
+        )
+        .await;
+
+        assert!(result.album_loudness_lufs.is_none());
+        assert!(audio_formats[0].track_loudness_lufs.is_none());
+    }
+
+    /// A real, non-silent decode yields per-track loudness/peak and an album
+    /// aggregate over the measured tracks.
+    #[tokio::test]
+    async fn measure_loudness_computes_track_and_album_values() {
+        crate::audio_codec::init();
+        let (event_tx, _rx) = broadcast::channel(16);
+        let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
+        let mut audio_formats = vec![audio_format("track-0", "af-0")];
+        let audio_segments = vec![whole_file_main_segment("af-0", "file-0")];
+        let file_ids = HashMap::from([(path.clone(), "file-0".to_string())]);
+        let tracks = vec![standalone_track("track-0", &path)];
+
+        let result = measure_loudness(
+            &event_tx,
+            &mut audio_formats,
+            &audio_segments,
+            &file_ids,
+            &tracks,
+            "cand",
+        )
+        .await;
+
+        assert!(
+            audio_formats[0].track_loudness_lufs.is_some(),
+            "brown-noise track has a measurable loudness"
+        );
+        assert!(audio_formats[0].track_peak_linear.is_some());
+        assert!(
+            result.album_loudness_lufs.is_some(),
+            "one measured track yields an album aggregate"
+        );
+        assert!(result.album_peak_linear.is_some());
+    }
+
+    /// A window shorter than one EBU R128 gated block (400 ms) produces no
+    /// usable loudness — the same "unmeasured" outcome the code labels silent
+    /// (`into_result` returns `Ok((_, None))`). The track keeps NULL
+    /// loudness/peak and contributes nothing to the album. (The available
+    /// "silence" fixture measures above the −70 LUFS floor over its full length,
+    /// so a sub-gate window is the deterministic way to reach this branch with a
+    /// real decode.)
+    #[tokio::test]
+    async fn measure_loudness_leaves_ungated_track_unmeasured() {
+        crate::audio_codec::init();
+        let (event_tx, _rx) = broadcast::channel(16);
+        let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
+        let mut audio_formats = vec![audio_format("track-0", "af-0")];
+        // ~50 ms at 44.1 kHz — far short of a 400 ms gated block.
+        let mut segment = whole_file_main_segment("af-0", "file-0");
+        segment.end_sample = Some(2_205);
+        let audio_segments = vec![segment];
+        let file_ids = HashMap::from([(path.clone(), "file-0".to_string())]);
+        let tracks = vec![standalone_track("track-0", &path)];
+
+        let result = measure_loudness(
+            &event_tx,
+            &mut audio_formats,
+            &audio_segments,
+            &file_ids,
+            &tracks,
+            "cand",
+        )
+        .await;
+
+        assert!(
+            audio_formats[0].track_loudness_lufs.is_none(),
+            "a sub-gate window has no usable loudness and stays unmeasured"
+        );
+        assert!(
+            result.album_loudness_lufs.is_none(),
+            "no measured track means no album loudness"
+        );
+    }
 }
