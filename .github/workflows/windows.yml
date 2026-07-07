@@ -98,13 +98,13 @@ jobs:
       - name: Install uniffi-bindgen-cs
         run: cargo install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag 'v0.11.0+v0.31.0' uniffi-bindgen-cs --locked
 
-      # Both editions differ in the Rust bridge feature set. The full feature
-      # set (oauth-providers) adds the OAuth bridge exports; baeium (no
-      # features) omits them. Build and generate both binding dirs so stale
-      # functions cannot linger across editions.
-      - name: Build the Windows bridge (baeium, default features)
+      # Both editions include the desktop bridge surface used by the WinUI app.
+      # The full feature set adds OAuth provider exports; baeium omits them.
+      # Build and generate both binding dirs so stale functions cannot linger
+      # across editions.
+      - name: Build the Windows bridge (baeium, desktop)
         shell: bash
-        run: BAE_BRIDGE_FEATURES= BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium ./bae-bridge/build-windows.sh
+        run: BAE_BRIDGE_FEATURES=desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium ./bae-bridge/build-windows.sh
 
       - name: Confirm the bridge DLL was produced
         shell: pwsh
@@ -113,10 +113,10 @@ jobs:
           if (Test-Path $dll) { Write-Host "PASS: $dll ($((Get-Item $dll).Length) bytes)" }
           else { Write-Host "FAIL: $dll not found"; exit 1 }
 
-      - name: Build the Windows bridge (full edition, oauth-providers)
-        # Windows has no cloudkit (Apple-only); full here is oauth-providers only.
+      - name: Build the Windows bridge (full edition, OAuth + desktop)
+        # Windows has no cloudkit (Apple-only); full here is OAuth plus desktop.
         shell: bash
-        run: BAE_BRIDGE_FEATURES=oauth-providers BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh
+        run: BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
@@ -152,7 +152,7 @@ jobs:
         # The host clippy in ci.yml targets macOS, so lint the Windows target too.
         run: cargo clippy -p bae-core -p bae-bridge --target x86_64-pc-windows-msvc -- -D warnings
 
-      - name: Clippy (full edition, oauth-providers)
-        # Dead-code warnings are feature-specific, so lint the oauth-gated code on
-        # the Windows target too. oauth-providers only — no cloudkit on Windows.
-        run: cargo clippy -p bae-core -p bae-bridge --target x86_64-pc-windows-msvc --features oauth-providers -- -D warnings
+      - name: Clippy (full edition, OAuth + desktop)
+        # Dead-code warnings are feature-specific, so lint the OAuth/desktop code
+        # on the Windows target too. No cloudkit on Windows.
+        run: cargo clippy -p bae-core -p bae-bridge --target x86_64-pc-windows-msvc --features oauth-providers,desktop -- -D warnings

@@ -10,7 +10,7 @@ usage() {
     echo "  Builds bae-bridge for Windows x86_64. Debug by default."
     echo ""
     echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
-    echo "  'oauth-providers'). BAE_BRIDGE_CSHARP_BINDINGS_DIR is the"
+    echo "  'oauth-providers,desktop'). BAE_BRIDGE_CSHARP_BINDINGS_DIR is the"
     echo "  generated C# output directory."
 }
 
@@ -33,7 +33,7 @@ fi
 # The cargo feature set the bridge compiles with. The generated C# only exports
 # the bridge functions whose features are on, so each Windows edition gets
 # bindings from the matching feature set.
-BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers}"
+BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers,desktop}"
 if [[ -z "${BAE_BRIDGE_CSHARP_BINDINGS_DIR:-}" ]]; then
     echo "BAE_BRIDGE_CSHARP_BINDINGS_DIR is required" >&2
     exit 1
