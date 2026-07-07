@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>दालन वाचता आले नाही</value></data>
   <data name="gallery.title" xml:space="preserve"><value>दालन</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>संघर्ष</value></data>
-  <data name="identify.error" xml:space="preserve"><value>त्रुटी</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {सापडले (#)} other {सापडले (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>ओळखत आहे…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>फक्त हाताने शोध</value></data>

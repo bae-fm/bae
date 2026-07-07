@@ -2554,11 +2554,15 @@ mod tests {
     #[test]
     fn enqueue_export_missing_release_does_not_panic() {
         let (handle, root) = fresh_bridge_handle("enqueue-export-missing-release");
-        let result = handle.enqueue_export(
-            "missing-release".to_string(),
-            root.join("exports").to_string_lossy().into_owned(),
-            crate::types::BridgeExportSelection::Original,
-        );
+        let result = handle.runtime.block_on(async {
+            handle
+                .enqueue_export(
+                    "missing-release".to_string(),
+                    root.join("exports").to_string_lossy().into_owned(),
+                    crate::types::BridgeExportSelection::Original,
+                )
+                .await
+        });
 
         assert!(matches!(
             result,

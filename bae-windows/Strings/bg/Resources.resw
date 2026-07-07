@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>галерията не може да бъде прочетена</value></data>
   <data name="gallery.title" xml:space="preserve"><value>галерия</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>конфликт</value></data>
-  <data name="identify.error" xml:space="preserve"><value>грешка</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {намерени (#)} other {намерени (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>идентифициране…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>само ръчно търсене</value></data>

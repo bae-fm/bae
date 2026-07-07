@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>อ่านแกลเลอรีไม่ได้</value></data>
   <data name="gallery.title" xml:space="preserve"><value>แกลเลอรี</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>ขัดแย้ง</value></data>
-  <data name="identify.error" xml:space="preserve"><value>ข้อผิดพลาด</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {พบ (#)} other {พบ (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>กำลังระบุ…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>ค้นหาด้วยตนเองเท่านั้น</value></data>

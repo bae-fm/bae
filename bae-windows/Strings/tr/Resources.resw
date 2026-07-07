@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>galeri okunamadı</value></data>
   <data name="gallery.title" xml:space="preserve"><value>galeri</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>çakışma</value></data>
-  <data name="identify.error" xml:space="preserve"><value>hata</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {bulundu (#)} other {bulundu (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>tanımlanıyor…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>yalnızca elle arama</value></data>

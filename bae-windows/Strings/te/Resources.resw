@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>గ్యాలరీని చదవలేకపోయింది</value></data>
   <data name="gallery.title" xml:space="preserve"><value>గ్యాలరీ</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>ఘర్షణ</value></data>
-  <data name="identify.error" xml:space="preserve"><value>లోపం</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {కనబడింది (#)} other {కనబడ్డాయి (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>గుర్తిస్తోంది…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>చేతి శోధన మాత్రమే</value></data>

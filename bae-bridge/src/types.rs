@@ -3880,7 +3880,11 @@ mod loc_key_coverage {
     }
 }
 
-#[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
+#[cfg(all(
+    test,
+    feature = "desktop",
+    not(any(target_os = "ios", target_os = "android"))
+))]
 mod identify_progress_tests {
     use super::*;
 

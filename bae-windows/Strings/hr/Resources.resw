@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>nije moguće pročitati galeriju</value></data>
   <data name="gallery.title" xml:space="preserve"><value>galerija</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>sukob</value></data>
-  <data name="identify.error" xml:space="preserve"><value>pogreška</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {pronađeno (#)} few {pronađeno (#)} other {pronađeno (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>identifikacija…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>samo ručno pretraživanje</value></data>

@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>ਗੈਲਰੀ ਪੜ੍ਹੀ ਨਹੀਂ ਜਾ ਸਕੀ</value></data>
   <data name="gallery.title" xml:space="preserve"><value>ਗੈਲਰੀ</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>ਟਕਰਾਅ</value></data>
-  <data name="identify.error" xml:space="preserve"><value>ਗਲਤੀ</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {ਮਿਲਿਆ (#)} other {ਮਿਲੇ (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>ਪਛਾਣ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>ਕੇਵਲ ਹੱਥੋਂ ਖੋਜ</value></data>

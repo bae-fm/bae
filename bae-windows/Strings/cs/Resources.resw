@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>nelze přečíst galerii</value></data>
   <data name="gallery.title" xml:space="preserve"><value>galerie</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>konflikt</value></data>
-  <data name="identify.error" xml:space="preserve"><value>chyba</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {nalezeno (#)} few {nalezeno (#)} many {nalezeno (#)} other {nalezeno (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>identifikace…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>pouze ruční vyhledávání</value></data>

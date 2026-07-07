@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>không thể đọc thư viện ảnh</value></data>
   <data name="gallery.title" xml:space="preserve"><value>thư viện ảnh</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>xung đột</value></data>
-  <data name="identify.error" xml:space="preserve"><value>lỗi</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {tìm thấy (#)} other {tìm thấy (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>đang nhận dạng…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>chỉ tìm thủ công</value></data>

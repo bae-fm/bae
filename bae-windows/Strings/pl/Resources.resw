@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>nie udało się odczytać galerii</value></data>
   <data name="gallery.title" xml:space="preserve"><value>galeria</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>konflikt</value></data>
-  <data name="identify.error" xml:space="preserve"><value>błąd</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {znaleziono (#)} few {znaleziono (#)} many {znaleziono (#)} other {znaleziono (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>identyfikowanie…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>tylko wyszukiwanie ręczne</value></data>

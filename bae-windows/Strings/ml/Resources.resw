@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>ഗാലറി വായിക്കാനായില്ല</value></data>
   <data name="gallery.title" xml:space="preserve"><value>ഗാലറി</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>സംഘർഷം</value></data>
-  <data name="identify.error" xml:space="preserve"><value>പിശക്</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {കണ്ടെത്തി (#)} other {കണ്ടെത്തി (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>തിരിച്ചറിയുന്നു…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>നേരിട്ടുള്ള തിരയൽ മാത്രം</value></data>

@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>গ্যালারি পড়া যায়নি</value></data>
   <data name="gallery.title" xml:space="preserve"><value>গ্যালারি</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>দ্বন্দ্ব</value></data>
-  <data name="identify.error" xml:space="preserve"><value>ত্রুটি</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {পাওয়া গেছে (#)} other {পাওয়া গেছে (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>শনাক্ত করা হচ্ছে…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>শুধু হাতে অনুসন্ধান</value></data>

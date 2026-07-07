@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>ギャラリーを読み込めませんでした</value></data>
   <data name="gallery.title" xml:space="preserve"><value>ギャラリー</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>競合</value></data>
-  <data name="identify.error" xml:space="preserve"><value>エラー</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, other {検出 (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>識別中…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>手動検索のみ</value></data>

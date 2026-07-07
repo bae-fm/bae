@@ -194,12 +194,12 @@ public sealed partial class MainWindow : Window
             new PointerEventHandler((_, _) =>
             {
                 _userSeeking = false;
-        var handle = CurrentHandleOrZero();
-        if (handle != IntPtr.Zero)
-        {
-            ProjectSeekDrop(NpProgress.Value);
-            NativeBae.SeekByRatio(handle, NpProgress.Value);
-        }
+                var handle = CurrentHandleOrZero();
+                if (handle != IntPtr.Zero)
+                {
+                    ProjectSeekDrop(NpProgress.Value);
+                    NativeBae.SeekByRatio(handle, NpProgress.Value);
+                }
             }), true);
 
         LoadLibrary();

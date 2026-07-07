@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>갤러리를 읽을 수 없음</value></data>
   <data name="gallery.title" xml:space="preserve"><value>갤러리</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>충돌</value></data>
-  <data name="identify.error" xml:space="preserve"><value>오류</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, other {찾음 (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>식별 중…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>수동 검색만</value></data>

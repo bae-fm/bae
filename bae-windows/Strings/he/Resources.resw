@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>לא ניתן לקרוא את הגלריה</value></data>
   <data name="gallery.title" xml:space="preserve"><value>גלריה</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>התנגשות</value></data>
-  <data name="identify.error" xml:space="preserve"><value>שגיאה</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {נמצאה (#)} two {נמצאו (#)} many {נמצאו (#)} other {נמצאו (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>מזהה…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>חיפוש ידני בלבד</value></data>

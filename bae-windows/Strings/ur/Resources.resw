@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>گیلری پڑھی نہیں جا سکی</value></data>
   <data name="gallery.title" xml:space="preserve"><value>گیلری</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>ٹکراؤ</value></data>
-  <data name="identify.error" xml:space="preserve"><value>خرابی</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {found (#)} other {found (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>شناخت ہو رہی ہے…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>صرف ہاتھ سے تلاش</value></data>

@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>無法讀取圖庫</value></data>
   <data name="gallery.title" xml:space="preserve"><value>圖庫</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>衝突</value></data>
-  <data name="identify.error" xml:space="preserve"><value>錯誤</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {找到 (#)} other {找到 (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>正在識別…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>僅手動搜尋</value></data>

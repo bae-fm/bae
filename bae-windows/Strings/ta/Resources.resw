@@ -62,7 +62,6 @@
   <data name="gallery.read_failed" xml:space="preserve"><value>காட்சியகத்தை வாசிக்க முடியவில்லை</value></data>
   <data name="gallery.title" xml:space="preserve"><value>காட்சியகம்</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>முரண்பாடு</value></data>
-  <data name="identify.error" xml:space="preserve"><value>பிழை</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {கிடைத்தது (#)} other {கிடைத்தது (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>அடையாளம் காணப்படுகிறது…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>கைமுறை தேடல் மட்டும்</value></data>
