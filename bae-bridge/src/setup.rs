@@ -154,11 +154,6 @@ fn lock_bridge_mutex<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
-#[cfg(not(feature = "oauth-providers"))]
-fn oauth_unavailable() -> BridgeError {
-    BridgeError::config("OAuth providers are not available in this build".to_string())
-}
-
 /// Point bae's data directory at `path/.bae` by exporting `path` as `$HOME`,
 /// which is what `dirs::home_dir()` (and thus `bae_dir()` / library discovery /
 /// restore / `init_app`) resolves against. Mobile app processes don't get a
@@ -468,15 +463,6 @@ pub fn fetch_account_email(
     })
 }
 
-#[cfg(not(feature = "oauth-providers"))]
-#[uniffi::export]
-pub fn fetch_account_email(
-    _provider: BridgeCloudProvider,
-    _oauth_token_json: String,
-) -> Result<String, BridgeError> {
-    Err(oauth_unavailable())
-}
-
 /// Decode a join-request code to preview the joining device before approving it.
 #[uniffi::export]
 pub fn decode_join_request(code: String) -> Result<BridgeJoinRequestInfo, BridgeError> {
@@ -650,14 +636,9 @@ pub fn oauth_authorize(provider: BridgeCloudProvider) -> Result<String, BridgeEr
     result
 }
 
-#[cfg(not(feature = "oauth-providers"))]
-#[uniffi::export]
-pub fn oauth_authorize(_provider: BridgeCloudProvider) -> Result<String, BridgeError> {
-    Err(oauth_unavailable())
-}
-
 /// One step of the host-driven (mobile) OAuth flow: the URL to open and the
 /// opaque request id to pass back to [`oauth_complete`].
+#[cfg(feature = "oauth-providers")]
 #[derive(uniffi::Record)]
 pub struct BridgeOAuthRequest {
     pub auth_url: String,
@@ -701,12 +682,6 @@ pub fn set_oauth_client_creds(creds_json: String) -> Result<(), BridgeError> {
     Ok(())
 }
 
-#[cfg(not(feature = "oauth-providers"))]
-#[uniffi::export]
-pub fn set_oauth_client_creds(_creds_json: String) -> Result<(), BridgeError> {
-    Err(oauth_unavailable())
-}
-
 /// Begin a host-driven OAuth flow: build the authorization URL for `provider`,
 /// redirecting to `redirect_uri` (a custom scheme the mobile OS auth session
 /// captures). The host opens `auth_url`, captures the `code` and `state` from
@@ -729,15 +704,6 @@ pub fn oauth_begin(
         auth_url,
         request_id,
     })
-}
-
-#[cfg(not(feature = "oauth-providers"))]
-#[uniffi::export]
-pub fn oauth_begin(
-    _provider: BridgeCloudProvider,
-    _redirect_uri: String,
-) -> Result<BridgeOAuthRequest, BridgeError> {
-    Err(oauth_unavailable())
 }
 
 /// Complete a host-driven OAuth flow: exchange the captured `code` for tokens
@@ -775,18 +741,6 @@ pub fn oauth_complete(
         .map_err(|e| BridgeError::internal(format!("Failed to serialize tokens: {e}")))
 }
 
-#[cfg(not(feature = "oauth-providers"))]
-#[uniffi::export]
-pub fn oauth_complete(
-    _provider: BridgeCloudProvider,
-    _code: String,
-    _state: String,
-    _request_id: String,
-    _redirect_uri: String,
-) -> Result<String, BridgeError> {
-    Err(oauth_unavailable())
-}
-
 /// Cancel an in-progress OAuth flow. Signals the callback server to shut down
 /// and frees the port.
 #[cfg(feature = "oauth-providers")]
@@ -796,10 +750,6 @@ pub fn oauth_cancel() {
         let _ = tx.send(true);
     }
 }
-
-#[cfg(not(feature = "oauth-providers"))]
-#[uniffi::export]
-pub fn oauth_cancel() {}
 
 /// Unlock a library by providing the encryption key hex.
 /// Validates the key against the stored fingerprint, then saves it to the keyring.

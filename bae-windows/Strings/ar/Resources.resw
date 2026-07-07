@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>خطأ في التشغيل</value></data>
   <data name="error.title" xml:space="preserve"><value>خطأ</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>تعذّر تحميل المعرض</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>تعذّرت قراءة المعرض</value></data>
   <data name="gallery.title" xml:space="preserve"><value>المعرض</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>تعارض</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, zero {تم العثور على (#)} one {تم العثور على (#)} two {تم العثور على (#)} few {تم العثور على (#)} many {تم العثور على (#)} other {تم العثور على (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>تعذّرت قراءة العنصر المُسقَط</value></data>
   <data name="import.error_title" xml:space="preserve"><value>خطأ في الاستيراد</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>تعذّر تحميل الإصدار للاستيراد</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>تعذّر تحميل إعدادات التخزين</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>تعذّرت قراءة إعدادات التخزين</value></data>
   <data name="import.failed" xml:space="preserve"><value>فشل الاستيراد</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>الفنان (البحث اليدوي)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>لم يُعثَر على إصدارات</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>مكتبة جديدة</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>إعادة تسمية</value></data>
   <data name="libraries.title" xml:space="preserve"><value>المكتبات</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>تعذّر إنشاء مكتبة</value></data>
   <data name="library.empty" xml:space="preserve"><value>المكتبة فارغة</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>تعذّر تحميل المكتبة</value></data>
   <data name="library.locked" xml:space="preserve"><value>المكتبة مقفلة</value></data>

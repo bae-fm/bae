@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>再生エラー</value></data>
   <data name="error.title" xml:space="preserve"><value>エラー</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>ギャラリーを読み込めませんでした</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>ギャラリーを読み込めませんでした</value></data>
   <data name="gallery.title" xml:space="preserve"><value>ギャラリー</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>競合</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, other {検出 (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>ドロップされた項目を読み込めませんでした</value></data>
   <data name="import.error_title" xml:space="preserve"><value>取り込みエラー</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>取り込むリリースを読み込めませんでした</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>ストレージ設定を読み込めませんでした</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>ストレージ設定を読み込めませんでした</value></data>
   <data name="import.failed" xml:space="preserve"><value>取り込みに失敗しました</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>アーティスト（手動検索）</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>リリースが見つかりませんでした</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>新規ライブラリ</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>名前を変更</value></data>
   <data name="libraries.title" xml:space="preserve"><value>ライブラリ</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>ライブラリを作成できませんでした</value></data>
   <data name="library.empty" xml:space="preserve"><value>ライブラリは空です</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>ライブラリを読み込めませんでした</value></data>
   <data name="library.locked" xml:space="preserve"><value>ライブラリはロックされています</value></data>

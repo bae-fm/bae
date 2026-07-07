@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>ప్లేబ్యాక్ లోపం</value></data>
   <data name="error.title" xml:space="preserve"><value>లోపం</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>గ్యాలరీని లోడ్ చేయలేకపోయింది</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>గ్యాలరీని చదవలేకపోయింది</value></data>
   <data name="gallery.title" xml:space="preserve"><value>గ్యాలరీ</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>ఘర్షణ</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {కనబడింది (#)} other {కనబడ్డాయి (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>వదిలిన అంశాన్ని చదవలేకపోయింది</value></data>
   <data name="import.error_title" xml:space="preserve"><value>దిగుమతి లోపం</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>దిగుమతి చేయాల్సిన విడుదలను లోడ్ చేయలేకపోయింది</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>నిల్వ సెట్టింగ్‌లను లోడ్ చేయలేకపోయింది</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>నిల్వ సెట్టింగ్‌లను చదవలేకపోయింది</value></data>
   <data name="import.failed" xml:space="preserve"><value>దిగుమతి విఫలమైంది</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>కళాకారుడు (చేతి శోధన)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>విడుదలలు కనబడలేదు</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>కొత్త లైబ్రరీ</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>పేరు మార్చు</value></data>
   <data name="libraries.title" xml:space="preserve"><value>లైబ్రరీలు</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>లైబ్రరీని సృష్టించలేకపోయింది</value></data>
   <data name="library.empty" xml:space="preserve"><value>లైబ్రరీ ఖాళీగా ఉంది</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>లైబ్రరీని లోడ్ చేయలేకపోయింది</value></data>
   <data name="library.locked" xml:space="preserve"><value>లైబ్రరీ లాక్ చేయబడింది</value></data>

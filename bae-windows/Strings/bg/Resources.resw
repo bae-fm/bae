@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>грешка при възпроизвеждане</value></data>
   <data name="error.title" xml:space="preserve"><value>грешка</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>галерията не може да бъде заредена</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>галерията не може да бъде прочетена</value></data>
   <data name="gallery.title" xml:space="preserve"><value>галерия</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>конфликт</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {намерени (#)} other {намерени (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>пуснатият елемент не може да бъде прочетен</value></data>
   <data name="import.error_title" xml:space="preserve"><value>грешка при внасяне</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>изданието за внасяне не може да бъде заредено</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>настройките на хранилището не могат да бъдат заредени</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>настройките на хранилището не могат да бъдат прочетени</value></data>
   <data name="import.failed" xml:space="preserve"><value>внасянето не бе успешно</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>изпълнител (ръчно търсене)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>не са намерени издания</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>нова библиотека</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>преименуване</value></data>
   <data name="libraries.title" xml:space="preserve"><value>библиотеки</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>не може да се създаде библиотека</value></data>
   <data name="library.empty" xml:space="preserve"><value>библиотеката е празна</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>библиотеката не може да бъде заредена</value></data>
   <data name="library.locked" xml:space="preserve"><value>библиотеката е заключена</value></data>

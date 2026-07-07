@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>વગાડવાની ભૂલ</value></data>
   <data name="error.title" xml:space="preserve"><value>ભૂલ</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>ગેલેરી લોડ કરી શકાયી નહીં</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>ગેલેરી વાંચી શકાયી નહીં</value></data>
   <data name="gallery.title" xml:space="preserve"><value>ગેલેરી</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>વિરોધ</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {મળ્યું (#)} other {મળ્યાં (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>છોડેલી વસ્તુ વાંચી શકાયી નહીં</value></data>
   <data name="import.error_title" xml:space="preserve"><value>આયાત ભૂલ</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>આયાત કરવા માટેનું પ્રકાશન લોડ કરી શકાયું નહીં</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>સંગ્રહ સેટિંગ્સ લોડ કરી શકાયી નહીં</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>સંગ્રહ સેટિંગ્સ વાંચી શકાયી નહીં</value></data>
   <data name="import.failed" xml:space="preserve"><value>આયાત નિષ્ફળ</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>કલાકાર (હાથેથી શોધ)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>પ્રકાશનો મળ્યા નથી</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>નવી લાઇબ્રેરી</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>નામ બદલો</value></data>
   <data name="libraries.title" xml:space="preserve"><value>લાઇબ્રેરીઓ</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>લાઇબ્રેરી બનાવી શકાયી નહીં</value></data>
   <data name="library.empty" xml:space="preserve"><value>લાઇબ્રેરી ખાલી છે</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>લાઇબ્રેરી લોડ કરી શકાયી નહીં</value></data>
   <data name="library.locked" xml:space="preserve"><value>લાઇબ્રેરી લૉક છે</value></data>

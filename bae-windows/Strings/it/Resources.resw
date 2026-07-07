@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>errore di riproduzione</value></data>
   <data name="error.title" xml:space="preserve"><value>errore</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>impossibile caricare la galleria</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>impossibile leggere la galleria</value></data>
   <data name="gallery.title" xml:space="preserve"><value>galleria</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>conflitto</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {trovato (#)} other {trovati (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>impossibile leggere l'elemento rilasciato</value></data>
   <data name="import.error_title" xml:space="preserve"><value>errore di importazione</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>impossibile caricare la pubblicazione da importare</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>couldn't load Archiviazione settings</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>couldn't read Archiviazione settings</value></data>
   <data name="import.failed" xml:space="preserve"><value>importazione non riuscita</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>artista (ricerca manuale)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>nessuna pubblicazione trovata</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>new Libreria</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>rinomina</value></data>
   <data name="libraries.title" xml:space="preserve"><value>librerie</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>couldn't create a Libreria</value></data>
   <data name="library.empty" xml:space="preserve"><value>Libreria is empty</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>couldn't load the Libreria</value></data>
   <data name="library.locked" xml:space="preserve"><value>Libreria is locked</value></data>

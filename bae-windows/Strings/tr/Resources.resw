@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>çalma hatası</value></data>
   <data name="error.title" xml:space="preserve"><value>hata</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>galeri yüklenemedi</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>galeri okunamadı</value></data>
   <data name="gallery.title" xml:space="preserve"><value>galeri</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>çakışma</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {bulundu (#)} other {bulundu (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>bırakılan öğe okunamadı</value></data>
   <data name="import.error_title" xml:space="preserve"><value>içe aktarma hatası</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>içe aktarılacak yayın yüklenemedi</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>couldn't load Depolama settings</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>couldn't read Depolama settings</value></data>
   <data name="import.failed" xml:space="preserve"><value>içe aktarma başarısız</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>sanatçı (elle arama)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>yayın bulunamadı</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>new Kitaplık</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>yeniden adlandır</value></data>
   <data name="libraries.title" xml:space="preserve"><value>arşivler</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>couldn't create a Kitaplık</value></data>
   <data name="library.empty" xml:space="preserve"><value>Kitaplık is empty</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>couldn't load the Kitaplık</value></data>
   <data name="library.locked" xml:space="preserve"><value>Kitaplık is locked</value></data>

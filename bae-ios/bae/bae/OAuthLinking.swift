@@ -237,16 +237,20 @@ final class WebAuthCoordinator: NSObject, ASWebAuthenticationPresentationContext
                         continuation.resume(throwing: OAuthLinkingError.noCode)
                         return
                     }
-                    guard let code = queryItems
-                        .first(where: { $0.name == "code" })?
-                        .value
+                    guard
+                        let code =
+                            queryItems
+                            .first(where: { $0.name == "code" })?
+                            .value
                     else {
                         continuation.resume(throwing: OAuthLinkingError.noCode)
                         return
                     }
-                    guard let state = queryItems
-                        .first(where: { $0.name == "state" })?
-                        .value
+                    guard
+                        let state =
+                            queryItems
+                            .first(where: { $0.name == "state" })?
+                            .value
                     else {
                         continuation.resume(throwing: OAuthLinkingError.noState)
                         return

@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>chyba přehrávání</value></data>
   <data name="error.title" xml:space="preserve"><value>chyba</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>nelze načíst galerii</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>nelze přečíst galerii</value></data>
   <data name="gallery.title" xml:space="preserve"><value>galerie</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>konflikt</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {nalezeno (#)} few {nalezeno (#)} many {nalezeno (#)} other {nalezeno (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>nelze přečíst přetaženou položku</value></data>
   <data name="import.error_title" xml:space="preserve"><value>chyba importu</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>nelze načíst vydání k importu</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>nelze načíst nastavení úložiště</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>nelze přečíst nastavení úložiště</value></data>
   <data name="import.failed" xml:space="preserve"><value>import selhal</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>interpret (ruční vyhledávání)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>nenalezena žádná vydání</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>nová knihovna</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>přejmenovat</value></data>
   <data name="libraries.title" xml:space="preserve"><value>knihovny</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>nelze vytvořit knihovnu</value></data>
   <data name="library.empty" xml:space="preserve"><value>knihovna je prázdná</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>nelze načíst knihovnu</value></data>
   <data name="library.locked" xml:space="preserve"><value>knihovna je zamčena</value></data>

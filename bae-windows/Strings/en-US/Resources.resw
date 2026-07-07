@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>playback error</value></data>
   <data name="error.title" xml:space="preserve"><value>error</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>couldn't load the gallery</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>couldn't read the gallery</value></data>
   <data name="gallery.title" xml:space="preserve"><value>gallery</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>conflict</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {found (#)} other {found (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>could not read the dropped item</value></data>
   <data name="import.error_title" xml:space="preserve"><value>import error</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>couldn't load the release to import</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>couldn't load storage settings</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>couldn't read storage settings</value></data>
   <data name="import.failed" xml:space="preserve"><value>import failed</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>artist (manual search)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>no releases found</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>new library</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>rename</value></data>
   <data name="libraries.title" xml:space="preserve"><value>libraries</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>couldn't create a library</value></data>
   <data name="library.empty" xml:space="preserve"><value>library is empty</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>couldn't load the library</value></data>
   <data name="library.locked" xml:space="preserve"><value>library is locked</value></data>

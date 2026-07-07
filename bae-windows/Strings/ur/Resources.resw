@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>چلانے کی خرابی</value></data>
   <data name="error.title" xml:space="preserve"><value>خرابی</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>گیلری لوڈ نہیں ہو سکی</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>گیلری پڑھی نہیں جا سکی</value></data>
   <data name="gallery.title" xml:space="preserve"><value>گیلری</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>ٹکراؤ</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {found (#)} other {found (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>چھوڑی گئی شے پڑھی نہیں جا سکی</value></data>
   <data name="import.error_title" xml:space="preserve"><value>درآمد خرابی</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>درآمد کے لیے اشاعت لوڈ نہیں ہو سکی</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>اسٹوریج ترتیبات لوڈ نہیں ہو سکیں</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>اسٹوریج ترتیبات پڑھی نہیں جا سکیں</value></data>
   <data name="import.failed" xml:space="preserve"><value>درآمد ناکام</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>فنکار (ہاتھ سے تلاش)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>کوئی اشاعت نہیں ملی</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>نئی لائبریری</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>نام بدلیں</value></data>
   <data name="libraries.title" xml:space="preserve"><value>کتب خانے</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>لائبریری بنائی نہیں جا سکی</value></data>
   <data name="library.empty" xml:space="preserve"><value>لائبریری خالی ہے</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>لائبریری لوڈ نہیں ہو سکی</value></data>
   <data name="library.locked" xml:space="preserve"><value>لائبریری مقفل ہے</value></data>

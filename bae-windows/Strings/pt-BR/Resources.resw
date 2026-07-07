@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>erro de reprodução</value></data>
   <data name="error.title" xml:space="preserve"><value>erro</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>não foi possível carregar a galeria</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>não foi possível ler a galeria</value></data>
   <data name="gallery.title" xml:space="preserve"><value>galeria</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>conflito</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {encontrado (#)} other {encontrados (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>não foi possível ler o item solto</value></data>
   <data name="import.error_title" xml:space="preserve"><value>erro de importação</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>não foi possível carregar o lançamento para importar</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>não foi possível carregar as configurações de armazenamento</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>não foi possível ler as configurações de armazenamento</value></data>
   <data name="import.failed" xml:space="preserve"><value>falha na importação</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>artista (busca manual)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>nenhum lançamento encontrado</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>nova biblioteca</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>renomear</value></data>
   <data name="libraries.title" xml:space="preserve"><value>bibliotecas</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>não foi possível criar uma biblioteca</value></data>
   <data name="library.empty" xml:space="preserve"><value>a biblioteca está vazia</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>não foi possível carregar a biblioteca</value></data>
   <data name="library.locked" xml:space="preserve"><value>a biblioteca está bloqueada</value></data>

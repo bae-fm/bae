@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>ਪਲੇਬੈਕ ਗਲਤੀ</value></data>
   <data name="error.title" xml:space="preserve"><value>ਗਲਤੀ</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>ਗੈਲਰੀ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕੀ</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>ਗੈਲਰੀ ਪੜ੍ਹੀ ਨਹੀਂ ਜਾ ਸਕੀ</value></data>
   <data name="gallery.title" xml:space="preserve"><value>ਗੈਲਰੀ</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>ਟਕਰਾਅ</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {ਮਿਲਿਆ (#)} other {ਮਿਲੇ (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>ਛੱਡੀ ਆਈਟਮ ਪੜ੍ਹੀ ਨਹੀਂ ਜਾ ਸਕੀ</value></data>
   <data name="import.error_title" xml:space="preserve"><value>ਆਯਾਤ ਗਲਤੀ</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>ਆਯਾਤ ਕਰਨ ਲਈ ਰਿਲੀਜ਼ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕੀ</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>ਸਟੋਰੇਜ ਸੈਟਿੰਗਾਂ ਲੋਡ ਨਹੀਂ ਕੀਤੀਆਂ ਜਾ ਸਕੀਆਂ</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>ਸਟੋਰੇਜ ਸੈਟਿੰਗਾਂ ਪੜ੍ਹੀਆਂ ਨਹੀਂ ਜਾ ਸਕੀਆਂ</value></data>
   <data name="import.failed" xml:space="preserve"><value>ਆਯਾਤ ਅਸਫਲ</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>ਕਲਾਕਾਰ (ਹੱਥੋਂ ਖੋਜ)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>ਕੋਈ ਰਿਲੀਜ਼ ਨਹੀਂ ਮਿਲੀ</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>ਨਵੀਂ ਲਾਇਬ੍ਰੇਰੀ</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>ਨਾਂ ਬਦਲੋ</value></data>
   <data name="libraries.title" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀਆਂ</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਬਣਾਈ ਨਹੀਂ ਜਾ ਸਕੀ</value></data>
   <data name="library.empty" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਖਾਲੀ ਹੈ</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਲੋਡ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕੀ</value></data>
   <data name="library.locked" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਲਾਕ ਹੈ</value></data>

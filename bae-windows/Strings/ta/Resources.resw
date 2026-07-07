@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>இயக்கல் பிழை</value></data>
   <data name="error.title" xml:space="preserve"><value>பிழை</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>காட்சியகத்தை ஏற்ற முடியவில்லை</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>காட்சியகத்தை வாசிக்க முடியவில்லை</value></data>
   <data name="gallery.title" xml:space="preserve"><value>காட்சியகம்</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>முரண்பாடு</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {கிடைத்தது (#)} other {கிடைத்தது (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>இழுத்து விடப்பட்ட உருப்படியை வாசிக்க முடியவில்லை</value></data>
   <data name="import.error_title" xml:space="preserve"><value>இறக்குமதி பிழை</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>இறக்குமதி செய்ய வேண்டிய வெளியீட்டை ஏற்ற முடியவில்லை</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>சேமிப்பக அமைப்புகளை ஏற்ற முடியவில்லை</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>சேமிப்பக அமைப்புகளைப் படிக்க முடியவில்லை</value></data>
   <data name="import.failed" xml:space="preserve"><value>இறக்குமதி தோல்வியடைந்தது</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>கலைஞர் (கைமுறை தேடல்)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>வெளியீடுகள் கிடைக்கவில்லை</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>புதிய நூலகம்</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>பெயர் மாற்று</value></data>
   <data name="libraries.title" xml:space="preserve"><value>நூலகங்கள்</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>நூலகத்தை உருவாக்க முடியவில்லை</value></data>
   <data name="library.empty" xml:space="preserve"><value>நூலகம் காலியாக உள்ளது</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>நூலகத்தை ஏற்ற முடியவில்லை</value></data>
   <data name="library.locked" xml:space="preserve"><value>நூலகம் பூட்டப்பட்டுள்ளது</value></data>

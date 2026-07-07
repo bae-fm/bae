@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>播放错误</value></data>
   <data name="error.title" xml:space="preserve"><value>错误</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>无法加载图库</value></data>
-  <data name="gallery.read_failed" xml:space="preserve"><value>无法读取图库</value></data>
   <data name="gallery.title" xml:space="preserve"><value>图库</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>冲突</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, other {找到 (#)}}</value></data>
@@ -77,8 +76,6 @@
   <data name="import.drop_read_failed" xml:space="preserve"><value>无法读取拖入的项目</value></data>
   <data name="import.error_title" xml:space="preserve"><value>导入错误</value></data>
   <data name="import.error.load_release" xml:space="preserve"><value>无法加载要导入的版本</value></data>
-  <data name="import.error.load_storage_settings" xml:space="preserve"><value>无法加载存储设置</value></data>
-  <data name="import.error.read_storage_settings" xml:space="preserve"><value>无法读取存储设置</value></data>
   <data name="import.failed" xml:space="preserve"><value>导入失败</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>艺术家（手动搜索）</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>未找到版本</value></data>
@@ -109,7 +106,6 @@
   <data name="libraries.new" xml:space="preserve"><value>新建库</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>重命名</value></data>
   <data name="libraries.title" xml:space="preserve"><value>库</value></data>
-  <data name="library.create_failed" xml:space="preserve"><value>无法创建库</value></data>
   <data name="library.empty" xml:space="preserve"><value>库为空</value></data>
   <data name="library.load_failed" xml:space="preserve"><value>无法加载库</value></data>
   <data name="library.locked" xml:space="preserve"><value>库已锁定</value></data>

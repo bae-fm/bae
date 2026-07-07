@@ -439,45 +439,16 @@ extension MediaControlService {
         imageId: String,
         appHandle: AppHandle
     ) async {
-        let bytes: Data
-        do {
-            guard
-                let data = try await appHandle.fetchCoverImageBytes(
-                    releaseId: imageId
-                )
-            else {
-                logger.debug("No Now Playing artwork for \(imageId)")
-                return
-            }
-            bytes = data
-        }
-        catch is CancellationError {
-            return
-        }
-        catch {
-            logger.warning(
-                "Failed to fetch Now Playing artwork \(imageId): \(error)"
+        guard
+            let bytes = await fetchArtworkBytes(
+                imageId: imageId,
+                appHandle: appHandle
+            ),
+            let nsImage = await decodeArtworkImage(
+                bytes: bytes,
+                imageId: imageId
             )
-            return
-        }
-        let scale = await MainActor.run {
-            NSScreen.main?.backingScaleFactor ?? 2.0
-        }
-        let nsImage: NSImage
-        do {
-            nsImage = try await ImageLoader.load(
-                source: .data(bytes),
-                size: .fitTo(points: 600),
-                displayScale: scale
-            )
-        }
-        catch is CancellationError {
-            return
-        }
-        catch {
-            logger.warning(
-                "Failed to decode Now Playing artwork \(imageId): \(error)"
-            )
+        else {
             return
         }
         guard !Task.isCancelled else {
@@ -504,6 +475,60 @@ extension MediaControlService {
             info[MPMediaItemPropertyArtwork] = artwork
             infoCenter.nowPlayingInfo = info
         }
+    }
+
+    private func fetchArtworkBytes(
+        imageId: String,
+        appHandle: AppHandle
+    ) async -> Data? {
+        let bytes: Data
+        do {
+            guard
+                let data = try await appHandle.fetchCoverImageBytes(
+                    releaseId: imageId
+                )
+            else {
+                logger.debug("No Now Playing artwork for \(imageId)")
+                return nil
+            }
+            bytes = data
+        }
+        catch is CancellationError {
+            return nil
+        }
+        catch {
+            logger.warning(
+                "Failed to fetch Now Playing artwork \(imageId): \(error)"
+            )
+            return nil
+        }
+        return bytes
+    }
+
+    private func decodeArtworkImage(bytes: Data, imageId: String) async
+        -> NSImage?
+    {
+        let scale = await MainActor.run {
+            NSScreen.main?.backingScaleFactor ?? 2.0
+        }
+        let nsImage: NSImage
+        do {
+            nsImage = try await ImageLoader.load(
+                source: .data(bytes),
+                size: .fitTo(points: 600),
+                displayScale: scale
+            )
+        }
+        catch is CancellationError {
+            return nil
+        }
+        catch {
+            logger.warning(
+                "Failed to decode Now Playing artwork \(imageId): \(error)"
+            )
+            return nil
+        }
+        return nsImage
     }
 
     private func clearArtworkLoad() {
