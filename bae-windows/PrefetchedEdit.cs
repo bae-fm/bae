@@ -11,7 +11,11 @@ namespace Bae.Windows;
 /// </summary>
 internal sealed class PrefetchedEdit
 {
-    public ReleaseEdit Edit { get; set; } = new();
+    public BridgeRawReleaseEdit Edit { get; set; } = new(
+        string.Empty,
+        string.Empty,
+        new BridgeRawPressingEdit(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty),
+        []);
     public List<BridgeRemoteCover> RemoteCovers { get; set; } = new();
     public List<LocalArtwork> LocalArtwork { get; set; } = new();
 }

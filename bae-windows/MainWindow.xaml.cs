@@ -2849,7 +2849,7 @@ public sealed partial class MainWindow : Window
         dialog.PrimaryButtonClick += async (_, args) =>
         {
             var deferral = args.GetDeferral();
-            var payload = JsonSerializer.Serialize(form.ReadBack(), JsonOptions);
+            var payload = form.ReadBack();
             var storageMode = StorageModeTag();
             var pin = StoragePinSelected();
             var (importCurrent, error) = await RunForCurrentHandle(
@@ -4469,13 +4469,12 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var (current, json) = WithCurrentHandle(
-            handle => NativeBae.ReleaseEditSeedJson(handle, releaseId));
+        var (current, seeded) = WithCurrentHandle(
+            handle => NativeBae.ReleaseEditSeed(handle, releaseId).Edit);
         if (!current)
         {
             return;
         }
-        var seeded = json is null ? null : JsonSerializer.Deserialize<ReleaseEdit>(json, JsonOptions);
         if (seeded is null)
         {
             await ShowError(Loc.Chrome("album.edit.load_failed"));
@@ -4498,9 +4497,8 @@ public sealed partial class MainWindow : Window
         // dialog open and show the reason instead of committing.
         dialog.PrimaryButtonClick += (_, args) =>
         {
-            var payload = JsonSerializer.Serialize(form.ReadBack(), JsonOptions);
             var (editCurrent, error) = WithCurrentHandle(
-                handle => NativeBae.ApplyReleaseEdit(handle, releaseId, payload));
+                handle => NativeBae.ApplyReleaseEdit(handle, releaseId, form.ReadBack()));
             if (!editCurrent)
             {
                 args.Cancel = true;
@@ -4524,15 +4522,12 @@ public sealed partial class MainWindow : Window
             var deferral = args.GetDeferral();
             try
             {
-                var (resetCurrent, resetJson) = await RunForCurrentHandle(
-                    handle => NativeBae.ResetMetadataToSourceJson(handle, releaseId));
+                var (resetCurrent, fresh) = await RunForCurrentHandle(
+                    handle => NativeBae.ResetMetadataToSource(handle, releaseId).Edit);
                 if (!resetCurrent)
                 {
                     return;
                 }
-                var fresh = resetJson is null
-                    ? null
-                    : JsonSerializer.Deserialize<ReleaseEdit>(resetJson, JsonOptions);
                 if (fresh is null)
                 {
                     form.ErrorText.Text = Loc.Chrome("album.edit.reset_failed");

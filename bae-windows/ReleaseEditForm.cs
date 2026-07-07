@@ -2,17 +2,18 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
 /// <summary>
 /// The album/pressing/track edit form shared by the metadata editor and the
 /// import confirmation step. Builds the album-title / artists / pressing
-/// TextBoxes plus the per-track table, seeds them from a <see cref="ReleaseEdit"/>,
-/// and reads the user's typed values back into a <see cref="ReleaseEdit"/> the
-/// caller then serializes and hands to the FFI. It owns no commit policy — the
-/// caller decides whether the read-back goes to apply-edit or import-candidate —
-/// so both screens build the identical form without duplicating its layout.
+/// TextBoxes plus the per-track table, seeds them from a generated raw edit, and
+/// reads the user's typed values back into the same generated shape. It owns no
+/// commit policy — the caller decides whether the read-back goes to apply-edit
+/// or import-candidate — so both screens build the identical form without
+/// duplicating its layout.
 /// </summary>
 internal sealed class ReleaseEditForm
 {
@@ -34,19 +35,19 @@ internal sealed class ReleaseEditForm
     private readonly TextBox _countryBox = new() { Header = "country" };
     private readonly TextBox _barcodeBox = new() { Header = "barcode" };
 
-    private readonly List<(TrackEdit Track, TextBox Title, TextBox Artist, TextBox Side, TextBox Number)> _trackBoxes = new();
+    private readonly List<(BridgeRawTrackEdit Track, TextBox Title, TextBox Artist, TextBox Side, TextBox Number)> _trackBoxes = new();
     private readonly List<Grid> _trackRows = new();
 
     /// <summary>
     /// The edit currently bound to the form. Reseeding (e.g. reset to source)
     /// replaces it; <see cref="ReadBack"/> flushes the TextBoxes into it and
-    /// returns it for serialization.
+    /// returns it for the caller to pass to the bridge.
     /// </summary>
-    private ReleaseEdit _edit;
+    private BridgeRawReleaseEdit _edit;
 
     /// <param name="seed">The edit to populate the form from.</param>
     /// <param name="width">Dialog content width (the two callers differ).</param>
-    internal ReleaseEditForm(ReleaseEdit seed, double width)
+    internal ReleaseEditForm(BridgeRawReleaseEdit seed, double width)
     {
         _edit = seed;
 
@@ -111,7 +112,7 @@ internal sealed class ReleaseEditForm
     /// to source, which discards in-progress edits and re-seeds from the stored
     /// metadata source.
     /// </summary>
-    internal void Seed(ReleaseEdit e)
+    internal void Seed(BridgeRawReleaseEdit e)
     {
         _edit = e;
         _titleBox.Text = e.AlbumTitle;
@@ -155,33 +156,41 @@ internal sealed class ReleaseEditForm
     }
 
     /// <summary>
-    /// Flush the typed values into the bound edit and return it for serialization.
+    /// Flush the typed values into the generated edit shape.
     /// Shaping/validation happens in Rust (apply-edit or import-candidate); this
     /// only moves the form's strings onto the model.
     /// </summary>
-    internal ReleaseEdit ReadBack()
+    internal BridgeRawReleaseEdit ReadBack()
     {
-        _edit.AlbumTitle = _titleBox.Text;
-        _edit.AlbumArtistText = _artistBox.Text;
-        _edit.Pressing.Year = _yearBox.Text;
-        _edit.Pressing.Format = _formatBox.Text;
-        _edit.Pressing.Label = _labelBox.Text;
-        _edit.Pressing.CatalogNumber = _catalogBox.Text;
-        _edit.Pressing.Country = _countryBox.Text;
-        _edit.Pressing.Barcode = _barcodeBox.Text;
+        var tracks = new List<BridgeRawTrackEdit>();
         foreach (var (track, titleCell, artistCell, sideCell, numberCell) in _trackBoxes)
         {
-            track.Title = titleCell.Text;
-            track.ArtistText = artistCell.Text;
             // Keep the seeded side if the field was cleared/garbled (side is
             // required); a blank track number means "no number".
+            var sideValue = track.Side;
             if (int.TryParse(sideCell.Text, out var side))
             {
-                track.Side = side;
+                sideValue = side;
             }
-            track.TrackNumber = int.TryParse(numberCell.Text, out var number) ? number : null;
+            tracks.Add(new BridgeRawTrackEdit(
+                track.Id,
+                titleCell.Text,
+                artistCell.Text,
+                sideValue,
+                int.TryParse(numberCell.Text, out var number) ? number : null));
         }
 
+        _edit = new BridgeRawReleaseEdit(
+            _titleBox.Text,
+            _artistBox.Text,
+            new BridgeRawPressingEdit(
+                _yearBox.Text,
+                _formatBox.Text,
+                _labelBox.Text,
+                _catalogBox.Text,
+                _countryBox.Text,
+                _barcodeBox.Text),
+            tracks.ToArray());
         return _edit;
     }
 }

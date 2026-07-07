@@ -791,16 +791,16 @@ internal static class NativeBae
     internal static string? RemoveMember(AppHandle handle, string publicKeyHex) =>
         CaptureError(() => Await(handle.RemoveMember(publicKeyHex)));
 
-    internal static string? ReleaseEditSeedJson(AppHandle handle, string releaseId) =>
-        CaptureValue(() => Json(Await(handle.SeedReleaseEdit(releaseId))));
+    internal static (BridgeRawReleaseEdit? Edit, string? Error) ReleaseEditSeed(AppHandle handle, string releaseId) =>
+        CaptureBridgeValue(() => Await(handle.SeedReleaseEdit(releaseId)));
 
-    internal static string? ResetMetadataToSourceJson(AppHandle handle, string releaseId) =>
-        CaptureValue(() => Json(BaeBridgeMethods.RawReleaseEditFromUserEdit(
+    internal static (BridgeRawReleaseEdit? Edit, string? Error) ResetMetadataToSource(AppHandle handle, string releaseId) =>
+        CaptureBridgeValue(() => BaeBridgeMethods.RawReleaseEditFromUserEdit(
             Await(handle.ResetMetadataToSource(releaseId)),
-            "reset-track")));
+            "reset-track"));
 
-    internal static string? ApplyReleaseEdit(AppHandle handle, string releaseId, string rawJson) =>
-        CaptureError(() => Await(handle.UpdateReleaseMetadataUserEdit(releaseId, ReleaseUserEdit(rawJson))));
+    internal static string? ApplyReleaseEdit(AppHandle handle, string releaseId, BridgeRawReleaseEdit edit) =>
+        CaptureError(() => Await(handle.UpdateReleaseMetadataUserEdit(releaseId, ReleaseUserEdit(edit))));
 
     internal static string? SearchReleasesJson(AppHandle handle, string source, string artist, string album) =>
         CaptureValue(() => Json(Candidates(Await(handle.SearchForCandidate(new BridgeSearchQuery.General(artist, album, MetadataSource(source)))))));
@@ -845,7 +845,7 @@ internal static class NativeBae
         });
 
     internal static string? ImportCandidate(
-        AppHandle handle, string candidateKey, string folderPath, string chosenReleaseId, string source, string storageMode, bool pin, string userEditJson, string selectedCoverJson) =>
+        AppHandle handle, string candidateKey, string folderPath, string chosenReleaseId, string source, string storageMode, bool pin, BridgeRawReleaseEdit userEdit, string selectedCoverJson) =>
         CaptureError(() => handle.StartImport(
             candidateKey,
             folderPath,
@@ -853,7 +853,7 @@ internal static class NativeBae
             StorageMode(storageMode),
             pin,
             new BridgeIdentityChoice.Exact(chosenReleaseId, MetadataSource(source)),
-            string.IsNullOrWhiteSpace(userEditJson) ? null : ReleaseUserEdit(userEditJson)));
+            ReleaseUserEdit(userEdit)));
 
     internal static byte[]? ImageBytes(AppHandle? handle, ImageRef image) =>
         handle is null ? null : CaptureBytes(() => Await(handle.FetchImageBytes(new BridgeImageRef(image.Id, image.Version, LibraryImageType(image.ImageType)))));
@@ -1126,7 +1126,7 @@ internal static class NativeBae
             "prefetch-track");
         return new PrefetchedEdit
         {
-            Edit = ReleaseEdit(edit),
+            Edit = edit,
             RemoteCovers = detail.CoverArt.ToList(),
             LocalArtwork = LocalArtwork(handle.GetCandidate(folderPath)),
         };
@@ -1152,30 +1152,6 @@ internal static class NativeBae
             Path = artwork.File.LocalPath,
         };
     }
-
-    private static ReleaseEdit ReleaseEdit(BridgeRawReleaseEdit edit) =>
-        new()
-        {
-            AlbumTitle = edit.AlbumTitle,
-            AlbumArtistText = edit.AlbumArtistText,
-            Pressing = new PressingEdit
-            {
-                Year = edit.Pressing.Year,
-                Format = edit.Pressing.Format,
-                Label = edit.Pressing.Label,
-                CatalogNumber = edit.Pressing.CatalogNumber,
-                Country = edit.Pressing.Country,
-                Barcode = edit.Pressing.Barcode,
-            },
-            Tracks = edit.Tracks.Select(track => new TrackEdit
-            {
-                Id = track.Id,
-                Title = track.Title,
-                ArtistText = track.ArtistText,
-                Side = track.Side,
-                TrackNumber = track.TrackNumber,
-            }).ToList(),
-        };
 
     private static object[] ImportCandidates(BridgeImportCandidatesSnapshot snapshot)
     {
@@ -1554,19 +1530,15 @@ internal static class NativeBae
             _ => new BridgeExcludedSignal.Catalog(value),
         };
 
-    private static BridgeReleaseUserEdit ReleaseUserEdit(string json)
-    {
-        var raw = JsonSerializer.Deserialize<BridgeRawReleaseEdit>(json, JsonOptions)
-            ?? throw new ArgumentException("invalid release edit JSON", nameof(json));
-        return BaeBridgeMethods.ShapeReleaseEdit(raw) switch
+    private static BridgeReleaseUserEdit ReleaseUserEdit(BridgeRawReleaseEdit edit) =>
+        BaeBridgeMethods.ShapeReleaseEdit(edit) switch
         {
             BridgeShapeResult.Valid valid => valid.Edit,
             BridgeShapeResult.Invalid invalid => throw new ArgumentException(
                 $"invalid release edit: {ValidationReasonTag(invalid.Reason)}",
-                nameof(json)),
-            _ => throw new ArgumentException("invalid release edit JSON", nameof(json)),
+                nameof(edit)),
+            _ => throw new ArgumentException("invalid release edit", nameof(edit)),
         };
-    }
 
     private static string DiscogsSaveOutcomeTag(BridgeDiscogsSaveOutcome outcome) =>
         outcome switch
