@@ -1,16 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Unit tests for bae-windows' locale-aware value formatters (Loc.Bytes /
-    Loc.Duration / Loc.Number) — the reimplementation of macOS's
-    ByteCountFormatter / DateComponentsFormatter, where parity matters.
+    Unit tests for bae-windows' pure logic that compiles without the Windows SDK
+    or the generated uniffi bindings, so it runs on any host including the macOS
+    dev machine:
 
-    These formatters are pure (System.Globalization only), so this is a plain
-    net8.0 xUnit project that runs on any host, including the macOS dev machine.
-    It compiles Loc.cs directly with BAE_PURE_FORMATTERS defined, which strips
-    the Windows-only catalog-resolution half of the file (WinUI ResourceLoader +
-    the MessageFormat parser). The WinUI build never defines that symbol, so its
-    view of Loc.cs is unchanged.
+    - The locale-aware value formatters (Loc.Bytes / Loc.Duration / Loc.Number) —
+      the reimplementation of macOS's ByteCountFormatter / DateComponentsFormatter,
+      where parity matters. Loc.cs is compiled with BAE_PURE_FORMATTERS defined,
+      which strips the Windows-only catalog-resolution half of the file (WinUI
+      ResourceLoader + the MessageFormat parser). The WinUI build never defines
+      that symbol, so its view of Loc.cs is unchanged.
+    - The media-control state layer (MediaControlState) — the decision logic
+      behind the system transport controls, expressed over plain BCL types with
+      no WinRT dependency (the WinRT shell that applies its decisions lives in
+      MediaControlService and is verified by compilation).
 
     The rest of bae-windows' pure logic (ReleaseCandidateChoice.Summary,
     ImportCandidate status/ToString, BridgeDisplay) depends on the generated
@@ -33,6 +37,7 @@
 
   <ItemGroup>
     <Compile Include="../bae-windows/Loc.cs" Link="Loc.cs" />
+    <Compile Include="../bae-windows/MediaControlState.cs" Link="MediaControlState.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -617,7 +617,13 @@ internal static class NativeBae
 
     internal static void PlayPause(AppHandle handle) => handle.TogglePlayPause();
 
+    internal static void Pause(AppHandle handle) => handle.Pause();
+
+    internal static void Resume(AppHandle handle) => handle.Resume();
+
     internal static void SeekByRatio(AppHandle handle, double ratio) => handle.SeekByRatio(ratio);
+
+    internal static void PreviewSeekByRatio(AppHandle handle, double ratio) => handle.PreviewSeekByRatio(ratio);
 
     internal static void SetVolume(AppHandle handle, float volume) => handle.SetVolume(volume);
 

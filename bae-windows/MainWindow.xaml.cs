@@ -100,6 +100,11 @@ public sealed partial class MainWindow : Window
     // managed object rooted while Rust holds the callback handle.
     private NativeBae.UiEventSink? _eventCallback;
 
+    // Drives the system media transport controls (hardware media keys + the
+    // Windows media flyout) from playback events. One instance for the window's
+    // lifetime; library switches deactivate it rather than recreating it.
+    private readonly MediaControlService _mediaControls;
+
     // Latest queue snapshot from QueueUpdated; the queue dialog reads it on open.
     // The two lanes are kept separate so the dialog renders them as distinct
     // sections: the manual lane ("Up Next") and the context (the release being
@@ -169,6 +174,19 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         Closed += OnClosed;
+
+        // The window's HWND exists at construction, so bind the transport controls
+        // to it now — before LoadLibrary starts the event stream that drives them.
+        _mediaControls = new MediaControlService(
+            WinRT.Interop.WindowNative.GetWindowHandle(this),
+            DispatcherQueue,
+            WithCurrentHandle,
+            imageId =>
+            {
+                byte[]? bytes = null;
+                WithCurrentHandle(handle => bytes = NativeBae.CoverImageBytes(handle, imageId));
+                return bytes;
+            });
 
         // Bind layout direction to the UI locale: ar/he (and any other RTL
         // culture) lay out right-to-left. The whole tree inherits from the root
@@ -546,6 +564,7 @@ public sealed partial class MainWindow : Window
         SearchBox.Text = string.Empty;
         StatusText.Text = string.Empty;
         NowPlayingBar.Visibility = Visibility.Collapsed;
+        _mediaControls.Deactivate();
         // The banners report the old library's sync / playback errors; clear them
         // so they don't describe state the next library (or none) doesn't have.
         Banner.IsOpen = false;
@@ -1845,6 +1864,8 @@ public sealed partial class MainWindow : Window
                 NpArtist.Text = playing.ArtistNames;
                 NpPlayPause.Content = "⏸";
                 NpCover.Source = CoverImage.LoadImage(CurrentHandleOrNull(), playing.CoverImageId);
+                _mediaControls.UpdateNowPlayingPlaying(
+                    playing.TrackTitle, playing.ArtistNames, playing.AlbumTitle, playing.CoverImageId, playing.DurationMs);
                 // Audio is flowing: drop the buffering spinner, restore the
                 // play/pause control.
                 NpLoading.IsActive = false;
@@ -1861,6 +1882,8 @@ public sealed partial class MainWindow : Window
                 NpArtist.Text = paused.ArtistNames;
                 NpPlayPause.Content = "▶";
                 NpCover.Source = CoverImage.LoadImage(CurrentHandleOrNull(), paused.CoverImageId);
+                _mediaControls.UpdateNowPlayingPaused(
+                    paused.TrackTitle, paused.ArtistNames, paused.AlbumTitle, paused.CoverImageId, paused.DurationMs);
                 NpLoading.IsActive = false;
                 NpLoading.Visibility = Visibility.Collapsed;
                 NpPlayPause.Visibility = Visibility.Visible;
@@ -1870,15 +1893,18 @@ public sealed partial class MainWindow : Window
                 NowPlayingBar.Visibility = Visibility.Collapsed;
                 _userSeeking = false;
                 _nowPlaying = null;
+                _mediaControls.UpdateNowPlayingStopped();
                 NpLoading.IsActive = false;
                 NpLoading.Visibility = Visibility.Collapsed;
                 NpPlayPause.Visibility = Visibility.Visible;
                 break;
             case BridgeUiEvent.PlaybackProgress progress:
                 RenderPlaybackProgress(progress.TrackId, progress.PositionMs, progress.DurationMs, progress.Progress);
+                _mediaControls.UpdatePosition(progress.PositionMs, progress.DurationMs);
                 break;
             case BridgeUiEvent.PlaybackSeeked seeked:
                 RenderPlaybackSeeked(seeked.TrackId, seeked.PositionMs, seeked.DurationMs, seeked.Progress);
+                _mediaControls.UpdatePosition(seeked.PositionMs, seeked.DurationMs);
                 break;
             case BridgeUiEvent.VolumeChanged volume:
                 _suppressVolume = true;
@@ -1904,14 +1930,17 @@ public sealed partial class MainWindow : Window
                         ? elapsed
                         : $"{elapsed} / {_previewDurationLabel}";
                 }
+                _mediaControls.UpdatePreviewPosition(previewProgress.PositionMs);
                 break;
             case BridgeUiEvent.PreviewPlaying preview:
                 // Total duration arrives once when preview starts; the next
                 // PreviewProgress tick renders it alongside the elapsed position.
                 _previewDurationLabel = DurationLabel(preview.DurationMs);
+                _mediaControls.UpdateNowPlayingForPreview(preview.Path, preview.DurationMs, isPlaying: true);
                 break;
             case BridgeUiEvent.PreviewPaused preview:
                 _previewDurationLabel = DurationLabel(preview.DurationMs);
+                _mediaControls.UpdateNowPlayingForPreview(preview.Path, preview.DurationMs, isPlaying: false);
                 break;
             case BridgeUiEvent.PreviewIdle:
                 _previewDurationLabel = null;
@@ -1919,6 +1948,7 @@ public sealed partial class MainWindow : Window
                 {
                     _previewElapsed.Text = string.Empty;
                 }
+                _mediaControls.UpdatePreviewIdle();
                 break;
             case BridgeUiEvent.Invalidated invalidated:
                 HandleInvalidation(invalidated.Invalidation);
@@ -1956,12 +1986,21 @@ public sealed partial class MainWindow : Window
                 NpPlayPause.Visibility = Visibility.Collapsed;
                 NpLoading.IsActive = true;
                 NpLoading.Visibility = Visibility.Visible;
+                // A bare loading event carries no metadata; leave the transport
+                // controls showing the prior track until the target resolves.
+                if (loading.Track is { } loadingTrack)
+                {
+                    _mediaControls.UpdateNowPlayingLoading(
+                        loadingTrack.TrackTitle, loadingTrack.ArtistNames, loadingTrack.AlbumTitle,
+                        loadingTrack.CoverImageId, loadingTrack.DurationMs);
+                }
                 break;
             case BridgeUiEvent.QueueUpdated queue:
                 _queueManual = queue.Snapshot.Manual.ToList();
                 _queueContext = queue.Snapshot.Context;
                 NpPrev.IsEnabled = queue.Snapshot.HasPrevious;
                 NpNext.IsEnabled = queue.Snapshot.HasNext;
+                _mediaControls.UpdateCommandAvailability(queue.Snapshot.HasNext, queue.Snapshot.HasPrevious);
                 break;
             case BridgeUiEvent.QueueItemsAdded added:
                 if (added.Count > 0)
@@ -6878,6 +6917,9 @@ public sealed partial class MainWindow : Window
 
     private async void OnClosed(object sender, WindowEventArgs args)
     {
+        // Clear the transport controls first so no ghost entry lingers during
+        // shutdown; OnClosed doesn't go through TearDownLibrary. Idempotent.
+        _mediaControls.Deactivate();
         if (CurrentHandleOrNull() != null)
         {
             // Persist the queue / current track / position before freeing the
