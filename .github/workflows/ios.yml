@@ -72,13 +72,13 @@ jobs:
         rustup target add aarch64-apple-ios 2>/dev/null || true
         FFMPEG_PREFIX="$(pwd)/bae-ffmpeg/ios/aarch64-apple-ios"
         DEVICE_SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
-        FEATURES_ARG=""
-        [ -n "$BAE_BRIDGE_FEATURES" ] && FEATURES_ARG="--features $BAE_BRIDGE_FEATURES"
+        FEATURES_ARG=()
+        [ -n "$BAE_BRIDGE_FEATURES" ] && FEATURES_ARG=(--features "$BAE_BRIDGE_FEATURES")
         IPHONEOS_DEPLOYMENT_TARGET=16.0 \
         FFMPEG_DIR="$FFMPEG_PREFIX" \
         BINDGEN_EXTRA_CLANG_ARGS="--target=arm64-apple-ios16.0 -isysroot $DEVICE_SDK -I$FFMPEG_PREFIX/include" \
         CARGO_TARGET_DIR="target-ios" \
-        cargo clippy --target aarch64-apple-ios -p bae-bridge $FEATURES_ARG -- -D warnings
+        cargo clippy --target aarch64-apple-ios -p bae-bridge "${FEATURES_ARG[@]}" -- -D warnings
 
     - name: Install xcodegen
       run: brew install xcodegen
@@ -118,11 +118,13 @@ jobs:
       # the tests can bootstrap.
       if: ${{ inputs.edition == 'full' && !cancelled() && steps.build_ios.conclusion == 'success' }}
       run: |
-        DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; print([d['name'] for rt in json.load(sys.stdin)['devices'].values() for d in rt if d.get('isAvailable') and d['name'].startswith('iPhone')][-1])")
-        echo "Testing on simulator: $DEST"
+        DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=[d for rt in json.load(sys.stdin)['devices'].values() for d in rt if d.get('isAvailable') and d['name'].startswith('iPhone')][-1]; print(d['udid'] + '\t' + d['name'])")
+        DEST_ID=${DEST%%$'\t'*}
+        DEST_NAME=${DEST#*$'\t'}
+        echo "Testing on simulator: $DEST_NAME ($DEST_ID)"
         xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae \
           -configuration Debug \
-          -destination "platform=iOS Simulator,name=$DEST" \
+          -destination "platform=iOS Simulator,id=$DEST_ID" \
           -derivedDataPath bae-ios/bae/.build/derivedData \
           test
 

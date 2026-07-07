@@ -223,9 +223,12 @@ check "xcodebuild (iphonesimulator)" \
 # disabling it strips the iCloud entitlement and the app traps in CKContainer at
 # launch, before the tests can bootstrap.
 check "xcodebuild test (iOS baeTests)" bash -c '
-  DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; print([d[\"name\"] for rt in json.load(sys.stdin)[\"devices\"].values() for d in rt if d.get(\"isAvailable\") and d[\"name\"].startswith(\"iPhone\")][-1])")
+  DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=[d for rt in json.load(sys.stdin)[\"devices\"].values() for d in rt if d.get(\"isAvailable\") and d[\"name\"].startswith(\"iPhone\")][-1]; print(d[\"udid\"] + \"\t\" + d[\"name\"])")
+  DEST_ID=${DEST%%$'\''\t'\''*}
+  DEST_NAME=${DEST#*$'\''\t'\''}
+  echo "Testing on simulator: $DEST_NAME ($DEST_ID)"
   xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae -configuration Debug \
-    -destination "platform=iOS Simulator,name=$DEST" \
+    -destination "platform=iOS Simulator,id=$DEST_ID" \
     -derivedDataPath bae-ios/bae/.build/derivedData test
 '
 
