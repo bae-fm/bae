@@ -1145,4 +1145,62 @@ mod tests {
         buffer.evict_before(20);
         assert_eq!(buffer.get_ranges(), vec![(20, 24)]);
     }
+
+    /// Appending a range that sits entirely before an existing one (a backward
+    /// seek fetched an earlier window) inserts it ahead in the sorted range list
+    /// rather than at the end. Both ranges stay independently readable.
+    #[test]
+    fn append_before_an_existing_range_inserts_in_sorted_order() {
+        let buffer = create_sparse_buffer(104);
+        buffer.append_at(100, b"bbbb"); // [100, 104)
+        buffer.append_at(0, b"aaaa"); // [0, 4) — disjoint, belongs before the first
+
+        assert_eq!(buffer.get_ranges(), vec![(0, 4), (100, 104)]);
+        assert_eq!(buffer.ranges_count(), 2);
+
+        let mut reader = buffer.new_reader();
+        let mut buf = [0u8; 4];
+        reader.seek(0);
+        assert_eq!(reader.read(&mut buf), Some(4));
+        assert_eq!(&buf, b"aaaa");
+        reader.seek(100);
+        assert_eq!(reader.read(&mut buf), Some(4));
+        assert_eq!(&buf, b"bbbb");
+    }
+
+    /// `uncancel` clears the full-cancel flag so the buffer can be reused: a read
+    /// that returned `None` while cancelled serves bytes again afterward.
+    #[test]
+    fn uncancel_clears_cancel_so_the_buffer_reads_again() {
+        let buffer = create_sparse_buffer(5);
+        buffer.append_at(0, b"hello");
+
+        buffer.cancel();
+        assert!(buffer.is_cancelled());
+        let mut reader = buffer.new_reader();
+        let mut buf = [0u8; 5];
+        assert_eq!(reader.read(&mut buf), None, "a cancelled buffer reads None");
+
+        buffer.uncancel();
+        assert!(!buffer.is_cancelled());
+        let mut reader = buffer.new_reader();
+        reader.seek(0);
+        assert_eq!(reader.read(&mut buf), Some(5));
+        assert_eq!(&buf, b"hello");
+    }
+
+    /// An empty append is a no-op: no range is created and no bytes are counted
+    /// as fetched, so it neither perturbs the range list nor the fetch tally.
+    #[test]
+    fn empty_append_is_a_noop() {
+        let buffer = create_sparse_buffer(10);
+        buffer.append_at(0, b"");
+        assert_eq!(buffer.ranges_count(), 0);
+        assert_eq!(buffer.bytes_fetched(), 0);
+
+        // A subsequent real append still lands and is counted.
+        buffer.append_at(0, b"data");
+        assert_eq!(buffer.get_ranges(), vec![(0, 4)]);
+        assert_eq!(buffer.bytes_fetched(), 4);
+    }
 }
