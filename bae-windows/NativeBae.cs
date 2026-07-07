@@ -928,10 +928,10 @@ internal static class NativeBae
         {
             Id = preset.Id,
             Name = preset.Name,
-            Codec = ExportPresetCodec(preset.Codec),
+            Codec = preset.Codec,
             Extension = preset.Extension,
             FilenameTemplate = preset.FilenameTemplate,
-            PregapPlacement = ExportPregapPlacementTag(preset.PregapPlacement),
+            PregapPlacement = preset.PregapPlacement,
             AppliesToTrack = preset.AppliesToTrack,
             AppliesToRelease = preset.AppliesToRelease,
         };
@@ -940,34 +940,12 @@ internal static class NativeBae
         new(
             preset.Id,
             preset.Name,
-            ExportPresetCodecBridge(preset.Codec),
+            preset.Codec,
             preset.Extension,
             preset.FilenameTemplate,
-            ExportPregapPlacementBridge(preset.PregapPlacement),
+            preset.PregapPlacement,
             preset.AppliesToTrack,
             preset.AppliesToRelease);
-
-    private static BridgeExportPresetCodec ExportPresetCodecBridge(ExportPresetCodec codec) =>
-        codec.Kind switch
-        {
-            "flac" => new BridgeExportPresetCodec.Flac(ExportBitDepthBridge(codec.BitDepth)),
-            "mp3" => new BridgeExportPresetCodec.Mp3(codec.BitrateKbps),
-            "opus_ogg" => new BridgeExportPresetCodec.OpusOgg(codec.BitrateKbps),
-            "wav" => new BridgeExportPresetCodec.Wav(ExportBitDepthBridge(codec.BitDepth)),
-            "aiff" => new BridgeExportPresetCodec.Aiff(ExportBitDepthBridge(codec.BitDepth)),
-            _ => throw new ArgumentOutOfRangeException(nameof(codec), codec.Kind, "Unknown export codec"),
-        };
-
-    private static ExportPresetCodec ExportPresetCodec(BridgeExportPresetCodec codec) =>
-        codec switch
-        {
-            BridgeExportPresetCodec.Flac flac => new() { Kind = "flac", BitDepth = ExportBitDepthTag(flac.BitDepth) },
-            BridgeExportPresetCodec.Mp3 mp3 => new() { Kind = "mp3", BitrateKbps = mp3.BitrateKbps },
-            BridgeExportPresetCodec.OpusOgg opus => new() { Kind = "opus_ogg", BitrateKbps = opus.BitrateKbps },
-            BridgeExportPresetCodec.Wav wav => new() { Kind = "wav", BitDepth = ExportBitDepthTag(wav.BitDepth) },
-            BridgeExportPresetCodec.Aiff aiff => new() { Kind = "aiff", BitDepth = ExportBitDepthTag(aiff.BitDepth) },
-            _ => throw new ArgumentOutOfRangeException(nameof(codec), codec, "Unknown export codec"),
-        };
 
     private static string DiscogsStatusTag(BridgeDiscogsTokenStatus status) =>
         status switch
@@ -1030,43 +1008,6 @@ internal static class NativeBae
             _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown validation reason"),
         };
 
-    private static string ExportBitDepthTag(BridgeExportBitDepth bitDepth) =>
-        bitDepth switch
-        {
-            BridgeExportBitDepth.Bits16 => "bits16",
-            BridgeExportBitDepth.Bits24 => "bits24",
-            BridgeExportBitDepth.Bits32 => "bits32",
-            _ => "source",
-        };
-
-    private static BridgeExportBitDepth ExportBitDepthBridge(string bitDepth) =>
-        bitDepth switch
-        {
-            "source" => BridgeExportBitDepth.Source,
-            "bits16" => BridgeExportBitDepth.Bits16,
-            "bits24" => BridgeExportBitDepth.Bits24,
-            "bits32" => BridgeExportBitDepth.Bits32,
-            _ => throw new ArgumentOutOfRangeException(nameof(bitDepth), bitDepth, "Unknown export bit depth"),
-        };
-
-    private static string ExportPregapPlacementTag(BridgeExportPregapPlacement placement) =>
-        placement switch
-        {
-            BridgeExportPregapPlacement.AppendToPreviousIncludingHtoa => "append_to_previous_including_htoa",
-            BridgeExportPregapPlacement.Exclude => "exclude",
-            BridgeExportPregapPlacement.SingleFileWithCue => "single_file_with_cue",
-            _ => "append_to_previous_except_htoa",
-        };
-
-    private static BridgeExportPregapPlacement ExportPregapPlacementBridge(string placement) =>
-        placement switch
-        {
-            "append_to_previous_including_htoa" => BridgeExportPregapPlacement.AppendToPreviousIncludingHtoa,
-            "exclude" => BridgeExportPregapPlacement.Exclude,
-            "single_file_with_cue" => BridgeExportPregapPlacement.SingleFileWithCue,
-            "append_to_previous_except_htoa" => BridgeExportPregapPlacement.AppendToPreviousExceptHtoa,
-            _ => throw new ArgumentOutOfRangeException(nameof(placement), placement, "Unknown pregap placement"),
-        };
 
     private static BridgeMetadataSource MetadataSource(string source) =>
         source == "discogs" ? BridgeMetadataSource.Discogs : BridgeMetadataSource.MusicBrainz;

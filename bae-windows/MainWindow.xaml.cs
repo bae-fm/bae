@@ -6011,14 +6011,14 @@ public sealed partial class MainWindow : Window
         bool SameExportSelection(BridgeExportSelection a, BridgeExportSelection b) =>
             ExportSelectionsEqual(a, b);
 
-        string CodecLabel(ExportPresetCodec codec) => codec.Kind switch
+        string CodecLabel(BridgeExportPresetCodec codec) => codec switch
         {
-            "flac" => "FLAC",
-            "mp3" => $"MP3 {codec.BitrateKbps} kbps",
-            "opus_ogg" => $"Opus {codec.BitrateKbps} kbps",
-            "wav" => "WAV",
-            "aiff" => "AIFF",
-            _ => codec.Kind,
+            BridgeExportPresetCodec.Flac => "FLAC",
+            BridgeExportPresetCodec.Mp3 mp3 => $"MP3 {mp3.BitrateKbps} kbps",
+            BridgeExportPresetCodec.OpusOgg opus => $"Opus {opus.BitrateKbps} kbps",
+            BridgeExportPresetCodec.Wav => "WAV",
+            BridgeExportPresetCodec.Aiff => "AIFF",
+            _ => string.Empty,
         };
 
         void RenderExportPresets(Settings settings)
@@ -6071,8 +6071,8 @@ public sealed partial class MainWindow : Window
                 void ApplyPregapApplicability()
                 {
                     var singleFileCue = pregap.SelectedItem is ComboBoxItem selected
-                        && selected.Tag is string placement
-                        && placement == "single_file_with_cue";
+                        && selected.Tag is BridgeExportPregapPlacement placement
+                        && placement == BridgeExportPregapPlacement.SingleFileWithCue;
                     if (singleFileCue)
                     {
                         track.IsChecked = false;
@@ -6108,7 +6108,7 @@ public sealed partial class MainWindow : Window
                     preset.FilenameTemplate = template;
                     preset.AppliesToTrack = track.IsChecked == true;
                     preset.AppliesToRelease = release.IsChecked == true;
-                    if (pregap.SelectedItem is ComboBoxItem selected && selected.Tag is string placement)
+                    if (pregap.SelectedItem is ComboBoxItem selected && selected.Tag is BridgeExportPregapPlacement placement)
                     {
                         preset.PregapPlacement = placement;
                     }
@@ -6126,11 +6126,18 @@ public sealed partial class MainWindow : Window
         (StackPanel View, Action Apply) BuildPresetCodecEditor(ExportPreset preset)
         {
             var panel = new StackPanel { Spacing = 6 };
-            switch (preset.Codec.Kind)
+            switch (preset.Codec)
             {
-                case "flac":
-                case "wav":
-                case "aiff":
+                case BridgeExportPresetCodec.Flac:
+                case BridgeExportPresetCodec.Wav:
+                case BridgeExportPresetCodec.Aiff:
+                    var currentBitDepth = preset.Codec switch
+                    {
+                        BridgeExportPresetCodec.Flac current => current.BitDepth,
+                        BridgeExportPresetCodec.Wav current => current.BitDepth,
+                        BridgeExportPresetCodec.Aiff current => current.BitDepth,
+                        _ => BridgeExportBitDepth.Source,
+                    };
                     var bitDepth = new ComboBox { Header = Loc.Chrome("settings.export.bit_depth_label") };
                     foreach (var item in ExportBitDepthChoices())
                     {
@@ -6138,7 +6145,7 @@ public sealed partial class MainWindow : Window
                         {
                             Content = item.Label,
                             Tag = item.Value,
-                            IsSelected = preset.Codec.BitDepth == item.Value,
+                            IsSelected = currentBitDepth == item.Value,
                         });
                     }
                     panel.Children.Add(bitDepth);
@@ -6146,18 +6153,30 @@ public sealed partial class MainWindow : Window
                         panel,
                         () =>
                         {
-                            if (bitDepth.SelectedItem is ComboBoxItem selected && selected.Tag is string selectedBitDepth)
+                            if (bitDepth.SelectedItem is ComboBoxItem selected && selected.Tag is BridgeExportBitDepth selectedBitDepth)
                             {
-                                preset.Codec.BitDepth = selectedBitDepth;
+                                preset.Codec = preset.Codec switch
+                                {
+                                    BridgeExportPresetCodec.Flac => new BridgeExportPresetCodec.Flac(selectedBitDepth),
+                                    BridgeExportPresetCodec.Wav => new BridgeExportPresetCodec.Wav(selectedBitDepth),
+                                    BridgeExportPresetCodec.Aiff => new BridgeExportPresetCodec.Aiff(selectedBitDepth),
+                                    _ => preset.Codec,
+                                };
                             }
                         }
                     );
-                case "mp3":
-                case "opus_ogg":
+                case BridgeExportPresetCodec.Mp3:
+                case BridgeExportPresetCodec.OpusOgg:
+                    var currentBitrate = preset.Codec switch
+                    {
+                        BridgeExportPresetCodec.Mp3 current => current.BitrateKbps,
+                        BridgeExportPresetCodec.OpusOgg current => current.BitrateKbps,
+                        _ => 0,
+                    };
                     var bitrate = new TextBox
                     {
                         Header = Loc.Chrome("settings.export.bitrate"),
-                        Text = preset.Codec.BitrateKbps.ToString(CultureInfo.InvariantCulture),
+                        Text = currentBitrate.ToString(CultureInfo.InvariantCulture),
                     };
                     panel.Children.Add(bitrate);
                     return (
@@ -6166,10 +6185,20 @@ public sealed partial class MainWindow : Window
                         {
                             if (uint.TryParse(bitrate.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var bitrateKbps))
                             {
-                                preset.Codec.BitrateKbps = bitrateKbps;
+                                preset.Codec = preset.Codec switch
+                                {
+                                    BridgeExportPresetCodec.Mp3 => new BridgeExportPresetCodec.Mp3(bitrateKbps),
+                                    BridgeExportPresetCodec.OpusOgg => new BridgeExportPresetCodec.OpusOgg(bitrateKbps),
+                                    _ => preset.Codec,
+                                };
                                 return;
                             }
-                            preset.Codec.BitrateKbps = 0;
+                            preset.Codec = preset.Codec switch
+                            {
+                                BridgeExportPresetCodec.Mp3 => new BridgeExportPresetCodec.Mp3(0),
+                                BridgeExportPresetCodec.OpusOgg => new BridgeExportPresetCodec.OpusOgg(0),
+                                _ => preset.Codec,
+                            };
                         }
                     );
                 default:
@@ -6177,41 +6206,41 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        List<(string Label, string Value)> ExportPregapChoices(ExportPresetCodec codec)
+        List<(string Label, BridgeExportPregapPlacement Value)> ExportPregapChoices(BridgeExportPresetCodec codec)
         {
-            var choices = new List<(string Label, string Value)>
+            var choices = new List<(string Label, BridgeExportPregapPlacement Value)>
             {
                 (
                     Loc.Chrome("settings.export.pregap.append_except_htoa"),
-                    "append_to_previous_except_htoa"
+                    BridgeExportPregapPlacement.AppendToPreviousExceptHtoa
                 ),
                 (
                     Loc.Chrome("settings.export.pregap.append_including_htoa"),
-                    "append_to_previous_including_htoa"
+                    BridgeExportPregapPlacement.AppendToPreviousIncludingHtoa
                 ),
-                (Loc.Chrome("settings.export.pregap.exclude"), "exclude"),
+                (Loc.Chrome("settings.export.pregap.exclude"), BridgeExportPregapPlacement.Exclude),
             };
 
             if (ExportCodecSupportsSingleFileCue(codec))
             {
                 choices.Add((
                     Loc.Chrome("settings.export.pregap.single_file_with_cue"),
-                    "single_file_with_cue"
+                    BridgeExportPregapPlacement.SingleFileWithCue
                 ));
             }
 
             return choices;
         }
 
-        static bool ExportCodecSupportsSingleFileCue(ExportPresetCodec codec) =>
-            codec.Kind != "opus_ogg";
+        static bool ExportCodecSupportsSingleFileCue(BridgeExportPresetCodec codec) =>
+            codec is not BridgeExportPresetCodec.OpusOgg;
 
-        List<(string Label, string Value)> ExportBitDepthChoices() => new()
+        List<(string Label, BridgeExportBitDepth Value)> ExportBitDepthChoices() => new()
         {
-            (Loc.Chrome("settings.export.bit_depth.source"), "source"),
-            (Loc.Chrome("settings.export.bit_depth.bits16"), "bits16"),
-            (Loc.Chrome("settings.export.bit_depth.bits24"), "bits24"),
-            (Loc.Chrome("settings.export.bit_depth.bits32"), "bits32"),
+            (Loc.Chrome("settings.export.bit_depth.source"), BridgeExportBitDepth.Source),
+            (Loc.Chrome("settings.export.bit_depth.bits16"), BridgeExportBitDepth.Bits16),
+            (Loc.Chrome("settings.export.bit_depth.bits24"), BridgeExportBitDepth.Bits24),
+            (Loc.Chrome("settings.export.bit_depth.bits32"), BridgeExportBitDepth.Bits32),
         };
 
         async System.Threading.Tasks.Task SaveExportTemplate()
@@ -6283,11 +6312,11 @@ public sealed partial class MainWindow : Window
         {
             var codec = kind switch
             {
-                "mp3" => new ExportPresetCodec { Kind = "mp3", BitrateKbps = 320 },
-                "opus_ogg" => new ExportPresetCodec { Kind = "opus_ogg", BitrateKbps = 192 },
-                "wav" => new ExportPresetCodec { Kind = "wav", BitDepth = "source" },
-                "aiff" => new ExportPresetCodec { Kind = "aiff", BitDepth = "source" },
-                _ => new ExportPresetCodec { Kind = "flac", BitDepth = "source" },
+                "mp3" => new BridgeExportPresetCodec.Mp3(320),
+                "opus_ogg" => new BridgeExportPresetCodec.OpusOgg(192),
+                "wav" => new BridgeExportPresetCodec.Wav(BridgeExportBitDepth.Source),
+                "aiff" => new BridgeExportPresetCodec.Aiff(BridgeExportBitDepth.Source),
+                _ => new BridgeExportPresetCodec.Flac(BridgeExportBitDepth.Source),
             };
             var extension = kind switch
             {
@@ -6312,7 +6341,7 @@ public sealed partial class MainWindow : Window
                 Codec = codec,
                 Extension = extension,
                 FilenameTemplate = exportTemplate.Text ?? string.Empty,
-                PregapPlacement = "append_to_previous_except_htoa",
+                PregapPlacement = BridgeExportPregapPlacement.AppendToPreviousExceptHtoa,
                 AppliesToTrack = true,
                 AppliesToRelease = true,
             };

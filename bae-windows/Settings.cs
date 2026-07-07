@@ -154,10 +154,10 @@ public sealed class ExportPreset
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public ExportPresetCodec Codec { get; set; } = new();
+    public BridgeExportPresetCodec Codec { get; set; } = new BridgeExportPresetCodec.Flac(BridgeExportBitDepth.Source);
     public string Extension { get; set; } = string.Empty;
     public string FilenameTemplate { get; set; } = string.Empty;
-    public string PregapPlacement { get; set; } = "append_to_previous_except_htoa";
+    public BridgeExportPregapPlacement PregapPlacement { get; set; } = BridgeExportPregapPlacement.AppendToPreviousExceptHtoa;
     public bool AppliesToTrack { get; set; }
     public bool AppliesToRelease { get; set; }
 
@@ -166,11 +166,4 @@ public sealed class ExportPreset
 
     [JsonIgnore]
     public string TrackPickerLabel => Name;
-}
-
-public sealed class ExportPresetCodec
-{
-    public string Kind { get; set; } = string.Empty;
-    public string BitDepth { get; set; } = "source";
-    public uint BitrateKbps { get; set; }
 }
