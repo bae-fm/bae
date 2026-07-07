@@ -564,50 +564,56 @@ mod tests {
     /// real audio pregap (a hidden intro / count-in), so the pregap bytes come
     /// from the container itself. `cue_segments` must emit an `AudioPregap`
     /// segment spanning `[INDEX 00, INDEX 01)` ahead of the `Main` segment —
-    /// the branch the existing segment test never reaches, because its INDEX 00
-    /// values are all bogus (before the prior track) and get rejected to
-    /// `CuePregap::None`.
+    /// the branch `cue_backed_segments_ignore_rejected_index00_boundaries` never
+    /// reaches, because its INDEX 00 values are all bogus (before the prior
+    /// track) and get rejected to `CuePregap::None`.
+    ///
+    /// Backed by the real APE CUE fixture so `seek_landing_bytes` produces real
+    /// byte offsets: asserts the sample windows *and* the byte windows,
+    /// including the contiguity invariant — every segment's `start_byte` equals
+    /// its predecessor's `end_byte`, so the album's read-ahead spans chain end
+    /// to end with no gaps or overlaps.
     #[test]
-    fn cue_backed_segments_emit_audio_pregap_window() {
+    fn cue_backed_segments_emit_audio_pregap_byte_window() {
+        crate::audio_codec::init();
+        let audio_path = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/cue_ape/Test Album.ape"
+        ));
+        // A synthetic CUE over the real container: track 2 carries a genuine
+        // audio pregap (INDEX 00 at 0:20, after track 1's INDEX 01 at 0:00). All
+        // positions sit inside the ~1:30 fixture so every seek lands.
         let temp = tempfile::tempdir().expect("tempdir");
-        let cue_path = temp.path().join("Album.cue");
-        let audio_path = temp.path().join("test.ape");
+        let cue_path = temp.path().join("Test Album.cue");
         std::fs::write(
             &cue_path,
-            r#"PERFORMER "Artist Name"
-TITLE "Album Title"
-FILE "test.ape" WAVE
+            r#"PERFORMER "Test Artist"
+TITLE "Test Album"
+FILE "Test Album.ape" WAVE
   TRACK 01 AUDIO
     TITLE "Track One"
     INDEX 01 00:00:00
   TRACK 02 AUDIO
     TITLE "Track Two"
-    INDEX 00 04:00:00
-    INDEX 01 05:00:00
+    INDEX 00 00:20:00
+    INDEX 01 00:30:00
   TRACK 03 AUDIO
     TITLE "Track Three"
-    INDEX 01 10:00:00
+    INDEX 01 01:00:00
 "#,
         )
         .expect("write cue");
 
         let cue_sheet =
             crate::cue_flac::CueFlacProcessor::parse_cue_sheet(&cue_path).expect("parse cue");
-        let sample_rate = 44_100u64;
+        let analysis = crate::import::track_to_file_mapper::analyze_cue_audio(&audio_path)
+            .expect("analyze ape");
         let cue_pair = Arc::new(CueFlacAnalysis {
             cue_sheet,
             audio_files: vec![CueAnalyzedAudioFile {
-                file_reference: "test.ape".to_string(),
+                file_reference: "Test Album.ape".to_string(),
                 path: audio_path.clone(),
-                analysis: CueAudioAnalysis {
-                    probe: ProbeResult {
-                        content_type: ContentType::Ape,
-                        duration: std::time::Duration::from_secs(12 * 60),
-                        sample_rate: sample_rate as u32,
-                        bits_per_sample: Some(16),
-                        channels: 2,
-                    },
-                },
+                analysis,
             }],
         });
 
@@ -642,30 +648,62 @@ FILE "test.ape" WAVE
             .collect();
         assert_eq!(pregaps.len(), 1, "only track 2 has an audio pregap");
         let pregap = pregaps[0];
-        // INDEX 00 (4:00) .. INDEX 01 (5:00), converted frames -> samples.
         assert_eq!(pregap.segment_index, 0, "pregap precedes the main segment");
         assert_eq!(pregap.file_id, "file-id");
-        assert_eq!(pregap.start_sample, (4 * 60 * 75) * sample_rate as i64 / 75);
-        assert_eq!(
-            pregap.end_sample,
-            Some((5 * 60 * 75) * sample_rate as i64 / 75)
-        );
 
-        // Track 2's main segment starts where the pregap ends (INDEX 01) and
-        // runs to track 3's INDEX 01.
-        let main = built
+        // Sample windows: INDEX 00 (0:20) .. INDEX 01 (0:30), frames -> samples.
+        let sample_rate = built.audio_formats[1].sample_rate;
+        assert_eq!(pregap.start_sample, (20 * 75) * sample_rate / 75);
+        assert_eq!(pregap.end_sample, Some((30 * 75) * sample_rate / 75));
+
+        let main_segments: Vec<_> = built
             .audio_segments
             .iter()
-            .find(|segment| {
-                segment.audio_format_id == pregap.audio_format_id
-                    && segment.role == DbAudioSegmentRole::Main
-            })
-            .expect("track 2 main segment");
-        assert_eq!(main.start_sample, (5 * 60 * 75) * sample_rate as i64 / 75);
+            .filter(|segment| segment.role == DbAudioSegmentRole::Main)
+            .collect();
+        assert_eq!(main_segments.len(), 3);
+        let track2_main = main_segments[1];
         assert_eq!(
-            main.end_sample,
-            Some((10 * 60 * 75) * sample_rate as i64 / 75)
+            track2_main.audio_format_id, pregap.audio_format_id,
+            "main_segments are in track order",
         );
+        assert_eq!(track2_main.start_sample, (30 * 75) * sample_rate / 75);
+        assert_eq!(track2_main.end_sample, Some((60 * 75) * sample_rate / 75));
+
+        // Byte windows are real (read from the container) and chain
+        // contiguously: track1.main.end -> track2.pregap.start ->
+        // track2.pregap.end -> track2.main.start -> track2.main.end ->
+        // track3.main.start.
+        let pregap_start = pregap.start_byte.expect("pregap start byte");
+        let pregap_end = pregap.end_byte.expect("pregap end byte");
+        let track2_main_start = track2_main.start_byte.expect("track2 main start byte");
+        let track2_main_end = track2_main.end_byte.expect("track2 main end byte");
+        assert_eq!(
+            pregap_end, track2_main_start,
+            "track 2's main segment starts where its pregap ends",
+        );
+        assert_eq!(
+            main_segments[0].end_byte,
+            Some(pregap_start),
+            "track 1 ends where track 2's pregap begins",
+        );
+        assert_eq!(
+            main_segments[2].start_byte,
+            Some(track2_main_end),
+            "track 3 starts where track 2's main segment ends",
+        );
+        assert!(
+            pregap_start < pregap_end && pregap_end < track2_main_end,
+            "byte offsets increase across the pregap and main windows: \
+             {pregap_start} < {pregap_end} < {track2_main_end}",
+        );
+        // The first track starts at byte 0 (nothing to prefetch); the last runs
+        // to EOF.
+        assert_eq!(
+            main_segments[0].start_byte, None,
+            "track 1 starts at byte 0"
+        );
+        assert_eq!(main_segments[2].end_byte, None, "track 3 runs to EOF");
     }
 
     /// The standalone (non-CUE) arm probes the file for its format and emits one

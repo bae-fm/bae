@@ -540,6 +540,20 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
         )),
         "remove should broadcast the shortened folder list, got {events:?}",
     );
+
+    // The watcher actually stopped: a new release folder appearing under the
+    // now-unwatched root produces no scan activity (the reconcile that would
+    // surface it never runs).
+    let new_album = collection.join("Artist - Second Album");
+    fs::create_dir_all(&new_album).unwrap();
+    generate_album_files(&new_album, &["01 Track.flac"]);
+    let after_unwatch = drain_scan_events(&mut scan_rx, std::time::Duration::from_secs(2)).await;
+    assert!(
+        !after_unwatch
+            .iter()
+            .any(|event| matches!(event, ScanEvent::FolderCandidate(_))),
+        "an unwatched folder must not surface new candidates, got {after_unwatch:?}",
+    );
 }
 
 /// `set_candidate_skipped` flips the reducer's skip flag and broadcasts

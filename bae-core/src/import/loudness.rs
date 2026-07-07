@@ -565,7 +565,7 @@ mod tests {
     /// reaches N/N) but stays unmeasured, and never fails the import.
     #[tokio::test]
     async fn measure_loudness_skips_unreadable_source() {
-        let (event_tx, _rx) = broadcast::channel(16);
+        let (event_tx, mut rx) = broadcast::channel(16);
         let missing = PathBuf::from("/nonexistent/track.flac");
         let mut audio_formats = vec![audio_format("track-0", "af-0")];
         let audio_segments = vec![whole_file_main_segment("af-0", "file-0")];
@@ -590,6 +590,27 @@ mod tests {
         );
         assert!(audio_formats[0].track_loudness_lufs.is_none());
         assert!(audio_formats[0].track_peak_linear.is_none());
+
+        // The skipped track is still counted done, so the bar reaches N/N: a
+        // completion tick (1 of 1, fraction 1.0) rides the progress channel.
+        let mut ticks = Vec::new();
+        while let Ok(event) = rx.try_recv() {
+            if let crate::import::handle::ImportEvent::ImportLoudnessProgress {
+                tracks_done,
+                tracks_total,
+                fraction,
+                ..
+            } = event
+            {
+                ticks.push((tracks_done, tracks_total, fraction));
+            }
+        }
+        assert!(
+            ticks
+                .iter()
+                .any(|&(done, total, fraction)| done == 1 && total == 1 && fraction == 1.0),
+            "the skipped track still emits its completion progress, got {ticks:?}",
+        );
     }
 
     /// A track whose audio format has no segments is skipped (nothing to
