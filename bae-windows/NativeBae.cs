@@ -73,6 +73,9 @@ internal static class NativeBae
     internal static string[] AvailableCloudProviders() =>
         BaeBridgeMethods.AvailableCloudProviders().Select(CloudProviderTag).ToArray();
 
+    internal static bool IsCloudProviderAvailable(BridgeCloudProvider provider) =>
+        AvailableCloudProviders().Contains(CloudProviderTag(provider));
+
     /// <summary>Whether this build's native library supports any OAuth cloud provider.</summary>
     internal static bool SupportsOAuthProviders() =>
         AvailableCloudProviders().Any(provider => provider is "google_drive" or "dropbox" or "onedrive");
@@ -134,6 +137,9 @@ internal static class NativeBae
         }
         return BaeBridgeMethods.BridgeCloudProviderLabelKey(bridgeProvider);
     }
+
+    internal static string? CloudProviderLabelKey(BridgeCloudProvider provider) =>
+        BaeBridgeMethods.BridgeCloudProviderLabelKey(provider);
 
     /// <summary>
     /// The joiner's account email for an OAuth provider, fetched from its
@@ -283,18 +289,12 @@ internal static class NativeBae
     internal static string OAuthAuthorize(string provider) =>
         BaeBridgeMethods.OauthAuthorize(CloudProvider(provider));
 
+    internal static string OAuthAuthorize(BridgeCloudProvider provider) =>
+        BaeBridgeMethods.OauthAuthorize(provider);
+
     /// <summary>Decode a restore code for UI preview.</summary>
-    internal static RestoreCodeInfo DecodeRestoreCode(string code)
-    {
-        var info = BaeBridgeMethods.DecodeRestoreCode(code);
-        return new RestoreCodeInfo
-        {
-            LibraryId = info.LibraryId,
-            LibraryName = info.LibraryName,
-            Provider = CloudProviderTag(info.CloudProvider),
-            NeedsOauth = info.NeedsOauth,
-        };
-    }
+    internal static BridgeRestoreCodeInfo DecodeRestoreCode(string code) =>
+        BaeBridgeMethods.DecodeRestoreCode(code);
 
     /// <summary>
     /// Restore a library from a code and return its id. For OAuth providers pass
@@ -312,46 +312,20 @@ internal static class NativeBae
     /// <param name="email">The OAuth account address the joiner authenticated as,
     /// baked into the code so the approver can share the OAuth folder to it; null
     /// for S3, which shares no folder.</param>
-    internal static JoinRequest GenerateJoinRequest(string? email = null)
-    {
-        var request = BaeBridgeMethods.GenerateJoinRequest(email);
-        return new JoinRequest
-        {
-            Code = request.Code,
-            Fingerprint = request.Fingerprint,
-        };
-    }
+    internal static BridgeJoinRequest GenerateJoinRequest(string? email = null) =>
+        BaeBridgeMethods.GenerateJoinRequest(email);
 
     /// <summary>
     /// Decode a join-request code for owner-side approval.
     /// </summary>
-    internal static JoinRequestInfo DecodeJoinRequest(string code)
-    {
-        var info = BaeBridgeMethods.DecodeJoinRequest(code);
-        return new JoinRequestInfo
-        {
-            Pubkey = info.Pubkey,
-            Fingerprint = info.Fingerprint,
-            Email = info.Email,
-        };
-    }
+    internal static BridgeJoinRequestInfo DecodeJoinRequest(string code) =>
+        BaeBridgeMethods.DecodeJoinRequest(code);
 
     /// <summary>
     /// Decode an invite code for UI preview.
     /// </summary>
-    internal static InviteCodeInfo DecodeInviteCode(string code)
-    {
-        var info = BaeBridgeMethods.DecodeInviteCode(code);
-        return new InviteCodeInfo
-        {
-            LibraryId = info.LibraryId,
-            LibraryName = info.LibraryName,
-            OwnerPubkey = info.OwnerPubkey,
-            OwnerFingerprint = info.OwnerFingerprint,
-            Provider = CloudProviderTag(info.CloudProvider),
-            NeedsOauth = info.NeedsOauth,
-        };
-    }
+    internal static BridgeInviteCodeInfo DecodeInviteCode(string code) =>
+        BaeBridgeMethods.DecodeInviteCode(code);
 
     /// <summary>
     /// Join a shared library from an invite code and return its id. For OAuth

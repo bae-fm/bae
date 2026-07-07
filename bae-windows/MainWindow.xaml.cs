@@ -903,7 +903,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        RestoreCodeInfo info;
+        BridgeRestoreCodeInfo info;
         try
         {
             info = NativeBae.DecodeRestoreCode(code);
@@ -924,9 +924,9 @@ public sealed partial class MainWindow : Window
         {
             // The provider list is the build's support boundary: an S3-only
             // build cannot restore an OAuth-provider code here.
-            if (!NativeBae.AvailableCloudProviders().Contains(info.Provider))
+            if (!NativeBae.IsCloudProviderAvailable(info.CloudProvider))
             {
-                StatusText.Text = Loc.Chrome("cloud.unsupported_provider", "provider", ProviderDisplayName(info.Provider));
+                StatusText.Text = Loc.Chrome("cloud.unsupported_provider", "provider", ProviderDisplayName(info.CloudProvider));
                 return;
             }
             if (!OAuthCreds.Available)
@@ -935,10 +935,10 @@ public sealed partial class MainWindow : Window
                     ?? Loc.Chrome("cloud.signin.not_configured");
                 return;
             }
-            StatusText.Text = Loc.Chrome("cloud.signin.in_progress", "provider", ProviderDisplayName(info.Provider));
+            StatusText.Text = Loc.Chrome("cloud.signin.in_progress", "provider", ProviderDisplayName(info.CloudProvider));
             try
             {
-                oauthTokenJson = await System.Threading.Tasks.Task.Run(() => NativeBae.OAuthAuthorize(info.Provider));
+                oauthTokenJson = await System.Threading.Tasks.Task.Run(() => NativeBae.OAuthAuthorize(info.CloudProvider));
             }
             catch (BridgeException exception)
             {
@@ -1100,7 +1100,7 @@ public sealed partial class MainWindow : Window
 
         // The decoded invite and the OAuth token (when the provider needed one):
         // both feed the Join click and gate the button.
-        InviteCodeInfo? decoded = null;
+        BridgeInviteCodeInfo? decoded = null;
         string? oauthTokenJson = null;
 
         void ShowStatus(string message)
@@ -1138,7 +1138,7 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            InviteCodeInfo info;
+            BridgeInviteCodeInfo info;
             try
             {
                 info = NativeBae.DecodeInviteCode(code);
@@ -1154,7 +1154,7 @@ public sealed partial class MainWindow : Window
             invitePreview.Text = Loc.Chrome("join.invite_for", new Dictionary<string, object?>
             {
                 ["name"] = info.LibraryName,
-                ["provider"] = ProviderDisplayName(info.Provider),
+                ["provider"] = ProviderDisplayName(info.CloudProvider),
                 ["fingerprint"] = info.OwnerFingerprint,
             });
             invitePreview.Visibility = Visibility.Visible;
@@ -1186,9 +1186,9 @@ public sealed partial class MainWindow : Window
             // as RestoreFromCode does.
             if (info.NeedsOauth)
             {
-                if (!NativeBae.AvailableCloudProviders().Contains(info.Provider))
+                if (!NativeBae.IsCloudProviderAvailable(info.CloudProvider))
                 {
-                    ShowStatus(Loc.Chrome("cloud.unsupported_provider", "provider", ProviderDisplayName(info.Provider)));
+                    ShowStatus(Loc.Chrome("cloud.unsupported_provider", "provider", ProviderDisplayName(info.CloudProvider)));
                     return;
                 }
                 if (!OAuthCreds.Available)
@@ -1199,10 +1199,10 @@ public sealed partial class MainWindow : Window
 
                 joinButton.IsEnabled = false;
                 status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                ShowStatus(Loc.Chrome("cloud.signin.in_progress", "provider", ProviderDisplayName(info.Provider)));
+                ShowStatus(Loc.Chrome("cloud.signin.in_progress", "provider", ProviderDisplayName(info.CloudProvider)));
                 try
                 {
-                    oauthTokenJson = await System.Threading.Tasks.Task.Run(() => NativeBae.OAuthAuthorize(info.Provider));
+                    oauthTokenJson = await System.Threading.Tasks.Task.Run(() => NativeBae.OAuthAuthorize(info.CloudProvider));
                 }
                 catch (BridgeException exception)
                 {
@@ -1251,7 +1251,7 @@ public sealed partial class MainWindow : Window
     // the UI thread.
     private async System.Threading.Tasks.Task GenerateJoinCode(StackPanel host)
     {
-        JoinRequest request;
+        BridgeJoinRequest request;
         try
         {
             request = await System.Threading.Tasks.Task.Run(() => NativeBae.GenerateJoinRequest());
@@ -1336,7 +1336,7 @@ public sealed partial class MainWindow : Window
                     return;
                 }
 
-                JoinRequestInfo info;
+                BridgeJoinRequestInfo info;
                 try
                 {
                     info = NativeBae.DecodeJoinRequest(code);
@@ -1363,7 +1363,7 @@ public sealed partial class MainWindow : Window
             };
         }
 
-        void ShowConfirm(JoinRequestInfo info)
+        void ShowConfirm(BridgeJoinRequestInfo info)
         {
             body.Children.Clear();
             body.Children.Add(new TextBlock
@@ -1610,6 +1610,24 @@ public sealed partial class MainWindow : Window
         "s3" => Loc.Chrome("cloud.provider.s3"),
         _ => provider,
     };
+
+    private static string ProviderDisplayName(BridgeCloudProvider provider)
+    {
+        var key = NativeBae.CloudProviderLabelKey(provider);
+        if (key is not null)
+        {
+            return Loc.Core(key);
+        }
+
+        return provider switch
+        {
+            BridgeCloudProvider.GoogleDrive => Loc.Chrome("cloud.provider.google_drive"),
+            BridgeCloudProvider.Dropbox => Loc.Chrome("cloud.provider.dropbox"),
+            BridgeCloudProvider.OneDrive => Loc.Chrome("cloud.provider.onedrive"),
+            BridgeCloudProvider.CloudKit => Loc.Chrome("cloud.provider.icloud"),
+            _ => provider.ToString(),
+        };
+    }
 
     // Fires on a background thread; hop to the UI thread before touching WinUI.
     private void OnNativeEvent(int generation, BridgeUiEvent evt) =>
