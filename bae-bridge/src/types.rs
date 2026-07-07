@@ -2794,10 +2794,8 @@ pub(crate) fn bridge_cloud_provider(p: &bae_core::config::CloudProvider) -> Brid
     }
 }
 
-pub(crate) fn bridge_member_role(
-    role: bae_core::sync::sync_manager::MemberRole,
-) -> BridgeMemberRole {
-    use bae_core::sync::sync_manager::MemberRole;
+pub(crate) fn bridge_member_role(role: bae_core::sync::membership::MemberRole) -> BridgeMemberRole {
+    use bae_core::sync::membership::MemberRole;
     match role {
         MemberRole::Owner => BridgeMemberRole::Owner,
         MemberRole::Member => BridgeMemberRole::Member,
@@ -2805,7 +2803,7 @@ pub(crate) fn bridge_member_role(
     }
 }
 
-fn bridge_member(m: bae_core::sync::sync_manager::MembershipMember) -> BridgeMember {
+fn bridge_member(m: bae_core::sync::membership::MembershipMember) -> BridgeMember {
     BridgeMember {
         pubkey: m.pubkey,
         role: bridge_member_role(m.role),
@@ -2816,7 +2814,7 @@ fn bridge_member(m: bae_core::sync::sync_manager::MembershipMember) -> BridgeMem
 }
 
 pub(crate) fn bridge_membership(
-    membership: bae_core::sync::sync_manager::Membership,
+    membership: bae_core::sync::membership::Membership,
 ) -> BridgeMembership {
     BridgeMembership {
         members: membership.members.into_iter().map(bridge_member).collect(),

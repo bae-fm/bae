@@ -420,7 +420,7 @@ impl RestoreFromCodeOperation {
 /// result here.
 #[uniffi::export]
 pub fn generate_join_request(email: Option<String>) -> Result<BridgeJoinRequest, BridgeError> {
-    let request = bae_core::sync::sync_manager::generate_join_request(email)
+    let request = bae_core::sync::membership::generate_join_request(email)
         .map_err(|e| BridgeError::config(format!("Failed to generate join request: {e}")))?;
     Ok(BridgeJoinRequest {
         code: request.code,
@@ -440,7 +440,7 @@ pub fn fetch_account_email(
     let tokens = parse_oauth_tokens(&oauth_token_json)?;
     let core_provider = bridge_cloud_provider_to_core(provider);
     on_worker(move || async move {
-        bae_core::sync::sync_manager::fetch_account_email(core_provider, &tokens)
+        bae_core::sync::membership::fetch_account_email(core_provider, &tokens)
             .await
             .map_err(|e| BridgeError::config(format!("Failed to fetch account email: {e}")))
     })
@@ -450,7 +450,7 @@ pub fn fetch_account_email(
 #[uniffi::export]
 pub fn decode_join_request(code: String) -> Result<BridgeJoinRequestInfo, BridgeError> {
     let req =
-        bae_core::sync::sync_manager::decode_join_request(&code).map_err(BridgeError::config)?;
+        bae_core::sync::membership::decode_join_request(&code).map_err(BridgeError::config)?;
     Ok(BridgeJoinRequestInfo {
         pubkey: req.pubkey,
         fingerprint: req.fingerprint,
@@ -461,8 +461,8 @@ pub fn decode_join_request(code: String) -> Result<BridgeJoinRequestInfo, Bridge
 /// Decode an invite code string and return info for UI preview (before joining).
 #[uniffi::export]
 pub fn decode_invite_code(code: String) -> Result<BridgeInviteCodeInfo, BridgeError> {
-    let info = bae_core::sync::sync_manager::decode_invite_code_info(&code)
-        .map_err(BridgeError::config)?;
+    let info =
+        bae_core::sync::membership::decode_invite_code_info(&code).map_err(BridgeError::config)?;
     Ok(BridgeInviteCodeInfo {
         library_id: info.library_id,
         library_name: info.library_name,

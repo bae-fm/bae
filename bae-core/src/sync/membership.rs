@@ -138,18 +138,6 @@ pub fn decode_invite_code_info(code: &str) -> Result<InviteCodeInfo, coven::Join
     })
 }
 
-/// S3 configuration data for save_s3_config.
-pub struct S3ConfigData {
-    pub bucket: String,
-    pub region: String,
-    pub endpoint: Option<String>,
-    pub key_prefix: Option<String>,
-    pub access_key: String,
-    pub secret_key: String,
-    /// Opaque (encrypted, obfuscated) or browsable (plaintext, readable) home.
-    pub storage: crate::config::HomeStorage,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

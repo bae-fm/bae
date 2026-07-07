@@ -125,7 +125,7 @@ impl LibraryManager {
     /// The library's membership: its devices (with this device flagged, each
     /// member's fingerprint, and whether it can be removed) and whether the
     /// running device is an owner.
-    pub async fn get_members(&self) -> Result<crate::sync::sync_manager::Membership, String> {
+    pub async fn get_members(&self) -> Result<crate::sync::membership::Membership, String> {
         self.sync.get_members().await
     }
 

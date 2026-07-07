@@ -294,7 +294,7 @@ impl TestS3Endpoint {
 }
 
 #[allow(unused_imports)]
-use bae_core::sync::sync_manager::S3ConfigData;
+use bae_core::sync::S3ConfigData;
 
 // ---------------------------------------------------------------------------
 // MockCloudHome

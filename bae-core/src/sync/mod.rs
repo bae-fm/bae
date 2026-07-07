@@ -20,10 +20,22 @@ pub use coven::{
 pub mod upload_observer;
 
 // bae's membership DTOs and join-request helpers for the UI.
-pub mod sync_manager;
+pub mod membership;
 
 use coven::{BlobDecl, SyncedTable};
 use coven::{CacheFill, Provenance};
+
+/// S3 configuration data for save_s3_config.
+pub struct S3ConfigData {
+    pub bucket: String,
+    pub region: String,
+    pub endpoint: Option<String>,
+    pub key_prefix: Option<String>,
+    pub access_key: String,
+    pub secret_key: String,
+    /// Opaque (encrypted, obfuscated) or browsable (plaintext, readable) home.
+    pub storage: crate::config::HomeStorage,
+}
 
 /// Cloud namespace for release-file (audio/image/text/…) blobs — the user's own
 /// imported files. coven keys them under `release_files/…` and segments their

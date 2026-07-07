@@ -53,7 +53,7 @@ use crate::library::export::ExportService;
 use crate::library::sync_controller::SyncController;
 use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
-use crate::sync::sync_manager::S3ConfigData;
+use crate::sync::S3ConfigData;
 use coven::ClockRef;
 #[cfg(any(test, feature = "test-utils"))]
 use coven::CloudHome;

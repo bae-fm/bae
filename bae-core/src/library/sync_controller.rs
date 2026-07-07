@@ -19,7 +19,7 @@ use crate::config::{CloudProvider, ConfigHandle};
 use crate::db::Database;
 use crate::keys::KeyService;
 use crate::library::{LibraryError, LibraryEvent, OutboxSnapshot, UploadThroughput};
-use crate::sync::sync_manager::S3ConfigData;
+use crate::sync::S3ConfigData;
 #[cfg(feature = "oauth-providers")]
 use coven::ClockRef;
 #[cfg(any(test, feature = "test-utils"))]
@@ -181,11 +181,9 @@ impl SyncController {
     /// The library's membership: its devices (with this device flagged, each
     /// member's fingerprint, and whether it can be removed) and whether the
     /// running device is an owner.
-    pub(crate) async fn get_members(
-        &self,
-    ) -> Result<crate::sync::sync_manager::Membership, String> {
+    pub(crate) async fn get_members(&self) -> Result<crate::sync::membership::Membership, String> {
         let members = self.handle.get_members().await?;
-        Ok(crate::sync::sync_manager::Membership::from_members(members))
+        Ok(crate::sync::membership::Membership::from_members(members))
     }
 
     /// Approve a device into the library by its public key, wrapping the library
@@ -201,7 +199,7 @@ impl SyncController {
             .invite_member(
                 public_key_hex,
                 provider_account_email,
-                crate::sync::sync_manager::MemberRole::Member,
+                crate::sync::membership::MemberRole::Member,
             )
             .await
     }

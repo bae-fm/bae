@@ -672,7 +672,7 @@ impl AppHandle {
         &self,
         config_data: BridgeSaveSyncConfig,
     ) -> Result<(), BridgeError> {
-        use bae_core::sync::sync_manager::S3ConfigData;
+        use bae_core::sync::S3ConfigData;
         self.services
             .library_manager()
             .save_s3_config(S3ConfigData {
@@ -2505,7 +2505,6 @@ mod tests {
         let config_handle = Arc::new(bae_core::config::ConfigHandle::new(config));
         let manager = bae_core::library::LibraryManager::new(
             database,
-            library_dir,
             config_handle,
             key_service,
             Arc::new(coven::SystemClock),
