@@ -281,6 +281,26 @@ impl PreviewPlayer {
     /// Stop preview playback and tear down its pipeline. Does not touch the main
     /// player — the caller decides whether to resume it.
     pub(crate) fn stop(&mut self) {
+        self.teardown_decoder();
+
+        if let Some(preview_output) = &self.audio_output {
+            preview_output.set_state(crate::playback::audio_output::AudioState::Stopped);
+        }
+
+        let was_previewing = self.path.is_some();
+        self.path = None;
+        self.duration = Duration::ZERO;
+
+        if was_previewing {
+            info!("Preview stopped");
+            emit_progress(
+                &self.progress_tx,
+                PlaybackProgress::PreviewStateChanged(PreviewState::Idle),
+            );
+        }
+    }
+
+    fn teardown_decoder(&mut self) {
         if let Some(source) = self.playback_source.take() {
             if let Ok(guard) = source.lock() {
                 guard.cancel();
@@ -300,23 +320,8 @@ impl PreviewPlayer {
         if let Some(stream) = self.stream.take() {
             drop(stream);
         }
-        if let Some(preview_output) = &self.audio_output {
-            preview_output.set_state(crate::playback::audio_output::AudioState::Stopped);
-        }
 
         self.abort_listeners();
-
-        let was_previewing = self.path.is_some();
-        self.path = None;
-        self.duration = Duration::ZERO;
-
-        if was_previewing {
-            info!("Preview stopped");
-            emit_progress(
-                &self.progress_tx,
-                PlaybackProgress::PreviewStateChanged(PreviewState::Idle),
-            );
-        }
     }
 
     /// Abort preview event listener tasks.
@@ -379,6 +384,7 @@ impl PreviewPlayer {
                 Ok(output) => self.audio_output = Some(output),
                 Err(e) => {
                     error!("Failed to create preview audio output: {:?}", e);
+                    self.teardown_decoder();
                     return false;
                 }
             }
@@ -397,12 +403,14 @@ impl PreviewPlayer {
             Ok(s) => s,
             Err(e) => {
                 error!("Failed to create preview audio stream: {:?}", e);
+                self.teardown_decoder();
                 return false;
             }
         };
 
         if let Err(e) = setup.stream.play() {
             error!("Failed to start preview playback: {:?}", e);
+            self.teardown_decoder();
             return false;
         }
 
@@ -594,7 +602,38 @@ fn resolve_preview_probe(
 #[cfg(all(test, feature = "test-utils"))]
 mod tests {
     use super::*;
-    use crate::playback::audio_output::CaptureAudioOutput;
+    use crate::playback::audio_output::{
+        AudioError, AudioEventSender, AudioState, CaptureAudioOutput,
+    };
+
+    struct FailingAudioOutput;
+
+    impl AudioOutput for FailingAudioOutput {
+        fn create_stream(
+            &mut self,
+            _source: Arc<Mutex<source::PlaybackSource>>,
+            _source_sample_rate: u32,
+            _source_channels: u32,
+            _audio_events: AudioEventSender,
+            _position_update_interval_ms: u32,
+        ) -> Result<Box<dyn AudioStream>, AudioError> {
+            Err(AudioError::StreamBuildError(
+                "preview test failure".to_string(),
+            ))
+        }
+
+        fn set_state(&self, _state: AudioState) {}
+
+        fn get_state(&self) -> AudioState {
+            AudioState::Stopped
+        }
+
+        fn set_volume(&self, _volume: f32) {}
+
+        fn get_volume(&self) -> f32 {
+            1.0
+        }
+    }
 
     #[tokio::test]
     async fn preview_play_rejects_unprobeable_file() {
@@ -613,6 +652,55 @@ mod tests {
         }
 
         assert!(!started);
+    }
+
+    #[tokio::test]
+    async fn failed_preview_stream_start_clears_decoder_state() {
+        let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
+        let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+        let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+        let buffer = create_sparse_buffer(0);
+        player.buffer = Some(buffer.clone());
+        player.audio_output = Some(Box::new(FailingAudioOutput));
+
+        let started = player
+            .start_decode(
+                "preview.wav".to_string(),
+                Duration::from_secs(1),
+                44_100,
+                2,
+                buffer.clone(),
+                None,
+                false,
+            )
+            .await;
+
+        assert!(!started);
+        assert!(player.buffer.is_none());
+        assert!(player.decoder_handle.is_none());
+        assert!(player.decoder_cancel_token.is_none());
+        assert!(buffer.is_cancelled());
+
+        let (output, _capture_rx) = CaptureAudioOutput::new();
+        let next_buffer = create_sparse_buffer(0);
+        player.buffer = Some(next_buffer);
+        player.audio_output = Some(Box::new(output));
+
+        let started = player
+            .start_decode(
+                "preview.wav".to_string(),
+                Duration::from_secs(1),
+                44_100,
+                2,
+                player.buffer.as_ref().unwrap().clone(),
+                None,
+                false,
+            )
+            .await;
+
+        assert!(started);
+        assert_eq!(player.current_path(), Some("preview.wav"));
+        player.stop();
     }
 
     #[tokio::test]
