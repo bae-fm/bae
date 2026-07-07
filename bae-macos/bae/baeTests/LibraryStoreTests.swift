@@ -851,3 +851,212 @@ struct PaginatedListRowLoadIDTests {
         #expect(RowLoadID(epoch: list.loadEpoch, index: 0) == before)
     }
 }
+
+// MARK: - Segment coalescing
+
+/// `insertSegment` is private, so these drive it through the real `loadRange`
+/// path — the only way segments enter the list — and observe the merged result
+/// through `allLoadedIds` / `idAt`. Coalescing and stale-generation discard are
+/// visible there: without them the loaded ids would carry duplicates, gaps, or
+/// stale positions.
+@Suite("PaginatedList segment management")
+struct PaginatedListSegmentTests {
+    @MainActor
+    private func fiveAlbumList(_ store: LibraryStore) -> AlbumList {
+        makeList(
+            store: store,
+            albums: (0..<5).map { makeBridgeAlbum(id: "a\($0)") }
+        )
+    }
+
+    @MainActor
+    @Test("overlapping same-generation ranges merge without duplicates")
+    func overlappingMerge() async {
+        let list = fiveAlbumList(LibraryStore())
+        await list.loadInitial()
+
+        await list.loadRange(offset: 0, limit: 3)  // [0, 3)
+        await list.loadRange(offset: 1, limit: 3)  // [1, 4) overlaps
+
+        #expect(list.allLoadedIds == ["a0", "a1", "a2", "a3"])
+    }
+
+    @MainActor
+    @Test("adjacent same-generation ranges coalesce into one contiguous run")
+    func adjacentCoalesce() async {
+        let list = fiveAlbumList(LibraryStore())
+        await list.loadInitial()
+
+        await list.loadRange(offset: 0, limit: 2)  // [0, 2)
+        await list.loadRange(offset: 2, limit: 2)  // [2, 4)
+
+        #expect(list.allLoadedIds == ["a0", "a1", "a2", "a3"])
+        #expect(list.idAt(3) == "a3")
+    }
+
+    @MainActor
+    @Test("a new range absorbs a same-generation segment it fully contains")
+    func absorbsContainedSegment() async {
+        let list = fiveAlbumList(LibraryStore())
+        await list.loadInitial()
+
+        await list.loadRange(offset: 1, limit: 2)  // [1, 3)
+        await list.loadRange(offset: 0, limit: 4)  // [0, 4) contains it
+
+        #expect(list.allLoadedIds == ["a0", "a1", "a2", "a3"])
+    }
+
+    @MainActor
+    @Test("disjoint ranges stay separate and sort by position")
+    func disjointSortsByPosition() async {
+        let list = fiveAlbumList(LibraryStore())
+        await list.loadInitial()
+
+        await list.loadRange(offset: 3, limit: 2)  // [3, 5) loaded first
+        await list.loadRange(offset: 0, limit: 2)  // [0, 2)
+
+        #expect(list.allLoadedIds == ["a0", "a1", "a3", "a4"])
+        #expect(list.idAt(2) == nil)  // the gap stays unloaded
+    }
+
+    @MainActor
+    @Test("a fresh-generation range discards the stale segment it overlaps")
+    func staleGenerationDiscard() async {
+        let list = fiveAlbumList(LibraryStore())
+        await list.loadInitial()
+        await list.loadRange(offset: 0, limit: 4)  // generation 0: [0, 4)
+
+        list.invalidate()
+        await list.awaitReload()  // generation 1
+
+        await list.loadRange(offset: 0, limit: 2)  // generation 1: [0, 2)
+
+        // The stale generation-0 [0, 4) is dropped wholesale, not kept for its
+        // non-overlapping tail — positions 2 and 3 revert to unloaded.
+        #expect(list.allLoadedIds == ["a0", "a1"])
+        #expect(list.idAt(2) == nil)
+    }
+
+    @MainActor
+    @Test("concurrent loadRange for the same range issues a single fetch")
+    func concurrentLoadRangeCoalesces() async {
+        let store = LibraryStore()
+        let source = GatedAlbumPageSource(albums: [
+            makeBridgeAlbum(id: "a1"),
+            makeBridgeAlbum(id: "a2"),
+        ])
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { rows in
+                for row in rows { _ = store.internAlbumSummary(row) }
+            },
+            onError: { _ in },
+        )
+        await list.loadInitial()
+
+        async let first: Void = list.loadRange(offset: 0, limit: 2)
+        // The first fetch's page() is now running and blocked on the gate, so
+        // loadRange has already registered its in-flight task. The second caller
+        // dedupes onto it instead of issuing its own query.
+        await source.waitForPageEntry()
+
+        async let second: Void = list.loadRange(offset: 0, limit: 2)
+        await Task.yield()
+        await source.openGate()
+
+        _ = await (first, second)
+
+        #expect(source.pageCallCount == 1)
+        #expect(list.idAt(0) == "a1")
+    }
+
+    @MainActor
+    @Test("a fetch whose generation is bumped mid-flight drops its result")
+    func generationDropMidFetch() async {
+        let store = LibraryStore()
+        let source = GatedAlbumPageSource(albums: [
+            makeBridgeAlbum(id: "a1"),
+            makeBridgeAlbum(id: "a2"),
+        ])
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { rows in
+                for row in rows { _ = store.internAlbumSummary(row) }
+            },
+            onError: { _ in },
+        )
+        await list.loadInitial()
+
+        async let load: Void = list.loadRange(offset: 0, limit: 2)
+        await source.waitForPageEntry()  // fetch in flight at generation 0
+
+        list.invalidate()
+        await list.awaitReload()  // generation bumps to 1
+
+        await source.openGate()
+        await load
+
+        // fetchRange sees the generation moved past its own and drops the rows —
+        // no segment is inserted.
+        #expect(list.idAt(0) == nil)
+        #expect(list.allLoadedIds.isEmpty)
+    }
+}
+
+/// One-shot async gate: `page()` awaits `wait()`; the test resumes every waiter
+/// with `open()`. Lets a test hold a fetch mid-flight while it drives the list.
+private actor FetchGate {
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private var isOpen = false
+
+    func wait() async {
+        if isOpen { return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func open() {
+        isOpen = true
+        for waiter in waiters { waiter.resume() }
+        waiters.removeAll()
+    }
+}
+
+/// Page source that blocks each `page()` on a gate the test opens, and signals
+/// when a fetch enters. Used to exercise the in-flight dedupe and the
+/// generation-drop guard, both of which need a fetch held mid-flight.
+final class GatedAlbumPageSource: PageSource, @unchecked Sendable {
+    let albums: [BridgeAlbum]
+    var pageCallCount = 0
+
+    private let gate = FetchGate()
+    private let entries: AsyncStream<Void>
+    private let entryContinuation: AsyncStream<Void>.Continuation
+
+    init(albums: [BridgeAlbum]) {
+        self.albums = albums
+        (entries, entryContinuation) = AsyncStream.makeStream(of: Void.self)
+    }
+
+    func count() async throws -> Int {
+        albums.count
+    }
+
+    func page(offset: Int, limit: Int) async throws -> [BridgeAlbum] {
+        pageCallCount += 1
+        entryContinuation.yield(())
+        await gate.wait()
+        let start = min(offset, albums.count)
+        let end = min(start + limit, albums.count)
+        return Array(albums[start..<end])
+    }
+
+    /// Suspend until a `page()` call has entered (and is blocked on the gate).
+    func waitForPageEntry() async {
+        var iterator = entries.makeAsyncIterator()
+        _ = await iterator.next()
+    }
+
+    func openGate() async {
+        await gate.open()
+    }
+}
