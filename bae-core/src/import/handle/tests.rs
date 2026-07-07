@@ -904,3 +904,279 @@ fn shape_user_edit_per_track_artist_override() {
         vec!["Guest Artist".to_string()]
     );
 }
+
+// ── ImportCandidateState reducer ────────────────────────────────────
+
+use crate::import::folder_scanner::{AudioContent, CategorizedFiles, InvalidReason};
+use crate::import::types::{ImportPhase, ImportProgress};
+use std::path::{Path, PathBuf};
+
+/// An empty file set — the reducer only reads a candidate's identity and
+/// grouping fields, never its files, so the audio content can be blank.
+fn empty_categorized() -> CategorizedFiles {
+    CategorizedFiles {
+        audio: AudioContent::TrackFiles {
+            tracks: Vec::new(),
+            format_label: "FLAC".to_string(),
+        },
+        artwork: Vec::new(),
+        documents: Vec::new(),
+        unpaired_cue_sheets: Vec::new(),
+    }
+}
+
+fn folder_candidate(path: &str, watched: &str) -> FolderCandidate {
+    FolderCandidate {
+        path: PathBuf::from(path),
+        name: format!("Candidate {path}"),
+        files: empty_categorized(),
+        watched_folder_path: watched.to_string(),
+        skipped: false,
+        is_added: false,
+    }
+}
+
+fn invalid_candidate(path: &str, watched: &str) -> InvalidCandidate {
+    InvalidCandidate {
+        path: PathBuf::from(path),
+        name: format!("Invalid {path}"),
+        watched_folder_path: watched.to_string(),
+        reason: InvalidReason::NoValidAudio,
+    }
+}
+
+fn watched(path: &str) -> WatchedFolder {
+    WatchedFolder {
+        path: path.to_string(),
+        name: path.rsplit('/').next().unwrap_or(path).to_string(),
+    }
+}
+
+#[test]
+fn replace_root_populates_snapshot_with_folder_and_invalid_candidates() {
+    let mut state = ImportCandidateState::default();
+    state.replace_root(
+        Path::new("/watch/a"),
+        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
+        vec![invalid_candidate("/watch/a/bad", "/watch/a")],
+    );
+
+    let snapshot = state.snapshot(vec![watched("/watch/a")]);
+    assert_eq!(snapshot.folder_candidates.len(), 1);
+    assert_eq!(
+        snapshot.folder_candidates[0].candidate.path,
+        PathBuf::from("/watch/a/rel1")
+    );
+    assert!(!snapshot.folder_candidates[0].candidate.skipped);
+    assert_eq!(snapshot.invalid_candidates.len(), 1);
+    assert_eq!(
+        snapshot.invalid_candidates[0].path,
+        PathBuf::from("/watch/a/bad")
+    );
+}
+
+#[test]
+fn replace_root_supersedes_and_remove_root_clears() {
+    let mut state = ImportCandidateState::default();
+    let root = Path::new("/watch/a");
+    state.replace_root(
+        root,
+        vec![folder_candidate("/watch/a/old", "/watch/a")],
+        Vec::new(),
+    );
+    // A second replace_root for the same root drops the prior candidates.
+    state.replace_root(
+        root,
+        vec![folder_candidate("/watch/a/new", "/watch/a")],
+        Vec::new(),
+    );
+    let snapshot = state.snapshot(vec![watched("/watch/a")]);
+    assert_eq!(snapshot.folder_candidates.len(), 1);
+    assert_eq!(
+        snapshot.folder_candidates[0].candidate.path,
+        PathBuf::from("/watch/a/new")
+    );
+
+    state.remove_root(root);
+    let snapshot = state.snapshot(vec![watched("/watch/a")]);
+    assert!(snapshot.folder_candidates.is_empty());
+    assert!(snapshot.invalid_candidates.is_empty());
+}
+
+#[test]
+fn set_skipped_round_trips_on_folder_candidate() {
+    let mut state = ImportCandidateState::default();
+    state.replace_root(
+        Path::new("/watch/a"),
+        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
+        Vec::new(),
+    );
+
+    state.set_skipped("/watch/a/rel1", true);
+    assert!(
+        state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
+            .candidate
+            .skipped
+    );
+
+    state.set_skipped("/watch/a/rel1", false);
+    assert!(
+        !state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
+            .candidate
+            .skipped
+    );
+}
+
+#[test]
+fn record_event_overlays_import_progress_onto_folder_runtime() {
+    let mut state = ImportCandidateState::default();
+    state.replace_root(
+        Path::new("/watch/a"),
+        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
+        Vec::new(),
+    );
+
+    state.record_event(&ImportEvent::ImportProgress {
+        candidate_key: "/watch/a/rel1".to_string(),
+        progress: ImportProgress::Progress {
+            id: "rel1".to_string(),
+            percent: 42,
+            phase: ImportPhase::MeasuringLoudness,
+            import_id: "imp-1".to_string(),
+        },
+    });
+
+    // The overlay lands on the candidate's embedded runtime (synced from the
+    // runtime map by record_event), so the snapshot reflects it.
+    let running = state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
+        .runtime
+        .import_status
+        .clone()
+        .expect("import status overlaid");
+    match running {
+        CandidateImportStatusSnapshot::Importing {
+            progress_percent,
+            step,
+        } => {
+            assert_eq!(progress_percent, 42);
+            assert_eq!(
+                step,
+                Some(ImportStep::Running(ImportPhase::MeasuringLoudness))
+            );
+        }
+        other => panic!("expected Importing, got {other:?}"),
+    }
+
+    // A later Complete event replaces the overlay with the terminal snapshot.
+    state.record_event(&ImportEvent::ImportProgress {
+        candidate_key: "/watch/a/rel1".to_string(),
+        progress: ImportProgress::Complete {
+            id: "rel1".to_string(),
+            import_id: "imp-1".to_string(),
+            album_id: "alb-1".to_string(),
+        },
+    });
+    let complete = state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
+        .runtime
+        .import_status
+        .clone()
+        .expect("import status overlaid");
+    match complete {
+        CandidateImportStatusSnapshot::Complete {
+            release_id,
+            album_id,
+        } => {
+            assert_eq!(release_id, "rel1");
+            assert_eq!(album_id, "alb-1");
+        }
+        other => panic!("expected Complete, got {other:?}"),
+    }
+}
+
+#[test]
+fn record_event_overlays_identify_state() {
+    let mut state = ImportCandidateState::default();
+    state.replace_root(
+        Path::new("/watch/a"),
+        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
+        Vec::new(),
+    );
+
+    state.record_event(&ImportEvent::IdentifyStateChanged {
+        candidate_key: "/watch/a/rel1".to_string(),
+        state: crate::identify::IdentifyState::Idle,
+        toolbar: Vec::new(),
+    });
+
+    let runtime = &state.snapshot(vec![watched("/watch/a")]).folder_candidates[0].runtime;
+    assert!(matches!(
+        runtime.identify_state,
+        crate::identify::IdentifyState::Idle
+    ));
+}
+
+#[test]
+fn snapshot_orders_by_watched_folder_then_key() {
+    let mut state = ImportCandidateState::default();
+    state.replace_root(
+        Path::new("/watch/b"),
+        vec![
+            folder_candidate("/watch/b/z", "/watch/b"),
+            folder_candidate("/watch/b/a", "/watch/b"),
+        ],
+        Vec::new(),
+    );
+    state.replace_root(
+        Path::new("/watch/a"),
+        vec![folder_candidate("/watch/a/m", "/watch/a")],
+        Vec::new(),
+    );
+
+    // Watched-folder order (a before b) is the primary sort; the candidate key
+    // breaks ties within a folder (a before z).
+    let snapshot = state.snapshot(vec![watched("/watch/a"), watched("/watch/b")]);
+    let paths: Vec<String> = snapshot
+        .folder_candidates
+        .iter()
+        .map(|c| c.candidate.path.to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(paths, vec!["/watch/a/m", "/watch/b/a", "/watch/b/z"]);
+}
+
+#[test]
+fn get_resolves_reidentify_runtime_and_scanned_candidates() {
+    let mut state = ImportCandidateState::default();
+
+    // A `reidentify:` key has no scanned candidate — only runtime, created by
+    // recording an event against it.
+    state.record_event(&ImportEvent::ImportProgress {
+        candidate_key: "reidentify:rel-1".to_string(),
+        progress: ImportProgress::Started {
+            id: "rel-1".to_string(),
+            import_id: "imp-1".to_string(),
+        },
+    });
+    match state.get("reidentify:rel-1") {
+        Some(ImportCandidateSnapshot::Runtime { key, runtime }) => {
+            assert_eq!(key, "reidentify:rel-1");
+            assert!(matches!(
+                runtime.import_status,
+                Some(CandidateImportStatusSnapshot::Importing { .. })
+            ));
+        }
+        other => panic!("expected runtime snapshot, got {other:?}"),
+    }
+
+    // A scanned folder key resolves to its folder candidate; an unknown key is
+    // None.
+    state.replace_root(
+        Path::new("/watch/a"),
+        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
+        Vec::new(),
+    );
+    assert!(matches!(
+        state.get("/watch/a/rel1"),
+        Some(ImportCandidateSnapshot::Folder { .. })
+    ));
+    assert!(state.get("/watch/a/missing").is_none());
+}
