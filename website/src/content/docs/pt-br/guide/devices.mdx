@@ -1,0 +1,43 @@
+---
+title: Dispositivos e membros
+description: Adicione seu telefone, aprove um dispositivo, recupere sua biblioteca
+---
+
+Não existe conta bae. A identidade de um dispositivo é um par de chaves que ele gera para si e guarda no chaveiro do sistema operacional; a biblioteca reconhece dispositivos pelas chaves. Adicionar um dispositivo significa um dispositivo existente atestar um novo, criptograficamente, sem ninguém no meio.
+
+Duas portas diferentes, para duas situações diferentes:
+
+- **Entrar**: um dispositivo novo é aprovado por um dispositivo que já tem a biblioteca. Use isto para adicionar seu telefone ou o dispositivo de outra pessoa.
+- **Restaurar**: seu próprio dispositivo novo ou reinstalado recupera a biblioteca diretamente do local na nuvem, usando um código de recuperação. Nenhum aprovador envolvido.
+
+## Adicionando um dispositivo
+
+No dispositivo novo, escolha **Join a library**. Ele mostra um código curto, também como QR: a solicitação de entrada, carregando a chave pública do dispositivo e uma impressão digital que você pode ler em voz alta.
+
+Em um dispositivo que já tem a biblioteca, um proprietário abre Ajustes, Dispositivos, **Add a device**, e escaneia ou cola essa solicitação. bae mostra a impressão digital do dispositivo que está entrando; confirme que ela corresponde ao que o dispositivo novo exibe. Aprovar produz um código de convite: entregue-o de volta ao dispositivo novo (escaneie o QR ou cole), e o dispositivo novo baixa a biblioteca e começa a sincronizar.
+
+Por trás do aperto de mão: o dispositivo aprovador concede ao recém-chegado acesso ao local na nuvem (nuvens de consumidor compartilham a pasta com a conta do recém-chegado; convites S3 embutem credenciais) e sela a chave de criptografia da biblioteca para a chave pública do recém-chegado. O convite é inútil para qualquer outro dispositivo. Detalhes em [Identidade e associação](/pt-br/reference/membership).
+
+## Membros e funções
+
+Ajustes, Dispositivos lista todos os membros: impressão digital, função e qual deles é este dispositivo. O dispositivo fundador é um **proprietário**; dispositivos que ele aprova entram como **membros**. Ambos leem e escrevem a biblioteca; só proprietários aprovam e removem dispositivos.
+
+## Removendo um dispositivo
+
+Proprietários podem remover qualquer membro. A remoção não fecha só a porta: a chave de criptografia da biblioteca é rotacionada, e o dispositivo removido nunca recebe a nova chave. O que ele já copiou fica com ele, nada pode desfazer o envio de dados, mas tudo que a biblioteca escreve a partir daí fica ilegível para ele.
+
+## Códigos de recuperação
+
+Um código de recuperação é um segredo bearer para sua própria biblioteca: coordenadas do local na nuvem mais a chave de criptografia, em uma string. **Show recovery code** em Ajustes o exibe; guarde-o em um lugar seguro, como um gerenciador de senhas. Em um dispositivo novo, **Restore from cloud** com o código reconstrói a biblioteca, sem precisar de aprovador.
+
+Em plataformas Apple, o código também é guardado automaticamente no iCloud Keychain, então um Mac ou iPhone novo conectado ao seu Apple ID pode restaurar com um toque.
+
+Quem tiver o código tem a biblioteca, então trate-o como a chave que ele é.
+
+## Bloqueio
+
+**Lock Library** remove a chave de criptografia do chaveiro do dispositivo. A biblioteca permanece no disco, ilegível, até alguém inserir a chave novamente; bae a confere contra uma impressão digital armazenada antes de aceitá-la. Use isso para um laptop que sai de casa.
+
+## No telefone
+
+iOS e Android entram e restauram exatamente assim; esse é todo o onboarding deles. Um telefone também pode remover sua cópia da biblioteca (Ajustes, remover deste dispositivo), o que apaga arquivos locais e não toca em nada na nuvem.

@@ -1,0 +1,34 @@
+---
+title: Mecanismo de reprodução
+description: Decodificação, sem lacunas, pregaps e intensidade sonora, com precisão
+---
+
+O contrato do mecanismo de reprodução é fidelidade à fonte: decodificar os bytes originais do usuário, na taxa própria da fonte, com a estrutura do lançamento intacta. Esta página é a especificação por trás disso.
+
+## Decodificação
+
+Toda decodificação é FFmpeg, no processo, em todas as plataformas: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack e DSD são o que a importação aceita, e o codec registrado é o que FFmpeg relata a partir dos bytes, não a extensão do arquivo. Amostras saem como float de 32 bits para a etapa de saída; conversão de formato de amostra é a única conversão realizada.
+
+A saída é a API de áudio nativa da plataforma (Core Audio via cpal no desktop e iOS, AAudio no Android). O stream de saída é configurado com a **taxa de amostragem e contagem de canais da fonte**: um arquivo de 96 kHz toca a 96 kHz. Não há etapa de reamostragem. O dispositivo de saída padrão é resolvido a cada construção de stream, então a reprodução acompanha trocas de dispositivo do sistema. No Android, codecs com suporte de hardware podem contornar FFmpeg inteiramente para decodificação descarregada.
+
+## Leituras em streaming
+
+A reprodução não precisa de arquivos inteiros. Áudio é lido por um buffer esparso que busca intervalos de bytes sob demanda, de um arquivo local, do cache ou da nuvem, e a busca mapeia a amostra alvo para uma posição de byte para que uma busca em uma região não trazida busque a partir dali. Um árbitro de busca prioriza leituras da faixa em reprodução sobre pré-carregamento, então uma faixa futura nunca atrasa a atual.
+
+## Faixas como janelas
+
+Uma faixa não é um arquivo; é uma lista ordenada de janelas de amostras sobre um ou mais arquivos, construída na importação a partir da folha CUE ou da extensão do próprio arquivo. Essa representação carrega todo formato de disco: um arquivo por faixa, um disco inteiro em uma imagem, um pregap vivendo no fim de um arquivo e no início de outro, e rips com perdas cortados em um arquivo por faixa.
+
+Janelas de pregap são marcadas como tais. A reprodução entra em uma faixa pelo pregap quando ela tem um (index 00, áudio de faixa oculta incluído) enquanto o relógio mostra o tempo da faixa: a posição prende em zero até a faixa propriamente dita começar, e a duração exibida exclui o pregap, correspondendo ao comportamento de um player de CD.
+
+## Sem lacunas
+
+A próxima faixa é aberta e armazenada em buffer enquanto a atual toca. Quando as duas compartilham taxa de amostragem e contagem de canais, o mecanismo as encadeia dentro do callback de áudio ao vivo: o stream nunca para, e o limite é exato em amostras. Quando formatos diferem, o stream é reconstruído, que é o caso em que uma mudança de formato torna o limite audível de qualquer forma.
+
+## Intensidade sonora
+
+A importação mede loudness integrado (EBU R128) e pico verdadeiro, por faixa e por álbum, durante a passada de verificação de decodificação. Replay gain é derivado dessas medições no momento da reprodução, nunca embutido nos arquivos: alvo −18 LUFS, limitado para que o pico verdadeiro não clipe, aplicado por faixa ou por álbum, trocando de forma limpa em limites sem lacunas. O modo atualmente é distribuído sem interface de ajustes e vem desligado por padrão; pode ser definido no arquivo de configuração da biblioteca.
+
+## Pausas de lado
+
+Listas de faixas carregam sua estrutura de lado e disco, e o mecanismo pode segurar em um limite de lado, mostrando um prompt para continuar, quando o usuário ativa pausa entre lados. A retenção é um estado do serviço de reprodução, não um silêncio decodificado, então retomar é imediato.

@@ -1,0 +1,41 @@
+---
+title: Arquitetura
+description: Apps nativos sobre um núcleo Rust, sobre coven
+---
+
+bae é um núcleo Rust vestindo quatro apps nativos. Tudo que define o produto, o modelo de biblioteca, importação, reprodução, sincronização e criptografia vive em Rust e se comporta igual em todas as plataformas; cada app é uma interface nativa fina sobre ele.
+
+## As camadas
+
+- **`bae-core`**: o produto. Modelo de biblioteca e metadados, pipelines de importação e identificação, mecanismo de reprodução com FFmpeg, análise de intensidade sonora, exportação e a integração com coven abaixo. Importação e identificação compilam só no desktop; builds móveis são clientes de sincronização e reprodução.
+- **[coven](https://coven.bae.fm)**: a camada de dados, uma biblioteca separada. coven possui a conexão SQLite, captura toda mudança que bae grava e sincroniza essas mudanças com criptografia de ponta a ponta pelo armazenamento em nuvem do usuário. Também possui armazenamento de blobs (bytes de áudio, arte), cache local, chaves de identidade e associação. bae fixa uma revisão exata de coven e a carimba em todo binário; ela define a geração de compatibilidade de sincronização entre builds.
+- **`bae-bridge`**: a fronteira UniFFI. Tipos de ponte são definidos uma vez em Rust e gerados para Swift e Kotlin em tempo de build.
+- **Os apps**: SwiftUI no macOS e iOS, Jetpack Compose no Android e um app nativo para Windows. Cada um também implementa as peças de plataforma que o núcleo pede: saída de áudio, reconhecimento de texto em arte, controles de mídia, acesso ao chaveiro, relatório de crash.
+
+Junto aos apps: `bae-mcp` (o servidor MCP), `bae-cli` (linha de comando) e `bae-automation` (a camada de ferramentas compartilhada usada pelos dois).
+
+## Uma biblioteca no disco
+
+Uma biblioteca vive em `~/.bae/libraries/<library-id>/` (um diretório de dados da plataforma no mobile):
+
+```
+~/.bae/libraries/<id>/
+  library.db        # SQLite: catálogo, créditos, especificações de reprodução
+  config.yaml       # ajustes locais do dispositivo, nunca sincronizados
+  storage/
+    local/          # blobs que este dispositivo possui (capas, imagens de artistas)
+    cache/          # cópias removíveis de blobs da nuvem
+    pinned/         # cópias fixadas para offline, nunca removidas
+```
+
+O banco de dados é aberto só por coven, que adiciona suas próprias tabelas de controle (cursores de sincronização, caixa de saída, estado de blobs) ao lado do esquema de bae e executa as migrações de bae. Arquivos de áudio importados como não gerenciados não ficam sob `~/.bae`: o banco de dados os referencia nos caminhos onde foram importados.
+
+Segredos nunca vivem nesses arquivos. Chaves de identidade, a chave de criptografia da biblioteca, credenciais da nuvem e tokens de API vivem no chaveiro do sistema operacional (Keychain nas plataformas Apple, sincronizado via iCloud Keychain; equivalentes da plataforma em outros lugares).
+
+## Edições
+
+Duas edições de build existem em todas as plataformas. **bae** compila os provedores OAuth (Google Drive, Dropbox, OneDrive), CloudKit e telemetria. **baeium** compila tudo isso fora: apenas armazenamento compatível com S3, sem telemetria, nada proprietário na árvore de dependências. As edições são o mesmo código-fonte e o mesmo núcleo; uma flag de recurso decide a lista de provedores e a ligação de diagnósticos.
+
+## Versionamento
+
+Apps versionam como `MAJOR.MINOR` por plataforma. O major é a era de compatibilidade, compartilhada por todos os apps: dispositivos no mesmo major podem sincronizar uma biblioteca. Ele sobe só quando um formato de fio ou de disco quebra, na maioria das vezes a revisão fixada de coven. Minors contam lançamentos por app e não são comparáveis entre plataformas.

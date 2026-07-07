@@ -1,0 +1,43 @@
+---
+title: Sincronização
+description: Sua biblioteca inteira em todos os dispositivos, pela sua própria nuvem
+---
+
+Sincronização normalmente significa o servidor de outra pessoa: uma conta, uma assinatura, uma empresa que pode ler sua biblioteca. bae sincroniza pela **sua** nuvem, armazenamento que você já tem, e não roda servidor nenhum. Seus dispositivos escrevem mudanças criptografadas nesse armazenamento e leem as dos outros; o provedor guarda os bytes e não consegue lê-los.
+
+Uma biblioteca, todos os dispositivos, e a única conta envolvida é uma que você já possui.
+
+## O local na nuvem
+
+O local na nuvem de uma biblioteca é uma localização no seu armazenamento: uma pasta no seu Google Drive, Dropbox ou OneDrive, seu iCloud, ou qualquer bucket compatível com S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Ele guarda tudo que a biblioteca sincroniza: as mudanças do catálogo, arte e o áudio dos lançamentos que você deixa bae gerenciar.
+
+Configure em Ajustes, em Sincronização:
+
+1. Escolha um provedor. Nuvens de consumidor entram pela própria página de login do provedor; nada da sua conta é armazenado além dos tokens que ela emite. iCloud usa seu Apple ID como está. S3 recebe bucket, região, endpoint e chaves, conferidos antes de serem salvos.
+2. Escolha como o local armazena objetos (veja abaixo).
+3. bae começa a sincronizar.
+
+Uma biblioteca sem local na nuvem é completa por si. Somente local é um modo, não uma limitação, e desconectar o local na nuvem retorna a ele.
+
+## Opaco ou navegável
+
+Na configuração você escolhe o que o provedor consegue ver, e a escolha é permanente para aquele local:
+
+- **Opaco** (o padrão): todo objeto é criptografado no seu dispositivo antes do upload e armazenado com nomes sem significado. O provedor, ou qualquer pessoa que entre no bucket, vê texto cifrado. Este é o modo descrito pela página de [criptografia](/pt-br/reference/encryption), e o único modo que permite adicionar outros dispositivos e membros.
+- **Navegável**: objetos são armazenados em claro com nomes de arquivo reais, em pastas nomeadas por artista e álbum. Você pode abrir o bucket com qualquer ferramenta e copiar ou reproduzir seus arquivos diretamente. Nada é criptografado, então o controle de acesso do próprio bucket é a única proteção, e o local não pode ser compartilhado.
+
+## O que sincroniza
+
+- O catálogo: álbuns, lançamentos, faixas, créditos, obras, identidades, edições. Todo dispositivo recebe tudo.
+- Arte: capas e imagens de artistas, buscadas de antemão para que grades renderizem em todos os lugares.
+- Áudio: só para lançamentos que você escolheu gerenciar na nuvem. Lançamentos não gerenciados permanecem puramente locais, entradas de catálogo incluídas em outros dispositivos, mas bytes só onde você os importou.
+
+Estado por dispositivo não sincroniza: posição de reprodução, volume, fila e ajustes do dispositivo ficam no dispositivo.
+
+## Quando sincroniza
+
+A sincronização roda por conta própria: depois de mudanças, em um temporizador e sob demanda com **Sync Now**. Edições chegam a outros dispositivos como mudanças pequenas, segundos depois em condições normais. Dois dispositivos editando ao mesmo tempo ganham onde não colidem: bae mescla edições concorrentes campo por campo, e um lançamento excluído permanece excluído mesmo se foi editado em outro lugar no mesmo momento. Nada pede que você resolva um conflito.
+
+## Quando falha
+
+Falhas de sincronização não interrompem a biblioteca; você continua navegando, reproduzindo e importando localmente enquanto bae tenta novamente com espera progressiva. A linha de status mostra sincronização e horário da última sincronização; uma falha mostra um banner com o erro, e uploads podem ser pausados, repetidos e inspecionados no [Gerenciador de armazenamento](/pt-br/guide/storage#the-storage-manager). Se o login do local na nuvem expirar, bae pede para você reconectar.

@@ -1,0 +1,41 @@
+---
+title: Reprodução
+description: Qualidade original e os detalhes com que os lançamentos foram feitos
+---
+
+Discos foram feitos com estrutura que players de arquivos tendem a achatar: lados que terminam, áudio oculto antes da faixa um, músicas que entram umas nas outras. bae mantém os detalhes de reprodução de um lançamento e os reproduz do jeito que o lançamento pretendia, a partir dos seus arquivos originais, intocados.
+
+## Qualidade original
+
+A reprodução decodifica seus arquivos como importados. Não há transcodificação, reescrita de intensidade sonora nem recodificação no servidor; o dispositivo de áudio é acionado na taxa de amostragem do próprio arquivo. O que você ripou é o que toca. Todo formato que bae importa, ele reproduz: FLAC, MP3, APE, ALAC, AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack, DSD.
+
+## Sem lacunas
+
+Álbuns mixados como uma peça contínua tocam assim. A próxima faixa é preparada enquanto a atual toca, e quando as duas compartilham um formato o áudio nunca para no limite: sem lacuna, sem clique.
+
+## Pregaps de CD
+
+CDs podem ocultar áudio no intervalo antes de uma faixa começar, inclusive antes da faixa um, o truque clássico de faixa oculta. Quando um lançamento é importado de um rip com folha CUE, bae sabe onde cada pregap está e os reproduz: o contador de tempo da faixa começa em zero onde a faixa propriamente dita começa, e o áudio oculto anterior toca no intervalo, exatamente como no CD. Exportações podem manter, descartar ou anexar novamente pregaps; veja [Exportação](/pt-br/guide/exporting).
+
+## Quebras de lado
+
+Lançamentos em vinil e cassete têm lados, e alguns discos usam a pausa entre eles de propósito. Ative **Pause between sides** nos ajustes de Reprodução e bae pausa a reprodução em cada limite de lado, pedindo para você continuar, a virada sem virar. Listas de faixas agrupam por lado e disco, então a estrutura fica visível enquanto você navega.
+
+## A fila
+
+A reprodução sempre tem um contexto: o lançamento que você iniciou, ou a biblioteca inteira se você a colocou em aleatório. A fila mostra duas faixas:
+
+- **Up Next**: faixas que você enfileirou manualmente, tocadas primeiro. Arraste faixas para dentro, reordene, remova.
+- **Playing from**: o restante do contexto, com seu próprio botão de aleatório.
+
+**Play Next** e **Add to Queue** ficam em toda faixa e álbum. Repetir alterna entre desligado, repetir o contexto e repetir uma faixa.
+
+## Controles
+
+Reproduzir/pausar em <kbd>Space</kbd>, próxima e anterior pelo teclado, o controle de progresso para buscar. bae se integra ao sistema: teclas de mídia, Control Center em plataformas Apple, notificações de mídia no Android, controles de tela bloqueada no telefone, com arte e informações da faixa onde o sistema as mostra.
+
+Ao sair, o app de desktop pode salvar o que estava tocando, incluindo fila e posição, e retomar no próximo lançamento: **Restore on launch** nos ajustes de Reprodução.
+
+## Offline
+
+Um lançamento toca onde quer que seus bytes possam ser alcançados: arquivos locais tocam diretamente, lançamentos gerenciados na nuvem são transmitidos enquanto tocam, e lançamentos fixados estão sempre no dispositivo. Veja [Armazenamento e offline](/pt-br/guide/storage).

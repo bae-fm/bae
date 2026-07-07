@@ -1,0 +1,28 @@
+---
+title: Criptografia
+description: O que é a chave da biblioteca, onde ela vive e que texto cifrado o provedor guarda
+---
+
+Tudo que bae coloca em um local opaco na nuvem é criptografado antes de sair do dispositivo. bae não implementa criptografia própria: o esquema inteiro é de [coven](https://coven.bae.fm), e esta página descreve como bae o usa. Locais navegáveis ficam fora disso; nada abaixo se aplica a eles.
+
+## A chave da biblioteca
+
+Uma biblioteca opaca tem um segredo raiz: uma chave aleatória de 256 bits criada quando o local é criado. Ela vive no chaveiro do sistema operacional, nunca em um arquivo; em plataformas Apple, a entrada do chaveiro sincroniza pelo iCloud Keychain. A configuração de bae armazena só uma impressão digital da chave, suficiente para distinguir uma chave errada de uma certa ao desbloquear sem guardar o segredo.
+
+A chave viaja entre dispositivos de duas formas, ambas descritas em [Identidade e associação](/pt-br/reference/membership): selada para a chave pública de um dispositivo aprovado durante um convite e carregada dentro de um código de recuperação.
+
+## Gerações
+
+A chave da biblioteca é na verdade um chaveiro de gerações numeradas. Remover um membro anexa uma nova geração que o membro removido nunca recebe: tudo escrito depois usa a nova geração e fica ilegível para ele, enquanto membros restantes mantêm todas as gerações e conseguem ler todo o histórico. Cada objeto selado registra, em claro, qual geração o abre.
+
+## O que é selado
+
+Todo objeto no local: changesets, snapshots, blobs de áudio, arte, registros de associação, objetos de controle. Objetos são selados com XChaCha20-Poly1305 em blocos de 64 KB, cada bloco autenticado, e vinculados ao seu contexto: um objeto selado só descriptografa como o objeto que foi escrito para ser, para esta biblioteca, nesta chave. O particionamento em blocos é por isso que streaming funciona: o player pode descriptografar exatamente os intervalos de bytes que busca.
+
+## O que o provedor consegue ver
+
+Quantidade de objetos, tamanhos de objetos, tempo de upload e padrões de acesso. Não nomes, não metadados, não áudio, não arte, não associação. Não há recuperação no servidor: um usuário que perde todos os dispositivos e toda cópia da chave perdeu o texto cifrado da biblioteca para sempre, que é o desenho funcionando como pretendido.
+
+## Desbloquear e bloquear
+
+Abrir uma biblioteca lê a chave do chaveiro. Se a biblioteca espera uma chave e o chaveiro não a tem, bae trata a biblioteca como bloqueada: pede a chave antes de abrir, validando a entrada contra a impressão digital armazenada antes de salvá-la de volta no chaveiro. Bloquear uma biblioteca remove a chave do chaveiro de propósito; nada no local na nuvem pode ser lido ou escrito até ela ser inserida novamente.

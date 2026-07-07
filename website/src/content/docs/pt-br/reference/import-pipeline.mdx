@@ -1,0 +1,43 @@
+---
+title: Pipeline de importação
+description: Escaneamento, evidência, triangulação e gravação atômica
+---
+
+A importação transforma uma pasta de arquivos em uma entrada de catálogo fiel ao lançamento sem modificar um byte dos arquivos. Esta página é o pipeline por trás do fluxo descrito no [guia de uso](/pt-br/guide/importing).
+
+## Escaneamento
+
+Pastas monitoradas são observadas pelos eventos de sistema de arquivos da plataforma, agrupadas para evitar repetição e reescaneadas em mudanças; escaneamentos reconciliam contra a lista de candidatos existente em vez de começar do zero. O scanner classifica uma pasta como um lançamento (áudio diretamente dentro, ou subpastas em formato de disco como `CD1`/`CD2`) ou entra nela como uma coleção. Arquivos são classificados por extensão em áudio, arte e documentos; depois o áudio é sondado: o codec que importa é o que FFmpeg encontra nos bytes, não a extensão do arquivo. Pastas contendo marcadores de download parcial são excluídas até o download terminar.
+
+Uma folha CUE transforma uma imagem de áudio em lista de faixas. O parser lida com pregaps e postgaps, intérpretes e ISRCs por faixa, e tanto imagens de arquivo único quanto layouts CUE de um arquivo por faixa. Limites de faixa convertem de quadros CUE (1/75 de segundo) para posições exatas de amostra, que depois viram as janelas de bytes e amostras usadas pela reprodução.
+
+## Evidência, não tags
+
+A identificação lê três tipos de evidência da pasta em uma passada:
+
+- um **Disc ID**, a impressão digital MusicBrainz do layout exato de faixas de um CD, calculada a partir de um log de rip ou da folha CUE;
+- **códigos de barras**, decodificados de scans de arte pelo framework de visão da plataforma e lidos de campos catalog da CUE;
+- **texto**: números de catálogo e texto livre de OCR de arte, nomes de pastas e arquivos, e arquivos de texto no rip.
+
+Tags embutidas de áudio deliberadamente não são evidência: elas descrevem o que um marcador acreditou, não o que a prensagem é. (Elas alimentam os metadados de fallback quando o usuário importa um lançamento como desconhecido.)
+
+Disc ID e código de barras são consultados concorrentemente, o Disc ID contra MusicBrainz, o código de barras contra MusicBrainz e Discogs ao mesmo tempo, e os resultados são triangulados: resultados que concordam em um grupo de lançamentos convergem, correspondências de número de catálogo estreitam a lista de prensagens, e discordância entre sinais aparece como conflito explícito para o usuário em vez de melhor palpite silencioso. Todo resultado carrega sua procedência (encontrado por Disc ID, por código de barras, correspondência de catálogo) para que a interface possa dizer por que uma linha está sendo oferecida.
+
+## Fontes
+
+MusicBrainz é consultado anonimamente com ritmo estrito de uma solicitação por segundo. Discogs autentica com o token pessoal do usuário vindo do chaveiro, respeita limites de taxa e tenta novamente dentro deles, e um token rejeitado é relatado como tal para que a interface possa sinalizar em vez de buscas falharem em silêncio. Respostas são armazenadas em cache por sessão, e o JSON bruto de qualquer fonte vencedora é arquivado no banco de dados para futura reinterpretação.
+
+## Gravação
+
+Confirmar uma importação roda, em ordem:
+
+1. **Verificação de decodificação**: toda faixa é decodificada do começo ao fim; um rip que não consegue decodificar completamente falha a importação antes de qualquer coisa ser escrita (uma flag de configuração pode desativar isso).
+2. **Análise de intensidade sonora**: loudness integrado e pico verdadeiro são medidos por faixa e por álbum durante a mesma passada de decodificação, armazenados para uso de replay gain.
+3. **Seleção de capa**: a arte escolhida (remota, imagem da pasta ou embutida) é renderizada novamente para uma miniatura de exibição; a original é mantida entre os arquivos do lançamento se veio da pasta.
+4. **Escrita atômica**: lançamento, faixas, créditos, identidades, formatos, segmentos, arquivos e capa são gravados em uma transação. Não existe estado meio importado.
+
+O lançamento entra referenciando os arquivos do usuário no lugar. Se o usuário escolheu gerenciado na nuvem, o upload acontece depois da gravação como uma transição de armazenamento, e os bytes originais dos arquivos permanecem a fonte de verdade o tempo todo; nada que o usuário deu a bae é apagado ou alterado.
+
+## Reconhecendo rips
+
+Cada lançamento registra um hash de conteúdo sobre a estrutura da pasta importada (caminhos relativos e tamanhos, independente de localização). Reescaneamentos o usam para marcar pastas já na biblioteca, e reimportações do mesmo rip encontram e substituem o lançamento anterior em vez de duplicá-lo.

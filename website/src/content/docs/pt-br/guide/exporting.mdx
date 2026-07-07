@@ -1,0 +1,25 @@
+---
+title: Exportação
+description: Tire música da biblioteca no formato de que você precisa
+---
+
+Sem aprisionamento funciona nos dois sentidos: bae não altera seus arquivos ao entrar, e não os mantém reféns ao sair. Lançamentos não gerenciados já são só arquivos nas suas pastas. Lançamentos gerenciados podem voltar a ser locais a qualquer momento, byte por byte. E quando você precisa de um formato diferente, uma codificação adequada ao telefone, uma imagem pronta para gravação, a exportação o produz sem tocar nos originais.
+
+## Duas exportações
+
+- **Exportação de faixa**: clique com o botão direito em uma faixa, **Save As**, escolha um formato, pronto.
+- **Exportação de lançamento**: pelo menu do álbum ou pelo Gerenciador de armazenamento, exporta um lançamento inteiro para uma pasta. Roda em uma fila com progresso, pausa e nova tentativa.
+
+Arquivos originais são exportados como estão. Todo o resto é codificado na saída.
+
+## Predefinições
+
+Formatos de exportação são predefinições que você define uma vez em Ajustes: FLAC, MP3, Opus, WAV ou AIFF, com os parâmetros do codec (profundidade de bits para formatos sem perdas, taxa de bits para os com perdas) e um modelo de nome de arquivo feito de tokens como título, artista, álbum, ano e número da faixa. Defina uma predefinição padrão para faixas e uma para lançamentos, e escolha se exportações de lançamento sempre pedem um destino ou sempre usam uma pasta fixa.
+
+## Pregaps em exportações
+
+Rips de CD com pregaps levantam uma pergunta real na saída: para onde vai o áudio oculto? Cada predefinição escolhe uma política:
+
+- **Anexar à faixa anterior**, a convenção comum, com a escolha de manter o áudio oculto antes da faixa um no início da faixa um ou descartá-lo.
+- **Excluir** pregaps inteiros: limites de faixa limpos, áudio oculto omitido.
+- **Arquivo único com CUE**: o disco como um arquivo de áudio mais uma folha CUE, preservando o layout original exatamente.

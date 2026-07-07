@@ -1,0 +1,43 @@
+---
+title: Modelo de dados
+description: O esquema, o que sincroniza e o que fica no dispositivo
+---
+
+O catálogo de bae é SQLite comum, declarado para [coven](https://coven.bae.fm) tabela por tabela: tabelas sincronizadas carregam um relógio de conflito e viajam para todo dispositivo; tabelas não declaradas nunca saem do dispositivo. A divisão é a decisão mais determinante do modelo de dados, então esta página se organiza em torno dela.
+
+## O grafo do catálogo
+
+O coração sincronizado do esquema:
+
+- **`artists`**, **`albums`**, **`works`**: a camada de agrupamento. Um álbum agrega seus lançamentos e aponta para um primário; obras formam um grafo pai/filho para estrutura clássica.
+- **`releases`**: a entidade central, uma linha por prensagem. Carrega os fatos da prensagem (selo, número de catálogo, código de barras, país, formato, ano), a fonte de metadados, um hash de conteúdo da pasta importada e a intensidade sonora medida do álbum.
+- **`release_identities`**: o que um lançamento *é*, por fonte. Sem linhas significa desconhecido; uma linha MusicBrainz ou Discogs com um ID de lançamento significa exato; sem um, aproximado. Um lançamento pode manter identidades nas duas fontes ao mesmo tempo.
+- **`tracks`** com **`track_artists`**, mais **`release_artist_roles`** e **`track_artist_roles`**: listas de faixas e créditos, cada crédito marcado com sua fonte.
+- **`track_works`**, **`work_parts`**, **`work_artists`**: gravações vinculadas às obras que executam.
+- **`audio_formats`** e **`audio_format_segments`**: as especificações de reprodução. Por faixa: codec, taxa de amostragem, profundidade de bits, canais, intensidade sonora e pico medidos, e durações de pregap. Segmentos mapeiam uma faixa para janelas ordenadas de bytes e amostras dos arquivos-fonte, que é como a faixa de um rip CUE, incluindo pregap, pode atravessar regiões de um arquivo grande ou de vários arquivos.
+- **`release_files`**, **`covers`**, **`artist_images`**: tabelas que carregam blobs. Linhas são entradas de catálogo; os bytes vivem na camada de blobs de coven (veja abaixo).
+
+## Sincronizado, com portão, local
+
+Tudo acima sincroniza, mas não incondicionalmente. `releases` é declarado como raiz com portão na coluna `remote`: uma linha de lançamento e toda a sua subárvore (faixas, arquivos, créditos, formatos, capa) sincronizam só enquanto `remote` é true, isto é, enquanto o lançamento é gerenciado na nuvem. Mudar um lançamento para gerenciado publica a subárvore; um lançamento não gerenciado permanece inteiramente no dispositivo de importação, mesmo que seu esquema seja sincronizado. As tabelas ancestrais (`artists`, `albums`, `works`) sincronizam só enquanto algum lançamento sincronizado ainda as referencia, então um dispositivo nunca recebe um artista sem nada abaixo dele.
+
+Tabelas totalmente locais, nunca declaradas para coven:
+
+- **`playback_state`**: faixa atual, posição, fila, volume, aleatório e repetição. Reprodução é um fato do dispositivo.
+- **`imports`**: acompanhamento de operações de importação.
+- **`release_metadata`**: JSON bruto arquivado do MusicBrainz e Discogs, mantido para futura reinterpretação.
+- **`attribution_names`**: nomes de exibição para chaves de membros.
+
+Toda tabela sincronizada carrega uma coluna `_updated_at` de relógio lógico híbrido, o registrador pelo qual a mesclagem campo a campo de coven ordena edições concorrentes; um teste impõe que o conjunto sincronizado e o conjunto que carrega relógio sejam exatamente iguais.
+
+## Blobs
+
+Áudio e imagens passam pela camada de blobs de coven em três namespaces, cada um com seu próprio limite de cache por dispositivo: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+
+Arquivos de lançamento são fornecidos pelo usuário e armazenados em cache sob demanda: para um lançamento não gerenciado, o blob é uma referência externa ao arquivo do usuário no caminho original; para um gerenciado, é um objeto enviado que é buscado para o cache na primeira leitura. Capas e imagens de artistas são fornecidas pelo host e armazenadas de antemão: bae produz os bytes (capas são renderizadas novamente como miniaturas JPEG com no máximo 600px de largura), e todo dispositivo as busca ao puxar para que grades renderizem localmente.
+
+Em um local opaco, blobs sobem com chaves de conteúdo sem significado. Em um local navegável, cada linha de blob registra um caminho legível na nuvem (`{artist}/{album}/{filename}` para áudio, `{album}/{release}/cover.{ext}` para capas), calculado uma vez no upload para que uma renomeação posterior nunca mova o objeto.
+
+## Identidade de um rip
+
+`releases.content_hash` é um SHA-256 sobre a estrutura de arquivos da pasta importada (caminhos relativos e tamanhos), independente de onde a pasta fica no disco. É assim que bae reconhece um rip já importado quando ele aparece novamente em uma pasta monitorada, e como reimportações encontram o lançamento que devem substituir.

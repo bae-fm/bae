@@ -1,0 +1,35 @@
+---
+title: Identidade e associação
+description: Chaves como identidades, o aperto de mão de entrada, funções e revogação
+---
+
+Não existe sistema de contas em lugar nenhum de bae. A identidade de um dispositivo é um par de chaves Ed25519 que ele gera para si e guarda no chaveiro do sistema operacional; a chave pública *é* a identidade. Quem pertence a uma biblioteca é um conjunto de registros assinados no local na nuvem, verificável por qualquer pessoa que os tenha, emitido por nenhum servidor. O mecanismo é de [coven](https://coven.bae.fm); esta página mostra como bae o usa.
+
+## Registros de associação
+
+Cada proprietário escreve um fluxo somente de acréscimo de entradas de associação assinadas no local na nuvem: esta chave foi adicionada com esta função, esta chave foi removida. Cada entrada se vincula à anterior, e cada proprietário assina uma cabeça declarando a ponta do seu fluxo, então um provedor que descarta ou reordena registros é detectado em vez de ser acreditado. O que a biblioteca aceita é a união de todo fluxo verificado de proprietário.
+
+Em cada pull, o autor de cada changeset é conferido contra esse registro: assinado por um membro atual, com uma função que pode escrever. Changesets de dispositivos removidos, de chaves nunca adicionadas ou com assinaturas inválidas não se aplicam. O provedor armazena os registros, mas não consegue falsificá-los; só titulares de chaves de proprietário podem alterar associação.
+
+## Funções
+
+**Owner** e **Member** leem e escrevem a biblioteca; proprietários também aprovam e removem dispositivos. O dispositivo fundador de bae é um proprietário, e todo dispositivo que ele aprova entra como membro. (Uma terceira função existe no mecanismo subjacente, um seguidor somente leitura, que bae não atribui atualmente.)
+
+## O aperto de mão de entrada
+
+Adicionar um dispositivo é uma troca de dois códigos com verificação humana explícita no meio:
+
+1. O dispositivo que entra gera seu par de chaves e mostra uma **join request**: sua chave pública, uma impressão digital curta dela e (para provedores OAuth) a conta de nuvem com a qual compartilhar a pasta.
+2. Um proprietário decodifica a solicitação, e as duas telas mostram a mesma impressão digital. A pessoa confere que elas correspondem; esta é a etapa que derrota uma chave trocada.
+3. A aprovação faz três coisas de uma vez: concede à conta do recém-chegado acesso ao local na nuvem (compartilhamento de pasta em nuvens de consumidor, credenciais embutidas em S3, um compartilhamento CloudKit no iCloud), sela a chave da biblioteca para a chave pública do recém-chegado e assina uma entrada de associação adicionando-o. Tudo isso é empacotado em um **invite code**.
+4. O dispositivo que entra consome o convite, abre a chave, inicializa a partir do snapshot mais recente e sincroniza.
+
+O convite é selado para a chave solicitante: interceptá-lo não concede nada.
+
+## Revogação
+
+Remover um membro anexa uma remoção assinada e rotaciona a chave da biblioteca para uma nova geração que a chave removida nunca recebe (veja [Criptografia](/pt-br/reference/encryption#generations)). Em armazenamento que consegue revogar acesso, o acesso também é retirado. O que já foi sincronizado para o dispositivo removido fica com ele; dados não podem ser retirados. Tudo depois da rotação fica fora do alcance dele.
+
+## Códigos de recuperação
+
+Um código de recuperação contorna a associação de propósito: ele é as coordenadas do local na nuvem mais a chave da biblioteca, em uma string bearer, para restaurar sua própria biblioteca sem aprovador sobrevivente. Ele é gerado sob demanda, armazenado automaticamente no iCloud Keychain em plataformas Apple, e é tão sensível quanto a própria biblioteca.

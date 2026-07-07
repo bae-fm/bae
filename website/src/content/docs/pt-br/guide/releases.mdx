@@ -1,0 +1,39 @@
+---
+title: Lançamentos e metadados
+description: Uma biblioteca fiel aos lançamentos, e como mantê-la certa
+---
+
+A maioria dos apps de música modela "um álbum": um título, uma capa, uma lista de faixas. Coleções reais não funcionam assim. Você pode possuir o CD original, a remasterização e uma prensagem em vinil do mesmo disco, e eles diferem em listas de faixas, tempos, arte e créditos. bae modela **lançamentos**: cada importação é uma prensagem específica, e prensagens do mesmo álbum são agrupadas.
+
+## Álbuns agrupam lançamentos
+
+Na biblioteca, um álbum com várias prensagens é uma entrada. A página do álbum mostra um seletor de lançamento; cada lançamento mantém sua própria lista de faixas, capa, ano, selo, número de catálogo e créditos. Um lançamento é o **primário**: aquele que a grade de álbuns e a reprodução usam por padrão. Defina qualquer lançamento como primário pelo menu do álbum, e escolha um lançamento diferente para ouvir a qualquer momento; bae lembra sua escolha por álbum.
+
+## O que um lançamento sabe
+
+Lançamentos identificados carregam o conhecimento dos bancos de dados, não só nomes de faixas:
+
+- Detalhes de prensagem: selo, número de catálogo, código de barras, país, formato, ano.
+- Créditos: intérpretes, produtores, engenheiros, por lançamento e por faixa.
+- Estrutura clássica: compositores, obras e suas partes, vinculadas às gravações delas. A visualização de compositores da biblioteca é construída a partir disso; veja [Navegação e busca](/pt-br/guide/browsing).
+- Identidade: qual entrada do MusicBrainz ou Discogs é esta, e se a correspondência é exata ou aproximada.
+
+Os registros-fonte brutos também são mantidos, para que o lançamento possa ser reinterpretado depois sem consultar os bancos de dados novamente.
+
+## Edição
+
+Os metadados são seus para corrigir. **Edit metadata** em qualquer lançamento abre o mesmo formulário usado pela confirmação de importação: título e artista do álbum, detalhes de prensagem e título, artista e numeração de cada faixa. **Reset to source** volta ao que o banco de dados dizia.
+
+Edições vivem só no banco de dados de bae. As tags embutidas dos seus arquivos nunca são reescritas; os arquivos permanecem byte por byte como importados.
+
+## Reidentificar
+
+Se um lançamento foi importado como desconhecido, associado à prensagem errada ou o banco de dados melhorou desde então, **Re-identify** executa o fluxo de identificação novamente no lançamento existente: mesmos sinais, mesmas ferramentas de busca. Depois que a nova correspondência é gravada, bae pergunta se deve atualizar os metadados a partir da nova fonte (sobrescrevendo suas edições) ou manter o que você tem.
+
+## Capas
+
+Todo lançamento tem uma capa de exibição. **Change cover** oferece a arte dos bancos de dados e os arquivos de imagem que vieram com o lançamento. bae mantém sua própria cópia da capa escolhida, dimensionada para exibição, então o scan original na sua pasta fica intocado. Toque em uma capa em qualquer lugar para abrir a galeria completa das imagens de um lançamento.
+
+## Exclusão
+
+Excluir um lançamento o remove da biblioteca e, para lançamentos gerenciados, do local na nuvem. Arquivos importados no lugar, não gerenciados, nunca são excluídos: bae só os esquece.

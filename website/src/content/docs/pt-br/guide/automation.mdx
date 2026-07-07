@@ -1,0 +1,16 @@
+---
+title: Automação
+description: Controle a biblioteca por agentes, scripts e linha de comando
+---
+
+A biblioteca pode ser controlada por software que você executa: agentes de IA via MCP e scripts via ferramenta de linha de comando. Ambos expõem as mesmas operações usadas pela interface: busca, detalhes de lançamentos, importações, ações de armazenamento e estado de reprodução.
+
+## O servidor MCP
+
+Ative o servidor MCP em Ajustes, Automação. Ele serve o Model Context Protocol por HTTP em uma porta local (47777 por padrão), para que clientes MCP como Claude possam navegar pela sua biblioteca, consultar lançamentos e agir sobre eles. O acesso exige um token bearer: copie-o no mesmo painel de ajustes e faça a rotação ali sempre que quiser bloquear tudo que o tinha.
+
+O servidor fica desativado por padrão e só roda enquanto o app roda.
+
+## A linha de comando
+
+A CLI `bae` controla as mesmas operações por um terminal: JSON entra, JSON sai, adequado para scripts. Ela também pode atuar como cliente MCP, conectando o servidor do desktop a stdio para ferramentas que esperam um processo MCP local.

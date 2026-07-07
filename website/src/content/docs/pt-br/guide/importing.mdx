@@ -1,0 +1,64 @@
+---
+title: Importação
+description: Associe suas pastas a lançamentos reais
+---
+
+Uma pasta de rips sabe quase nada sobre si mesma. O lançamento de onde veio, a prensagem, o selo, os créditos, onde a faixa 12 realmente termina: tudo isso vive em bancos de dados como MusicBrainz e Discogs, não nos nomes dos seus arquivos. Importação é como bae conecta os dois: você aponta para sua música, ele descobre qual lançamento cada pasta é, e a biblioteca registra a pasta como esse lançamento.
+
+A importação acontece no desktop (macOS, Windows). Seus arquivos são lidos, nunca alterados: bae não move, renomeia, muda tags nem recodifica nada. Veja [Armazenamento e offline](/pt-br/guide/storage) para saber onde os arquivos vivem depois da importação.
+
+## Pastas monitoradas
+
+Mude para a seção **Import** e adicione uma pasta: escolha-a, arraste-a para a janela ou pressione <kbd>⌘I</kbd>. bae monitora a pasta a partir daí. Música nova colocada nela aparece como novos candidatos por conta própria; você não reescaneia manualmente. Pastas que ainda estão baixando são ignoradas até terminarem.
+
+Um escaneamento reconhece lançamentos nos formatos que rips realmente assumem:
+
+| Layout | Como aparece |
+|--------|--------------|
+| Arquivo por faixa | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE + imagem | `album.cue` + `album.flac`, um arquivo para o disco inteiro |
+| Vários discos | subpastas `CD1/`, `CD2/`, com qualquer formato dentro |
+| Coleções | uma pasta de pastas, cada uma seu próprio lançamento |
+
+bae importa os formatos que reproduz: FLAC, MP3, APE, ALAC e AAC em `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack e DSD (`.dsf`/`.dff`). Arte e documentos (folhas CUE, logs de rip, arquivos de texto) na pasta são reconhecidos e mantidos com o lançamento.
+
+## Identificando um lançamento
+
+Selecione um candidato e bae começa a identificá-lo. Em vez de adivinhar por tags, ele lê as evidências na pasta e consulta cada peça:
+
+- **Disc ID.** Uma impressão digital do layout exato de faixas do CD, calculada a partir do log de rip ou da folha CUE. Quando corresponde, identifica a edição precisa do CD.
+- **Código de barras.** Lido de scans de capa na pasta usando reconhecimento de texto, ou da folha CUE.
+- **Números de catálogo e texto.** Números de catálogo encontrados em arte e em nomes de arquivos e pastas, usados para estreitar resultados.
+
+Os sinais são consultados contra MusicBrainz e Discogs ao mesmo tempo, e os resultados são conferidos entre si. Cada sinal aparece como uma etiqueta acima dos resultados: você pode ver o que foi encontrado, de onde veio (passe o mouse para a origem: TOC do disco, folha CUE, scan de capa, nome da pasta), e desligar sinais individuais se algum enganar.
+
+Três resultados:
+
+- **Encontrado.** A evidência concorda em um grupo de lançamentos. Você escolhe a prensagem exata na lista.
+- **Conflito.** Dois sinais apontam para lançamentos diferentes, por exemplo o Disc ID e o código de barras discordam. bae mostra os dois lados e você escolhe em qual confiar, ou ignora um sinal.
+- **Nada encontrado.** Busque manualmente: artista e álbum, número de catálogo ou código de barras, contra qualquer banco de dados. Texto reconhecido da arte é oferecido como autocompletar.
+
+Você também pode **pular a identificação** e importar como um lançamento desconhecido. bae então recorre às tags embutidas dos seus arquivos para nomes, e você pode reidentificar depois, quando o lançamento existir em um banco de dados ou você tiver evidência melhor.
+
+## Exato ou aproximado
+
+Quando você seleciona uma correspondência, bae a confere contra seus arquivos e sinaliza divergência na contagem de faixas. Você então declara o que a correspondência é:
+
+- **Exato**: seus arquivos são esta prensagem.
+- **Só metadados**: álbum certo, mas não necessariamente esta prensagem exata. bae usa os metadados e lembra que a prensagem é aproximada.
+
+Se o lançamento já estiver na sua biblioteca, ou outra prensagem do mesmo álbum estiver, bae avisa antes de você importar uma duplicata.
+
+## Confirmar e importar
+
+O painel de confirmação mostra tudo que a importação vai escrever:
+
+- **Capa.** Escolhida da arte dos bancos de dados, das imagens na sua pasta ou da arte embutida nos arquivos. Você pode alterá-la depois.
+- **Metadados.** Álbum, artista, ano, selo, número de catálogo, país, código de barras e cada faixa: tudo editável aqui antes de qualquer coisa ser salva.
+- **Armazenamento.** Se um local na nuvem estiver conectado, escolha se bae deve gerenciar os arquivos na sua nuvem e se também deve manter uma cópia local. Veja [Armazenamento e offline](/pt-br/guide/storage).
+
+A importação roda em segundo plano: bae verifica se cada faixa decodifica até o fim, mede a intensidade sonora do álbum e de cada faixa, salva o lançamento e, para importações gerenciadas, inicia o upload. A lista de candidatos avança para a próxima pasta, e o lançamento pode ser reproduzido imediatamente.
+
+## Fontes de dados
+
+**MusicBrainz** não precisa de conta nem chave. **Discogs** exige seu próprio token gratuito de API; cole-o em Ajustes, e bae avisa se ele parar de funcionar. Sem token, busca no Discogs e metadados vindos do Discogs ficam indisponíveis, e todo o resto funciona. Ambos os serviços têm limite de taxa; bae espaça suas solicitações para ficar dentro dos limites.

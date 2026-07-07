@@ -1,0 +1,37 @@
+---
+title: Armazenamento em nuvem
+description: Provedores, autenticação e o formato do local na nuvem
+---
+
+O local na nuvem é uma localização no armazenamento que o usuário já possui. Todo provedor é controlado pela mesma interface de armazenamento em [coven](https://coven.bae.fm); o que difere por provedor é autenticação e como um segundo dispositivo recebe acesso.
+
+## Provedores
+
+| Provedor | Autenticação | Acesso para um dispositivo novo |
+|---|---|---|
+| Compatível com S3 | Chave de acesso + segredo | Credenciais embutidas no convite |
+| Google Drive | OAuth (PKCE) | Pasta compartilhada com a conta de quem entra |
+| Dropbox | OAuth (PKCE) | Pasta compartilhada com a conta de quem entra |
+| OneDrive | OAuth (PKCE) | Pasta compartilhada com a conta de quem entra |
+| iCloud (CloudKit) | Apple ID, sem login | Compartilhamento CloudKit aceito por quem entra |
+
+Compatível com S3 cobre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO e qualquer outro que fale a API; bucket, região, endpoint e prefixo de chave são configuráveis, e o bucket é testado antes de a configuração ser salva para que erro de digitação falhe na configuração, não na primeira sincronização. Os provedores OAuth existem só na edição **bae** completa; builds **baeium** os compilam fora.
+
+## OAuth
+
+O login é um fluxo de código de autorização com PKCE, como cliente público. No desktop, o redirecionamento chega a um servidor loopback vinculado a uma porta local para o único callback; no mobile, o app captura um redirecionamento de esquema personalizado. bae solicita o escopo mais estreito que o provedor oferece para o trabalho; no Google Drive, é acesso só aos arquivos que o próprio app cria. Tokens são armazenados no chaveiro do sistema operacional, renovados com a concessão de atualização do provedor, e uma atualização rejeitada aparece como pedido de reconexão em vez de loop silencioso de nova tentativa.
+
+CloudKit não precisa de fluxo: o driver CloudKit da plataforma, implementado no app e entregue ao núcleo, opera como o Apple ID conectado.
+
+## O layout do local
+
+Dentro do local, coven organiza fluxos de changesets por dispositivo, gerações de snapshots, registros de associação e namespaces de blobs. bae contribui três namespaces de blobs: `release_files`, `covers` e `artist_images`.
+
+Como objetos recebem chaves depende do modo de armazenamento do local, fixado na criação:
+
+- **Opaco**: objetos são criptografados e armazenados sob chaves derivadas do conteúdo que não revelam nada. Este é o modo de confiança total na criptografia; veja [Criptografia](/pt-br/reference/encryption).
+- **Navegável**: objetos são texto claro em caminhos legíveis registrados por blob no momento do upload: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. O bucket também é uma árvore de arquivos utilizável; a troca é não haver criptografia nem associação, então locais navegáveis não podem ser compartilhados com outras pessoas.
+
+## Comportamento em redes reais
+
+Leituras para reprodução usam intervalos: o player transmite as janelas de bytes de que precisa em vez de arquivos inteiros. Uploads acima de um limite de tamanho usam multipart onde o provedor oferece suporte. Limites de taxa e erros transitórios do provedor tentam novamente com espera exponencial, respeitando o retry-after do provedor quando fornecido; tokens OAuth expirados são renovados no lugar. A caixa de saída de sincronização sobrevive a reinícios: um upload interrompido ao sair do app retoma em vez de reiniciar.
