@@ -251,7 +251,7 @@ async fn failed_import_before_finalize_leaves_only_import_audit_row() {
         .sql({
             let import_id = import_id.clone();
             move |sql| {
-                let conn = sql.connection();
+                let conn = sql.tx();
                 let artist_count = conn.query_row("SELECT COUNT(*) FROM artists", [], |row| {
                     row.get::<_, i64>(0)
                 })?;

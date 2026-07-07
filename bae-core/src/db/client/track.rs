@@ -6,7 +6,7 @@ impl Database {
         let track = track.clone();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            insert_track_row(sql.connection(), &track, &reg)
+            insert_track_row(sql.tx(), &track, &reg)
         })
         .await
     }

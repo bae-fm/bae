@@ -143,6 +143,10 @@ async fn restore_from_code_config(
 /// selects on alongside the callback wait.
 #[cfg(feature = "oauth-providers")]
 static OAUTH_CANCEL_TX: Mutex<Option<tokio::sync::watch::Sender<bool>>> = Mutex::new(None);
+#[cfg(feature = "oauth-providers")]
+static OAUTH_REQUESTS: std::sync::LazyLock<
+    Mutex<std::collections::HashMap<String, coven::oauth::AuthorizeRequest>>,
+> = std::sync::LazyLock::new(|| Mutex::new(std::collections::HashMap::new()));
 
 fn lock_bridge_mutex<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     mutex
@@ -653,11 +657,11 @@ pub fn oauth_authorize(_provider: BridgeCloudProvider) -> Result<String, BridgeE
 }
 
 /// One step of the host-driven (mobile) OAuth flow: the URL to open and the
-/// PKCE verifier to pass back to [`oauth_complete`].
+/// opaque request id to pass back to [`oauth_complete`].
 #[derive(uniffi::Record)]
 pub struct BridgeOAuthRequest {
     pub auth_url: String,
-    pub verifier: String,
+    pub request_id: String,
 }
 
 /// Register the host's OAuth client credentials, keyed by provider name
@@ -692,7 +696,8 @@ pub fn set_oauth_client_creds(creds_json: String) -> Result<(), BridgeError> {
             },
         );
     }
-    coven::set_oauth_client_creds(creds);
+    coven::set_oauth_client_creds(creds)
+        .map_err(|e| BridgeError::config(format!("OAuth client credentials conflict: {e}")))?;
     Ok(())
 }
 
@@ -702,9 +707,9 @@ pub fn set_oauth_client_creds(_creds_json: String) -> Result<(), BridgeError> {
     Err(oauth_unavailable())
 }
 
-/// Begin a host-driven OAuth flow: build the authorization URL + PKCE verifier
-/// for `provider`, redirecting to `redirect_uri` (a custom scheme the mobile OS
-/// auth session captures). The host opens `auth_url`, captures the `code` from
+/// Begin a host-driven OAuth flow: build the authorization URL for `provider`,
+/// redirecting to `redirect_uri` (a custom scheme the mobile OS auth session
+/// captures). The host opens `auth_url`, captures the `code` and `state` from
 /// the redirect, and calls [`oauth_complete`]. Unlike [`oauth_authorize`] this
 /// binds no localhost port and opens no browser — it works in the iOS/Android
 /// sandbox.
@@ -717,9 +722,12 @@ pub fn oauth_begin(
     let core_provider = bridge_cloud_provider_to_core(provider);
     let req = coven::build_authorize_request_for_provider(core_provider, &redirect_uri)
         .map_err(|e| BridgeError::config(format!("OAuth begin failed: {e}")))?;
+    let auth_url = req.auth_url.clone();
+    let request_id = coven::oauth::generate_code_verifier();
+    lock_bridge_mutex(&OAUTH_REQUESTS).insert(request_id.clone(), req);
     Ok(BridgeOAuthRequest {
-        auth_url: req.auth_url,
-        verifier: req.verifier,
+        auth_url,
+        request_id,
     })
 }
 
@@ -733,23 +741,30 @@ pub fn oauth_begin(
 }
 
 /// Complete a host-driven OAuth flow: exchange the captured `code` for tokens
-/// and return the token JSON to pass to [`restore_from_code`]. `redirect_uri`
-/// and `verifier` must match the originating [`oauth_begin`].
+/// and return the token JSON to pass to [`restore_from_code`]. `redirect_uri`,
+/// `state`, and `request_id` must match the originating [`oauth_begin`].
 #[cfg(feature = "oauth-providers")]
 #[uniffi::export]
 pub fn oauth_complete(
     provider: BridgeCloudProvider,
     code: String,
-    verifier: String,
+    state: String,
+    request_id: String,
     redirect_uri: String,
 ) -> Result<String, BridgeError> {
     let core_provider = bridge_cloud_provider_to_core(provider);
+    let request = lock_bridge_mutex(&OAUTH_REQUESTS)
+        .remove(&request_id)
+        .ok_or_else(|| {
+            BridgeError::config("OAuth request not found or already used".to_string())
+        })?;
     let tokens = on_worker(move || async move {
         let clock = std::sync::Arc::new(coven::SystemClock);
         coven::exchange_code_for_provider(
             core_provider,
             &code,
-            &verifier,
+            Some(&state),
+            &request,
             &redirect_uri,
             clock.as_ref(),
         )
@@ -765,7 +780,8 @@ pub fn oauth_complete(
 pub fn oauth_complete(
     _provider: BridgeCloudProvider,
     _code: String,
-    _verifier: String,
+    _state: String,
+    _request_id: String,
     _redirect_uri: String,
 ) -> Result<String, BridgeError> {
     Err(oauth_unavailable())

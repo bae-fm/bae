@@ -71,7 +71,7 @@ async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
 async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager) {
     let (db, mgr) = setup(tmp).await;
     let cloud = Arc::new(MockCloudHome::new());
-    let enc = EncryptionService::new_with_key(&[9u8; 32]);
+    let enc = EncryptionService::from_key([9u8; 32]);
     mgr.connect_test_cloud_home(cloud, CloudCipher::Encrypted(enc))
         .await
         .unwrap();

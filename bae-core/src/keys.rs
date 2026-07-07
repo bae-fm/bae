@@ -32,7 +32,7 @@ fn set_keyring_credential(
     value: &str,
     saved_message: &'static str,
 ) -> Result<(), KeyError> {
-    keyring_core::Entry::new(keyring_service(), &account(ks, account_base))
+    keyring_core::Entry::new(keyring_service()?, &account(ks, account_base))
         .map_err(map_keyring_error)?
         .set_password(value)
         .map_err(map_keyring_error)?;
@@ -46,7 +46,7 @@ fn delete_keyring_credential(
     deleted_message: &'static str,
     missing_message: Option<&'static str>,
 ) -> Result<(), KeyError> {
-    match keyring_core::Entry::new(keyring_service(), &account(ks, account_base))
+    match keyring_core::Entry::new(keyring_service()?, &account(ks, account_base))
         .map_err(map_keyring_error)?
         .delete_credential()
     {

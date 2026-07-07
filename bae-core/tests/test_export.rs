@@ -22,7 +22,6 @@ use support::MockCloudHome;
 use tempfile::TempDir;
 
 struct ExportFixture {
-    db: Database,
     mgr: LibraryManager,
     handle: bae_core::import::ImportServiceHandle,
     cloud: Arc<MockCloudHome>,
@@ -32,7 +31,7 @@ struct ExportFixture {
 /// The cloud object key coven addresses a release file's blob by. The export
 /// fixture's cloud home is the default opaque home, so the blob is sharded by id
 /// under the `release_files` namespace (Hashed scheme, no readable cloud_path).
-/// Seeding/removing the mock cloud at this key matches what coven reads.
+/// Removing the mock cloud at this key matches what coven reads.
 async fn cloud_key(mgr: &LibraryManager, file: &bae_core::db::DbFile) -> String {
     mgr.resolve_track_cloud_key_for_test(&file.id).await
 }
@@ -62,7 +61,7 @@ impl ExportFixture {
         let cloud = Arc::new(MockCloudHome::new());
         mgr.connect_test_cloud_home(
             cloud.clone(),
-            bae_core::sync::CloudCipher::Encrypted(EncryptionService::new_with_key(&[7u8; 32])),
+            bae_core::sync::CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
         )
         .await
         .unwrap();
@@ -74,7 +73,6 @@ impl ExportFixture {
         );
 
         Self {
-            db,
             mgr,
             handle,
             cloud,
@@ -109,31 +107,13 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    // Flip to cloud-only: remote, and drop the in-place external refs. A real
-    // make-Remote uploads each file and drops its ref; this test seeds the cloud
-    // by hand, so it flips the gate and clears the refs directly. With the refs
-    // gone, coven's read resolves to the cloud (not the user's deleted file).
-    f.db.set_remote_for_test(&release_id, true).await.unwrap();
     let files = f.mgr.get_files_for_release(&release_id).await.unwrap();
     assert_eq!(files.len(), 1);
-    for file in &files {
-        f.db.clear_external_blob(&file.id).await.unwrap();
-    }
-
-    // Seed the cloud home with each file's bytes encrypted under the library
-    // master key (what the upload outbox would have produced).
-    let master_enc = f
-        .mgr
-        .get_encryption_service()
-        .expect("the library is unlocked");
     let original_bytes = fs::read(album_dir.join(&files[0].original_filename)).unwrap();
-    f.cloud.put(
-        &cloud_key(&f.mgr, &files[0]).await,
-        master_enc.encrypt(&original_bytes),
-    );
 
-    // Remove the originals — nothing local remains.
-    fs::remove_dir_all(album_dir).unwrap();
+    f.mgr.coven_make_remote(&release_id, false).await.unwrap();
+    let uploaded = f.mgr.drain_uploads_for_test().await.unwrap();
+    assert_eq!(uploaded, files.len(), "each release blob uploaded");
 
     (release_id, original_bytes)
 }

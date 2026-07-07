@@ -129,6 +129,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
                 Provenance::UserProvided,
                 CacheFill::CacheLazy,
             )
+            .with_size_column("file_size")
             .with_cloud_path_column("cloud_path"),
         ),
         SyncedTable::new("audio_formats"),
@@ -144,6 +145,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
                     Provenance::HostProvided,
                     CacheFill::CacheEager,
                 )
+                .with_size_column("file_size")
                 .with_cloud_path_column("cloud_path"),
             )
             .asset(),
@@ -155,6 +157,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
                     Provenance::HostProvided,
                     CacheFill::CacheEager,
                 )
+                .with_size_column("file_size")
                 .with_cloud_path_column("cloud_path"),
             )
             .asset(),

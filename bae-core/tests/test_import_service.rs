@@ -86,7 +86,7 @@ impl ImportFixture {
         self.library_manager
             .connect_test_cloud_home(
                 Arc::new(MockCloudHome::new()),
-                CloudCipher::Encrypted(EncryptionService::new_with_key(&[7u8; 32])),
+                CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
             )
             .await
             .expect("connect in-memory cloud home");

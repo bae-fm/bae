@@ -754,7 +754,7 @@ impl Database {
     where
         R: Send + 'static,
     {
-        self.call_sql(move |sql| f(sql.connection())).await
+        self.call_sql(move |sql| f(sql.tx())).await
     }
 
     async fn call_sql<R>(

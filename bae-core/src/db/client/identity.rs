@@ -15,7 +15,7 @@ impl Database {
         let now = self.inner.clock.now().to_rfc3339();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = sql.connection();
+            let conn = sql.tx();
             for identity in &identities {
                 insert_release_identity_row(conn, &release_id, identity, &reg, &now)?;
             }
@@ -273,7 +273,7 @@ impl Database {
         let now = now_dt.to_rfc3339();
 
         self.call_sql(move |sql| {
-            let tx = sql.connection();
+            let tx = sql.tx();
             // One HLC stamp for every synced row this transaction touches.
             let reg = sql.stamp();
 

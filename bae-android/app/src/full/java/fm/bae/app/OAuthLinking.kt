@@ -83,10 +83,13 @@ class OAuthLinking private constructor(
             val code =
                 redirect.getQueryParameter("code")
                     ?: throw IllegalStateException("Authorization finished without a code.")
+            val state =
+                redirect.getQueryParameter("state")
+                    ?: throw IllegalStateException("Authorization finished without a state.")
             // The token exchange is a blocking network call (block_on in the
             // bridge), so keep it off the main thread.
             return withContext(Dispatchers.IO) {
-                oauthComplete(provider, code, request.verifier, config.redirectUri)
+                oauthComplete(provider, code, state, request.requestId, config.redirectUri)
             }
         } finally {
             pendingRedirect = null

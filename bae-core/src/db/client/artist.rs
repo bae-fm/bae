@@ -6,7 +6,7 @@ impl Database {
         let artist = artist.clone();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            insert_artist_row(sql.connection(), &artist, &reg)
+            insert_artist_row(sql.tx(), &artist, &reg)
         })
         .await
     }
@@ -74,7 +74,7 @@ impl Database {
         self.call_sql(move |sql| {
             let reg = sql.stamp();
             update_artist_external_ids_row(
-                sql.connection(),
+                sql.tx(),
                 &id,
                 discogs_id.as_deref(),
                 mb_id.as_deref(),
@@ -90,7 +90,7 @@ impl Database {
         let album_artist = album_artist.clone();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            insert_album_artist_row(sql.connection(), &album_artist, &reg)
+            insert_album_artist_row(sql.tx(), &album_artist, &reg)
         })
         .await
     }
@@ -99,7 +99,7 @@ impl Database {
         let track_artist = track_artist.clone();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            insert_track_artist_row(sql.connection(), &track_artist, &reg)
+            insert_track_artist_row(sql.tx(), &track_artist, &reg)
         })
         .await
     }

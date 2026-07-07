@@ -15,13 +15,6 @@ pub const MCP_DEFAULT_PORT: u16 = 47777;
 ///
 /// Must be called once at startup before any keyring operations.
 pub fn init_keyring() {
-    // coven namespaces every key entry under the host app's identity, which the
-    // host must set once before any keyring access — coven's getters panic
-    // otherwise. "bae" keeps bae's coven key entries from colliding with any
-    // other coven-based app on the same machine. Set-once, so it's safe to run
-    // through every init path (bridge, bae-core bootstrap, tests).
-    coven::set_keyring_service("bae");
-
     #[cfg(target_os = "macos")]
     {
         use std::collections::HashMap;
@@ -60,6 +53,14 @@ pub fn init_keyring() {
             }
             Err(e) => warn!("Failed to create Windows keyring store: {e}"),
         }
+    }
+
+    // coven namespaces every key entry under the host app's identity, which the
+    // host must set once before any keyring access. "bae" keeps bae's coven key
+    // entries from colliding with any other coven-based app on the same machine.
+    // Set-once, so it's safe to run through every init path.
+    if let Err(error) = coven::set_keyring_service("bae") {
+        warn!("Failed to register keyring service: {error}");
     }
 }
 
@@ -185,7 +186,7 @@ pub fn install_test_keyring() {
         keyring_core::set_default_store(
             keyring_core::mock::Store::new().expect("create mock keyring store"),
         );
-        coven::set_keyring_service("bae");
+        coven::set_keyring_service("bae").expect("register test keyring service");
     });
 }
 

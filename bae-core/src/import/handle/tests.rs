@@ -113,7 +113,7 @@ async fn fetch_artist_images_warns_and_skips_when_existing_image_check_fails() {
     database
         .handle()
         .sql(|sql| {
-            sql.connection().execute("DROP TABLE artist_images", [])?;
+            sql.tx().execute("DROP TABLE artist_images", [])?;
             Ok::<(), coven::CovenError>(())
         })
         .await

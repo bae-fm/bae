@@ -119,7 +119,9 @@ impl LibraryManager {
     }
 
     pub fn generate_restore_code(&self) -> Result<String, String> {
-        self.handle.generate_restore_code()
+        self.handle
+            .generate_restore_code()
+            .map_err(|error| error.to_string())
     }
 
     /// The library's membership: its devices (with this device flagged, each

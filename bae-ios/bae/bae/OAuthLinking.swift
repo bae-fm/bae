@@ -10,6 +10,7 @@ enum OAuthLinkingError: Error, LocalizedError {
     case notConfigured
     case badAuthUrl
     case noCode
+    case noState
     case unreadableConfig(String)
     case malformedConfig(String)
     case incompleteProviderConfig(String)
@@ -27,6 +28,8 @@ enum OAuthLinkingError: Error, LocalizedError {
             String(localized: "The provider returned an invalid authorization URL.")
         case .noCode:
             String(localized: "Authorization finished without a code.")
+        case .noState:
+            String(localized: "Authorization finished without a state.")
         case .unreadableConfig(let message):
             String(localized: "Couldn't read oauth-creds.json: \(message)")
         case .malformedConfig(let message):
@@ -154,7 +157,7 @@ struct OAuthLinking {
         }
         // The callback scheme is the redirect URI up to the first colon.
         let callbackScheme = String(config.redirectUri.prefix { $0 != ":" })
-        let code = try await WebAuthCoordinator(
+        let callback = try await WebAuthCoordinator(
             presentationAnchor: presentationAnchor
         )
         .authorize(
@@ -163,8 +166,9 @@ struct OAuthLinking {
         )
         return try oauthComplete(
             provider: provider,
-            code: code,
-            verifier: request.verifier,
+            code: callback.code,
+            state: callback.state,
+            requestId: request.requestId,
             redirectUri: config.redirectUri
         )
     }
@@ -187,6 +191,11 @@ struct OAuthLinking {
 /// continuation resume.
 @MainActor
 final class WebAuthCoordinator: NSObject, ASWebAuthenticationPresentationContextProviding {
+    struct Callback {
+        let code: String
+        let state: String
+    }
+
     private struct ActiveSession {
         let session: ASWebAuthenticationSession
         /// Keeps the presentation provider alive until the session callback runs.
@@ -200,7 +209,7 @@ final class WebAuthCoordinator: NSObject, ASWebAuthenticationPresentationContext
         self.presentationAnchor = presentationAnchor
     }
 
-    func authorize(url: URL, callbackScheme: String) async throws -> String {
+    func authorize(url: URL, callbackScheme: String) async throws -> Callback {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 guard !Task.isCancelled else {
@@ -219,18 +228,30 @@ final class WebAuthCoordinator: NSObject, ASWebAuthenticationPresentationContext
                         return
                     }
                     guard let callbackURL,
-                        let code = URLComponents(
+                        let queryItems = URLComponents(
                             url: callbackURL,
                             resolvingAgainstBaseURL: false
                         )?
-                        .queryItems?
+                        .queryItems
+                    else {
+                        continuation.resume(throwing: OAuthLinkingError.noCode)
+                        return
+                    }
+                    guard let code = queryItems
                         .first(where: { $0.name == "code" })?
                         .value
                     else {
                         continuation.resume(throwing: OAuthLinkingError.noCode)
                         return
                     }
-                    continuation.resume(returning: code)
+                    guard let state = queryItems
+                        .first(where: { $0.name == "state" })?
+                        .value
+                    else {
+                        continuation.resume(throwing: OAuthLinkingError.noState)
+                        return
+                    }
+                    continuation.resume(returning: Callback(code: code, state: state))
                 }
                 session.presentationContextProvider = self
                 session.prefersEphemeralWebBrowserSession = false

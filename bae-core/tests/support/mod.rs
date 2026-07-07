@@ -375,7 +375,7 @@ impl MockCloudHome {
 impl coven::CloudHome for MockCloudHome {
     async fn put_object(&self, key: &str, data: Vec<u8>) -> Result<(), coven::CloudHomeError> {
         if self.fail_writes.load(std::sync::atomic::Ordering::SeqCst) {
-            return Err(coven::CloudHomeError::Storage(
+            return Err(coven::CloudHomeError::Transport(
                 "mock write failure".to_string(),
             ));
         }
@@ -403,7 +403,7 @@ impl coven::CloudHome for MockCloudHome {
             .unwrap()
             .get(key)
             .cloned()
-            .ok_or_else(|| coven::CloudHomeError::Storage(format!("missing key {key}")))
+            .ok_or_else(|| coven::CloudHomeError::NotFound(key.to_string()))
     }
 
     /// Serve `start..end` (inclusive..exclusive) of the stored blob. The first
@@ -423,7 +423,7 @@ impl coven::CloudHome for MockCloudHome {
             )
             .is_ok()
         {
-            return Err(coven::CloudHomeError::Storage(
+            return Err(coven::CloudHomeError::Transport(
                 "mock range read failure".to_string(),
             ));
         }
@@ -431,11 +431,11 @@ impl coven::CloudHome for MockCloudHome {
         let blobs = self.blobs.lock().unwrap();
         let blob = blobs
             .get(key)
-            .ok_or_else(|| coven::CloudHomeError::Storage(format!("missing key {key}")))?;
+            .ok_or_else(|| coven::CloudHomeError::NotFound(key.to_string()))?;
         let start = usize::try_from(start).unwrap();
         let end = usize::try_from(end).unwrap();
         if start > end || end > blob.len() {
-            return Err(coven::CloudHomeError::Storage(format!(
+            return Err(coven::CloudHomeError::Transport(format!(
                 "range {start}..{end} outside blob length {}",
                 blob.len()
             )));
@@ -466,7 +466,7 @@ impl coven::CloudHome for MockCloudHome {
     async fn revoke_access(
         &self,
         _revoke: coven::CloudAccessRevoke,
-    ) -> Result<(), coven::CloudHomeError> {
-        unimplemented!("revoke_access not used by storage transition tests")
+    ) -> Result<coven::storage::cloud::RevokeOutcome, coven::CloudHomeError> {
+        Ok(coven::storage::cloud::RevokeOutcome::Unsupported)
     }
 }

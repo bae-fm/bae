@@ -95,7 +95,7 @@ async fn rename_table_for_test(manager: &LibraryManager, from: &str, to: &str) {
         .database
         .handle()
         .sql(move |sql| {
-            sql.connection().execute(&statement, [])?;
+            sql.tx().execute(&statement, [])?;
             Ok::<(), coven::CovenError>(())
         })
         .await
@@ -1999,7 +1999,7 @@ async fn connect_test_cloud(manager: &LibraryManager) {
     manager
         .connect_test_cloud_home(
             Arc::new(InMemoryCloudHome::new()),
-            CloudCipher::Encrypted(EncryptionService::new_with_key(&[7u8; 32])),
+            CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
         )
         .await
         .expect("connect in-memory cloud home");

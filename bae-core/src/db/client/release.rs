@@ -6,7 +6,7 @@ impl Database {
         let release = release.clone();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            insert_release_row(sql.connection(), &release, &reg)
+            insert_release_row(sql.tx(), &release, &reg)
         })
         .await
     }
@@ -21,7 +21,7 @@ impl Database {
         let (works, track_works, images) = (works.to_vec(), track_works.to_vec(), images.to_vec());
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = sql.connection();
+            let conn = sql.tx();
             for work in &works {
                 insert_work_row(conn, work, &reg)?;
             }
@@ -54,7 +54,7 @@ impl Database {
             track_artists.to_vec(),
         );
         self.call_sql(move |sql| {
-            let tx = sql.connection();
+            let tx = sql.tx();
             // One HLC stamp for every synced row this transaction writes.
             let reg = sql.stamp();
             insert_album_row(tx, &album, &reg)?;
@@ -88,7 +88,7 @@ impl Database {
             track_artists.to_vec(),
         );
         self.call_sql(move |sql| {
-            let tx = sql.connection();
+            let tx = sql.tx();
             // One HLC stamp for every synced row this transaction writes.
             let reg = sql.stamp();
             insert_release_row(tx, &release, &reg)?;
@@ -156,7 +156,7 @@ impl Database {
         );
         let now = self.inner.clock.now().to_rfc3339();
         self.call_sql(move |sql| {
-            let tx = sql.connection();
+            let tx = sql.tx();
             // One HLC stamp for every synced row this edit touches.
             let reg = sql.stamp();
 
@@ -451,7 +451,7 @@ impl Database {
         let file = file.clone();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            insert_file_row(sql.connection(), &file, &reg)
+            insert_file_row(sql.tx(), &file, &reg)
         })
         .await
     }
@@ -573,13 +573,15 @@ impl Database {
         let replacement_outcomes_for_write = Arc::clone(&replacement_outcomes);
         self.inner
             .handle
-            .write(move |w| {
-                for (namespace, id, bytes) in image_blobs {
-                    w.put_blob(namespace, id, bytes);
-                }
-
-                w.sql(move |sql| {
-                    let tx = sql.connection();
+            .write(
+                move |w| {
+                    for (namespace, id, bytes) in image_blobs {
+                        w.put_blob(namespace, id, bytes);
+                    }
+                    Ok(())
+                },
+                move |sql| {
+                    let tx = sql.tx();
                     // Every synced row this transaction inserts shares one HLC
                     // stamp for `_updated_at`; wall-clock `now` stays
                     // for `created_at`.
@@ -796,9 +798,8 @@ impl Database {
                     )?;
 
                     Ok(())
-                })?;
-                Ok(())
-            })
+                },
+            )
             .await
             .map_err(Self::coven_error)?;
         Ok(Arc::try_unwrap(replacement_outcomes)
@@ -838,7 +839,7 @@ impl Database {
         let album_id = album_id.to_string();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = sql.connection();
+            let conn = sql.tx();
             apply_delete_cleanup_on(conn, &cleanup, &reg)?;
             conn.execute(
                 "UPDATE imports SET release_id = NULL WHERE release_id = ?",
@@ -890,7 +891,7 @@ impl Database {
         let now = self.inner.clock.now().timestamp();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = sql.connection();
+            let conn = sql.tx();
             let album_id = conn
                 .query_row(
                     "SELECT album_id FROM releases WHERE id = ?",
@@ -996,7 +997,7 @@ impl Database {
         let release_id = release_id.to_string();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = sql.connection();
+            let conn = sql.tx();
             conn.execute(
                 "UPDATE releases SET remote = ?, _updated_at = ? WHERE id = ?",
                 params![remote, reg, release_id],

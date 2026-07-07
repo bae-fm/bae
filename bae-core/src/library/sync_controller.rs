@@ -182,7 +182,11 @@ impl SyncController {
     /// member's fingerprint, and whether it can be removed) and whether the
     /// running device is an owner.
     pub(crate) async fn get_members(&self) -> Result<crate::sync::membership::Membership, String> {
-        let members = self.handle.get_members().await?;
+        let members = self
+            .handle
+            .get_members()
+            .await
+            .map_err(|error| error.to_string())?;
         Ok(crate::sync::membership::Membership::from_members(members))
     }
 
@@ -202,13 +206,18 @@ impl SyncController {
                 crate::sync::membership::MemberRole::Member,
             )
             .await
+            .map_err(|error| error.to_string())
     }
 
     /// Remove a device from the library and rotate the library key so the removed
     /// device can no longer read new data. Records the rotated key's fingerprint
     /// in this device's config.
     pub(crate) async fn remove_member(&self, public_key_hex: &str) -> Result<(), String> {
-        let fingerprint = self.handle.remove_member(public_key_hex).await?;
+        let fingerprint = self
+            .handle
+            .remove_member(public_key_hex)
+            .await
+            .map_err(|error| error.to_string())?;
         self.config_handle
             .record_encryption_key_fingerprint(fingerprint)
             .map_err(|e| e.to_string())
@@ -391,10 +400,14 @@ impl SyncController {
                     .ok_or_else(|| "CloudKit driver not provided".to_string())?;
                 self.handle
                     .connect_sync_with_cloudkit(encryption_service, ops)
-                    .await?;
+                    .await
+                    .map_err(|error| error.to_string())?;
             }
             _ => {
-                self.handle.connect_sync(encryption_service).await?;
+                self.handle
+                    .connect_sync(encryption_service)
+                    .await
+                    .map_err(|error| error.to_string())?;
             }
         }
         Ok(())
@@ -415,7 +428,8 @@ impl SyncController {
     ) -> Result<(), String> {
         self.handle
             .connect_sync_with_test_home(cloud_home, cipher)
-            .await?;
+            .await
+            .map_err(|error| error.to_string())?;
         Ok(())
     }
 
@@ -423,7 +437,10 @@ impl SyncController {
     async fn ensure_sync_manager_and_start(&self) -> Result<(), String> {
         // If we already have a sync manager, just (re)start its loop.
         if self.handle.is_connected() {
-            self.handle.start_sync().await?;
+            self.handle
+                .start_sync()
+                .await
+                .map_err(|error| error.to_string())?;
             return Ok(());
         }
 
@@ -461,10 +478,14 @@ impl SyncController {
                     .ok_or_else(|| "CloudKit driver not provided".to_string())?;
                 self.handle
                     .connect_sync_with_cloudkit(enc_service, ops)
-                    .await?;
+                    .await
+                    .map_err(|error| error.to_string())?;
             }
             _ => {
-                self.handle.connect_sync(enc_service).await?;
+                self.handle
+                    .connect_sync(enc_service)
+                    .await
+                    .map_err(|error| error.to_string())?;
             }
         }
 

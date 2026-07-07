@@ -159,7 +159,7 @@ fn bridge_share_to_coven(share: BridgeCloudKitShare) -> coven::CloudKitShare {
 fn cloudkit_err_to_cloud_home_err(e: CloudKitError) -> coven::CloudHomeError {
     match e {
         CloudKitError::NotFound { msg } => coven::CloudHomeError::NotFound(msg),
-        CloudKitError::Storage { msg } => coven::CloudHomeError::Storage(msg),
+        CloudKitError::Storage { msg } => coven::CloudHomeError::Transport(msg),
     }
 }
 

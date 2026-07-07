@@ -122,6 +122,7 @@ impl LibraryManager {
             .drain_uploads()
             .await
             .map(|outcome| outcome.uploaded)
+            .map_err(|error| error.to_string())
     }
 
     /// One page of the Storage Manager list. Rows are returned pre-sorted

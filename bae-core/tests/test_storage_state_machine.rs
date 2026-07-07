@@ -85,7 +85,7 @@ async fn setup_manager(
         tokio::runtime::Handle::current(),
     );
     let cloud = Arc::new(MockCloudHome::new());
-    let enc = EncryptionService::new_with_key(&[9u8; 32]);
+    let enc = EncryptionService::from_key([9u8; 32]);
     (db, mgr, cloud, enc)
 }
 

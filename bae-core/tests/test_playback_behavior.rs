@@ -4619,8 +4619,8 @@ impl CloudOnlyPlaybackFixture {
         library_manager
             .connect_test_cloud_home(
                 cloud.clone(),
-                bae_core::sync::CloudCipher::Encrypted(coven::EncryptionService::new_with_key(
-                    &master_key,
+                bae_core::sync::CloudCipher::Encrypted(coven::EncryptionService::from_key(
+                    master_key,
                 )),
             )
             .await?;

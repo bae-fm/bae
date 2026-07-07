@@ -6,7 +6,7 @@ impl Database {
         let image = image.clone();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            upsert_library_image_row(sql.connection(), &image, &reg)
+            upsert_library_image_row(sql.tx(), &image, &reg)
         })
         .await
     }
@@ -24,15 +24,16 @@ impl Database {
         let bytes = bytes.to_vec();
         self.inner
             .handle
-            .write(move |w| {
-                w.put_blob(namespace, id, bytes);
-                w.sql(move |sql| {
+            .write(
+                move |w| {
+                    w.put_blob(namespace, id, bytes);
+                    Ok(())
+                },
+                move |sql| {
                     let reg = sql.stamp();
-                    upsert_library_image_row(sql.connection(), &image, &reg)
-                        .map_err(CovenError::from)
-                })?;
-                Ok(())
-            })
+                    upsert_library_image_row(sql.tx(), &image, &reg).map_err(CovenError::from)
+                },
+            )
             .await
             .map_err(Self::coven_error)
     }
@@ -231,7 +232,7 @@ impl Database {
         let source_path = source_path.map(str::to_string);
         self.call_sql(move |sql| {
             let created_at = sql.stamp();
-            let conn = sql.connection();
+            let conn = sql.tx();
             conn.execute(
                 "DELETE FROM cloud_outbox WHERE operation = 'delete' AND cloud_key = ?1",
                 [&cloud_key],
@@ -264,7 +265,7 @@ impl Database {
         let cloud_key = cloud_key.to_string();
         self.call_sql(move |sql| {
             let created_at = sql.stamp();
-            let conn = sql.connection();
+            let conn = sql.tx();
             conn.execute(
                 "INSERT OR IGNORE INTO cloud_outbox \
                  (operation, cloud_key, scope, created_at) \
@@ -282,7 +283,7 @@ impl Database {
         let cloud_key = cloud_key.to_string();
         self.call_sql(move |sql| {
             let created_at = sql.stamp();
-            add_cloud_outbox_delete_on(sql.connection(), &cloud_key, &created_at)
+            add_cloud_outbox_delete_on(sql.tx(), &cloud_key, &created_at)
         })
         .await
     }
