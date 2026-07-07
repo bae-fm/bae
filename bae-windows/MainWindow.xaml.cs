@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -34,7 +33,7 @@ public sealed partial class MainWindow : Window
     private const ulong FirstPageSize = 500;
 
     // LabelKey is a chrome key resolved to the localized menu label at display
-    // time; Field is the locale-free sort identifier the FFI expects (never
+    // time; Field is the locale-free sort identifier the generated bridge expects (never
     // localized).
     private sealed record SortOption(string LabelKey, string Field, bool Ascending);
     private enum BrowserMode
@@ -85,7 +84,7 @@ public sealed partial class MainWindow : Window
     };
 
     private readonly object _handleGate = new();
-    private IntPtr _handle;
+    private AppHandle? _handle;
     private int _sessionGeneration;
 
     // Releases whose unmanage is running right now. Unmanage is a blocking
@@ -96,8 +95,8 @@ public sealed partial class MainWindow : Window
     // menu).
     private readonly HashSet<string> _unmanagingReleases = new();
 
-    // Held for the subscription's lifetime so the GC doesn't collect the delegate
-    // while native code holds a pointer to it.
+    // Held for the subscription's lifetime; the generated callback map keeps the
+    // managed object rooted while Rust holds the callback handle.
     private NativeBae.EventCallback? _eventCallback;
 
     // Latest queue snapshot from QueueUpdated; the queue dialog reads it on open.
@@ -123,7 +122,7 @@ public sealed partial class MainWindow : Window
     private Action? _refreshOutbox;
     private Action? _refreshDownloads;
 
-    // Re-reads bae_settings into the open settings dialog's labels; set while that
+    // Re-reads generated bridge settings into the open settings dialog's labels; set while that
     // dialog is open so config invalidations refresh it live, null when closed.
     private Action? _refreshSettings;
 
@@ -195,8 +194,8 @@ public sealed partial class MainWindow : Window
             new PointerEventHandler((_, _) =>
             {
                 _userSeeking = false;
-                var handle = CurrentHandleOrZero();
-                if (handle != IntPtr.Zero)
+                var handle = CurrentHandleOrNull();
+                if (handle != null)
                 {
                     ProjectSeekDrop(NpProgress.Value);
                     NativeBae.SeekByRatio(handle, NpProgress.Value);
@@ -221,7 +220,7 @@ public sealed partial class MainWindow : Window
 
         // Sort drives the full-library view; search results keep their relevance
         // order. Reload only when no search is active and the library is open.
-        if (CurrentHandleOrZero() != IntPtr.Zero && string.IsNullOrEmpty(SearchBox.Text))
+        if (CurrentHandleOrNull() != null && string.IsNullOrEmpty(SearchBox.Text))
         {
             LoadCurrentBrowserMode();
         }
@@ -231,7 +230,7 @@ public sealed partial class MainWindow : Window
     {
         _browserMode = BrowserModeBox.SelectedIndex == 1 ? BrowserMode.Composers : BrowserMode.Albums;
         PopulateSortBox();
-        if (CurrentHandleOrZero() != IntPtr.Zero && string.IsNullOrEmpty(SearchBox.Text))
+        if (CurrentHandleOrNull() != null && string.IsNullOrEmpty(SearchBox.Text))
         {
             LoadCurrentBrowserMode();
         }
@@ -362,7 +361,7 @@ public sealed partial class MainWindow : Window
     private void OpenLibrary(string libraryId)
     {
         var handle = NativeBae.Init(libraryId, PositionUpdateIntervalMs);
-        if (handle == IntPtr.Zero)
+        if (handle == null)
         {
             StatusText.Text = Loc.Chrome("library.open_failed");
             return;
@@ -398,7 +397,7 @@ public sealed partial class MainWindow : Window
         RefreshSyncStatus();
 
         var generation = _sessionGeneration;
-        _eventCallback = jsonPtr => OnNativeEvent(generation, jsonPtr);
+        _eventCallback = new NativeBae.EventCallback(evt => OnNativeEvent(generation, evt));
         NativeBae.Subscribe(handle, _eventCallback);
     }
 
@@ -518,7 +517,7 @@ public sealed partial class MainWindow : Window
     }
 
     // Switch the active library: persist the current one's playback state, tear
-    // down its handle and view state, then open the target. bae_init writes the
+    // down its handle and view state, then open the target. generated bridge init writes the
     // target as the new active library; a locked target lands on the unlock
     // prompt. Used for switching to an existing library and for a freshly
     // created one.
@@ -559,7 +558,7 @@ public sealed partial class MainWindow : Window
     // the libraries on disk so the user can reopen one or create another.
     private async System.Threading.Tasks.Task CloseLibrary()
     {
-        if (CurrentHandleOrZero() == IntPtr.Zero)
+        if (CurrentHandleOrNull() == null)
         {
             return;
         }
@@ -570,16 +569,16 @@ public sealed partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShutdownAndFreeCurrentHandle()
     {
-        IntPtr handle;
+        AppHandle handle;
         lock (_handleGate)
         {
-            if (_handle == IntPtr.Zero)
+            if (_handle == null)
             {
                 return;
             }
 
             handle = _handle;
-            _handle = IntPtr.Zero;
+            _handle = null;
             _sessionGeneration++;
         }
 
@@ -594,13 +593,13 @@ public sealed partial class MainWindow : Window
     }
 
     private async System.Threading.Tasks.Task<(bool Current, T Result)>
-        RunForCurrentHandle<T>(Func<IntPtr, T> action)
+        RunForCurrentHandle<T>(Func<AppHandle, T> action)
     {
         var response = await System.Threading.Tasks.Task.Run(() =>
         {
             lock (_handleGate)
             {
-                if (_handle == IntPtr.Zero)
+                if (_handle == null)
                 {
                     return (Ran: false, Generation: _sessionGeneration, Result: default!);
                 }
@@ -615,7 +614,7 @@ public sealed partial class MainWindow : Window
             response.Result);
     }
 
-    private async System.Threading.Tasks.Task<bool> RunForCurrentHandle(Action<IntPtr> action)
+    private async System.Threading.Tasks.Task<bool> RunForCurrentHandle(Action<AppHandle> action)
     {
         var (current, _) = await RunForCurrentHandle(handle =>
         {
@@ -625,11 +624,11 @@ public sealed partial class MainWindow : Window
         return current;
     }
 
-    private bool WithCurrentHandle(Action<IntPtr> action)
+    private bool WithCurrentHandle(Action<AppHandle> action)
     {
         lock (_handleGate)
         {
-            if (_handle == IntPtr.Zero)
+            if (_handle == null)
             {
                 return false;
             }
@@ -639,11 +638,11 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private (bool Current, T Result) WithCurrentHandle<T>(Func<IntPtr, T> action)
+    private (bool Current, T Result) WithCurrentHandle<T>(Func<AppHandle, T> action)
     {
         lock (_handleGate)
         {
-            if (_handle == IntPtr.Zero)
+            if (_handle == null)
             {
                 return (false, default!);
             }
@@ -652,7 +651,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private IntPtr CurrentHandleOrZero()
+    private AppHandle? CurrentHandleOrNull()
     {
         lock (_handleGate)
         {
@@ -1248,7 +1247,7 @@ public sealed partial class MainWindow : Window
     }
 
     // Fill the join screen's device-code section: generate the join-request code
-    // and its fingerprint, then render the code display. Runs the blocking FFI off
+    // and its fingerprint, then render the code display. Runs the blocking generated bridge off
     // the UI thread.
     private async System.Threading.Tasks.Task GenerateJoinCode(StackPanel host)
     {
@@ -1612,17 +1611,9 @@ public sealed partial class MainWindow : Window
         _ => provider,
     };
 
-    // Fires on a background thread; copy the JSON and hop to the UI thread.
-    private void OnNativeEvent(int generation, IntPtr jsonPtr)
-    {
-        var json = Marshal.PtrToStringUTF8(jsonPtr);
-        if (json is null)
-        {
-            return;
-        }
-
-        DispatcherQueue.TryEnqueue(() => HandleEvent(generation, json));
-    }
+    // Fires on a background thread; hop to the UI thread before touching WinUI.
+    private void OnNativeEvent(int generation, BridgeUiEvent evt) =>
+        DispatcherQueue.TryEnqueue(() => HandleEvent(generation, NativeBae.ToBaeEvent(evt)));
 
     // Render the toolbar sync indicator from the accumulated state: an active error
     // wins, then an in-progress pass, then the last successful sync time; blank when
@@ -1804,15 +1795,9 @@ public sealed partial class MainWindow : Window
         NpRemaining.Text = DurationLabel(RemainingDurationMs(evt.PositionMs, evt.DurationMs));
     }
 
-    private void HandleEvent(int generation, string json)
+    private void HandleEvent(int generation, BaeEvent evt)
     {
-        if (generation != _sessionGeneration || CurrentHandleOrZero() == IntPtr.Zero)
-        {
-            return;
-        }
-
-        var evt = JsonSerializer.Deserialize<BaeEvent>(json, JsonOptions);
-        if (evt is null)
+        if (generation != _sessionGeneration || CurrentHandleOrNull() == null)
         {
             return;
         }
@@ -1829,7 +1814,7 @@ public sealed partial class MainWindow : Window
                 NpTitle.Text = evt.TrackTitle ?? string.Empty;
                 NpArtist.Text = evt.Artist ?? string.Empty;
                 NpPlayPause.Content = evt.Type == "PlaybackPlaying" ? "⏸" : "▶";
-                NpCover.Source = CoverImage.LoadImage(CurrentHandleOrZero(), evt.CoverImageId);
+                NpCover.Source = CoverImage.LoadImage(CurrentHandleOrNull(), evt.CoverImageId);
                 // Audio is flowing: drop the buffering spinner, restore the
                 // play/pause control.
                 NpLoading.IsActive = false;
@@ -2000,7 +1985,7 @@ public sealed partial class MainWindow : Window
 
     private async void RefreshImportCandidates()
     {
-        if (CurrentHandleOrZero() == IntPtr.Zero)
+        if (CurrentHandleOrNull() == null)
         {
             return;
         }
@@ -2082,7 +2067,7 @@ public sealed partial class MainWindow : Window
     // Shared by the toolbar import button and the folder-drop handler.
     private async System.Threading.Tasks.Task ShowImportDialog()
     {
-        if (CurrentHandleOrZero() == IntPtr.Zero)
+        if (CurrentHandleOrNull() == null)
         {
             return;
         }
@@ -2140,9 +2125,8 @@ public sealed partial class MainWindow : Window
             }
         };
 
-        // The picker needs the app window's handle in an unpackaged app. Scanning
-        // is fire-and-forget: bae_scan_folder enqueues, then invalidations
-        // refresh _candidates.
+        // The picker needs the app window's handle in an unpackaged app. Adding
+        // a watched folder starts scanning; invalidations refresh _candidates.
         scanButton.Click += async (_, _) =>
         {
             var picker = new global::Windows.Storage.Pickers.FolderPicker();
@@ -2197,7 +2181,7 @@ public sealed partial class MainWindow : Window
     // keep it to the cheap format check; the real work happens in OnWindowDrop.
     private void OnWindowDragOver(object sender, DragEventArgs e)
     {
-        if (CurrentHandleOrZero() != IntPtr.Zero && e.DataView.Contains(StandardDataFormats.StorageItems))
+        if (CurrentHandleOrNull() != null && e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             e.AcceptedOperation = DataPackageOperation.Copy;
             // Null for some shell drags; the caption is just a cursor hint.
@@ -2218,7 +2202,7 @@ public sealed partial class MainWindow : Window
     // them. Scanning runs off the UI thread; errors surface in the banner.
     private async void OnWindowDrop(object sender, DragEventArgs e)
     {
-        if (CurrentHandleOrZero() == IntPtr.Zero || !e.DataView.Contains(StandardDataFormats.StorageItems))
+        if (CurrentHandleOrNull() == null || !e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             return;
         }
@@ -2332,7 +2316,7 @@ public sealed partial class MainWindow : Window
         ToolTipService.SetToolTip(button, Loc.Chrome("import.rerun_identify"));
         button.Click += (_, _) =>
         {
-            if (CurrentHandleOrZero() != IntPtr.Zero)
+            if (CurrentHandleOrNull() != null)
             {
                 _ = RunForCurrentHandle(
                     handle => NativeBae.RerunIdentifyForCandidate(handle, candidateKey));
@@ -2439,7 +2423,7 @@ public sealed partial class MainWindow : Window
             signal.Excluded ? Loc.Chrome("signal.include") : Loc.Chrome("signal.exclude"));
         badge.Click += (_, _) =>
         {
-            if (CurrentHandleOrZero() != IntPtr.Zero)
+            if (CurrentHandleOrNull() != null)
             {
                 var kind = signal.Kind;
                 var value = signal.Value ?? string.Empty;
@@ -2451,7 +2435,7 @@ public sealed partial class MainWindow : Window
     }
 
     // The badge's trailing state visual, chosen by the pre-shaped SignalState the
-    // FFI carried over. An excluded badge shows the exclusion mark regardless.
+    // generated bridge carried over. An excluded badge shows the exclusion mark regardless.
     private static FrameworkElement BuildSignalState(SignalBadge signal)
     {
         if (signal.Excluded)
@@ -2513,7 +2497,7 @@ public sealed partial class MainWindow : Window
     }
 
     // The badge's kind label. Mirrors the macOS SignalBadgeStyle.label(for:);
-    // the wire kind names come from the FFI's snake_case mapping, resolved to a
+    // the wire kind names come from the generated bridge's snake_case mapping, resolved to a
     // localized chrome label.
     private static string SignalKindLabel(string kind) => kind switch
     {
@@ -3070,7 +3054,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnQueueClick(object sender, RoutedEventArgs e)
     {
-        if (CurrentHandleOrZero() == IntPtr.Zero)
+        if (CurrentHandleOrNull() == null)
         {
             return;
         }
@@ -3222,7 +3206,7 @@ public sealed partial class MainWindow : Window
             var remove = new MenuFlyoutItem { Text = Loc.Chrome("queue.remove_item") };
             remove.Click += (_, _) =>
             {
-                // The FFI removes by entry id, so a reorder between the right-tap and
+                // The generated bridge removes by entry id, so a reorder between the right-tap and
                 // the click can't target the wrong row. The local index is only to keep
                 // the open dialog's collection in sync.
                 var idx = queueItems.IndexOf(item);
@@ -3305,7 +3289,7 @@ public sealed partial class MainWindow : Window
 
     private void OnPlayPause(object sender, RoutedEventArgs e)
     {
-        if (CurrentHandleOrZero() != IntPtr.Zero)
+        if (CurrentHandleOrNull() != null)
         {
             WithCurrentHandle(NativeBae.PlayPause);
         }
@@ -3313,7 +3297,7 @@ public sealed partial class MainWindow : Window
 
     private void OnNext(object sender, RoutedEventArgs e)
     {
-        if (CurrentHandleOrZero() != IntPtr.Zero)
+        if (CurrentHandleOrNull() != null)
         {
             WithCurrentHandle(NativeBae.Next);
         }
@@ -3321,7 +3305,7 @@ public sealed partial class MainWindow : Window
 
     private void OnPrevious(object sender, RoutedEventArgs e)
     {
-        if (CurrentHandleOrZero() != IntPtr.Zero)
+        if (CurrentHandleOrNull() != null)
         {
             WithCurrentHandle(NativeBae.Previous);
         }
@@ -3329,7 +3313,7 @@ public sealed partial class MainWindow : Window
 
     private void OnRepeat(object sender, RoutedEventArgs e)
     {
-        if (CurrentHandleOrZero() != IntPtr.Zero)
+        if (CurrentHandleOrNull() != null)
         {
             WithCurrentHandle(NativeBae.CycleRepeatMode);
         }
@@ -3337,7 +3321,7 @@ public sealed partial class MainWindow : Window
 
     private void OnMute(object sender, RoutedEventArgs e)
     {
-        if (CurrentHandleOrZero() != IntPtr.Zero)
+        if (CurrentHandleOrNull() != null)
         {
             WithCurrentHandle(NativeBae.ToggleMute);
         }
@@ -3356,7 +3340,7 @@ public sealed partial class MainWindow : Window
     {
         args.Handled = true;
         var albumId = _nowPlaying?.AlbumId;
-        if (CurrentHandleOrZero() == IntPtr.Zero || string.IsNullOrEmpty(albumId))
+        if (CurrentHandleOrNull() == null || string.IsNullOrEmpty(albumId))
         {
             return;
         }
@@ -3384,7 +3368,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (CurrentHandleOrZero() != IntPtr.Zero)
+        if (CurrentHandleOrNull() != null)
         {
             WithCurrentHandle(NativeBae.PlayPause);
             e.Handled = true;
@@ -3393,7 +3377,7 @@ public sealed partial class MainWindow : Window
 
     private void OnVolumeChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
-        if (!_suppressVolume && CurrentHandleOrZero() != IntPtr.Zero)
+        if (!_suppressVolume && CurrentHandleOrNull() != null)
         {
             WithCurrentHandle(handle => NativeBae.SetVolume(handle, (float)NpVolume.Value));
         }
@@ -3401,7 +3385,7 @@ public sealed partial class MainWindow : Window
 
     private void OnSearchSubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
-        if (CurrentHandleOrZero() == IntPtr.Zero)
+        if (CurrentHandleOrNull() == null)
         {
             return;
         }
@@ -3424,8 +3408,8 @@ public sealed partial class MainWindow : Window
 
     private void SetSearchResults(string? json, string query)
     {
-        var handle = CurrentHandleOrZero();
-        if (handle == IntPtr.Zero)
+        var handle = CurrentHandleOrNull();
+        if (handle == null)
         {
             return;
         }
@@ -3529,11 +3513,11 @@ public sealed partial class MainWindow : Window
         return button;
     }
 
-    /// <summary>Replace the grid's albums from an FFI JSON array (or show a status).</summary>
+    /// <summary>Replace the grid's albums from an generated bridge JSON array (or show a status).</summary>
     private void SetAlbums(string? json, string emptyMessage)
     {
-        var handle = CurrentHandleOrZero();
-        if (handle == IntPtr.Zero)
+        var handle = CurrentHandleOrNull();
+        if (handle == null)
         {
             return;
         }
@@ -3596,8 +3580,8 @@ public sealed partial class MainWindow : Window
             StatusText.Text = Loc.Chrome("library.load_failed");
             return;
         }
-        var handle = CurrentHandleOrZero();
-        if (handle == IntPtr.Zero)
+        var handle = CurrentHandleOrNull();
+        if (handle == null)
         {
             return;
         }
@@ -3611,7 +3595,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnComposerClick(object sender, ItemClickEventArgs e)
     {
-        if (CurrentHandleOrZero() == IntPtr.Zero || e.ClickedItem is not ComposerSummary composer)
+        if (CurrentHandleOrNull() == null || e.ClickedItem is not ComposerSummary composer)
         {
             return;
         }
@@ -3639,8 +3623,8 @@ public sealed partial class MainWindow : Window
             StatusText.Text = Loc.Chrome("composer.open_failed");
             return;
         }
-        var handle = CurrentHandleOrZero();
-        if (handle == IntPtr.Zero)
+        var handle = CurrentHandleOrNull();
+        if (handle == null)
         {
             return;
         }
@@ -3758,8 +3742,8 @@ public sealed partial class MainWindow : Window
             StatusText.Text = Loc.Chrome("work.open_failed");
             return;
         }
-        var handle = CurrentHandleOrZero();
-        if (handle == IntPtr.Zero)
+        var handle = CurrentHandleOrNull();
+        if (handle == null)
         {
             return;
         }
@@ -3812,7 +3796,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnAlbumClick(object sender, ItemClickEventArgs e)
     {
-        if (CurrentHandleOrZero() == IntPtr.Zero || e.ClickedItem is not Album album)
+        if (CurrentHandleOrNull() == null || e.ClickedItem is not Album album)
         {
             return;
         }
@@ -3952,7 +3936,7 @@ public sealed partial class MainWindow : Window
 
         // Track list: click a row to play the release from that track; right-tap
         // for per-track queueing. The play index is the track's position in the
-        // release's track list, which is what bae_play_release expects.
+        // release's track list, which is what PlayRelease expects.
         var trackList = new ListView
         {
             ItemsSource = selectedRelease.Tracks,
@@ -4595,7 +4579,7 @@ public sealed partial class MainWindow : Window
 
         var candidates = new List<Candidate>();
 
-        // The FFI search and commit both block on network/DB work; run them off
+        // The generated bridge search and commit both block on network/DB work; run them off
         // the UI thread so the dialog stays responsive.
         searchButton.Click += async (_, _) =>
         {
@@ -4697,8 +4681,8 @@ public sealed partial class MainWindow : Window
             var item = images[index];
             // Forward the item's source verbatim; core dispatches the read on its
             // kind (a cover by image id, a release file by file id).
-            var handle = CurrentHandleOrZero();
-            if (handle == IntPtr.Zero)
+            var handle = CurrentHandleOrNull();
+            if (handle == null)
             {
                 return;
             }
@@ -4828,8 +4812,8 @@ public sealed partial class MainWindow : Window
             {
                 var sourceJson = JsonSerializer.Serialize(
                     new { kind = "releaseFile", file_id = file.Id });
-                var handle = CurrentHandleOrZero();
-                if (handle == IntPtr.Zero)
+                var handle = CurrentHandleOrNull();
+                if (handle == null)
                 {
                     return;
                 }
@@ -4912,7 +4896,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnStorageClick(object sender, RoutedEventArgs e)
     {
-        if (CurrentHandleOrZero() == IntPtr.Zero)
+        if (CurrentHandleOrNull() == null)
         {
             return;
         }
@@ -5328,7 +5312,7 @@ public sealed partial class MainWindow : Window
 
             // Runs `action` off-thread, surfaces any error to the status line, and
             // reloads the panel on success — shared by the row button and menu.
-            async System.Threading.Tasks.Task RunCancel(Func<IntPtr, string?> action)
+            async System.Threading.Tasks.Task RunCancel(Func<AppHandle, string?> action)
             {
                 storageStatus.Visibility = Visibility.Collapsed;
                 var (current, error) = await RunForCurrentHandle(action);
@@ -5348,7 +5332,7 @@ public sealed partial class MainWindow : Window
 
             // A right-click "Cancel" menu, matching the storage table's per-release
             // cancel. Used for the upload release rows.
-            MenuFlyout CancelFlyout(Func<IntPtr, string?> action)
+            MenuFlyout CancelFlyout(Func<AppHandle, string?> action)
             {
                 var menu = new MenuFlyout();
                 var item = new MenuFlyoutItem { Text = Loc.Chrome("action.cancel") };
@@ -5692,7 +5676,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnSettingsClick(object sender, RoutedEventArgs e)
     {
-        if (CurrentHandleOrZero() == IntPtr.Zero)
+        if (CurrentHandleOrNull() == null)
         {
             return;
         }
@@ -5714,7 +5698,7 @@ public sealed partial class MainWindow : Window
         }
 
         // Discogs key state machine. The token input is the only local draft state;
-        // the configured/valid state comes from bae_settings, re-read on
+        // the configured/valid state comes from generated bridge settings, re-read on
         // a config invalidation. not_configured/rejected → editable input + Save; valid →
         // "connected" + Remove; unvalidated → that label + Re-check + Remove. Save
         // and Re-check validate over the network, so they run off the UI thread and
@@ -6503,7 +6487,7 @@ public sealed partial class MainWindow : Window
             mcpStatus.Text = new Settings { McpStatus = parsed }.McpStatusText;
         }
 
-        async System.Threading.Tasks.Task CopyMcpToken(Func<IntPtr, string?> readToken, string successKey)
+        async System.Threading.Tasks.Task CopyMcpToken(Func<AppHandle, string?> readToken, string successKey)
         {
             ClearSettingsError();
             var (current, token) = await RunForCurrentHandle(readToken);
@@ -6529,7 +6513,11 @@ public sealed partial class MainWindow : Window
         rotateMcpToken.Click += async (_, _) =>
         {
             ClearSettingsError();
-            var token = await System.Threading.Tasks.Task.Run(NativeBae.GenerateMcpToken);
+            var (tokenCurrent, token) = await RunForCurrentHandle(NativeBae.GenerateMcpToken);
+            if (!tokenCurrent)
+            {
+                return;
+            }
             if (token is null)
             {
                 ShowSettingsError(Loc.Chrome("settings.automation.token_unavailable"));
@@ -6702,7 +6690,7 @@ public sealed partial class MainWindow : Window
             dialog.Hide();
         });
 
-        // Re-read the (FFI-pre-computed) settings into the live labels so a
+        // Re-read the (generated bridge-pre-computed) settings into the live labels so a
         // config invalidation — or a connect/disconnect in this dialog — updates
         // them in place instead of requiring a reopen.
         _refreshSettings = () =>
@@ -6774,7 +6762,7 @@ public sealed partial class MainWindow : Window
     // Load the library's devices into a host panel: one row per device (short
     // fingerprint + role + "this device" marker), and — for an owner — an
     // "Add a device…" button plus a Remove control on each other device. Runs the
-    // blocking FFI off the UI thread. <paramref name="onAddDevice"/> arms the
+    // blocking generated bridge off the UI thread. <paramref name="onAddDevice"/> arms the
     // approve flow (which the caller runs once the settings dialog closes).
     private async System.Threading.Tasks.Task LoadMembersInto(StackPanel host, Action onAddDevice)
     {
@@ -6899,7 +6887,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnClosed(object sender, WindowEventArgs args)
     {
-        if (CurrentHandleOrZero() != IntPtr.Zero)
+        if (CurrentHandleOrNull() != null)
         {
             // Persist the queue / current track / position before freeing the
             // handle, so the next launch can restore where playback left off.

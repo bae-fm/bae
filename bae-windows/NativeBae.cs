@@ -1,5 +1,4 @@
-﻿using System.Runtime.InteropServices;
-using System.Text.Json;
+﻿using System.Text.Json;
 using uniffi.bae_bridge;
 
 namespace Bae.Windows;
@@ -11,8 +10,11 @@ namespace Bae.Windows;
 /// </summary>
 internal static class NativeBae
 {
-    private const string Dll = "bae_windows_ffi.dll";
     private static BridgeDiagnostics? Diagnostics;
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    };
 
     /// <summary>One-time startup: register the OS credential store.</summary>
     internal static void Startup() => BaeBridgeMethods.InitKeyring();
@@ -62,11 +64,11 @@ internal static class NativeBae
         CaptureError(() => BaeBridgeMethods.SetOauthClientCreds(credsJson));
 
     /// <summary>
-    /// The cloud-provider wire tags this build's native library supports. Always
+    /// The cloud-provider wire tags this generated bridge build supports. Always
     /// includes <c>"s3"</c>; <c>"google_drive"</c>/<c>"dropbox"</c>/<c>"onedrive"</c>
-    /// are present only when bae_windows_ffi.dll was built with the oauth-providers
-    /// feature. The UI offers only these providers, so an S3-only build has no
-    /// path to start an OAuth flow. This bridge function is always exported.
+    /// are present only when the bridge was built with the oauth-providers feature.
+    /// The UI offers only these providers, so an S3-only build has no path to start
+    /// an OAuth flow.
     /// </summary>
     internal static string[] AvailableCloudProviders() =>
         BaeBridgeMethods.AvailableCloudProviders().Select(CloudProviderTag).ToArray();
@@ -385,779 +387,569 @@ internal static class NativeBae
         return BaeBridgeMethods.RestoreFromCloud(libraryId, encryptionKeyHex, libraryName, source).Id;
     }
 
-    /// <summary>
-    /// Initialize the app for <paramref name="libraryId"/>. Returns an opaque
-    /// handle, or <see cref="IntPtr.Zero"/> on failure (the Rust side logs the
-    /// error). Free the result with <see cref="HandleFree"/>.
-    /// </summary>
-    [DllImport(Dll, EntryPoint = "bae_init", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr Init(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string libraryId,
-        uint positionUpdateIntervalMs);
-
-    /// <summary>Whether this library's encryption key is loaded. False means the
-    /// library is locked (key not on this device) and needs <see cref="UnlockLibrary"/>.</summary>
-    [DllImport(Dll, EntryPoint = "bae_has_encryption_key", CallingConvention = CallingConvention.Cdecl)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    internal static extern bool HasEncryptionKey(IntPtr handle);
-
-    /// <summary>Store a library's hex key so it can be opened; null on success, else the error.</summary>
-    internal static string? UnlockLibrary(string libraryId, string keyHex) =>
-        CaptureError(() => BaeBridgeMethods.UnlockLibrary(libraryId, keyHex));
-
-    [DllImport(Dll, EntryPoint = "bae_lock_active_library", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr LockActiveLibraryPtr(IntPtr handle);
-
-    /// <summary>Forget the active library's key (lock it); null on success, else the error.</summary>
-    internal static string? LockActiveLibrary(IntPtr handle) =>
-        ResultMessage(LockActiveLibraryPtr(handle));
-
-    [DllImport(Dll, EntryPoint = "bae_rename_library", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr RenameLibraryPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string libraryId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
-
-    /// <summary>Rename a library (active or inactive); null on success, else the error.</summary>
-    internal static string? RenameLibrary(IntPtr handle, string libraryId, string name) =>
-        ResultMessage(RenameLibraryPtr(handle, libraryId, name));
-
-    [DllImport(Dll, EntryPoint = "bae_set_primary_release", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SetPrimaryReleasePtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string albumId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
-
-    /// <summary>Set an album's primary release; null on success, else the error.</summary>
-    internal static string? SetPrimaryRelease(IntPtr handle, string albumId, string releaseId) =>
-        ResultMessage(SetPrimaryReleasePtr(handle, albumId, releaseId));
-
-    [DllImport(Dll, EntryPoint = "bae_export_track", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ExportTrackPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string trackId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string outputPath,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectionJson);
-
-    /// <summary>Export one track to outputPath using an export selection JSON; null on success, else the error.</summary>
-    internal static string? ExportTrack(IntPtr handle, string trackId, string outputPath, string selectionJson) =>
-        ResultMessage(ExportTrackPtr(handle, trackId, outputPath, selectionJson));
-
-    [DllImport(Dll, EntryPoint = "bae_export_release", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ExportReleasePtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string targetDir,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectionJson);
-
-    /// <summary>Export one release into targetDir using an export selection JSON; null on success, else the error.</summary>
-    internal static string? ExportRelease(IntPtr handle, string releaseId, string targetDir, string selectionJson) =>
-        ResultMessage(ExportReleasePtr(handle, releaseId, targetDir, selectionJson));
-
-    [DllImport(Dll, EntryPoint = "bae_export_track_suggested_name", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ExportTrackSuggestedNamePtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string trackId);
-
-    /// <summary>
-    /// The default filename stem (no extension) a single-track export suggests for
-    /// <paramref name="trackId"/>, rendered from the configured template, or null on
-    /// error (the cause is logged in the core). Copies and frees.
-    /// </summary>
-    internal static string? ExportTrackSuggestedName(IntPtr handle, string trackId) =>
-        CopyAndFree(ExportTrackSuggestedNamePtr(handle, trackId));
-
-    [DllImport(Dll, EntryPoint = "bae_export_track_extension", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ExportTrackExtensionPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string trackId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectionJson);
-
-    /// <summary>The filename extension for a track export selection, without a leading dot.</summary>
-    internal static string? ExportTrackExtension(IntPtr handle, string trackId, string selectionJson) =>
-        CopyAndFree(ExportTrackExtensionPtr(handle, trackId, selectionJson));
-
-    [DllImport(Dll, EntryPoint = "bae_get_release_images", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr GetReleaseImagesPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
-
-    /// <summary>
-    /// A release's local image files (cover-art candidates) as a JSON array of
-    /// <c>{id, original_filename}</c>, or null on error. Copies and frees.
-    /// </summary>
-    internal static string? GetReleaseImagesJson(IntPtr handle, string releaseId) =>
-        CopyAndFree(GetReleaseImagesPtr(handle, releaseId));
-
-    [DllImport(Dll, EntryPoint = "bae_fetch_remote_covers", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr FetchRemoteCoversPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
-
-    /// <summary>
-    /// Remote cover-art candidates for a release (MusicBrainz / Discogs) as a JSON
-    /// array of <c>{url, thumbnail_url, label, source}</c>, or null on error.
-    /// Performs network I/O — call off the UI thread. Copies and frees.
-    /// </summary>
-    internal static string? FetchRemoteCoversJson(IntPtr handle, string releaseId) =>
-        CopyAndFree(FetchRemoteCoversPtr(handle, releaseId));
-
-    [DllImport(Dll, EntryPoint = "bae_change_cover", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ChangeCoverPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string albumId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectionJson);
-
-    /// <summary>
-    /// Change a release's cover art from a selection JSON (a release image file or
-    /// a remote URL); null on success, else the error. Performs network I/O for a
-    /// remote cover — call off the UI thread.
-    /// </summary>
-    internal static string? ChangeCover(IntPtr handle, string albumId, string releaseId, string selectionJson) =>
-        ResultMessage(ChangeCoverPtr(handle, albumId, releaseId, selectionJson));
-
-    /// <summary>
-    /// A page of albums (newest first) as a JSON array, or <see cref="IntPtr.Zero"/>
-    /// on error. The returned string is owned by Rust; prefer
-    /// <see cref="AlbumPageJson"/>, which copies and frees it.
-    /// </summary>
-    [DllImport(Dll, EntryPoint = "bae_album_page", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr AlbumPage(
-        IntPtr handle,
-        ulong offset,
-        ulong limit,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string sortField,
-        [MarshalAs(UnmanagedType.I1)] bool ascending);
-
-    /// <summary>
-    /// A page of albums sorted by <paramref name="sortField"/> as a JSON string, or
-    /// null on error. Copies the string into managed memory and frees the native one.
-    /// </summary>
-    internal static string? AlbumPageJson(IntPtr handle, ulong offset, ulong limit, string sortField, bool ascending) =>
-        CopyAndFree(AlbumPage(handle, offset, limit, sortField, ascending));
-
-    [DllImport(Dll, EntryPoint = "bae_composer_count", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern long ComposerCount(IntPtr handle);
-
-    [DllImport(Dll, EntryPoint = "bae_composer_page", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ComposerPagePtr(
-        IntPtr handle,
-        ulong offset,
-        ulong limit,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string sortField,
-        [MarshalAs(UnmanagedType.I1)] bool ascending);
-
-    internal static string? ComposerPageJson(IntPtr handle, ulong offset, ulong limit, string sortField, bool ascending) =>
-        CopyAndFree(ComposerPagePtr(handle, offset, limit, sortField, ascending));
-
-    /// <summary>
-    /// A release's gallery images as JSON, or <see cref="IntPtr.Zero"/> on error.
-    /// Prefer <see cref="GalleryJson"/>.
-    /// </summary>
-    [DllImport(Dll, EntryPoint = "bae_gallery", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr GalleryPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
-
-    /// <summary>A release's gallery as a JSON string, or null. Copies and frees.</summary>
-    internal static string? GalleryJson(IntPtr handle, string releaseId) =>
-        CopyAndFree(GalleryPtr(handle, releaseId));
-
-    /// <summary>
-    /// Every release's storage summary as JSON, or <see cref="IntPtr.Zero"/> on
-    /// error. Prefer <see cref="StorageJson"/>.
-    /// </summary>
-    [DllImport(Dll, EntryPoint = "bae_storage", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr StoragePtr(IntPtr handle);
-
-    /// <summary>
-    /// Every release's storage summary as a JSON string, or null on error. Copies
-    /// the string into managed memory and frees the native one.
-    /// </summary>
-    internal static string? StorageJson(IntPtr handle) => CopyAndFree(StoragePtr(handle));
-
-    [DllImport(Dll, EntryPoint = "bae_pin_release", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr PinReleasePtr(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
-
-    [DllImport(Dll, EntryPoint = "bae_unpin_release", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr UnpinReleasePtr(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
-
-    [DllImport(Dll, EntryPoint = "bae_make_release_remote", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr MakeReleaseRemotePtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
-        [MarshalAs(UnmanagedType.I1)] bool pin);
-
-    /// <summary>Pin a cloud-only release locally; null on success, else the error.</summary>
-    internal static string? PinRelease(IntPtr handle, string releaseId) =>
-        ResultMessage(PinReleasePtr(handle, releaseId));
-
-    /// <summary>Unpin a release (drop the local copy); null on success, else the error.</summary>
-    internal static string? UnpinRelease(IntPtr handle, string releaseId) =>
-        ResultMessage(UnpinReleasePtr(handle, releaseId));
-
-    /// <summary>
-    /// Make a local release remote: upload it to the cloud and drop the in-place
-    /// source (a remote release has no local path). <paramref name="pin"/> keeps
-    /// coven's blobs offline — the orthogonal "keep local" choice. Null on success,
-    /// else the error.
-    /// </summary>
-    internal static string? MakeReleaseRemote(IntPtr handle, string releaseId, bool pin) =>
-        ResultMessage(MakeReleaseRemotePtr(handle, releaseId, pin));
-
-    [DllImport(Dll, EntryPoint = "bae_make_release_local", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr MakeReleaseLocalPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string newPath);
-
-    /// <summary>Move a release's files out of the library; null on success, else the error.</summary>
-    internal static string? MakeReleaseLocal(IntPtr handle, string releaseId, string newPath) =>
-        ResultMessage(MakeReleaseLocalPtr(handle, releaseId, newPath));
-
-    [DllImport(Dll, EntryPoint = "bae_outbox_snapshot", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr OutboxSnapshotPtr(IntPtr handle);
-
-    /// <summary>The cloud outbox snapshot as a JSON string, or null on error.
-    /// Copies into managed memory and frees the native string.</summary>
-    internal static string? OutboxSnapshotJson(IntPtr handle) => CopyAndFree(OutboxSnapshotPtr(handle));
-
-    [DllImport(Dll, EntryPoint = "bae_download_snapshot", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr DownloadSnapshotPtr(IntPtr handle);
-
-    /// <summary>The download (pin) queue snapshot as a JSON string, or null on
-    /// error. Copies into managed memory and frees the native string.</summary>
-    internal static string? DownloadSnapshotJson(IntPtr handle) => CopyAndFree(DownloadSnapshotPtr(handle));
-
-    [DllImport(Dll, EntryPoint = "bae_sync_status", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SyncStatusPtr(IntPtr handle);
-
-    /// <summary>The current cloud-sync status as a JSON string, or null on
-    /// error. Copies into managed memory and frees the native string.</summary>
-    internal static string? SyncStatusJson(IntPtr handle) => CopyAndFree(SyncStatusPtr(handle));
-
-    [DllImport(Dll, EntryPoint = "bae_set_downloads_paused", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void SetDownloadsPausedNative(IntPtr handle, [MarshalAs(UnmanagedType.I1)] bool paused);
-
-    /// <summary>Pause or resume the download (pin) queue.</summary>
-    internal static void SetDownloadsPaused(IntPtr handle, bool paused) => SetDownloadsPausedNative(handle, paused);
-
-    [DllImport(Dll, EntryPoint = "bae_retry_downloads", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void RetryDownloadsNative(IntPtr handle);
-
-    /// <summary>Retry failed downloads now (re-queues them).</summary>
-    internal static void RetryDownloads(IntPtr handle) => RetryDownloadsNative(handle);
-
-    [DllImport(Dll, EntryPoint = "bae_retry_outbox", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr RetryOutboxPtr(IntPtr handle);
-
-    /// <summary>Retry the cloud outbox now; null on success, else the error.</summary>
-    internal static string? RetryOutbox(IntPtr handle) => ResultMessage(RetryOutboxPtr(handle));
-
-    /// <summary>Pause or resume the cloud sync pipeline (drains the outbox when resumed).</summary>
-    [DllImport(Dll, EntryPoint = "bae_set_sync_paused", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void SetSyncPaused(IntPtr handle, [MarshalAs(UnmanagedType.I1)] bool paused);
-
-    [DllImport(Dll, EntryPoint = "bae_cancel_outbox_item", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr CancelOutboxItemPtr(IntPtr handle, long id);
-
-    /// <summary>Cancel one queued outbox entry by id; null on success, else the error.</summary>
-    internal static string? CancelOutboxItem(IntPtr handle, long id) =>
-        ResultMessage(CancelOutboxItemPtr(handle, id));
-
-    [DllImport(Dll, EntryPoint = "bae_cancel_release_transition", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr CancelReleaseTransitionPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
-
-    /// <summary>Cancel whatever transition a release is mid-flight (pin / upload /
-    /// unmanage), leaving it in its prior state; null on success, else the error.</summary>
-    internal static string? CancelReleaseTransition(IntPtr handle, string releaseId) =>
-        ResultMessage(CancelReleaseTransitionPtr(handle, releaseId));
-
-    /// <summary>
-    /// Album results for a query as JSON (same shape as a page), or
-    /// <see cref="IntPtr.Zero"/> on error. Prefer <see cref="SearchJson"/>.
-    /// </summary>
-    [DllImport(Dll, EntryPoint = "bae_search", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr SearchPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string query);
-
-    /// <summary>
-    /// Album results for a query as a JSON string, or null on error. Copies the
-    /// string into managed memory and frees the native one.
-    /// </summary>
-    internal static string? SearchJson(IntPtr handle, string query) => CopyAndFree(SearchPtr(handle, query));
-
-    /// <summary>
-    /// Full detail for one album as JSON, or <see cref="IntPtr.Zero"/> on error /
-    /// not found. Prefer <see cref="AlbumDetailJson"/>, which copies and frees it.
-    /// </summary>
-    [DllImport(Dll, EntryPoint = "bae_album_detail", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr AlbumDetailPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string albumId);
-
-    /// <summary>
-    /// One album's detail as a JSON string, or null on error / not found. Copies
-    /// the string into managed memory and frees the native one.
-    /// </summary>
-    internal static string? AlbumDetailJson(IntPtr handle, string albumId) =>
-        CopyAndFree(AlbumDetailPtr(handle, albumId));
-
-    [DllImport(Dll, EntryPoint = "bae_composer_detail", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ComposerDetailPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string artistId);
-
-    internal static string? ComposerDetailJson(IntPtr handle, string artistId) =>
-        CopyAndFree(ComposerDetailPtr(handle, artistId));
-
-    [DllImport(Dll, EntryPoint = "bae_work_detail", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr WorkDetailPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string workId);
-
-    internal static string? WorkDetailJson(IntPtr handle, string workId) =>
-        CopyAndFree(WorkDetailPtr(handle, workId));
-
-    /// <summary>Current settings as JSON, or null on error. Copies and frees.</summary>
-    [DllImport(Dll, EntryPoint = "bae_settings", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr SettingsPtr(IntPtr handle);
-
-    /// <summary>Current settings as a JSON string, or null on error.</summary>
-    internal static string? SettingsJson(IntPtr handle) => CopyAndFree(SettingsPtr(handle));
-
-    [DllImport(Dll, EntryPoint = "bae_set_pause_between_sides", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SetPauseBetweenSidesPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.I1)] bool enabled);
-
-    /// <summary>Set physical-side playback pauses; null on success, else the error.</summary>
-    internal static string? SetPauseBetweenSides(IntPtr handle, bool enabled) =>
-        ResultMessage(SetPauseBetweenSidesPtr(handle, enabled));
-
-    [DllImport(Dll, EntryPoint = "bae_set_export_filename_template", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SetExportFilenameTemplatePtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string template);
-
-    /// <summary>Set the single-track export filename template; null on success, else the error.</summary>
-    internal static string? SetExportFilenameTemplate(IntPtr handle, string template) =>
-        ResultMessage(SetExportFilenameTemplatePtr(handle, template));
-
-    [DllImport(Dll, EntryPoint = "bae_set_export_presets", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SetExportPresetsPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string presetsJson);
-
-    internal static string? SetExportPresets(IntPtr handle, string presetsJson) =>
-        ResultMessage(SetExportPresetsPtr(handle, presetsJson));
-
-    [DllImport(Dll, EntryPoint = "bae_set_default_track_export_selection", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SetDefaultTrackExportSelectionPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectionJson);
-
-    internal static string? SetDefaultTrackExportSelection(IntPtr handle, string selectionJson) =>
-        ResultMessage(SetDefaultTrackExportSelectionPtr(handle, selectionJson));
-
-    [DllImport(Dll, EntryPoint = "bae_set_default_release_export_selection", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SetDefaultReleaseExportSelectionPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectionJson);
-
-    internal static string? SetDefaultReleaseExportSelection(IntPtr handle, string selectionJson) =>
-        ResultMessage(SetDefaultReleaseExportSelectionPtr(handle, selectionJson));
-
-    [DllImport(Dll, EntryPoint = "bae_set_mcp_server_config", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SetMcpServerConfigPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.I1)] bool enabled,
-        ushort port);
-
-    /// <summary>Set local MCP server config; null on success, else the error.</summary>
-    internal static string? SetMcpServerConfig(IntPtr handle, bool enabled, ushort port) =>
-        ResultMessage(SetMcpServerConfigPtr(handle, enabled, port));
-
-    [DllImport(Dll, EntryPoint = "bae_mcp_server_status", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr McpServerStatusPtr(IntPtr handle);
-
-    internal static string? McpServerStatusJson(IntPtr handle) =>
-        CopyAndFree(McpServerStatusPtr(handle));
-
-    [DllImport(Dll, EntryPoint = "bae_mcp_token", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr McpTokenPtr(IntPtr handle);
-
-    internal static string? GetMcpToken(IntPtr handle) =>
-        CopyAndFree(McpTokenPtr(handle));
-
-    [DllImport(Dll, EntryPoint = "bae_generate_mcp_token", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr GenerateMcpTokenPtr();
-
-    internal static string? GenerateMcpToken() =>
-        CopyAndFree(GenerateMcpTokenPtr());
-
-    [DllImport(Dll, EntryPoint = "bae_set_mcp_token", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SetMcpTokenPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string token);
-
-    internal static string? SetMcpToken(IntPtr handle, string token) =>
-        ResultMessage(SetMcpTokenPtr(handle, token));
-
-    [DllImport(Dll, EntryPoint = "bae_save_discogs_token", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SaveDiscogsTokenPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string token);
-
-    [DllImport(Dll, EntryPoint = "bae_revalidate_discogs_token", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr RevalidateDiscogsTokenPtr(IntPtr handle);
-
-    [DllImport(Dll, EntryPoint = "bae_delete_discogs_token", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr DeleteDiscogsTokenPtr(IntPtr handle);
-
-    /// <summary>
-    /// Validate the token against Discogs, then persist an accepted or unreachable
-    /// one. Returns the outcome — "valid" (validated and stored), "unvalidated"
-    /// (couldn't reach Discogs, stored anyway and re-validated later), or "rejected"
-    /// (Discogs rejected it, nothing stored) — or null on an internal error (logged
-    /// in the core). Validates over the network — call off the UI thread. On
-    /// "valid"/"unvalidated" a config invalidation follows; "rejected" persists
-    /// nothing, so the caller surfaces it from this return value. Copies and frees.
-    /// </summary>
-    internal static string? SaveDiscogsToken(IntPtr handle, string token) =>
-        CopyAndFree(SaveDiscogsTokenPtr(handle, token));
-
-    /// <summary>
-    /// Re-validate a stored-but-unvalidated Discogs token against Discogs (e.g. one
-    /// saved while offline); no-op unless a key is stored with "unvalidated" status.
-    /// On a result the status changes, so a config invalidation follows. Validates
-    /// over the network — call off the UI thread. Null on success, else the error.
-    /// </summary>
-    internal static string? RevalidateDiscogsToken(IntPtr handle) =>
-        ResultMessage(RevalidateDiscogsTokenPtr(handle));
-
-    /// <summary>Remove the Discogs token; null on success, else the error message.</summary>
-    internal static string? DeleteDiscogsToken(IntPtr handle) =>
-        ResultMessage(DeleteDiscogsTokenPtr(handle));
-
-    [DllImport(Dll, EntryPoint = "bae_disconnect_cloud", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr DisconnectCloudPtr(IntPtr handle);
-
-    [DllImport(Dll, EntryPoint = "bae_save_sync_config", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SaveSyncConfigPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string bucket,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string region,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string endpoint,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string keyPrefix,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string accessKey,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string secretKey,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string storage);
-
-    /// <summary>
-    /// Connect sync to an S3 bucket; null on success, else the error. `storage`
-    /// is "opaque" (encrypted) or "browsable" (stored in the clear).
-    /// </summary>
-    internal static string? SaveSyncConfig(
-        IntPtr handle, string bucket, string region, string endpoint,
-        string keyPrefix, string accessKey, string secretKey, string storage) =>
-        ResultMessage(SaveSyncConfigPtr(handle, bucket, region, endpoint, keyPrefix, accessKey, secretKey, storage));
-
-    [DllImport(Dll, EntryPoint = "bae_disconnect_warning", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr DisconnectWarningPtr(IntPtr handle);
-
-    /// <summary>The data-loss warning before disconnecting sync, or null if none.</summary>
-    internal static string? DisconnectWarning(IntPtr handle) => CopyAndFree(DisconnectWarningPtr(handle));
-
-    [DllImport(Dll, EntryPoint = "bae_sign_in_cloud", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SignInCloudPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string provider,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string storage);
-
-    /// <summary>
-    /// Sign in to an OAuth provider (google_drive / dropbox / onedrive); null on
-    /// success, else the error. `storage` is "opaque" (encrypted) or "browsable"
-    /// (stored in the clear). Blocks on the browser flow — call off the UI thread.
-    /// </summary>
-    internal static string? SignInCloud(IntPtr handle, string provider, string storage) =>
-        ResultMessage(SignInCloudPtr(handle, provider, storage));
-
-    /// <summary>Disconnect cloud sync; null on success, else the error message.</summary>
-    internal static string? DisconnectCloud(IntPtr handle) =>
-        ResultMessage(DisconnectCloudPtr(handle));
-
-    /// <summary>Trigger a sync pass now (no-op when not connected).</summary>
-    [DllImport(Dll, EntryPoint = "bae_trigger_sync", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void TriggerSync(IntPtr handle);
-
-    [DllImport(Dll, EntryPoint = "bae_generate_restore_code", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr GenerateRestoreCodePtr(IntPtr handle);
-
-    /// <summary>This library's restore code, or null on error. Copies and frees.</summary>
-    internal static string? GenerateRestoreCode(IntPtr handle) => CopyAndFree(GenerateRestoreCodePtr(handle));
-
-    [DllImport(Dll, EntryPoint = "bae_get_members", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr GetMembersPtr(IntPtr handle);
-
-    /// <summary>
-    /// The library's membership as JSON <c>{members: [{pubkey, role, is_self,
-    /// fingerprint, can_remove}], self_is_owner}</c>, or null on error. Blocks on
-    /// a cloud read — call off the UI thread. Copies and frees.
-    /// </summary>
-    internal static string? GetMembersJson(IntPtr handle) => CopyAndFree(GetMembersPtr(handle));
-
-    [DllImport(Dll, EntryPoint = "bae_invite_member", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr InviteMemberPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string publicKeyHex);
-
-    /// <summary>
-    /// Approve a device into the library by its public key (hex); returns the
-    /// invite code to hand back to the joining device, or null on error. Blocks on
-    /// the cloud write — call off the UI thread. Copies and frees.
-    /// </summary>
-    internal static string? InviteMember(IntPtr handle, string publicKeyHex) =>
-        CopyAndFree(InviteMemberPtr(handle, publicKeyHex));
-
-    [DllImport(Dll, EntryPoint = "bae_remove_member", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr RemoveMemberPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string publicKeyHex);
-
-    /// <summary>
-    /// Remove a device from the library by its public key (hex), rotating the
-    /// library key; null on success, else the error. Blocks on the cloud write —
-    /// call off the UI thread.
-    /// </summary>
-    internal static string? RemoveMember(IntPtr handle, string publicKeyHex) =>
-        ResultMessage(RemoveMemberPtr(handle, publicKeyHex));
-
-    [DllImport(Dll, EntryPoint = "bae_release_edit_seed", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ReleaseEditSeedPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
-
-    /// <summary>The metadata editor's raw form as JSON, or null. Copies and frees.</summary>
-    internal static string? ReleaseEditSeedJson(IntPtr handle, string releaseId) =>
-        CopyAndFree(ReleaseEditSeedPtr(handle, releaseId));
-
-    [DllImport(Dll, EntryPoint = "bae_reset_metadata_to_source", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ResetMetadataToSourcePtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
-
-    /// <summary>
-    /// The metadata editor's raw form re-seeded from the release's stored
-    /// metadata source (its original identity), as JSON, or null. Discards
-    /// in-progress edits without writing the DB. Copies and frees.
-    /// </summary>
-    internal static string? ResetMetadataToSourceJson(IntPtr handle, string releaseId) =>
-        CopyAndFree(ResetMetadataToSourcePtr(handle, releaseId));
-
-    [DllImport(Dll, EntryPoint = "bae_apply_release_edit", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ApplyReleaseEditPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string rawJson);
-
-    /// <summary>Apply an edited raw form; null on success, else the error message.</summary>
-    internal static string? ApplyReleaseEdit(IntPtr handle, string releaseId, string rawJson) =>
-        ResultMessage(ApplyReleaseEditPtr(handle, releaseId, rawJson));
-
-    [DllImport(Dll, EntryPoint = "bae_search_releases", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SearchReleasesPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string source,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string artist,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string album);
-
-    /// <summary>
-    /// Candidate releases matching artist + album from a metadata source as a
-    /// JSON string, or null on error. Blocks on a network request — call off the
-    /// UI thread. Copies and frees.
-    /// </summary>
-    internal static string? SearchReleasesJson(IntPtr handle, string source, string artist, string album) =>
-        CopyAndFree(SearchReleasesPtr(handle, source, artist, album));
-
-    [DllImport(Dll, EntryPoint = "bae_reidentify_release", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ReidentifyReleasePtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string chosenReleaseId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string source);
-
-    /// <summary>
-    /// Re-identify a release as the chosen candidate; null on success, else the
-    /// error message. May block — call off the UI thread.
-    /// </summary>
-    internal static string? ReidentifyRelease(IntPtr handle, string releaseId, string chosenReleaseId, string source) =>
-        ResultMessage(ReidentifyReleasePtr(handle, releaseId, chosenReleaseId, source));
-
-    [DllImport(Dll, EntryPoint = "bae_scan_folder", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ScanFolderPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string path,
-        [MarshalAs(UnmanagedType.I1)] bool clearFirst);
-
-    /// <summary>
-    /// Enqueue a folder scan; null on success, else the error message. Candidate
-    /// list changes arrive as invalidations. May block briefly — call off the UI
-    /// thread.
-    /// </summary>
-    internal static string? ScanFolder(IntPtr handle, string path, bool clearFirst) =>
-        ResultMessage(ScanFolderPtr(handle, path, clearFirst));
-
-    [DllImport(Dll, EntryPoint = "bae_import_candidates", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ImportCandidatesPtr(IntPtr handle);
-
-    /// <summary>
-    /// Current folder-import candidates with runtime state as JSON, or null on
-    /// error. Copies and frees.
-    /// </summary>
-    internal static string? ImportCandidatesJson(IntPtr handle) =>
-        CopyAndFree(ImportCandidatesPtr(handle));
-
-    /// <summary>
-    /// Start auto-identifying a folder candidate. Fire-and-forget; progress and
-    /// results arrive through candidate invalidations keyed by candidateKey.
-    /// </summary>
-    [DllImport(Dll, EntryPoint = "bae_auto_identify_folder", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void AutoIdentifyFolder(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string candidateKey,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string folderPath);
-
-    /// <summary>
-    /// Exclude a signal from a candidate's triangulation, or re-include an
-    /// already-excluded one. <paramref name="kind"/> is the badge's wire kind
-    /// ("disc_id" / "barcode" / "catalog"); <paramref name="value"/> is the
-    /// catalog number naming which catalog candidate to toggle (ignored for the
-    /// disc-ID / barcode singletons — pass "" there). Fire-and-forget: the
-    /// candidate invalidates after re-deriving so the badges refresh from the
-    /// snapshot.
-    /// </summary>
-    [DllImport(Dll, EntryPoint = "bae_toggle_signal_for_candidate", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void ToggleSignalForCandidate(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string candidateKey,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string kind,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
-
-    /// <summary>
-    /// Re-run a candidate's identification lookups, keeping the user's signal
-    /// exclusions. Fire-and-forget; progress and the re-derived outcome arrive
-    /// through candidate invalidations keyed by candidateKey.
-    /// </summary>
-    [DllImport(Dll, EntryPoint = "bae_rerun_identify_for_candidate", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void RerunIdentifyForCandidate(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string candidateKey);
-
-    /// <summary>Preview-play an audio file by path (auditioning before import).</summary>
-    [DllImport(Dll, EntryPoint = "bae_preview_play", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void PreviewPlay(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string path);
-
-    /// <summary>Stop preview playback.</summary>
-    [DllImport(Dll, EntryPoint = "bae_preview_stop", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void PreviewStop(IntPtr handle);
-
-    /// <summary>Toggle preview play/pause.</summary>
-    [DllImport(Dll, EntryPoint = "bae_preview_toggle_pause", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void PreviewTogglePause(IntPtr handle);
-
-    [DllImport(Dll, EntryPoint = "bae_prefetch_candidate_edit", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr PrefetchCandidateEditPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string source,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string folderPath);
-
-    /// <summary>
-    /// The import confirmation seed as JSON (a <see cref="PrefetchedEdit"/>:
-    /// <c>{edit, remote_covers, local_artwork}</c>), or null on error. The
-    /// <c>edit</c> is the editor's raw form seeded from the chosen release;
-    /// <c>remote_covers</c> are the prefetched detail's cover-art options and
-    /// <c>local_artwork</c> the image files in <paramref name="folderPath"/> —
-    /// the cover choices for the import picker. Blocks on a network request —
-    /// call off the UI thread. Copies and frees.
-    /// </summary>
-    internal static string? PrefetchCandidateEditJson(IntPtr handle, string releaseId, string source, string folderPath) =>
-        CopyAndFree(PrefetchCandidateEditPtr(handle, releaseId, source, folderPath));
-
-    [DllImport(Dll, EntryPoint = "bae_check_release_in_library", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr CheckReleaseInLibraryPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string source);
-
-    /// <summary>
-    /// Whether the chosen candidate (<paramref name="releaseId"/> from
-    /// <paramref name="source"/>) is already in the library, as a JSON
-    /// <see cref="LibraryStatus"/> (<c>{release_in_library, album_id}</c>), or null
-    /// on error. The import confirmation shows a banner when
-    /// <c>release_in_library</c> is set, linking to <c>album_id</c>. Reads the
-    /// database — call off the UI thread. Copies and frees.
-    /// </summary>
-    internal static string? CheckReleaseInLibraryJson(IntPtr handle, string releaseId, string source) =>
-        CopyAndFree(CheckReleaseInLibraryPtr(handle, releaseId, source));
-
-    [DllImport(Dll, EntryPoint = "bae_import_candidate", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ImportCandidatePtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string candidateKey,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string folderPath,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string chosenReleaseId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string source,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string storageMode,
-        [MarshalAs(UnmanagedType.I1)] bool pin,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string userEditJson,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string selectedCoverJson);
-
-    /// <summary>
-    /// Import a candidate as the chosen identity; null on a successful enqueue,
-    /// else the error message. <paramref name="userEditJson"/> overlays the user's
-    /// confirmed metadata edits (a serialized ReleaseEdit) — pass an empty string
-    /// for no edit. <paramref name="selectedCoverJson"/> is the cover the user
-    /// picked (a serialized cover selection) — pass an empty string to use the
-    /// import's default cover. <paramref name="storageMode"/> is <c>unmanaged</c>
-    /// (leave the files in place) or <c>managed</c> (upload to the cloud);
-    /// <paramref name="pin"/> is the orthogonal "keep offline" choice, meaningful
-    /// only for a managed import. The import runs in the background and updates
-    /// the candidate snapshot. May block briefly — call off the UI thread.
-    /// </summary>
-    internal static string? ImportCandidate(
-        IntPtr handle, string candidateKey, string folderPath, string chosenReleaseId, string source, string storageMode, bool pin, string userEditJson, string selectedCoverJson) =>
-        ResultMessage(ImportCandidatePtr(handle, candidateKey, folderPath, chosenReleaseId, source, storageMode, pin, userEditJson, selectedCoverJson));
-
-    /// <summary>
-    /// Copy a Rust-owned UTF-8 string into managed memory and free the native one,
-    /// or return null when the pointer is <see cref="IntPtr.Zero"/>.
-    /// </summary>
-    private static string? CopyAndFree(IntPtr ptr)
+    internal sealed class EventCallback(Action<BridgeUiEvent> onEvent) : UiEventCallback
     {
-        if (ptr == IntPtr.Zero)
-        {
-            return null;
-        }
+        public void OnEvent(BridgeUiEvent @event) => onEvent(@event);
+    }
 
+    internal static AppHandle? Init(string libraryId, uint positionUpdateIntervalMs)
+    {
         try
         {
-            return Marshal.PtrToStringUTF8(ptr);
+            return BaeBridgeMethods.InitApp(libraryId, positionUpdateIntervalMs);
         }
-        finally
+        catch (BridgeException exception)
         {
-            StringFree(ptr);
+            BaeDiagnostics.Logger.Error($"library open failed: {exception.Message}");
+            return null;
         }
     }
 
-    /// Interpret a command result pointer: null = success, else an owned error
-    /// string this copies and frees.
-    private static string? ResultMessage(IntPtr ptr) => CopyAndFree(ptr);
+    internal static bool HasEncryptionKey(AppHandle handle) => handle.HasEncryptionKey();
+
+    internal static void HandleFree(AppHandle handle) => handle.Dispose();
+
+    internal static void Subscribe(AppHandle handle, EventCallback callback) =>
+        handle.SubscribeUiEvents(callback);
+
+    internal static BaeEvent ToBaeEvent(BridgeUiEvent evt) =>
+        evt switch
+        {
+            BridgeUiEvent.Invalidated invalidated => new BaeEvent
+            {
+                Type = "Invalidated",
+                Invalidation = ToBaeInvalidation(invalidated.Invalidation),
+            },
+            BridgeUiEvent.PlaybackStopped => new BaeEvent { Type = "PlaybackStopped" },
+            BridgeUiEvent.PlaybackError error => new BaeEvent
+            {
+                Type = "PlaybackError",
+                Reason = ToPlaybackErrorReason(error.Reason),
+            },
+            BridgeUiEvent.PlaybackLoading loading => new BaeEvent
+            {
+                Type = "PlaybackLoading",
+                TrackId = loading.TrackId,
+            },
+            BridgeUiEvent.PlaybackPlaying playing => new BaeEvent
+            {
+                Type = "PlaybackPlaying",
+                TrackId = playing.TrackId,
+                AlbumId = playing.AlbumId,
+                TrackTitle = playing.TrackTitle,
+                Artist = playing.ArtistNames,
+                CoverImageId = playing.CoverImageId,
+                DurationMs = playing.DurationMs,
+            },
+            BridgeUiEvent.PlaybackPaused paused => new BaeEvent
+            {
+                Type = "PlaybackPaused",
+                TrackId = paused.TrackId,
+                AlbumId = paused.AlbumId,
+                TrackTitle = paused.TrackTitle,
+                Artist = paused.ArtistNames,
+                CoverImageId = paused.CoverImageId,
+                DurationMs = paused.DurationMs,
+                PauseReason = ToPlaybackPauseReason(paused.Reason),
+            },
+            BridgeUiEvent.PlaybackProgress progress => new BaeEvent
+            {
+                Type = "PlaybackProgress",
+                TrackId = progress.TrackId,
+                PositionMs = progress.PositionMs,
+                DurationMs = progress.DurationMs,
+                Progress = progress.Progress,
+            },
+            BridgeUiEvent.PlaybackSeeked seeked => new BaeEvent
+            {
+                Type = "PlaybackSeeked",
+                TrackId = seeked.TrackId,
+                PositionMs = seeked.PositionMs,
+                DurationMs = seeked.DurationMs,
+                Progress = seeked.Progress,
+            },
+            BridgeUiEvent.VolumeChanged volume => new BaeEvent
+            {
+                Type = "VolumeChanged",
+                Volume = volume.Volume,
+            },
+            BridgeUiEvent.MuteChanged mute => new BaeEvent
+            {
+                Type = "MuteChanged",
+                IsMuted = mute.IsMuted,
+            },
+            BridgeUiEvent.RepeatModeChanged repeat => new BaeEvent
+            {
+                Type = "RepeatModeChanged",
+                Mode = RepeatModeTag(repeat.Mode),
+            },
+            BridgeUiEvent.QueueUpdated queue => new BaeEvent
+            {
+                Type = "QueueUpdated",
+                Manual = queue.Snapshot.Manual.Select(ToQueueItem).ToList(),
+                Context = ToPlaybackContext(queue.Snapshot.Context),
+                HasNext = queue.Snapshot.HasNext,
+                HasPrevious = queue.Snapshot.HasPrevious,
+            },
+            BridgeUiEvent.QueueItemsAdded added => new BaeEvent
+            {
+                Type = "QueueItemsAdded",
+                Count = checked((int)added.Count),
+            },
+            BridgeUiEvent.PreviewIdle => new BaeEvent { Type = "PreviewIdle" },
+            BridgeUiEvent.PreviewPlaying preview => new BaeEvent
+            {
+                Type = "PreviewPlaying",
+                DurationMs = preview.DurationMs,
+            },
+            BridgeUiEvent.PreviewPaused preview => new BaeEvent
+            {
+                Type = "PreviewPlaying",
+                DurationMs = preview.DurationMs,
+            },
+            BridgeUiEvent.PreviewProgress progress => new BaeEvent
+            {
+                Type = "PreviewProgress",
+                PositionMs = progress.PositionMs,
+                Progress = progress.Progress,
+            },
+            BridgeUiEvent.CandidateImportLoudnessProgress progress => new BaeEvent
+            {
+                Type = "CandidateImportLoudnessProgress",
+                Key = progress.Key,
+                TracksDone = checked((int)progress.TracksDone),
+                TracksTotal = checked((int)progress.TracksTotal),
+                Progress = progress.Fraction,
+            },
+            BridgeUiEvent.Error error => new BaeEvent
+            {
+                Type = "Error",
+                Error = ToDiagnosticError(error.ErrorValue),
+            },
+            BridgeUiEvent.ErrorCleared => new BaeEvent { Type = "ErrorCleared" },
+            _ => new BaeEvent { Type = string.Empty },
+        };
+
+    private static BaeInvalidation ToBaeInvalidation(BridgeInvalidation invalidation) =>
+        invalidation switch
+        {
+            BridgeInvalidation.AlbumList => new BaeInvalidation { Kind = "album_list" },
+            BridgeInvalidation.Album album => new BaeInvalidation { Kind = "album", AlbumId = album.AlbumId },
+            BridgeInvalidation.Release release => new BaeInvalidation { Kind = "release", ReleaseId = release.ReleaseId },
+            BridgeInvalidation.ComposerList => new BaeInvalidation { Kind = "composer_list" },
+            BridgeInvalidation.Composer composer => new BaeInvalidation { Kind = "composer", ComposerId = composer.ComposerId },
+            BridgeInvalidation.Queue => new BaeInvalidation { Kind = "queue" },
+            BridgeInvalidation.Config => new BaeInvalidation { Kind = "config" },
+            BridgeInvalidation.SyncStatus => new BaeInvalidation { Kind = "sync_status" },
+            BridgeInvalidation.Outbox => new BaeInvalidation { Kind = "outbox" },
+            BridgeInvalidation.DownloadQueue => new BaeInvalidation { Kind = "download_queue" },
+            BridgeInvalidation.ImportCandidateList => new BaeInvalidation { Kind = "import_candidate_list" },
+            BridgeInvalidation.ImportCandidate candidate => new BaeInvalidation { Kind = "import_candidate", Key = candidate.Key },
+            BridgeInvalidation.WatchedFolders => new BaeInvalidation { Kind = "watched_folders" },
+            _ => new BaeInvalidation { Kind = string.Empty },
+        };
+
+    private static QueueItem ToQueueItem(BridgeQueueEntry entry) => new()
+    {
+        EntryId = entry.EntryId,
+        Title = entry.Title,
+        Artist = entry.ArtistNames,
+        DurationMs = entry.DurationMs,
+    };
+
+    private static PlaybackContext? ToPlaybackContext(BridgePlaybackContext? context) =>
+        context is null
+            ? null
+            : new PlaybackContext
+            {
+                Kind = context.Kind switch
+                {
+                    BridgePlaybackSourceKind.Release => "release",
+                    BridgePlaybackSourceKind.Library => "library",
+                    _ => string.Empty,
+                },
+                Shuffled = context.Shuffled,
+                Upcoming = context.Upcoming.Select(ToQueueItem).ToList(),
+            };
+
+    private static string RepeatModeTag(BridgeRepeatMode mode) =>
+        mode switch
+        {
+            BridgeRepeatMode.Track => "track",
+            BridgeRepeatMode.Context => "context",
+            _ => "off",
+        };
+
+    private static PlaybackErrorReason ToPlaybackErrorReason(BridgePlaybackErrorReason reason) =>
+        reason switch
+        {
+            BridgePlaybackErrorReason.SyncDisconnected => new PlaybackErrorReason { Kind = "sync_disconnected" },
+            BridgePlaybackErrorReason.UploadPending => new PlaybackErrorReason { Kind = "upload_pending" },
+            BridgePlaybackErrorReason.Diagnostic diagnostic => new PlaybackErrorReason
+            {
+                Kind = "diagnostic",
+                Error = ToDiagnosticError(diagnostic.Error),
+            },
+            _ => new PlaybackErrorReason(),
+        };
+
+    private static PlaybackPauseReason ToPlaybackPauseReason(BridgePlaybackPauseReason reason) =>
+        reason switch
+        {
+            BridgePlaybackPauseReason.SideEnded side => new PlaybackPauseReason
+            {
+                Kind = "side_ended",
+                Prompt = new SidePausePrompt
+                {
+                    TitleKey = side.Prompt.TitleKey,
+                    SideLetter = side.Prompt.SideLetter,
+                    MessageKey = side.Prompt.MessageKey,
+                },
+            },
+            _ => new PlaybackPauseReason { Kind = "manual" },
+        };
+
+    private static DiagnosticError ToDiagnosticError(BridgeException exception) =>
+        exception switch
+        {
+            BridgeException.NotFound notFound => new DiagnosticError
+            {
+                Kind = "not_found",
+                Entity = EntityKindTag(notFound.entity),
+                Id = notFound.id,
+            },
+            BridgeException.Diagnostic diagnostic => new DiagnosticError
+            {
+                Kind = "diagnostic",
+                Category = ErrorCategoryTag(diagnostic.category),
+                Detail = diagnostic.detail,
+            },
+            _ => new DiagnosticError(),
+        };
+
+    private static string EntityKindTag(BridgeEntityKind entity) =>
+        entity switch
+        {
+            BridgeEntityKind.Library => "library",
+            BridgeEntityKind.Album => "album",
+            BridgeEntityKind.Release => "release",
+            BridgeEntityKind.Track => "track",
+            BridgeEntityKind.File => "file",
+            _ => "library",
+        };
+
+    private static string ErrorCategoryTag(BridgeErrorCategory category) =>
+        category switch
+        {
+            BridgeErrorCategory.Database => "database",
+            BridgeErrorCategory.Config => "config",
+            BridgeErrorCategory.Import => "import",
+            BridgeErrorCategory.Export => "export",
+            _ => "internal",
+        };
+
+    internal static string? LockActiveLibrary(AppHandle handle) =>
+        CaptureError(() => handle.LockActiveLibrary());
+
+    internal static string? RenameLibrary(AppHandle handle, string libraryId, string name) =>
+        CaptureError(() => handle.RenameLibrary(libraryId, name));
+
+    internal static string? SetPrimaryRelease(AppHandle handle, string albumId, string releaseId) =>
+        CaptureError(() => Await(handle.SetPrimaryRelease(albumId, releaseId)));
+
+    internal static string? ExportTrack(AppHandle handle, string trackId, string outputPath, string selectionJson) =>
+        CaptureError(() => Await(handle.ExportTrack(trackId, outputPath, ExportSelection(selectionJson))));
+
+    internal static string? ExportRelease(AppHandle handle, string releaseId, string targetDir, string selectionJson) =>
+        CaptureError(() => Await(handle.EnqueueExport(releaseId, targetDir, ExportSelection(selectionJson))));
+
+    internal static string? ExportTrackSuggestedName(AppHandle handle, string trackId) =>
+        CaptureValue(() => Await(handle.ExportTrackSuggestedName(trackId)));
+
+    internal static string? ExportTrackExtension(AppHandle handle, string trackId, string selectionJson) =>
+        CaptureValue(() => Await(handle.ExportTrackExtension(trackId, ExportSelection(selectionJson))));
+
+    internal static string? GetReleaseImagesJson(AppHandle handle, string releaseId) =>
+        CaptureValue(() =>
+        {
+            var detail = Await(handle.FindReleaseDetail(releaseId));
+            return detail is null ? null : Json(ReleaseImages(detail.ImageFiles));
+        });
+
+    internal static string? FetchRemoteCoversJson(AppHandle handle, string releaseId) =>
+        CaptureValue(() => Json(Await(handle.FetchRemoteCovers(releaseId)).Select(RemoteCoverJson).ToArray()));
+
+    internal static string? ChangeCover(AppHandle handle, string albumId, string releaseId, string selectionJson) =>
+        CaptureError(() => Await(handle.ChangeCover(albumId, releaseId, CoverSelection(selectionJson))));
+
+    internal static string? AlbumPageJson(AppHandle handle, ulong offset, ulong limit, string sortField, bool ascending) =>
+        CaptureValue(() => Json(Await(handle.GetAlbumPage(SortCriteria(sortField, ascending), offset, limit))));
+
+    internal static long ComposerCount(AppHandle handle) =>
+        checked((long)Await(handle.GetComposerCount()));
+
+    internal static string? ComposerPageJson(AppHandle handle, ulong offset, ulong limit, string sortField, bool ascending) =>
+        CaptureValue(() => Json(Await(handle.GetComposerPage(ComposerSort(sortField, ascending), offset, limit))));
+
+    internal static string? GalleryJson(AppHandle handle, string releaseId) =>
+        CaptureValue(() =>
+        {
+            var detail = Await(handle.FindReleaseDetail(releaseId));
+            return detail is null ? null : Json(GalleryItems(detail.GalleryItems));
+        });
+
+    internal static string? StorageJson(AppHandle handle)
+    {
+        var filter = BridgeStorageFilter.All;
+        var sort = new BridgeStorageSort(BridgeStorageSortField.AlbumTitle, BridgeStorageSortDirection.Ascending);
+        var count = Await(handle.StorageCount(filter));
+        return CaptureValue(() => Json(StorageRows(Await(handle.StoragePage(sort, filter, 0, count)).Rows)));
+    }
+
+    internal static string? PinRelease(AppHandle handle, string releaseId) =>
+        CaptureError(() => Await(handle.QueuePinReleases([releaseId])));
+
+    internal static string? UnpinRelease(AppHandle handle, string releaseId) =>
+        CaptureError(() => Await(handle.UnpinRelease(releaseId)));
+
+    internal static string? MakeReleaseRemote(AppHandle handle, string releaseId, bool pin) =>
+        CaptureError(() => Await(handle.MakeReleaseRemote(releaseId, pin)));
+
+    internal static string? MakeReleaseLocal(AppHandle handle, string releaseId, string newPath) =>
+        CaptureError(() => Await(handle.MakeReleaseLocal(releaseId, newPath)));
+
+    internal static string? OutboxSnapshotJson(AppHandle handle) =>
+        CaptureValue(() => Json(OutboxSnapshot(Await(handle.GetOutboxSnapshot()))));
+
+    internal static string? DownloadSnapshotJson(AppHandle handle) =>
+        Json(DownloadSnapshot(handle.GetDownloadSnapshot()));
+
+    internal static string? SyncStatusJson(AppHandle handle) =>
+        Json(new SyncStatus
+        {
+            Error = handle.GetSyncStatus().Error is { } error ? ToDiagnosticError(error) : null,
+            LastSyncTime = handle.GetSyncStatus().LastSyncTime,
+            Syncing = handle.GetSyncStatus().Syncing,
+            SyncReady = handle.GetSyncStatus().SyncReady,
+        });
+
+    internal static void SetDownloadsPaused(AppHandle handle, bool paused) => handle.SetDownloadsPaused(paused);
+
+    internal static void RetryDownloads(AppHandle handle) => handle.RetryDownloads();
+
+    internal static string? RetryOutbox(AppHandle handle) => CaptureError(() => Await(handle.RetryOutbox()));
+
+    internal static string? SetSyncPaused(AppHandle handle, bool paused) =>
+        CaptureError(() => Await(handle.SetSyncPaused(paused)));
+
+    internal static string? CancelOutboxItem(AppHandle handle, long id) =>
+        CaptureError(() => Await(handle.CancelOutboxItem(id)));
+
+    internal static string? CancelReleaseTransition(AppHandle handle, string releaseId) =>
+        CaptureError(() => Await(handle.CancelReleaseTransition(releaseId)));
+
+    internal static string? SearchJson(AppHandle handle, string query) =>
+        CaptureValue(() => Json(SearchResults(Await(handle.SearchLibrary(query)))));
+
+    internal static string? AlbumDetailJson(AppHandle handle, string albumId) =>
+        CaptureValue(() => Json(AlbumDetail(Await(handle.GetAlbumDetail(albumId)))));
+
+    internal static string? ComposerDetailJson(AppHandle handle, string artistId) =>
+        CaptureValue(() => Json(Await(handle.GetComposerDetail(artistId))));
+
+    internal static string? WorkDetailJson(AppHandle handle, string workId) =>
+        CaptureValue(() => Json(Await(handle.GetWorkDetail(workId))));
+
+    internal static string? SettingsJson(AppHandle handle) =>
+        Json(Settings(handle.GetConfig(), handle.GetMcpServerStatus(), handle.GetSyncStatus()));
+
+    internal static string? SetPauseBetweenSides(AppHandle handle, bool enabled) =>
+        CaptureError(() => handle.SetPauseBetweenSides(enabled));
+
+    internal static string? SetExportFilenameTemplate(AppHandle handle, string template) =>
+        CaptureError(() => handle.SetExportFilenameTemplate(template));
+
+    internal static string? SetExportPresets(AppHandle handle, string presetsJson) =>
+        CaptureError(() => handle.SetExportPresets(
+            (JsonSerializer.Deserialize<ExportPreset[]>(presetsJson, JsonOptions) ?? [])
+            .Select(ExportPresetBridge)
+            .ToArray()));
+
+    internal static string? SetDefaultTrackExportSelection(AppHandle handle, string selectionJson) =>
+        CaptureError(() => handle.SetDefaultTrackExportSelection(ExportSelection(selectionJson)));
+
+    internal static string? SetDefaultReleaseExportSelection(AppHandle handle, string selectionJson) =>
+        CaptureError(() => handle.SetDefaultReleaseExportSelection(ExportSelection(selectionJson)));
+
+    internal static string? SetMcpServerConfig(AppHandle handle, bool enabled, ushort port) =>
+        CaptureError(() => handle.SetMcpServerConfig(enabled, port));
+
+    internal static string? McpServerStatusJson(AppHandle handle) => Json(McpStatusJson(handle.GetMcpServerStatus()));
+
+    internal static string? GetMcpToken(AppHandle handle) => CaptureValue(handle.GetMcpToken);
+
+    internal static string? GenerateMcpToken(AppHandle handle) => CaptureValue(handle.GenerateMcpToken);
+
+    internal static string? SetMcpToken(AppHandle handle, string token) =>
+        CaptureError(() => handle.SetMcpToken(token));
+
+    internal static string? SaveDiscogsToken(AppHandle handle, string token) =>
+        CaptureValue(() => DiscogsSaveOutcomeTag(Await(handle.SaveDiscogsToken(token))));
+
+    internal static string? RevalidateDiscogsToken(AppHandle handle) =>
+        CaptureError(() => Await(handle.RevalidateDiscogsToken()));
+
+    internal static string? DeleteDiscogsToken(AppHandle handle) =>
+        CaptureError(handle.RemoveDiscogsToken);
+
+    internal static string? SaveSyncConfig(
+        AppHandle handle, string bucket, string region, string endpoint,
+        string keyPrefix, string accessKey, string secretKey, string storage) =>
+        CaptureError(() => Await(handle.SaveSyncConfig(new BridgeSaveSyncConfig(
+            bucket,
+            region,
+            string.IsNullOrWhiteSpace(endpoint) ? null : endpoint.Trim(),
+            string.IsNullOrWhiteSpace(keyPrefix) ? null : keyPrefix.Trim(),
+            accessKey,
+            secretKey,
+            HomeStorage(storage)))));
+
+    internal static string? DisconnectWarning(AppHandle handle) =>
+        CaptureValue(() => Await(handle.DisconnectWarningMessage()));
+
+    internal static string? SignInCloud(AppHandle handle, string provider, string storage) =>
+        CaptureError(() => Await(handle.SignInCloudProvider(CloudProvider(provider), HomeStorage(storage))));
+
+    internal static string? DisconnectCloud(AppHandle handle) =>
+        CaptureError(handle.DisconnectCloudProvider);
+
+    internal static void TriggerSync(AppHandle handle) => handle.TriggerSync();
+
+    internal static string? GenerateRestoreCode(AppHandle handle) => CaptureValue(handle.GenerateRestoreCode);
+
+    internal static string? GetMembersJson(AppHandle handle) => CaptureValue(() => Json(Membership(Await(handle.GetMembers()))));
+
+    internal static string? InviteMember(AppHandle handle, string publicKeyHex) =>
+        CaptureValue(() => Await(handle.InviteMember(publicKeyHex, providerAccountEmail: null)));
+
+    internal static string? RemoveMember(AppHandle handle, string publicKeyHex) =>
+        CaptureError(() => Await(handle.RemoveMember(publicKeyHex)));
+
+    internal static string? ReleaseEditSeedJson(AppHandle handle, string releaseId) =>
+        CaptureValue(() => Json(Await(handle.SeedReleaseEdit(releaseId))));
+
+    internal static string? ResetMetadataToSourceJson(AppHandle handle, string releaseId) =>
+        CaptureValue(() => Json(BaeBridgeMethods.RawReleaseEditFromUserEdit(
+            Await(handle.ResetMetadataToSource(releaseId)),
+            "reset-track")));
+
+    internal static string? ApplyReleaseEdit(AppHandle handle, string releaseId, string rawJson) =>
+        CaptureError(() => Await(handle.UpdateReleaseMetadataUserEdit(releaseId, ReleaseUserEdit(rawJson))));
+
+    internal static string? SearchReleasesJson(AppHandle handle, string source, string artist, string album) =>
+        CaptureValue(() => Json(Candidates(Await(handle.SearchForCandidate(new BridgeSearchQuery.General(artist, album, MetadataSource(source)))))));
+
+    internal static string? ReidentifyRelease(AppHandle handle, string releaseId, string chosenReleaseId, string source) =>
+        CaptureError(() => Await(handle.ReIdentifyRelease(releaseId, new BridgeIdentityChoice.Exact(chosenReleaseId, MetadataSource(source)))));
+
+    internal static string? ScanFolder(AppHandle handle, string path, bool clearFirst) =>
+        CaptureError(() => handle.AddWatchedFolder(path));
+
+    internal static string? ImportCandidatesJson(AppHandle handle) => Json(ImportCandidates(handle.GetImportCandidates()));
+
+    internal static void AutoIdentifyFolder(AppHandle handle, string candidateKey, string folderPath) =>
+        handle.AutoIdentifyFolder(candidateKey, folderPath);
+
+    internal static void ToggleSignalForCandidate(AppHandle handle, string candidateKey, string kind, string value) =>
+        handle.ToggleSignalForCandidate(candidateKey, ExcludedSignal(kind, value));
+
+    internal static void RerunIdentifyForCandidate(AppHandle handle, string candidateKey) =>
+        handle.RerunIdentifyForCandidate(candidateKey);
+
+    internal static void PreviewPlay(AppHandle handle, string path) => handle.PreviewPlay(path);
+
+    internal static void PreviewStop(AppHandle handle) => handle.PreviewStop();
+
+    internal static void PreviewTogglePause(AppHandle handle) => handle.PreviewTogglePause();
+
+    internal static string? PrefetchCandidateEditJson(AppHandle handle, string releaseId, string source, string folderPath) =>
+        CaptureValue(() => Json(PrefetchedEdit(handle, releaseId, MetadataSource(source), folderPath)));
+
+    internal static string? CheckReleaseInLibraryJson(AppHandle handle, string releaseId, string source) =>
+        CaptureValue(() => Json(Await(handle.FindReleaseDetail(releaseId)) is not null));
+
+    internal static string? ImportCandidate(
+        AppHandle handle, string candidateKey, string folderPath, string chosenReleaseId, string source, string storageMode, bool pin, string userEditJson, string selectedCoverJson) =>
+        CaptureError(() => handle.StartImport(
+            candidateKey,
+            folderPath,
+            CoverSelectionOrNull(selectedCoverJson),
+            StorageMode(storageMode),
+            pin,
+            new BridgeIdentityChoice.Exact(chosenReleaseId, MetadataSource(source)),
+            string.IsNullOrWhiteSpace(userEditJson) ? null : ReleaseUserEdit(userEditJson)));
+
+    internal static byte[]? ImageBytes(AppHandle? handle, ImageRef image) =>
+        handle is null ? null : CaptureBytes(() => Await(handle.FetchImageBytes(new BridgeImageRef(image.Id, image.Version, LibraryImageType(image.ImageType)))));
+
+    internal static byte[]? CoverImageBytes(AppHandle? handle, string imageId) =>
+        handle is null ? null : CaptureBytes(() => Await(handle.FetchCoverImageBytes(imageId)));
+
+    internal static byte[]? GalleryBytes(AppHandle? handle, string releaseId, string sourceJson) =>
+        handle is null ? null : CaptureBytes(() => Await(handle.FetchGalleryBytes(releaseId, GallerySource(sourceJson))));
+
+    internal static void PlayRelease(AppHandle handle, string releaseId, long startTrackIndex, bool shuffle) =>
+        handle.PlayRelease(releaseId, startTrackIndex < 0 ? null : checked((uint)startTrackIndex), shuffle);
+
+    internal static void PlayLibraryShuffled(AppHandle handle) => handle.PlayLibraryShuffled();
+
+    internal static void PlayPause(AppHandle handle) => handle.TogglePlayPause();
+
+    internal static void SeekByRatio(AppHandle handle, double ratio) => handle.SeekByRatio(ratio);
+
+    internal static void SetVolume(AppHandle handle, float volume) => handle.SetVolume(volume);
+
+    internal static void ToggleMute(AppHandle handle) => handle.ToggleMute();
+
+    internal static float GetVolume(AppHandle handle) => Await(handle.GetVolume());
+
+    internal static void CycleRepeatMode(AppHandle handle) => handle.CycleRepeatMode();
+
+    internal static void SetShuffle(AppHandle handle, bool on) => handle.SetShuffle(on);
+
+    internal static void Next(AppHandle handle) => handle.NextTrack();
+
+    internal static void Previous(AppHandle handle) => handle.PreviousTrack();
+
+    internal static void QueueSkipTo(AppHandle handle, string entryId) => handle.SkipToEntry(entryId);
+
+    internal static void QueueRemove(AppHandle handle, string entryId) => handle.RemoveEntry(entryId);
+
+    internal static void QueueReorder(AppHandle handle, string entryId, string? beforeEntryId) =>
+        handle.ReorderEntry(entryId, beforeEntryId);
+
+    internal static void QueueClear(AppHandle handle) => handle.ClearQueue();
+
+    internal static void AddReleaseToQueue(AppHandle handle, string releaseId) => handle.AddReleaseToQueue(releaseId);
+
+    internal static void AddReleaseNext(AppHandle handle, string releaseId) => handle.AddReleaseNext(releaseId);
+
+    internal static string? AddToQueue(AppHandle handle, IReadOnlyList<string> trackIds) =>
+        CaptureError(() => handle.AddToQueue(trackIds.ToArray()));
+
+    internal static string? AddNext(AppHandle handle, IReadOnlyList<string> trackIds) =>
+        CaptureError(() => handle.AddNext(trackIds.ToArray()));
+
+    internal static string? DeleteRelease(AppHandle handle, string releaseId) =>
+        CaptureError(() => Await(handle.DeleteRelease(releaseId)));
+
+    internal static void Shutdown(AppHandle handle) => Await(handle.Shutdown());
+
+    private static T Await<T>(System.Threading.Tasks.Task<T> task) => task.GetAwaiter().GetResult();
+
+    private static void Await(System.Threading.Tasks.Task task) => task.GetAwaiter().GetResult();
+
+    private static string Json<T>(T value) => JsonSerializer.Serialize(value, JsonOptions);
 
     private static string? CaptureError(Action action)
     {
@@ -1176,251 +968,776 @@ internal static class NativeBae
         }
     }
 
-    /// <summary>
-    /// Callback invoked with each UI event's JSON. Fires on a background thread;
-    /// the app must marshal to its UI thread. Keep the delegate instance alive for
-    /// as long as the subscription lasts (it is passed to native code).
-    /// </summary>
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    internal delegate void EventCallback(IntPtr json);
-
-    /// <summary>Subscribe to the core UI event bus.</summary>
-    [DllImport(Dll, EntryPoint = "bae_subscribe", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void Subscribe(IntPtr handle, EventCallback callback);
-
-    /// <summary>
-    /// How a bytes call ended. Mirrors the FFI's <c>BaeBytesStatus</c>
-    /// (<c>#[repr(u8)]</c>).
-    /// </summary>
-    private enum BaeBytesStatus : byte
-    {
-        /// <summary>Bytes are present (<c>Ptr</c>/<c>Len</c> valid).</summary>
-        Ok = 0,
-
-        /// <summary>No such image — the caller renders the placeholder.</summary>
-        Absent = 1,
-
-        /// <summary>The call failed (bad input or a read error — already logged in Rust).</summary>
-        Error = 2,
-    }
-
-    /// <summary>
-    /// A byte buffer the native library hands back: a pointer, its length, and a
-    /// <see cref="Status"/> that distinguishes present bytes from a genuinely absent
-    /// image and from a failed call. Mirrors the FFI's <c>BaeBytes</c>
-    /// (<c>#[repr(C)]</c>: <c>*mut u8</c>, <c>usize</c>, status byte). Free with
-    /// <c>bae_bytes_free</c>.
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    private struct BaeBytes
-    {
-        public IntPtr Ptr;
-        public UIntPtr Len;
-        public BaeBytesStatus Status;
-    }
-
-    [DllImport(Dll, EntryPoint = "bae_image_bytes", CallingConvention = CallingConvention.Cdecl)]
-    private static extern BaeBytes ImageBytesNative(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string imageId);
-
-    [DllImport(Dll, EntryPoint = "bae_gallery_bytes", CallingConvention = CallingConvention.Cdecl)]
-    private static extern BaeBytes GalleryBytesNative(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string sourceJson);
-
-    [DllImport(Dll, EntryPoint = "bae_bytes_free", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void BytesFree(BaeBytes bytes);
-
-    /// <summary>
-    /// The bytes of a library image (a cover or artist image) by id, read through
-    /// coven's locality-aware read (fetched and decrypted from the cloud when not
-    /// on disk), or null when there's no such image or the read failed (logged by
-    /// the Rust side). Blocks on the read — call off the UI thread for cloud-only
-    /// images. Copies the buffer into managed memory and frees the native one.
-    /// </summary>
-    internal static byte[]? ImageBytes(IntPtr handle, string imageId) =>
-        CopyAndFreeBytes(ImageBytesNative(handle, imageId));
-
-    /// <summary>
-    /// The bytes of one gallery slot for (release id, source), where
-    /// <paramref name="sourceJson"/> is the gallery item's <c>source</c> object
-    /// forwarded verbatim — core dispatches the read on its <c>kind</c> (a cover by
-    /// image id, a release file by file id). Read through coven (fetched and
-    /// decrypted from the cloud when not on disk), or null on error (logged by the
-    /// Rust side). Blocks on the read — call off the UI thread for cloud-only
-    /// images. Copies the buffer into managed memory and frees the native one.
-    /// </summary>
-    internal static byte[]? GalleryBytes(IntPtr handle, string releaseId, string sourceJson) =>
-        CopyAndFreeBytes(GalleryBytesNative(handle, releaseId, sourceJson));
-
-    /// <summary>
-    /// Copy a native byte buffer into a managed array and free the native one.
-    /// Returns the bytes on <see cref="BaeBytesStatus.Ok"/>; null on
-    /// <see cref="BaeBytesStatus.Absent"/> (no such image — the caller renders the
-    /// placeholder) and on <see cref="BaeBytesStatus.Error"/> (the read failed). The
-    /// error is logged here so it isn't mistaken for an absent image; the Rust side
-    /// logged the cause. Always frees what the bytes call returned —
-    /// <c>bae_bytes_free</c> is a no-op for an empty buffer.
-    /// </summary>
-    private static byte[]? CopyAndFreeBytes(BaeBytes bytes)
+    private static string? CaptureValue(Func<string?> action)
     {
         try
         {
-            switch (bytes.Status)
-            {
-                case BaeBytesStatus.Ok:
-                    {
-                        var length = checked((int)bytes.Len.ToUInt64());
-                        var managed = new byte[length];
-                        Marshal.Copy(bytes.Ptr, managed, 0, length);
-                        return managed;
-                    }
-                case BaeBytesStatus.Absent:
-                    return null;
-                case BaeBytesStatus.Error:
-                    BaeDiagnostics.Logger.Warning("image bytes read failed (cause logged in core)");
-                    return null;
-                default:
-                    throw new InvalidOperationException($"unknown bytes status: {bytes.Status}");
-            }
+            return action();
         }
-        finally
+        catch (BridgeException.Cancelled)
         {
-            BytesFree(bytes);
+            return null;
+        }
+        catch (BridgeException exception)
+        {
+            return exception.Message;
         }
     }
 
-    /// <summary>Start playing a release (optionally shuffled). <paramref name="startTrackIndex"/>
-    /// is the track to start from; a negative value starts from the first track.</summary>
-    [DllImport(Dll, EntryPoint = "bae_play_release", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void PlayRelease(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId,
-        long startTrackIndex,
-        [MarshalAs(UnmanagedType.I1)] bool shuffle);
+    private static byte[]? CaptureBytes(Func<byte[]?> action)
+    {
+        try
+        {
+            return action();
+        }
+        catch (BridgeException exception)
+        {
+            BaeDiagnostics.Logger.Warning($"image bytes read failed: {exception.Message}");
+            return null;
+        }
+    }
 
-    /// <summary>Play the whole library in a freshly seeded shuffle. An empty
-    /// library is a no-op.</summary>
-    [DllImport(Dll, EntryPoint = "bae_play_library_shuffled", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void PlayLibraryShuffled(IntPtr handle);
+    private static BridgeSortCriterion[] SortCriteria(string sortField, bool ascending) =>
+    [
+        new BridgeSortCriterion(
+            sortField switch
+            {
+                "title" => BridgeSortField.Title,
+                "artist" => BridgeSortField.Artist,
+                "year" => BridgeSortField.Year,
+                _ => BridgeSortField.DateAdded,
+            },
+            ascending ? BridgeSortDirection.Ascending : BridgeSortDirection.Descending),
+    ];
 
-    /// <summary>Toggle play/pause.</summary>
-    [DllImport(Dll, EntryPoint = "bae_play_pause", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void PlayPause(IntPtr handle);
+    private static BridgeComposerSortCriterion ComposerSort(string sortField, bool ascending) =>
+        new(
+            sortField switch
+            {
+                "work_count" => BridgeComposerSortField.WorkCount,
+                "linked_release_count" => BridgeComposerSortField.LinkedReleaseCount,
+                _ => BridgeComposerSortField.Name,
+            },
+            ascending ? BridgeSortDirection.Ascending : BridgeSortDirection.Descending);
 
-    /// <summary>Seek the current track to a 0..1 ratio of its duration.</summary>
-    [DllImport(Dll, EntryPoint = "bae_seek_by_ratio", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void SeekByRatio(IntPtr handle, double ratio);
+    private static BridgeExportSelection ExportSelection(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var kind = root.TryGetProperty("kind", out var kindElement) ? kindElement.GetString() : "original";
+        return kind == "preset" && root.TryGetProperty("preset_id", out var presetId)
+            ? new BridgeExportSelection.Preset(RequiredString(presetId, "preset_id"))
+            : new BridgeExportSelection.Original();
+    }
 
-    /// <summary>Set output volume (0..1).</summary>
-    [DllImport(Dll, EntryPoint = "bae_set_volume", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void SetVolume(IntPtr handle, float volume);
+    private static BridgeCoverSelection? CoverSelectionOrNull(string json) =>
+        string.IsNullOrWhiteSpace(json) ? null : CoverSelection(json);
 
-    /// <summary>Toggle mute.</summary>
-    [DllImport(Dll, EntryPoint = "bae_toggle_mute", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void ToggleMute(IntPtr handle);
+    private static BridgeCoverSelection CoverSelection(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var type = root.TryGetProperty("type", out var typeElement)
+            ? typeElement.GetString()
+            : root.TryGetProperty("kind", out var kindElement) ? kindElement.GetString() : null;
+        if (type == "remote_cover")
+        {
+            return new BridgeCoverSelection.RemoteCover(new BridgeRemoteCoverSelection(
+                root.GetProperty("url").GetString() ?? string.Empty,
+                root.TryGetProperty("source", out var source) ? MetadataSource(source.GetString() ?? string.Empty) : BridgeMetadataSource.MusicBrainz));
+        }
+        return new BridgeCoverSelection.ReleaseImage(root.GetProperty("file_id").GetString() ?? string.Empty);
+    }
 
-    /// <summary>Current output volume (0..1).</summary>
-    [DllImport(Dll, EntryPoint = "bae_get_volume", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern float GetVolume(IntPtr handle);
+    private static object[] ReleaseImages(IEnumerable<BridgeFile> files) =>
+        files
+            .Where(file => file.IsImage)
+            .Select(file => new
+            {
+                id = file.Id,
+                original_filename = file.OriginalFilename,
+            })
+            .ToArray();
 
-    /// <summary>Cycle repeat mode (off → context → track).</summary>
-    [DllImport(Dll, EntryPoint = "bae_cycle_repeat_mode", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void CycleRepeatMode(IntPtr handle);
+    private static object Settings(
+        BridgeConfig config,
+        BridgeMcpServerStatus mcpStatus,
+        BridgeSyncStatusSnapshot syncStatus) =>
+        new
+        {
+            library_name = config.LibraryName,
+            library_id = config.LibraryId,
+            discogs_status = DiscogsStatusTag(config.DiscogsTokenStatus),
+            discogs_usable = config.DiscogsUsable,
+            sync_provider = config.Sync is null ? null : SyncProviderTag(config.Sync.Provider),
+            sync_account = config.Sync?.CloudAccountDisplay,
+            sync_ready = syncStatus.SyncReady,
+            pause_between_sides = config.PauseBetweenSides,
+            export_filename_template = config.ExportFilenameTemplate,
+            export_presets = config.ExportPresets.Select(ExportPresetJson).ToArray(),
+            default_track_export_selection = ExportSelectionJson(config.DefaultTrackExportSelection),
+            default_release_export_selection = ExportSelectionJson(config.DefaultReleaseExportSelection),
+            mcp_enabled = config.Mcp.Enabled,
+            mcp_port = config.Mcp.Port,
+            mcp_status = McpStatusJson(mcpStatus),
+        };
 
-    /// <summary>Flip the playing context between sequential and shuffled order;
-    /// the current track keeps playing.</summary>
-    [DllImport(Dll, EntryPoint = "bae_set_shuffle", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void SetShuffle(IntPtr handle, [MarshalAs(UnmanagedType.I1)] bool on);
+    private static object SearchResults(BridgeSearchResults results) =>
+        new
+        {
+            albums = results.Albums.Select(album => new
+            {
+                id = album.Id,
+                title = album.Title,
+                artist = album.ArtistName,
+                cover = album.Cover,
+            }).ToArray(),
+            tracks = results.Tracks,
+            composers = results.Composers,
+            works = results.Works,
+        };
 
-    /// <summary>Skip to the next track.</summary>
-    [DllImport(Dll, EntryPoint = "bae_next", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void Next(IntPtr handle);
+    private static object[] StorageRows(IEnumerable<BridgeStorageRow> rows) =>
+        rows.Select(row => new
+        {
+            release_id = row.Release.Id,
+            album_title = row.Album.Title,
+            artist = row.Album.ArtistNames,
+            format = row.Release.Format,
+            total_size = row.Release.TotalSize,
+            file_count = row.Release.FileCount,
+            state = StorageStateTag(row.Release.StorageState),
+            pinned = row.Release.Pinned,
+            actions = row.Release.StorageActions.Select(StorageActionTag).ToArray(),
+        }).ToArray();
 
-    /// <summary>Skip to the previous track.</summary>
-    [DllImport(Dll, EntryPoint = "bae_previous", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void Previous(IntPtr handle);
+    private static object AlbumDetail(BridgeAlbumDetail detail) =>
+        new
+        {
+            id = detail.Album.Id,
+            title = detail.Album.Title,
+            artist = detail.Album.ArtistNames,
+            primary_release_id = detail.Album.PrimaryReleaseId,
+            cover = detail.Album.Cover,
+            releases = detail.Releases.Select(release => new
+            {
+                release_id = release.Id,
+                display_name = release.DisplayName,
+                tracks = release.Tracks.Select(track => new
+                {
+                    track_id = track.Id,
+                    title = track.Title,
+                    position_label = track.PositionText,
+                    duration_ms = track.DurationMs,
+                    artist = track.ArtistNames,
+                }).ToArray(),
+            files = release.Files.Select(FileJson).ToArray(),
+        }).ToArray(),
+    };
 
-    /// <summary>Jump to the queue entry with <paramref name="entryId"/>.</summary>
-    [DllImport(Dll, EntryPoint = "bae_queue_skip_to_entry", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void QueueSkipTo(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string entryId);
+    private static object DownloadSnapshot(BridgeDownloadSnapshot snapshot) =>
+        new
+        {
+            downloads = snapshot.Downloads.Select(download => new
+            {
+                release_id = download.ReleaseId,
+                title = download.Title,
+                file_count = download.FileCount,
+                total_size = download.TotalSize,
+                state = DownloadStateTag(download.State),
+                progress = DownloadProgressOrNull(download.State),
+                error = DownloadErrorOrNull(download.State),
+            }).ToArray(),
+            total = snapshot.Total,
+            paused = snapshot.Paused,
+        };
 
-    /// <summary>Remove the queue entry with <paramref name="entryId"/>.</summary>
-    [DllImport(Dll, EntryPoint = "bae_queue_remove_entry", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void QueueRemove(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string entryId);
+    private static object OutboxSnapshot(BridgeOutboxSnapshot snapshot) =>
+        new
+        {
+            upload_groups = snapshot.UploadGroups,
+            deletes = snapshot.Deletes,
+            per_release = snapshot.PerRelease,
+            total = snapshot.Total,
+            pending_deletes = snapshot.PendingDeletes,
+            paused = snapshot.Paused,
+            throughput_bps = checked((long)snapshot.ThroughputBps),
+            eta_seconds = snapshot.EtaSeconds is null ? null : checked((long?)snapshot.EtaSeconds.Value),
+        };
 
-    /// <summary>Move the entry <paramref name="entryId"/> to sit before
-    /// <paramref name="beforeEntryId"/>; a null <paramref name="beforeEntryId"/>
-    /// moves it to the end of the queue.</summary>
-    [DllImport(Dll, EntryPoint = "bae_queue_reorder_entry", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void QueueReorder(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string entryId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string? beforeEntryId);
+    private static object Membership(BridgeMembership membership) =>
+        new
+        {
+            members = membership.Members.Select(member => new
+            {
+                pubkey = member.Pubkey,
+                role = MemberRoleTag(member.Role),
+                is_self = member.IsSelf,
+                fingerprint = member.Fingerprint,
+                can_remove = member.CanRemove,
+            }).ToArray(),
+            self_is_owner = membership.SelfIsOwner,
+        };
 
-    /// <summary>Clear the play queue.</summary>
-    [DllImport(Dll, EntryPoint = "bae_queue_clear", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void QueueClear(IntPtr handle);
+    private static object[] Candidates(BridgeCandidateSearchResults results) =>
+        results.Groups
+            .SelectMany(group => group.Pressings.Select(pressing => Candidate(group, pressing)))
+            .ToArray();
 
-    /// <summary>Append a release's tracks to the queue.</summary>
-    [DllImport(Dll, EntryPoint = "bae_add_release_to_queue", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void AddReleaseToQueue(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+    private static object Candidate(BridgeReleaseGroup group, BridgeMetadataResult pressing) =>
+        new
+        {
+            source = MetadataSourceTag(pressing.Source),
+            release_id = pressing.ReleaseId,
+            title = group.Title,
+            artist = group.Artist,
+            year = pressing.Year,
+            format = pressing.Format,
+            label = pressing.Label,
+            catalog_number = pressing.CatalogNumber,
+            country = pressing.Country,
+        };
 
-    /// <summary>Queue a release's tracks to play next.</summary>
-    [DllImport(Dll, EntryPoint = "bae_add_release_next", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void AddReleaseNext(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+    private static object RemoteCoverJson(BridgeRemoteCover cover)
+    {
+        var selection = cover.CoverChoice.Selection as BridgeCoverSelection.RemoteCover
+            ?? throw new JsonException("remote cover choice did not carry a remote selection");
+        return new
+        {
+            url = selection.Selection.Url,
+            thumbnail_url = CoverImageSourceUrl(cover.CoverChoice.ThumbnailSource),
+            label = cover.Label,
+            source = MetadataSourceTag(selection.Selection.Source),
+        };
+    }
 
-    [DllImport(Dll, EntryPoint = "bae_add_to_queue", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr AddToQueuePtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string trackIdsJson);
+    private static object PrefetchedEdit(
+        AppHandle handle,
+        string releaseId,
+        BridgeMetadataSource source,
+        string folderPath)
+    {
+        var localTrackCount = LocalTrackCount(handle.GetCandidate(folderPath));
+        var detail = Await(handle.PrefetchRelease(releaseId, source, localTrackCount));
+        var choice = new BridgeIdentityChoice.Exact(releaseId, source);
+        var edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(
+            BaeBridgeMethods.ShapeUserEditFromReleaseDetail(detail, choice),
+            "prefetch-track");
+        return new
+        {
+            edit,
+            remote_covers = detail.CoverArt.Select(RemoteCoverJson).ToArray(),
+            local_artwork = LocalArtwork(handle.GetCandidate(folderPath)),
+        };
+    }
 
-    /// <summary>Append specific tracks to the end of the queue. Returns an error message, or null on success.</summary>
-    internal static string? AddToQueue(IntPtr handle, IReadOnlyList<string> trackIds) =>
-        ResultMessage(AddToQueuePtr(handle, JsonSerializer.Serialize(trackIds)));
+    private static uint? LocalTrackCount(BridgeImportCandidateSnapshot? snapshot) =>
+        snapshot is BridgeImportCandidateSnapshot.Folder folder
+            ? folder.Candidate.TrackCount
+            : null;
 
-    [DllImport(Dll, EntryPoint = "bae_add_next", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr AddNextPtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string trackIdsJson);
+    private static object[] LocalArtwork(BridgeImportCandidateSnapshot? snapshot) =>
+        snapshot is BridgeImportCandidateSnapshot.Folder folder
+            ? folder.Candidate.Files.Artwork.Select(LocalArtworkJson).ToArray()
+            : Array.Empty<object>();
 
-    /// <summary>Queue specific tracks to play next. Returns an error message, or null on success.</summary>
-    internal static string? AddNext(IntPtr handle, IReadOnlyList<string> trackIds) =>
-        ResultMessage(AddNextPtr(handle, JsonSerializer.Serialize(trackIds)));
+    private static object LocalArtworkJson(BridgeArtworkFile artwork)
+    {
+        var releaseImage = artwork.CoverChoice.Selection as BridgeCoverSelection.ReleaseImage
+            ?? throw new JsonException("local artwork did not carry a release-image selection");
+        return new
+        {
+            file_id = releaseImage.FileId,
+            path = artwork.File.LocalPath,
+        };
+    }
 
-    [DllImport(Dll, EntryPoint = "bae_delete_release", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr DeleteReleasePtr(
-        IntPtr handle,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string releaseId);
+    private static object[] ImportCandidates(BridgeImportCandidatesSnapshot snapshot)
+    {
+        var folderRows = snapshot.FolderCandidates
+            .Select(candidate => ImportCandidate(candidate.Candidate, candidate.Runtime));
+        var invalidRows = snapshot.InvalidCandidates.Select(InvalidImportCandidate);
+        return folderRows.Concat(invalidRows).ToArray();
+    }
 
-    /// <summary>Delete a release; null on success, else the error message.</summary>
-    internal static string? DeleteRelease(IntPtr handle, string releaseId) =>
-        ResultMessage(DeleteReleasePtr(handle, releaseId));
+    private static object ImportCandidate(
+        BridgeFolderCandidate candidate,
+        BridgeCandidateRuntimeSnapshot runtime) =>
+        new
+        {
+            key = candidate.FolderPath,
+            name = candidate.SourceFolderName,
+            track_count = checked((int)candidate.TrackCount),
+            format = ImportFormat(candidate.Files.Audio),
+            row_status = ImportRowStatus(runtime),
+            matches = ImportMatches(runtime.IdentifyState),
+            signals = runtime.SignalsToolbar.Signals.Select(SignalBadge).ToArray(),
+            audio_paths = AudioPaths(candidate.Files.Audio),
+            folder_path = candidate.FolderPath,
+        };
 
-    /// <summary>Persist playback state and stop playback before exit. Call before
-    /// <see cref="HandleFree"/>.</summary>
-    [DllImport(Dll, EntryPoint = "bae_shutdown", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void Shutdown(IntPtr handle);
+    private static object InvalidImportCandidate(BridgeInvalidCandidate candidate) =>
+        new
+        {
+            key = candidate.FolderPath,
+            name = candidate.SourceFolderName,
+            track_count = 0,
+            format = string.Empty,
+            row_status = new
+            {
+                kind = "error",
+                error = new
+                {
+                    kind = "diagnostic",
+                    category = "import",
+                    detail = InvalidReasonTag(candidate.Reason),
+                },
+            },
+            matches = Array.Empty<object>(),
+            signals = Array.Empty<object>(),
+            audio_paths = Array.Empty<string>(),
+            folder_path = candidate.FolderPath,
+        };
 
-    /// <summary>
-    /// Release a handle created by <see cref="Init"/>.
-    /// </summary>
-    [DllImport(Dll, EntryPoint = "bae_handle_free", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void HandleFree(IntPtr handle);
+    private static object ImportRowStatus(BridgeCandidateRuntimeSnapshot runtime)
+    {
+        if (runtime.ImportStatus is BridgeCandidateImportStatus.Importing importing)
+        {
+            return new
+            {
+                kind = "importing",
+                progress_percent = checked((int)importing.ProgressPercent),
+                step = importing.Step is null ? null : ImportStepJson(importing.Step),
+            };
+        }
+        if (runtime.ImportStatus is BridgeCandidateImportStatus.Complete)
+        {
+            return new { kind = "complete" };
+        }
+        if (runtime.ImportStatus is BridgeCandidateImportStatus.Error error)
+        {
+            return new
+            {
+                kind = "error",
+                error = ToDiagnosticError(error.Error),
+            };
+        }
 
-    /// <summary>
-    /// Release a string returned by this library.
-    /// </summary>
-    [DllImport(Dll, EntryPoint = "bae_string_free", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void StringFree(IntPtr ptr);
+        return runtime.IdentifyState switch
+        {
+            BridgeIdentifyState.Idle => new { kind = string.Empty },
+            BridgeIdentifyState.Triangulating => new { kind = "identifying" },
+            BridgeIdentifyState.Found found => new { kind = "found", count = checked((int)found.Group.Pressings.Length) },
+            BridgeIdentifyState.Conflict => new { kind = "conflict" },
+            BridgeIdentifyState.NotFoundAnywhere => new { kind = "not_found" },
+            BridgeIdentifyState.ManualOnly => new { kind = "manual" },
+            _ => throw new ArgumentOutOfRangeException(nameof(runtime), runtime.IdentifyState, "Unknown identify state"),
+        };
+    }
+
+    private static object[] ImportMatches(BridgeIdentifyState state) =>
+        state is BridgeIdentifyState.Found found
+            ? found.Group.Pressings.Select(pressing => Candidate(found.Group, pressing)).ToArray()
+            : Array.Empty<object>();
+
+    private static object SignalBadge(BridgeToolbarSignal signal) =>
+        new
+        {
+            kind = SignalKindTag(signal.Kind),
+            value = signal.Value,
+            state = SignalState(signal.State),
+            excluded = signal.Excluded,
+        };
+
+    private static object SignalState(BridgeSignalState state) =>
+        state switch
+        {
+            BridgeSignalState.LookingUp => new { kind = "looking_up", count = (uint?)null, failure = (object?)null },
+            BridgeSignalState.Found found => new { kind = "found", count = (uint?)found.Count, failure = (object?)null },
+            BridgeSignalState.NoMatch => new { kind = "no_match", count = (uint?)null, failure = (object?)null },
+            BridgeSignalState.Skipped => new { kind = "skipped", count = (uint?)null, failure = (object?)null },
+            BridgeSignalState.Failed failed => new { kind = "failed", count = (uint?)null, failure = LookupFailureJson(failed.Failure) },
+            BridgeSignalState.Confirms confirms => new { kind = "confirms", count = (uint?)confirms.Count, failure = (object?)null },
+            _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown signal state"),
+        };
+
+    private static object? ImportStepJson(BridgeImportStep step) =>
+        step switch
+        {
+            BridgeImportStep.Preparing preparing => new
+            {
+                kind = "preparing",
+                step = PrepareStepTag(preparing.Step),
+            },
+            BridgeImportStep.Running running => new
+            {
+                kind = "running",
+                phase = ImportPhaseTag(running.Phase),
+            },
+            _ => throw new ArgumentOutOfRangeException(nameof(step), step, "Unknown import step"),
+        };
+
+    private static string[] AudioPaths(BridgeAudioContent audio) =>
+        audio switch
+        {
+            BridgeAudioContent.CueFlacPairs cue => cue.Pairs.Select(pair => pair.FlacLocalPath).ToArray(),
+            BridgeAudioContent.TrackFiles tracks => tracks.Files.Select(file => file.LocalPath).ToArray(),
+            _ => throw new ArgumentOutOfRangeException(nameof(audio), audio, "Unknown audio content"),
+        };
+
+    private static string ImportFormat(BridgeAudioContent audio) =>
+        audio is BridgeAudioContent.CueFlacPairs ? "CUE/FLAC" : string.Empty;
+
+    private static string CoverImageSourceUrl(BridgeCoverImageSource source) =>
+        source switch
+        {
+            BridgeCoverImageSource.Remote remote => remote.Url,
+            BridgeCoverImageSource.Local local => local.Path,
+            _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown cover image source"),
+        };
+
+    private static object FileJson(BridgeFile file) =>
+        new
+        {
+            id = file.Id,
+            original_filename = file.OriginalFilename,
+            file_size = file.FileSize,
+            content_type = file.ContentType,
+            is_image = file.IsImage,
+            audio_format = file.AudioFormat,
+        };
+
+    private static object[] GalleryItems(IEnumerable<BridgeGalleryItem> items) =>
+        items
+            .Select(item => new
+            {
+                id = item.Id,
+                label = item.Label,
+                source = GallerySourceJson(item.Source),
+            })
+            .ToArray();
+
+    private static object ExportPresetJson(BridgeExportPreset preset) =>
+        new
+        {
+            id = preset.Id,
+            name = preset.Name,
+            codec = ExportPresetCodecJson(preset.Codec),
+            extension = preset.Extension,
+            filename_template = preset.FilenameTemplate,
+            pregap_placement = ExportPregapPlacementTag(preset.PregapPlacement),
+            applies_to_track = preset.AppliesToTrack,
+            applies_to_release = preset.AppliesToRelease,
+        };
+
+    private static BridgeExportPreset ExportPresetBridge(ExportPreset preset) =>
+        new(
+            preset.Id,
+            preset.Name,
+            ExportPresetCodecBridge(preset.Codec),
+            preset.Extension,
+            preset.FilenameTemplate,
+            ExportPregapPlacementBridge(preset.PregapPlacement),
+            preset.AppliesToTrack,
+            preset.AppliesToRelease);
+
+    private static BridgeExportPresetCodec ExportPresetCodecBridge(ExportPresetCodec codec) =>
+        codec.Kind switch
+        {
+            "flac" => new BridgeExportPresetCodec.Flac(ExportBitDepthBridge(codec.BitDepth)),
+            "mp3" => new BridgeExportPresetCodec.Mp3(codec.BitrateKbps),
+            "opus_ogg" => new BridgeExportPresetCodec.OpusOgg(codec.BitrateKbps),
+            "wav" => new BridgeExportPresetCodec.Wav(ExportBitDepthBridge(codec.BitDepth)),
+            "aiff" => new BridgeExportPresetCodec.Aiff(ExportBitDepthBridge(codec.BitDepth)),
+            _ => throw new ArgumentOutOfRangeException(nameof(codec), codec.Kind, "Unknown export codec"),
+        };
+
+    private static object ExportPresetCodecJson(BridgeExportPresetCodec codec) =>
+        codec switch
+        {
+            BridgeExportPresetCodec.Flac flac => new { kind = "flac", bit_depth = ExportBitDepthTag(flac.BitDepth) },
+            BridgeExportPresetCodec.Mp3 mp3 => new { kind = "mp3", bitrate_kbps = mp3.BitrateKbps },
+            BridgeExportPresetCodec.OpusOgg opus => new { kind = "opus_ogg", bitrate_kbps = opus.BitrateKbps },
+            BridgeExportPresetCodec.Wav wav => new { kind = "wav", bit_depth = ExportBitDepthTag(wav.BitDepth) },
+            BridgeExportPresetCodec.Aiff aiff => new { kind = "aiff", bit_depth = ExportBitDepthTag(aiff.BitDepth) },
+            _ => throw new ArgumentOutOfRangeException(nameof(codec), codec, "Unknown export codec"),
+        };
+
+    private static object ExportSelectionJson(BridgeExportSelection selection) =>
+        selection switch
+        {
+            BridgeExportSelection.Original => new { kind = "original", preset_id = (string?)null },
+            BridgeExportSelection.Preset preset => new { kind = "preset", preset_id = preset.PresetId },
+            _ => throw new ArgumentOutOfRangeException(nameof(selection), selection, "Unknown export selection"),
+        };
+
+    private static object McpStatusJson(BridgeMcpServerStatus status) =>
+        status switch
+        {
+            BridgeMcpServerStatus.Disabled => new { status = "disabled", url = (string?)null, error = (object?)null },
+            BridgeMcpServerStatus.Running running => new { status = "running", url = running.Url, error = (object?)null },
+            BridgeMcpServerStatus.Error error => new { status = "error", url = (string?)null, error = McpErrorJson(error.ErrorValue) },
+            _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown MCP status"),
+        };
+
+    private static object McpErrorJson(BridgeMcpServerError error) =>
+        error switch
+        {
+            BridgeMcpServerError.InvalidConfig invalid => new { kind = "invalid_config", detail = invalid.Detail },
+            BridgeMcpServerError.TokenUnavailable token => new { kind = "token_unavailable", detail = token.Detail },
+            BridgeMcpServerError.BindFailed bind => new { kind = "bind_failed", detail = bind.Detail },
+            BridgeMcpServerError.ServerFailed server => new { kind = "server_failed", detail = server.Detail },
+            _ => throw new ArgumentOutOfRangeException(nameof(error), error, "Unknown MCP error"),
+        };
+
+    private static string DiscogsStatusTag(BridgeDiscogsTokenStatus status) =>
+        status switch
+        {
+            BridgeDiscogsTokenStatus.Valid => "valid",
+            BridgeDiscogsTokenStatus.Unvalidated => "unvalidated",
+            BridgeDiscogsTokenStatus.Rejected => "rejected",
+            _ => "not_configured",
+        };
+
+    private static string SyncProviderTag(BridgeSyncProvider provider) =>
+        provider switch
+        {
+            BridgeSyncProvider.S3 => "s3",
+            BridgeSyncProvider.GoogleDrive => "google_drive",
+            BridgeSyncProvider.Dropbox => "dropbox",
+            BridgeSyncProvider.OneDrive => "onedrive",
+            BridgeSyncProvider.CloudKit => "cloudkit",
+            _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unknown sync provider"),
+        };
+
+    private static string StorageStateTag(BridgeReleaseStorageState state) =>
+        state == BridgeReleaseStorageState.Remote ? "managed" : "unmanaged";
+
+    private static string StorageActionTag(BridgeReleaseStorageAction action) =>
+        action switch
+        {
+            BridgeReleaseStorageAction.Pin => "pin",
+            BridgeReleaseStorageAction.Unpin => "unpin",
+            BridgeReleaseStorageAction.MakeRemote => "manage",
+            BridgeReleaseStorageAction.MakeLocal => "unmanage",
+            _ => throw new ArgumentOutOfRangeException(nameof(action), action, "Unknown storage action"),
+        };
+
+    private static string DownloadStateTag(BridgeDownloadState state) =>
+        state switch
+        {
+            BridgeDownloadState.Active => "active",
+            BridgeDownloadState.Failed => "failed",
+            BridgeDownloadState.Queued => "queued",
+            _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown download state"),
+        };
+
+    private static BridgeDownloadTransferProgress? DownloadProgressOrNull(BridgeDownloadState state) =>
+        state is BridgeDownloadState.Active active ? active.Progress : null;
+
+    private static string? DownloadErrorOrNull(BridgeDownloadState state) =>
+        state is BridgeDownloadState.Failed failed ? failed.Error : null;
+
+    private static string MemberRoleTag(BridgeMemberRole role) =>
+        role switch
+        {
+            BridgeMemberRole.Owner => "owner",
+            BridgeMemberRole.Follower => "follower",
+            _ => "member",
+        };
+
+    private static string MetadataSourceTag(BridgeMetadataSource source) =>
+        source == BridgeMetadataSource.Discogs ? "discogs" : "musicbrainz";
+
+    private static object LookupFailureJson(BridgeLookupFailure failure) =>
+        failure switch
+        {
+            BridgeLookupFailure.Network => new { kind = "network", status = (int?)null, detail = (string?)null },
+            BridgeLookupFailure.Provider provider => new { kind = "provider", status = provider.Status is null ? null : checked((int?)provider.Status.Value), detail = (string?)null },
+            BridgeLookupFailure.Timeout => new { kind = "timeout", status = (int?)null, detail = (string?)null },
+            BridgeLookupFailure.ArtworkAnalysis => new { kind = "artwork_analysis", status = (int?)null, detail = (string?)null },
+            BridgeLookupFailure.Diagnostic diagnostic => new { kind = "diagnostic", status = (int?)null, detail = (string?)diagnostic.Detail },
+            _ => throw new ArgumentOutOfRangeException(nameof(failure), failure, "Unknown lookup failure"),
+        };
+
+    private static string SignalKindTag(BridgeSignalKind kind) =>
+        kind switch
+        {
+            BridgeSignalKind.DiscId => "disc_id",
+            BridgeSignalKind.Barcode => "barcode",
+            BridgeSignalKind.Catalog => "catalog",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown signal kind"),
+        };
+
+    private static string PrepareStepTag(BridgePrepareStep step) =>
+        step switch
+        {
+            BridgePrepareStep.ParsingMetadata => "parsing_metadata",
+            BridgePrepareStep.WritingCoverArt => "writing_cover_art",
+            BridgePrepareStep.DiscoveringFiles => "discovering_files",
+            BridgePrepareStep.ValidatingTracks => "validating_tracks",
+            BridgePrepareStep.SavingToDatabase => "saving_to_database",
+            _ => throw new ArgumentOutOfRangeException(nameof(step), step, "Unknown prepare step"),
+        };
+
+    private static string ImportPhaseTag(BridgeImportPhase phase) =>
+        phase switch
+        {
+            BridgeImportPhase.ReferencingFiles => "referencing_files",
+            BridgeImportPhase.MeasuringLoudness => "measuring_loudness",
+            BridgeImportPhase.Finalizing => "finalizing",
+            _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, "Unknown import phase"),
+        };
+
+    private static string InvalidReasonTag(BridgeInvalidReason reason) =>
+        reason switch
+        {
+            BridgeInvalidReason.CorruptAudioFile file => $"corrupt audio file: {file.Path}",
+            BridgeInvalidReason.CorruptImage image => $"corrupt image: {image.Path}",
+            BridgeInvalidReason.CueMissingAudio => "cue sheet is missing its audio file",
+            BridgeInvalidReason.CueParseFailed cue => $"cue parse failed: {cue.Path}",
+            BridgeInvalidReason.CueUnsupportedLayout => "cue sheet layout is unsupported",
+            BridgeInvalidReason.CueIncompatibleSegmentFormats => "cue sheet has incompatible segment formats",
+            BridgeInvalidReason.NoValidAudio => "no valid audio files",
+            _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown invalid candidate reason"),
+        };
+
+    private static string ValidationReasonTag(BridgeValidationReason reason) =>
+        reason switch
+        {
+            BridgeValidationReason.EmptyAlbumTitle => "empty_album_title",
+            BridgeValidationReason.NoAlbumArtist => "no_album_artist",
+            BridgeValidationReason.InvalidYear => "invalid_year",
+            _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown validation reason"),
+        };
+
+    private static string ExportBitDepthTag(BridgeExportBitDepth bitDepth) =>
+        bitDepth switch
+        {
+            BridgeExportBitDepth.Bits16 => "bits16",
+            BridgeExportBitDepth.Bits24 => "bits24",
+            BridgeExportBitDepth.Bits32 => "bits32",
+            _ => "source",
+        };
+
+    private static BridgeExportBitDepth ExportBitDepthBridge(string bitDepth) =>
+        bitDepth switch
+        {
+            "source" => BridgeExportBitDepth.Source,
+            "bits16" => BridgeExportBitDepth.Bits16,
+            "bits24" => BridgeExportBitDepth.Bits24,
+            "bits32" => BridgeExportBitDepth.Bits32,
+            _ => throw new ArgumentOutOfRangeException(nameof(bitDepth), bitDepth, "Unknown export bit depth"),
+        };
+
+    private static string ExportPregapPlacementTag(BridgeExportPregapPlacement placement) =>
+        placement switch
+        {
+            BridgeExportPregapPlacement.AppendToPreviousIncludingHtoa => "append_to_previous_including_htoa",
+            BridgeExportPregapPlacement.Exclude => "exclude",
+            BridgeExportPregapPlacement.SingleFileWithCue => "single_file_with_cue",
+            _ => "append_to_previous_except_htoa",
+        };
+
+    private static BridgeExportPregapPlacement ExportPregapPlacementBridge(string placement) =>
+        placement switch
+        {
+            "append_to_previous_including_htoa" => BridgeExportPregapPlacement.AppendToPreviousIncludingHtoa,
+            "exclude" => BridgeExportPregapPlacement.Exclude,
+            "single_file_with_cue" => BridgeExportPregapPlacement.SingleFileWithCue,
+            "append_to_previous_except_htoa" => BridgeExportPregapPlacement.AppendToPreviousExceptHtoa,
+            _ => throw new ArgumentOutOfRangeException(nameof(placement), placement, "Unknown pregap placement"),
+        };
+
+    private static object GallerySourceJson(BridgeGallerySource source) =>
+        source switch
+        {
+            BridgeGallerySource.Cover cover => new
+            {
+                kind = "cover",
+                cover = new
+                {
+                    id = cover.Image.Id,
+                    version = cover.Image.Version,
+                    image_type = LibraryImageTypeTag(cover.Image.ImageType),
+                },
+            },
+            BridgeGallerySource.ReleaseFile file => new
+            {
+                kind = "releaseFile",
+                file_id = file.FileId,
+            },
+            _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown gallery source"),
+        };
+
+    private static BridgeGallerySource GallerySource(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var kind = root.TryGetProperty("kind", out var kindElement) ? kindElement.GetString() : null;
+        if (kind == "releaseFile")
+        {
+            return new BridgeGallerySource.ReleaseFile(RequiredString(root.GetProperty("file_id"), "file_id"));
+        }
+
+        var cover = root.GetProperty("cover");
+        var imageType = cover.TryGetProperty("image_type", out var imageTypeElement)
+            ? LibraryImageType(imageTypeElement.GetString() ?? "cover")
+            : BridgeLibraryImageType.Cover;
+        return new BridgeGallerySource.Cover(new BridgeImageRef(
+            RequiredString(cover.GetProperty("id"), "cover.id"),
+            RequiredString(cover.GetProperty("version"), "cover.version"),
+            imageType));
+    }
+
+    private static string RequiredString(JsonElement element, string field) =>
+        element.GetString() ?? throw new JsonException($"{field} must be a string");
+
+    private static string LibraryImageTypeTag(BridgeLibraryImageType imageType) =>
+        imageType == BridgeLibraryImageType.Artist ? "artist" : "cover";
+
+    private static BridgeLibraryImageType LibraryImageType(string imageType) =>
+        imageType == "artist" ? BridgeLibraryImageType.Artist : BridgeLibraryImageType.Cover;
+
+    private static BridgeMetadataSource MetadataSource(string source) =>
+        source == "discogs" ? BridgeMetadataSource.Discogs : BridgeMetadataSource.MusicBrainz;
+
+    private static BridgeHomeStorage HomeStorage(string storage) =>
+        storage == "browsable" ? BridgeHomeStorage.Browsable : BridgeHomeStorage.Opaque;
+
+    private static BridgeStorageMode StorageMode(string storageMode) =>
+        storageMode == "managed" ? BridgeStorageMode.Remote : BridgeStorageMode.Local;
+
+    private static BridgeExcludedSignal ExcludedSignal(string kind, string value) =>
+        kind switch
+        {
+            "disc_id" => new BridgeExcludedSignal.Disc(),
+            "barcode" => new BridgeExcludedSignal.Barcode(),
+            _ => new BridgeExcludedSignal.Catalog(value),
+        };
+
+    private static BridgeReleaseUserEdit ReleaseUserEdit(string json)
+    {
+        var raw = JsonSerializer.Deserialize<BridgeRawReleaseEdit>(json, JsonOptions)
+            ?? throw new ArgumentException("invalid release edit JSON", nameof(json));
+        return BaeBridgeMethods.ShapeReleaseEdit(raw) switch
+        {
+            BridgeShapeResult.Valid valid => valid.Edit,
+            BridgeShapeResult.Invalid invalid => throw new ArgumentException(
+                $"invalid release edit: {ValidationReasonTag(invalid.Reason)}",
+                nameof(json)),
+            _ => throw new ArgumentException("invalid release edit JSON", nameof(json)),
+        };
+    }
+
+    private static string DiscogsSaveOutcomeTag(BridgeDiscogsSaveOutcome outcome) =>
+        outcome switch
+        {
+            BridgeDiscogsSaveOutcome.Valid => "valid",
+            BridgeDiscogsSaveOutcome.Unvalidated => "unvalidated",
+            BridgeDiscogsSaveOutcome.Rejected => "rejected",
+            _ => "rejected",
+        };
+
+
 }

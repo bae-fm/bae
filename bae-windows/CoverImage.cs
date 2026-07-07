@@ -2,15 +2,17 @@
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.UI.Xaml.Media.Imaging;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
 /// <summary>
 /// Decodes a library image into a <see cref="BitmapImage"/> for the WinUI image
-/// controls. The bytes come from the FFI: a cover by id via <c>bae_image_bytes</c>,
-/// a gallery slot by its forwarded <c>source</c> via <c>bae_gallery_bytes</c> —
-/// coven reads them locality-aware, fetching and decrypting from the cloud when
-/// they aren't on disk — so the UI never resolves a filesystem path itself.
+/// controls. The bytes come through the generated bridge: versioned library
+/// images by image ref, now-playing covers by id, and gallery slots by their
+/// forwarded <c>source</c>. Core reads them locality-aware, fetching and
+/// decrypting from the cloud when they aren't on disk, so the UI never resolves
+/// a filesystem path itself.
 ///
 /// Decoding goes through an in-memory stream (<see cref="BitmapImage.SetSource"/>),
 /// not a <c>UriSource</c>: WinUI caches decoded images process-wide keyed by their
@@ -21,7 +23,7 @@ namespace Bae.Windows;
 /// re-evaluates each tile's bound cover as it recycles on scroll — reuses the
 /// decoded bitmap instead of re-fetching and re-decoding.
 /// </summary>
-public static class CoverImage
+internal static class CoverImage
 {
     /// <summary>
     /// Decoded covers keyed by (image id, content version). The version is part of
@@ -37,7 +39,7 @@ public static class CoverImage
     /// <paramref name="cover"/> is null or the bytes can't be read or decoded.
     /// Used by the grid tile and the gallery's cover slot.
     /// </summary>
-    public static BitmapImage? LoadByImageRef(IntPtr handle, ImageRef? cover)
+    public static BitmapImage? LoadByImageRef(AppHandle? handle, ImageRef? cover)
     {
         if (cover is null)
         {
@@ -50,7 +52,7 @@ public static class CoverImage
             return cached;
         }
 
-        var bitmap = Decode(NativeBae.ImageBytes(handle, cover.Id));
+        var bitmap = Decode(NativeBae.ImageBytes(handle, cover));
         if (bitmap is not null)
         {
             Cache[key] = bitmap;
@@ -65,23 +67,23 @@ public static class CoverImage
     /// cache under); null when <paramref name="imageId"/> is empty or the bytes
     /// can't be read or decoded.
     /// </summary>
-    public static BitmapImage? LoadImage(IntPtr handle, string? imageId)
+    public static BitmapImage? LoadImage(AppHandle? handle, string? imageId)
     {
         if (string.IsNullOrEmpty(imageId))
         {
             return null;
         }
 
-        return Decode(NativeBae.ImageBytes(handle, imageId));
+        return Decode(NativeBae.CoverImageBytes(handle, imageId));
     }
 
     /// <summary>
     /// The decoded image for a gallery slot, given the item's <c>source</c> JSON
-    /// forwarded verbatim to the FFI, which dispatches the read on its kind (a
+    /// forwarded verbatim to the generated bridge, which dispatches the read on its kind (a
     /// cover or a release file). Decoded fresh each call; null when the bytes can't
     /// be read or decoded.
     /// </summary>
-    public static BitmapImage? LoadGalleryBytes(IntPtr handle, string releaseId, string sourceJson) =>
+    public static BitmapImage? LoadGalleryBytes(AppHandle? handle, string releaseId, string sourceJson) =>
         Decode(NativeBae.GalleryBytes(handle, releaseId, sourceJson));
 
     /// <summary>

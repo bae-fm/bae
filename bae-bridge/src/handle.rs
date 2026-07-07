@@ -9,28 +9,23 @@ use bae_core::signals::ExtractionSource;
 use tracing::info;
 
 use crate::bridge_utils::build_bridge_config;
+#[cfg(feature = "oauth-providers")]
+use crate::types::bridge_cloud_provider_to_core;
 #[cfg(feature = "desktop")]
 use crate::types::BridgeDiscogsSaveOutcome;
 #[cfg(feature = "desktop")]
 use crate::types::BridgeRemoteCover;
-#[cfg(feature = "oauth-providers")]
-use crate::types::{bridge_cloud_provider_to_core, BridgeCloudProvider};
-// `BridgeHomeStorage` is named only in the OAuth and CloudKit connect signatures;
-// `bridge_home_storage_to_core` is also used by the always-present S3 path below,
-// so it is imported unconditionally.
-#[cfg(any(feature = "oauth-providers", feature = "cloudkit"))]
-use crate::types::BridgeHomeStorage;
 use crate::types::{
     bridge_composer_sort_to_core, bridge_home_storage_to_core, bridge_sort_to_core, BridgeAlbum,
-    BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeComposerDetail, BridgeComposerSortCriterion,
-    BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig, BridgeCoverSelection,
-    BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource, BridgeMetadataSource,
-    BridgeQueueSnapshot, BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary,
-    BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion,
-    BridgeStorageFilter, BridgeStoragePage, BridgeStorageRow, BridgeStorageSort,
-    BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
-    BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary, BridgeWorkSummary,
-    BridgeWorkTrackSummary,
+    BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeCloudProvider, BridgeComposerDetail,
+    BridgeComposerSortCriterion, BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig,
+    BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource,
+    BridgeHomeStorage, BridgeMetadataSource, BridgeQueueSnapshot, BridgeRelease,
+    BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig,
+    BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter, BridgeStoragePage,
+    BridgeStorageRow, BridgeStorageSort, BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup,
+    BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary,
+    BridgeWorkSummary, BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{
@@ -334,6 +329,10 @@ impl AppHandle {
 
     pub fn set_volume(&self, volume: f32) {
         self.services.playback().set_volume(volume);
+    }
+
+    pub async fn get_volume(&self) -> f32 {
+        self.services.playback().get_volume().await
     }
 
     pub fn toggle_mute(&self) {
@@ -1037,6 +1036,20 @@ impl AppHandle {
             .sign_in_cloud_provider(core_provider, storage)
             .await
             .map_err(BridgeError::config)
+    }
+}
+
+#[cfg(not(feature = "oauth-providers"))]
+#[uniffi::export(async_runtime = "tokio")]
+impl AppHandle {
+    pub async fn sign_in_cloud_provider(
+        &self,
+        _provider: BridgeCloudProvider,
+        _storage: BridgeHomeStorage,
+    ) -> Result<(), BridgeError> {
+        Err(BridgeError::config(
+            "OAuth cloud providers are not available in this build",
+        ))
     }
 }
 

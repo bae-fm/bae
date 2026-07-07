@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using Microsoft.UI.Xaml.Media;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
@@ -43,7 +43,7 @@ public sealed class ComposerSummary
     public ImageRef? Image { get; set; }
 
     [JsonIgnore]
-    public IntPtr Handle { get; set; }
+    internal AppHandle? Handle { get; set; }
 
     public ImageSource? Cover => CoverImage.LoadByImageRef(Handle, Image);
     public string WorkCountText => Loc.Chrome("work.count", "count", Loc.Number(WorkCount));
@@ -62,7 +62,7 @@ public sealed class WorkSummary
     public ImageRef? RepresentativeCover { get; set; }
 
     [JsonIgnore]
-    public IntPtr Handle { get; set; }
+    internal AppHandle? Handle { get; set; }
 
     public ImageSource? Cover => CoverImage.LoadByImageRef(Handle, RepresentativeCover);
 }
@@ -113,7 +113,7 @@ public sealed class WorkReleaseSummary
     public ImageRef? Cover { get; set; }
 
     [JsonIgnore]
-    public IntPtr Handle { get; set; }
+    internal AppHandle? Handle { get; set; }
 
     public ImageSource? CoverImage => Bae.Windows.CoverImage.LoadByImageRef(Handle, Cover);
     public string DisplaySubtitle =>

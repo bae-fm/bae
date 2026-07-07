@@ -2,10 +2,10 @@
 
 /// <summary>
 /// One of a release's local image files offered as a cover-art choice,
-/// deserialized from the FFI's <c>bae_get_release_images</c> JSON. The picker
-/// loads the thumbnail from <c>bae_gallery_bytes</c> of the release with a
+/// deserialized from the generated bridge's release-image JSON. The picker
+/// loads the thumbnail from the generated bridge with a
 /// <c>releaseFile</c> source built from <see cref="Id"/>, and passes
-/// <see cref="Id"/> back to <c>bae_change_cover</c> when the user selects it.
+/// <see cref="Id"/> back to the bridge when the user selects it.
 /// </summary>
 public sealed class ReleaseImage
 {
