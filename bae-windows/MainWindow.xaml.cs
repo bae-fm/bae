@@ -28,7 +28,6 @@ namespace Bae.Windows;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
-    private const uint PositionUpdateIntervalMs = 250;
     private const ulong FirstPageSize = 500;
 
     // LabelKey is a chrome key resolved to the localized menu label at display
@@ -67,26 +66,14 @@ public sealed partial class MainWindow : Window
     private BrowserMode _browserMode = BrowserMode.Albums;
     private bool _populatingSortBox;
 
-    private sealed record SeekProjection(
-        string? TrackId,
-        ulong TargetPositionMs,
-        ulong DurationMs,
-        double Progress);
-    private sealed record PlaybackPositionSnapshot(
-        ulong DurationMs,
-        ulong PositionMs,
-        double Progress);
-    private sealed record PlaybackPositionState(
-        PlaybackPositionSnapshot Snapshot,
-        SeekProjection? Projection);
-    private sealed record NowPlayingState(
-        string? AlbumId,
-        string? TrackId,
-        PlaybackPositionState? Position);
-
-    private readonly object _handleGate = new();
-    private LibraryHandle? _handle;
-    private int _sessionGeneration;
+    // The library session (handle + event subscription) and the stores it drives.
+    private readonly SessionStore _session;
+    private readonly ShellStore _shell;
+    private readonly SyncStatusStore _sync;
+    private readonly PlaybackStore _playback;
+    private readonly ProjectionRegistry _projections;
+    private readonly UiEventRouter _router;
+    private readonly NowPlayingBarController _nowPlayingBar;
 
     // Releases whose unmanage is running right now. Unmanage is a blocking
     // foreground transfer (unlike pin, which enqueues, or upload, which lives in
@@ -96,25 +83,10 @@ public sealed partial class MainWindow : Window
     // menu).
     private readonly HashSet<string> _unmanagingReleases = new();
 
-    // Held for the subscription's lifetime; the generated callback map keeps the
-    // managed object rooted while Rust holds the callback handle.
-    private NativeBae.UiEventSink? _eventCallback;
-
     // Drives the system media transport controls (hardware media keys + the
     // Windows media flyout) from playback events. One instance for the window's
     // lifetime; library switches deactivate it rather than recreating it.
     private readonly MediaControlService _mediaControls;
-
-    // Latest queue snapshot from QueueUpdated; the queue dialog reads it on open.
-    // The two lanes are kept separate so the dialog renders them as distinct
-    // sections: the manual lane ("Up Next") and the context (the release being
-    // played from), or null when nothing plays from a release.
-    private List<BridgeQueueEntry> _queueManual = new();
-    private BridgePlaybackContext? _queueContext;
-
-    // Holds the +N queue badge visible for ~1.4s after the last add; a fresh add
-    // restarts it, replacing the count and resetting the timer.
-    private DispatcherTimer? _queueBadgeTimer;
 
     // Scan candidates, refreshed from core when import invalidations arrive and
     // bound to the import dialog list.
@@ -137,11 +109,6 @@ public sealed partial class MainWindow : Window
     // just the album grid.
     private Action? _refreshStorageRows;
 
-    // Toolbar sync indicator state, refreshed from the sync-status snapshot.
-    private bool _syncing;
-    private string? _lastSyncTime;
-    private string? _syncErrorText;
-
     // The import-picker's preview position label, set while that picker is open so
     // PreviewProgress updates it; null when closed.
     private TextBlock? _previewElapsed;
@@ -153,19 +120,6 @@ public sealed partial class MainWindow : Window
     // The welcome chooser controls (the on-disk library list plus create /
     // restore), shown when no library is open; removed once one is opened.
     private StackPanel? _welcome;
-
-    // True while the user is dragging the seek slider, so progress events don't
-    // fight the drag; set the seek on release.
-    private bool _userSeeking;
-
-    // Whatever is currently playing, tracked from playback events so "go to now
-    // playing" (Ctrl+L) can open that album and reveal the track. Null when
-    // nothing is playing.
-    private NowPlayingState? _nowPlaying;
-
-    // Suppresses the volume slider's ValueChanged while we set it programmatically
-    // (seeding + VolumeChanged events), so it doesn't echo back as a SetVolume.
-    private bool _suppressVolume;
 
     public ObservableCollection<Album> Albums { get; } = new();
     public ObservableCollection<ComposerSummary> Composers { get; } = new();
@@ -201,26 +155,66 @@ public sealed partial class MainWindow : Window
         PopulateSortBox();
         BrowserModeBox.SelectedIndex = 0;
 
-        // Seek on release, not on every drag tick. The Slider handles pointer
-        // events internally, so register with handledEventsToo.
-        NpProgress.AddHandler(UIElement.PointerPressedEvent,
-            new PointerEventHandler((_, _) =>
-            {
-                _userSeeking = true;
-                ClearSeekProjection();
-            }), true);
-        NpProgress.AddHandler(UIElement.PointerReleasedEvent,
-            new PointerEventHandler((_, _) =>
-            {
-                _userSeeking = false;
-                if (CurrentHandleOrNull() != null)
-                {
-                    ProjectSeekDrop(NpProgress.Value);
-                    WithCurrentHandle(handle => NativeBae.SeekByRatio(handle, NpProgress.Value));
-                }
-            }), true);
+        _session = new SessionStore(DispatcherQueue);
+        _shell = new ShellStore();
+        _shell.Changed += RenderBanner;
+        _playback = new PlaybackStore();
+        _sync = new SyncStatusStore(_session);
+        _sync.Changed += RenderSyncStatus;
+        _nowPlayingBar = new NowPlayingBarController(
+            _session,
+            _playback,
+            () => Content.XamlRoot,
+            NowPlayingBar,
+            NpCover,
+            NpTitle,
+            NpArtist,
+            NpElapsed,
+            NpRemaining,
+            NpProgress,
+            NpVolume,
+            NpPlayPause,
+            NpMute,
+            NpRepeat,
+            NpPrev,
+            NpNext,
+            NpLoading,
+            QueueAddBadge,
+            QueueAddBadgeScale,
+            QueueAddBadgeText);
+        _projections = new ProjectionRegistry();
+        _router = new UiEventRouter(_playback, _shell, _projections, _mediaControls, HandleImportPreviewEvent);
+        _session.UiEvent += _router.Route;
+        RegisterProjections();
 
         LoadLibrary();
+    }
+
+    // Wire core's invalidations to the reloads they drive. Static consumers (the
+    // album grid, sync status, import candidates) register for the window's
+    // lifetime; the storage and settings dialogs supply their live-refresh
+    // callbacks while open.
+    private void RegisterProjections()
+    {
+        _projections.Register(typeof(BridgeInvalidation.AlbumList), ReloadBrowserFromInvalidation);
+        _projections.Register(typeof(BridgeInvalidation.ComposerList), ReloadBrowserFromInvalidation);
+        _projections.Register(typeof(BridgeInvalidation.Album), () => _refreshStorageRows?.Invoke());
+        _projections.Register(typeof(BridgeInvalidation.Release), () => _refreshStorageRows?.Invoke());
+        _projections.Register(typeof(BridgeInvalidation.Config), () => _refreshSettings?.Invoke());
+        _projections.Register(typeof(BridgeInvalidation.SyncStatus), _sync.Refresh);
+        _projections.Register(typeof(BridgeInvalidation.Outbox), () => _refreshOutbox?.Invoke());
+        _projections.Register(typeof(BridgeInvalidation.DownloadQueue), () => _refreshDownloads?.Invoke());
+        _projections.Register(typeof(BridgeInvalidation.ImportCandidateList), RefreshImportCandidates);
+        _projections.Register(typeof(BridgeInvalidation.ImportCandidate), RefreshImportCandidates);
+        _projections.Register(typeof(BridgeInvalidation.WatchedFolders), RefreshImportCandidates);
+    }
+
+    private void ReloadBrowserFromInvalidation()
+    {
+        if (string.IsNullOrEmpty(SearchBox.Text))
+        {
+            LoadCurrentBrowserMode();
+        }
     }
 
     private void OnSortChanged(object sender, SelectionChangedEventArgs e)
@@ -378,27 +372,17 @@ public sealed partial class MainWindow : Window
 
     private void OpenLibrary(string libraryId)
     {
-        var handle = NativeBae.Init(libraryId, PositionUpdateIntervalMs);
-        if (handle == null)
+        switch (_session.OpenHandle(libraryId))
         {
-            StatusText.Text = Loc.Chrome("library.open_failed");
-            return;
-        }
-
-        if (!NativeBae.HasEncryptionKey(handle))
-        {
-            // Encrypted library whose key isn't on this device: the handle works
-            // locally but sync is deferred. Free it and prompt for the key rather
-            // than show a half-open library; unlocking re-opens with sync online.
-            NativeBae.HandleFree(handle);
-            _ = ShowUnlock(libraryId);
-            return;
-        }
-
-        lock (_handleGate)
-        {
-            _handle = new LibraryHandle(handle);
-            _sessionGeneration++;
+            case OpenHandleResult.Failed:
+                StatusText.Text = Loc.Chrome("library.open_failed");
+                return;
+            case OpenHandleResult.NeedsUnlock:
+                // Encrypted library whose key isn't on this device: the session
+                // freed the handle it made; prompt for the key rather than show a
+                // half-open library. Unlocking re-opens with sync online.
+                _ = ShowUnlock(libraryId);
+                return;
         }
 
         // Committed to showing this library: drop the welcome chooser if it's up.
@@ -407,57 +391,16 @@ public sealed partial class MainWindow : Window
         DismissWelcome();
 
         LoadCurrentBrowserMode();
-
-        _suppressVolume = true;
-        NpVolume.Value = NativeBae.GetVolume(handle);
-        _suppressVolume = false;
-
-        RefreshSyncStatus();
-
-        var generation = _sessionGeneration;
-        _eventCallback = new NativeBae.UiEventSink(evt => OnNativeEvent(generation, evt));
-        NativeBae.Subscribe(handle, _eventCallback);
+        _nowPlayingBar.SeedVolume();
+        _sync.Refresh();
+        _session.Subscribe();
     }
 
-    // Clear the toolbar sync indicator back to blank — no current status to
-    // report.
-    private void ResetSyncIndicator()
+    // Render the toolbar sync indicator and the sync banner from the sync store's
+    // current state (subscribed to its Changed).
+    private void RenderSyncStatus()
     {
-        _syncing = false;
-        _lastSyncTime = null;
-        _syncErrorText = null;
-        UpdateSyncIndicator();
-    }
-
-    private void RefreshSyncStatus()
-    {
-        var (current, result) = WithCurrentHandle(NativeBae.SyncStatus);
-        if (!current)
-        {
-            return;
-        }
-        if (result.Error is not null)
-        {
-            BaeDiagnostics.Logger.Error($"Failed to read sync status snapshot: {result.Error}");
-            ResetSyncIndicator();
-            return;
-        }
-
-        var status = result.Status;
-        if (status is null)
-        {
-            BaeDiagnostics.Logger.Error("Failed to read sync status snapshot.");
-            ResetSyncIndicator();
-            return;
-        }
-
-        RenderSyncStatus(status);
-    }
-
-    private void RenderSyncStatus(BridgeSyncStatusSnapshot status)
-    {
-        var syncLine = status.Error is null ? null : BridgeDisplay.LocalizedLine(status.Error);
-        if (syncLine is null)
+        if (_sync.ErrorText is null)
         {
             SyncBanner.IsOpen = false;
         }
@@ -467,15 +410,40 @@ public sealed partial class MainWindow : Window
             reconnect.Click += (_, _) => WithCurrentHandle(NativeBae.TriggerSync);
             SyncBanner.Severity = InfoBarSeverity.Error;
             SyncBanner.Title = Loc.Chrome("sync.error_title");
-            SyncBanner.Message = syncLine;
+            SyncBanner.Message = _sync.ErrorText;
             SyncBanner.ActionButton = reconnect;
             SyncBanner.IsOpen = true;
         }
 
-        _syncErrorText = syncLine;
-        _syncing = status.Syncing;
-        _lastSyncTime = FormatSyncTime(status.LastSyncTime);
-        UpdateSyncIndicator();
+        var indicator = SyncIndicatorModel.Resolve(_sync.ErrorText is not null, _sync.Syncing, _sync.LastSyncTime);
+        switch (indicator.Kind)
+        {
+            case SyncIndicatorKind.Error:
+                SyncIndicator.Text = Loc.Chrome("sync.error_title");
+                SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
+                break;
+            case SyncIndicatorKind.Syncing:
+                SyncIndicator.Text = Loc.Chrome("sync.syncing");
+                SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                break;
+            case SyncIndicatorKind.Synced:
+                SyncIndicator.Text = Loc.Chrome("sync.synced", "time", indicator.LastSyncTime);
+                SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                break;
+            case SyncIndicatorKind.Blank:
+                SyncIndicator.Text = string.Empty;
+                break;
+        }
+    }
+
+    // Render the shell error banner from the shell store (subscribed to Changed).
+    private void RenderBanner()
+    {
+        Banner.Severity = _shell.BannerSeverity;
+        Banner.Title = _shell.BannerTitle;
+        Banner.Message = _shell.BannerMessage;
+        Banner.ActionButton = null;
+        Banner.IsOpen = _shell.BannerIsOpen;
     }
 
     // A locked library (encrypted, key absent on this device): prompt for the
@@ -550,27 +518,21 @@ public sealed partial class MainWindow : Window
     // library or the welcome chooser. Leaves the window with no library open.
     private async System.Threading.Tasks.Task TearDownLibrary()
     {
-        await ShutdownAndFreeCurrentHandle();
+        await _session.ShutdownAndFreeCurrentHandle();
 
-        _eventCallback = null;
-        _queueManual = new List<BridgeQueueEntry>();
-        _queueContext = null;
-        _userSeeking = false;
-        _nowPlaying = null;
+        _playback.Reset();
+        _nowPlayingBar.Reset();
         // Scan candidates are per-library in-memory state; clear them on teardown
         // so the next library doesn't inherit the previous one's candidate list.
         _candidates.Clear();
         Albums.Clear();
         SearchBox.Text = string.Empty;
         StatusText.Text = string.Empty;
-        NowPlayingBar.Visibility = Visibility.Collapsed;
         _mediaControls.Deactivate();
         // The banners report the old library's sync / playback errors; clear them
         // so they don't describe state the next library (or none) doesn't have.
-        Banner.IsOpen = false;
-        Banner.ActionButton = null;
-        SyncBanner.IsOpen = false;
-        ResetSyncIndicator();
+        _shell.ClearBanner();
+        _sync.Reset();
     }
 
     // Close the open library and return to the welcome chooser, which now lists
@@ -586,105 +548,24 @@ public sealed partial class MainWindow : Window
         ShowWelcome();
     }
 
-    private async System.Threading.Tasks.Task ShutdownAndFreeCurrentHandle()
-    {
-        LibraryHandle handle;
-        lock (_handleGate)
-        {
-            if (_handle == null)
-            {
-                return;
-            }
+    private System.Threading.Tasks.Task ShutdownAndFreeCurrentHandle() =>
+        _session.ShutdownAndFreeCurrentHandle();
 
-            handle = _handle;
-            _handle = null;
-            _sessionGeneration++;
-        }
+    private System.Threading.Tasks.Task<(bool Current, T Result)>
+        RunForCurrentHandle<T>(Func<AppHandle, T> action) =>
+        _session.RunForCurrentHandle(action);
 
-        await System.Threading.Tasks.Task.Run(() =>
-        {
-            handle.ShutdownAndFree();
-        });
-    }
+    private System.Threading.Tasks.Task<bool> RunForCurrentHandle(Action<AppHandle> action) =>
+        _session.RunForCurrentHandle(action);
 
-    private async System.Threading.Tasks.Task<(bool Current, T Result)>
-        RunForCurrentHandle<T>(Func<AppHandle, T> action)
-    {
-        var response = await System.Threading.Tasks.Task.Run(() =>
-        {
-            LibraryHandle handle;
-            int generation;
-            lock (_handleGate)
-            {
-                if (_handle == null)
-                {
-                    return (Ran: false, Generation: _sessionGeneration, Result: default!);
-                }
+    private bool WithCurrentHandle(Action<AppHandle> action) =>
+        _session.WithCurrentHandle(action);
 
-                handle = _handle;
-                generation = _sessionGeneration;
-            }
+    private (bool Current, T Result) WithCurrentHandle<T>(Func<AppHandle, T> action) =>
+        _session.WithCurrentHandle(action);
 
-            return handle.TryUse(action, out var result)
-                ? (Ran: true, Generation: generation, Result: result)
-                : (Ran: false, Generation: generation, Result: default!);
-        });
-        return (
-            response.Ran && response.Generation == _sessionGeneration,
-            response.Result);
-    }
-
-    private async System.Threading.Tasks.Task<bool> RunForCurrentHandle(Action<AppHandle> action)
-    {
-        var (current, _) = await RunForCurrentHandle(handle =>
-        {
-            action(handle);
-            return true;
-        });
-        return current;
-    }
-
-    private bool WithCurrentHandle(Action<AppHandle> action)
-    {
-        LibraryHandle handle;
-        lock (_handleGate)
-        {
-            if (_handle == null)
-            {
-                return false;
-            }
-
-            handle = _handle;
-        }
-
-        return handle.TryUse(action);
-    }
-
-    private (bool Current, T Result) WithCurrentHandle<T>(Func<AppHandle, T> action)
-    {
-        LibraryHandle handle;
-        lock (_handleGate)
-        {
-            if (_handle == null)
-            {
-                return (false, default!);
-            }
-
-            handle = _handle;
-        }
-
-        return handle.TryUse(action, out var result)
-            ? (true, result)
-            : (false, default!);
-    }
-
-    private LibraryHandle? CurrentHandleOrNull()
-    {
-        lock (_handleGate)
-        {
-            return _handle is { IsOpen: true } ? _handle : null;
-        }
-    }
+    private LibraryHandle? CurrentHandleOrNull() =>
+        _session.CurrentHandleOrNull();
 
     private async void OnCloseLibraryClick(object sender, RoutedEventArgs e)
     {
@@ -1656,276 +1537,16 @@ public sealed partial class MainWindow : Window
         };
     }
 
-    // Fires on a background thread; hop to the UI thread before touching WinUI.
-    private void OnNativeEvent(int generation, BridgeUiEvent evt) =>
-        DispatcherQueue.TryEnqueue(() => HandleEvent(generation, evt));
-
-    // Render the toolbar sync indicator from the accumulated state: an active error
-    // wins, then an in-progress pass, then the last successful sync time; blank when
-    // there's nothing to report (no sync, or none yet this session).
-    private void UpdateSyncIndicator()
+    // Import-preview and candidate-loudness events, which drive the import
+    // picker's live position label and the candidate rows' status line.
+    private void HandleImportPreviewEvent(BridgeUiEvent evt)
     {
-        if (_syncErrorText is not null)
-        {
-            SyncIndicator.Text = Loc.Chrome("sync.error_title");
-            SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
-        }
-        else if (_syncing)
-        {
-            SyncIndicator.Text = Loc.Chrome("sync.syncing");
-            SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-        }
-        else if (_lastSyncTime is not null)
-        {
-            SyncIndicator.Text = Loc.Chrome("sync.synced", "time", _lastSyncTime);
-            SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-        }
-        else
-        {
-            SyncIndicator.Text = string.Empty;
-        }
-    }
-
-    // Format a Unix epoch-millis sync timestamp as a local short time ("2:32 PM"),
-    // or null when there's been no sync.
-    private static string? FormatSyncTime(long? epochMillis)
-    {
-        if (epochMillis is not long ms)
-        {
-            return null;
-        }
-
-        return DateTimeOffset.FromUnixTimeMilliseconds(ms).ToLocalTime().ToString("t");
-    }
-
-    private void ProjectSeekDrop(double requestedProgress)
-    {
-        var nowPlaying = _nowPlaying;
-        var state = nowPlaying?.Position;
-        if (nowPlaying is null || state is null || state.Snapshot.DurationMs == 0)
-        {
-            BaeDiagnostics.Logger.Warning(
-                $"Skipping seek projection for progress {requestedProgress} because playback position is unavailable for track {_nowPlaying?.TrackId ?? "<none>"}.");
-            return;
-        }
-
-        var position = state.Snapshot;
-        var progress = Math.Clamp(requestedProgress, NpProgress.Minimum, NpProgress.Maximum);
-        var progressRange = NpProgress.Maximum - NpProgress.Minimum;
-        if (progressRange <= 0)
-        {
-            throw new InvalidOperationException("Seek slider range must be positive.");
-        }
-
-        var ratio = (progress - NpProgress.Minimum) / progressRange;
-        ratio = Math.Clamp(ratio, 0, 1);
-        var targetPositionMs = (ulong)Math.Round(position.DurationMs * ratio);
-        if (targetPositionMs > position.DurationMs)
-        {
-            targetPositionMs = position.DurationMs;
-        }
-
-        var projection = new SeekProjection(
-            nowPlaying.TrackId,
-            targetPositionMs,
-            position.DurationMs,
-            progress);
-        _nowPlaying = nowPlaying with { Position = state with { Projection = projection } };
-        RenderSeekPosition(progress, targetPositionMs, position.DurationMs);
-    }
-
-    private void RenderSeekPosition(double progress, ulong positionMs, ulong durationMs)
-    {
-        NpProgress.Value = progress;
-        NpElapsed.Text = DurationLabel(positionMs);
-        NpRemaining.Text = DurationLabel(RemainingDurationMs(positionMs, durationMs));
-    }
-
-    private static ulong RemainingDurationMs(ulong positionMs, ulong durationMs)
-    {
-        if (positionMs > durationMs)
-        {
-            throw new InvalidOperationException(
-                $"Playback position {positionMs} exceeds duration {durationMs}.");
-        }
-
-        return durationMs - positionMs;
-    }
-
-    private static string DurationLabel(ulong milliseconds)
-    {
-        if (milliseconds > long.MaxValue)
-        {
-            throw new InvalidOperationException($"Duration {milliseconds}ms exceeds supported label range.");
-        }
-
-        return Loc.Duration((long)milliseconds);
-    }
-
-    private void ClearSeekProjection()
-    {
-        if (_nowPlaying is { Position: { } state } nowPlaying)
-        {
-            _nowPlaying = nowPlaying with { Position = state with { Projection = null } };
-        }
-    }
-
-    private bool PlaybackPositionTargetsCurrentTrack(string? trackId)
-    {
-        if (trackId is null)
-        {
-            BaeDiagnostics.Logger.Warning("Ignoring playback position with no track id.");
-            return false;
-        }
-        if (_nowPlaying?.TrackId is { } currentTrackId && currentTrackId != trackId)
-        {
-            BaeDiagnostics.Logger.Warning(
-                $"Ignoring playback position for stale track {trackId}; current track is {currentTrackId}.");
-            return false;
-        }
-        return true;
-    }
-
-    private void RenderPlaybackProgress(string trackId, ulong positionMs, ulong durationMs, double progress)
-    {
-        if (!PlaybackPositionTargetsCurrentTrack(trackId))
-        {
-            return;
-        }
-        var snapshot = new PlaybackPositionSnapshot(
-            durationMs,
-            positionMs,
-            progress);
-        var projection = _nowPlaying?.Position?.Projection;
-
-        if (projection is not null)
-        {
-            if (projection.TrackId == trackId)
-            {
-                RenderSeekPosition(
-                    projection.Progress,
-                    projection.TargetPositionMs,
-                    projection.DurationMs);
-                return;
-            }
-        }
-
-        ApplyPlaybackPositionSnapshot(trackId, durationMs, positionMs, progress, null);
-    }
-
-    private void RenderPlaybackSeeked(string trackId, ulong positionMs, ulong durationMs, double progress)
-    {
-        if (!PlaybackPositionTargetsCurrentTrack(trackId))
-        {
-            return;
-        }
-        ApplyPlaybackPositionSnapshot(trackId, durationMs, positionMs, progress, null);
-    }
-
-    private void ApplyPlaybackPositionSnapshot(
-        string trackId,
-        ulong durationMs,
-        ulong positionMs,
-        double progress,
-        SeekProjection? projection)
-    {
-        var snapshot = new PlaybackPositionSnapshot(
-            durationMs,
-            positionMs,
-            progress);
-        _nowPlaying = _nowPlaying is { } nowPlaying
-            ? nowPlaying with { Position = new PlaybackPositionState(snapshot, projection) }
-            : new NowPlayingState(null, trackId, new PlaybackPositionState(snapshot, projection));
-
-        if (!_userSeeking)
-        {
-            NpProgress.Value = progress;
-        }
-        NpElapsed.Text = DurationLabel(positionMs);
-        NpRemaining.Text = DurationLabel(RemainingDurationMs(positionMs, durationMs));
-    }
-
-    private void HandleEvent(int generation, BridgeUiEvent evt)
-    {
-        if (generation != _sessionGeneration || CurrentHandleOrNull() == null)
-        {
-            return;
-        }
-
         switch (evt)
         {
-            case BridgeUiEvent.PlaybackPlaying playing:
-                NowPlayingBar.Visibility = Visibility.Visible;
-                var positionState = _nowPlaying is { } nowPlaying && nowPlaying.TrackId == playing.TrackId
-                    ? nowPlaying.Position
-                    : null;
-                _nowPlaying = new NowPlayingState(playing.AlbumId, playing.TrackId, positionState);
-                NpTitle.Text = playing.TrackTitle;
-                NpArtist.Text = playing.ArtistNames;
-                NpPlayPause.Content = "⏸";
-                NpCover.Source = CoverImage.LoadImage(CurrentHandleOrNull(), playing.CoverImageId);
-                _mediaControls.UpdateNowPlayingPlaying(
-                    playing.TrackTitle, playing.ArtistNames, playing.AlbumTitle, playing.CoverImageId, playing.DurationMs);
-                // Audio is flowing: drop the buffering spinner, restore the
-                // play/pause control.
-                NpLoading.IsActive = false;
-                NpLoading.Visibility = Visibility.Collapsed;
-                NpPlayPause.Visibility = Visibility.Visible;
-                break;
-            case BridgeUiEvent.PlaybackPaused paused:
-                NowPlayingBar.Visibility = Visibility.Visible;
-                var pausedPositionState = _nowPlaying is { } pausedNowPlaying && pausedNowPlaying.TrackId == paused.TrackId
-                    ? pausedNowPlaying.Position
-                    : null;
-                _nowPlaying = new NowPlayingState(paused.AlbumId, paused.TrackId, pausedPositionState);
-                NpTitle.Text = paused.TrackTitle;
-                NpArtist.Text = paused.ArtistNames;
-                NpPlayPause.Content = "▶";
-                NpCover.Source = CoverImage.LoadImage(CurrentHandleOrNull(), paused.CoverImageId);
-                _mediaControls.UpdateNowPlayingPaused(
-                    paused.TrackTitle, paused.ArtistNames, paused.AlbumTitle, paused.CoverImageId, paused.DurationMs);
-                NpLoading.IsActive = false;
-                NpLoading.Visibility = Visibility.Collapsed;
-                NpPlayPause.Visibility = Visibility.Visible;
-                _ = ShowSidePauseDialog(paused.Reason);
-                break;
-            case BridgeUiEvent.PlaybackStopped:
-                NowPlayingBar.Visibility = Visibility.Collapsed;
-                _userSeeking = false;
-                _nowPlaying = null;
-                _mediaControls.UpdateNowPlayingStopped();
-                NpLoading.IsActive = false;
-                NpLoading.Visibility = Visibility.Collapsed;
-                NpPlayPause.Visibility = Visibility.Visible;
-                break;
-            case BridgeUiEvent.PlaybackProgress progress:
-                RenderPlaybackProgress(progress.TrackId, progress.PositionMs, progress.DurationMs, progress.Progress);
-                _mediaControls.UpdatePosition(progress.PositionMs, progress.DurationMs);
-                break;
-            case BridgeUiEvent.PlaybackSeeked seeked:
-                RenderPlaybackSeeked(seeked.TrackId, seeked.PositionMs, seeked.DurationMs, seeked.Progress);
-                _mediaControls.UpdatePosition(seeked.PositionMs, seeked.DurationMs);
-                break;
-            case BridgeUiEvent.VolumeChanged volume:
-                _suppressVolume = true;
-                NpVolume.Value = volume.Volume;
-                _suppressVolume = false;
-                break;
-            case BridgeUiEvent.MuteChanged mute:
-                NpMute.Content = mute.IsMuted ? "🔇" : "🔊";
-                break;
-            case BridgeUiEvent.RepeatModeChanged repeat:
-                NpRepeat.Content = repeat.Mode switch
-                {
-                    BridgeRepeatMode.Track => "🔂",
-                    BridgeRepeatMode.Context => "🔁",
-                    _ => "↻",
-                };
-                break;
             case BridgeUiEvent.PreviewProgress previewProgress:
                 if (_previewElapsed is not null)
                 {
-                    var elapsed = DurationLabel(previewProgress.PositionMs);
+                    var elapsed = PlaybackPositionModel.DurationLabel(previewProgress.PositionMs);
                     _previewElapsed.Text = _previewDurationLabel is null
                         ? elapsed
                         : $"{elapsed} / {_previewDurationLabel}";
@@ -1935,11 +1556,11 @@ public sealed partial class MainWindow : Window
             case BridgeUiEvent.PreviewPlaying preview:
                 // Total duration arrives once when preview starts; the next
                 // PreviewProgress tick renders it alongside the elapsed position.
-                _previewDurationLabel = DurationLabel(preview.DurationMs);
+                _previewDurationLabel = PlaybackPositionModel.DurationLabel(preview.DurationMs);
                 _mediaControls.UpdateNowPlayingForPreview(preview.Path, preview.DurationMs, isPlaying: true);
                 break;
             case BridgeUiEvent.PreviewPaused preview:
-                _previewDurationLabel = DurationLabel(preview.DurationMs);
+                _previewDurationLabel = PlaybackPositionModel.DurationLabel(preview.DurationMs);
                 _mediaControls.UpdateNowPlayingForPreview(preview.Path, preview.DurationMs, isPlaying: false);
                 break;
             case BridgeUiEvent.PreviewIdle:
@@ -1950,64 +1571,6 @@ public sealed partial class MainWindow : Window
                 }
                 _mediaControls.UpdatePreviewIdle();
                 break;
-            case BridgeUiEvent.Invalidated invalidated:
-                HandleInvalidation(invalidated.Invalidation);
-                break;
-            case BridgeUiEvent.PlaybackError playbackError:
-                Banner.Severity = InfoBarSeverity.Error;
-                Banner.Title = Loc.Chrome("error.playback_title");
-                // The structured reason resolves its own localized line (the
-                // actionable cloud-only cases, or a diagnostic's generic line).
-                Banner.Message = PlaybackErrorLine(playbackError.Reason);
-                Banner.ActionButton = null;
-                Banner.IsOpen = true;
-                break;
-            case BridgeUiEvent.Error error:
-                Banner.Severity = InfoBarSeverity.Error;
-                Banner.Title = Loc.Chrome("error.title");
-                Banner.Message = BridgeDisplay.LocalizedLine(error.ErrorValue);
-                Banner.ActionButton = null;
-                Banner.IsOpen = true;
-                break;
-            case BridgeUiEvent.ErrorCleared:
-                Banner.IsOpen = false;
-                break;
-            case BridgeUiEvent.PlaybackLoading loading:
-                // Core is preparing or buffering the track (initial load, or a
-                // seek to a position not yet downloaded). Show the bar with a
-                // spinner over the transport; the prior track's title/cover stay
-                // until PlaybackPlaying lands (on a fresh play they fill then).
-                if (_nowPlaying is { } loadingState
-                    && loading.TrackId != loadingState.TrackId)
-                {
-                    _nowPlaying = loadingState with { Position = null };
-                }
-                NowPlayingBar.Visibility = Visibility.Visible;
-                NpPlayPause.Visibility = Visibility.Collapsed;
-                NpLoading.IsActive = true;
-                NpLoading.Visibility = Visibility.Visible;
-                // A bare loading event carries no metadata; leave the transport
-                // controls showing the prior track until the target resolves.
-                if (loading.Track is { } loadingTrack)
-                {
-                    _mediaControls.UpdateNowPlayingLoading(
-                        loadingTrack.TrackTitle, loadingTrack.ArtistNames, loadingTrack.AlbumTitle,
-                        loadingTrack.CoverImageId, loadingTrack.DurationMs);
-                }
-                break;
-            case BridgeUiEvent.QueueUpdated queue:
-                _queueManual = queue.Snapshot.Manual.ToList();
-                _queueContext = queue.Snapshot.Context;
-                NpPrev.IsEnabled = queue.Snapshot.HasPrevious;
-                NpNext.IsEnabled = queue.Snapshot.HasNext;
-                _mediaControls.UpdateCommandAvailability(queue.Snapshot.HasNext, queue.Snapshot.HasPrevious);
-                break;
-            case BridgeUiEvent.QueueItemsAdded added:
-                if (added.Count > 0)
-                {
-                    FlashQueueAddBadge(checked((int)added.Count));
-                }
-                break;
             case BridgeUiEvent.CandidateImportLoudnessProgress loudness:
                 // Replace the candidate status with a live per-track loudness line.
                 UpdateCandidate(loudness.Key, null, Loc.Core(
@@ -2017,46 +1580,6 @@ public sealed partial class MainWindow : Window
                         ["done"] = loudness.TracksDone,
                         ["total"] = loudness.TracksTotal,
                     }));
-                break;
-        }
-    }
-
-    private static string PlaybackErrorLine(BridgePlaybackErrorReason reason)
-    {
-        return BridgeDisplay.LocalizedLine(reason);
-    }
-
-    private void HandleInvalidation(BridgeInvalidation invalidation)
-    {
-        switch (invalidation)
-        {
-            case BridgeInvalidation.AlbumList:
-            case BridgeInvalidation.ComposerList:
-                if (string.IsNullOrEmpty(SearchBox.Text))
-                {
-                    LoadCurrentBrowserMode();
-                }
-                break;
-            case BridgeInvalidation.Album:
-            case BridgeInvalidation.Release:
-                _refreshStorageRows?.Invoke();
-                break;
-            case BridgeInvalidation.Config:
-                _refreshSettings?.Invoke();
-                break;
-            case BridgeInvalidation.SyncStatus:
-                RefreshSyncStatus();
-                break;
-            case BridgeInvalidation.Outbox:
-                _refreshOutbox?.Invoke();
-                break;
-            case BridgeInvalidation.DownloadQueue:
-                _refreshDownloads?.Invoke();
-                break;
-            case BridgeInvalidation.ImportCandidateList:
-            case BridgeInvalidation.ImportCandidate:
-            case BridgeInvalidation.WatchedFolders:
-                RefreshImportCandidates();
                 break;
         }
     }
@@ -2339,11 +1862,7 @@ public sealed partial class MainWindow : Window
 
     private void ShowImportBanner(string message)
     {
-        Banner.Severity = InfoBarSeverity.Error;
-        Banner.Title = Loc.Chrome("import.error_title");
-        Banner.Message = message;
-        Banner.ActionButton = null;
-        Banner.IsOpen = true;
+        _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("import.error_title"), message);
     }
 
     // One candidate row: the summary line, then a signals badge row underneath
@@ -3047,63 +2566,6 @@ public sealed partial class MainWindow : Window
         return section;
     }
 
-    // Springs the +N badge in over the queue button, holds it ~1.4s, then fades
-    // it out. A fresh add while it's visible replaces the count and restarts the
-    // hold timer instead of re-springing.
-    private void FlashQueueAddBadge(int count)
-    {
-        QueueAddBadgeText.Text = $"+{count}";
-
-        var springIn = new Storyboard();
-
-        var fadeIn = new DoubleAnimation
-        {
-            To = 1.0,
-            Duration = new Duration(TimeSpan.FromMilliseconds(150)),
-            EnableDependentAnimation = true,
-        };
-        Storyboard.SetTarget(fadeIn, QueueAddBadge);
-        Storyboard.SetTargetProperty(fadeIn, "Opacity");
-        springIn.Children.Add(fadeIn);
-
-        foreach (var axis in new[] { "ScaleX", "ScaleY" })
-        {
-            var scaleUp = new DoubleAnimation
-            {
-                To = 1.0,
-                Duration = new Duration(TimeSpan.FromMilliseconds(250)),
-                EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.4 },
-                EnableDependentAnimation = true,
-            };
-            Storyboard.SetTarget(scaleUp, QueueAddBadgeScale);
-            Storyboard.SetTargetProperty(scaleUp, axis);
-            springIn.Children.Add(scaleUp);
-        }
-
-        springIn.Begin();
-
-        _queueBadgeTimer?.Stop();
-        _queueBadgeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1400) };
-        _queueBadgeTimer.Tick += (_, _) =>
-        {
-            _queueBadgeTimer?.Stop();
-
-            var fadeOut = new DoubleAnimation
-            {
-                To = 0.0,
-                Duration = new Duration(TimeSpan.FromMilliseconds(250)),
-                EnableDependentAnimation = true,
-            };
-            Storyboard.SetTarget(fadeOut, QueueAddBadge);
-            Storyboard.SetTargetProperty(fadeOut, "Opacity");
-
-            var hide = new Storyboard();
-            hide.Children.Add(fadeOut);
-            hide.Begin();
-        };
-        _queueBadgeTimer.Start();
-    }
-
     private async void OnQueueClick(object sender, RoutedEventArgs e)
     {
         if (CurrentHandleOrNull() == null)
@@ -3116,7 +2578,7 @@ public sealed partial class MainWindow : Window
         var clear = new Button
         {
             Content = Loc.Chrome("queue.clear"),
-            IsEnabled = _queueManual.Count > 0,
+            IsEnabled = _playback.ManualQueue.Count > 0,
         };
         clear.Click += (_, _) => WithCurrentHandle(NativeBae.QueueClear);
 
@@ -3126,13 +2588,13 @@ public sealed partial class MainWindow : Window
         // Two distinct sections: the manual lane ("Up Next"), then the context
         // (the release being played from). Each is its own reorderable list —
         // entry ids are unique across both and core no-ops a cross-lane move.
-        if (_queueManual.Count > 0)
+        if (_playback.ManualQueue.Count > 0)
         {
             content.Children.Add(QueueSectionLabel(Loc.Chrome("queue.section.up_next")));
-            content.Children.Add(BuildQueueLaneList(_queueManual));
+            content.Children.Add(BuildQueueLaneList(_playback.ManualQueue));
         }
 
-        if (_queueContext is { Upcoming.Length: > 0 } ctx)
+        if (_playback.Context is { Upcoming.Length: > 0 } ctx)
         {
             // The context section names what's playing — a release ("Playing From")
             // vs the whole library — by the source kind the wire shape carries.
@@ -3276,36 +2738,6 @@ public sealed partial class MainWindow : Window
         return list;
     }
 
-    private async System.Threading.Tasks.Task ShowSidePauseDialog(BridgePlaybackPauseReason reason)
-    {
-        if (reason is not BridgePlaybackPauseReason.SideEnded side)
-        {
-            return;
-        }
-
-        var title = Loc.Core(side.Prompt.TitleKey, "letter", side.Prompt.SideLetter);
-        var message = Loc.Core(side.Prompt.MessageKey);
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = new TextBlock
-            {
-                Text = message,
-                TextWrapping = TextWrapping.Wrap,
-            },
-            CloseButtonText = Loc.Chrome("action.close"),
-            XamlRoot = Content.XamlRoot,
-        };
-        try
-        {
-            await dialog.ShowAsync();
-        }
-        catch (Exception ex)
-        {
-            BaeDiagnostics.Logger.Warning("Failed to show side-pause dialog", ex);
-        }
-    }
-
     /// <summary>
     /// A cover-art thumbnail tile: an image over a one-line caption, the whole
     /// tile a borderless button. The caller wires <c>Click</c> — the
@@ -3393,13 +2825,13 @@ public sealed partial class MainWindow : Window
     private async void OnGoToNowPlaying(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        var albumId = _nowPlaying?.AlbumId;
+        var albumId = _playback.NowPlayingAlbumId;
         if (CurrentHandleOrNull() == null || string.IsNullOrEmpty(albumId))
         {
             return;
         }
 
-        await ShowAlbumDetail(albumId, scrollToTrackId: _nowPlaying?.TrackId);
+        await ShowAlbumDetail(albumId, scrollToTrackId: _playback.NowPlayingTrackId);
     }
 
     // Space toggles play/pause from anywhere — except while typing in a text
@@ -3431,10 +2863,7 @@ public sealed partial class MainWindow : Window
 
     private void OnVolumeChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
-        if (!_suppressVolume && CurrentHandleOrNull() != null)
-        {
-            WithCurrentHandle(handle => NativeBae.SetVolume(handle, (float)NpVolume.Value));
-        }
+        _nowPlayingBar.HandleVolumeSliderChanged();
     }
 
     private void OnSearchSubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)

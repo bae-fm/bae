@@ -15,6 +15,10 @@
       behind the system transport controls, expressed over plain BCL types with
       no WinRT dependency (the WinRT shell that applies its decisions lives in
       MediaControlService and is verified by compilation).
+    - The store models (PlaybackPositionModel / SyncIndicatorModel) — the
+      now-playing-bar seek/position math and the sync-indicator precedence, split
+      out of MainWindow as plain BCL types (the stores that hold bridge snapshots
+      and the WinUI views that render them are verified by compilation).
 
     The rest of bae-windows' pure logic (ReleaseCandidateChoice.Summary,
     ImportCandidate status/ToString, BridgeDisplay) depends on the generated
@@ -38,6 +42,8 @@
   <ItemGroup>
     <Compile Include="../bae-windows/Loc.cs" Link="Loc.cs" />
     <Compile Include="../bae-windows/MediaControlState.cs" Link="MediaControlState.cs" />
+    <Compile Include="../bae-windows/Stores/PlaybackPositionModel.cs" Link="PlaybackPositionModel.cs" />
+    <Compile Include="../bae-windows/Stores/SyncIndicatorModel.cs" Link="SyncIndicatorModel.cs" />
   </ItemGroup>
 
   <ItemGroup>
