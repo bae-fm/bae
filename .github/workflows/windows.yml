@@ -1,10 +1,9 @@
 name: Windows build
 
 # Builds the native Windows stack for x86_64-pc-windows-msvc: bae-core →
-# bae-windows-ffi (the C ABI cdylib, bae_windows_ffi.dll) → the WinUI 3 (C#) app
-# that P/Invokes it. (bae-bridge is also built to keep it Windows-clean, but the
-# Windows UI binds bae-core through the FFI, not the uniffi bridge.) The macOS
-# host can't cross-compile the native deps, so this is the verification loop.
+# bae-bridge (uniffi metadata + bae_bridge.dll) → generated C# bindings, plus
+# the WinUI 3 app compile check. The macOS host can't cross-compile the native
+# deps, so this is the verification loop.
 # The native deps are all prebuilt releases build.rs/CI fetch — no compiling
 # here: ffmpeg via bae-ffmpeg, libdiscid via MusicBrainz's prebuilt.
 
@@ -79,32 +78,45 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
 
-      # Both editions differ ONLY in the Rust FFI cdylib: the full feature set
-      # (oauth-providers) adds the bae_oauth_* / bae_sign_in_cloud C-ABI exports;
-      # baeium (default, no features) omits them. The WinUI C# app is byte-identical
-      # for both — it P/Invokes whatever dll ships and runtime-detects OAuth support
-      # via NativeBae.SupportsOAuthProviders() — so it's built once (below) while the
-      # FFI is compiled and linked for both feature sets here. A real `cargo build`
-      # (not just clippy) so the oauth exports' link step is exercised, not only the
-      # type-check.
-      - name: Build the Windows FFI cdylib (baeium, default features)
-        run: cargo build -p bae-windows-ffi --target x86_64-pc-windows-msvc
-
-      - name: Confirm the FFI DLL was produced
-        shell: pwsh
-        run: |
-          $dll = "target\x86_64-pc-windows-msvc\debug\bae_windows_ffi.dll"
-          if (Test-Path $dll) { Write-Host "PASS: $dll ($((Get-Item $dll).Length) bytes)" }
-          else { Write-Host "FAIL: $dll not found"; exit 1 }
-
-      - name: Build the Windows FFI cdylib (full edition, oauth-providers)
-        # Windows has no cloudkit (Apple-only); full here is oauth-providers only.
-        run: cargo build -p bae-windows-ffi --target x86_64-pc-windows-msvc --features oauth-providers
-
       - name: Install .NET 8 SDK
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
+
+      - name: Check C# formatting
+        # dotnet format uses .editorconfig rules. --verify-no-changes exits non-zero
+        # if any file would be reformatted, failing the build.
+        #
+        # Run whitespace only — style and analyzer formatters trigger IDE0051 false
+        # positives for XAML-bound event handlers (dotnet format analyzes C# in
+        # isolation, without the XAML compiler's generated partial classes that
+        # reference those methods). MSBuild with EnforceCodeStyleInBuild=true
+        # (below) enforces all style and dead-code rules after XAML compilation,
+        # where XAML references are visible.
+        run: dotnet format whitespace bae-windows\bae-windows.csproj --verify-no-changes
+
+      - name: Install uniffi-bindgen-cs
+        run: cargo install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag 'v0.11.0+v0.31.0' uniffi-bindgen-cs --locked
+
+      # Both editions differ in the Rust bridge feature set. The full feature
+      # set (oauth-providers) adds the OAuth bridge exports; baeium (no
+      # features) omits them. Build and generate both binding dirs so stale
+      # functions cannot linger across editions.
+      - name: Build the Windows bridge (baeium, default features)
+        shell: bash
+        run: BAE_BRIDGE_FEATURES= BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium ./bae-bridge/build-windows.sh
+
+      - name: Confirm the bridge DLL was produced
+        shell: pwsh
+        run: |
+          $dll = "target-windows\x86_64-pc-windows-msvc\debug\bae_bridge.dll"
+          if (Test-Path $dll) { Write-Host "PASS: $dll ($((Get-Item $dll).Length) bytes)" }
+          else { Write-Host "FAIL: $dll not found"; exit 1 }
+
+      - name: Build the Windows bridge (full edition, oauth-providers)
+        # Windows has no cloudkit (Apple-only); full here is oauth-providers only.
+        shell: bash
+        run: BAE_BRIDGE_FEATURES=oauth-providers BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
@@ -122,55 +134,25 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value $makepri.Directory.FullName
           Write-Host "makepri on PATH: $($makepri.FullName)"
 
-      - name: Check C# formatting
-        # dotnet format uses .editorconfig rules. --verify-no-changes exits non-zero
-        # if any file would be reformatted, failing the build.
-        #
-        # Run whitespace only — style and analyzer formatters trigger IDE0051 false
-        # positives for XAML-bound event handlers (dotnet format analyzes C# in
-        # isolation, without the XAML compiler's generated partial classes that
-        # reference those methods). MSBuild with EnforceCodeStyleInBuild=true
-        # (below) enforces all style and dead-code rules after XAML compilation,
-        # where XAML references are visible.
-        run: dotnet format whitespace bae-windows\bae-windows.csproj --verify-no-changes
-
-      - name: Build the WinUI app (C# → P/Invoke → FFI DLL)
+      - name: Build the WinUI app (baeium bindings)
         # Unpackaged WinUI 3 (C#/.NET) app, x64, framework-dependent. Proves the
-        # native UI stack compiles and links against the FFI: C# (WinUI) → P/Invoke
-        # → bae_windows_ffi.dll → bae-core. Built with MSBuild, not `dotnet build`:
+        # native UI stack compiles. Built with MSBuild, not `dotnet build`:
         # the WinUI XAML markup compiler needs the full VS toolchain to resolve
         # project-local x:DataType types (dotnet build drops the LocalAssembly
         # parameter — WMC1509 — and fails type resolution). A non-zero exit fails.
         # EnforceCodeStyleInBuild=true makes IDE-level dead-code diagnostics
         # (IDE0051 unused private members, IDE0052 unread private members) fire
         # as build errors via .editorconfig severity settings.
-        run: msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=x64 /p:EnforceCodeStyleInBuild=true
+        run: msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=x64 /p:EnforceCodeStyleInBuild=true /p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-baeium
 
-      - name: Stage the FFI DLL next to the WinUI build output
-        shell: pwsh
-        run: |
-          # Place the Rust FFI DLL beside the app .exe so a future run could launch
-          # it — P/Invoke resolves bae_windows_ffi.dll from the application directory.
-          # Resolve the output directory from the built .exe rather than hardcoding
-          # the framework/RID path, so it stays correct if the layout shifts.
-          $dll = "target\x86_64-pc-windows-msvc\debug\bae_windows_ffi.dll"
-          $exe = Get-ChildItem "bae-windows\bin\x64\Debug" -Recurse -Filter "bae-windows.exe" |
-            Select-Object -First 1
-          if (-not $exe) { Write-Host "FAIL: bae-windows.exe not found under bae-windows\bin\x64\Debug"; exit 1 }
-          Copy-Item $dll $exe.DirectoryName -Force
-          Write-Host "PASS: copied bae_windows_ffi.dll to $($exe.DirectoryName)"
-
-      - name: Run bae-windows-ffi unit tests
-        # The FFI layer has pure-logic unit tests (type conversions, event
-        # mapping) that don't require audio hardware — safe to run on CI.
-        run: cargo test -p bae-windows-ffi --target x86_64-pc-windows-msvc
+      - name: Build the WinUI app (full bindings)
+        run: msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=x64 /p:EnforceCodeStyleInBuild=true /p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-full
 
       - name: Clippy (baeium / default features)
-        # bae-bridge is included here because the host clippy in ci.yml targets
-        # macOS — it doesn't catch cfg(target_os = "windows")-gated dead-code.
-        run: cargo clippy -p bae-core -p bae-windows-ffi -p bae-bridge --target x86_64-pc-windows-msvc -- -D warnings
+        # The host clippy in ci.yml targets macOS, so lint the Windows target too.
+        run: cargo clippy -p bae-core -p bae-bridge --target x86_64-pc-windows-msvc -- -D warnings
 
       - name: Clippy (full edition, oauth-providers)
         # Dead-code warnings are feature-specific, so lint the oauth-gated code on
         # the Windows target too. oauth-providers only — no cloudkit on Windows.
-        run: cargo clippy -p bae-core -p bae-windows-ffi -p bae-bridge --target x86_64-pc-windows-msvc --features oauth-providers -- -D warnings
+        run: cargo clippy -p bae-core -p bae-bridge --target x86_64-pc-windows-msvc --features oauth-providers -- -D warnings

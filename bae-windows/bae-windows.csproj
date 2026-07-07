@@ -17,6 +17,7 @@
     <RootNamespace>Bae.Windows</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <!-- CS0168/CS0219: unused local variables (compiler warnings promoted to errors).
          IDE0051/IDE0052 (unused private members) are enforced via .editorconfig
@@ -52,6 +53,14 @@
          Disable the default to keep our explicit <PRIResource> in control. -->
     <EnableDefaultPriItems>false</EnableDefaultPriItems>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <BridgeBindingsDir Condition="'$(BridgeBindingsDir)' == ''">..\bae-bridge\csharp-bindings-full</BridgeBindingsDir>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)\$(BridgeBindingsDir)')">
+    <Compile Include="$(MSBuildProjectDirectory)\$(BridgeBindingsDir)\**\*.cs" Link="GeneratedBridge\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260508005" />
