@@ -269,6 +269,13 @@ mod tests {
         }
     }
 
+    fn fmt_gain(track_id: &str, replay_gain_linear: f32) -> TrackFmt {
+        TrackFmt {
+            replay_gain_linear,
+            ..fmt(track_id)
+        }
+    }
+
     /// A staged next track plays immediately after the current one: a single
     /// source advances across the boundary in place (no rebuild), emits the
     /// finishing track's identity + decode stats, and reports finished only
@@ -363,5 +370,55 @@ mod tests {
         assert_eq!(source.pull_samples(&mut out), 1);
         assert!(source.is_finished());
         assert!(boundary_rx.try_recv().is_err());
+    }
+
+    /// Replay gain is per-track, so crossing into the staged next track swaps in
+    /// its gain — the loudness normalization the audio callback folds into its
+    /// volume multiply changes discontinuously at the boundary, which is the
+    /// whole reason the field lives on the fmt rather than the source.
+    #[test]
+    fn replay_gain_flips_at_the_gapless_boundary() {
+        let (mut sink1, src1, _r1) = create_track_stream_pair(44100, 1);
+        let (mut sink2, src2, _r2) = create_track_stream_pair(44100, 1);
+        assert_eq!(sink1.push_samples(&[1.0, 2.0]), 2);
+        sink1.mark_finished();
+        assert_eq!(sink2.push_samples(&[3.0]), 1);
+        sink2.mark_finished();
+
+        let (boundary_tx, _boundary_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut source = PlaybackSource::new(src1, fmt_gain("t1", 0.5), boundary_tx);
+        source.stage_next(src2, fmt_gain("t2", 2.0));
+
+        // Before the crossing the callback reads the current track's gain.
+        assert_eq!(source.current_replay_gain_linear(), 0.5);
+
+        // One pull spans the boundary into t2.
+        let mut out = [0.0f32; 8];
+        assert_eq!(source.pull_samples(&mut out), 3);
+
+        // After the crossing the incoming track's gain takes effect.
+        assert_eq!(source.current_replay_gain_linear(), 2.0);
+    }
+
+    /// `cancel` stops both the current decoder and the staged-next decoder, so a
+    /// user action that invalidates the chain doesn't leave the preloaded track's
+    /// decoder running. Observed through the retained sinks, which share the
+    /// cancel flag with their streams.
+    #[test]
+    fn cancel_cancels_current_and_staged_next() {
+        let (sink1, src1, _r1) = create_track_stream_pair(44100, 1);
+        let (sink2, src2, _r2) = create_track_stream_pair(44100, 1);
+
+        let (boundary_tx, _boundary_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut source = PlaybackSource::new(src1, fmt("t1"), boundary_tx);
+        source.stage_next(src2, fmt("t2"));
+
+        assert!(!sink1.is_cancelled());
+        assert!(!sink2.is_cancelled());
+
+        source.cancel();
+
+        assert!(sink1.is_cancelled(), "the current track is cancelled");
+        assert!(sink2.is_cancelled(), "the staged next track is cancelled");
     }
 }
