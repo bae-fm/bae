@@ -572,34 +572,40 @@ mod tests {
         }
     }
 
+    /// With no artists list, the release artist is derived by splitting the
+    /// title on " - ". A title that yields no artist (no separator, or an empty
+    /// artist half) leaves the release unattributed and errors.
     #[test]
-    fn release_without_artists_or_title_artist_returns_err() {
-        let mut release = make_release(vec![]);
-        release.artists = vec![];
-        release.title = "Album Title Without Artist".to_string();
+    fn release_without_artists_errors_when_title_yields_no_artist() {
+        // (title, why it yields no artist)
+        for title in ["Album Title Without Artist", " - Album Title"] {
+            let mut release = make_release(vec![]);
+            release.artists = vec![];
+            release.title = title.to_string();
 
-        let err = map(&release, Some(2024), None)
-            .expect_err("expected unattributed Discogs release to return an error");
+            let err = map(&release, Some(2024), None)
+                .expect_err(&format!("expected error for unattributed title {title:?}"));
 
-        assert!(
-            err.contains("has no release artist"),
-            "unexpected error message: {err}"
-        );
+            assert!(
+                err.contains("has no release artist"),
+                "unexpected error message for {title:?}: {err}"
+            );
+        }
     }
 
+    /// With no artists list but a "Artist - Album" title, the release artist is
+    /// taken from the artist half of the split.
     #[test]
-    fn release_without_artists_or_empty_title_artist_returns_err() {
-        let mut release = make_release(vec![]);
+    fn release_without_artists_derives_release_artist_from_title() {
+        let mut release = make_release(vec![make_track("1", "Track 1")]);
         release.artists = vec![];
-        release.title = " - Album Title".to_string();
+        release.title = "Artist Name A - Album Title".to_string();
 
-        let err = map(&release, Some(2024), None)
-            .expect_err("expected unattributed Discogs release to return an error");
+        let parsed = map(&release, Some(2024), None).unwrap();
 
-        assert!(
-            err.contains("has no release artist"),
-            "unexpected error message: {err}"
-        );
+        assert_eq!(parsed.artists.len(), 1);
+        assert_eq!(parsed.artists[0].name, "Artist Name A");
+        assert_eq!(parsed.artists[0].discogs_artist_id, None);
     }
 
     #[test]
@@ -1046,5 +1052,62 @@ mod tests {
         let result = process_tracklist(&[index, make_track("A1", "Real Track")]);
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].title, "Real Track");
+    }
+
+    #[test]
+    fn discogs_role_is_composer_matches_composing_roles() {
+        // Bracket-wrapped and case/separator variants all normalize before the
+        // substring check; non-composing roles never match.
+        for role in [
+            "Composed By",
+            "Written-By",
+            "Written By",
+            "Music By",
+            "Composer",
+            "[Composed By]",
+            "[Written-By]",
+            "composed_by",
+        ] {
+            assert!(
+                discogs_role_is_composer(role),
+                "expected {role:?} to be a composer role"
+            );
+        }
+        for role in ["Producer", "Engineer", "Vocals", "Remix", ""] {
+            assert!(
+                !discogs_role_is_composer(role),
+                "expected {role:?} not to be a composer role"
+            );
+        }
+    }
+
+    /// A composer role artist with no credited_name falls back to its canonical
+    /// name and logs the fallback rather than dropping the credit silently.
+    #[test]
+    fn role_artist_without_credited_name_falls_back_to_canonical_name() {
+        let mut release = make_release(vec![make_track("1", "Track 1")]);
+        release.extraartists = Some(vec![DiscogsRoleArtist {
+            id: Some("discogs-composer-a".to_string()),
+            name: "Composer Canonical Name".to_string(),
+            role: "Composed By".to_string(),
+            credited_name: None,
+        }]);
+
+        let mut parsed = None;
+        let logs = crate::test_logs::capture_warn_logs(|| {
+            parsed = Some(map(&release, Some(2024), None).unwrap());
+        });
+        let parsed = parsed.unwrap();
+
+        let composer = parsed
+            .artists
+            .iter()
+            .find(|a| a.discogs_artist_id.as_deref() == Some("discogs-composer-a"))
+            .expect("composer role artist imported");
+        assert_eq!(composer.name, "Composer Canonical Name");
+        assert!(
+            logs.contains("has no credited name"),
+            "expected a fallback warning, got: {logs}"
+        );
     }
 }
