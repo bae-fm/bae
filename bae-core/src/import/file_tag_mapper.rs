@@ -741,6 +741,94 @@ mod tests {
         assert_eq!(parsed.artists[0].name, "Artist Name");
     }
 
+    fn cue_track(number: u32, title: &str) -> crate::cue_flac::CueTrack {
+        use crate::cue_flac::{CueIndex, CuePregap, CueTrack, CueTrackMode};
+        CueTrack {
+            number,
+            mode: CueTrackMode::Audio,
+            title: Some(title.to_string()),
+            performer: None,
+            composer: None,
+            songwriter: None,
+            isrc: None,
+            flags: Vec::new(),
+            indexes: vec![CueIndex {
+                number: 1,
+                frames: 0,
+                file_reference: "image.flac".to_string(),
+            }],
+            postgap_frames: None,
+            file_reference: "image.flac".to_string(),
+            start_cue_frames: 0,
+            pregap: CuePregap::None,
+            pregap_cue_frames: None,
+            generated_pregap_frames: None,
+            end_cue_frames: None,
+        }
+    }
+
+    fn cue_sheet(title: &str, tracks: Vec<crate::cue_flac::CueTrack>) -> CueSheet {
+        CueSheet {
+            title: Some(title.to_string()),
+            performer: Some("Artist Name".to_string()),
+            composer: None,
+            songwriter: None,
+            catalog: None,
+            date: None,
+            tracks,
+        }
+    }
+
+    /// Multi-disc CUE rip: one sheet per disc. Side is the 1-based disc index
+    /// (sheet order); track numbers restart per sheet.
+    #[test]
+    fn cue_multi_sheet_assigns_side_per_disc() {
+        let disc1 = cue_sheet(
+            "Album Title",
+            vec![cue_track(1, "D1 T1"), cue_track(2, "D1 T2")],
+        );
+        let disc2 = cue_sheet(
+            "Album Title",
+            vec![cue_track(1, "D2 T1"), cue_track(2, "D2 T2")],
+        );
+        let clock = FixedClock(
+            chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+                .unwrap()
+                .with_timezone(&chrono::Utc),
+        );
+        let ids = SequentialIdProvider::new("cue");
+        let a1 = Path::new("/nonexistent/disc1.flac");
+        let a2 = Path::new("/nonexistent/disc2.flac");
+
+        let parsed =
+            map_cue_sheets_to_db(&[&disc1, &disc2], &[a1, a2], Some("Folder"), &clock, &ids)
+                .unwrap();
+
+        assert_eq!(parsed.tracks.len(), 4);
+        assert_eq!(parsed.tracks[0].side, 1);
+        assert_eq!(parsed.tracks[0].track_number, Some(1));
+        assert_eq!(parsed.tracks[1].side, 1);
+        assert_eq!(parsed.tracks[1].track_number, Some(2));
+        assert_eq!(parsed.tracks[2].side, 2);
+        assert_eq!(parsed.tracks[2].track_number, Some(1));
+        assert_eq!(parsed.tracks[3].side, 2);
+        assert_eq!(parsed.tracks[3].track_number, Some(2));
+    }
+
+    /// No sheets → error (an album has at least one disc).
+    #[test]
+    fn cue_empty_sheets_returns_error() {
+        let clock = FixedClock(
+            chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+                .unwrap()
+                .with_timezone(&chrono::Utc),
+        );
+        let ids = SequentialIdProvider::new("cue");
+        let err = map_cue_sheets_to_db(&[], &[], Some("Folder"), &clock, &ids)
+            .expect_err("expected empty sheets to error");
+        assert!(err.contains("at least one sheet"), "got: {err}");
+    }
+
     /// Copy a fixture into `dest_dir/{name}` and stamp it with the given
     /// tag values. Returns the destination path.
     fn copy_and_tag(
@@ -1077,83 +1165,133 @@ mod tests {
         assert_eq!(parsed.tracks[1].track_number, Some(1));
     }
 
-    /// No ALBUM tag in any file → the album title falls back to the
-    /// folder name; the rest of the rip's tags still map. The Unknown
-    /// path never hard-fails on a missing album-level tag — the editable
-    /// form gates save on a non-empty title.
+    /// The album-title ladder (ALBUM tag → folder name → empty) and the
+    /// album-artist ladder (ALBUMARTIST → ARTIST → empty), with blank and
+    /// whitespace-only tags dropping to `None` and taking the same ladder.
+    /// The Unknown path never hard-fails on a missing album-level tag — the
+    /// editable form gates save on the non-empty fields.
     #[test]
-    fn missing_album_falls_back_to_folder_name() {
-        let temp = TempDir::new().unwrap();
-        let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
-        let f = copy_and_tag(
-            &src,
-            temp.path(),
-            "no-album.flac",
-            TagType::VorbisComments,
-            Some("Track Title"),
-            Some("Track Artist"),
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-        let parsed = map_tags_with_folder(&[f], Some("Cool Bootleg 1997")).unwrap();
-        assert_eq!(parsed.album.title, "Cool Bootleg 1997");
-        assert_eq!(parsed.artists[0].name, "Track Artist");
-        assert_eq!(parsed.tracks[0].title, "Track Title");
-    }
+    fn album_and_artist_fallback_ladder() {
+        struct Row {
+            name: &'static str,
+            album: Option<&'static str>,
+            artist: Option<&'static str>,
+            album_artist: Option<&'static str>,
+            folder: Option<&'static str>,
+            expect_title: &'static str,
+            expect_artist: &'static str,
+        }
+        let rows = [
+            // Album title ladder.
+            Row {
+                name: "no-album-folder",
+                album: None,
+                artist: Some("Track Artist"),
+                album_artist: None,
+                folder: Some("Folder Name"),
+                expect_title: "Folder Name",
+                expect_artist: "Track Artist",
+            },
+            Row {
+                name: "no-album-no-folder",
+                album: None,
+                artist: Some("Track Artist"),
+                album_artist: None,
+                folder: None,
+                expect_title: "",
+                expect_artist: "Track Artist",
+            },
+            Row {
+                name: "empty-album-folder",
+                album: Some(""),
+                artist: Some("Track Artist"),
+                album_artist: None,
+                folder: Some("Folder Name"),
+                expect_title: "Folder Name",
+                expect_artist: "Track Artist",
+            },
+            Row {
+                name: "ws-album-folder",
+                album: Some("   "),
+                artist: Some("Track Artist"),
+                album_artist: None,
+                folder: Some("Folder Name"),
+                expect_title: "Folder Name",
+                expect_artist: "Track Artist",
+            },
+            // Album-artist ladder: prefer ALBUMARTIST, fall back to ARTIST,
+            // then empty; blank tags drop to None.
+            Row {
+                name: "albumartist-preferred",
+                album: Some("Album Title"),
+                artist: Some("Track Artist"),
+                album_artist: Some("Album Artist"),
+                folder: None,
+                expect_title: "Album Title",
+                expect_artist: "Album Artist",
+            },
+            Row {
+                name: "artist-fallback",
+                album: Some("Album Title"),
+                artist: Some("Track Artist"),
+                album_artist: None,
+                folder: None,
+                expect_title: "Album Title",
+                expect_artist: "Track Artist",
+            },
+            Row {
+                name: "no-artist-empty",
+                album: Some("Album Title"),
+                artist: None,
+                album_artist: None,
+                folder: None,
+                expect_title: "Album Title",
+                expect_artist: "",
+            },
+            Row {
+                name: "blank-artist-empty",
+                album: Some("Album Title"),
+                artist: Some(""),
+                album_artist: Some(""),
+                folder: None,
+                expect_title: "Album Title",
+                expect_artist: "",
+            },
+        ];
 
-    /// No ALBUM tag and no folder name → the album title seeds empty for
-    /// the user to fill in the editor.
-    #[test]
-    fn missing_album_without_folder_seeds_empty_title() {
         let temp = TempDir::new().unwrap();
         let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
-        let f = copy_and_tag(
-            &src,
-            temp.path(),
-            "no-album.flac",
-            TagType::VorbisComments,
-            Some("Track Title"),
-            Some("Track Artist"),
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-        let parsed = map_tags(&[f]).unwrap();
-        assert_eq!(parsed.album.title, "");
-        assert_eq!(parsed.artists[0].name, "Track Artist");
-    }
-
-    /// No ARTIST nor ALBUMARTIST in any file → the primary artist seeds
-    /// with an empty name (the editor requires a non-empty artist before
-    /// save). The album title and tracks still map.
-    #[test]
-    fn missing_artist_seeds_empty_artist() {
-        let temp = TempDir::new().unwrap();
-        let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
-        let f = copy_and_tag(
-            &src,
-            temp.path(),
-            "no-artist.flac",
-            TagType::VorbisComments,
-            Some("Track Title"),
-            None,
-            Some("Album Title"),
-            None,
-            None,
-            None,
-            None,
-        );
-        let parsed = map_tags(&[f]).unwrap();
-        assert_eq!(parsed.album.title, "Album Title");
-        assert_eq!(parsed.artists.len(), 1, "primary artist row is kept");
-        assert_eq!(parsed.artists[0].name, "");
-        assert_eq!(parsed.album.artist_id, parsed.artists[0].id);
-        assert_eq!(parsed.tracks[0].title, "Track Title");
+        for row in rows {
+            let f = copy_and_tag(
+                &src,
+                temp.path(),
+                &format!("{}.flac", row.name),
+                TagType::VorbisComments,
+                Some("Track Title"),
+                row.artist,
+                row.album,
+                row.album_artist,
+                None,
+                None,
+                None,
+            );
+            let parsed = map_tags_with_folder(&[f], row.folder).unwrap();
+            assert_eq!(
+                parsed.album.title, row.expect_title,
+                "title for {}",
+                row.name
+            );
+            // artists[0] is always the primary (album) artist; a divergent
+            // per-track ARTIST may add a second row, which isn't the ladder's
+            // concern here.
+            assert_eq!(
+                parsed.artists[0].name, row.expect_artist,
+                "artist for {}",
+                row.name
+            );
+            assert_eq!(parsed.album.artist_id, parsed.artists[0].id, "{}", row.name);
+            assert_eq!(parsed.tracks[0].title, "Track Title", "{}", row.name);
+        }
     }
 
     /// All tracks completely untagged → folder-name title, empty artist,
@@ -1172,55 +1310,6 @@ mod tests {
         assert_eq!(parsed.album.title, "Mystery Rip");
         assert_eq!(parsed.artists[0].name, "");
         assert_eq!(parsed.tracks[0].title, "untitled-track");
-    }
-
-    /// Empty-string / whitespace-only ALBUM tags are dropped to `None` in
-    /// `read_tags`, so they take the folder-name fallback just like an
-    /// absent tag — never a literal blank title.
-    #[test]
-    fn blank_album_tag_falls_back_to_folder_name() {
-        let temp = TempDir::new().unwrap();
-        let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
-        for (name, album) in [("empty-album.flac", ""), ("ws-album.flac", "   ")] {
-            let f = copy_and_tag(
-                &src,
-                temp.path(),
-                name,
-                TagType::VorbisComments,
-                Some("Track Title"),
-                Some("Track Artist"),
-                Some(album),
-                None,
-                None,
-                None,
-                None,
-            );
-            let parsed = map_tags_with_folder(&[f], Some("Folder Album")).unwrap();
-            assert_eq!(parsed.album.title, "Folder Album", "for album={album:?}");
-        }
-    }
-
-    /// Empty-string ARTIST/ALBUMARTIST tags drop to `None`, so the artist
-    /// seeds empty rather than as a literal blank-named credit.
-    #[test]
-    fn blank_artist_tag_seeds_empty_artist() {
-        let temp = TempDir::new().unwrap();
-        let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
-        let f = copy_and_tag(
-            &src,
-            temp.path(),
-            "blank-artist.flac",
-            TagType::VorbisComments,
-            Some("Track Title"),
-            Some(""),
-            Some("Album Title"),
-            Some(""),
-            None,
-            None,
-            None,
-        );
-        let parsed = map_tags(&[f]).unwrap();
-        assert_eq!(parsed.artists[0].name, "");
     }
 
     /// Empty input → error.
@@ -1470,6 +1559,23 @@ mod tests {
         assert_eq!(content_type, ContentType::Jpeg);
     }
 
+    /// With no front cover, the first embedded picture of any type is used —
+    /// a back-cover-only file still yields a cover to seed.
+    #[test]
+    fn read_embedded_cover_falls_back_to_non_front_picture() {
+        let temp = TempDir::new().unwrap();
+        let f = copy_with_picture(
+            temp.path(),
+            "01.flac",
+            lofty::picture::PictureType::CoverBack,
+            lofty::picture::MimeType::Jpeg,
+            JPEG_BYTES,
+        );
+        let (bytes, content_type) = read_embedded_cover(&[f]).unwrap().expect("cover present");
+        assert_eq!(bytes, JPEG_BYTES, "back cover used when no front cover");
+        assert_eq!(content_type, ContentType::Jpeg);
+    }
+
     /// A picture in an unsupported MIME (lofty `Tiff`) maps to None rather
     /// than being stored as a cover the library can't render.
     #[test]
@@ -1517,12 +1623,9 @@ mod tests {
     }
 
     #[test]
-    fn year_from_tag_reads_structured_date_and_defaults_to_none() {
+    fn year_from_tag_reads_structured_date_first() {
         // The structured date() field (ID3v2.4 TDRC / Vorbis DATE) is the
-        // primary source year_from_tag reads. The text-key fallbacks
-        // (ItemKey::Year / ReleaseDate / OriginalReleaseDate) come from real
-        // frames a synthetic generic Tag doesn't round-trip, so they're left to
-        // the file-backed tests rather than reconstructed here.
+        // primary source, taken ahead of any text-key fallback.
         let mut tag = Tag::new(TagType::Id3v2);
         tag.set_date(Timestamp {
             year: 2020,
@@ -1532,10 +1635,46 @@ mod tests {
             minute: None,
             second: None,
         });
+        tag.insert_text(ItemKey::Year, "1999".to_string());
         assert_eq!(year_from_tag(&tag), Some(2020));
 
-        // A tag with no date information yields no year.
+        // A tag with no date information at all yields no year.
         assert_eq!(year_from_tag(&Tag::new(TagType::Id3v2)), None);
+    }
+
+    /// With no structured `date()`, year_from_tag falls back to the text keys
+    /// in order: Year, then ReleaseDate (TDRL), then OriginalReleaseDate. The
+    /// date-shaped keys take the leading four digits.
+    #[test]
+    fn year_from_tag_reads_text_key_fallbacks() {
+        // VorbisComments accepts these text keys (Id3v2 remaps Year onto its
+        // structured recording-time frame, so it can't hold a bare Year text
+        // item). No structured date() is set, so year_from_tag takes the
+        // text-key branch under test.
+        let with_key = |key: ItemKey, value: &str| {
+            let mut tag = Tag::new(TagType::VorbisComments);
+            tag.insert_text(key, value.to_string());
+            // Guard: the key must actually be stored, or the test would pass
+            // vacuously via the None fallthrough.
+            assert!(
+                tag.get_string(key).is_some(),
+                "VorbisComments did not store {key:?}"
+            );
+            tag
+        };
+
+        assert_eq!(year_from_tag(&with_key(ItemKey::Year, "1988")), Some(1988));
+        assert_eq!(
+            year_from_tag(&with_key(ItemKey::ReleaseDate, "1991-05-01")),
+            Some(1991)
+        );
+        assert_eq!(
+            year_from_tag(&with_key(ItemKey::OriginalReleaseDate, "1972-11")),
+            Some(1972)
+        );
+
+        // A non-numeric text value is ignored rather than mis-parsed.
+        assert_eq!(year_from_tag(&with_key(ItemKey::Year, "notayear")), None);
     }
 
     #[test]
