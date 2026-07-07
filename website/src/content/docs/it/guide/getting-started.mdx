@@ -1,0 +1,44 @@
+---
+title: Primi passi
+description: Crea una libreria, importa il primo album e riproducilo
+---
+
+bae è una casa per gli album che possiedi. Costruisci la libreria sul desktop e lei ti segue su ogni dispositivo: sincronizzata tramite lo spazio cloud che hai già, cifrata in modo che solo i tuoi dispositivi possano leggerla.
+
+Le app desktop (macOS, Windows) sono lo strumento completo: creano librerie, importano musica e modificano metadati. Le app per telefono (iOS, Android) sono lettori: si uniscono a una libreria creata dal desktop, poi esplorano, scaricano e riproducono.
+
+## Creare una libreria
+
+Apri bae sul desktop. Senza una libreria sulla macchina, la schermata di benvenuto offre tre scelte:
+
+- **Crea una nuova libreria**, se questo è il tuo primo dispositivo.
+- **Unisciti a una libreria**, se un altro dispositivo ne ha già una e il suo proprietario ti approverà. Vedi [Dispositivi e membri](/it/guide/devices).
+- **Ripristina dal cloud**, se questa è la tua libreria e hai il suo codice di recupero. Vedi [Dispositivi e membri](/it/guide/devices#recovery-codes).
+
+Creane una. Una libreria inizia locale: tutto vive su questa macchina, niente richiede un account e nessun cloud è coinvolto finché non ne colleghi uno.
+
+## Importare il primo album
+
+1. Passa alla sezione **Importa** nella barra del titolo.
+2. Aggiungi una cartella di musica. Puoi sceglierla, trascinarla sulla finestra o premere <kbd>⌘I</kbd>.
+3. bae scansiona la cartella ed elenca le release che trova. Selezionane una.
+4. bae la identifica con MusicBrainz e Discogs e mostra la corrispondenza. Conferma la stampa, scegli una copertina, regola eventuali dettagli.
+5. Fai clic su **Importa**.
+
+I tuoi file non vengono spostati, copiati o riscritti. bae li cataloga dove si trovano. Il flusso completo, incluso cosa fare quando l'identificazione ha bisogno di aiuto, è in [Importazione](/it/guide/importing).
+
+## Riprodurlo
+
+Tornando nella sezione **Libreria**, l'album è nella griglia. Fai clic, premi riproduci. La riproduzione usa i tuoi file originali, alla loro qualità originale. [Riproduzione](/it/guide/playback) copre la coda, ordine casuale e ripetizione, e i dettagli che bae preserva: pregap dei CD, cambi lato del vinile, album senza pause.
+
+## Portarla ovunque
+
+Quando vuoi la libreria su più di un dispositivo, collega una home cloud: il tuo Google Drive, Dropbox, OneDrive, iCloud o qualunque bucket compatibile con S3. Tutto ciò che bae vi mette viene cifrato prima del caricamento; il provider lo conserva ma non può leggerlo.
+
+- [Sincronizzazione](/it/guide/sync): collega una home cloud e scegli cosa conserva.
+- [Dispositivi e membri](/it/guide/devices): aggiungi il telefono o un altro desktop.
+- [Archiviazione e offline](/it/guide/storage): tieni la musica sul dispositivo, oppure riproducila in streaming dal tuo cloud e fissa offline ciò che ti serve.
+
+## Dove vivono le cose
+
+Ogni libreria conserva database e impostazioni in `~/.bae/libraries/` sul desktop. Il tuo audio resta ovunque fosse quando l'hai importato, a meno che tu non chieda a bae di gestirlo nel tuo cloud. Chiavi e credenziali vivono nel portachiavi del sistema operativo, non nei file.

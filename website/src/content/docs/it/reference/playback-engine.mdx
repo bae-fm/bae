@@ -1,0 +1,34 @@
+---
+title: Motore di riproduzione
+description: Decodifica, assenza di pause, pregap e sonorità, con precisione
+---
+
+Il contratto del motore di riproduzione è fedeltà alla fonte: decodificare i byte originali dell'utente, alla frequenza propria della fonte, con la struttura della release intatta. Questa pagina è la specifica dietro quel comportamento.
+
+## Decodifica
+
+Tutta la decodifica è FFmpeg, in-process, su ogni piattaforma: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack e DSD sono ciò che l'importazione accetta, e qualunque cosa FFmpeg riporti dai byte, non dall'estensione del file, è il codec registrato. I campioni escono come float a 32 bit per lo stadio di uscita; la conversione del formato campione è l'unica conversione eseguita.
+
+L'uscita è l'API audio nativa della piattaforma (Core Audio tramite cpal su desktop e iOS, AAudio su Android). Lo stream di uscita è configurato alla **frequenza di campionamento e al numero di canali della fonte**: un file a 96 kHz suona a 96 kHz. Non c'è stadio di ricampionamento. Il dispositivo di uscita predefinito viene risolto a ogni costruzione dello stream, così la riproduzione segue i cambi di dispositivo del sistema. Su Android, i codec supportati dall'hardware possono evitare del tutto FFmpeg per la decodifica offloaded.
+
+## Letture in streaming
+
+La riproduzione non richiede file interi. L'audio viene letto tramite un buffer sparso che recupera intervalli di byte su richiesta, da un file locale, dalla cache o dal cloud, e lo spostamento mappa il campione di destinazione a una posizione di byte così uno spostamento in una regione non recuperata scarica da lì. Un arbitro di recupero dà priorità alle letture della traccia in riproduzione rispetto al precaricamento, così una traccia imminente non ritarda mai quella corrente.
+
+## Tracce come finestre
+
+Una traccia non è un file; è una lista ordinata di finestre di campioni su uno o più file, costruita all'importazione dal foglio CUE o dall'estensione propria del file. Questa rappresentazione porta ogni forma di disco: un file per traccia, un disco intero in un'immagine, un pregap che vive alla fine di un file e all'inizio di un altro, e rip con perdita tagliati in un file per traccia.
+
+Le finestre pregap sono marcate come tali. La riproduzione entra in una traccia dal suo pregap quando ne ha uno (index 00, audio della traccia nascosta incluso) mentre l'orologio mostra il tempo della traccia: la posizione resta bloccata a zero finché la traccia vera e propria non inizia, e la durata mostrata esclude il pregap, corrispondendo al comportamento di un lettore CD.
+
+## Senza pause
+
+La traccia successiva viene aperta e bufferizzata mentre quella corrente suona. Quando le due condividono frequenza di campionamento e numero di canali, il motore le concatena dentro il callback audio attivo: lo stream non si ferma mai, e il confine è esatto al campione. Quando i formati differiscono, lo stream viene ricostruito, che è il caso in cui un cambio di formato rende comunque udibile un confine.
+
+## Sonorità
+
+L'importazione misura sonorità integrata (EBU R128) e true peak, per traccia e per album, durante il passaggio di verifica della decodifica. Il replay gain viene derivato da quelle misure al momento della riproduzione, mai incorporato nei file: target −18 LUFS, limitato perché il true peak non possa clippare, applicato per traccia o per album, cambiando correttamente ai confini senza pause. La modalità viene attualmente distribuita senza UI di impostazione e predefinita su disattivata; può essere impostata nel file di configurazione della libreria.
+
+## Pause tra lati
+
+Le liste tracce portano la struttura di lato e disco, e il motore può fermarsi a un confine di lato, mostrando una richiesta di continuare, quando l'utente abilita la pausa tra lati. La fermata è uno stato del servizio di riproduzione, non silenzio decodificato, quindi la ripresa è immediata.

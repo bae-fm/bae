@@ -1,0 +1,16 @@
+---
+title: Automazione
+description: Controlla la libreria da agenti, script e riga di comando
+---
+
+La libreria può essere controllata dal software che esegui: agenti IA tramite MCP e script tramite uno strumento da riga di comando. Entrambi espongono le stesse operazioni usate dall'interfaccia: ricerca, dettagli delle release, importazioni, azioni di archiviazione, stato della riproduzione.
+
+## Il server MCP
+
+Attiva il server MCP in Impostazioni, Automazione. Serve il Model Context Protocol su HTTP su una porta locale (47777 per impostazione predefinita), così client MCP come Claude possono esplorare la tua libreria, cercare release e agire su di esse. L'accesso richiede un token bearer: copialo dallo stesso pannello delle impostazioni e ruotalo lì ogni volta che vuoi revocare l'accesso a tutto ciò che lo aveva.
+
+Il server è disattivato per impostazione predefinita e resta in esecuzione solo mentre l'app è in esecuzione.
+
+## La riga di comando
+
+La CLI `bae` controlla le stesse operazioni da un terminale: JSON in ingresso, JSON in uscita, adatto agli script. Può anche agire da client MCP, collegando il server del desktop a stdio per gli strumenti che si aspettano un processo MCP locale.

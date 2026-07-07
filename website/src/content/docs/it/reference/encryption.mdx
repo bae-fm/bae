@@ -1,0 +1,28 @@
+---
+title: Cifratura
+description: Cos'è la chiave della libreria, dove vive e quale testo cifrato conserva il provider
+---
+
+Tutto ciò che bae mette in una home cloud opaca viene cifrato prima di lasciare il dispositivo. bae non implementa crittografia propria: l'intero schema è quello di [coven](https://coven.bae.fm), e questa pagina descrive come bae lo usa. Le home esplorabili rinunciano a tutto questo; nulla di ciò che segue si applica a loro.
+
+## La chiave della libreria
+
+Una libreria opaca ha un segreto radice: una chiave casuale a 256 bit generata quando la home viene creata. Vive nel portachiavi del sistema operativo, mai in un file; sulle piattaforme Apple la voce del portachiavi si sincronizza tramite Portachiavi iCloud. La configurazione di bae salva solo un'impronta della chiave, sufficiente a distinguere una chiave sbagliata da una giusta allo sblocco senza conservare il segreto.
+
+La chiave viaggia tra dispositivi in due modi, entrambi descritti in [Identità e appartenenza](/it/reference/membership): sigillata sulla chiave pubblica di un dispositivo approvato durante un invito, e trasportata dentro un codice di recupero.
+
+## Generazioni
+
+La chiave della libreria è in realtà un portachiavi di generazioni numerate. Rimuovere un membro aggiunge una nuova generazione che il membro rimosso non riceve mai: tutto ciò che viene scritto dopo usa la nuova generazione ed è illeggibile per lui, mentre i membri rimasti conservano ogni generazione e possono leggere tutta la storia. Ogni oggetto sigillato registra in chiaro quale generazione lo apre.
+
+## Cosa viene sigillato
+
+Ogni oggetto nella home: changeset, snapshot, blob audio, grafica, record di appartenenza, oggetti di controllo. Gli oggetti sono sigillati con XChaCha20-Poly1305 in blocchi da 64 KB, ogni blocco autenticato, e legati al loro contesto: un oggetto sigillato si decifra solo come l'oggetto che doveva essere, per questa libreria, con questa chiave. Il frazionamento è il motivo per cui lo streaming funziona: il lettore può decifrare esattamente gli intervalli di byte che recupera.
+
+## Cosa può vedere il provider
+
+Numero di oggetti, dimensioni degli oggetti, tempi di caricamento e schemi di accesso. Non nomi, non metadati, non audio, non grafica, non appartenenza. Non c'è recupero lato server: un utente che perde ogni dispositivo e ogni copia della chiave ha perso per sempre il testo cifrato della libreria, che è il comportamento previsto dal progetto.
+
+## Sblocco e blocco
+
+Aprire una libreria legge la chiave dal portachiavi. Se la libreria si aspetta una chiave e il portachiavi non ce l'ha, bae tratta la libreria come bloccata: chiede la chiave prima di aprire, validando l'inserimento contro l'impronta salvata prima di risalvarla nel portachiavi. Bloccare una libreria rimuove apposta la chiave dal portachiavi; nulla nella home cloud può essere letto o scritto finché non viene inserita di nuovo.

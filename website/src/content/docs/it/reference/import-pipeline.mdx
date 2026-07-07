@@ -1,0 +1,43 @@
+---
+title: Pipeline di importazione
+description: Scansione, prove, triangolazione e commit atomico
+---
+
+L'importazione trasforma una cartella di file in una voce di catalogo accurata per release senza modificare un byte dei file. Questa pagina è la pipeline dietro il flusso descritto nella [guida d'uso](/it/guide/importing).
+
+## Scansione
+
+Le cartelle osservate sono monitorate dagli eventi del file system della piattaforma, raggruppate, e scansionate di nuovo al cambiamento; le scansioni riconciliano contro la lista candidati esistente invece di ricominciare da capo. Lo scanner classifica una cartella come una release (audio direttamente dentro, o sottocartelle a forma di disco come `CD1`/`CD2`), oppure ricorre dentro di essa come raccolta. I file vengono classificati per estensione in audio, grafica e documenti, poi l'audio viene sondato: il codec che conta è quello che FFmpeg trova nei byte, non l'estensione del file. Le cartelle che contengono marcatori di scaricamento parziale sono escluse finché lo scaricamento non finisce.
+
+Un foglio CUE trasforma un'immagine audio in una lista tracce. Il parser gestisce pregap e postgap, performer e ISRC per traccia, e sia immagini a file singolo sia layout CUE con un file per traccia. I confini delle tracce vengono convertiti da frame CUE (1/75 di secondo) a posizioni di campione esatte, che poi diventano le finestre di byte e campioni usate dalla riproduzione.
+
+## Prove, non tag
+
+L'identificazione legge tre tipi di prove dalla cartella in un solo passaggio:
+
+- un **disc ID**, l'impronta MusicBrainz della disposizione esatta delle tracce di un CD, calcolata da un log di rip o dal foglio CUE;
+- **codici a barre**, decodificati dalle scansioni della grafica dal framework di visione della piattaforma e letti dai campi catalogo CUE;
+- **testo**: numeri di catalogo e testo libero da OCR della grafica, nomi di cartelle e file, e file di testo nel rip.
+
+I tag audio incorporati non sono deliberatamente prove: descrivono ciò che credeva chi ha taggato, non quale sia la stampa. (Alimentano i metadati di ripiego quando l'utente importa una release come sconosciuta.)
+
+Disc ID e codice a barre vengono cercati in parallelo, il Disc ID su MusicBrainz, il codice a barre su MusicBrainz e Discogs insieme, e i risultati vengono triangolati: i risultati che concordano su un gruppo di release convergono, le corrispondenze di numero di catalogo restringono la lista delle stampe, e il disaccordo tra segnali emerge come conflitto esplicito per l'utente invece che come ipotesi silenziosa. Ogni risultato porta la sua provenienza (trovato per Disc ID, per codice a barre, corrispondenza catalogo) così la UI può dire perché viene proposta una riga.
+
+## Fonti
+
+MusicBrainz viene interrogato anonimamente con un ritmo rigido di una richiesta al secondo. Discogs si autentica con il token personale dell'utente dal portachiavi, dosa e ritenta entro i suoi limiti di frequenza, e un token rifiutato viene riportato come tale così la UI può segnalarlo invece di far fallire le ricerche in silenzio. Le risposte sono memorizzate in cache per sessione, e il JSON grezzo della fonte vincente viene archiviato nel database per reinterpretazioni future.
+
+## Commit
+
+Confermare un'importazione esegue, in ordine:
+
+1. **Verifica di decodifica**: ogni traccia viene decodificata da inizio a fine; un rip che non può essere decodificato completamente fa fallire l'importazione prima che venga scritto qualcosa (un flag di configurazione può disattivarlo).
+2. **Analisi della sonorità**: sonorità integrata e true peak vengono misurati per traccia e per album durante lo stesso passaggio di decodifica, salvati per l'uso replay-gain.
+3. **Scelta della copertina**: la grafica scelta (remota, immagine della cartella o incorporata) viene renderizzata di nuovo in una miniatura di visualizzazione; l'originale viene conservato tra i file della release se proveniva dalla cartella.
+4. **Scrittura atomica**: release, tracce, crediti, identità, formati, segmenti, file e copertina vengono salvati in una transazione. Non esiste uno stato importato a metà.
+
+La release arriva riferendo i file dell'utente sul posto. Se l'utente ha scelto la gestione cloud, il caricamento avviene dopo il commit come transizione di archiviazione, e i byte originali dei file restano la fonte di verità per tutto il tempo; nulla di ciò che l'utente ha dato a bae viene mai eliminato o alterato.
+
+## Riconoscere i rip
+
+Ogni release registra un hash del contenuto sulla struttura della cartella importata (percorsi relativi e dimensioni, indipendente dalla posizione). Le nuove scansioni lo usano per marcare cartelle già nella libreria, e le reimportazioni dello stesso rip trovano e sostituiscono la release precedente invece di duplicarla.

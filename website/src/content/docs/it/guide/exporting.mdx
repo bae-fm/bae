@@ -1,0 +1,25 @@
+---
+title: Esportazione
+description: Estrai musica nella forma che ti serve
+---
+
+L'assenza di vincoli vale in entrambi i sensi: bae non cambia i tuoi file quando entrano e non li tiene in ostaggio quando escono. Le release non gestite sono già soltanto file nelle tue cartelle. Le release gestite possono tornare locali in qualunque momento, byte per byte. E quando ti serve una forma *diversa*, una codifica adatta al telefono, un'immagine pronta da masterizzare, l'esportazione la produce senza toccare gli originali.
+
+## Due esportazioni
+
+- **Esportazione traccia**: fai clic destro su una traccia, **Salva con nome**, scegli un formato, fatto.
+- **Esportazione release**: dal menu dell'album o dal Gestore archiviazione, esporta un'intera release in una cartella. Viene eseguita in coda con avanzamento, pausa e nuovo tentativo.
+
+I file originali vengono esportati così come sono. Tutto il resto viene codificato in uscita.
+
+## Preimpostazioni
+
+I formati di esportazione sono preimpostazioni che definisci una volta in Impostazioni: FLAC, MP3, Opus, WAV o AIFF, con i parametri del codec (profondità in bit per i formati senza perdita, bitrate per quelli con perdita) e un modello di nome file costruito da token come titolo, artista, album, anno e numero di traccia. Imposta una preimpostazione predefinita per le tracce e una per le release, e scegli se le esportazioni di release chiedono sempre una destinazione o usano sempre una cartella fissa.
+
+## Pregap nelle esportazioni
+
+I rip di CD con pregap pongono una domanda reale in uscita: dove va l'audio nascosto? Ogni preimpostazione sceglie una regola:
+
+- **Aggiungi alla traccia precedente**, la convenzione comune, con la scelta se l'audio nascosto prima della traccia uno viene mantenuto all'inizio della traccia uno o scartato.
+- **Escludi** del tutto i pregap: confini di traccia puliti, audio nascosto omesso.
+- **File singolo con CUE**: il disco come un file audio più un foglio CUE, preservando esattamente la disposizione originale.

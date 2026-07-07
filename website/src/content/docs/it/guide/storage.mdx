@@ -1,0 +1,36 @@
+---
+title: Archiviazione e offline
+description: Dove vive la tua musica e cosa suona senza rete
+---
+
+I tuoi file restano tuoi. bae non li sposta, rinomina o riscrive mai; la domanda a cui risponde l'archiviazione è solo dove vive la *copia riproducibile* di ogni release: sul dispositivo, nel tuo cloud o in entrambi.
+
+## Non gestite e gestite
+
+Ogni release è una delle due cose, scelta all'importazione e modificabile in qualunque momento:
+
+- **Non gestita**: bae cataloga i tuoi file dove si trovano e li riproduce da lì. Nulla viene copiato. La release esiste nel catalogo su ogni dispositivo sincronizzato, ma il suo audio vive solo sulla macchina che l'ha importata.
+- **Gestita**: i file vengono cifrati e caricati nella home cloud. Ora ogni dispositivo può riprodurre la release, in streaming su richiesta o scaricandola per l'offline. I tuoi file originali non vengono toccati dal caricamento; decidere se continuare a usarli localmente spetta a te (**Mantieni copia locale** all'importazione li fissa).
+
+Passare tra le due è un'azione a livello di release: **Gestisci** carica una release non gestita; **Rendi locale** scarica i file di una release gestita in una cartella che scegli, e tornano tuoi come file normali.
+
+## Streaming e cache
+
+Le release gestite si riproducono ovunque, se la rete lo consente: la riproduzione legge il file in streaming dal tuo cloud, e i byte vengono conservati in una cache locale così la riproduzione successiva parte dai dati già presenti. La cache si gestisce entro un budget (20 GB per l'audio su ogni dispositivo), eliminando ciò che non hai riprodotto quando lo spazio scarseggia. Copertine e immagini artista sono memorizzate in cache separatamente, così un album grande non può espellere la grafica.
+
+## Fissare per l'offline
+
+Fissare una release la scarica tutta e la conserva: la musica fissata non viene mai espulsa e suona sempre offline. Fissa dal pannello archiviazione della release o dal Gestore archiviazione; rimuovere il fissaggio riporta i file alla cache normale, dove restano riproducibili ma recuperabili. Sul telefono, i download fissati mostrano l'avanzamento direttamente nella libreria.
+
+## Il Gestore archiviazione
+
+Il Gestore archiviazione del desktop (<kbd>⌘0</kbd>) mostra l'intero quadro in una finestra:
+
+- Ogni release con dimensione e stato: non gestita, gestita, in caricamento. Filtra, ordina, seleziona molte, agisci su tutte insieme.
+- **Download**: download fissati in corso, sospendibili, ritentabili.
+- **Esportazioni**: la coda di esportazione. Vedi [Esportazione](/it/guide/exporting).
+- **Caricamenti**: la coda di sincronizzazione in uscita, con avanzamento per release, velocità e tempo rimanente, eliminazioni in sospeso, pausa e ripresa.
+
+## Eliminazione
+
+Eliminare una release gestita la rimuove dalla libreria e dalla home cloud. Eliminare una release non gestita rimuove solo la voce di catalogo: bae non elimina mai file che non ha messo lì.

@@ -1,0 +1,39 @@
+---
+title: Release e metadati
+description: Una libreria accurata per release e come mantenerla giusta
+---
+
+La maggior parte delle app musicali modella "un album": un titolo, una copertina, una lista tracce. Le collezioni reali non funzionano così. Potresti possedere il CD originale, la rimasterizzazione e una stampa in vinile dello stesso disco, e differiscono per liste tracce, durate, grafica e crediti. bae modella **release**: ogni importazione è una stampa specifica, e le stampe dello stesso album vengono raggruppate.
+
+## Gli album raggruppano release
+
+Nella libreria, un album con più stampe è una voce. La pagina dell'album mostra un selettore di release; ogni release mantiene la propria lista tracce, copertina, anno, etichetta, numero di catalogo e crediti. Una release è la **principale**: quella usata per impostazione predefinita nella griglia album e nella riproduzione. Imposta qualunque release come principale dal menu dell'album, e scegli una release diversa per l'ascolto in qualunque momento; bae ricorda la tua scelta per album.
+
+## Cosa sa una release
+
+Le release identificate portano la conoscenza dei database, non solo i nomi delle tracce:
+
+- Dettagli della stampa: etichetta, numero di catalogo, codice a barre, paese, formato, anno.
+- Crediti: interpreti, produttori, tecnici, per release e per traccia.
+- Struttura classica: compositori, opere e le loro parti, collegate alle loro registrazioni. La vista compositori della libreria è costruita da questo; vedi [Esplorazione e ricerca](/it/guide/browsing).
+- Identità: quale voce MusicBrainz o Discogs è questa, e se la corrispondenza è esatta o approssimata.
+
+Anche i record sorgente grezzi vengono conservati, così la release può essere reinterpretata più tardi senza chiedere di nuovo ai database.
+
+## Modifica
+
+I metadati sono tuoi da correggere. **Modifica metadati** su qualunque release apre lo stesso modulo usato dalla conferma di importazione: titolo e artista dell'album, dettagli della stampa, e titolo, artista e numerazione di ogni traccia. **Reimposta alla fonte** torna a ciò che diceva il database.
+
+Le modifiche vivono solo nel database di bae. I tag incorporati nei tuoi file non vengono mai riscritti; i file restano byte per byte come importati.
+
+## Re-identificare
+
+Se una release è stata importata come sconosciuta, abbinata alla stampa sbagliata o il database è migliorato da allora, **Re-identifica** esegue di nuovo il flusso di identificazione sulla release esistente: stessi segnali, stessi strumenti di ricerca. Dopo il salvataggio della nuova corrispondenza, bae chiede se aggiornare i metadati dalla nuova fonte (sovrascrivendo le tue modifiche) o mantenere ciò che hai.
+
+## Copertine
+
+Ogni release ha una copertina di visualizzazione. **Cambia copertina** offre la grafica dei database e i file immagine arrivati con la release. bae conserva la propria copia della copertina scelta, dimensionata per la visualizzazione, così la scansione originale nella tua cartella resta intatta. Tocca una copertina ovunque per aprire la galleria completa delle immagini di una release.
+
+## Eliminazione
+
+Eliminare una release la rimuove dalla libreria e, per le release gestite, dalla home cloud. I file importati sul posto, non gestiti, non vengono mai eliminati: bae li dimentica soltanto.

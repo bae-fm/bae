@@ -1,0 +1,43 @@
+---
+title: Dispositivi e membri
+description: Aggiungi il telefono, approva un dispositivo, recupera la libreria
+---
+
+Non esiste un account bae. L'identità di un dispositivo è una coppia di chiavi che genera per sé e conserva nel portachiavi del sistema operativo; la libreria riconosce i dispositivi dalle loro chiavi. Aggiungere un dispositivo significa che un dispositivo esistente garantisce per uno nuovo, crittograficamente, senza intermediari.
+
+Due porte diverse, per due situazioni diverse:
+
+- **Unione**: un nuovo dispositivo viene approvato da un dispositivo che ha già la libreria. Usalo per aggiungere il telefono o il dispositivo di un'altra persona.
+- **Ripristino**: il tuo nuovo dispositivo, o un dispositivo reinstallato, recupera la libreria direttamente dalla home cloud usando un codice di recupero. Nessun approvatore coinvolto.
+
+## Aggiungere un dispositivo
+
+Sul nuovo dispositivo, scegli **Unisciti a una libreria**. Mostra un codice breve, anche come QR: la richiesta di unione, con la chiave pubblica del dispositivo e un'impronta che puoi leggere ad alta voce.
+
+Su un dispositivo che ha già la libreria, un proprietario apre Impostazioni, Dispositivi, **Aggiungi un dispositivo**, e scansiona o incolla quella richiesta. bae mostra l'impronta del dispositivo che si sta unendo; conferma che corrisponda a ciò che mostra il nuovo dispositivo. L'approvazione produce un codice di invito: restituiscilo al nuovo dispositivo (scansiona il QR o incollalo), e il nuovo dispositivo scarica la libreria e inizia a sincronizzare.
+
+Dietro la stretta di mano: il dispositivo che approva concede al nuovo arrivato l'accesso alla home cloud (i cloud consumer condividono la cartella con l'account del nuovo arrivato; gli inviti S3 incorporano credenziali) e sigilla la chiave di cifratura della libreria sulla chiave pubblica del nuovo arrivato. L'invito è inutile per qualunque altro dispositivo. Dettagli in [Identità e appartenenza](/it/reference/membership).
+
+## Membri e ruoli
+
+Impostazioni, Dispositivi elenca ogni membro: impronta, ruolo e quale è questo dispositivo. Il dispositivo fondatore è un **proprietario**; i dispositivi che approva entrano come **membri**. Entrambi leggono e scrivono la libreria; solo i proprietari approvano e rimuovono dispositivi.
+
+## Rimuovere un dispositivo
+
+I proprietari possono rimuovere qualunque membro. La rimozione non chiude soltanto la porta: la chiave di cifratura della libreria viene ruotata e il dispositivo rimosso non riceve mai la nuova chiave. Ciò che ha già copiato resta con lui, niente può annullare l'invio dei dati, ma tutto ciò che la libreria scrive da quel momento è illeggibile per lui.
+
+## Codici di recupero
+
+Un codice di recupero è un segreto bearer per la tua libreria: coordinate della home cloud più chiave di cifratura, in una stringa. **Mostra codice di recupero** in Impostazioni lo visualizza; conservalo in un posto sicuro, come un gestore di password. Su un nuovo dispositivo, **Ripristina dal cloud** con il codice ricostruisce la libreria, senza approvatore.
+
+Sulle piattaforme Apple il codice è conservato automaticamente anche nel Portachiavi iCloud, così un nuovo Mac o iPhone collegato al tuo ID Apple può ripristinare con un tocco.
+
+Chiunque possieda il codice possiede la libreria, quindi trattalo come la chiave che è.
+
+## Blocco
+
+**Blocca libreria** rimuove la chiave di cifratura dal portachiavi del dispositivo. La libreria resta su disco, illeggibile, finché qualcuno non inserisce di nuovo la chiave; bae la verifica contro un'impronta salvata prima di accettarla. Usalo per un portatile che esce di casa.
+
+## Sul telefono
+
+iOS e Android si uniscono e ripristinano esattamente in questo modo; è tutto il loro avvio iniziale. Un telefono può anche rimuovere la propria copia della libreria (Impostazioni, rimuovi da questo dispositivo), eliminando i file locali e non toccando nulla nel cloud.

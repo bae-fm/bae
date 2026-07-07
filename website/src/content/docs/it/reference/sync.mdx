@@ -1,0 +1,40 @@
+---
+title: Sincronizzazione
+description: Come le modifiche si muovono tra dispositivi e come si fondono
+---
+
+La sincronizzazione di bae è la sincronizzazione di [coven](https://coven.bae.fm): bae dichiara le proprie tabelle e blob, e coven fa il resto. Questa pagina è la meccanica per come si applica a bae; la documentazione di coven copre ogni pezzo in dettaglio.
+
+## Cattura
+
+coven possiede la connessione SQLite, quindi ogni scrittura che bae salva passa attraverso di esso. L'estensione session di SQLite registra esattamente cosa è cambiato in ogni transazione; le modifiche alle tabelle sincronizzate diventano un **changeset**, sigillato con la chiave della libreria e firmato con la chiave di identità del dispositivo. Niente diff, niente flag sporchi: la cattura è una proprietà della connessione, e una scrittura non può essere persa.
+
+## Stream
+
+Ogni dispositivo aggiunge i propri changeset al proprio stream nella home cloud, numerati in sequenza. I dispositivi non scrivono mai negli stream degli altri, quindi non ci sono conflitti di scrittura nell'archiviazione, e ogni dispositivo traccia un cursore per stream pari. Un ciclo di sincronizzazione spinge l'outbox locale, poi tira ogni stream pari dal proprio cursore in avanti, verificando la firma di ogni changeset e l'appartenenza del suo autore prima di applicarlo.
+
+Il ciclo viene eseguito dopo modifiche locali, su un timer inattivo con backoff (fino a cinque minuti tra i poll) e subito con **Sincronizza ora**. I fallimenti applicano backoff e ritentano; il ciclo riporta l'esito di ogni passaggio alla UI come stato, testo di errore e numero di righe applicate.
+
+## Fusione
+
+Due dispositivi che modificano la stessa libreria mentre sono separati sono il caso normale, non l'eccezione. Quando le loro modifiche si incontrano:
+
+- Le modifiche a **righe diverse o colonne diverse** si applicano entrambe. Modificare l'anno di una release sul portatile e la sua etichetta sul desktop produce entrambi i risultati.
+- Le modifiche alla **stessa colonna della stessa riga** sono ordinate dal clock logico ibrido `_updated_at` della riga: vince la modifica più tarda, in modo deterministico e identico su ogni dispositivo.
+- **Le eliminazioni vincono** sulle modifiche concorrenti: una release eliminata su un dispositivo resta eliminata anche se un altro dispositivo l'ha modificata nello stesso intervallo.
+
+Non c'è UI di conflitto perché non c'è stato irrisolto: ogni dispositivo converge allo stesso risultato da qualunque ordine di applicazione.
+
+## Bootstrap
+
+Un dispositivo che si unisce o ripristina non riproduce la storia dall'inizio. Scarica uno **snapshot**, un'immagine SQLite completa pubblicata periodicamente nella home cloud, poi applica solo i changeset che ogni stream ha accumulato dopo di esso. I metadati dello snapshot registrano la versione dello schema e i cursori per stream che incarna.
+
+## Versioni dello schema
+
+Lo schema di bae migra attraverso una scala numerata, e il gradino più alto della scala viene impresso su ogni changeset scritto dal dispositivo. Un dispositivo che tira un changeset da uno schema più nuovo del proprio parcheggia quello stream, non applicando nulla oltre, finché l'app non si aggiorna; niente viene perso e niente viene applicato male. Il file database stesso rifiuta di aprirsi sotto un binario più vecchio del suo schema.
+
+Più grossolana della versione dello schema è l'**era di compatibilità**: la revisione coven fissata dentro ogni binario. Due build sincronizzano solo dentro un'era; una rottura del formato su filo di coven è una nuova era e un aumento di versione major su ogni app. Prima di 1.0, ogni build è era zero e i formati cambiano senza migrazione.
+
+## Cosa vede il provider
+
+Su una home opaca il provider conserva changeset cifrati, blob cifrati e record di appartenenza firmati; può contare oggetti e osservare dimensioni e tempi, e non leggerne nulla. Ogni oggetto che un dispositivo tira viene verificato, firma e appartenenza, prima che qualcosa tocchi il database: l.archiviazione è una casella di posta passiva e non attendibile. Vedi [Cifratura](/it/reference/encryption) e [Identità e appartenenza](/it/reference/membership).

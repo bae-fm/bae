@@ -1,0 +1,37 @@
+---
+title: Archiviazione cloud
+description: Provider, autenticazione e forma della home cloud
+---
+
+La home cloud è una posizione nello spazio che l'utente possiede già. Ogni provider è guidato tramite la stessa interfaccia di archiviazione in [coven](https://coven.bae.fm); ciò che cambia per provider è l'autenticazione e il modo in cui un secondo dispositivo ottiene accesso.
+
+## Provider
+
+| Provider | Auth | Accesso per un nuovo dispositivo |
+|---|---|---|
+| Compatibile con S3 | Access key + secret | Credenziali incorporate nell'invito |
+| Google Drive | OAuth (PKCE) | Cartella condivisa con l'account di chi si unisce |
+| Dropbox | OAuth (PKCE) | Cartella condivisa con l'account di chi si unisce |
+| OneDrive | OAuth (PKCE) | Cartella condivisa con l'account di chi si unisce |
+| iCloud (CloudKit) | Apple ID, nessun accesso | Condivisione CloudKit accettata da chi si unisce |
+
+Compatibile con S3 copre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO e qualunque altro servizio parli l'API; bucket, regione, endpoint e prefisso chiave sono configurabili, e il bucket viene provato prima che la configurazione sia salvata così un errore di battitura fallisce alla configurazione, non alla prima sincronizzazione. I provider OAuth esistono solo nell'edizione completa **bae**; le build **baeium** li compilano fuori.
+
+## OAuth
+
+L'accesso è un flusso authorization-code con PKCE, come client pubblico. Su desktop il redirect arriva su un server loopback legato a una porta locale per l'unico callback; su mobile l'app cattura invece un redirect con schema personalizzato. bae richiede l'ambito più stretto offerto dal provider per il lavoro, su Google Drive è l'accesso solo ai file creati dall'app stessa. I token sono conservati nel portachiavi del sistema operativo, aggiornati con il refresh grant del provider, e un refresh rifiutato emerge come richiesta di riconnessione invece che come ciclo silenzioso di tentativi.
+
+CloudKit non richiede alcun flusso: il driver CloudKit della piattaforma, implementato nell'app e passato al core, opera come l'ID Apple collegato.
+
+## La disposizione della home
+
+Dentro la home, coven dispone stream di changeset per dispositivo, generazioni di snapshot, record di appartenenza e namespace blob. bae contribuisce tre namespace blob: `release_files`, `covers` e `artist_images`.
+
+Il modo in cui gli oggetti sono indicizzati dipende dalla modalità di archiviazione della home, fissata alla creazione:
+
+- **Opaca**: gli oggetti sono cifrati e conservati sotto chiavi derivate dal contenuto che non rivelano nulla. Questa è la modalità che si affida alla crittografia; vedi [Cifratura](/it/reference/encryption).
+- **Esplorabile**: gli oggetti sono testo in chiaro in percorsi leggibili registrati per blob al momento del caricamento: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Il bucket funge anche da albero di file utilizzabile; il compromesso è niente cifratura e niente appartenenza, quindi le home esplorabili non possono essere condivise con altre persone.
+
+## Comportamento su reti reali
+
+Le letture per la riproduzione sono a intervalli: il lettore scarica le finestre di byte che gli servono invece di file interi. I caricamenti sopra una soglia di dimensione diventano multipart dove il provider lo supporta. Rate limiting ed errori transitori del provider vengono ritentati con backoff esponenziale, rispettando il retry-after del provider quando viene fornito; i token OAuth scaduti si aggiornano sul posto. L'outbox di sincronizzazione sopravvive ai riavvii: un caricamento interrotto uscendo dall'app riprende invece di ricominciare.

@@ -1,0 +1,43 @@
+---
+title: Sincronizzazione
+description: Tutta la tua libreria su ogni dispositivo, tramite il tuo cloud
+---
+
+Sincronizzazione di solito significa il server di qualcun altro: un account, un abbonamento, un'azienda che può leggere la tua libreria. bae sincronizza tramite **il tuo** cloud, spazio che hai già, e non esegue alcun server. I tuoi dispositivi scrivono modifiche cifrate in quello spazio e leggono quelle degli altri; il provider conserva i byte e non può leggerli.
+
+Una libreria, ogni dispositivo, e l'unico account coinvolto è uno che possiedi già.
+
+## La home cloud
+
+La home cloud di una libreria è una posizione nel tuo spazio: una cartella nel tuo Google Drive, Dropbox o OneDrive, il tuo iCloud, o qualunque bucket compatibile con S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Contiene tutto ciò che la libreria sincronizza: le modifiche al catalogo, la grafica e l'audio delle release che lasci gestire a bae.
+
+Configuralo in Impostazioni, sotto Sincronizzazione:
+
+1. Scegli un provider. I cloud consumer accedono con la pagina di login del provider; del tuo account non viene salvato nulla oltre ai token che emette. iCloud usa il tuo ID Apple così com'è. S3 richiede bucket, regione, endpoint e chiavi, controllati prima di essere salvati.
+2. Scegli come la home conserva gli oggetti (vedi sotto).
+3. bae inizia a sincronizzare.
+
+Una libreria senza home cloud è completa da sola. Solo locale è una modalità, non una limitazione, e scollegare la home cloud riporta a quella modalità.
+
+## Opaca o esplorabile
+
+Alla configurazione scegli cosa può vedere il provider, e la scelta è permanente per quella home:
+
+- **Opaca** (predefinita): ogni oggetto viene cifrato sul tuo dispositivo prima del caricamento e conservato sotto nomi senza significato. Il provider, o chiunque entri nel bucket, vede testo cifrato. Questa è la modalità descritta dalla pagina [cifratura](/it/reference/encryption), e l'unica modalità che supporta l'aggiunta di altri dispositivi e membri.
+- **Esplorabile**: gli oggetti sono conservati in chiaro con nomi file reali, in cartelle chiamate per artista e album. Puoi aprire il bucket con qualunque strumento e copiare o riprodurre direttamente i tuoi file. Nulla è cifrato, quindi il controllo di accesso del bucket è l'unica protezione, e la home non può essere condivisa.
+
+## Cosa si sincronizza
+
+- Il catalogo: album, release, tracce, crediti, opere, identità, modifiche. Ogni dispositivo riceve tutto.
+- Grafica: copertine e immagini artista, recuperate in anticipo così le griglie si mostrino ovunque.
+- Audio: solo per le release che hai scelto di gestire nel cloud. Le release non gestite restano puramente locali, voci di catalogo incluse sugli altri dispositivi ma byte solo dove le hai importate.
+
+Lo stato per dispositivo non si sincronizza: posizione di riproduzione, volume, coda e impostazioni del dispositivo restano sul dispositivo.
+
+## Quando sincronizza
+
+La sincronizzazione procede da sola: dopo le modifiche, su timer e su richiesta con **Sincronizza ora**. Le modifiche arrivano sugli altri dispositivi come piccoli cambiamenti, pochi secondi dopo in condizioni normali. Due dispositivi che modificano nello stesso momento vincono entrambi dove non si scontrano: bae fonde le modifiche concorrenti campo per campo, e una release eliminata resta eliminata anche se è stata modificata altrove nello stesso momento. Niente ti chiede mai di risolvere un conflitto.
+
+## Quando fallisce
+
+I fallimenti di sincronizzazione non interrompono la libreria; continui a esplorare, riprodurre e importare localmente mentre bae ritenta con backoff. La riga di stato mostra la sincronizzazione e l'ora dell'ultima sincronizzazione; un fallimento mostra un banner con l'errore, e i caricamenti possono essere messi in pausa, ritentati e ispezionati nel [Gestore archiviazione](/it/guide/storage#the-storage-manager). Se il login della home cloud scade, bae ti chiede di riconnetterti.

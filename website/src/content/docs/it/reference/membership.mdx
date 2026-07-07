@@ -1,0 +1,35 @@
+---
+title: Identità e appartenenza
+description: Chiavi come identità, stretta di mano di unione, ruoli e revoca
+---
+
+Non c'è alcun sistema di account in bae. L'identità di un dispositivo è una coppia di chiavi Ed25519 che genera per sé e conserva nel portachiavi del sistema operativo; la chiave pubblica *è* l'identità. Chi appartiene a una libreria è un insieme di record firmati nella home cloud, verificabili da chiunque li possieda, emessi da nessun server. Il meccanismo è quello di [coven](https://coven.bae.fm); questa pagina mostra come bae lo usa.
+
+## Record di appartenenza
+
+Ogni proprietario scrive nella home cloud uno stream append-only di voci di appartenenza firmate: questa chiave è stata aggiunta con questo ruolo, questa chiave è stata rimossa. Ogni voce si collega alla precedente, e ogni proprietario firma una testata che dichiara la punta del proprio stream, così un provider che elimina o riordina record viene rilevato invece che creduto. Ciò che la libreria accetta è l'unione di ogni stream verificato dei proprietari.
+
+A ogni pull, l'autore di ogni changeset viene controllato contro questo record: firmato da un membro corrente, con un ruolo che può scrivere. I changeset da dispositivi rimossi, da chiavi mai aggiunte o con firme non valide non si applicano. Il provider conserva i record ma non può falsificarli; solo chi possiede chiavi di proprietario può cambiare l'appartenenza.
+
+## Ruoli
+
+**Proprietario** e **Membro** leggono e scrivono entrambi la libreria; i proprietari in più approvano e rimuovono dispositivi. Il dispositivo fondatore di bae è un proprietario e ogni dispositivo che approva entra come membro. (Un terzo ruolo esiste nel meccanismo sottostante, un follower di sola lettura, che bae non assegna attualmente.)
+
+## La stretta di mano di unione
+
+Aggiungere un dispositivo è uno scambio di due codici con verifica umana esplicita nel mezzo:
+
+1. Il dispositivo che si unisce genera la propria coppia di chiavi e mostra una **richiesta di unione**: la sua chiave pubblica, una breve impronta di essa e (per i provider OAuth) l'account cloud con cui condividere la cartella.
+2. Un proprietario decodifica la richiesta, e le due schermate mostrano la stessa impronta. La persona controlla che corrispondano; questo è il passaggio che sconfigge una chiave scambiata.
+3. L'approvazione fa tre cose insieme: concede all'account del nuovo arrivato accesso alla home cloud (condivisione cartella sui cloud consumer, credenziali incorporate su S3, una condivisione CloudKit su iCloud), sigilla la chiave della libreria sulla chiave pubblica del nuovo arrivato e firma una voce di appartenenza che lo aggiunge. Tutto viene impacchettato in un **codice di invito**.
+4. Il dispositivo che si unisce consuma l'invito, apre la chiave, si avvia dallo snapshot più recente e sincronizza.
+
+L'invito è sigillato sulla chiave richiedente: intercettarlo non concede nulla.
+
+## Revoca
+
+Rimuovere un membro aggiunge una rimozione firmata e ruota la chiave della libreria a una nuova generazione che la chiave rimossa non riceve mai (vedi [Cifratura](/it/reference/encryption#generations)). Su archiviazione che può revocare l'accesso, viene ritirato anche l'accesso. Ciò che era già sincronizzato sul dispositivo rimosso resta con lui; i dati non possono essere ritirati. Tutto ciò che segue la rotazione è fuori dalla sua portata.
+
+## Codici di recupero
+
+Un codice di recupero aggira di proposito l'appartenenza: contiene le coordinate della home cloud più la chiave della libreria, in una stringa bearer, per ripristinare la tua libreria senza un approvatore disponibile. Viene generato su richiesta, conservato automaticamente nel Portachiavi iCloud sulle piattaforme Apple, ed è sensibile esattamente quanto la libreria stessa.
