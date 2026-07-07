@@ -137,10 +137,20 @@ fn test_prepared_track(
     buffer: SharedSparseBuffer,
     buffer_shared: bool,
 ) -> PlaybackPreparedTrack {
+    test_prepared_track_with_file(track_id, track_id, buffer, buffer_shared)
+}
+
+fn test_prepared_track_with_file(
+    track_id: &str,
+    file_id: &str,
+    buffer: SharedSparseBuffer,
+    buffer_shared: bool,
+) -> PlaybackPreparedTrack {
     PlaybackPreparedTrack {
         track_info: test_track_info(track_id),
         segments: vec![PreparedAudioSegment {
             role: DbAudioSegmentRole::Main,
+            file_id: file_id.to_string(),
             buffer,
             buffer_shared,
             start_sample: 0,
@@ -305,6 +315,97 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
     assert!(finished_buffer.is_cancelled());
 }
 
+#[tokio::test]
+async fn gapless_crossing_evicts_finished_track_file_buffer() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    service.playback_queue.play_release(
+        ContextSource::Release("release-id".to_string()),
+        vec!["finished-track".to_string(), "incoming-track".to_string()],
+        ContextStart::Index(0),
+    );
+
+    let finished_buffer = create_sparse_buffer(1_024);
+    let incoming_buffer = create_sparse_buffer(1_024);
+    service
+        .shared_file_buffers
+        .insert("finished-file".to_string(), finished_buffer.clone());
+    service
+        .shared_file_buffers
+        .insert("incoming-file".to_string(), incoming_buffer.clone());
+    service.current_prepared = Some(test_prepared_track_with_file(
+        "finished-track",
+        "finished-file",
+        finished_buffer.clone(),
+        false,
+    ));
+    service.preloaded_next = Some(PreloadedNext {
+        prepared: test_prepared_track_with_file(
+            "incoming-track",
+            "incoming-file",
+            incoming_buffer,
+            false,
+        ),
+        decoder_handle: finished_decoder_handle(),
+        source: PreloadedNextSource::Staged,
+    });
+
+    service
+        .handle_track_crossed(TrackCrossing {
+            finished_fmt: Arc::new(test_track_fmt("finished-track")),
+            decode_error_count: 0,
+            samples_decoded: 44_100,
+            incoming_fmt: Arc::new(test_track_fmt("incoming-track")),
+        })
+        .await;
+
+    assert!(!service.shared_file_buffers.contains_key("finished-file"));
+    assert!(service.shared_file_buffers.contains_key("incoming-file"));
+    assert!(finished_buffer.is_cancelled());
+}
+
+#[tokio::test]
+async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    service.playback_queue.play_release(
+        ContextSource::Release("release-id".to_string()),
+        vec!["finished-track".to_string(), "incoming-track".to_string()],
+        ContextStart::Index(0),
+    );
+
+    let shared_buffer = create_sparse_buffer(1_024);
+    service
+        .shared_file_buffers
+        .insert("shared-file".to_string(), shared_buffer.clone());
+    service.current_prepared = Some(test_prepared_track_with_file(
+        "finished-track",
+        "shared-file",
+        shared_buffer.clone(),
+        false,
+    ));
+    service.preloaded_next = Some(PreloadedNext {
+        prepared: test_prepared_track_with_file(
+            "incoming-track",
+            "shared-file",
+            shared_buffer.clone(),
+            true,
+        ),
+        decoder_handle: finished_decoder_handle(),
+        source: PreloadedNextSource::Staged,
+    });
+
+    service
+        .handle_track_crossed(TrackCrossing {
+            finished_fmt: Arc::new(test_track_fmt("finished-track")),
+            decode_error_count: 0,
+            samples_decoded: 44_100,
+            incoming_fmt: Arc::new(test_track_fmt("incoming-track")),
+        })
+        .await;
+
+    assert!(service.shared_file_buffers.contains_key("shared-file"));
+    assert!(!shared_buffer.is_cancelled());
+}
+
 #[test]
 fn pregap_seek_position_cases() {
     use std::time::Duration;
@@ -373,6 +474,7 @@ fn direct_start_skips_audio_and_generated_pregap_segments() {
     prepared.segments = vec![
         PreparedAudioSegment {
             role: DbAudioSegmentRole::AudioPregap,
+            file_id: "pregap-file".to_string(),
             buffer: pregap_buffer,
             buffer_shared: false,
             start_sample: 1_000,
@@ -382,6 +484,7 @@ fn direct_start_skips_audio_and_generated_pregap_segments() {
         },
         PreparedAudioSegment {
             role: DbAudioSegmentRole::Main,
+            file_id: "main-file".to_string(),
             buffer: main_buffer.clone(),
             buffer_shared: false,
             start_sample: 44_100,
@@ -411,6 +514,7 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
     prepared.segments = vec![
         PreparedAudioSegment {
             role: DbAudioSegmentRole::AudioPregap,
+            file_id: "pregap-file".to_string(),
             buffer: pregap_buffer.clone(),
             buffer_shared: false,
             start_sample: 1_000,
@@ -420,6 +524,7 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
         },
         PreparedAudioSegment {
             role: DbAudioSegmentRole::Main,
+            file_id: "main-file".to_string(),
             buffer: main_buffer,
             buffer_shared: false,
             start_sample: 44_100,

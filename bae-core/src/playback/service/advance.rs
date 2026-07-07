@@ -358,7 +358,7 @@ impl PlaybackService {
 
         // Release the previous track's buffer (unless shared with the new one).
         if let Some(prev) = self.current_prepared.take() {
-            prev.cancel_unshared_buffers();
+            prev.release_buffers_not_used_by(&next_prepared, &mut self.shared_file_buffers);
         }
 
         self.current_prepared = Some(next_prepared);
@@ -479,7 +479,7 @@ impl PlaybackService {
             }
         }
         if let Some(prepared) = &self.current_prepared {
-            prepared.cancel_unshared_buffers();
+            prepared.release_buffers_not_used_by(&next_prepared, &mut self.shared_file_buffers);
         }
 
         // Swap next to current. The preloaded track's decoder becomes the current

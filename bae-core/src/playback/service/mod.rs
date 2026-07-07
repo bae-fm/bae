@@ -560,11 +560,31 @@ impl PlaybackPreparedTrack {
             }
         }
     }
+
+    fn release_buffers_not_used_by(
+        &self,
+        retained: &PlaybackPreparedTrack,
+        shared_file_buffers: &mut HashMap<String, SharedSparseBuffer>,
+    ) {
+        let retained_file_ids: HashSet<&str> = retained
+            .segments
+            .iter()
+            .map(|segment| segment.file_id.as_str())
+            .collect();
+        for segment in &self.segments {
+            if retained_file_ids.contains(segment.file_id.as_str()) {
+                continue;
+            }
+            segment.buffer.cancel();
+            shared_file_buffers.remove(&segment.file_id);
+        }
+    }
 }
 
 #[derive(Clone)]
 struct PreparedAudioSegment {
     role: DbAudioSegmentRole,
+    file_id: String,
     buffer: SharedSparseBuffer,
     buffer_shared: bool,
     start_sample: u64,
@@ -766,6 +786,7 @@ async fn prepare_track_for_playback(
         };
         prepared_segments.push(PreparedAudioSegment {
             role: segment.role.clone(),
+            file_id: segment.file_id.clone(),
             buffer,
             buffer_shared,
             start_sample: segment.start_sample,
