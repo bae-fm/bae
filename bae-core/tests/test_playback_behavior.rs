@@ -1735,6 +1735,135 @@ async fn boundary_advances_to_next_track_after_late_seek() {
     );
 }
 
+/// A seek rebuilds the stream, but the staged gapless next must survive it
+/// (seek.rs take_next → re-stage_next): the subsequent natural end still crosses
+/// gaplessly. Seek twice to stress the take-out/re-stage across an
+/// already-re-staged source, then let the track end and assert the boundary is
+/// gapless (finishing track emits DecodeStats but not TrackCompleted).
+#[tokio::test]
+async fn seek_preserves_staged_next_for_a_gapless_advance() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    let second = fixture.track_ids[1].clone();
+
+    fixture.playback_handle.play(first.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the first track should play");
+
+    // Two seeks: each takes the staged next out of the old stream and re-stages
+    // it into the rebuilt one. Both land with runway to spare before the end.
+    fixture.playback_handle.seek(Duration::from_secs(1));
+    fixture
+        .wait_for_seeked(Duration::from_secs(5))
+        .await
+        .expect("the first seek should land");
+    fixture.playback_handle.seek(Duration::from_secs(3));
+    fixture
+        .wait_for_seeked(Duration::from_secs(5))
+        .await
+        .expect("the second seek should land");
+
+    let outcome = observe_boundary(
+        &mut fixture.progress_rx,
+        &first,
+        &second,
+        Duration::from_secs(8),
+    )
+    .await;
+    assert!(
+        outcome.reached_incoming,
+        "the staged next should survive the seeks and play at the boundary"
+    );
+    assert!(
+        !outcome.completed_for_finishing,
+        "the advance after seeking must stay gapless — the staged next was preserved, not rebuilt"
+    );
+    assert!(
+        outcome.decode_stats_for_finishing,
+        "the gapless boundary handler still reports the finishing track's decode stats"
+    );
+}
+
+/// If the seek's stream rebuild fails, the preserved staged next is cancelled
+/// (it was taken out of the old chain, so stop()'s teardown can't reach it) and
+/// playback stops loudly (seek.rs ~103–123). Force the rebuild to fail by
+/// dropping the capture sink's stream receiver, which makes the seek's
+/// create_stream error, then assert a PlaybackError and a terminal Stopped that
+/// doesn't bounce back into Playing.
+#[tokio::test]
+async fn seek_init_failure_cancels_staged_next_and_stops() {
+    let lib = restore_test_library().await;
+    let first = lib.track_ids[0].clone();
+
+    // Build a capture-backed service directly so the test owns the stream
+    // receiver and can drop it mid-session (real-time paced so the track doesn't
+    // race to its end before we seek).
+    let (capture_output, capture_stream_rx) = bae_core::playback::RealtimeCaptureAudioOutput::new();
+    let mut capture_stream_rx = Some(capture_stream_rx);
+    let handle = bae_core::playback::PlaybackService::start_with_output(
+        lib.library_manager,
+        lib.runtime_handle,
+        100,
+        Box::new(capture_output),
+    );
+    let mut progress_rx = handle.subscribe_progress();
+
+    handle.play(first.clone());
+    wait_for_state_on(
+        &mut progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+        Duration::from_secs(5),
+    )
+    .await
+    .expect("the track should start playing (first stream created)");
+
+    // Drop the receiver so the seek's stream rebuild can't create a new stream.
+    capture_stream_rx.take();
+    handle.seek(Duration::from_secs(2));
+
+    let mut saw_error = false;
+    let mut stopped = false;
+    let deadline = Instant::now() + Duration::from_secs(8);
+    while Instant::now() < deadline {
+        match timeout(Duration::from_millis(200), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::PlaybackError { .. })) => saw_error = true,
+            Ok(Some(PlaybackProgress::StateChanged {
+                state: PlaybackState::Stopped,
+            })) => {
+                stopped = true;
+                break;
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) => break,
+            Err(_) => continue,
+        }
+    }
+    assert!(
+        saw_error,
+        "a failed seek rebuild should surface a PlaybackError, not fail silently"
+    );
+    assert!(stopped, "a failed seek rebuild should stop playback");
+
+    // The cancelled staged next must not resurrect playback.
+    let resurfaced = wait_for_state_on(
+        &mut progress_rx,
+        |s| matches!(s, PlaybackState::Playing { .. }),
+        Duration::from_millis(300),
+    )
+    .await;
+    assert!(
+        resurfaced.is_none(),
+        "playback must stay stopped after the failed seek, not flip back to Playing"
+    );
+
+    handle.stop();
+}
+
 #[tokio::test]
 async fn test_position_maintained_across_pause_resume() {
     let mut fixture = PlaybackTestFixture::new().await;
