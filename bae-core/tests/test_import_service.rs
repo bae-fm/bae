@@ -1210,6 +1210,116 @@ async fn successful_reimport_replaces_prior_release_once() {
     );
 }
 
+/// The remote-transition rollback: the mirror of the local unit test
+/// `failed_import_before_finalize_leaves_only_import_audit_row`, but one stage
+/// later. The release is finalized (status Importing), then the cloud
+/// transition fails and `run_import` calls `fail_import_and_delete_release`. A
+/// Remote import with no sync provider connected fails at exactly that point
+/// (`coven_make_remote` returns `SyncNotReady`) — the honest injection for a
+/// post-finalize transition failure, since the upload itself is deferred to the
+/// drain and never runs synchronously. The rollback must delete the
+/// just-finalized release and its album, mark the import Failed with its release
+/// link cleared, and leave a pre-existing release untouched.
+#[tokio::test]
+#[serial]
+async fn remote_transition_failure_rolls_back_finalized_release() {
+    support::tracing_init();
+    // No cloud/sync connected, so the make-Remote transition fails.
+    let f = ImportFixture::new().await;
+
+    // A prior local release already in the library; the failed remote import
+    // below must not touch it.
+    let prior_dir = f.temp_path().join("prior");
+    fs::create_dir_all(&prior_dir).unwrap();
+    generate_tagged_album_files(
+        &prior_dir,
+        "Prior Album",
+        "Prior Artist",
+        None,
+        &[TaggedTrack {
+            filename: "01 Prior Track.flac",
+            title: "Prior Track",
+            track_number: 1,
+        }],
+    );
+    let (prior_release_id, _) = import_folder(
+        &f,
+        &prior_dir,
+        None,
+        StorageMode::Local,
+        IdentityChoice::Unknown,
+    )
+    .await
+    .expect("prior local import succeeds");
+
+    // The remote import: finalize commits the release (status Importing), then
+    // coven_make_remote fails because sync was never connected.
+    let album_dir = f.temp_path().join("remote");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_tagged_album_files(
+        &album_dir,
+        "Remote Album",
+        "Remote Artist",
+        None,
+        &[TaggedTrack {
+            filename: "01 Remote Track.flac",
+            title: "Remote Track",
+            track_number: 1,
+        }],
+    );
+
+    let import_id = f.ids.new_id();
+    f.handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            selected_cover: None,
+            storage_mode: StorageMode::Remote,
+            pin: false,
+            identity_choice: IdentityChoice::Unknown,
+            user_edit: None,
+        })
+        .unwrap();
+    let mut progress_rx = f.handle.subscribe_import(import_id.clone());
+    let error = support::try_wait_for_import_complete(&mut progress_rx)
+        .await
+        .expect_err("remote transition without a sync provider fails");
+    assert!(error.contains("cloud upload"), "unexpected error: {error}");
+
+    // The import record survives as a failed audit row, its release link cleared.
+    let import =
+        f.db.find_import_by_id(&import_id)
+            .await
+            .unwrap()
+            .expect("import record remains after rollback");
+    assert_eq!(import.status, bae_core::db::ImportOperationStatus::Failed);
+    assert!(import.release_id.is_none());
+
+    // The rollback deleted the finalized remote release and its album; only the
+    // prior release and album remain.
+    let (release_count, album_count): (i64, i64) =
+        f.db.handle()
+            .sql(|sql| {
+                let conn = sql.tx();
+                Ok::<_, coven::CovenError>((
+                    conn.query_row("SELECT COUNT(*) FROM releases", [], |row| row.get(0))?,
+                    conn.query_row("SELECT COUNT(*) FROM albums", [], |row| row.get(0))?,
+                ))
+            })
+            .await
+            .unwrap();
+    assert_eq!(release_count, 1, "only the prior release remains");
+    assert_eq!(album_count, 1, "only the prior album remains");
+    assert!(
+        f.db.find_release_by_id(&prior_release_id)
+            .await
+            .unwrap()
+            .is_some(),
+        "the prior release is untouched by the failed remote import",
+    );
+}
+
 /// 6. Import with local cover art: covers row + the cover blob in coven's local store.
 #[tokio::test]
 #[serial]
