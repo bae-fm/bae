@@ -84,6 +84,14 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - name: Test bae-windows locale formatters
+        # Unit tests for the pure locale formatters (Loc.Bytes/Duration/Number).
+        # They compile Loc.cs with BAE_PURE_FORMATTERS, so they need only the
+        # .NET SDK — no bridge bindings or WinUI — and run before the native
+        # stack is built. These also run on the macOS dev host; this repeats them
+        # on the real net8.0 runtime.
+        run: dotnet test bae-windows.Tests\bae-windows.Tests.csproj -c Debug
+
       - name: Install uniffi-bindgen-cs
         run: cargo install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag 'v0.11.0+v0.31.0' uniffi-bindgen-cs --locked
 
