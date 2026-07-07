@@ -44,16 +44,16 @@ struct GalleryView: View {
             // The current item's label (e.g. "Cover", "Back.jpg") plus, for a
             // multi-image gallery, its position — so it isn't a blind
             // swipe-through. Sits in the safe area and doesn't intercept swipes.
-            // `selection` is TabView-bounded and the gallery is never shown empty,
-            // so the subscript is safe; core always sets a non-empty label.
             VStack(spacing: 2) {
-                Text(items[selection].label)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.85))
-                if items.count > 1 {
-                    Text("\(selection + 1) / \(items.count)")
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.6))
+                if let selectedItem {
+                    Text(selectedItem.label)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                    if items.count > 1 {
+                        Text("\(selection + 1) / \(items.count)")
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.6))
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
@@ -70,6 +70,19 @@ struct GalleryView: View {
         }
         .offset(y: dragOffset)
         .simultaneousGesture(dismissDrag)
+        .onChange(of: items.count) { _, count in
+            clampSelection(toItemCount: count)
+        }
+    }
+
+    private var selectedItem: BridgeGalleryItem? {
+        guard items.indices.contains(selection) else { return nil }
+        return items[selection]
+    }
+
+    private func clampSelection(toItemCount count: Int) {
+        guard !items.indices.contains(selection) else { return }
+        selection = min(selection, max(0, count - 1))
     }
 
     // Vertical-dominant downward swipe to dismiss, run alongside the pager's
