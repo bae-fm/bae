@@ -749,39 +749,19 @@ mod tests {
     /// the folder scanner is a separate concern).
     #[test]
     fn test_compute_discid_routes_cue_mp3() {
-        use std::process::Command;
         use tempfile::TempDir;
 
+        crate::audio_codec::init();
+        let cancel = std::sync::atomic::AtomicBool::new(false);
         let tmp = TempDir::new().unwrap();
         let folder = tmp.path();
         let mp3_path = folder.join("Test Album.mp3");
         // 9s silent stereo MP3 — short enough to keep the test fast, long
         // enough to span the CUE's three 3-second tracks.
-        let output = Command::new("ffmpeg")
-            .args([
-                "-y",
-                "-f",
-                "lavfi",
-                "-i",
-                "anullsrc=channel_layout=stereo:sample_rate=44100",
-                "-t",
-                "9",
-                "-c:a",
-                "libmp3lame",
-                "-b:a",
-                "128k",
-                mp3_path.to_str().unwrap(),
-            ])
-            .output()
-            .expect(
-                "ffmpeg must be installed to run the CUE+MP3 dispatcher test \
-                 (macOS: `brew install ffmpeg`)",
-            );
-        assert!(
-            output.status.success(),
-            "ffmpeg failed to generate the MP3 fixture:\nstderr: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        let samples = vec![0i32; 44_100 * 9 * 2];
+        let mp3_bytes =
+            crate::audio_codec::encode_to_mp3(&samples, 44_100, 2, &cancel).expect("encode mp3");
+        std::fs::write(&mp3_path, mp3_bytes).unwrap();
 
         let cue_body = "PERFORMER \"Artist Name\"\n\
                         TITLE \"Album Title\"\n\
