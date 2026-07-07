@@ -1,5 +1,12 @@
 use super::*;
 
+fn escape_like_pattern(value: &str) -> String {
+    value
+        .replace('\\', r"\\")
+        .replace('%', r"\%")
+        .replace('_', r"\_")
+}
+
 impl Database {
     /// Track ids for an album's primary release. `None` means no album carries
     /// this id; `Some(vec![])` means the album exists but its primary release has
@@ -66,7 +73,7 @@ impl Database {
         query: &str,
         limit: usize,
     ) -> Result<DbLibrarySearchResults, DbError> {
-        let pattern = format!("%{}%", query);
+        let pattern = format!("%{}%", escape_like_pattern(query));
         let limit_i64 = limit as i64;
 
         self
@@ -85,7 +92,7 @@ impl Database {
                                art.name as artist_name
                         FROM albums a
                         JOIN artists art ON a.artist_id = art.id
-                        WHERE a.title LIKE ?
+                        WHERE a.title LIKE ? ESCAPE '\'
                         ORDER BY a.title
                         LIMIT ?
                         "#,
@@ -113,7 +120,7 @@ impl Database {
                         JOIN releases r ON t.release_id = r.id
                         JOIN albums a ON r.album_id = a.id
                         JOIN artists art ON a.artist_id = art.id
-                        WHERE t.title LIKE ?
+                        WHERE t.title LIKE ? ESCAPE '\'
                         ORDER BY t.title
                         LIMIT ?
                         "#,
@@ -132,7 +139,10 @@ impl Database {
                     .collect::<coven::rusqlite::Result<Vec<_>>>()?;
 
                 let mut composer_stmt = conn.prepare(&composer_summary_query(
-                    Some("WHERE composer.name LIKE ? OR composer.sort_name LIKE ?"),
+                    Some(
+                        "WHERE composer.name LIKE ? ESCAPE '\\' \
+                         OR composer.sort_name LIKE ? ESCAPE '\\'",
+                    ),
                     Some("ORDER BY composer.name LIMIT ?"),
                 ))?;
                 let composers = composer_stmt
@@ -140,7 +150,7 @@ impl Database {
                     .collect::<coven::rusqlite::Result<Vec<_>>>()?;
 
                 let mut work_stmt = conn.prepare(&work_summary_query(
-                    Some("WHERE w.title LIKE ?"),
+                    Some("WHERE w.title LIKE ? ESCAPE '\\'"),
                     Some("ORDER BY w.title LIMIT ?"),
                 ))?;
                 let works = work_stmt

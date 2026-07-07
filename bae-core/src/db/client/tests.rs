@@ -1283,6 +1283,60 @@ mod composer_mode_tests {
     }
 
     #[tokio::test]
+    async fn search_library_treats_like_metacharacters_as_literals() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        db.call(|conn| {
+            conn.execute_batch(
+                "
+                INSERT INTO artists (id, name, _updated_at, created_at)
+                VALUES ('artist-primary', 'Artist Name Primary', 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
+                VALUES
+                    ('album-percent', '50% Album Title', 'artist-primary', 2026, 'release-percent', 0, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('album-percent-wildcard', '500 Album Title', 'artist-primary', 2026, 'release-percent-wildcard', 0, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('album-underscore', 'A_B Album Title', 'artist-primary', 2026, 'release-underscore', 0, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('album-underscore-wildcard', 'ACB Album Title', 'artist-primary', 2026, 'release-underscore-wildcard', 0, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+                VALUES
+                    ('release-percent', 'album-percent', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('release-percent-wildcard', 'album-percent-wildcard', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('release-underscore', 'album-underscore', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('release-underscore-wildcard', 'album-underscore-wildcard', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
+                VALUES
+                    ('track-percent', 'release-percent', '50% Track Title', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('track-percent-wildcard', 'release-percent-wildcard', '500 Track Title', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('track-underscore', 'release-underscore', 'A_B Track Title', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('track-underscore-wildcard', 'release-underscore-wildcard', 'ACB Track Title', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+
+        let percent_results = db.search_library("50%", 10).await.unwrap();
+        assert_eq!(percent_results.albums.len(), 1);
+        assert_eq!(percent_results.albums[0].id, "album-percent");
+        assert_eq!(percent_results.tracks.len(), 1);
+        assert_eq!(percent_results.tracks[0].id, "track-percent");
+
+        let underscore_results = db.search_library("A_B", 10).await.unwrap();
+        assert_eq!(underscore_results.albums.len(), 1);
+        assert_eq!(underscore_results.albums[0].id, "album-underscore");
+        assert_eq!(underscore_results.tracks.len(), 1);
+        assert_eq!(underscore_results.tracks[0].id, "track-underscore");
+    }
+
+    #[tokio::test]
     async fn composer_detail_carries_work_parent_and_representative_release() {
         let (db, _tmp) = seeded_db().await;
 
