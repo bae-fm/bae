@@ -34,6 +34,18 @@ struct AutocompleteTextField: View {
             }
         }
     }
+
+    nonisolated static func completionSelectionRange(
+        currentText: String,
+        match: String
+    ) -> NSRange {
+        let start = (currentText as NSString).length
+        let matchLength = (match as NSString).length
+        guard start <= matchLength else {
+            return NSRange(location: matchLength, length: 0)
+        }
+        return NSRange(location: start, length: matchLength - start)
+    }
 }
 
 private struct InlineCompletionTextFieldNS: NSViewRepresentable {
@@ -121,9 +133,12 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
 
             field.stringValue = match
             parent.text = match
-            let start = (currentText as NSString).length
-            let length = (match as NSString).length - start
-            editor.selectedRange = NSRange(location: start, length: length)
+            editor.selectedRange =
+                AutocompleteTextField
+                .completionSelectionRange(
+                    currentText: currentText,
+                    match: match
+                )
         }
 
         @objc
