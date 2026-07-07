@@ -110,6 +110,22 @@ jobs:
           -derivedDataPath bae-ios/bae/.build/derivedData \
           build
 
+    - name: Run iOS unit tests (baeTests)
+      # Full edition only: the OAuth tests compile under oauth-providers, and
+      # one run is enough for the shared logic. Simulator ad-hoc signing must
+      # stay ON here (no CODE_SIGNING_ALLOWED=NO): disabling it strips the
+      # iCloud entitlement and the app traps in CKContainer at launch, before
+      # the tests can bootstrap.
+      if: ${{ inputs.edition == 'full' && !cancelled() && steps.build_ios.conclusion == 'success' }}
+      run: |
+        DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; print([d['name'] for rt in json.load(sys.stdin)['devices'].values() for d in rt if d.get('isAvailable') and d['name'].startswith('iPhone')][-1])")
+        echo "Testing on simulator: $DEST"
+        xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae \
+          -configuration Debug \
+          -destination "platform=iOS Simulator,name=$DEST" \
+          -derivedDataPath bae-ios/bae/.build/derivedData \
+          test
+
     - name: Check Swift formatting
       if: ${{ inputs.edition == 'full' && !cancelled() }}
       run: |

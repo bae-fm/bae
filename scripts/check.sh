@@ -219,6 +219,16 @@ check "xcodebuild (iphonesimulator)" \
     -sdk iphonesimulator -arch arm64 \
     -derivedDataPath bae-ios/bae/.build/derivedData build
 
+# Simulator ad-hoc signing stays ON for the test run (no CODE_SIGNING_ALLOWED=NO):
+# disabling it strips the iCloud entitlement and the app traps in CKContainer at
+# launch, before the tests can bootstrap.
+check "xcodebuild test (iOS baeTests)" bash -c '
+  DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; print([d[\"name\"] for rt in json.load(sys.stdin)[\"devices\"].values() for d in rt if d.get(\"isAvailable\") and d[\"name\"].startswith(\"iPhone\")][-1])")
+  xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae -configuration Debug \
+    -destination "platform=iOS Simulator,name=$DEST" \
+    -derivedDataPath bae-ios/bae/.build/derivedData test
+'
+
 check "swift-format lint" _swift_format_lint bae-ios/bae/bae
 check "swiftlint" swiftlint lint --strict --config .swiftlint.yml bae-ios/bae/bae
 check "periphery" bash -c '
