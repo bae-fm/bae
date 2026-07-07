@@ -97,15 +97,11 @@ struct LibraryView: View {
                 await reloadComposerList(sort: composerSortCriterion)
             }
         }
-        .onReceive(uiStore.libraryNavigationSubject) { target in
-            switch target {
-            case .composer(let artistId):
-                detailSelection = .composer(artistId: artistId, workId: nil)
-                composerPaneDetail = .empty
-            case .work(let workId):
-                detailSelection = .work(workId: workId)
-                composerPaneDetail = .empty
+        .task(id: uiStore.libraryNavigationRequest?.seq) {
+            guard let request = uiStore.libraryNavigationRequest else {
+                return
             }
+            applyLibraryNavigation(request.target)
         }
     }
 }
@@ -236,6 +232,17 @@ extension LibraryView {
             else {
                 ProgressView()
             }
+        }
+    }
+
+    private func applyLibraryNavigation(_ target: LibraryNavigationTarget) {
+        switch target {
+        case .composer(let artistId):
+            detailSelection = .composer(artistId: artistId, workId: nil)
+            composerPaneDetail = .empty
+        case .work(let workId):
+            detailSelection = .work(workId: workId)
+            composerPaneDetail = .empty
         }
     }
 

@@ -1,4 +1,3 @@
-import Combine
 import SwiftUI
 
 // MARK: - Navigation types
@@ -41,6 +40,15 @@ enum LibraryNavigationTarget {
     case work(String)
 }
 
+/// A request to reveal a composer or work in the composers browser. Durable for
+/// the same reason as `AlbumReveal`: cross-section navigation can switch the
+/// browser mode and mount the consumer after the producer records the request.
+/// `seq` lets repeat navigation to the same target run again.
+struct LibraryNavigationRequest {
+    let target: LibraryNavigationTarget
+    let seq: Int
+}
+
 // MARK: - UiStore
 
 /// Shared UI-originated state. Views read properties, call methods to mutate.
@@ -60,10 +68,10 @@ class UiStore: @unchecked Sendable {
     private(set) var albumReveal: AlbumReveal?
     private var revealSeq = 0
 
-    @ObservationIgnored
-    let libraryNavigationSubject = PassthroughSubject<
-        LibraryNavigationTarget, Never
-    >()
+    /// The current composer/work reveal request, or `nil` before any such
+    /// navigation. Durable — see `LibraryNavigationRequest`.
+    private(set) var libraryNavigationRequest: LibraryNavigationRequest?
+    private var libraryNavigationSeq = 0
 
     // ── Shared selections ───────────────────────────────────────────────
 
@@ -128,13 +136,21 @@ class UiStore: @unchecked Sendable {
     func navigateToComposer(_ artistId: String) {
         activeSection = .library
         libraryBrowserMode = .composers
-        libraryNavigationSubject.send(.composer(artistId))
+        libraryNavigationSeq += 1
+        libraryNavigationRequest = LibraryNavigationRequest(
+            target: .composer(artistId),
+            seq: libraryNavigationSeq
+        )
     }
 
     func navigateToWork(_ workId: String) {
         activeSection = .library
         libraryBrowserMode = .composers
-        libraryNavigationSubject.send(.work(workId))
+        libraryNavigationSeq += 1
+        libraryNavigationRequest = LibraryNavigationRequest(
+            target: .work(workId),
+            seq: libraryNavigationSeq
+        )
     }
 
     func selectAlbum(_ albumId: String) {

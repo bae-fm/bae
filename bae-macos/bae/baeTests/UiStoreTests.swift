@@ -28,11 +28,52 @@ struct UiStoreLibraryBrowserModeTests {
         #expect(store.activeSection == .library)
     }
 
+    @Test("navigateToComposer records a durable navigation request")
+    func navigateToComposerRecordsNavigationRequest() {
+        let store = UiStore()
+        store.navigateToComposer("artist-1")
+
+        guard case .composer("artist-1") = store.libraryNavigationRequest?.target
+        else {
+            Issue.record("expected composer navigation target")
+            return
+        }
+        #expect(store.libraryNavigationRequest?.seq == 1)
+    }
+
     @Test("navigateToWork switches to composers mode")
     func navigateToWorkSwitchesMode() {
         let store = UiStore()
         store.navigateToWork("work-1")
         #expect(store.libraryBrowserMode == .composers)
+    }
+
+    @Test("repeat composer navigation records a fresh request")
+    func repeatComposerNavigationRecordsFreshRequest() {
+        let store = UiStore()
+        store.navigateToComposer("artist-1")
+        let first = store.libraryNavigationRequest?.seq
+        store.navigateToComposer("artist-1")
+        let second = store.libraryNavigationRequest?.seq
+
+        guard let first, let second else {
+            Issue.record("expected navigation sequence values")
+            return
+        }
+        #expect(second > first)
+    }
+
+    @Test("navigateToWork records a durable navigation request")
+    func navigateToWorkRecordsNavigationRequest() {
+        let store = UiStore()
+        store.navigateToWork("work-1")
+
+        guard case .work("work-1") = store.libraryNavigationRequest?.target
+        else {
+            Issue.record("expected work navigation target")
+            return
+        }
+        #expect(store.libraryNavigationRequest?.seq == 1)
     }
 
     @Test("navigateToLibraryRoot does not change libraryBrowserMode")
