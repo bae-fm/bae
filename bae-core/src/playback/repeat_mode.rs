@@ -19,3 +19,16 @@ impl RepeatMode {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Cycling advances Off → Context → Track and wraps back to Off.
+    #[test]
+    fn next_cycles_off_context_track_off() {
+        assert_eq!(RepeatMode::Off.next(), RepeatMode::Context);
+        assert_eq!(RepeatMode::Context.next(), RepeatMode::Track);
+        assert_eq!(RepeatMode::Track.next(), RepeatMode::Off);
+    }
+}

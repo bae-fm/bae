@@ -279,4 +279,19 @@ mod tests {
         };
         assert!(PersistedPlayback::from_row(row).is_none());
     }
+
+    /// A row with no context and no saved position parses cleanly to `None` for
+    /// both — a single track (or nothing) was playing, with position not yet
+    /// recorded.
+    #[test]
+    fn missing_context_and_position_parse_as_none() {
+        let row = DbPlaybackState {
+            context: None,
+            position_ms: None,
+            ..valid_row()
+        };
+        let parsed = PersistedPlayback::from_row(row).expect("a valid row parses");
+        assert!(parsed.queue.context.is_none());
+        assert!(parsed.position_ms.is_none());
+    }
 }

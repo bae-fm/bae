@@ -81,4 +81,12 @@ mod tests {
         let pregap = Some(2000);
         assert_eq!(adjust_for_pregap(5000, 12_000, pregap), (3000, 10_000));
     }
+
+    /// A negative pregap is clamped to no offset, so position and duration pass
+    /// through unchanged and progress is measured against the full duration.
+    #[test]
+    fn negative_pregap_clamps_to_zero_offset() {
+        assert_eq!(adjust_for_pregap(5000, 10_000, Some(-2000)), (5000, 10_000));
+        assert_eq!(compute_progress(5000, 10_000, Some(-2000)), 0.5);
+    }
 }
