@@ -314,6 +314,16 @@ mod tests {
         )
     }
 
+    fn pair_src(
+        source: MetadataSource,
+        release_id: &str,
+        group_id: Option<&str>,
+    ) -> (MetadataResult, LibraryStatus) {
+        let mut result = mk_result(release_id, group_id, None);
+        result.source = source;
+        (result, mk_status(release_id))
+    }
+
     fn catalog(value: &str, origin: SignalOrigin) -> SourcedValue {
         SourcedValue::new(value.to_string(), origin)
     }
@@ -324,33 +334,65 @@ mod tests {
         assert!(matches!(outcome, CombineOutcome::NotFoundAnywhere));
     }
 
+    /// A single-group set from one signal (or both, when they don't intersect)
+    /// passes straight through to `Found` with every result and that group.
     #[test]
-    fn only_discid_passes_through() {
-        let discid = vec![pair("rel-1", Some("group-1"), None)];
-        let outcome = combine_results(discid, vec![], &[]);
-        match outcome {
-            CombineOutcome::Found { matches, group, .. } => {
-                assert_eq!(matches.len(), 1);
-                assert_eq!(matches[0].release_id, "rel-1");
-                assert_eq!(group.source_group_id, "group-1");
+    fn single_group_sets_pass_through_to_found() {
+        // (name, discid, barcode, expected match count)
+        let cases: Vec<(&str, Vec<_>, Vec<_>, usize)> = vec![
+            (
+                "only disc-id",
+                vec![pair("rel-1", Some("group-1"), None)],
+                vec![],
+                1,
+            ),
+            (
+                "only barcode",
+                vec![],
+                vec![
+                    pair("rel-1", Some("group-1"), None),
+                    pair("rel-2", Some("group-1"), None),
+                ],
+                2,
+            ),
+            (
+                "single group, multiple pressings",
+                vec![
+                    pair("rel-1", Some("group-1"), None),
+                    pair("rel-2", Some("group-1"), None),
+                    pair("rel-3", Some("group-1"), None),
+                ],
+                vec![],
+                3,
+            ),
+        ];
+        for (name, discid, barcode, expected) in cases {
+            let outcome = combine_results(discid, barcode, &[]);
+            match outcome {
+                CombineOutcome::Found { matches, group, .. } => {
+                    assert_eq!(matches.len(), expected, "{name}");
+                    assert_eq!(group.source_group_id, "group-1", "{name}");
+                }
+                other => panic!("{name}: expected Found, got {other:?}"),
             }
-            other => panic!("expected Found, got {other:?}"),
         }
     }
 
+    /// The headline cross-source invariant: two results carrying the *same*
+    /// `source_group_id` string but different sources (MB vs Discogs) are two
+    /// distinct groups — the group key is `(source, source_group_id)` — so the
+    /// set is a Conflict, not a single Found group.
     #[test]
-    fn only_barcode_passes_through() {
-        let barcode = vec![
-            pair("rel-1", Some("group-1"), None),
-            pair("rel-2", Some("group-1"), None),
+    fn same_group_id_string_across_sources_stays_two_groups() {
+        let results = vec![
+            pair_src(MetadataSource::MusicBrainz, "rel-mb", Some("shared-id")),
+            pair_src(MetadataSource::Discogs, "rel-dg", Some("shared-id")),
         ];
-        let outcome = combine_results(vec![], barcode, &[]);
-        match outcome {
-            CombineOutcome::Found { matches, .. } => {
-                assert_eq!(matches.len(), 2);
-            }
-            other => panic!("expected Found, got {other:?}"),
-        }
+        let outcome = combine_results(results, vec![], &[]);
+        assert!(
+            matches!(outcome, CombineOutcome::Conflict { .. }),
+            "same group_id across sources must not collapse into one group"
+        );
     }
 
     #[test]
@@ -402,23 +444,6 @@ mod tests {
         ];
         let outcome = combine_results(discid, barcode, &[]);
         assert!(matches!(outcome, CombineOutcome::Conflict { .. }));
-    }
-
-    #[test]
-    fn single_group_with_multiple_pressings_is_found() {
-        let results = vec![
-            pair("rel-a", Some("group-x"), None),
-            pair("rel-b", Some("group-x"), None),
-            pair("rel-c", Some("group-x"), None),
-        ];
-        let outcome = combine_results(results, vec![], &[]);
-        match outcome {
-            CombineOutcome::Found { matches, group, .. } => {
-                assert_eq!(matches.len(), 3);
-                assert_eq!(group.source_group_id, "group-x");
-            }
-            other => panic!("expected Found, got {other:?}"),
-        }
     }
 
     #[test]

@@ -1095,3 +1095,163 @@ fn toolbar_skipped_disc_and_barcode_in_manual_only() {
 fn idle_has_empty_toolbar() {
     assert!(IdentifyState::Idle.toolbar().is_empty());
 }
+
+/// A pair whose `LibraryStatus` reports the release (and its album) already in
+/// the library — the in-library flags every current fixture leaves false.
+fn pair_in_library(release_id: &str, group_id: Option<&str>) -> (MetadataResult, LibraryStatus) {
+    (
+        mk_result(release_id, group_id),
+        LibraryStatus {
+            release_id: release_id.to_string(),
+            release_in_library: true,
+            album_in_library: true,
+            album_title: Some("Album".to_string()),
+            album_id: Some("album-1".to_string()),
+        },
+    )
+}
+
+/// A match that's already in the library carries its `release_in_library` /
+/// `album_in_library` flags through combine into the terminal `Found` state,
+/// index-aligned with `matches`.
+#[test]
+fn found_carries_in_library_status_through() {
+    let (state, _) = update(
+        started(),
+        signals(
+            DiscIdSignal::Computed {
+                disc_id: "d".to_string(),
+                track_count: 5,
+            },
+            BarcodeSignal::Absent,
+            &[],
+        ),
+    );
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupCompleted {
+            results: vec![pair_in_library("rel-1", Some("g-x"))],
+            track_count: 5,
+        },
+    );
+    match state {
+        IdentifyState::Found {
+            matches,
+            library_statuses,
+            ..
+        } => {
+            assert_eq!(matches.len(), 1);
+            assert_eq!(library_statuses.len(), 1);
+            assert!(library_statuses[0].release_in_library);
+            assert!(library_statuses[0].album_in_library);
+            assert_eq!(library_statuses[0].album_id.as_deref(), Some("album-1"));
+        }
+        other => panic!("expected Found, got {other:?}"),
+    }
+}
+
+/// `SignalToggled` from a terminal `Found` state re-derives in place: excluding
+/// the only signal that produced results drops to `NotFoundAnywhere`, and
+/// re-including it restores the `Found`.
+#[test]
+fn toggle_from_found_re_derives_terminal_state() {
+    let (state, _) = update(
+        started(),
+        signals(
+            DiscIdSignal::Computed {
+                disc_id: "d".to_string(),
+                track_count: 5,
+            },
+            BarcodeSignal::Absent,
+            &[],
+        ),
+    );
+    let (found, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupCompleted {
+            results: vec![pair("rel-1", Some("g-x"))],
+            track_count: 5,
+        },
+    );
+    assert!(matches!(found, IdentifyState::Found { .. }));
+
+    let (excluded, effects) = step(
+        found,
+        IdentifyEvent::SignalToggled {
+            signal: ExcludedSignal::Disc,
+        },
+    );
+    assert!(effects.is_empty(), "toggle re-combines in place");
+    assert!(
+        matches!(excluded, IdentifyState::NotFoundAnywhere { .. }),
+        "excluding the only signal with results leaves nothing found, got {excluded:?}"
+    );
+
+    let (restored, _) = step(
+        excluded,
+        IdentifyEvent::SignalToggled {
+            signal: ExcludedSignal::Disc,
+        },
+    );
+    assert!(
+        matches!(restored, IdentifyState::Found { .. }),
+        "re-including the disc signal restores Found, got {restored:?}"
+    );
+}
+
+/// A barcode lookup can fail while the disc-ID lookup is still in flight. The
+/// pipeline stays `Triangulating` until the disc settles, then combines over
+/// the disc results while retaining the barcode failure in the context (so the
+/// barcode badge still reads Failed on the terminal state).
+#[test]
+fn barcode_failure_before_disc_settles_is_retained_through_combine() {
+    let (state, _) = update(
+        started(),
+        signals(
+            DiscIdSignal::Computed {
+                disc_id: "d".to_string(),
+                track_count: 5,
+            },
+            BarcodeSignal::Settled {
+                codes: artwork_codes(&["BAR"]),
+            },
+            &[],
+        ),
+    );
+
+    let failure = LookupFailure::Provider { status: Some(500) };
+    let (state, _) = step(
+        state,
+        IdentifyEvent::BarcodeLookupFailed {
+            for_barcode: "BAR".to_string(),
+            failure: failure.clone(),
+        },
+    );
+    // Disc-ID hasn't settled yet — the barcode failure alone can't terminate.
+    assert!(
+        matches!(state, IdentifyState::Triangulating { .. }),
+        "barcode failure while disc still looking up stays Triangulating, got {state:?}"
+    );
+
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupCompleted {
+            results: vec![pair("rel-1", Some("g-x"))],
+            track_count: 5,
+        },
+    );
+
+    match &state {
+        IdentifyState::Found { context, .. } => {
+            assert_eq!(context.barcode_failure.as_ref(), Some(&failure));
+        }
+        other => panic!("expected Found from the disc results, got {other:?}"),
+    }
+    // The terminal toolbar surfaces the retained barcode failure.
+    let barcode = state
+        .toolbar()
+        .into_iter()
+        .find(|s| s.kind == SignalKind::Barcode)
+        .expect("barcode badge");
+    assert_eq!(barcode.state, SignalState::Failed { failure });
+}
