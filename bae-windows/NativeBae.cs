@@ -228,11 +228,6 @@ internal static class NativeBae
     [DllImport(Dll, EntryPoint = "bae_oauth_authorize", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr OAuthAuthorizePtr([MarshalAs(UnmanagedType.LPUTF8Str)] string provider);
 
-    [DllImport(Dll, EntryPoint = "bae_restore_from_code", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr RestoreFromCodePtr(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string code,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string? oauthTokenJson);
-
     /// <summary>
     /// Run the desktop OAuth flow for a provider (google_drive / dropbox / onedrive)
     /// and return a result JSON (<c>{token, error}</c>): <c>token</c> is the provider's
@@ -256,13 +251,12 @@ internal static class NativeBae
     }
 
     /// <summary>
-    /// Restore a library from a code; returns a result JSON (<c>{library_id,
-    /// error}</c>). For OAuth providers pass the token JSON from
-    /// <see cref="OAuthAuthorize"/>; for credential providers pass null. Blocks on a
-    /// cloud pull — call off the UI thread. Copies and frees.
+    /// Restore a library from a code and return its id. For OAuth providers pass
+    /// the token JSON from <see cref="OAuthAuthorize"/>; for credential providers
+    /// pass null. Blocks on a cloud pull — call off the UI thread.
     /// </summary>
-    internal static string? RestoreFromCode(string code, string? oauthTokenJson) =>
-        CopyAndFree(RestoreFromCodePtr(code, oauthTokenJson));
+    internal static string RestoreFromCode(string code, string? oauthTokenJson) =>
+        BaeBridgeMethods.RestoreFromCode(code, oauthTokenJson).Id;
 
     /// <summary>
     /// This device's join-request code and the fingerprint it encodes, to hand
@@ -313,19 +307,14 @@ internal static class NativeBae
         };
     }
 
-    [DllImport(Dll, EntryPoint = "bae_join_from_code", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr JoinFromCodePtr(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string code,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string? oauthTokenJson);
-
     /// <summary>
-    /// Join a shared library from an invite code; returns a result JSON
-    /// (<c>{library_id, error}</c>). For OAuth providers pass the token JSON from
-    /// <see cref="OAuthAuthorize"/>; for credential providers pass null. Blocks on
-    /// a cloud pull — call off the UI thread. Copies and frees.
+    /// Join a shared library from an invite code and return its id. For OAuth
+    /// providers pass the token JSON from <see cref="OAuthAuthorize"/>; for
+    /// credential providers pass null. Blocks on a cloud pull — call off the UI
+    /// thread.
     /// </summary>
-    internal static string? JoinFromCode(string code, string? oauthTokenJson) =>
-        CopyAndFree(JoinFromCodePtr(code, oauthTokenJson));
+    internal static string JoinFromCode(string code, string? oauthTokenJson) =>
+        BaeBridgeMethods.JoinFromCode(code, oauthTokenJson).Id;
 
     [DllImport(Dll, EntryPoint = "bae_restore_from_cloud", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr RestoreFromCloudPtr(

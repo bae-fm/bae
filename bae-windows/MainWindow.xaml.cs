@@ -949,16 +949,20 @@ public sealed partial class MainWindow : Window
         }
 
         StatusText.Text = Loc.Chrome("restore.in_progress_named", "name", info.LibraryName);
-        var resultJson = await System.Threading.Tasks.Task.Run(() => NativeBae.RestoreFromCode(code, oauthTokenJson));
-        var result = resultJson is null ? null : JsonSerializer.Deserialize<RestoreResult>(resultJson, JsonOptions);
-        if (result?.LibraryId is null)
+        string libraryId;
+        try
         {
-            StatusText.Text = result?.Error ?? Loc.Chrome("restore.failed");
+            libraryId = await System.Threading.Tasks.Task.Run(() => NativeBae.RestoreFromCode(code, oauthTokenJson));
+        }
+        catch (BridgeException exception)
+        {
+            BaeDiagnostics.Logger.Error("Failed to restore library from code.", exception);
+            StatusText.Text = Loc.Chrome("restore.failed");
             return;
         }
 
         DismissWelcome();
-        OpenLibrary(result.LibraryId);
+        OpenLibrary(libraryId);
     }
 
     // Copy text to the system clipboard (a shared code the user hands to another
@@ -1213,21 +1217,23 @@ public sealed partial class MainWindow : Window
             ShowStatus(Loc.Chrome("join.in_progress", "name", info.LibraryName));
             var code = inviteBox.Text?.Trim() ?? string.Empty;
             var token = oauthTokenJson;
-            var resultJson = await System.Threading.Tasks.Task.Run(() => NativeBae.JoinFromCode(code, token));
-            var result = resultJson is null
-                ? null
-                : JsonSerializer.Deserialize<RestoreResult>(resultJson, JsonOptions);
-            if (result?.LibraryId is null)
+            string libraryId;
+            try
             {
+                libraryId = await System.Threading.Tasks.Task.Run(() => NativeBae.JoinFromCode(code, token));
+            }
+            catch (BridgeException exception)
+            {
+                BaeDiagnostics.Logger.Error("Failed to join library from invite.", exception);
                 status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
-                ShowStatus(result?.Error ?? Loc.Chrome("join.failed"));
+                ShowStatus(Loc.Chrome("join.failed"));
                 joinButton.IsEnabled = true;
                 return;
             }
 
             dialog.Hide();
             DismissWelcome();
-            OpenLibrary(result.LibraryId);
+            OpenLibrary(libraryId);
         };
 
         // Generate this device's join-request code off the UI thread, then render
