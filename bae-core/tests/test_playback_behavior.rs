@@ -87,6 +87,28 @@ fn start_test_import(
     )
 }
 
+/// Capture-stream receiver kept alive so the sink's `create_stream` has a
+/// receiver to hand each stream's buffer to (dropping it fails stream creation).
+type CaptureStreamRx = tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>;
+
+/// Start a playback service backed by a real-time capture sink, so a test runs
+/// with no audio device while the decoder is still paced to wall-clock like the
+/// real device. The returned receiver must be held for the service's lifetime.
+#[must_use]
+fn start_capture_service(
+    library_manager: LibraryManager,
+    runtime_handle: tokio::runtime::Handle,
+) -> (bae_core::playback::PlaybackHandle, CaptureStreamRx) {
+    let (capture_output, capture_stream_rx) = bae_core::playback::RealtimeCaptureAudioOutput::new();
+    let handle = bae_core::playback::PlaybackService::start_with_output(
+        library_manager,
+        runtime_handle,
+        100,
+        Box::new(capture_output),
+    );
+    (handle, capture_stream_rx)
+}
+
 struct ImportedReleaseSetup {
     library_manager: LibraryManager,
     runtime_handle: tokio::runtime::Handle,
@@ -171,10 +193,14 @@ struct PlaybackTestFixture {
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     album_dir: std::path::PathBuf,
+    /// Held so the capture sink's `create_stream` can hand off each stream's
+    /// buffer — dropping the receiver would fail stream creation. The fixture's
+    /// tests don't inspect the samples, only playback state.
+    _capture_stream_rx: tokio::sync::mpsc::UnboundedReceiver<Arc<std::sync::Mutex<Vec<f32>>>>,
     _temp_dir: TempDir,
 }
 impl PlaybackTestFixture {
-    async fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    async fn new() -> Self {
         let import_ids = SequentialIdProvider::new("playback-fixture-import");
         let setup = imported_release_setup(
             create_test_album(),
@@ -185,22 +211,29 @@ impl PlaybackTestFixture {
             },
             |_| Ok(()),
         )
-        .await?;
+        .await
+        .expect("import the playback test release");
         assert!(!setup.track_ids.is_empty(), "Should have imported tracks");
-        let playback_handle = bae_core::playback::PlaybackService::start(
+        // A real-time capture sink stands in for the audio device: no hardware
+        // required, and it paces the decoder to wall-clock like a real device so
+        // position/seek/auto-advance timing matches production.
+        let (capture_output, capture_stream_rx) =
+            bae_core::playback::RealtimeCaptureAudioOutput::new();
+        let playback_handle = bae_core::playback::PlaybackService::start_with_output(
             setup.library_manager.clone(),
             setup.runtime_handle,
             100,
+            Box::new(capture_output),
         );
-        playback_handle.set_volume(0.0);
         let progress_rx = playback_handle.subscribe_progress();
-        Ok(Self {
+        Self {
             playback_handle,
             progress_rx,
             track_ids: setup.track_ids,
             album_dir: setup.album_dir,
+            _capture_stream_rx: capture_stream_rx,
             _temp_dir: setup.temp_dir,
-        })
+        }
     }
     /// Wait for a specific state change with timeout
     async fn wait_for_state<F>(
@@ -297,17 +330,7 @@ impl PlaybackTestFixture {
 /// the UI swaps to before audio is flowing.
 #[tokio::test]
 async fn play_emits_bare_loading_then_loading_with_metadata_then_playing() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("skip: fixture setup failed: {e}");
-            return;
-        }
-    };
+    let mut fixture = PlaybackTestFixture::new().await;
     assert!(
         !fixture.track_ids.is_empty(),
         "fixture must import at least one playable track"
@@ -375,16 +398,7 @@ async fn play_emits_bare_loading_then_loading_with_metadata_then_playing() {
 /// reconstruction.
 #[tokio::test]
 async fn seek_past_end_of_track_signals_rather_than_hanging() {
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("skip: fixture setup failed: {e}");
-            return;
-        }
-    };
-    if fixture.track_ids.is_empty() {
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
     fixture.playback_handle.play(fixture.track_ids[0].clone());
     fixture
         .wait_for_state(
@@ -425,16 +439,7 @@ async fn seek_past_end_of_track_signals_rather_than_hanging() {
 /// pregap start — needs a CUE fixture with a known pregap; left to test_cue_*.)
 #[tokio::test]
 async fn seek_by_ratio_maps_to_a_proportional_position() {
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("skip: fixture setup failed: {e}");
-            return;
-        }
-    };
-    if fixture.track_ids.is_empty() {
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
     fixture.playback_handle.play(fixture.track_ids[0].clone());
     fixture
         .wait_for_state(
@@ -542,15 +547,6 @@ fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
     }
     file_data
 }
-/// Check if audio tests should be skipped (e.g., in CI without audio device)
-fn should_skip_audio_tests() -> bool {
-    if std::env::var("SKIP_AUDIO_TESTS").is_ok() {
-        return true;
-    }
-    use cpal::traits::HostTrait;
-    cpal::default_host().default_output_device().is_none()
-}
-
 /// Copy pre-generated CUE/FLAC fixtures to test directory
 /// Fixtures should be generated using scripts/generate_cue_flac_fixture.sh
 fn generate_cue_flac_files(dir: &std::path::Path) {
@@ -1109,23 +1105,8 @@ async fn side_boundary_pause_prevents_gapless_stream_handoff() {
 #[tokio::test]
 async fn test_next_while_paused_stays_paused() {
     // When paused and pressing Next, the next track should start paused
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
 
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-
-    if fixture.track_ids.len() < 2 {
-        debug!("Need at least 2 tracks for next-while-paused test");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
 
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
@@ -1175,23 +1156,8 @@ async fn test_next_while_paused_stays_paused() {
 #[tokio::test]
 async fn test_next_while_playing_stays_playing() {
     // When playing and pressing Next, the next track should start playing
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
 
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-
-    if fixture.track_ids.len() < 2 {
-        debug!("Need at least 2 tracks for next-while-playing test");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
 
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
@@ -1236,18 +1202,7 @@ async fn test_next_while_playing_stays_playing() {
 /// stays false and audio doesn't play after resume.
 #[tokio::test]
 async fn test_pause_seek_resume_advances_position() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = PlaybackTestFixture::new().await;
 
     let track_id = fixture.track_ids[0].clone();
 
@@ -1337,23 +1292,8 @@ async fn test_pause_seek_resume_advances_position() {
 #[tokio::test]
 async fn test_previous_while_paused_stays_paused() {
     // When paused and pressing Previous, the previous track should start paused
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
 
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-
-    if fixture.track_ids.len() < 2 {
-        debug!("Need at least 2 tracks for previous-while-paused test");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
 
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
@@ -1409,23 +1349,8 @@ async fn test_previous_while_paused_stays_paused() {
 #[tokio::test]
 async fn test_previous_while_playing_stays_playing() {
     // When playing and pressing Previous, the previous track should start playing
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
 
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-
-    if fixture.track_ids.len() < 2 {
-        debug!("Need at least 2 tracks for previous-while-playing test");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
 
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
@@ -1471,23 +1396,8 @@ async fn test_previous_while_playing_stays_playing() {
 #[tokio::test]
 async fn test_fresh_play_always_starts_playing() {
     // Fresh play should always start playing, even if previously paused
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
 
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-
-    if fixture.track_ids.len() < 2 {
-        debug!("Need at least 2 tracks for fresh play test");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
 
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
@@ -1539,18 +1449,7 @@ async fn test_fresh_play_always_starts_playing() {
 /// When seeking while playing, playback should continue and position should advance.
 #[tokio::test]
 async fn test_seek_while_playing_advances_position() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = PlaybackTestFixture::new().await;
 
     let track_id = fixture.track_ids[0].clone();
 
@@ -1605,21 +1504,7 @@ async fn test_seek_while_playing_advances_position() {
 
 #[tokio::test]
 async fn test_auto_advance_to_next_track() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-    if fixture.track_ids.len() < 2 {
-        debug!("Need at least 2 tracks for auto-advance test");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
     fixture.playback_handle.play(first_track_id.clone());
@@ -1657,33 +1542,19 @@ async fn test_auto_advance_to_next_track() {
         }
     }
 
-    if advanced {
-        assert_eq!(
-            total_decode_errors, 0,
-            "Auto-advance test had {} decode errors",
-            total_decode_errors
-        );
-    } else {
-        debug!("Auto-advance test inconclusive - may need valid FLAC files");
-    }
+    assert!(
+        advanced,
+        "playback should auto-advance to the second track when the first ends"
+    );
+    assert_eq!(
+        total_decode_errors, 0,
+        "Auto-advance test had {} decode errors",
+        total_decode_errors
+    );
 }
 #[tokio::test]
 async fn test_position_maintained_across_pause_resume() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-    if fixture.track_ids.is_empty() {
-        debug!("No tracks available for testing");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
     let track_id = &fixture.track_ids[0];
     fixture.playback_handle.play(track_id.clone());
     let _playing_state = fixture
@@ -1735,21 +1606,7 @@ async fn test_position_maintained_across_pause_resume() {
 }
 #[tokio::test]
 async fn test_previous_track_navigation() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-    if fixture.track_ids.len() < 2 {
-        debug!("Need at least 2 tracks for previous track test");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
     fixture.playback_handle.play(first_track_id.clone());
@@ -1833,21 +1690,7 @@ async fn test_previous_track_navigation() {
 }
 #[tokio::test]
 async fn test_previous_track_when_starting_on_second_track() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-    if fixture.track_ids.len() < 2 {
-        debug!("Need at least 2 tracks for previous track test");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
     fixture.playback_handle.play(second_track_id.clone());
@@ -1891,21 +1734,7 @@ async fn test_previous_track_when_starting_on_second_track() {
 }
 #[tokio::test]
 async fn test_previous_track_multiple_navigation() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-    if fixture.track_ids.len() < 2 {
-        debug!("Need at least 2 tracks for previous track test");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
     fixture.playback_handle.play(second_track_id.clone());
@@ -1974,21 +1803,7 @@ async fn test_previous_track_multiple_navigation() {
 }
 #[tokio::test]
 async fn test_same_position_seek_keeps_position_updates_flowing() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-    if fixture.track_ids.is_empty() {
-        debug!("No tracks available for testing");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
     let track_id = &fixture.track_ids[0];
     fixture.playback_handle.play(track_id.clone());
     let playing_state = fixture
@@ -2010,7 +1825,7 @@ async fn test_same_position_seek_keeps_position_updates_flowing() {
     let current_pos_ms = fixture
         .wait_for_position_update(Duration::from_secs(1))
         .await
-        .unwrap_or(2000);
+        .expect("a position update should arrive while playing");
     let same_position = Duration::from_millis(current_pos_ms + 50);
     fixture.playback_handle.seek(same_position);
     let seeked_position = fixture.wait_for_seeked(Duration::from_secs(2)).await;
@@ -2037,21 +1852,7 @@ async fn test_same_position_seek_keeps_position_updates_flowing() {
 }
 #[tokio::test]
 async fn test_queue_maintained_after_previous_navigation() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-    if fixture.track_ids.len() < 2 {
-        debug!("Need at least 2 tracks for queue navigation test");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
     fixture.playback_handle.play(first_track_id.clone());
@@ -2166,33 +1967,18 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
         )
         .await;
 
-    if let Some(state) = next_state {
-        let playing_id = match &state {
-            PlaybackState::Playing { track_info, .. } => track_info.track_id.clone(),
-            PlaybackState::Paused { track_info, .. } => track_info.track_id.clone(),
-            _ => unreachable!(),
-        };
-        assert_eq!(playing_id, expected);
-    } else {
-        debug!("preload refresh test inconclusive - no state change received");
-    }
+    let state = next_state.expect("Next should switch off track0 after the queue mutation");
+    let playing_id = match &state {
+        PlaybackState::Playing { track_info, .. } => track_info.track_id.clone(),
+        PlaybackState::Paused { track_info, .. } => track_info.track_id.clone(),
+        _ => unreachable!(),
+    };
+    assert_eq!(playing_id, expected);
 }
 
 #[tokio::test]
 async fn test_add_next_displaces_preloaded_track() {
-    if should_skip_audio_tests() {
-        return;
-    }
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-    if fixture.track_ids.len() < 3 {
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
     let (track0, track1, track2) = (
         fixture.track_ids[0].clone(),
         fixture.track_ids[1].clone(),
@@ -2211,19 +1997,7 @@ async fn test_add_next_displaces_preloaded_track() {
 
 #[tokio::test]
 async fn test_reorder_entry_displaces_preloaded_track() {
-    if should_skip_audio_tests() {
-        return;
-    }
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-    if fixture.track_ids.len() < 3 {
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
     let (track0, track1, track2) = (
         fixture.track_ids[0].clone(),
         fixture.track_ids[1].clone(),
@@ -2241,19 +2015,7 @@ async fn test_reorder_entry_displaces_preloaded_track() {
 
 #[tokio::test]
 async fn test_insert_in_queue_displaces_preloaded_track() {
-    if should_skip_audio_tests() {
-        return;
-    }
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-    if fixture.track_ids.len() < 3 {
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
     let (track0, track1, track2) = (
         fixture.track_ids[0].clone(),
         fixture.track_ids[1].clone(),
@@ -2272,19 +2034,7 @@ async fn test_insert_in_queue_displaces_preloaded_track() {
 
 #[tokio::test]
 async fn test_remove_entry_refreshes_preloaded_track() {
-    if should_skip_audio_tests() {
-        return;
-    }
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-    if fixture.track_ids.len() < 3 {
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
     let (track0, track1, track2) = (
         fixture.track_ids[0].clone(),
         fixture.track_ids[1].clone(),
@@ -2314,23 +2064,8 @@ async fn test_remove_entry_refreshes_preloaded_track() {
 async fn test_direct_play_skips_pregap() {
     // When directly playing a track with pregap_ms set,
     // playback should start at pregap_ms offset (INDEX 01), not 0 (INDEX 00)
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
 
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-
-    if fixture.track_ids.is_empty() {
-        debug!("No tracks available for testing");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
 
     let track_id = &fixture.track_ids[0];
     fixture.playback_handle.play(track_id.clone());
@@ -2358,23 +2093,8 @@ async fn test_direct_play_skips_pregap() {
 #[tokio::test]
 async fn test_next_button_skips_pregap() {
     // When pressing Next button, the next track should start at INDEX 01 (skip pregap)
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
 
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-
-    if fixture.track_ids.len() < 2 {
-        debug!("Need at least 2 tracks for next button test");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
 
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
@@ -2425,23 +2145,8 @@ async fn test_next_button_skips_pregap() {
 async fn test_auto_advance_plays_pregap() {
     // When a track naturally ends and auto-advances, the next track should
     // start at INDEX 00 (play pregap), with position showing negative time initially
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
 
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-
-    if fixture.track_ids.len() < 2 {
-        debug!("Need at least 2 tracks for auto-advance pregap test");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
 
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
@@ -2475,23 +2180,23 @@ async fn test_auto_advance_plays_pregap() {
         )
         .await;
 
+    assert!(
+        second_track_state.is_some(),
+        "playback should auto-advance to the second track when the first ends"
+    );
     // For natural transition (auto-advance), position should start at 0 (INDEX 00)
     // to play the pregap (showing negative time in UI)
     // For auto-advance (natural transition), position_ms starts at 0 in the
     // adjusted view. The pregap is being played, but position_ms is adjusted
     // to show 0 until the pregap passes.
-    if second_track_state.is_some() {
-        let position_ms = fixture
-            .wait_for_position_update(Duration::from_secs(2))
-            .await
-            .expect("Position update on auto-advance");
-        assert!(
-            position_ms < 500,
-            "Auto-advance should start with adjusted position near 0, got {position_ms}",
-        );
-    } else {
-        debug!("Auto-advance test inconclusive - may need longer track fixtures");
-    }
+    let position_ms = fixture
+        .wait_for_position_update(Duration::from_secs(2))
+        .await
+        .expect("Position update on auto-advance");
+    assert!(
+        position_ms < 500,
+        "Auto-advance should start with adjusted position near 0, got {position_ms}",
+    );
 }
 
 /// CUE/FLAC track 1 playback must produce audio matching the XLD-split reference.
@@ -2502,13 +2207,9 @@ async fn test_auto_advance_plays_pregap() {
 async fn test_cue_flac_playback() {
     use bae_core::audio_codec::decode_audio;
 
-    let mut fixture = match CueFlacTestFixture::with_capture().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up CUE/FLAC test fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = CueFlacTestFixture::with_capture()
+        .await
+        .expect("set up CUE/FLAC capture fixture");
 
     let track_id = fixture.track_ids[0].clone();
 
@@ -2619,13 +2320,9 @@ async fn test_cue_flac_seek() {
     // Real-time capture: a full-speed drain races the decoder past track 2 and
     // gaplessly onto the next track before the seek below lands, leaving the
     // post-seek stream empty (flaky under load — Linux CI hit it ~5%).
-    let mut fixture = match CueFlacTestFixture::with_realtime_capture().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up CUE/FLAC test fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = CueFlacTestFixture::with_realtime_capture()
+        .await
+        .expect("set up CUE/FLAC realtime capture fixture");
 
     let track_id = fixture.track_ids[1].clone();
 
@@ -2759,13 +2456,9 @@ async fn test_cue_flac_seek() {
 async fn test_direct_play_skips_pregap_cue_flac() {
     use bae_core::audio_codec::decode_audio;
 
-    let mut fixture = match CueFlacTestFixture::with_capture().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up CUE/FLAC test fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = CueFlacTestFixture::with_capture()
+        .await
+        .expect("set up CUE/FLAC capture fixture");
 
     let track_id = fixture.track_ids[1].clone();
 
@@ -2882,6 +2575,7 @@ struct HighSampleRateTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_id: String,
+    _capture_stream_rx: CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
@@ -2996,18 +2690,15 @@ impl HighSampleRateTestFixture {
             audio_format.sample_rate
         );
 
-        let playback_handle = bae_core::playback::PlaybackService::start(
-            library_manager.clone(),
-            runtime_handle,
-            100,
-        );
-        playback_handle.set_volume(0.0);
+        let (playback_handle, capture_stream_rx) =
+            start_capture_service(library_manager.clone(), runtime_handle);
         let progress_rx = playback_handle.subscribe_progress();
 
         Ok(Self {
             playback_handle,
             progress_rx,
             track_id,
+            _capture_stream_rx: capture_stream_rx,
             _temp_dir: temp_dir,
         })
     }
@@ -3025,18 +2716,9 @@ impl HighSampleRateTestFixture {
 /// not ~6.5s.
 #[tokio::test]
 async fn test_high_sample_rate_position_calculation() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-
-    let mut fixture = match HighSampleRateTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up high sample rate test fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = HighSampleRateTestFixture::new()
+        .await
+        .expect("set up high sample rate fixture");
 
     // Play the 96kHz track (3 seconds duration)
     fixture.playback_handle.play(fixture.track_id.clone());
@@ -3106,23 +2788,7 @@ async fn test_high_sample_rate_position_calculation() {
 ///    (typically 4096 samples at 44.1kHz) from the keyframe alignment
 #[tokio::test]
 async fn test_seek_lands_near_target_position() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
-
-    if fixture.track_ids.is_empty() {
-        debug!("No tracks available for testing");
-        return;
-    }
+    let mut fixture = PlaybackTestFixture::new().await;
 
     let track_id = fixture.track_ids[0].clone();
 
@@ -3201,13 +2867,9 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     // Real-time capture: at full speed track 2's decoder finishes the whole
     // track before the seek restarts it at 5s, so its sample count overshoots
     // the boundary (flaky under load). Real-time keeps the decoder on the seek.
-    let mut fixture = match CueFlacTestFixture::with_realtime_capture().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up CUE/FLAC test fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = CueFlacTestFixture::with_realtime_capture()
+        .await
+        .expect("set up CUE/FLAC realtime capture fixture");
 
     let track_id = fixture.track_ids[1].clone();
 
@@ -3957,10 +3619,6 @@ async fn test_playing_seek_cue_flac() {
 /// snapshot instead of the test's new service.
 #[tokio::test]
 async fn test_restore_populates_last_position_display() {
-    if should_skip_audio_tests() {
-        eprintln!("Skipping: no audio device");
-        return;
-    }
     tracing_init();
 
     // Build a library + import tracks, but do NOT start a playback service.
@@ -4029,8 +3687,7 @@ async fn test_restore_populates_last_position_display() {
 
     // Start the playback service — restore() runs on the audio thread before
     // run() and calls emit_position_display at its tail.
-    let handle = bae_core::playback::PlaybackService::start(library_manager, runtime_handle, 100);
-    handle.set_volume(0.0);
+    let (handle, _capture_rx) = start_capture_service(library_manager, runtime_handle);
 
     // Poll the cache: restore() runs asynchronously on a spawned thread, so
     // we can't assume it has completed immediately.
@@ -4064,10 +3721,6 @@ async fn test_restore_populates_last_position_display() {
 /// would sit past the start (`true`). The manual track must still be queued.
 #[tokio::test]
 async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
-    if should_skip_audio_tests() {
-        eprintln!("Skipping: no audio device");
-        return;
-    }
     tracing_init();
 
     let temp_dir = TempDir::new().unwrap();
@@ -4139,8 +3792,7 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
     };
     library_manager.save_playback_state(&state).await.unwrap();
 
-    let handle = bae_core::playback::PlaybackService::start(library_manager, runtime_handle, 100);
-    handle.set_volume(0.0);
+    let (handle, _capture_rx) = start_capture_service(library_manager, runtime_handle);
     let mut progress_rx = handle.subscribe_progress();
 
     // Wait for the queue update restore emits once it commits the restored queue.
@@ -4188,10 +3840,6 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
 /// resumes a live session but never re-cues a finished one.
 #[tokio::test]
 async fn test_play_persists_then_stop_clears_playback_state() {
-    if should_skip_audio_tests() {
-        eprintln!("Skipping: no audio device");
-        return;
-    }
     tracing_init();
 
     let temp_dir = TempDir::new().unwrap();
@@ -4247,9 +3895,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         .id
         .clone();
 
-    let handle =
-        bae_core::playback::PlaybackService::start(library_manager.clone(), runtime_handle, 100);
-    handle.set_volume(0.0);
+    let (handle, _capture_rx) = start_capture_service(library_manager.clone(), runtime_handle);
 
     // Playing a release persists the row: source is the release, current is the
     // first track.
@@ -4366,10 +4012,6 @@ async fn restore_test_library() -> RestoreTestLibrary {
 /// context, which is what we read back.
 #[tokio::test]
 async fn test_restore_drops_deleted_context_keeps_manual() {
-    if should_skip_audio_tests() {
-        eprintln!("Skipping: no audio device");
-        return;
-    }
     let lib = restore_test_library().await;
     let track_id = lib.track_ids[0].clone();
 
@@ -4394,12 +4036,8 @@ async fn test_restore_drops_deleted_context_keeps_manual() {
         .await
         .unwrap();
 
-    let handle = bae_core::playback::PlaybackService::start(
-        lib.library_manager.clone(),
-        lib.runtime_handle,
-        100,
-    );
-    handle.set_volume(0.0);
+    let (handle, _capture_rx) =
+        start_capture_service(lib.library_manager.clone(), lib.runtime_handle);
 
     // Restore committed once the current (manual) track populates the late-mount
     // display cache.
@@ -4445,10 +4083,6 @@ async fn test_restore_drops_deleted_context_keeps_manual() {
 /// panics. The position cache stays `None` because no current track restored.
 #[tokio::test]
 async fn test_restore_corrupt_row_starts_fresh() {
-    if should_skip_audio_tests() {
-        eprintln!("Skipping: no audio device");
-        return;
-    }
     let lib = restore_test_library().await;
     let track_id = lib.track_ids[0].clone();
 
@@ -4466,9 +4100,7 @@ async fn test_restore_corrupt_row_starts_fresh() {
         .await
         .unwrap();
 
-    let handle =
-        bae_core::playback::PlaybackService::start(lib.library_manager, lib.runtime_handle, 100);
-    handle.set_volume(0.0);
+    let (handle, _capture_rx) = start_capture_service(lib.library_manager, lib.runtime_handle);
 
     // Give restore time to run (and to NOT crash). A discarded cache restores no
     // current track, so the display cache stays empty.
@@ -4490,17 +4122,7 @@ async fn test_restore_corrupt_row_starts_fresh() {
 /// inline emit in handle_preview_seek, this test fails.
 #[tokio::test]
 async fn test_preview_seek_while_paused_emits_position_update() {
-    if should_skip_audio_tests() {
-        eprintln!("Skipping: no audio device");
-        return;
-    }
-    let mut fixture = match PlaybackTestFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("Failed to set up test fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = PlaybackTestFixture::new().await;
 
     let preview_path = fixture
         .album_dir
@@ -4585,6 +4207,7 @@ struct CloudOnlyPlaybackFixture {
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     cloud: Arc<support::MockCloudHome>,
     track_ids: Vec<String>,
+    _capture_stream_rx: CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
@@ -4661,15 +4284,15 @@ impl CloudOnlyPlaybackFixture {
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert!(!track_ids.is_empty(), "Should have imported tracks");
 
-        let playback_handle =
-            bae_core::playback::PlaybackService::start(library_manager, runtime_handle, 100);
-        playback_handle.set_volume(0.0);
+        let (playback_handle, capture_stream_rx) =
+            start_capture_service(library_manager, runtime_handle);
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,
             progress_rx,
             cloud,
             track_ids,
+            _capture_stream_rx: capture_stream_rx,
             _temp_dir: temp_dir,
         })
     }
@@ -4683,17 +4306,9 @@ impl CloudOnlyPlaybackFixture {
 /// playback down rather than leaving a frozen position bar.
 #[tokio::test]
 async fn mid_flight_cloud_read_failure_ends_in_stopped() {
-    if should_skip_audio_tests() {
-        debug!("Skipping audio test - no audio device available");
-        return;
-    }
-    let mut fixture = match CloudOnlyPlaybackFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            debug!("skip: cloud-only fixture setup failed: {e}");
-            return;
-        }
-    };
+    let mut fixture = CloudOnlyPlaybackFixture::new()
+        .await
+        .expect("set up cloud-only playback fixture");
     assert!(
         !fixture.track_ids.is_empty(),
         "fixture must import at least one playable track"
