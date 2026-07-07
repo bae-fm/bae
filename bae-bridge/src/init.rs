@@ -258,10 +258,12 @@ fn configure_logging(diagnostics: Diagnostics) -> Result<(), BridgeError> {
 
 #[cfg(target_os = "android")]
 fn configure_logging(diagnostics: Diagnostics) -> Result<(), BridgeError> {
-    install_logging_subscriber!(
-        diagnostics,
-        tracing_android::layer("bae").expect("Android tracing layer initializes"),
-    )
+    let android_layer = tracing_android::layer("bae").map_err(|error| {
+        BridgeError::internal(format!(
+            "Android tracing layer initialization failed: {error}"
+        ))
+    })?;
+    install_logging_subscriber!(diagnostics, android_layer,)
 }
 
 #[cfg(target_os = "ios")]

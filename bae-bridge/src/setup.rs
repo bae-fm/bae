@@ -39,25 +39,26 @@ fn local_library(
     path: std::path::PathBuf,
     cloud_provider: Option<&bae_core::config::CloudProvider>,
     is_active: bool,
-) -> BridgeLibrary {
-    BridgeLibrary {
+) -> Result<BridgeLibrary, BridgeError> {
+    let path = path
+        .to_str()
+        .ok_or_else(|| {
+            BridgeError::config(format!("Library path is not UTF-8: {}", path.display()))
+        })?
+        .to_string();
+
+    Ok(BridgeLibrary {
         id,
-        // Library dirs bae creates are UTF-8 by construction (the dir name is a
-        // UUID), and discovery skips any non-UTF-8 dir, so the path is always
-        // addressable as a `String` — never lossily mangled.
-        path: path
-            .to_str()
-            .expect("library path is UTF-8 by construction")
-            .to_string(),
+        path,
         name,
         cloud_provider: cloud_provider.map(bridge_cloud_provider),
         is_active,
-    }
+    })
 }
 
 /// `BridgeLibrary` for a freshly-created/restored local library Config.
 /// Always active (the operation just made it the active one).
-fn local_library_active(config: &bae_core::config::Config) -> BridgeLibrary {
+fn local_library_active(config: &bae_core::config::Config) -> Result<BridgeLibrary, BridgeError> {
     local_library(
         config.library_id.clone(),
         config.library_name.clone(),
@@ -69,7 +70,9 @@ fn local_library_active(config: &bae_core::config::Config) -> BridgeLibrary {
 
 /// `BridgeLibrary` for a discovered local library — path and active flag
 /// come from the discovery scan.
-pub(crate) fn local_library_from_info(info: bae_core::config::LibraryInfo) -> BridgeLibrary {
+pub(crate) fn local_library_from_info(
+    info: bae_core::config::LibraryInfo,
+) -> Result<BridgeLibrary, BridgeError> {
     local_library(
         info.id,
         info.name,
@@ -141,6 +144,12 @@ async fn restore_from_code_config(
 #[cfg(feature = "oauth-providers")]
 static OAUTH_CANCEL_TX: Mutex<Option<tokio::sync::watch::Sender<bool>>> = Mutex::new(None);
 
+fn lock_bridge_mutex<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 #[cfg(not(feature = "oauth-providers"))]
 fn oauth_unavailable() -> BridgeError {
     BridgeError::config("OAuth providers are not available in this build".to_string())
@@ -194,11 +203,11 @@ pub fn init_keyring() {
 /// yet) and the in-app sidebar / quick switcher call this.
 #[uniffi::export]
 pub fn discover_libraries() -> Result<Vec<BridgeLibrary>, BridgeError> {
-    Ok(Config::discover_libraries()
+    Config::discover_libraries()
         .map_err(BridgeError::config)?
         .into_iter()
         .map(local_library_from_info)
-        .collect())
+        .collect()
 }
 
 /// Create a new library. The library is set as the active library.
@@ -211,7 +220,7 @@ pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError
     }
     .map_err(|e| BridgeError::config(format!("{e}")))?;
 
-    Ok(local_library_active(&config))
+    local_library_active(&config)
 }
 
 /// Run the future built by `make_fut` on a worker of a shared onboarding
@@ -322,7 +331,7 @@ pub fn restore_from_cloud(
         .await
         .map_err(|e| BridgeError::internal(format!("Failed to restore library: {e}")))?;
 
-        Ok(local_library_active(&config))
+        local_library_active(&config)
     })
 }
 
@@ -355,7 +364,7 @@ pub fn restore_from_code(
 
         let config = restore_from_code_config(code, oauth_tokens, get_cloudkit_ops(), None).await?;
 
-        Ok(local_library_active(&config))
+        local_library_active(&config)
     })
 }
 
@@ -389,7 +398,7 @@ pub fn restore_from_code_operation(
 impl RestoreFromCodeOperation {
     pub fn restore(&self) -> Result<BridgeLibrary, BridgeError> {
         {
-            let mut started = self.started.lock().expect("restore started mutex poisoned");
+            let mut started = lock_bridge_mutex(&self.started);
             if *started {
                 return Err(BridgeError::internal(
                     "restore operation already started".to_string(),
@@ -405,7 +414,7 @@ impl RestoreFromCodeOperation {
             let config =
                 restore_from_code_config(code, oauth_tokens, cloudkit_ops, Some(cancel)).await?;
 
-            Ok(local_library_active(&config))
+            local_library_active(&config)
         })
     }
 
@@ -541,7 +550,7 @@ pub fn join_from_code(
 
         let config = join_from_code_config(code, oauth_tokens, get_cloudkit_ops(), None).await?;
 
-        Ok(local_library_active(&config))
+        local_library_active(&config)
     })
 }
 
@@ -575,7 +584,7 @@ pub fn join_from_code_operation(
 impl JoinFromCodeOperation {
     pub fn join(&self) -> Result<BridgeLibrary, BridgeError> {
         {
-            let mut started = self.started.lock().expect("join started mutex poisoned");
+            let mut started = lock_bridge_mutex(&self.started);
             if *started {
                 return Err(BridgeError::internal(
                     "join operation already started".to_string(),
@@ -591,7 +600,7 @@ impl JoinFromCodeOperation {
             let config =
                 join_from_code_config(code, oauth_tokens, cloudkit_ops, Some(cancel)).await?;
 
-            Ok(local_library_active(&config))
+            local_library_active(&config)
         })
     }
 
@@ -604,9 +613,7 @@ impl JoinFromCodeOperation {
 #[cfg(feature = "oauth-providers")]
 pub(crate) fn new_oauth_cancel() -> tokio::sync::watch::Receiver<bool> {
     let (tx, rx) = tokio::sync::watch::channel(false);
-    *OAUTH_CANCEL_TX
-        .lock()
-        .expect("OAuth cancel tx mutex poisoned") = Some(tx);
+    *lock_bridge_mutex(&OAUTH_CANCEL_TX) = Some(tx);
     rx
 }
 
@@ -634,9 +641,7 @@ pub fn oauth_authorize(provider: BridgeCloudProvider) -> Result<String, BridgeEr
     });
 
     // Clean up
-    *OAUTH_CANCEL_TX
-        .lock()
-        .expect("OAuth cancel tx mutex poisoned") = None;
+    *lock_bridge_mutex(&OAUTH_CANCEL_TX) = None;
 
     result
 }
@@ -771,11 +776,7 @@ pub fn oauth_complete(
 #[cfg(feature = "oauth-providers")]
 #[uniffi::export]
 pub fn oauth_cancel() {
-    if let Some(tx) = OAUTH_CANCEL_TX
-        .lock()
-        .expect("OAuth cancel tx mutex poisoned")
-        .take()
-    {
+    if let Some(tx) = lock_bridge_mutex(&OAUTH_CANCEL_TX).take() {
         let _ = tx.send(true);
     }
 }
@@ -801,6 +802,30 @@ pub fn validate_restore_config(fields: crate::types::BridgeRestoreFormFields) ->
 mod tests {
     use super::*;
     use crate::types::BridgeErrorCategory;
+
+    #[cfg(unix)]
+    #[test]
+    fn local_library_from_info_rejects_non_utf8_path() {
+        use std::ffi::OsString;
+        use std::os::unix::ffi::OsStringExt;
+
+        let info = bae_core::config::LibraryInfo {
+            id: "library-id".to_string(),
+            name: "Library Name".to_string(),
+            path: std::path::PathBuf::from(OsString::from_vec(vec![0xff])),
+            is_active: true,
+            cloud_provider: None,
+        };
+
+        let error = local_library_from_info(info).expect_err("non-UTF-8 path should fail");
+        match error {
+            BridgeError::Diagnostic { category, detail } => {
+                assert_eq!(category, BridgeErrorCategory::Config);
+                assert!(detail.contains("Library path is not UTF-8"));
+            }
+            other => panic!("expected config bridge error, got {other:?}"),
+        }
+    }
 
     #[test]
     fn on_worker_returns_bridge_error_for_panicked_task() {

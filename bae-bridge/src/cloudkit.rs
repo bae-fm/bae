@@ -166,19 +166,20 @@ fn cloudkit_err_to_cloud_home_err(e: CloudKitError) -> coven::CloudHomeError {
 static CLOUDKIT_DRIVER: std::sync::Mutex<Option<Arc<dyn CloudKitDriver>>> =
     std::sync::Mutex::new(None);
 
+fn cloudkit_driver_slot() -> std::sync::MutexGuard<'static, Option<Arc<dyn CloudKitDriver>>> {
+    CLOUDKIT_DRIVER
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 /// Register the CloudKit driver. Call before `initApp()` on CloudKit-backed libraries.
 #[uniffi::export]
 pub fn set_cloudkit_driver(driver: Box<dyn CloudKitDriver>) {
-    *CLOUDKIT_DRIVER
-        .lock()
-        .expect("CloudKit driver mutex poisoned") = Some(Arc::from(driver));
+    *cloudkit_driver_slot() = Some(Arc::from(driver));
 }
 
 /// Get a CloudKit ops adapter, if a driver has been registered.
 pub(crate) fn get_cloudkit_ops() -> Option<Arc<dyn coven::CloudKitOps>> {
-    let driver = CLOUDKIT_DRIVER
-        .lock()
-        .expect("CloudKit driver mutex poisoned")
-        .clone()?;
+    let driver = cloudkit_driver_slot().clone()?;
     Some(Arc::new(CloudKitDriverAdapter { driver }))
 }
