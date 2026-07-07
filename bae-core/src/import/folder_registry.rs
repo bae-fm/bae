@@ -314,4 +314,40 @@ mod tests {
         assert!(registry.is_skipped("/a/Album"));
         assert!(!registry.is_skipped("/a"));
     }
+
+    #[test]
+    fn malformed_yaml_warns_and_starts_empty() {
+        // Content that parses as YAML but not into the registry shape (a bare
+        // sequence, not the folders/skipped map) must not fail app start —
+        // load warns and returns the empty default.
+        let (_tmp, library_dir) = temp_library_dir();
+        let path = ImportFolderRegistry::file_path(&library_dir);
+        std::fs::write(&path, "- not\n- a\n- mapping\n").unwrap();
+
+        let registry = ImportFolderRegistry::load(&library_dir);
+        assert!(registry.watched_folders().is_empty());
+        assert!(!registry.is_skipped("/anything"));
+    }
+
+    #[test]
+    fn unreadable_file_warns_and_starts_empty() {
+        // A registry path that isn't a readable file — here a directory where
+        // the YAML should be — is an error other than NotFound; load warns and
+        // starts empty rather than propagating the failure to app start.
+        let (_tmp, library_dir) = temp_library_dir();
+        let path = ImportFolderRegistry::file_path(&library_dir);
+        std::fs::create_dir(&path).unwrap();
+
+        let registry = ImportFolderRegistry::load(&library_dir);
+        assert!(registry.watched_folders().is_empty());
+    }
+
+    #[test]
+    fn watched_folder_without_final_component_uses_full_path_as_name() {
+        // A root path has no final component; the group name falls back to the
+        // full path so the header is never empty.
+        let folder = WatchedFolder::from_path("/".to_string());
+        assert_eq!(folder.path, "/");
+        assert_eq!(folder.name, "/");
+    }
 }
