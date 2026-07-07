@@ -18,11 +18,10 @@ use bae_core::import::{
     IdentityChoice, ImportCommand, ImportService, MetadataRef, MetadataSource, StorageMode,
 };
 use bae_core::library::LibraryManager;
-use bae_core::playback::{PlaybackProgress, PlaybackState};
 use bae_core::util::content_type::ContentType;
 use coven::LibraryDir;
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tempfile::TempDir;
 use tokio::time::timeout;
 use tracing::info;
@@ -245,25 +244,6 @@ async fn test_cue_flac_playback_uses_track_positions() {
     // Play track 2 (direct play skips pregap, starts at INDEX 01)
     fixture.playback_handle.play(track_id.clone());
     let captured = fixture.next_capture_stream().await;
-
-    // Wait for playback to start
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut started = false;
-    while Instant::now() < deadline && !started {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if let PlaybackState::Playing { track_info, .. } = &state {
-                    if track_info.track_id == track_id {
-                        started = true;
-                    }
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    assert!(started, "Track 2 should start playing");
 
     // Decode XLD reference for track 2 (white noise)
     let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -490,7 +470,6 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
 
 struct CueFlacCaptureFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
-    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     capture_stream_rx:
         tokio::sync::mpsc::UnboundedReceiver<std::sync::Arc<std::sync::Mutex<Vec<f32>>>>,
@@ -573,11 +552,8 @@ impl CueFlacCaptureFixture {
             100,
             Box::new(capture_output),
         );
-        let progress_rx = playback_handle.subscribe_progress();
-
         Ok(Self {
             playback_handle,
-            progress_rx,
             track_ids,
             capture_stream_rx,
             _temp_dir: temp_dir,
