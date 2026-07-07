@@ -120,7 +120,7 @@ impl coven::CloudKitOps for CloudKitDriverAdapter {
     ) -> Result<coven::CloudKitShare, coven::CloudHomeError> {
         self.driver
             .grant_share(member_pubkey.to_string())
-            .map(bridge_share_to_coven)
+            .map(BridgeCloudKitShare::into_core)
             .map_err(cloudkit_err_to_cloud_home_err)
     }
 
@@ -133,7 +133,7 @@ impl coven::CloudKitOps for CloudKitDriverAdapter {
     fn accept_share(&self, share_url: &str) -> Result<coven::CloudKitShare, coven::CloudHomeError> {
         self.driver
             .accept_share(share_url.to_string())
-            .map(bridge_share_to_coven)
+            .map(BridgeCloudKitShare::into_core)
             .map_err(cloudkit_err_to_cloud_home_err)
     }
 }
@@ -148,11 +148,18 @@ fn scope_fields(scope: &coven::CloudKitScope) -> (Option<String>, Option<String>
     }
 }
 
-fn bridge_share_to_coven(share: BridgeCloudKitShare) -> coven::CloudKitShare {
-    coven::CloudKitShare {
-        share_url: share.share_url,
-        owner_name: share.owner_name,
-        zone_name: share.zone_name,
+impl BridgeCloudKitShare {
+    fn into_core(self) -> coven::CloudKitShare {
+        let BridgeCloudKitShare {
+            share_url,
+            owner_name,
+            zone_name,
+        } = self;
+        coven::CloudKitShare {
+            share_url,
+            owner_name,
+            zone_name,
+        }
     }
 }
 

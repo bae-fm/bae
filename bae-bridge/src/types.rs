@@ -18,9 +18,12 @@ pub enum BridgeDiscogsSaveOutcome {
     Rejected,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl From<bae_core::import::DiscogsSaveOutcome> for BridgeDiscogsSaveOutcome {
-    fn from(outcome: bae_core::import::DiscogsSaveOutcome) -> Self {
+// Gated to `desktop` (not just non-mobile) because the sole caller,
+// `save_discogs_token`, is desktop-only; as an inherent fn (unlike the trait
+// impl it replaced) it would otherwise warn as dead code on non-desktop builds.
+#[cfg(feature = "desktop")]
+impl BridgeDiscogsSaveOutcome {
+    pub(crate) fn from_core(outcome: bae_core::import::DiscogsSaveOutcome) -> Self {
         use bae_core::import::DiscogsSaveOutcome;
         match outcome {
             DiscogsSaveOutcome::Valid => Self::Valid,
@@ -37,7 +40,7 @@ pub enum BridgeMetadataSource {
 }
 
 impl BridgeMetadataSource {
-    pub fn to_core(self) -> bae_core::import::MetadataSource {
+    pub fn into_core(self) -> bae_core::import::MetadataSource {
         match self {
             BridgeMetadataSource::MusicBrainz => bae_core::import::MetadataSource::MusicBrainz,
             BridgeMetadataSource::Discogs => bae_core::import::MetadataSource::Discogs,
@@ -95,20 +98,18 @@ pub enum BridgeLibraryImageType {
     Artist,
 }
 
-impl From<bae_core::db::LibraryImageType> for BridgeLibraryImageType {
-    fn from(value: bae_core::db::LibraryImageType) -> Self {
+impl BridgeLibraryImageType {
+    pub(crate) fn from_core(value: bae_core::db::LibraryImageType) -> Self {
         match value {
             bae_core::db::LibraryImageType::Cover => Self::Cover,
             bae_core::db::LibraryImageType::Artist => Self::Artist,
         }
     }
-}
 
-impl From<BridgeLibraryImageType> for bae_core::db::LibraryImageType {
-    fn from(value: BridgeLibraryImageType) -> Self {
-        match value {
-            BridgeLibraryImageType::Cover => Self::Cover,
-            BridgeLibraryImageType::Artist => Self::Artist,
+    pub(crate) fn into_core(self) -> bae_core::db::LibraryImageType {
+        match self {
+            BridgeLibraryImageType::Cover => bae_core::db::LibraryImageType::Cover,
+            BridgeLibraryImageType::Artist => bae_core::db::LibraryImageType::Artist,
         }
     }
 }
@@ -127,18 +128,28 @@ pub struct BridgeImageRef {
 
 impl BridgeImageRef {
     pub fn from_core(r: bae_core::album_detail::ImageRef) -> Self {
+        let bae_core::album_detail::ImageRef {
+            id,
+            version,
+            image_type,
+        } = r;
         Self {
-            id: r.id,
-            version: r.version,
-            image_type: r.image_type.into(),
+            id,
+            version,
+            image_type: BridgeLibraryImageType::from_core(image_type),
         }
     }
 
     pub fn into_core(self) -> bae_core::album_detail::ImageRef {
+        let BridgeImageRef {
+            id,
+            version,
+            image_type,
+        } = self;
         bae_core::album_detail::ImageRef {
-            id: self.id,
-            version: self.version,
-            image_type: self.image_type.into(),
+            id,
+            version,
+            image_type: image_type.into_core(),
         }
     }
 }
@@ -313,14 +324,14 @@ pub enum BridgeIdentityChoice {
 }
 
 impl BridgeIdentityChoice {
-    pub fn to_core(self) -> bae_core::import::IdentityChoice {
+    pub fn into_core(self) -> bae_core::import::IdentityChoice {
         match self {
             Self::Exact { release_id, source } => bae_core::import::IdentityChoice::Exact {
-                release_ref: bae_core::import::MetadataRef::new(release_id, source.to_core()),
+                release_ref: bae_core::import::MetadataRef::new(release_id, source.into_core()),
             },
             Self::Approximate { release_id, source } => {
                 bae_core::import::IdentityChoice::Approximate {
-                    release_ref: bae_core::import::MetadataRef::new(release_id, source.to_core()),
+                    release_ref: bae_core::import::MetadataRef::new(release_id, source.into_core()),
                 }
             }
             Self::Unknown => bae_core::import::IdentityChoice::Unknown,
@@ -409,13 +420,22 @@ pub struct BridgeAudioFormat {
     pub channels: i64,
 }
 
-pub(crate) fn audio_format_to_bridge(f: bae_core::album_detail::AudioFormat) -> BridgeAudioFormat {
-    BridgeAudioFormat {
-        codec: f.codec,
-        sample_rate_hz: f.sample_rate_hz,
-        bits_per_sample: f.bits_per_sample,
-        bitrate_kbps: f.bitrate_kbps,
-        channels: f.channels,
+impl BridgeAudioFormat {
+    pub(crate) fn from_core(f: bae_core::album_detail::AudioFormat) -> Self {
+        let bae_core::album_detail::AudioFormat {
+            codec,
+            sample_rate_hz,
+            bits_per_sample,
+            bitrate_kbps,
+            channels,
+        } = f;
+        Self {
+            codec,
+            sample_rate_hz,
+            bits_per_sample,
+            bitrate_kbps,
+            channels,
+        }
     }
 }
 
@@ -496,7 +516,7 @@ pub enum BridgeRepeatMode {
 }
 
 impl BridgeRepeatMode {
-    pub fn to_core(self) -> bae_core::playback::RepeatMode {
+    pub fn into_core(self) -> bae_core::playback::RepeatMode {
         match self {
             Self::Off => bae_core::playback::RepeatMode::Off,
             Self::Track => bae_core::playback::RepeatMode::Track,
@@ -567,11 +587,17 @@ pub struct BridgeSidePausePrompt {
 
 impl BridgeSidePausePrompt {
     pub(crate) fn from_core(prompt: bae_core::playback::PlaybackSidePausePrompt) -> Self {
+        let bae_core::playback::PlaybackSidePausePrompt {
+            id,
+            title_key,
+            side_letter,
+            message_key,
+        } = prompt;
         Self {
-            id: prompt.id,
-            title_key: prompt.title_key.to_string(),
-            side_letter: prompt.side_letter,
-            message_key: prompt.message_key.to_string(),
+            id,
+            title_key: title_key.to_string(),
+            side_letter,
+            message_key: message_key.to_string(),
         }
     }
 }
@@ -686,16 +712,18 @@ impl BridgeInvalidReason {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-pub(crate) fn invalid_reason_to_bridge(r: bae_core::import::InvalidReason) -> BridgeInvalidReason {
-    use bae_core::import::InvalidReason as R;
-    match r {
-        R::CorruptAudioFile { path } => BridgeInvalidReason::CorruptAudioFile { path },
-        R::CorruptImage { path } => BridgeInvalidReason::CorruptImage { path },
-        R::CueMissingAudio => BridgeInvalidReason::CueMissingAudio,
-        R::CueParseFailed { path } => BridgeInvalidReason::CueParseFailed { path },
-        R::CueUnsupportedLayout => BridgeInvalidReason::CueUnsupportedLayout,
-        R::CueUnsupportedCodec { codec } => BridgeInvalidReason::CueUnsupportedCodec { codec },
-        R::NoValidAudio => BridgeInvalidReason::NoValidAudio,
+impl BridgeInvalidReason {
+    pub(crate) fn from_core(r: bae_core::import::InvalidReason) -> Self {
+        use bae_core::import::InvalidReason as R;
+        match r {
+            R::CorruptAudioFile { path } => BridgeInvalidReason::CorruptAudioFile { path },
+            R::CorruptImage { path } => BridgeInvalidReason::CorruptImage { path },
+            R::CueMissingAudio => BridgeInvalidReason::CueMissingAudio,
+            R::CueParseFailed { path } => BridgeInvalidReason::CueParseFailed { path },
+            R::CueUnsupportedLayout => BridgeInvalidReason::CueUnsupportedLayout,
+            R::CueUnsupportedCodec { codec } => BridgeInvalidReason::CueUnsupportedCodec { codec },
+            R::NoValidAudio => BridgeInvalidReason::NoValidAudio,
+        }
     }
 }
 
@@ -785,10 +813,8 @@ pub struct BridgeWatchedFolder {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl BridgeWatchedFolder {
     pub fn from_core(folder: bae_core::import::WatchedFolder) -> Self {
-        Self {
-            path: folder.path,
-            name: folder.name,
-        }
+        let bae_core::import::WatchedFolder { path, name } = folder;
+        Self { path, name }
     }
 }
 
@@ -887,25 +913,27 @@ pub enum BridgeImportStep {
 }
 
 #[cfg(feature = "desktop")]
-pub(crate) fn import_step_to_bridge(s: bae_core::import::ImportStep) -> BridgeImportStep {
-    use bae_core::import::{ImportPhase, ImportStep, PrepareStep};
-    match s {
-        ImportStep::Preparing(p) => BridgeImportStep::Preparing {
-            step: match p {
-                PrepareStep::ParsingMetadata => BridgePrepareStep::ParsingMetadata,
-                PrepareStep::WritingCoverArt => BridgePrepareStep::WritingCoverArt,
-                PrepareStep::DiscoveringFiles => BridgePrepareStep::DiscoveringFiles,
-                PrepareStep::ValidatingTracks => BridgePrepareStep::ValidatingTracks,
-                PrepareStep::SavingToDatabase => BridgePrepareStep::SavingToDatabase,
+impl BridgeImportStep {
+    pub(crate) fn from_core(s: bae_core::import::ImportStep) -> Self {
+        use bae_core::import::{ImportPhase, ImportStep, PrepareStep};
+        match s {
+            ImportStep::Preparing(p) => BridgeImportStep::Preparing {
+                step: match p {
+                    PrepareStep::ParsingMetadata => BridgePrepareStep::ParsingMetadata,
+                    PrepareStep::WritingCoverArt => BridgePrepareStep::WritingCoverArt,
+                    PrepareStep::DiscoveringFiles => BridgePrepareStep::DiscoveringFiles,
+                    PrepareStep::ValidatingTracks => BridgePrepareStep::ValidatingTracks,
+                    PrepareStep::SavingToDatabase => BridgePrepareStep::SavingToDatabase,
+                },
             },
-        },
-        ImportStep::Running(phase) => BridgeImportStep::Running {
-            phase: match phase {
-                ImportPhase::ReferencingFiles => BridgeImportPhase::ReferencingFiles,
-                ImportPhase::MeasuringLoudness => BridgeImportPhase::MeasuringLoudness,
-                ImportPhase::Finalizing => BridgeImportPhase::Finalizing,
+            ImportStep::Running(phase) => BridgeImportStep::Running {
+                phase: match phase {
+                    ImportPhase::ReferencingFiles => BridgeImportPhase::ReferencingFiles,
+                    ImportPhase::MeasuringLoudness => BridgeImportPhase::MeasuringLoudness,
+                    ImportPhase::Finalizing => BridgeImportPhase::Finalizing,
+                },
             },
-        },
+        }
     }
 }
 
@@ -967,13 +995,22 @@ pub enum BridgeSearchQuery {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-pub(crate) fn library_status_to_bridge(s: bae_core::db::LibraryStatus) -> BridgeLibraryStatus {
-    BridgeLibraryStatus {
-        release_id: s.release_id,
-        release_in_library: s.release_in_library,
-        album_in_library: s.album_in_library,
-        album_title: s.album_title,
-        album_id: s.album_id,
+impl BridgeLibraryStatus {
+    pub(crate) fn from_core(s: bae_core::db::LibraryStatus) -> Self {
+        let bae_core::db::LibraryStatus {
+            release_id,
+            release_in_library,
+            album_in_library,
+            album_title,
+            album_id,
+        } = s;
+        Self {
+            release_id,
+            release_in_library,
+            album_in_library,
+            album_title,
+            album_id,
+        }
     }
 }
 
@@ -998,7 +1035,7 @@ pub enum BridgeExcludedSignal {
 
 impl BridgeExcludedSignal {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn to_core(self) -> bae_core::identify::ExcludedSignal {
+    pub fn into_core(self) -> bae_core::identify::ExcludedSignal {
         use bae_core::identify::ExcludedSignal;
         match self {
             Self::Disc => ExcludedSignal::Disc,
@@ -1023,15 +1060,17 @@ pub enum BridgeSignalOrigin {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-fn signal_origin_to_bridge(o: bae_core::signals::SignalOrigin) -> BridgeSignalOrigin {
-    use bae_core::signals::SignalOrigin;
-    match o {
-        SignalOrigin::DiscToc => BridgeSignalOrigin::DiscToc,
-        SignalOrigin::CueSheet => BridgeSignalOrigin::CueSheet,
-        SignalOrigin::Artwork => BridgeSignalOrigin::Artwork,
-        SignalOrigin::FolderName => BridgeSignalOrigin::FolderName,
-        SignalOrigin::Filename => BridgeSignalOrigin::Filename,
-        SignalOrigin::TextFile => BridgeSignalOrigin::TextFile,
+impl BridgeSignalOrigin {
+    fn from_core(o: bae_core::signals::SignalOrigin) -> Self {
+        use bae_core::signals::SignalOrigin;
+        match o {
+            SignalOrigin::DiscToc => BridgeSignalOrigin::DiscToc,
+            SignalOrigin::CueSheet => BridgeSignalOrigin::CueSheet,
+            SignalOrigin::Artwork => BridgeSignalOrigin::Artwork,
+            SignalOrigin::FolderName => BridgeSignalOrigin::FolderName,
+            SignalOrigin::Filename => BridgeSignalOrigin::Filename,
+            SignalOrigin::TextFile => BridgeSignalOrigin::TextFile,
+        }
     }
 }
 
@@ -1045,10 +1084,13 @@ pub struct BridgeSourcedValue {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-fn sourced_value_to_bridge(s: bae_core::signals::SourcedValue) -> BridgeSourcedValue {
-    BridgeSourcedValue {
-        value: s.value,
-        origin: signal_origin_to_bridge(s.origin),
+impl BridgeSourcedValue {
+    fn from_core(s: bae_core::signals::SourcedValue) -> Self {
+        let bae_core::signals::SourcedValue { value, origin } = s;
+        Self {
+            value,
+            origin: BridgeSignalOrigin::from_core(origin),
+        }
     }
 }
 
@@ -1092,14 +1134,16 @@ pub enum BridgeLookupFailure {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-fn lookup_failure_to_bridge(f: bae_core::signals::LookupFailure) -> BridgeLookupFailure {
-    use bae_core::signals::LookupFailure;
-    match f {
-        LookupFailure::Network => BridgeLookupFailure::Network,
-        LookupFailure::Provider { status } => BridgeLookupFailure::Provider { status },
-        LookupFailure::Timeout => BridgeLookupFailure::Timeout,
-        LookupFailure::ArtworkAnalysis => BridgeLookupFailure::ArtworkAnalysis,
-        LookupFailure::Diagnostic { detail } => BridgeLookupFailure::Diagnostic { detail },
+impl BridgeLookupFailure {
+    fn from_core(f: bae_core::signals::LookupFailure) -> Self {
+        use bae_core::signals::LookupFailure;
+        match f {
+            LookupFailure::Network => BridgeLookupFailure::Network,
+            LookupFailure::Provider { status } => BridgeLookupFailure::Provider { status },
+            LookupFailure::Timeout => BridgeLookupFailure::Timeout,
+            LookupFailure::ArtworkAnalysis => BridgeLookupFailure::ArtworkAnalysis,
+            LookupFailure::Diagnostic { detail } => BridgeLookupFailure::Diagnostic { detail },
+        }
     }
 }
 
@@ -1161,48 +1205,63 @@ pub struct BridgeSignalsToolbar {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-fn signal_state_to_bridge(s: bae_core::identify::SignalState) -> BridgeSignalState {
-    use bae_core::identify::SignalState;
-    match s {
-        SignalState::LookingUp => BridgeSignalState::LookingUp,
-        SignalState::Found { count } => BridgeSignalState::Found { count },
-        SignalState::NoMatch => BridgeSignalState::NoMatch,
-        SignalState::Skipped => BridgeSignalState::Skipped,
-        SignalState::Failed { failure } => BridgeSignalState::Failed {
-            failure: lookup_failure_to_bridge(failure),
-        },
-        SignalState::Confirms { count } => BridgeSignalState::Confirms { count },
+impl BridgeSignalState {
+    fn from_core(s: bae_core::identify::SignalState) -> Self {
+        use bae_core::identify::SignalState;
+        match s {
+            SignalState::LookingUp => BridgeSignalState::LookingUp,
+            SignalState::Found { count } => BridgeSignalState::Found { count },
+            SignalState::NoMatch => BridgeSignalState::NoMatch,
+            SignalState::Skipped => BridgeSignalState::Skipped,
+            SignalState::Failed { failure } => BridgeSignalState::Failed {
+                failure: BridgeLookupFailure::from_core(failure),
+            },
+            SignalState::Confirms { count } => BridgeSignalState::Confirms { count },
+        }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-fn toolbar_signal_to_bridge(s: bae_core::identify::ToolbarSignal) -> BridgeToolbarSignal {
-    use bae_core::identify::{SignalKind, SignalRole};
-    BridgeToolbarSignal {
-        kind: match s.kind {
-            SignalKind::DiscId => BridgeSignalKind::DiscId,
-            SignalKind::Barcode => BridgeSignalKind::Barcode,
-            SignalKind::Catalog => BridgeSignalKind::Catalog,
-        },
-        role: match s.role {
-            SignalRole::Identity => BridgeSignalRole::Identity,
-            SignalRole::Filter => BridgeSignalRole::Filter,
-        },
-        value: s.value,
-        origin: signal_origin_to_bridge(s.origin),
-        state: signal_state_to_bridge(s.state),
-        excluded: s.excluded,
+impl BridgeToolbarSignal {
+    fn from_core(s: bae_core::identify::ToolbarSignal) -> Self {
+        use bae_core::identify::{SignalKind, SignalRole, ToolbarSignal};
+        let ToolbarSignal {
+            kind,
+            role,
+            value,
+            origin,
+            state,
+            excluded,
+        } = s;
+        BridgeToolbarSignal {
+            kind: match kind {
+                SignalKind::DiscId => BridgeSignalKind::DiscId,
+                SignalKind::Barcode => BridgeSignalKind::Barcode,
+                SignalKind::Catalog => BridgeSignalKind::Catalog,
+            },
+            role: match role {
+                SignalRole::Identity => BridgeSignalRole::Identity,
+                SignalRole::Filter => BridgeSignalRole::Filter,
+            },
+            value,
+            origin: BridgeSignalOrigin::from_core(origin),
+            state: BridgeSignalState::from_core(state),
+            excluded,
+        }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-pub(crate) fn toolbar_to_bridge(
-    toolbar: Vec<bae_core::identify::ToolbarSignal>,
-) -> BridgeSignalsToolbar {
-    BridgeSignalsToolbar {
-        signals: toolbar.into_iter().map(toolbar_signal_to_bridge).collect(),
+impl BridgeSignalsToolbar {
+    pub(crate) fn from_core(toolbar: Vec<bae_core::identify::ToolbarSignal>) -> Self {
+        BridgeSignalsToolbar {
+            signals: toolbar
+                .into_iter()
+                .map(BridgeToolbarSignal::from_core)
+                .collect(),
+        }
     }
 }
 
@@ -2703,235 +2762,295 @@ pub enum CloudKitError {
 
 // =========================================================================
 // Core <-> Bridge conversions
+//
+// Convention: every conversion is an associated function on the `Bridge*` type.
+// Core → bridge is `BridgeX::from_core(core_value) -> Self`; bridge → core is
+// `BridgeX::into_core(self) -> core::X`. Record converters exhaustively
+// destructure their core input(s) — no `..` in any struct or enum-variant
+// pattern — so a new bae-core field fails the build here instead of silently
+// never crossing the bridge. A field the bridge deliberately drops is named
+// explicitly (`field: _`), with a comment when the drop isn't obvious. Fields of
+// external-crate types (coven's `Config`/`CloudHomeConfig`, etc.) are exempt —
+// the bridge can't police a pinned crate's field list — and stay dotted reads.
 // =========================================================================
 
-pub(crate) fn bridge_error_category(
-    category: bae_core::ui::UiErrorCategory,
-) -> BridgeErrorCategory {
-    use bae_core::ui::UiErrorCategory;
-    match category {
-        UiErrorCategory::Database => BridgeErrorCategory::Database,
-        UiErrorCategory::Config => BridgeErrorCategory::Config,
-        UiErrorCategory::Internal => BridgeErrorCategory::Internal,
-        UiErrorCategory::Import => BridgeErrorCategory::Import,
-        UiErrorCategory::Export => BridgeErrorCategory::Export,
+impl BridgeErrorCategory {
+    pub(crate) fn from_core(category: bae_core::ui::UiErrorCategory) -> Self {
+        use bae_core::ui::UiErrorCategory;
+        match category {
+            UiErrorCategory::Database => BridgeErrorCategory::Database,
+            UiErrorCategory::Config => BridgeErrorCategory::Config,
+            UiErrorCategory::Internal => BridgeErrorCategory::Internal,
+            UiErrorCategory::Import => BridgeErrorCategory::Import,
+            UiErrorCategory::Export => BridgeErrorCategory::Export,
+        }
     }
 }
 
-fn bridge_entity_kind(entity: bae_core::ui::UiEntityKind) -> BridgeEntityKind {
-    use bae_core::ui::UiEntityKind;
-    match entity {
-        UiEntityKind::Library => BridgeEntityKind::Library,
-        UiEntityKind::Album => BridgeEntityKind::Album,
-        UiEntityKind::Release => BridgeEntityKind::Release,
-        UiEntityKind::Track => BridgeEntityKind::Track,
-        UiEntityKind::File => BridgeEntityKind::File,
+impl BridgeEntityKind {
+    fn from_core(entity: bae_core::ui::UiEntityKind) -> Self {
+        use bae_core::ui::UiEntityKind;
+        match entity {
+            UiEntityKind::Library => BridgeEntityKind::Library,
+            UiEntityKind::Album => BridgeEntityKind::Album,
+            UiEntityKind::Release => BridgeEntityKind::Release,
+            UiEntityKind::Track => BridgeEntityKind::Track,
+            UiEntityKind::File => BridgeEntityKind::File,
+        }
     }
 }
 
-pub(crate) fn bridge_error(error: bae_core::ui::UiError) -> BridgeError {
-    use bae_core::ui::UiError;
-    match error {
-        UiError::NotFound { entity, id } => BridgeError::NotFound {
-            entity: bridge_entity_kind(entity),
-            id,
-        },
-        UiError::Diagnostic { category, detail } => BridgeError::Diagnostic {
-            category: bridge_error_category(category),
-            detail,
-        },
+impl BridgeError {
+    pub(crate) fn from_core(error: bae_core::ui::UiError) -> Self {
+        use bae_core::ui::UiError;
+        match error {
+            UiError::NotFound { entity, id } => BridgeError::NotFound {
+                entity: BridgeEntityKind::from_core(entity),
+                id,
+            },
+            UiError::Diagnostic { category, detail } => BridgeError::Diagnostic {
+                category: BridgeErrorCategory::from_core(category),
+                detail,
+            },
+        }
     }
 }
 
-pub(crate) fn bridge_playback_error_reason(
-    reason: bae_core::ui::PlaybackErrorReason,
-) -> BridgePlaybackErrorReason {
-    use bae_core::ui::PlaybackErrorReason;
-    match reason {
-        PlaybackErrorReason::SyncDisconnected => BridgePlaybackErrorReason::SyncDisconnected,
-        PlaybackErrorReason::UploadPending => BridgePlaybackErrorReason::UploadPending,
-        PlaybackErrorReason::Diagnostic { error } => BridgePlaybackErrorReason::Diagnostic {
-            error: bridge_error(error),
-        },
+impl BridgePlaybackErrorReason {
+    pub(crate) fn from_core(reason: bae_core::ui::PlaybackErrorReason) -> Self {
+        use bae_core::ui::PlaybackErrorReason;
+        match reason {
+            PlaybackErrorReason::SyncDisconnected => BridgePlaybackErrorReason::SyncDisconnected,
+            PlaybackErrorReason::UploadPending => BridgePlaybackErrorReason::UploadPending,
+            PlaybackErrorReason::Diagnostic { error } => BridgePlaybackErrorReason::Diagnostic {
+                error: BridgeError::from_core(error),
+            },
+        }
     }
 }
 
 /// Map the UI's storage-state choice to the core's `StorageMode`. Pinned-ness is
 /// orthogonal — the caller passes the import's `pin` choice separately.
 #[cfg(feature = "desktop")]
-pub(crate) fn bridge_storage_mode_to_core(
-    mode: BridgeStorageMode,
-) -> bae_core::import::StorageMode {
-    use bae_core::import::StorageMode;
-    match mode {
-        BridgeStorageMode::Local => StorageMode::Local,
-        BridgeStorageMode::Remote => StorageMode::Remote,
+impl BridgeStorageMode {
+    pub(crate) fn into_core(self) -> bae_core::import::StorageMode {
+        use bae_core::import::StorageMode;
+        match self {
+            BridgeStorageMode::Local => StorageMode::Local,
+            BridgeStorageMode::Remote => StorageMode::Remote,
+        }
     }
 }
 
 #[cfg(feature = "desktop")]
-pub(crate) fn bridge_cover_to_import(c: BridgeCoverSelection) -> bae_core::import::CoverSelection {
-    match c {
-        BridgeCoverSelection::ReleaseImage { file_id } => {
-            bae_core::import::CoverSelection::Local(file_id)
+impl BridgeCoverSelection {
+    pub(crate) fn into_core(self) -> bae_core::import::CoverSelection {
+        match self {
+            BridgeCoverSelection::ReleaseImage { file_id } => {
+                bae_core::import::CoverSelection::Local(file_id)
+            }
+            BridgeCoverSelection::RemoteCover { selection } => {
+                bae_core::import::CoverSelection::Remote(
+                    selection.url,
+                    selection.source.into_core(),
+                )
+            }
         }
-        BridgeCoverSelection::RemoteCover { selection } => {
-            bae_core::import::CoverSelection::Remote(selection.url, selection.source.to_core())
+    }
+}
+
+impl BridgeCloudProvider {
+    pub(crate) fn from_core(p: &bae_core::config::CloudProvider) -> Self {
+        use bae_core::config::CloudProvider;
+        match p {
+            CloudProvider::S3 => BridgeCloudProvider::S3,
+            CloudProvider::GoogleDrive => BridgeCloudProvider::GoogleDrive,
+            CloudProvider::Dropbox => BridgeCloudProvider::Dropbox,
+            CloudProvider::OneDrive => BridgeCloudProvider::OneDrive,
+            CloudProvider::CloudKit => BridgeCloudProvider::CloudKit,
         }
     }
 }
 
-pub(crate) fn bridge_cloud_provider(p: &bae_core::config::CloudProvider) -> BridgeCloudProvider {
-    use bae_core::config::CloudProvider;
-    match p {
-        CloudProvider::S3 => BridgeCloudProvider::S3,
-        CloudProvider::GoogleDrive => BridgeCloudProvider::GoogleDrive,
-        CloudProvider::Dropbox => BridgeCloudProvider::Dropbox,
-        CloudProvider::OneDrive => BridgeCloudProvider::OneDrive,
-        CloudProvider::CloudKit => BridgeCloudProvider::CloudKit,
+impl BridgeMemberRole {
+    pub(crate) fn from_core(role: bae_core::sync::membership::MemberRole) -> Self {
+        use bae_core::sync::membership::MemberRole;
+        match role {
+            MemberRole::Owner => BridgeMemberRole::Owner,
+            MemberRole::Member => BridgeMemberRole::Member,
+            MemberRole::Follower => BridgeMemberRole::Follower,
+        }
     }
 }
 
-pub(crate) fn bridge_member_role(role: bae_core::sync::membership::MemberRole) -> BridgeMemberRole {
-    use bae_core::sync::membership::MemberRole;
-    match role {
-        MemberRole::Owner => BridgeMemberRole::Owner,
-        MemberRole::Member => BridgeMemberRole::Member,
-        MemberRole::Follower => BridgeMemberRole::Follower,
+impl BridgeMember {
+    fn from_core(m: bae_core::sync::membership::MembershipMember) -> Self {
+        let bae_core::sync::membership::MembershipMember {
+            pubkey,
+            role,
+            is_self,
+            fingerprint,
+            can_remove,
+        } = m;
+        BridgeMember {
+            pubkey,
+            role: BridgeMemberRole::from_core(role),
+            is_self,
+            fingerprint,
+            can_remove,
+        }
     }
 }
 
-fn bridge_member(m: bae_core::sync::membership::MembershipMember) -> BridgeMember {
-    BridgeMember {
-        pubkey: m.pubkey,
-        role: bridge_member_role(m.role),
-        is_self: m.is_self,
-        fingerprint: m.fingerprint,
-        can_remove: m.can_remove,
-    }
-}
-
-pub(crate) fn bridge_membership(
-    membership: bae_core::sync::membership::Membership,
-) -> BridgeMembership {
-    BridgeMembership {
-        members: membership.members.into_iter().map(bridge_member).collect(),
-        self_is_owner: membership.self_is_owner,
+impl BridgeMembership {
+    pub(crate) fn from_core(membership: bae_core::sync::membership::Membership) -> Self {
+        let bae_core::sync::membership::Membership {
+            members,
+            self_is_owner,
+        } = membership;
+        BridgeMembership {
+            members: members.into_iter().map(BridgeMember::from_core).collect(),
+            self_is_owner,
+        }
     }
 }
 
 /// Only the OAuth sign-in and authorize flows still map a bare bridge provider
 /// back to core; gated so non-OAuth builds don't carry a dead mapping.
 #[cfg(feature = "oauth-providers")]
-pub(crate) fn bridge_cloud_provider_to_core(
-    p: BridgeCloudProvider,
-) -> bae_core::config::CloudProvider {
-    use bae_core::config::CloudProvider;
-    match p {
-        BridgeCloudProvider::S3 => CloudProvider::S3,
-        BridgeCloudProvider::GoogleDrive => CloudProvider::GoogleDrive,
-        BridgeCloudProvider::Dropbox => CloudProvider::Dropbox,
-        BridgeCloudProvider::OneDrive => CloudProvider::OneDrive,
-        BridgeCloudProvider::CloudKit => CloudProvider::CloudKit,
+impl BridgeCloudProvider {
+    pub(crate) fn into_core(self) -> bae_core::config::CloudProvider {
+        use bae_core::config::CloudProvider;
+        match self {
+            BridgeCloudProvider::S3 => CloudProvider::S3,
+            BridgeCloudProvider::GoogleDrive => CloudProvider::GoogleDrive,
+            BridgeCloudProvider::Dropbox => CloudProvider::Dropbox,
+            BridgeCloudProvider::OneDrive => CloudProvider::OneDrive,
+            BridgeCloudProvider::CloudKit => CloudProvider::CloudKit,
+        }
     }
 }
 
-pub(crate) fn bridge_home_storage_to_core(s: BridgeHomeStorage) -> bae_core::config::HomeStorage {
-    use bae_core::config::HomeStorage;
-    match s {
-        BridgeHomeStorage::Opaque => HomeStorage::Opaque,
-        BridgeHomeStorage::Browsable => HomeStorage::Browsable,
+impl BridgeHomeStorage {
+    pub(crate) fn into_core(self) -> bae_core::config::HomeStorage {
+        use bae_core::config::HomeStorage;
+        match self {
+            BridgeHomeStorage::Opaque => HomeStorage::Opaque,
+            BridgeHomeStorage::Browsable => HomeStorage::Browsable,
+        }
     }
 }
 
-pub(crate) fn bridge_storage_sort_to_core(
-    sort: &BridgeStorageSort,
-) -> bae_core::album_detail::StorageSort {
-    bae_core::album_detail::StorageSort {
-        field: match sort.field {
-            BridgeStorageSortField::AlbumTitle => {
-                bae_core::album_detail::StorageSortField::AlbumTitle
-            }
-            BridgeStorageSortField::ArtistNames => {
-                bae_core::album_detail::StorageSortField::ArtistNames
-            }
-            BridgeStorageSortField::Format => bae_core::album_detail::StorageSortField::Format,
-            BridgeStorageSortField::FileCount => {
-                bae_core::album_detail::StorageSortField::FileCount
-            }
-            BridgeStorageSortField::TotalSize => {
-                bae_core::album_detail::StorageSortField::TotalSize
-            }
-        },
-        direction: match sort.direction {
-            BridgeStorageSortDirection::Ascending => {
-                bae_core::album_detail::StorageSortDirection::Ascending
-            }
-            BridgeStorageSortDirection::Descending => {
-                bae_core::album_detail::StorageSortDirection::Descending
-            }
-        },
+impl BridgeStorageSort {
+    pub(crate) fn into_core(self) -> bae_core::album_detail::StorageSort {
+        let BridgeStorageSort { field, direction } = self;
+        bae_core::album_detail::StorageSort {
+            field: match field {
+                BridgeStorageSortField::AlbumTitle => {
+                    bae_core::album_detail::StorageSortField::AlbumTitle
+                }
+                BridgeStorageSortField::ArtistNames => {
+                    bae_core::album_detail::StorageSortField::ArtistNames
+                }
+                BridgeStorageSortField::Format => bae_core::album_detail::StorageSortField::Format,
+                BridgeStorageSortField::FileCount => {
+                    bae_core::album_detail::StorageSortField::FileCount
+                }
+                BridgeStorageSortField::TotalSize => {
+                    bae_core::album_detail::StorageSortField::TotalSize
+                }
+            },
+            direction: match direction {
+                BridgeStorageSortDirection::Ascending => {
+                    bae_core::album_detail::StorageSortDirection::Ascending
+                }
+                BridgeStorageSortDirection::Descending => {
+                    bae_core::album_detail::StorageSortDirection::Descending
+                }
+            },
+        }
     }
 }
 
-pub(crate) fn bridge_storage_filter_to_core(
-    filter: BridgeStorageFilter,
-) -> bae_core::album_detail::StorageFilter {
-    match filter {
-        BridgeStorageFilter::All => bae_core::album_detail::StorageFilter::All,
-        BridgeStorageFilter::Remote => bae_core::album_detail::StorageFilter::Remote,
-        BridgeStorageFilter::Local => bae_core::album_detail::StorageFilter::Local,
-        BridgeStorageFilter::Uploading => bae_core::album_detail::StorageFilter::Uploading,
+impl BridgeStorageFilter {
+    pub(crate) fn into_core(self) -> bae_core::album_detail::StorageFilter {
+        match self {
+            BridgeStorageFilter::All => bae_core::album_detail::StorageFilter::All,
+            BridgeStorageFilter::Remote => bae_core::album_detail::StorageFilter::Remote,
+            BridgeStorageFilter::Local => bae_core::album_detail::StorageFilter::Local,
+            BridgeStorageFilter::Uploading => bae_core::album_detail::StorageFilter::Uploading,
+        }
     }
 }
 
-pub(crate) fn bridge_composer_sort_to_core(
-    c: &BridgeComposerSortCriterion,
-) -> bae_core::db::ComposerSortCriterion {
-    bae_core::db::ComposerSortCriterion {
-        field: match c.field {
-            BridgeComposerSortField::Name => bae_core::db::ComposerSortField::Name,
-            BridgeComposerSortField::WorkCount => bae_core::db::ComposerSortField::WorkCount,
-            BridgeComposerSortField::LinkedReleaseCount => {
-                bae_core::db::ComposerSortField::LinkedReleaseCount
-            }
-        },
-        direction: bridge_sort_direction_to_core(&c.direction),
+impl BridgeComposerSortCriterion {
+    pub(crate) fn into_core(self) -> bae_core::db::ComposerSortCriterion {
+        let BridgeComposerSortCriterion { field, direction } = self;
+        bae_core::db::ComposerSortCriterion {
+            field: match field {
+                BridgeComposerSortField::Name => bae_core::db::ComposerSortField::Name,
+                BridgeComposerSortField::WorkCount => bae_core::db::ComposerSortField::WorkCount,
+                BridgeComposerSortField::LinkedReleaseCount => {
+                    bae_core::db::ComposerSortField::LinkedReleaseCount
+                }
+            },
+            direction: direction.into_core(),
+        }
     }
 }
 
-fn bridge_sort_direction_to_core(direction: &BridgeSortDirection) -> bae_core::db::SortDirection {
-    match direction {
-        BridgeSortDirection::Ascending => bae_core::db::SortDirection::Ascending,
-        BridgeSortDirection::Descending => bae_core::db::SortDirection::Descending,
+impl BridgeSortDirection {
+    pub(crate) fn into_core(self) -> bae_core::db::SortDirection {
+        match self {
+            BridgeSortDirection::Ascending => bae_core::db::SortDirection::Ascending,
+            BridgeSortDirection::Descending => bae_core::db::SortDirection::Descending,
+        }
     }
 }
 
-pub(crate) fn bridge_sort_to_core(c: &BridgeSortCriterion) -> bae_core::db::AlbumSortCriterion {
-    bae_core::db::AlbumSortCriterion {
-        field: match c.field {
-            BridgeSortField::Title => bae_core::db::AlbumSortField::Title,
-            BridgeSortField::Artist => bae_core::db::AlbumSortField::Artist,
-            BridgeSortField::Year => bae_core::db::AlbumSortField::Year,
-            BridgeSortField::DateAdded => bae_core::db::AlbumSortField::DateAdded,
-        },
-        direction: bridge_sort_direction_to_core(&c.direction),
+impl BridgeSortCriterion {
+    pub(crate) fn into_core(self) -> bae_core::db::AlbumSortCriterion {
+        let BridgeSortCriterion { field, direction } = self;
+        bae_core::db::AlbumSortCriterion {
+            field: match field {
+                BridgeSortField::Title => bae_core::db::AlbumSortField::Title,
+                BridgeSortField::Artist => bae_core::db::AlbumSortField::Artist,
+                BridgeSortField::Year => bae_core::db::AlbumSortField::Year,
+                BridgeSortField::DateAdded => bae_core::db::AlbumSortField::DateAdded,
+            },
+            direction: direction.into_core(),
+        }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-pub(crate) fn metadata_result_to_bridge(
-    r: bae_core::import::search::MetadataResult,
-) -> BridgeMetadataResult {
-    BridgeMetadataResult {
-        source: BridgeMetadataSource::from_core(r.source),
-        release_id: r.release_id,
-        year: r.year,
-        format: r.format,
-        label: r.label,
-        catalog_number: r.catalog_number,
-        country: r.country,
+impl BridgeMetadataResult {
+    pub(crate) fn from_core(r: bae_core::import::search::MetadataResult) -> Self {
+        let bae_core::import::search::MetadataResult {
+            source,
+            release_id,
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            // Dropped: the card carries the album's title/artist/cover, so a
+            // pressing projection keeps only pressing-distinguishing fields.
+            title: _,
+            artist: _,
+            cover_art: _,
+            source_group_id: _,
+        } = r;
+        BridgeMetadataResult {
+            source: BridgeMetadataSource::from_core(source),
+            release_id,
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+        }
     }
 }
 
@@ -2940,14 +3059,20 @@ pub(crate) fn metadata_result_to_bridge(
     not(any(target_os = "ios", target_os = "android"))
 ))]
 #[cfg(feature = "desktop")]
-pub(crate) fn remote_cover_data_to_bridge(
-    c: bae_core::import::cover_art::RemoteCover,
-) -> BridgeRemoteCover {
-    let selection = bridge_remote_cover_selection(c.url, c.source);
-    let cover_choice = remote_cover_choice_to_bridge(&selection, &c.thumbnail_url);
-    BridgeRemoteCover {
-        cover_choice,
-        label: c.label,
+impl BridgeRemoteCover {
+    pub(crate) fn from_core(c: bae_core::import::cover_art::RemoteCover) -> Self {
+        let bae_core::import::cover_art::RemoteCover {
+            url,
+            thumbnail_url,
+            label,
+            source,
+        } = c;
+        let selection = bridge_remote_cover_selection(url, source);
+        let cover_choice = remote_cover_choice_to_bridge(&selection, &thumbnail_url);
+        BridgeRemoteCover {
+            cover_choice,
+            label,
+        }
     }
 }
 
@@ -2989,338 +3114,471 @@ fn remote_cover_choice_to_bridge(
 }
 
 #[cfg(feature = "desktop")]
-pub(crate) fn release_detail_to_bridge(
-    d: bae_core::import::search::ImportSearchReleaseDetail,
-    local_track_count: Option<u32>,
-) -> BridgeReleaseDetail {
-    let track_count_mismatch = d.track_count_mismatch(local_track_count);
-    let default_cover = d
-        .default_cover()
-        .cloned()
-        .map(remote_cover_data_to_bridge)
-        .map(|c| c.cover_choice);
-    let cover_art: Vec<BridgeRemoteCover> = d
-        .cover_art
-        .into_iter()
-        .map(remote_cover_data_to_bridge)
-        .collect();
-    BridgeReleaseDetail {
-        release_id: d.release_id,
-        source: BridgeMetadataSource::from_core(d.source),
-        source_group_id: d.source_group_id,
-        title: d.title,
-        artist: d.artist,
-        year: d.year,
-        format: d.format,
-        label: d.label,
-        catalog_number: d.catalog_number,
-        country: d.country,
-        barcode: d.barcode,
-        track_count: d.track_count,
-        track_count_mismatch,
-        tracks: d
-            .tracks
-            .into_iter()
-            .map(|t| BridgeReleaseTrack {
-                title: t.title,
-                artist: t.artist,
-                duration_ms: t.duration_ms,
-                position: t.position,
-                side: t.side,
-            })
-            .collect(),
-        cover_art,
-        default_cover,
+impl BridgeReleaseDetail {
+    pub(crate) fn from_core(
+        d: bae_core::import::search::ImportSearchReleaseDetail,
+        local_track_count: Option<u32>,
+    ) -> Self {
+        // Derived values borrow `&d`; compute them before destructuring `d`.
+        let track_count_mismatch = d.track_count_mismatch(local_track_count);
+        let default_cover = d
+            .default_cover()
+            .cloned()
+            .map(BridgeRemoteCover::from_core)
+            .map(|c| c.cover_choice);
+        let bae_core::import::search::ImportSearchReleaseDetail {
+            release_id,
+            source,
+            source_group_id,
+            title,
+            artist,
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            barcode,
+            track_count,
+            tracks,
+            cover_art,
+        } = d;
+        BridgeReleaseDetail {
+            release_id,
+            source: BridgeMetadataSource::from_core(source),
+            source_group_id,
+            title,
+            artist,
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            barcode,
+            track_count,
+            track_count_mismatch,
+            tracks: tracks
+                .into_iter()
+                .map(BridgeReleaseTrack::from_core)
+                .collect(),
+            cover_art: cover_art
+                .into_iter()
+                .map(BridgeRemoteCover::from_core)
+                .collect(),
+            default_cover,
+        }
     }
 }
 
 #[cfg(feature = "desktop")]
-fn bridge_remote_cover_to_core(c: BridgeRemoteCover) -> bae_core::import::cover_art::RemoteCover {
-    let BridgeCoverChoice {
-        selection,
-        thumbnail_source,
-        ..
-    } = c.cover_choice;
-    let BridgeCoverSelection::RemoteCover { selection } = selection else {
-        unreachable!("BridgeRemoteCover must carry a remote cover selection");
-    };
-    let BridgeCoverImageSource::Remote { url: thumbnail_url } = thumbnail_source else {
-        unreachable!("BridgeRemoteCover must carry a remote cover thumbnail");
-    };
-    bae_core::import::cover_art::RemoteCover {
-        url: selection.url,
-        thumbnail_url,
-        label: c.label,
-        source: selection.source.to_core(),
+impl BridgeReleaseTrack {
+    pub(crate) fn from_core(t: bae_core::import::search::ReleaseTrack) -> Self {
+        let bae_core::import::search::ReleaseTrack {
+            title,
+            artist,
+            duration_ms,
+            position,
+            side,
+        } = t;
+        Self {
+            title,
+            artist,
+            duration_ms,
+            position,
+            side,
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::import::search::ReleaseTrack {
+        let BridgeReleaseTrack {
+            title,
+            artist,
+            duration_ms,
+            position,
+            side,
+        } = self;
+        bae_core::import::search::ReleaseTrack {
+            title,
+            artist,
+            duration_ms,
+            position,
+            side,
+        }
     }
 }
 
-/// Reverse of [`release_detail_to_bridge`]. Used by the user-edit shaping
+#[cfg(feature = "desktop")]
+impl BridgeRemoteCover {
+    pub(crate) fn into_core(self) -> bae_core::import::cover_art::RemoteCover {
+        let BridgeRemoteCover {
+            cover_choice,
+            label,
+        } = self;
+        let BridgeCoverChoice {
+            selection,
+            thumbnail_source,
+            // The preview and thumbnail sources are the same remote URL; the
+            // core cover carries only the one thumbnail URL, read below.
+            preview_source: _,
+        } = cover_choice;
+        let BridgeCoverSelection::RemoteCover { selection } = selection else {
+            unreachable!("BridgeRemoteCover must carry a remote cover selection");
+        };
+        let BridgeCoverImageSource::Remote { url: thumbnail_url } = thumbnail_source else {
+            unreachable!("BridgeRemoteCover must carry a remote cover thumbnail");
+        };
+        bae_core::import::cover_art::RemoteCover {
+            url: selection.url,
+            thumbnail_url,
+            label,
+            source: selection.source.into_core(),
+        }
+    }
+}
+
+/// Reverse of [`BridgeReleaseDetail::from_core`]. Used by the user-edit shaping
 /// path (the bridge has the detail in bridge shape from the prefetch, and
-/// the shaping function in bae-core takes the core type). Drops the
-/// bridge-computed `track_count_mismatch` field — shaping doesn't read it.
+/// the shaping function in bae-core takes the core type).
 #[cfg(feature = "desktop")]
-pub(crate) fn release_detail_from_bridge(
-    d: BridgeReleaseDetail,
-) -> bae_core::import::search::ImportSearchReleaseDetail {
-    bae_core::import::search::ImportSearchReleaseDetail {
-        release_id: d.release_id,
-        source: d.source.to_core(),
-        source_group_id: d.source_group_id,
-        title: d.title,
-        artist: d.artist,
-        year: d.year,
-        format: d.format,
-        label: d.label,
-        catalog_number: d.catalog_number,
-        country: d.country,
-        barcode: d.barcode,
-        track_count: d.track_count,
-        tracks: d
-            .tracks
-            .into_iter()
-            .map(|t| bae_core::import::search::ReleaseTrack {
-                title: t.title,
-                artist: t.artist,
-                duration_ms: t.duration_ms,
-                position: t.position,
-                side: t.side,
-            })
-            .collect(),
-        cover_art: d
-            .cover_art
-            .into_iter()
-            .map(bridge_remote_cover_to_core)
-            .collect(),
+impl BridgeReleaseDetail {
+    pub(crate) fn into_core(self) -> bae_core::import::search::ImportSearchReleaseDetail {
+        let BridgeReleaseDetail {
+            release_id,
+            source,
+            source_group_id,
+            title,
+            artist,
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            barcode,
+            track_count,
+            tracks,
+            cover_art,
+            // Both are bridge-computed for the UI; the core detail carries
+            // neither, and shaping doesn't read them.
+            track_count_mismatch: _,
+            default_cover: _,
+        } = self;
+        bae_core::import::search::ImportSearchReleaseDetail {
+            release_id,
+            source: source.into_core(),
+            source_group_id,
+            title,
+            artist,
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            barcode,
+            track_count,
+            tracks: tracks
+                .into_iter()
+                .map(BridgeReleaseTrack::into_core)
+                .collect(),
+            cover_art: cover_art
+                .into_iter()
+                .map(BridgeRemoteCover::into_core)
+                .collect(),
+        }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-pub(crate) fn identify_source_to_bridge(
-    s: bae_core::identify::IdentifySource,
-) -> BridgeIdentifySource {
-    match s {
-        bae_core::identify::IdentifySource::Discid => BridgeIdentifySource::Discid,
-        bae_core::identify::IdentifySource::Barcode => BridgeIdentifySource::Barcode,
-        bae_core::identify::IdentifySource::Combined => BridgeIdentifySource::Combined,
+impl BridgeIdentifySource {
+    pub(crate) fn from_core(s: bae_core::identify::IdentifySource) -> Self {
+        match s {
+            bae_core::identify::IdentifySource::Discid => BridgeIdentifySource::Discid,
+            bae_core::identify::IdentifySource::Barcode => BridgeIdentifySource::Barcode,
+            bae_core::identify::IdentifySource::Combined => BridgeIdentifySource::Combined,
+        }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-fn discid_progress_to_bridge(p: bae_core::identify::DiscidProgress) -> BridgeDiscidProgress {
-    use bae_core::identify::DiscidProgress;
-    match p {
-        DiscidProgress::Computing => BridgeDiscidProgress::Computing,
-        DiscidProgress::LookingUp => BridgeDiscidProgress::LookingUp,
-        DiscidProgress::Done { results, .. } => BridgeDiscidProgress::Done {
-            n_results: results.len() as u32,
-        },
-        DiscidProgress::Skipped { .. } => BridgeDiscidProgress::Skipped,
-        DiscidProgress::Failed { failure, .. } => BridgeDiscidProgress::Failed {
-            failure: lookup_failure_to_bridge(failure),
-        },
+impl BridgeDiscidProgress {
+    fn from_core(p: bae_core::identify::DiscidProgress) -> Self {
+        use bae_core::identify::DiscidProgress;
+        match p {
+            DiscidProgress::Computing => BridgeDiscidProgress::Computing,
+            DiscidProgress::LookingUp => BridgeDiscidProgress::LookingUp,
+            DiscidProgress::Done {
+                results,
+                track_count: _,
+            } => BridgeDiscidProgress::Done {
+                n_results: results.len() as u32,
+            },
+            DiscidProgress::Skipped { track_count: _ } => BridgeDiscidProgress::Skipped,
+            DiscidProgress::Failed {
+                failure,
+                track_count: _,
+            } => BridgeDiscidProgress::Failed {
+                failure: BridgeLookupFailure::from_core(failure),
+            },
+        }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-fn barcode_progress_to_bridge(p: bae_core::identify::BarcodeProgress) -> BridgeBarcodeProgress {
-    use bae_core::identify::BarcodeProgress;
-    match p {
-        BarcodeProgress::Scanning => BridgeBarcodeProgress::Scanning,
-        BarcodeProgress::LookingUp {
-            current,
-            position,
-            total,
-            ..
-        } => BridgeBarcodeProgress::LookingUp {
-            current,
-            position,
-            total,
-        },
-        BarcodeProgress::Done { results, .. } => BridgeBarcodeProgress::Done {
-            n_results: results.len() as u32,
-        },
-        BarcodeProgress::Failed { failure } => BridgeBarcodeProgress::Failed {
-            failure: lookup_failure_to_bridge(failure),
-        },
-        BarcodeProgress::Skipped => BridgeBarcodeProgress::Skipped,
+impl BridgeBarcodeProgress {
+    fn from_core(p: bae_core::identify::BarcodeProgress) -> Self {
+        use bae_core::identify::BarcodeProgress;
+        match p {
+            BarcodeProgress::Scanning => BridgeBarcodeProgress::Scanning,
+            BarcodeProgress::LookingUp {
+                current,
+                position,
+                total,
+                remaining: _,
+            } => BridgeBarcodeProgress::LookingUp {
+                current,
+                position,
+                total,
+            },
+            BarcodeProgress::Done {
+                matched: _,
+                results,
+            } => BridgeBarcodeProgress::Done {
+                n_results: results.len() as u32,
+            },
+            BarcodeProgress::Failed { failure } => BridgeBarcodeProgress::Failed {
+                failure: BridgeLookupFailure::from_core(failure),
+            },
+            BarcodeProgress::Skipped => BridgeBarcodeProgress::Skipped,
+        }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-pub(crate) fn release_group_to_bridge(
-    g: bae_core::import::release_group::ReleaseGroup,
-) -> BridgeReleaseGroup {
-    BridgeReleaseGroup {
-        id: g.id,
-        title: g.title,
-        artist: g.artist,
-        cover_art: g.cover_art.map(remote_cover_data_to_bridge),
-        source_label: g.source_label,
-        group_url: g.group_url,
-        year_min: g.year_min,
-        year_max: g.year_max,
-        pressings: g
-            .pressings
-            .into_iter()
-            .map(metadata_result_to_bridge)
-            .collect(),
+impl BridgeReleaseGroup {
+    pub(crate) fn from_core(g: bae_core::import::release_group::ReleaseGroup) -> Self {
+        let bae_core::import::release_group::ReleaseGroup {
+            id,
+            title,
+            artist,
+            cover_art,
+            source_label,
+            group_url,
+            year_min,
+            year_max,
+            pressings,
+        } = g;
+        BridgeReleaseGroup {
+            id,
+            title,
+            artist,
+            cover_art: cover_art.map(BridgeRemoteCover::from_core),
+            source_label,
+            group_url,
+            year_min,
+            year_max,
+            pressings: pressings
+                .into_iter()
+                .map(BridgeMetadataResult::from_core)
+                .collect(),
+        }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-pub(crate) fn signals_to_bridge(s: bae_core::signals::Signals) -> BridgeSignals {
-    use bae_core::signals::{BarcodeSignal, DiscIdSignal, TextSignal};
+impl BridgeSignals {
+    pub(crate) fn from_core(s: bae_core::signals::Signals) -> Self {
+        use bae_core::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 
-    let disc_id = match s.disc_id {
-        DiscIdSignal::Computed {
+        fn sourced_values(values: Vec<bae_core::signals::SourcedValue>) -> Vec<BridgeSourcedValue> {
+            values
+                .into_iter()
+                .map(BridgeSourcedValue::from_core)
+                .collect()
+        }
+
+        let Signals {
             disc_id,
-            track_count,
-        } => BridgeDiscIdSignal::Computed {
+            barcode,
+            text,
+        } = s;
+
+        let disc_id = match disc_id {
+            DiscIdSignal::Computed {
+                disc_id,
+                track_count,
+            } => BridgeDiscIdSignal::Computed {
+                disc_id,
+                track_count,
+            },
+            DiscIdSignal::Absent { track_count } => BridgeDiscIdSignal::Absent { track_count },
+            DiscIdSignal::Failed {
+                failure,
+                track_count,
+            } => BridgeDiscIdSignal::Failed {
+                failure: BridgeLookupFailure::from_core(failure),
+                track_count,
+            },
+        };
+
+        let barcode = match barcode {
+            BarcodeSignal::Scanning { codes } => BridgeBarcodeSignal::Scanning {
+                codes: sourced_values(codes),
+            },
+            BarcodeSignal::Settled { codes } => BridgeBarcodeSignal::Settled {
+                codes: sourced_values(codes),
+            },
+            BarcodeSignal::Failed { failure, codes } => BridgeBarcodeSignal::Failed {
+                failure: BridgeLookupFailure::from_core(failure),
+                codes: sourced_values(codes),
+            },
+            BarcodeSignal::Absent => BridgeBarcodeSignal::Absent,
+        };
+
+        let text = match text {
+            TextSignal::Scanning {
+                catalogs,
+                free_text,
+            } => BridgeTextSignal::Scanning {
+                catalogs: sourced_values(catalogs),
+                free_text,
+            },
+            TextSignal::Settled {
+                catalogs,
+                free_text,
+            } => BridgeTextSignal::Settled {
+                catalogs: sourced_values(catalogs),
+                free_text,
+            },
+            TextSignal::Failed {
+                failure,
+                catalogs,
+                free_text,
+            } => BridgeTextSignal::Failed {
+                failure: BridgeLookupFailure::from_core(failure),
+                catalogs: sourced_values(catalogs),
+                free_text,
+            },
+        };
+
+        BridgeSignals {
             disc_id,
-            track_count,
-        },
-        DiscIdSignal::Absent { track_count } => BridgeDiscIdSignal::Absent { track_count },
-        DiscIdSignal::Failed {
-            failure,
-            track_count,
-        } => BridgeDiscIdSignal::Failed {
-            failure: lookup_failure_to_bridge(failure),
-            track_count,
-        },
-    };
-
-    let barcode = match s.barcode {
-        BarcodeSignal::Scanning { codes } => BridgeBarcodeSignal::Scanning {
-            codes: codes.into_iter().map(sourced_value_to_bridge).collect(),
-        },
-        BarcodeSignal::Settled { codes } => BridgeBarcodeSignal::Settled {
-            codes: codes.into_iter().map(sourced_value_to_bridge).collect(),
-        },
-        BarcodeSignal::Failed { failure, codes } => BridgeBarcodeSignal::Failed {
-            failure: lookup_failure_to_bridge(failure),
-            codes: codes.into_iter().map(sourced_value_to_bridge).collect(),
-        },
-        BarcodeSignal::Absent => BridgeBarcodeSignal::Absent,
-    };
-
-    let text = match s.text {
-        TextSignal::Scanning {
-            catalogs,
-            free_text,
-        } => BridgeTextSignal::Scanning {
-            catalogs: catalogs.into_iter().map(sourced_value_to_bridge).collect(),
-            free_text,
-        },
-        TextSignal::Settled {
-            catalogs,
-            free_text,
-        } => BridgeTextSignal::Settled {
-            catalogs: catalogs.into_iter().map(sourced_value_to_bridge).collect(),
-            free_text,
-        },
-        TextSignal::Failed {
-            failure,
-            catalogs,
-            free_text,
-        } => BridgeTextSignal::Failed {
-            failure: lookup_failure_to_bridge(failure),
-            catalogs: catalogs.into_iter().map(sourced_value_to_bridge).collect(),
-            free_text,
-        },
-    };
-
-    BridgeSignals {
-        disc_id,
-        barcode,
-        text,
+            barcode,
+            text,
+        }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-fn provenance_to_bridge(p: bae_core::identify::ResultProvenance) -> BridgeResultProvenance {
-    BridgeResultProvenance {
-        by_disc_id: p.by_disc_id,
-        by_barcode: p.by_barcode,
-        matches_catalog: p.matches_catalog,
+impl BridgeResultProvenance {
+    fn from_core(p: bae_core::identify::ResultProvenance) -> Self {
+        let bae_core::identify::ResultProvenance {
+            by_disc_id,
+            by_barcode,
+            matches_catalog,
+        } = p;
+        BridgeResultProvenance {
+            by_disc_id,
+            by_barcode,
+            matches_catalog,
+        }
     }
 }
 
 /// Convert a core identify state into its bridge mirror.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-pub(crate) fn identify_state_to_bridge(
-    s: bae_core::identify::IdentifyState,
-) -> BridgeIdentifyState {
-    use bae_core::identify::IdentifyState;
-    match s {
-        IdentifyState::Idle => BridgeIdentifyState::Idle,
-        IdentifyState::Triangulating {
-            discid, barcode, ..
-        } => BridgeIdentifyState::Triangulating {
-            discid: discid_progress_to_bridge(discid),
-            barcode: barcode_progress_to_bridge(barcode),
-        },
-        IdentifyState::Found {
-            matches,
-            library_statuses,
-            track_count,
-            group,
-            source,
-            provenance,
-            context: _,
-        } => {
-            // `matches` all share `group` (combine guarantees a single group)
-            // and `provenance` is index-aligned with them. Key the provenance
-            // by release id before folding the matches into the group card so
-            // the UI looks each pressing's badges up directly.
-            let provenance = matches
-                .iter()
-                .map(|m| m.release_id.clone())
-                .zip(provenance.into_iter().map(provenance_to_bridge))
-                .collect();
-            let group = bae_core::import::release_group::ReleaseGroup::from_group(group, matches);
-            BridgeIdentifyState::Found {
-                group: release_group_to_bridge(group),
-                library_statuses: library_statuses
-                    .into_iter()
-                    .map(|s| (s.release_id.clone(), library_status_to_bridge(s)))
-                    .collect(),
+impl BridgeIdentifyState {
+    pub(crate) fn from_core(s: bae_core::identify::IdentifyState) -> Self {
+        use bae_core::identify::IdentifyState;
+        match s {
+            IdentifyState::Idle => BridgeIdentifyState::Idle,
+            IdentifyState::Triangulating {
+                discid,
+                barcode,
+                context: _,
+            } => BridgeIdentifyState::Triangulating {
+                discid: BridgeDiscidProgress::from_core(discid),
+                barcode: BridgeBarcodeProgress::from_core(barcode),
+            },
+            IdentifyState::Found {
+                matches,
+                library_statuses,
                 track_count,
-                source: identify_source_to_bridge(source),
+                group,
+                source,
                 provenance,
+                context: _,
+            } => {
+                // `matches` all share `group` (combine guarantees a single group)
+                // and `provenance` is index-aligned with them. Key the provenance
+                // by release id before folding the matches into the group card so
+                // the UI looks each pressing's badges up directly.
+                let provenance = matches
+                    .iter()
+                    .map(|m| m.release_id.clone())
+                    .zip(
+                        provenance
+                            .into_iter()
+                            .map(BridgeResultProvenance::from_core),
+                    )
+                    .collect();
+                let group =
+                    bae_core::import::release_group::ReleaseGroup::from_group(group, matches);
+                BridgeIdentifyState::Found {
+                    group: BridgeReleaseGroup::from_core(group),
+                    library_statuses: library_statuses
+                        .into_iter()
+                        .map(|s| (s.release_id.clone(), BridgeLibraryStatus::from_core(s)))
+                        .collect(),
+                    track_count,
+                    source: BridgeIdentifySource::from_core(source),
+                    provenance,
+                }
             }
-        }
-        IdentifyState::Conflict { context } => {
-            // The per-signal sections come from the context's settled results.
-            // Disc-id results all share one source; name it for the section
-            // header. `None` when the disc-id side is empty (no section).
-            let discid_source_label = context
-                .discid_results
-                .first()
-                .map(|(m, _)| m.source.display_name().to_string());
-            let (discid_matches, discid_statuses) = results_and_status_map(context.discid_results);
-            let (barcode_matches, barcode_statuses) =
-                results_and_status_map(context.barcode_results);
-            BridgeIdentifyState::Conflict {
-                discid_results: discid_matches,
-                discid_library_statuses: discid_statuses,
-                barcode_results: barcode_matches,
-                barcode_library_statuses: barcode_statuses,
-                discid_source_label,
-                matched_barcode: context.matched_barcode,
-                track_count: context.track_count,
+            IdentifyState::Conflict { context } => {
+                let bae_core::identify::state::SignalsContext {
+                    discid_results,
+                    barcode_results,
+                    matched_barcode,
+                    track_count,
+                    // The conflict surface renders only the two settled result
+                    // sets and the matched barcode. The raw signal inputs
+                    // (`disc_id`, `barcode_codes`, `catalogs`), the user's
+                    // `excluded` toggles, and the settled `barcode_failure` drive
+                    // triangulation in core, not this UI state, so they don't cross.
+                    disc_id: _,
+                    barcode_codes: _,
+                    catalogs: _,
+                    excluded: _,
+                    barcode_failure: _,
+                } = context;
+                // The per-signal sections come from the context's settled results.
+                // Disc-id results all share one source; name it for the section
+                // header. `None` when the disc-id side is empty (no section).
+                let discid_source_label = discid_results
+                    .first()
+                    .map(|(m, _)| m.source.display_name().to_string());
+                let (discid_matches, discid_statuses) = results_and_status_map(discid_results);
+                let (barcode_matches, barcode_statuses) = results_and_status_map(barcode_results);
+                BridgeIdentifyState::Conflict {
+                    discid_results: discid_matches,
+                    discid_library_statuses: discid_statuses,
+                    barcode_results: barcode_matches,
+                    barcode_library_statuses: barcode_statuses,
+                    discid_source_label,
+                    matched_barcode,
+                    track_count,
+                }
             }
-        }
-        IdentifyState::NotFoundAnywhere { .. } => BridgeIdentifyState::NotFoundAnywhere,
-        IdentifyState::ManualOnly { track_count, .. } => {
-            BridgeIdentifyState::ManualOnly { track_count }
+            IdentifyState::NotFoundAnywhere { context: _ } => BridgeIdentifyState::NotFoundAnywhere,
+            IdentifyState::ManualOnly {
+                track_count,
+                context: _,
+            } => BridgeIdentifyState::ManualOnly { track_count },
         }
     }
 }
@@ -3342,194 +3600,373 @@ fn results_and_status_map(
     let mut matches = Vec::with_capacity(pairs.len());
     let mut statuses = std::collections::HashMap::with_capacity(pairs.len());
     for (m, s) in pairs {
-        statuses.insert(s.release_id.clone(), library_status_to_bridge(s));
-        matches.push(metadata_result_to_bridge(m));
+        statuses.insert(s.release_id.clone(), BridgeLibraryStatus::from_core(s));
+        matches.push(BridgeMetadataResult::from_core(m));
     }
     (matches, statuses)
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-fn scanned_file_to_bridge(f: bae_core::import::folder_scanner::ScannedFile) -> BridgeFileInfo {
-    BridgeFileInfo {
-        name: f.relative_path,
-        size: f.size,
-        dir_prefix: f.dir_prefix,
-        file_name: f.file_name,
-        local_path: f.path.to_string_lossy().to_string(),
+impl BridgeFileInfo {
+    fn from_core(f: bae_core::import::folder_scanner::ScannedFile) -> Self {
+        let bae_core::import::folder_scanner::ScannedFile {
+            path,
+            relative_path,
+            size,
+            dir_prefix,
+            file_name,
+        } = f;
+        BridgeFileInfo {
+            name: relative_path,
+            size,
+            dir_prefix,
+            file_name,
+            local_path: path.to_string_lossy().to_string(),
+        }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-fn scanned_artwork_to_bridge(
-    f: bae_core::import::folder_scanner::ScannedFile,
-) -> BridgeArtworkFile {
-    let file_id = f.relative_path.clone();
-    let path = f.path.to_string_lossy().to_string();
-    BridgeArtworkFile {
-        file: scanned_file_to_bridge(f),
-        cover_choice: BridgeCoverChoice {
-            selection: BridgeCoverSelection::ReleaseImage { file_id },
-            preview_source: BridgeCoverImageSource::Local { path: path.clone() },
-            thumbnail_source: BridgeCoverImageSource::Local { path },
-        },
+impl BridgeArtworkFile {
+    fn from_core(f: bae_core::import::folder_scanner::ScannedFile) -> Self {
+        // `file_id` is the scanned file's relative path and `path` its absolute
+        // path on disk; read them off the `BridgeFileInfo` (whose `name` /
+        // `local_path` carry exactly those) so the exhaustive destructure of
+        // `ScannedFile` lives solely in `BridgeFileInfo::from_core`.
+        let file = BridgeFileInfo::from_core(f);
+        let file_id = file.name.clone();
+        let path = file.local_path.clone();
+        BridgeArtworkFile {
+            file,
+            cover_choice: BridgeCoverChoice {
+                selection: BridgeCoverSelection::ReleaseImage { file_id },
+                preview_source: BridgeCoverImageSource::Local { path: path.clone() },
+                thumbnail_source: BridgeCoverImageSource::Local { path },
+            },
+        }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-pub(crate) fn categorized_files_to_bridge(
-    files: bae_core::import::folder_scanner::CategorizedFiles,
-) -> BridgeCandidateFiles {
-    use bae_core::import::folder_scanner::AudioContent;
+impl BridgeCueFlacPair {
+    fn from_core(p: bae_core::import::folder_scanner::ScannedCueFlacPair) -> Self {
+        let bae_core::import::folder_scanner::ScannedCueFlacPair {
+            cue_file,
+            audio_file,
+            cue_sheet,
+            total_size,
+            // The bridge lists only the first audio file (`audio_file`); the full
+            // referenced set drives export/import, not this preview row.
+            audio_files: _,
+        } = p;
+        // `cue_sheet.tracks.len()` is a derived count, not a carried field —
+        // `CueSheet` is a large parse product the bridge doesn't mirror.
+        let track_count = cue_sheet.tracks.len() as u32;
+        // Compose BridgeFileInfo (which owns the ScannedFile destructure) for each
+        // side, then destructure the bridge value into this row's flat fields.
+        let BridgeFileInfo {
+            name: cue_name,
+            size: cue_size,
+            local_path: cue_local_path,
+            dir_prefix: _,
+            file_name: _,
+        } = BridgeFileInfo::from_core(cue_file);
+        let BridgeFileInfo {
+            name: flac_name,
+            local_path: flac_local_path,
+            size: _,
+            dir_prefix: _,
+            file_name: _,
+        } = BridgeFileInfo::from_core(audio_file);
+        BridgeCueFlacPair {
+            cue_name,
+            cue_size,
+            cue_local_path,
+            flac_name,
+            flac_local_path,
+            total_size,
+            track_count,
+        }
+    }
+}
 
-    let audio = match files.audio {
-        AudioContent::CueFlacPairs { pairs, .. } => BridgeAudioContent::CueFlacPairs {
-            pairs: pairs
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
+impl BridgeCandidateFiles {
+    pub(crate) fn from_core(files: bae_core::import::folder_scanner::CategorizedFiles) -> Self {
+        use bae_core::import::folder_scanner::{AudioContent, CategorizedFiles};
+
+        let CategorizedFiles {
+            audio,
+            artwork,
+            documents,
+            // Parsed-signal data, not a file the preview lists; the CUE it came
+            // from is already carried under `documents`.
+            unpaired_cue_sheets: _,
+        } = files;
+
+        let audio = match audio {
+            AudioContent::CueFlacPairs {
+                pairs,
+                format_label: _,
+            } => BridgeAudioContent::CueFlacPairs {
+                pairs: pairs
+                    .into_iter()
+                    .map(BridgeCueFlacPair::from_core)
+                    .collect(),
+            },
+            AudioContent::TrackFiles {
+                tracks,
+                format_label: _,
+            } => BridgeAudioContent::TrackFiles {
+                files: tracks.into_iter().map(BridgeFileInfo::from_core).collect(),
+            },
+        };
+
+        BridgeCandidateFiles {
+            audio,
+            artwork: artwork
                 .into_iter()
-                .map(|p| BridgeCueFlacPair {
-                    cue_name: p.cue_file.relative_path,
-                    cue_size: p.cue_file.size,
-                    cue_local_path: p.cue_file.path.to_string_lossy().to_string(),
-                    flac_name: p.audio_file.relative_path,
-                    flac_local_path: p.audio_file.path.to_string_lossy().to_string(),
-                    total_size: p.total_size,
-                    track_count: p.cue_sheet.tracks.len() as u32,
-                })
+                .map(BridgeArtworkFile::from_core)
                 .collect(),
-        },
-        AudioContent::TrackFiles { tracks, .. } => BridgeAudioContent::TrackFiles {
-            files: tracks.into_iter().map(scanned_file_to_bridge).collect(),
-        },
-    };
-
-    BridgeCandidateFiles {
-        audio,
-        artwork: files
-            .artwork
-            .into_iter()
-            .map(scanned_artwork_to_bridge)
-            .collect(),
-        documents: files
-            .documents
-            .into_iter()
-            .map(scanned_file_to_bridge)
-            .collect(),
+            documents: documents
+                .into_iter()
+                .map(BridgeFileInfo::from_core)
+                .collect(),
+        }
     }
 }
 
 #[cfg(feature = "desktop")]
-pub(crate) fn release_user_edit_from_bridge(
-    e: BridgeReleaseUserEdit,
-) -> bae_core::import::ReleaseUserEdit {
-    bae_core::import::ReleaseUserEdit {
-        album_title: e.album_title,
-        album_artist_names: e.album_artist_names,
-        pressing: bae_core::import::PressingEdit {
-            year: e.pressing.year,
-            format: e.pressing.format,
-            label: e.pressing.label,
-            catalog_number: e.pressing.catalog_number,
-            country: e.pressing.country,
-            barcode: e.pressing.barcode,
-        },
-        tracks: e
-            .tracks
-            .into_iter()
-            .map(|t| bae_core::import::TrackUserEdit {
-                title: t.title,
-                side: t.side,
-                track_number: t.track_number,
-                artist_names: t.artist_names,
-            })
-            .collect(),
+impl BridgePressingEdit {
+    fn from_core(p: bae_core::import::PressingEdit) -> Self {
+        let bae_core::import::PressingEdit {
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            barcode,
+        } = p;
+        Self {
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            barcode,
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::PressingEdit {
+        let BridgePressingEdit {
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            barcode,
+        } = self;
+        bae_core::import::PressingEdit {
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            barcode,
+        }
     }
 }
 
 #[cfg(feature = "desktop")]
-pub(crate) fn release_user_edit_to_bridge(
-    e: bae_core::import::ReleaseUserEdit,
-) -> BridgeReleaseUserEdit {
-    BridgeReleaseUserEdit {
-        album_title: e.album_title,
-        album_artist_names: e.album_artist_names,
-        pressing: BridgePressingEdit {
-            year: e.pressing.year,
-            format: e.pressing.format,
-            label: e.pressing.label,
-            catalog_number: e.pressing.catalog_number,
-            country: e.pressing.country,
-            barcode: e.pressing.barcode,
-        },
-        tracks: e
-            .tracks
-            .into_iter()
-            .map(|t| BridgeTrackUserEdit {
-                title: t.title,
-                side: t.side,
-                track_number: t.track_number,
-                artist_names: t.artist_names,
-            })
-            .collect(),
+impl BridgeTrackUserEdit {
+    fn from_core(t: bae_core::import::TrackUserEdit) -> Self {
+        let bae_core::import::TrackUserEdit {
+            title,
+            side,
+            track_number,
+            artist_names,
+        } = t;
+        Self {
+            title,
+            side,
+            track_number,
+            artist_names,
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::TrackUserEdit {
+        let BridgeTrackUserEdit {
+            title,
+            side,
+            track_number,
+            artist_names,
+        } = self;
+        bae_core::import::TrackUserEdit {
+            title,
+            side,
+            track_number,
+            artist_names,
+        }
     }
 }
 
 #[cfg(feature = "desktop")]
-pub(crate) fn raw_release_edit_from_bridge(
-    e: BridgeRawReleaseEdit,
-) -> bae_core::import::RawReleaseEdit {
-    bae_core::import::RawReleaseEdit {
-        album_title: e.album_title,
-        album_artist_text: e.album_artist_text,
-        pressing: bae_core::import::RawPressingEdit {
-            year: e.pressing.year,
-            format: e.pressing.format,
-            label: e.pressing.label,
-            catalog_number: e.pressing.catalog_number,
-            country: e.pressing.country,
-            barcode: e.pressing.barcode,
-        },
-        tracks: e
-            .tracks
-            .into_iter()
-            .map(|t| bae_core::import::RawTrackEdit {
-                id: t.id,
-                title: t.title,
-                artist_text: t.artist_text,
-                side: t.side,
-                track_number: t.track_number,
-            })
-            .collect(),
+impl BridgeReleaseUserEdit {
+    pub(crate) fn from_core(e: bae_core::import::ReleaseUserEdit) -> Self {
+        let bae_core::import::ReleaseUserEdit {
+            album_title,
+            album_artist_names,
+            pressing,
+            tracks,
+        } = e;
+        BridgeReleaseUserEdit {
+            album_title,
+            album_artist_names,
+            pressing: BridgePressingEdit::from_core(pressing),
+            tracks: tracks
+                .into_iter()
+                .map(BridgeTrackUserEdit::from_core)
+                .collect(),
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::import::ReleaseUserEdit {
+        let BridgeReleaseUserEdit {
+            album_title,
+            album_artist_names,
+            pressing,
+            tracks,
+        } = self;
+        bae_core::import::ReleaseUserEdit {
+            album_title,
+            album_artist_names,
+            pressing: pressing.into_core(),
+            tracks: tracks
+                .into_iter()
+                .map(BridgeTrackUserEdit::into_core)
+                .collect(),
+        }
     }
 }
 
 #[cfg(feature = "desktop")]
-pub(crate) fn raw_release_edit_to_bridge(
-    e: bae_core::import::RawReleaseEdit,
-) -> BridgeRawReleaseEdit {
-    BridgeRawReleaseEdit {
-        album_title: e.album_title,
-        album_artist_text: e.album_artist_text,
-        pressing: BridgeRawPressingEdit {
-            year: e.pressing.year,
-            format: e.pressing.format,
-            label: e.pressing.label,
-            catalog_number: e.pressing.catalog_number,
-            country: e.pressing.country,
-            barcode: e.pressing.barcode,
-        },
-        tracks: e
-            .tracks
-            .into_iter()
-            .map(|t| BridgeRawTrackEdit {
-                id: t.id,
-                title: t.title,
-                artist_text: t.artist_text,
-                side: t.side,
-                track_number: t.track_number,
-            })
-            .collect(),
+impl BridgeRawPressingEdit {
+    fn from_core(p: bae_core::import::RawPressingEdit) -> Self {
+        let bae_core::import::RawPressingEdit {
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            barcode,
+        } = p;
+        Self {
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            barcode,
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::RawPressingEdit {
+        let BridgeRawPressingEdit {
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            barcode,
+        } = self;
+        bae_core::import::RawPressingEdit {
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            barcode,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeRawTrackEdit {
+    fn from_core(t: bae_core::import::RawTrackEdit) -> Self {
+        let bae_core::import::RawTrackEdit {
+            id,
+            title,
+            artist_text,
+            side,
+            track_number,
+        } = t;
+        Self {
+            id,
+            title,
+            artist_text,
+            side,
+            track_number,
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::RawTrackEdit {
+        let BridgeRawTrackEdit {
+            id,
+            title,
+            artist_text,
+            side,
+            track_number,
+        } = self;
+        bae_core::import::RawTrackEdit {
+            id,
+            title,
+            artist_text,
+            side,
+            track_number,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeRawReleaseEdit {
+    pub(crate) fn from_core(e: bae_core::import::RawReleaseEdit) -> Self {
+        let bae_core::import::RawReleaseEdit {
+            album_title,
+            album_artist_text,
+            pressing,
+            tracks,
+        } = e;
+        BridgeRawReleaseEdit {
+            album_title,
+            album_artist_text,
+            pressing: BridgeRawPressingEdit::from_core(pressing),
+            tracks: tracks
+                .into_iter()
+                .map(BridgeRawTrackEdit::from_core)
+                .collect(),
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::import::RawReleaseEdit {
+        let BridgeRawReleaseEdit {
+            album_title,
+            album_artist_text,
+            pressing,
+            tracks,
+        } = self;
+        bae_core::import::RawReleaseEdit {
+            album_title,
+            album_artist_text,
+            pressing: pressing.into_core(),
+            tracks: tracks
+                .into_iter()
+                .map(BridgeRawTrackEdit::into_core)
+                .collect(),
+        }
     }
 }
 
@@ -3894,11 +4331,144 @@ mod identify_progress_tests {
             },
         };
 
-        match barcode_progress_to_bridge(progress) {
+        match BridgeBarcodeProgress::from_core(progress) {
             BridgeBarcodeProgress::Failed {
                 failure: BridgeLookupFailure::Diagnostic { detail },
             } => assert_eq!(detail, "provider lookup failed"),
             other => panic!("expected failed barcode progress, got {other:?}"),
         }
+    }
+}
+
+/// Round-trips a fully-populated sample through `from_core` then `into_core` and
+/// asserts equality with the original. The one bug the exhaustive-destructure
+/// compile checks can't catch is a transposed same-typed field introduced during
+/// a rewrite; these catch it for both directions in one assertion (types without
+/// `PartialEq` compare their `Debug` forms). Placeholder names only.
+#[cfg(test)]
+mod conversion_roundtrip {
+    use super::*;
+
+    #[test]
+    fn image_ref_round_trips() {
+        let core = bae_core::album_detail::ImageRef {
+            id: "rel-123".to_string(),
+            version: "v1".to_string(),
+            image_type: bae_core::db::LibraryImageType::Artist,
+        };
+        assert_eq!(core, BridgeImageRef::from_core(core.clone()).into_core());
+    }
+
+    #[test]
+    fn export_preset_round_trips_and_re_derives_extension() {
+        let core = bae_core::config::ExportPreset {
+            id: "preset-1".to_string(),
+            name: "Preset One".to_string(),
+            codec: bae_core::config::ExportPresetCodec::Flac {
+                bit_depth: bae_core::config::ExportBitDepth::Bits24,
+            },
+            filename_template: "{artist} - {title}".to_string(),
+            pregap_placement: bae_core::config::ExportPregapPlacement::Exclude,
+            applies_to_track: true,
+            applies_to_release: false,
+        };
+        let bridge = BridgeExportPreset::from_core(&core);
+        // `extension` is derived from the codec, not carried in the core preset.
+        assert_eq!(bridge.extension, core.codec.extension());
+        assert_eq!(core, bridge.into_core());
+    }
+
+    #[cfg(feature = "desktop")]
+    #[test]
+    fn release_user_edit_round_trips() {
+        let core = bae_core::import::ReleaseUserEdit {
+            album_title: "Album Title".to_string(),
+            album_artist_names: vec!["Artist Name".to_string(), "Second Artist".to_string()],
+            pressing: bae_core::import::PressingEdit {
+                year: Some(1990),
+                format: Some("CD".to_string()),
+                label: Some("Label Name".to_string()),
+                catalog_number: Some("CAT-1".to_string()),
+                country: Some("US".to_string()),
+                barcode: Some("012345678905".to_string()),
+            },
+            tracks: vec![bae_core::import::TrackUserEdit {
+                title: "Track Title".to_string(),
+                side: 1,
+                track_number: Some(1),
+                artist_names: vec!["Track Artist".to_string()],
+            }],
+        };
+        assert_eq!(
+            core,
+            BridgeReleaseUserEdit::from_core(core.clone()).into_core()
+        );
+    }
+
+    #[cfg(feature = "desktop")]
+    #[test]
+    fn raw_release_edit_round_trips() {
+        let core = bae_core::import::RawReleaseEdit {
+            album_title: "Album Title".to_string(),
+            album_artist_text: "Artist Name, Second Artist".to_string(),
+            pressing: bae_core::import::RawPressingEdit {
+                year: "1990".to_string(),
+                format: "CD".to_string(),
+                label: "Label Name".to_string(),
+                catalog_number: "CAT-1".to_string(),
+                country: "US".to_string(),
+                barcode: "012345678905".to_string(),
+            },
+            tracks: vec![bae_core::import::RawTrackEdit {
+                id: "row-1".to_string(),
+                title: "Track Title".to_string(),
+                artist_text: "Track Artist".to_string(),
+                side: 1,
+                track_number: Some(1),
+            }],
+        };
+        assert_eq!(
+            core,
+            BridgeRawReleaseEdit::from_core(core.clone()).into_core()
+        );
+    }
+
+    #[cfg(feature = "desktop")]
+    #[test]
+    fn release_detail_round_trips_and_derives_mismatch() {
+        let core = bae_core::import::search::ImportSearchReleaseDetail {
+            release_id: "rel-123".to_string(),
+            source: bae_core::import::MetadataSource::MusicBrainz,
+            source_group_id: Some("rg-1".to_string()),
+            title: "Album Title".to_string(),
+            artist: Some("Artist Name".to_string()),
+            year: Some(1990),
+            format: Some("CD".to_string()),
+            label: Some("Label Name".to_string()),
+            catalog_number: Some("CAT-1".to_string()),
+            country: Some("US".to_string()),
+            barcode: Some("012345678905".to_string()),
+            track_count: 10,
+            tracks: vec![bae_core::import::search::ReleaseTrack {
+                title: "Track Title".to_string(),
+                artist: Some("Track Artist".to_string()),
+                duration_ms: Some(210_000),
+                position: "A1".to_string(),
+                side: 1,
+            }],
+            cover_art: vec![bae_core::import::cover_art::RemoteCover {
+                url: "https://example.test/cover.jpg".to_string(),
+                thumbnail_url: "https://example.test/thumb.jpg".to_string(),
+                label: "Front".to_string(),
+                source: bae_core::import::MetadataSource::MusicBrainz,
+            }],
+        };
+        // 11 local tracks vs 10 on the source is a mismatch; `default_cover` is
+        // derived from the first cover. Both are bridge-only and dropped on the
+        // way back, so the round-tripped core still equals the original.
+        let bridge = BridgeReleaseDetail::from_core(core.clone(), Some(11));
+        assert!(bridge.track_count_mismatch);
+        assert!(bridge.default_cover.is_some());
+        assert_eq!(format!("{core:?}"), format!("{:?}", bridge.into_core()));
     }
 }

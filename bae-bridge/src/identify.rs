@@ -23,10 +23,21 @@ impl ArtworkAnalyzerAdapter {
 
 impl ArtworkAnalyzer for ArtworkAnalyzerAdapter {
     fn analyze(&self, path: &Path) -> ArtworkAnalysis {
-        let analysis = self.callback.analyze(path.to_string_lossy().into_owned());
+        self.callback
+            .analyze(path.to_string_lossy().into_owned())
+            .into_core()
+    }
+}
+
+impl crate::types::BridgeArtworkAnalysis {
+    fn into_core(self) -> ArtworkAnalysis {
+        let crate::types::BridgeArtworkAnalysis {
+            barcodes,
+            text_lines,
+        } = self;
         ArtworkAnalysis {
-            barcodes: analysis.barcodes,
-            text_lines: analysis.text_lines,
+            barcodes,
+            text_lines,
         }
     }
 }

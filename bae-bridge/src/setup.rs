@@ -30,8 +30,8 @@ pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
 }
 
 /// Build a BridgeLibrary from its raw parts. The two call sites that wrap
-/// this — `local_library_active` for a freshly-opened Config,
-/// `local_library_from_info` for a discovery-scan entry — just differ in
+/// this — `BridgeLibrary::from_core` for a freshly-opened Config,
+/// `BridgeLibrary::from_core_info` for a discovery-scan entry — just differ in
 /// where the fields come from.
 fn local_library(
     id: String,
@@ -51,35 +51,38 @@ fn local_library(
         id,
         path,
         name,
-        cloud_provider: cloud_provider.map(bridge_cloud_provider),
+        cloud_provider: cloud_provider.map(BridgeCloudProvider::from_core),
         is_active,
     })
 }
 
-/// `BridgeLibrary` for a freshly-created/restored local library Config.
-/// Always active (the operation just made it the active one).
-fn local_library_active(config: &bae_core::config::Config) -> Result<BridgeLibrary, BridgeError> {
-    local_library(
-        config.library_id.clone(),
-        config.library_name.clone(),
-        std::path::PathBuf::from(&*config.library_dir),
-        config.cloud_home.provider.as_ref(),
-        true,
-    )
-}
+impl BridgeLibrary {
+    /// `BridgeLibrary` for a freshly-created/restored local library Config.
+    /// Always active (the operation just made it the active one). The `Config`
+    /// it reads is coven's (external crate) via `Deref`, so its fields stay
+    /// dotted reads rather than an exhaustive destructure.
+    fn from_core(config: &bae_core::config::Config) -> Result<Self, BridgeError> {
+        local_library(
+            config.library_id.clone(),
+            config.library_name.clone(),
+            std::path::PathBuf::from(&*config.library_dir),
+            config.cloud_home.provider.as_ref(),
+            true,
+        )
+    }
 
-/// `BridgeLibrary` for a discovered local library — path and active flag
-/// come from the discovery scan.
-pub(crate) fn local_library_from_info(
-    info: bae_core::config::LibraryInfo,
-) -> Result<BridgeLibrary, BridgeError> {
-    local_library(
-        info.id,
-        info.name,
-        info.path,
-        info.cloud_provider.as_ref(),
-        info.is_active,
-    )
+    /// `BridgeLibrary` for a discovered local library — path and active flag
+    /// come from the discovery scan.
+    pub(crate) fn from_core_info(info: bae_core::config::LibraryInfo) -> Result<Self, BridgeError> {
+        let bae_core::config::LibraryInfo {
+            id,
+            name,
+            path,
+            is_active,
+            cloud_provider,
+        } = info;
+        local_library(id, name, path, cloud_provider.as_ref(), is_active)
+    }
 }
 
 use std::sync::{Arc, Mutex};
@@ -89,12 +92,9 @@ use tracing::info;
 use bae_core::config::Config;
 use bae_core::library::{CancellationToken, JoinFromCodeError, RestoreFromCodeError};
 
-#[cfg(feature = "oauth-providers")]
-use crate::types::bridge_cloud_provider_to_core;
 use crate::types::{
-    bridge_cloud_provider, BridgeCloudProvider, BridgeError, BridgeInviteCodeInfo,
-    BridgeJoinRequest, BridgeJoinRequestInfo, BridgeLibrary, BridgeRestoreCodeInfo,
-    BridgeRestoreSource,
+    BridgeCloudProvider, BridgeError, BridgeInviteCodeInfo, BridgeJoinRequest,
+    BridgeJoinRequestInfo, BridgeLibrary, BridgeRestoreCodeInfo, BridgeRestoreSource,
 };
 
 #[cfg(feature = "cloudkit")]
@@ -205,7 +205,7 @@ pub fn discover_libraries() -> Result<Vec<BridgeLibrary>, BridgeError> {
     Config::discover_libraries()
         .map_err(BridgeError::config)?
         .into_iter()
-        .map(local_library_from_info)
+        .map(BridgeLibrary::from_core_info)
         .collect()
 }
 
@@ -219,7 +219,7 @@ pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError
     }
     .map_err(|e| BridgeError::config(format!("{e}")))?;
 
-    local_library_active(&config)
+    BridgeLibrary::from_core(&config)
 }
 
 /// Run the future built by `make_fut` on a worker of a shared onboarding
@@ -330,8 +330,21 @@ pub fn restore_from_cloud(
         .await
         .map_err(|e| BridgeError::internal(format!("Failed to restore library: {e}")))?;
 
-        local_library_active(&config)
+        BridgeLibrary::from_core(&config)
     })
+}
+
+impl BridgeRestoreCodeInfo {
+    /// `RestoreCodeInfo` is coven's (external crate) type — exempt from the
+    /// exhaustive destructure — so its fields stay dotted reads.
+    fn from_core(info: coven::sync::restore_code::RestoreCodeInfo) -> Self {
+        BridgeRestoreCodeInfo {
+            library_id: info.library_id,
+            library_name: info.library_name,
+            cloud_provider: BridgeCloudProvider::from_core(&info.cloud_provider),
+            needs_oauth: info.needs_oauth,
+        }
+    }
 }
 
 /// Decode a restore code string and return info for UI preview.
@@ -339,12 +352,7 @@ pub fn restore_from_cloud(
 pub fn decode_restore_code(code: String) -> Result<BridgeRestoreCodeInfo, BridgeError> {
     let info = bae_core::sync::decode_restore_code_info(&code).map_err(BridgeError::config)?;
 
-    Ok(BridgeRestoreCodeInfo {
-        library_id: info.library_id,
-        library_name: info.library_name,
-        cloud_provider: bridge_cloud_provider(&info.cloud_provider),
-        needs_oauth: info.needs_oauth,
-    })
+    Ok(BridgeRestoreCodeInfo::from_core(info))
 }
 
 /// Restore a library from a restore code string.
@@ -363,7 +371,7 @@ pub fn restore_from_code(
 
         let config = restore_from_code_config(code, oauth_tokens, get_cloudkit_ops(), None).await?;
 
-        local_library_active(&config)
+        BridgeLibrary::from_core(&config)
     })
 }
 
@@ -413,7 +421,7 @@ impl RestoreFromCodeOperation {
             let config =
                 restore_from_code_config(code, oauth_tokens, cloudkit_ops, Some(cancel)).await?;
 
-            local_library_active(&config)
+            BridgeLibrary::from_core(&config)
         })
     }
 
@@ -439,10 +447,14 @@ impl RestoreFromCodeOperation {
 pub fn generate_join_request(email: Option<String>) -> Result<BridgeJoinRequest, BridgeError> {
     let request = bae_core::sync::membership::generate_join_request(email)
         .map_err(|e| BridgeError::config(format!("Failed to generate join request: {e}")))?;
-    Ok(BridgeJoinRequest {
-        code: request.code,
-        fingerprint: request.fingerprint,
-    })
+    Ok(BridgeJoinRequest::from_core(request))
+}
+
+impl BridgeJoinRequest {
+    fn from_core(request: bae_core::sync::membership::JoinRequest) -> Self {
+        let bae_core::sync::membership::JoinRequest { code, fingerprint } = request;
+        BridgeJoinRequest { code, fingerprint }
+    }
 }
 
 /// Fetch the email of the OAuth account `oauth_token_json` authenticated, so the
@@ -455,7 +467,7 @@ pub fn fetch_account_email(
     oauth_token_json: String,
 ) -> Result<String, BridgeError> {
     let tokens = parse_oauth_tokens(&oauth_token_json)?;
-    let core_provider = bridge_cloud_provider_to_core(provider);
+    let core_provider = provider.into_core();
     on_worker(move || async move {
         bae_core::sync::membership::fetch_account_email(core_provider, &tokens)
             .await
@@ -468,11 +480,22 @@ pub fn fetch_account_email(
 pub fn decode_join_request(code: String) -> Result<BridgeJoinRequestInfo, BridgeError> {
     let req =
         bae_core::sync::membership::decode_join_request(&code).map_err(BridgeError::config)?;
-    Ok(BridgeJoinRequestInfo {
-        pubkey: req.pubkey,
-        fingerprint: req.fingerprint,
-        email: req.email,
-    })
+    Ok(BridgeJoinRequestInfo::from_core(req))
+}
+
+impl BridgeJoinRequestInfo {
+    fn from_core(req: bae_core::sync::membership::JoinRequestInfo) -> Self {
+        let bae_core::sync::membership::JoinRequestInfo {
+            pubkey,
+            fingerprint,
+            email,
+        } = req;
+        BridgeJoinRequestInfo {
+            pubkey,
+            fingerprint,
+            email,
+        }
+    }
 }
 
 /// Decode an invite code string and return info for UI preview (before joining).
@@ -480,14 +503,28 @@ pub fn decode_join_request(code: String) -> Result<BridgeJoinRequestInfo, Bridge
 pub fn decode_invite_code(code: String) -> Result<BridgeInviteCodeInfo, BridgeError> {
     let info =
         bae_core::sync::membership::decode_invite_code_info(&code).map_err(BridgeError::config)?;
-    Ok(BridgeInviteCodeInfo {
-        library_id: info.library_id,
-        library_name: info.library_name,
-        owner_pubkey: info.owner_pubkey,
-        owner_fingerprint: info.owner_fingerprint,
-        cloud_provider: bridge_cloud_provider(&info.cloud_provider),
-        needs_oauth: info.needs_oauth,
-    })
+    Ok(BridgeInviteCodeInfo::from_core(info))
+}
+
+impl BridgeInviteCodeInfo {
+    fn from_core(info: bae_core::sync::membership::InviteCodeInfo) -> Self {
+        let bae_core::sync::membership::InviteCodeInfo {
+            library_id,
+            library_name,
+            owner_pubkey,
+            owner_fingerprint,
+            cloud_provider,
+            needs_oauth,
+        } = info;
+        BridgeInviteCodeInfo {
+            library_id,
+            library_name,
+            owner_pubkey,
+            owner_fingerprint,
+            cloud_provider: BridgeCloudProvider::from_core(&cloud_provider),
+            needs_oauth,
+        }
+    }
 }
 
 fn join_error_to_bridge(error: JoinFromCodeError) -> BridgeError {
@@ -540,7 +577,7 @@ pub fn join_from_code(
 
         let config = join_from_code_config(code, oauth_tokens, get_cloudkit_ops(), None).await?;
 
-        local_library_active(&config)
+        BridgeLibrary::from_core(&config)
     })
 }
 
@@ -590,7 +627,7 @@ impl JoinFromCodeOperation {
             let config =
                 join_from_code_config(code, oauth_tokens, cloudkit_ops, Some(cancel)).await?;
 
-            local_library_active(&config)
+            BridgeLibrary::from_core(&config)
         })
     }
 
@@ -620,7 +657,7 @@ pub fn oauth_authorize(provider: BridgeCloudProvider) -> Result<String, BridgeEr
     let cancel = new_oauth_cancel();
 
     let result = on_worker(move || async move {
-        let core_provider = bridge_cloud_provider_to_core(provider);
+        let core_provider = provider.into_core();
         let clock = std::sync::Arc::new(coven::SystemClock);
         let tokens = coven::authorize_provider(core_provider, cancel, clock.as_ref())
             .await
@@ -694,7 +731,7 @@ pub fn oauth_begin(
     provider: BridgeCloudProvider,
     redirect_uri: String,
 ) -> Result<BridgeOAuthRequest, BridgeError> {
-    let core_provider = bridge_cloud_provider_to_core(provider);
+    let core_provider = provider.into_core();
     let req = coven::build_authorize_request_for_provider(core_provider, &redirect_uri)
         .map_err(|e| BridgeError::config(format!("OAuth begin failed: {e}")))?;
     let auth_url = req.auth_url.clone();
@@ -718,7 +755,7 @@ pub fn oauth_complete(
     request_id: String,
     redirect_uri: String,
 ) -> Result<String, BridgeError> {
-    let core_provider = bridge_cloud_provider_to_core(provider);
+    let core_provider = provider.into_core();
     let request = lock_bridge_mutex(&OAUTH_REQUESTS)
         .remove(&request_id)
         .ok_or_else(|| {
@@ -783,7 +820,7 @@ mod tests {
             cloud_provider: None,
         };
 
-        let error = local_library_from_info(info).expect_err("non-UTF-8 path should fail");
+        let error = BridgeLibrary::from_core_info(info).expect_err("non-UTF-8 path should fail");
         match error {
             BridgeError::Diagnostic { category, detail } => {
                 assert_eq!(category, BridgeErrorCategory::Config);

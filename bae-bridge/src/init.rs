@@ -150,16 +150,29 @@ impl BridgeDiagnosticsConfig {
 
 impl BridgeDatadogDiagnosticsConfig {
     fn into_core(self) -> DiagnosticsConfig {
+        let BridgeDatadogDiagnosticsConfig {
+            datadog_site,
+            client_token,
+            source,
+            app,
+        } = self;
+        let BridgeAppDiagnosticMetadata {
+            service,
+            environment,
+            app_version,
+            edition,
+            git_commit,
+        } = app;
         let config = DatadogDiagnosticsConfig {
-            datadog_site: self.datadog_site,
-            client_token: self.client_token,
-            source: self.source,
+            datadog_site,
+            client_token,
+            source,
             app: AppDiagnosticMetadata {
-                service: self.app.service,
-                environment: self.app.environment,
-                app_version: self.app.app_version,
-                edition: self.app.edition,
-                git_commit: self.app.git_commit,
+                service,
+                environment,
+                app_version,
+                edition,
+                git_commit,
             },
         };
 
@@ -180,7 +193,9 @@ impl BridgeDiagnosticLevel {
 }
 
 fn bridge_fields(fields: Vec<BridgeDiagnosticField>) -> impl Iterator<Item = (String, String)> {
-    fields.into_iter().map(|field| (field.key, field.value))
+    fields
+        .into_iter()
+        .map(|BridgeDiagnosticField { key, value }| (key, value))
 }
 
 fn diagnostics_error_to_bridge(e: DiagnosticsError) -> BridgeError {

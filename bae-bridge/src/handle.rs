@@ -8,9 +8,6 @@ use bae_core::playback::QueueEntryId;
 use bae_core::signals::ExtractionSource;
 use tracing::info;
 
-use crate::bridge_utils::build_bridge_config;
-#[cfg(feature = "oauth-providers")]
-use crate::types::bridge_cloud_provider_to_core;
 #[cfg(feature = "oauth-providers")]
 use crate::types::BridgeCloudProvider;
 #[cfg(feature = "desktop")]
@@ -20,21 +17,20 @@ use crate::types::BridgeHomeStorage;
 #[cfg(feature = "desktop")]
 use crate::types::BridgeRemoteCover;
 use crate::types::{
-    bridge_composer_sort_to_core, bridge_home_storage_to_core, bridge_sort_to_core, BridgeAlbum,
-    BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeComposerDetail, BridgeComposerSortCriterion,
-    BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig, BridgeCoverSelection,
-    BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource, BridgeMetadataSource,
-    BridgeQueueSnapshot, BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary,
-    BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion,
-    BridgeStorageFilter, BridgeStoragePage, BridgeStorageRow, BridgeStorageSort,
-    BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
-    BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary, BridgeWorkSummary,
-    BridgeWorkTrackSummary,
+    BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeComposerDetail,
+    BridgeComposerSortCriterion, BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig,
+    BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource,
+    BridgeMetadataSource, BridgeQueueSnapshot, BridgeRelease, BridgeReleaseRoleSummary,
+    BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults,
+    BridgeSortCriterion, BridgeStorageFilter, BridgeStoragePage, BridgeStorageRow,
+    BridgeStorageSort, BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup,
+    BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary,
+    BridgeWorkSummary, BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{
-    bridge_storage_mode_to_core, BridgeImportCandidateSnapshot, BridgeImportCandidatesSnapshot,
-    BridgeMcpServerStatus, BridgeStorageMode,
+    BridgeImportCandidateSnapshot, BridgeImportCandidatesSnapshot, BridgeMcpServerStatus,
+    BridgeStorageMode,
 };
 
 #[derive(uniffi::Object)]
@@ -72,8 +68,10 @@ impl AppHandle {
         offset: u64,
         limit: u64,
     ) -> Result<Vec<BridgeAlbum>, BridgeError> {
-        let sort: Vec<bae_core::db::AlbumSortCriterion> =
-            sort_criteria.iter().map(bridge_sort_to_core).collect();
+        let sort: Vec<bae_core::db::AlbumSortCriterion> = sort_criteria
+            .into_iter()
+            .map(BridgeSortCriterion::into_core)
+            .collect();
         let albums = self
             .services
             .library_manager()
@@ -81,7 +79,7 @@ impl AppHandle {
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
 
-        Ok(albums.into_iter().map(convert_album_summary).collect())
+        Ok(albums.into_iter().map(BridgeAlbum::from_core).collect())
     }
 
     /// 0-based position of `album_id` under the given sort, matching
@@ -93,8 +91,10 @@ impl AppHandle {
         sort_criteria: Vec<BridgeSortCriterion>,
         album_id: String,
     ) -> Result<Option<u64>, BridgeError> {
-        let sort: Vec<bae_core::db::AlbumSortCriterion> =
-            sort_criteria.iter().map(bridge_sort_to_core).collect();
+        let sort: Vec<bae_core::db::AlbumSortCriterion> = sort_criteria
+            .into_iter()
+            .map(BridgeSortCriterion::into_core)
+            .collect();
         self.services
             .library_manager()
             .get_album_index(&sort, &album_id)
@@ -124,7 +124,7 @@ impl AppHandle {
         offset: u64,
         limit: u64,
     ) -> Result<Vec<BridgeComposerSummary>, BridgeError> {
-        let sort = bridge_composer_sort_to_core(&sort_criterion);
+        let sort = sort_criterion.into_core();
         let composers = self
             .services
             .library_manager()
@@ -133,7 +133,7 @@ impl AppHandle {
             .map_err(|e| BridgeError::database(format!("{e}")))?;
         Ok(composers
             .into_iter()
-            .map(convert_composer_summary)
+            .map(BridgeComposerSummary::from_core)
             .collect())
     }
 
@@ -147,7 +147,7 @@ impl AppHandle {
             .get_composer_detail(&artist_id)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
-        Ok(detail.map(convert_composer_detail))
+        Ok(detail.map(BridgeComposerDetail::from_core))
     }
 
     pub async fn get_work_detail(
@@ -160,7 +160,7 @@ impl AppHandle {
             .get_work_detail(&work_id)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
-        Ok(detail.map(convert_work_detail))
+        Ok(detail.map(BridgeWorkDetail::from_core))
     }
 
     /// Filesystem path for the user's own external file behind a library file
@@ -193,7 +193,7 @@ impl AppHandle {
                 id: album_id.to_string(),
             })?;
 
-        Ok(convert_album_detail(detail))
+        Ok(BridgeAlbumDetail::from_core(detail))
     }
 
     /// Fat release detail (tracks, files, gallery) for the album-detail
@@ -208,7 +208,7 @@ impl AppHandle {
             .find_release_detail(&release_id)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
-        Ok(detail.map(convert_release_detail))
+        Ok(detail.map(BridgeRelease::from_core))
     }
 
     /// One page of the Storage Manager list, pre-sorted and
@@ -221,8 +221,8 @@ impl AppHandle {
         offset: u64,
         limit: u64,
     ) -> Result<BridgeStoragePage, BridgeError> {
-        let core_sort = crate::types::bridge_storage_sort_to_core(&sort);
-        let core_filter = crate::types::bridge_storage_filter_to_core(filter);
+        let core_sort = sort.into_core();
+        let core_filter = filter.into_core();
         let page = self
             .services
             .library_manager()
@@ -230,16 +230,13 @@ impl AppHandle {
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
 
-        Ok(BridgeStoragePage {
-            rows: page.rows.into_iter().map(convert_storage_row).collect(),
-            total_count: page.total_count,
-        })
+        Ok(BridgeStoragePage::from_core(page))
     }
 
     /// Count of storage rows matching `filter`. Matches
     /// `storage_page`'s `total_count` for the same filter.
     pub async fn storage_count(&self, filter: BridgeStorageFilter) -> Result<u64, BridgeError> {
-        let core_filter = crate::types::bridge_storage_filter_to_core(filter);
+        let core_filter = filter.into_core();
         self.services
             .library_manager()
             .get_storage_count(core_filter)
@@ -258,35 +255,22 @@ impl AppHandle {
             albums: results
                 .albums
                 .into_iter()
-                .map(|a| BridgeAlbumSearchResult {
-                    id: a.id,
-                    title: a.title,
-                    year: a.year,
-                    artist_name: a.artist_name,
-                    cover: a.cover.map(crate::types::BridgeImageRef::from_core),
-                })
+                .map(BridgeAlbumSearchResult::from_core)
                 .collect(),
             tracks: results
                 .tracks
                 .into_iter()
-                .map(|t| BridgeTrackSearchResult {
-                    id: t.id,
-                    title: t.title,
-                    duration_ms: t.duration_ms,
-                    album_id: t.album_id,
-                    album_title: t.album_title,
-                    artist_name: t.artist_name,
-                })
+                .map(BridgeTrackSearchResult::from_core)
                 .collect(),
             composers: results
                 .composers
                 .into_iter()
-                .map(convert_composer_summary)
+                .map(BridgeComposerSummary::from_core)
                 .collect(),
             works: results
                 .works
                 .into_iter()
-                .map(convert_work_summary)
+                .map(BridgeWorkSummary::from_core)
                 .collect(),
         })
     }
@@ -360,7 +344,7 @@ impl AppHandle {
     }
 
     pub fn set_repeat_mode(&self, mode: BridgeRepeatMode) {
-        let core_mode = mode.to_core();
+        let core_mode = mode.into_core();
         self.services.playback().set_repeat_mode(core_mode);
     }
 
@@ -421,7 +405,7 @@ impl AppHandle {
             .get_queue_snapshot()
             .await
             .map_err(BridgeError::internal)?;
-        Ok(convert_queue_snapshot(snapshot))
+        Ok(BridgeQueueSnapshot::from_core(snapshot))
     }
 
     /// Resolve a list of IDs (album or track) to track IDs.
@@ -469,7 +453,7 @@ impl AppHandle {
     // =========================================================================
 
     pub fn get_config(&self) -> BridgeConfig {
-        build_bridge_config(&self.services.library_manager().get_config())
+        BridgeConfig::from_core(&self.services.library_manager().get_config())
     }
 
     pub fn set_pause_between_sides(&self, enabled: bool) -> Result<(), BridgeError> {
@@ -486,7 +470,7 @@ impl AppHandle {
     ) -> Result<(), BridgeError> {
         self.services
             .library_manager()
-            .set_export_location(crate::bridge_utils::core_export_location(location))
+            .set_export_location(crate::types::BridgeExportLocation::into_core(location))
             .map_err(BridgeError::config)
     }
 
@@ -507,7 +491,7 @@ impl AppHandle {
             .set_export_presets(
                 presets
                     .into_iter()
-                    .map(crate::bridge_utils::core_export_preset)
+                    .map(crate::types::BridgeExportPreset::into_core)
                     .collect(),
             )
             .map_err(BridgeError::config)
@@ -519,7 +503,7 @@ impl AppHandle {
     ) -> Result<(), BridgeError> {
         self.services
             .library_manager()
-            .set_default_track_export_selection(crate::bridge_utils::core_export_selection(
+            .set_default_track_export_selection(crate::types::BridgeExportSelection::into_core(
                 selection,
             ))
             .map_err(BridgeError::config)
@@ -531,7 +515,7 @@ impl AppHandle {
     ) -> Result<(), BridgeError> {
         self.services
             .library_manager()
-            .set_default_release_export_selection(crate::bridge_utils::core_export_selection(
+            .set_default_release_export_selection(crate::types::BridgeExportSelection::into_core(
                 selection,
             ))
             .map_err(BridgeError::config)
@@ -592,7 +576,7 @@ impl AppHandle {
             }
             BridgeCoverSelection::RemoteCover { selection } => CoverSelection::RemoteCover {
                 url: selection.url,
-                source: selection.source.to_core(),
+                source: selection.source.into_core(),
             },
         };
 
@@ -685,7 +669,7 @@ impl AppHandle {
                 key_prefix: config_data.key_prefix,
                 access_key: config_data.access_key,
                 secret_key: config_data.secret_key,
-                storage: bridge_home_storage_to_core(config_data.storage),
+                storage: crate::types::BridgeHomeStorage::into_core(config_data.storage),
             })
             .await
             .map_err(BridgeError::config)
@@ -727,7 +711,7 @@ impl AppHandle {
             .get_members()
             .await
             .map_err(BridgeError::internal)?;
-        Ok(crate::types::bridge_membership(membership))
+        Ok(crate::types::BridgeMembership::from_core(membership))
     }
 
     /// Approve a joining device by its public key (from its join-request code),
@@ -776,7 +760,7 @@ impl AppHandle {
     }
 
     pub fn get_sync_status(&self) -> BridgeSyncStatusSnapshot {
-        convert_sync_status_snapshot(self.services.get_sync_status())
+        crate::types::BridgeSyncStatusSnapshot::from_core(self.services.get_sync_status())
     }
 
     /// The current cloud outbox processing snapshot. Outbox invalidations tell
@@ -790,7 +774,7 @@ impl AppHandle {
             .outbox_snapshot()
             .await
             .map_err(BridgeError::internal)?;
-        Ok(convert_outbox_snapshot(snapshot))
+        Ok(crate::types::BridgeOutboxSnapshot::from_core(snapshot))
     }
 
     /// Retry failed uploads now (clears their backoff and kicks the sync loop).
@@ -838,7 +822,9 @@ impl AppHandle {
     /// The current download-queue snapshot. Download invalidations tell the
     /// Downloads pane to read it again.
     pub fn get_download_snapshot(&self) -> crate::types::BridgeDownloadSnapshot {
-        convert_download_snapshot(self.services.library_manager().download_snapshot())
+        crate::types::BridgeDownloadSnapshot::from_core(
+            self.services.library_manager().download_snapshot(),
+        )
     }
 
     /// Enqueue releases to pin for offline. They join the in-memory serial
@@ -876,7 +862,9 @@ impl AppHandle {
     /// The current export-queue snapshot. Export invalidations tell the
     /// Exporting pane to read it again.
     pub fn get_export_snapshot(&self) -> crate::types::BridgeExportSnapshot {
-        convert_export_snapshot(self.services.library_manager().export_snapshot())
+        crate::types::BridgeExportSnapshot::from_core(
+            self.services.library_manager().export_snapshot(),
+        )
     }
 
     /// Enqueue a release export to `target_dir`. It joins
@@ -894,7 +882,7 @@ impl AppHandle {
             .enqueue_export(
                 &release_id,
                 std::path::PathBuf::from(target_dir),
-                crate::bridge_utils::core_export_selection(selection),
+                crate::types::BridgeExportSelection::into_core(selection),
             )
             .await
             .map_err(BridgeError::export)
@@ -920,30 +908,35 @@ impl AppHandle {
 }
 
 #[cfg(feature = "desktop")]
-fn bridge_mcp_status(status: bae_desktop::McpServerStatus) -> BridgeMcpServerStatus {
-    match status {
-        bae_desktop::McpServerStatus::Disabled => BridgeMcpServerStatus::Disabled,
-        bae_desktop::McpServerStatus::Running { url } => BridgeMcpServerStatus::Running { url },
-        bae_desktop::McpServerStatus::Error { error } => BridgeMcpServerStatus::Error {
-            error: bridge_mcp_error(error),
-        },
+impl BridgeMcpServerStatus {
+    fn from_core(status: bae_desktop::McpServerStatus) -> Self {
+        match status {
+            bae_desktop::McpServerStatus::Disabled => BridgeMcpServerStatus::Disabled,
+            bae_desktop::McpServerStatus::Running { url } => BridgeMcpServerStatus::Running { url },
+            bae_desktop::McpServerStatus::Error { error } => BridgeMcpServerStatus::Error {
+                error: crate::types::BridgeMcpServerError::from_core(error),
+            },
+        }
     }
 }
 
 #[cfg(feature = "desktop")]
-fn bridge_mcp_error(error: bae_desktop::McpServerError) -> crate::types::BridgeMcpServerError {
-    match error {
-        bae_desktop::McpServerError::InvalidConfig { detail } => {
-            crate::types::BridgeMcpServerError::InvalidConfig { detail }
-        }
-        bae_desktop::McpServerError::TokenUnavailable { detail } => {
-            crate::types::BridgeMcpServerError::TokenUnavailable { detail }
-        }
-        bae_desktop::McpServerError::BindFailed { detail } => {
-            crate::types::BridgeMcpServerError::BindFailed { detail }
-        }
-        bae_desktop::McpServerError::ServerFailed { detail } => {
-            crate::types::BridgeMcpServerError::ServerFailed { detail }
+impl crate::types::BridgeMcpServerError {
+    fn from_core(error: bae_desktop::McpServerError) -> Self {
+        use crate::types::BridgeMcpServerError;
+        match error {
+            bae_desktop::McpServerError::InvalidConfig { detail } => {
+                BridgeMcpServerError::InvalidConfig { detail }
+            }
+            bae_desktop::McpServerError::TokenUnavailable { detail } => {
+                BridgeMcpServerError::TokenUnavailable { detail }
+            }
+            bae_desktop::McpServerError::BindFailed { detail } => {
+                BridgeMcpServerError::BindFailed { detail }
+            }
+            bae_desktop::McpServerError::ServerFailed { detail } => {
+                BridgeMcpServerError::ServerFailed { detail }
+            }
         }
     }
 }
@@ -1009,7 +1002,7 @@ impl AppHandle {
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
     pub async fn use_cloudkit(&self, storage: BridgeHomeStorage) -> Result<(), BridgeError> {
-        let storage = bridge_home_storage_to_core(storage);
+        let storage = crate::types::BridgeHomeStorage::into_core(storage);
         self.services
             .library_manager()
             .use_cloudkit(storage)
@@ -1033,8 +1026,8 @@ impl AppHandle {
         // OAuth + cloud-folder setup then starts sync. Cancellation (the Swift
         // Task dropping this future) tears down the OAuth listener via coven's
         // own drop guard.
-        let core_provider = bridge_cloud_provider_to_core(provider);
-        let storage = bridge_home_storage_to_core(storage);
+        let core_provider = crate::types::BridgeCloudProvider::into_core(provider);
+        let storage = crate::types::BridgeHomeStorage::into_core(storage);
         self.services
             .library_manager()
             .sign_in_cloud_provider(core_provider, storage)
@@ -1057,7 +1050,7 @@ impl AppHandle {
     }
 
     pub fn get_mcp_server_status(&self) -> BridgeMcpServerStatus {
-        bridge_mcp_status(self.app.mcp_server_status())
+        BridgeMcpServerStatus::from_core(self.app.mcp_server_status())
     }
 
     pub fn get_mcp_token(&self) -> Result<String, BridgeError> {
@@ -1091,7 +1084,7 @@ impl AppHandle {
             .import()
             .save_discogs_token(&token)
             .await
-            .map(BridgeDiscogsSaveOutcome::from)
+            .map(BridgeDiscogsSaveOutcome::from_core)
             .map_err(BridgeError::config)
     }
 
@@ -1160,7 +1153,7 @@ impl AppHandle {
     ) {
         self.services
             .identify()
-            .toggle_signal(&candidate_key, signal.to_core());
+            .toggle_signal(&candidate_key, signal.into_core());
     }
 
     /// Re-run a candidate's lookups from the toolbar. The identify driver
@@ -1188,7 +1181,7 @@ impl AppHandle {
         release_id: String,
         identity_choice: crate::types::BridgeIdentityChoice,
     ) -> Result<String, BridgeError> {
-        let core_choice = identity_choice.to_core();
+        let core_choice = identity_choice.into_core();
         let library_manager = self.services.library_manager();
         library_manager
             .re_identify_release(&release_id, core_choice)
@@ -1212,13 +1205,15 @@ impl AppHandle {
     }
 
     pub fn get_import_candidates(&self) -> BridgeImportCandidatesSnapshot {
-        convert_import_candidates_snapshot(self.services.get_import_candidates())
+        crate::types::BridgeImportCandidatesSnapshot::from_core(
+            self.services.get_import_candidates(),
+        )
     }
 
     pub fn get_candidate(&self, key: String) -> Option<BridgeImportCandidateSnapshot> {
         self.services
             .get_candidate(&key)
-            .map(convert_import_candidate_snapshot)
+            .map(crate::types::BridgeImportCandidateSnapshot::from_core)
     }
 
     pub fn add_watched_folder(&self, path: String) -> Result<(), BridgeError> {
@@ -1272,7 +1267,7 @@ impl AppHandle {
                 SearchQuery::General {
                     artist,
                     album,
-                    source: source.to_core(),
+                    source: source.into_core(),
                 },
                 crate::types::BridgeSearchQueryKind::General,
                 source,
@@ -1283,7 +1278,7 @@ impl AppHandle {
             } => (
                 SearchQuery::CatalogNumber {
                     catalog_number,
-                    source: source.to_core(),
+                    source: source.into_core(),
                 },
                 crate::types::BridgeSearchQueryKind::CatalogNumber,
                 source,
@@ -1291,7 +1286,7 @@ impl AppHandle {
             crate::types::BridgeSearchQuery::Barcode { barcode, source } => (
                 SearchQuery::Barcode {
                     barcode,
-                    source: source.to_core(),
+                    source: source.into_core(),
                 },
                 crate::types::BridgeSearchQueryKind::Barcode,
                 source,
@@ -1305,20 +1300,11 @@ impl AppHandle {
             .await
             .map_err(BridgeError::import)?;
 
-        Ok(crate::types::BridgeCandidateSearchResults {
+        Ok(crate::types::BridgeCandidateSearchResults::from_core(
+            grouped,
             tab,
-            source: bridge_source,
-            groups: grouped
-                .groups
-                .into_iter()
-                .map(crate::types::release_group_to_bridge)
-                .collect(),
-            statuses: grouped
-                .statuses
-                .into_iter()
-                .map(crate::types::library_status_to_bridge)
-                .collect(),
-        })
+            bridge_source,
+        ))
     }
 
     pub async fn is_source_folder_name_imported(&self, name: String) -> Result<bool, BridgeError> {
@@ -1342,9 +1328,9 @@ impl AppHandle {
         identity_choice: crate::types::BridgeIdentityChoice,
         user_edit: Option<crate::types::BridgeReleaseUserEdit>,
     ) -> Result<(), BridgeError> {
-        let cover = selected_cover.map(crate::types::bridge_cover_to_import);
+        let cover = selected_cover.map(crate::types::BridgeCoverSelection::into_core);
 
-        let user_edit = user_edit.map(crate::types::release_user_edit_from_bridge);
+        let user_edit = user_edit.map(crate::types::BridgeReleaseUserEdit::into_core);
 
         self.services
             .import()
@@ -1352,9 +1338,9 @@ impl AppHandle {
                 &candidate_key,
                 std::path::PathBuf::from(&folder_path),
                 cover,
-                bridge_storage_mode_to_core(storage_mode),
+                storage_mode.into_core(),
                 pin,
-                identity_choice.to_core(),
+                identity_choice.into_core(),
                 user_edit,
             )
             .map(|_| ())
@@ -1376,7 +1362,7 @@ impl AppHandle {
             .preview_file_tags_for_folder(std::path::PathBuf::from(&folder_path))
             .await
             .map_err(BridgeError::import)?;
-        Ok(crate::types::release_user_edit_to_bridge(edit))
+        Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
     }
 
     /// Apply a user-supplied metadata edit (from the edit-metadata sheet) to a
@@ -1387,7 +1373,7 @@ impl AppHandle {
         release_id: String,
         edit: crate::types::BridgeReleaseUserEdit,
     ) -> Result<(), BridgeError> {
-        let core_edit = crate::types::release_user_edit_from_bridge(edit);
+        let core_edit = crate::types::BridgeReleaseUserEdit::into_core(edit);
         self.services
             .library_manager()
             .apply_release_metadata_user_edit(&release_id, &core_edit)
@@ -1408,7 +1394,7 @@ impl AppHandle {
             .release_edit_seed(&release_id)
             .await
             .map_err(BridgeError::import)?;
-        Ok(crate::types::raw_release_edit_to_bridge(raw))
+        Ok(crate::types::BridgeRawReleaseEdit::from_core(raw))
     }
 
     /// Re-project a release's metadata from its `metadata_source` /
@@ -1427,7 +1413,7 @@ impl AppHandle {
             .reset_metadata_to_source(&release_id)
             .await
             .map_err(BridgeError::import)?;
-        Ok(crate::types::release_user_edit_to_bridge(edit))
+        Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
     }
 
     pub async fn prefetch_release(
@@ -1439,10 +1425,10 @@ impl AppHandle {
         let detail = self
             .services
             .import()
-            .prefetch_release(&release_id, source.to_core())
+            .prefetch_release(&release_id, source.into_core())
             .await
             .map_err(BridgeError::import)?;
-        Ok(crate::types::release_detail_to_bridge(
+        Ok(crate::types::BridgeReleaseDetail::from_core(
             detail,
             local_track_count,
         ))
@@ -1460,7 +1446,7 @@ impl AppHandle {
             .map_err(BridgeError::import)?;
         Ok(covers
             .into_iter()
-            .map(crate::types::remote_cover_data_to_bridge)
+            .map(crate::types::BridgeRemoteCover::from_core)
             .collect())
     }
 
@@ -1495,7 +1481,7 @@ impl AppHandle {
             .export_track(
                 &track_id,
                 std::path::Path::new(&output_path),
-                crate::bridge_utils::core_export_selection(selection),
+                crate::types::BridgeExportSelection::into_core(selection),
             )
             .await
             .map_err(|e| BridgeError::export(format!("{e}")))
@@ -1524,7 +1510,7 @@ impl AppHandle {
             .library_manager()
             .export_track_extension(
                 &track_id,
-                crate::bridge_utils::core_export_selection(selection),
+                crate::types::BridgeExportSelection::into_core(selection),
             )
             .await
             .map_err(|e| BridgeError::export(format!("{e}")))
@@ -1573,351 +1559,559 @@ async fn pump_ui_events(
     }
 }
 
-/// Translate bae-core's outbox snapshot to its bridge mirror. `last_error` is
-/// `last_error` is lifted out of the `Failed` variant into a flat field
-/// beside the three-state enum so the UI doesn't switch on associated data.
+impl crate::types::BridgeUploadReleaseGroup {
+    fn from_core(g: bae_core::library::UploadReleaseGroup) -> Self {
+        let bae_core::library::UploadReleaseGroup {
+            release_id,
+            display_title,
+            file_count,
+            progress,
+        } = g;
+        Self {
+            release_id,
+            display_title,
+            file_count,
+            progress: crate::types::BridgeUploadProgress::from_core(progress),
+        }
+    }
+}
+
+impl crate::types::BridgeDeleteOp {
+    fn from_core(op: bae_core::library::DeleteOp) -> Self {
+        let bae_core::library::DeleteOp {
+            id,
+            cloud_key,
+            created_at,
+        } = op;
+        Self {
+            id,
+            cloud_key,
+            created_at,
+        }
+    }
+}
+
+/// Translate bae-core's outbox snapshot to its bridge mirror.
 ///
 /// Ungated (unlike `convert_ui_event`): `get_outbox_snapshot` lives in the
 /// ungated `AppHandle` impl block, so this helper must exist on every target it
 /// can be called from. It references only cross-platform types.
-fn convert_outbox_snapshot(
-    snapshot: bae_core::library::OutboxSnapshot,
-) -> crate::types::BridgeOutboxSnapshot {
-    use crate::types::{BridgeDeleteOp, BridgeOutboxSnapshot, BridgeUploadReleaseGroup};
-
-    let per_release = snapshot
-        .per_release_progress()
-        .into_iter()
-        .map(|(release_id, progress)| (release_id, convert_upload_progress(progress)))
-        .collect();
-    let pending_deletes = snapshot.pending_delete_count();
-
-    let upload_groups: Vec<_> = snapshot
-        .upload_groups
-        .into_iter()
-        .map(|g| BridgeUploadReleaseGroup {
-            release_id: g.release_id,
-            display_title: g.display_title,
-            file_count: g.file_count,
-            progress: convert_upload_progress(g.progress),
-        })
-        .collect();
-
-    let deletes: Vec<_> = snapshot
-        .deletes
-        .into_iter()
-        .map(|op| BridgeDeleteOp {
-            id: op.id,
-            cloud_key: op.cloud_key,
-            created_at: op.created_at,
-        })
-        .collect();
-
-    BridgeOutboxSnapshot {
-        upload_groups,
-        deletes,
-        per_release,
-        total: convert_upload_progress(snapshot.total),
-        active_bytes_total: snapshot.active_bytes_total,
-        pending_deletes,
-        paused: snapshot.paused,
-        throughput_bps: snapshot.throughput_bps,
-        eta_seconds: snapshot.eta_seconds,
-    }
-}
-
-fn convert_upload_progress(
-    p: bae_core::library::UploadProgress,
-) -> crate::types::BridgeUploadProgress {
-    crate::types::BridgeUploadProgress {
-        queued: p.queued,
-        active: p.active,
-        failed: p.failed,
-        bytes_done: p.bytes_done,
-        bytes_total: p.bytes_total,
-        activity: p.activity().map(convert_upload_activity),
-    }
-}
-
-fn convert_upload_activity(
-    a: bae_core::library::UploadActivity,
-) -> crate::types::BridgeUploadActivity {
-    use crate::types::BridgeUploadActivity;
-    use bae_core::library::UploadActivity;
-    match a {
-        UploadActivity::Uploading => BridgeUploadActivity::Uploading,
-        UploadActivity::Retrying => BridgeUploadActivity::Retrying,
-        UploadActivity::Queued => BridgeUploadActivity::Queued,
-    }
-}
-
-fn convert_download_snapshot(
-    snapshot: bae_core::library::DownloadSnapshot,
-) -> crate::types::BridgeDownloadSnapshot {
-    use crate::types::{
-        BridgeDownloadOp, BridgeDownloadSnapshot, BridgeDownloadState,
-        BridgeDownloadTransferProgress,
-    };
-    use bae_core::library::DownloadState;
-
-    let downloads = snapshot
-        .ops
-        .into_iter()
-        .map(|op| {
-            let state = match op.state {
-                DownloadState::Queued => BridgeDownloadState::Queued,
-                DownloadState::Active { progress } => BridgeDownloadState::Active {
-                    progress: BridgeDownloadTransferProgress {
-                        bytes_done: progress.bytes_done,
-                        bytes_total: progress.bytes_total,
-                        fraction: progress.fraction,
-                    },
-                },
-                DownloadState::Failed { error } => BridgeDownloadState::Failed { error },
-            };
-            BridgeDownloadOp {
-                release_id: op.release_id,
-                title: op.title,
-                file_count: op.file_count,
-                total_size: op.total_size,
-                created_at: op.created_at,
-                state,
-            }
-        })
-        .collect();
-
-    BridgeDownloadSnapshot {
-        downloads,
-        total: convert_download_progress(snapshot.total),
-        paused: snapshot.paused,
-    }
-}
-
-fn convert_download_progress(
-    p: bae_core::library::DownloadProgress,
-) -> crate::types::BridgeDownloadProgress {
-    crate::types::BridgeDownloadProgress {
-        queued: p.queued,
-        active: p.active,
-        failed: p.failed,
-    }
-}
-
-fn convert_export_snapshot(
-    snapshot: bae_core::library::ExportSnapshot,
-) -> crate::types::BridgeExportSnapshot {
-    use crate::types::{BridgeExportOp, BridgeExportSnapshot, BridgeExportState};
-    use bae_core::library::ExportState;
-
-    let exports = snapshot
-        .ops
-        .into_iter()
-        .map(|op| {
-            let state = match op.state {
-                ExportState::Queued => BridgeExportState::Queued,
-                ExportState::Active { progress } => BridgeExportState::Active { percent: progress },
-                ExportState::Failed { error } => BridgeExportState::Failed { error },
-            };
-            BridgeExportOp {
-                release_id: op.release_id,
-                target_dir: op.payload.target_dir.to_string_lossy().to_string(),
-                title: op.title,
-                file_count: op.file_count,
-                total_size: op.total_size,
-                created_at: op.created_at,
-                state,
-            }
-        })
-        .collect();
-
-    BridgeExportSnapshot {
-        exports,
-        total: convert_export_progress(snapshot.total),
-        paused: snapshot.paused,
-    }
-}
-
-fn convert_export_progress(
-    p: bae_core::library::ExportProgress,
-) -> crate::types::BridgeExportProgress {
-    crate::types::BridgeExportProgress {
-        queued: p.queued,
-        active: p.active,
-        failed: p.failed,
-    }
-}
-
-fn convert_queue_entry(i: bae_core::queue::QueueItem) -> crate::types::BridgeQueueEntry {
-    crate::types::BridgeQueueEntry {
-        entry_id: i.entry_id,
-        track_id: i.track_id,
-        title: i.title,
-        artist_names: i.artist_names,
-        duration_ms: i.duration_ms,
-        album_title: i.album_title,
-        cover_image_id: i.cover_image_id,
-    }
-}
-
-fn convert_playback_context(
-    context: bae_core::queue::ResolvedContext,
-) -> crate::types::BridgePlaybackContext {
-    crate::types::BridgePlaybackContext {
-        kind: crate::types::BridgePlaybackSourceKind::from_core(&context.source),
-        shuffled: context.shuffled,
-        upcoming: context
-            .upcoming
+impl crate::types::BridgeOutboxSnapshot {
+    fn from_core(snapshot: bae_core::library::OutboxSnapshot) -> Self {
+        // Derived aggregates borrow `&snapshot`; compute them before the move.
+        let per_release = snapshot
+            .per_release_progress()
             .into_iter()
-            .map(convert_queue_entry)
-            .collect(),
+            .map(|(release_id, progress)| {
+                (
+                    release_id,
+                    crate::types::BridgeUploadProgress::from_core(progress),
+                )
+            })
+            .collect();
+        let pending_deletes = snapshot.pending_delete_count();
+
+        let bae_core::library::OutboxSnapshot {
+            upload_groups,
+            deletes,
+            total,
+            active_bytes_total,
+            paused,
+            throughput_bps,
+            eta_seconds,
+        } = snapshot;
+
+        crate::types::BridgeOutboxSnapshot {
+            upload_groups: upload_groups
+                .into_iter()
+                .map(crate::types::BridgeUploadReleaseGroup::from_core)
+                .collect(),
+            deletes: deletes
+                .into_iter()
+                .map(crate::types::BridgeDeleteOp::from_core)
+                .collect(),
+            per_release,
+            total: crate::types::BridgeUploadProgress::from_core(total),
+            active_bytes_total,
+            pending_deletes,
+            paused,
+            throughput_bps,
+            eta_seconds,
+        }
     }
 }
 
-fn convert_queue_snapshot(
-    snapshot: bae_core::queue::ResolvedQueueSnapshot,
-) -> crate::types::BridgeQueueSnapshot {
-    crate::types::BridgeQueueSnapshot {
-        manual: snapshot
-            .manual
-            .into_iter()
-            .map(convert_queue_entry)
-            .collect(),
-        context: snapshot.context.map(convert_playback_context),
-        has_next: snapshot.has_next,
-        has_previous: snapshot.has_previous,
+impl crate::types::BridgeUploadProgress {
+    fn from_core(p: bae_core::library::UploadProgress) -> Self {
+        // `activity()` borrows `&p`; compute it before destructuring `p`.
+        let activity = p
+            .activity()
+            .map(crate::types::BridgeUploadActivity::from_core);
+        let bae_core::library::UploadProgress {
+            queued,
+            active,
+            failed,
+            bytes_done,
+            bytes_total,
+        } = p;
+        crate::types::BridgeUploadProgress {
+            queued,
+            active,
+            failed,
+            bytes_done,
+            bytes_total,
+            activity,
+        }
     }
 }
 
-fn convert_sync_status_snapshot(
-    snapshot: bae_core::library::SyncStatusSnapshot,
-) -> crate::types::BridgeSyncStatusSnapshot {
-    crate::types::BridgeSyncStatusSnapshot {
-        error: snapshot.error.map(crate::types::bridge_error),
-        last_sync_time: snapshot.last_sync_time,
-        syncing: snapshot.syncing,
-        sync_ready: snapshot.sync_ready,
+impl crate::types::BridgeUploadActivity {
+    fn from_core(a: bae_core::library::UploadActivity) -> Self {
+        use crate::types::BridgeUploadActivity;
+        use bae_core::library::UploadActivity;
+        match a {
+            UploadActivity::Uploading => BridgeUploadActivity::Uploading,
+            UploadActivity::Retrying => BridgeUploadActivity::Retrying,
+            UploadActivity::Queued => BridgeUploadActivity::Queued,
+        }
+    }
+}
+
+impl crate::types::BridgeDownloadTransferProgress {
+    fn from_core(p: bae_core::library::DownloadTransferProgress) -> Self {
+        let bae_core::library::DownloadTransferProgress {
+            bytes_done,
+            bytes_total,
+            fraction,
+        } = p;
+        Self {
+            bytes_done,
+            bytes_total,
+            fraction,
+        }
+    }
+}
+
+impl crate::types::BridgeDownloadState {
+    fn from_core(state: bae_core::library::DownloadState) -> Self {
+        use crate::types::BridgeDownloadState;
+        use bae_core::library::DownloadState;
+        match state {
+            DownloadState::Queued => BridgeDownloadState::Queued,
+            DownloadState::Active { progress } => BridgeDownloadState::Active {
+                progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
+            },
+            DownloadState::Failed { error } => BridgeDownloadState::Failed { error },
+        }
+    }
+}
+
+impl crate::types::BridgeDownloadOp {
+    fn from_core(op: bae_core::library::DownloadOp) -> Self {
+        let bae_core::library::release_queue::ReleaseQueueOp {
+            release_id,
+            title,
+            file_count,
+            total_size,
+            created_at,
+            // Downloads carry no operation-specific payload.
+            payload: (),
+            state,
+        } = op;
+        crate::types::BridgeDownloadOp {
+            release_id,
+            title,
+            file_count,
+            total_size,
+            created_at,
+            state: crate::types::BridgeDownloadState::from_core(state),
+        }
+    }
+}
+
+/// Shared projection for the download and export queue snapshots, which are both
+/// aliases of the same generic `ReleaseQueueSnapshot`. Parameterized over the
+/// per-op and per-progress converters so each snapshot keeps its own named fields.
+fn project_release_queue_snapshot<Extra, Progress, Op, Prog>(
+    snapshot: bae_core::library::release_queue::ReleaseQueueSnapshot<Extra, Progress>,
+    op_from_core: impl Fn(bae_core::library::release_queue::ReleaseQueueOp<Extra, Progress>) -> Op,
+    progress_from_core: impl Fn(bae_core::library::release_queue::ReleaseQueueProgress) -> Prog,
+) -> (Vec<Op>, Prog, bool) {
+    let bae_core::library::release_queue::ReleaseQueueSnapshot { ops, total, paused } = snapshot;
+    (
+        ops.into_iter().map(op_from_core).collect(),
+        progress_from_core(total),
+        paused,
+    )
+}
+
+/// Shared projection for the download and export per-state counts, both aliases
+/// of the same generic `ReleaseQueueProgress`.
+fn release_queue_progress_counts(
+    p: bae_core::library::release_queue::ReleaseQueueProgress,
+) -> (u32, u32, u32) {
+    let bae_core::library::release_queue::ReleaseQueueProgress {
+        queued,
+        active,
+        failed,
+    } = p;
+    (queued, active, failed)
+}
+
+impl crate::types::BridgeDownloadSnapshot {
+    fn from_core(snapshot: bae_core::library::DownloadSnapshot) -> Self {
+        let (downloads, total, paused) = project_release_queue_snapshot(
+            snapshot,
+            crate::types::BridgeDownloadOp::from_core,
+            crate::types::BridgeDownloadProgress::from_core,
+        );
+        crate::types::BridgeDownloadSnapshot {
+            downloads,
+            total,
+            paused,
+        }
+    }
+}
+
+impl crate::types::BridgeDownloadProgress {
+    fn from_core(p: bae_core::library::DownloadProgress) -> Self {
+        let (queued, active, failed) = release_queue_progress_counts(p);
+        crate::types::BridgeDownloadProgress {
+            queued,
+            active,
+            failed,
+        }
+    }
+}
+
+impl crate::types::BridgeExportState {
+    fn from_core(state: bae_core::library::ExportState) -> Self {
+        use crate::types::BridgeExportState;
+        use bae_core::library::ExportState;
+        match state {
+            ExportState::Queued => BridgeExportState::Queued,
+            ExportState::Active { progress } => BridgeExportState::Active { percent: progress },
+            ExportState::Failed { error } => BridgeExportState::Failed { error },
+        }
+    }
+}
+
+impl crate::types::BridgeExportOp {
+    fn from_core(op: bae_core::library::ExportOp) -> Self {
+        let bae_core::library::release_queue::ReleaseQueueOp {
+            release_id,
+            title,
+            file_count,
+            total_size,
+            created_at,
+            payload,
+            state,
+        } = op;
+        let bae_core::library::export_snapshot::ExportRequest {
+            target_dir,
+            // The chosen codec/format selection drives the copy, not this row.
+            selection: _,
+        } = payload;
+        crate::types::BridgeExportOp {
+            release_id,
+            target_dir: target_dir.to_string_lossy().to_string(),
+            title,
+            file_count,
+            total_size,
+            created_at,
+            state: crate::types::BridgeExportState::from_core(state),
+        }
+    }
+}
+
+impl crate::types::BridgeExportSnapshot {
+    fn from_core(snapshot: bae_core::library::ExportSnapshot) -> Self {
+        let (exports, total, paused) = project_release_queue_snapshot(
+            snapshot,
+            crate::types::BridgeExportOp::from_core,
+            crate::types::BridgeExportProgress::from_core,
+        );
+        crate::types::BridgeExportSnapshot {
+            exports,
+            total,
+            paused,
+        }
+    }
+}
+
+impl crate::types::BridgeExportProgress {
+    fn from_core(p: bae_core::library::ExportProgress) -> Self {
+        let (queued, active, failed) = release_queue_progress_counts(p);
+        crate::types::BridgeExportProgress {
+            queued,
+            active,
+            failed,
+        }
+    }
+}
+
+impl crate::types::BridgeQueueEntry {
+    fn from_core(i: bae_core::queue::QueueItem) -> Self {
+        let bae_core::queue::QueueItem {
+            entry_id,
+            track_id,
+            title,
+            artist_names,
+            duration_ms,
+            album_title,
+            cover_image_id,
+        } = i;
+        crate::types::BridgeQueueEntry {
+            entry_id,
+            track_id,
+            title,
+            artist_names,
+            duration_ms,
+            album_title,
+            cover_image_id,
+        }
+    }
+}
+
+impl crate::types::BridgePlaybackContext {
+    fn from_core(context: bae_core::queue::ResolvedContext) -> Self {
+        let bae_core::queue::ResolvedContext {
+            source,
+            shuffled,
+            upcoming,
+        } = context;
+        crate::types::BridgePlaybackContext {
+            kind: crate::types::BridgePlaybackSourceKind::from_core(&source),
+            shuffled,
+            upcoming: upcoming
+                .into_iter()
+                .map(crate::types::BridgeQueueEntry::from_core)
+                .collect(),
+        }
+    }
+}
+
+impl crate::types::BridgeQueueSnapshot {
+    fn from_core(snapshot: bae_core::queue::ResolvedQueueSnapshot) -> Self {
+        let bae_core::queue::ResolvedQueueSnapshot {
+            manual,
+            context,
+            has_next,
+            has_previous,
+        } = snapshot;
+        crate::types::BridgeQueueSnapshot {
+            manual: manual
+                .into_iter()
+                .map(crate::types::BridgeQueueEntry::from_core)
+                .collect(),
+            context: context.map(crate::types::BridgePlaybackContext::from_core),
+            has_next,
+            has_previous,
+        }
+    }
+}
+
+impl crate::types::BridgeSyncStatusSnapshot {
+    fn from_core(snapshot: bae_core::library::SyncStatusSnapshot) -> Self {
+        let bae_core::library::SyncStatusSnapshot {
+            error,
+            last_sync_time,
+            syncing,
+            sync_ready,
+        } = snapshot;
+        crate::types::BridgeSyncStatusSnapshot {
+            error: error.map(crate::types::BridgeError::from_core),
+            last_sync_time,
+            syncing,
+            sync_ready,
+        }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-fn convert_folder_candidate(
-    candidate: bae_core::import::FolderCandidate,
-) -> crate::types::BridgeFolderCandidate {
-    let track_count = candidate.track_count();
-    crate::types::BridgeFolderCandidate {
-        folder_path: candidate.path.to_string_lossy().to_string(),
-        source_folder_name: candidate.name,
-        watched_folder_path: candidate.watched_folder_path,
-        files: crate::types::categorized_files_to_bridge(candidate.files),
-        track_count,
-        skipped: candidate.skipped,
-        is_added: candidate.is_added,
+impl crate::types::BridgeFolderCandidate {
+    fn from_core(candidate: bae_core::import::FolderCandidate) -> Self {
+        // `track_count()` borrows `&candidate`; compute it before the move.
+        let track_count = candidate.track_count();
+        let bae_core::import::FolderCandidate {
+            path,
+            name,
+            files,
+            watched_folder_path,
+            skipped,
+            is_added,
+        } = candidate;
+        crate::types::BridgeFolderCandidate {
+            folder_path: path.to_string_lossy().to_string(),
+            source_folder_name: name,
+            watched_folder_path,
+            files: crate::types::BridgeCandidateFiles::from_core(files),
+            track_count,
+            skipped,
+            is_added,
+        }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-fn convert_invalid_candidate(
-    candidate: bae_core::import::InvalidCandidate,
-) -> crate::types::BridgeInvalidCandidate {
-    crate::types::BridgeInvalidCandidate {
-        folder_path: candidate.path.to_string_lossy().to_string(),
-        source_folder_name: candidate.name,
-        watched_folder_path: candidate.watched_folder_path,
-        reason: crate::types::invalid_reason_to_bridge(candidate.reason),
-    }
-}
-
-#[cfg(feature = "desktop")]
-fn convert_import_candidate_snapshot(
-    candidate: bae_core::import::ImportCandidateSnapshot,
-) -> crate::types::BridgeImportCandidateSnapshot {
-    match candidate {
-        bae_core::import::ImportCandidateSnapshot::Folder { candidate, runtime } => {
-            crate::types::BridgeImportCandidateSnapshot::Folder {
-                candidate: convert_folder_candidate(candidate),
-                runtime_snapshot: convert_candidate_runtime_snapshot(runtime),
-            }
-        }
-        bae_core::import::ImportCandidateSnapshot::Invalid(candidate) => {
-            crate::types::BridgeImportCandidateSnapshot::Invalid {
-                candidate: convert_invalid_candidate(candidate),
-            }
-        }
-        bae_core::import::ImportCandidateSnapshot::Runtime { key, runtime } => {
-            crate::types::BridgeImportCandidateSnapshot::Runtime {
-                key,
-                runtime_snapshot: convert_candidate_runtime_snapshot(runtime),
-            }
+impl crate::types::BridgeInvalidCandidate {
+    fn from_core(candidate: bae_core::import::InvalidCandidate) -> Self {
+        let bae_core::import::InvalidCandidate {
+            path,
+            name,
+            watched_folder_path,
+            reason,
+        } = candidate;
+        crate::types::BridgeInvalidCandidate {
+            folder_path: path.to_string_lossy().to_string(),
+            source_folder_name: name,
+            watched_folder_path,
+            reason: crate::types::BridgeInvalidReason::from_core(reason),
         }
     }
 }
 
 #[cfg(feature = "desktop")]
-fn convert_candidate_runtime_snapshot(
-    runtime: bae_core::import::CandidateRuntimeSnapshot,
-) -> crate::types::BridgeCandidateRuntimeSnapshot {
-    crate::types::BridgeCandidateRuntimeSnapshot {
-        identify_state: crate::types::identify_state_to_bridge(runtime.identify_state),
-        signals_toolbar: crate::types::toolbar_to_bridge(runtime.toolbar),
-        signals: runtime.signals.map(crate::types::signals_to_bridge),
-        import_status: runtime.import_status.map(convert_candidate_import_status),
+impl crate::types::BridgeImportCandidateSnapshot {
+    fn from_core(candidate: bae_core::import::ImportCandidateSnapshot) -> Self {
+        match candidate {
+            bae_core::import::ImportCandidateSnapshot::Folder { candidate, runtime } => {
+                crate::types::BridgeImportCandidateSnapshot::Folder {
+                    candidate: crate::types::BridgeFolderCandidate::from_core(candidate),
+                    runtime_snapshot: crate::types::BridgeCandidateRuntimeSnapshot::from_core(
+                        runtime,
+                    ),
+                }
+            }
+            bae_core::import::ImportCandidateSnapshot::Invalid(candidate) => {
+                crate::types::BridgeImportCandidateSnapshot::Invalid {
+                    candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
+                }
+            }
+            bae_core::import::ImportCandidateSnapshot::Runtime { key, runtime } => {
+                crate::types::BridgeImportCandidateSnapshot::Runtime {
+                    key,
+                    runtime_snapshot: crate::types::BridgeCandidateRuntimeSnapshot::from_core(
+                        runtime,
+                    ),
+                }
+            }
+        }
     }
 }
 
 #[cfg(feature = "desktop")]
-fn convert_candidate_import_status(
-    status: bae_core::import::CandidateImportStatusSnapshot,
-) -> crate::types::BridgeCandidateImportStatus {
-    match status {
-        bae_core::import::CandidateImportStatusSnapshot::Importing {
-            progress_percent,
-            step,
-        } => crate::types::BridgeCandidateImportStatus::Importing {
-            progress_percent,
-            step: step.map(crate::types::import_step_to_bridge),
-        },
-        bae_core::import::CandidateImportStatusSnapshot::Complete {
-            release_id,
+impl crate::types::BridgeCandidateRuntimeSnapshot {
+    fn from_core(runtime: bae_core::import::CandidateRuntimeSnapshot) -> Self {
+        let bae_core::import::CandidateRuntimeSnapshot {
+            identify_state,
+            toolbar,
+            signals,
+            import_status,
+        } = runtime;
+        crate::types::BridgeCandidateRuntimeSnapshot {
+            identify_state: crate::types::BridgeIdentifyState::from_core(identify_state),
+            signals_toolbar: crate::types::BridgeSignalsToolbar::from_core(toolbar),
+            signals: signals.map(crate::types::BridgeSignals::from_core),
+            import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeCandidateImportStatus {
+    fn from_core(status: bae_core::import::CandidateImportStatusSnapshot) -> Self {
+        match status {
+            bae_core::import::CandidateImportStatusSnapshot::Importing {
+                progress_percent,
+                step,
+            } => crate::types::BridgeCandidateImportStatus::Importing {
+                progress_percent,
+                step: step.map(crate::types::BridgeImportStep::from_core),
+            },
+            bae_core::import::CandidateImportStatusSnapshot::Complete {
+                release_id,
+                album_id,
+            } => crate::types::BridgeCandidateImportStatus::Complete {
+                release_id,
+                album_id,
+            },
+            bae_core::import::CandidateImportStatusSnapshot::Error { error } => {
+                crate::types::BridgeCandidateImportStatus::Error {
+                    error: crate::types::BridgeError::from_core(bae_core::ui::UiError::import(
+                        error,
+                    )),
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeFolderImportCandidateSnapshot {
+    fn from_core(snapshot: bae_core::import::FolderImportCandidateSnapshot) -> Self {
+        let bae_core::import::FolderImportCandidateSnapshot { candidate, runtime } = snapshot;
+        crate::types::BridgeFolderImportCandidateSnapshot {
+            candidate: crate::types::BridgeFolderCandidate::from_core(candidate),
+            runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeImportCandidatesSnapshot {
+    fn from_core(snapshot: bae_core::import::ImportCandidatesSnapshot) -> Self {
+        let bae_core::import::ImportCandidatesSnapshot {
+            watched_folders,
+            folder_candidates,
+            invalid_candidates,
+        } = snapshot;
+        crate::types::BridgeImportCandidatesSnapshot {
+            watched_folders: watched_folders
+                .into_iter()
+                .map(crate::types::BridgeWatchedFolder::from_core)
+                .collect(),
+            folder_candidates: folder_candidates
+                .into_iter()
+                .map(crate::types::BridgeFolderImportCandidateSnapshot::from_core)
+                .collect(),
+            invalid_candidates: invalid_candidates
+                .into_iter()
+                .map(crate::types::BridgeInvalidCandidate::from_core)
+                .collect(),
+        }
+    }
+}
+
+impl crate::types::BridgeLoadingTrackInfo {
+    fn from_core(t: bae_core::playback::LoadingTrack) -> Self {
+        let bae_core::playback::LoadingTrack {
+            track_info,
+            duration_ms,
+        } = t;
+        let bae_core::playback::PlaybackTrackInfo {
+            track_title,
+            artist_names,
             album_id,
-        } => crate::types::BridgeCandidateImportStatus::Complete {
-            release_id,
+            album_title,
+            cover_image_id,
+            // The now-playing bar's loading state renders only the fields above;
+            // identity/side detail belongs to the full Playing/Paused events.
+            track_id: _,
+            artist_id: _,
+            release_id: _,
+            side: _,
+        } = track_info;
+        crate::types::BridgeLoadingTrackInfo {
+            track_title,
+            artist_names,
             album_id,
-        },
-        bae_core::import::CandidateImportStatusSnapshot::Error { error } => {
-            crate::types::BridgeCandidateImportStatus::Error {
-                error: crate::types::bridge_error(bae_core::ui::UiError::import(error)),
-            }
+            album_title,
+            cover_image_id,
+            duration_ms,
         }
-    }
-}
-
-#[cfg(feature = "desktop")]
-fn convert_import_candidates_snapshot(
-    snapshot: bae_core::import::ImportCandidatesSnapshot,
-) -> crate::types::BridgeImportCandidatesSnapshot {
-    crate::types::BridgeImportCandidatesSnapshot {
-        watched_folders: snapshot
-            .watched_folders
-            .into_iter()
-            .map(crate::types::BridgeWatchedFolder::from_core)
-            .collect(),
-        folder_candidates: snapshot
-            .folder_candidates
-            .into_iter()
-            .map(
-                |snapshot| crate::types::BridgeFolderImportCandidateSnapshot {
-                    candidate: convert_folder_candidate(snapshot.candidate),
-                    runtime: convert_candidate_runtime_snapshot(snapshot.runtime),
-                },
-            )
-            .collect(),
-        invalid_candidates: snapshot
-            .invalid_candidates
-            .into_iter()
-            .map(convert_invalid_candidate)
-            .collect(),
     }
 }
 
@@ -1935,18 +2129,11 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
         // ── Playback ───────────────────────────────────────────────
         UiBusEvent::PlaybackStopped => Some(BridgeUiEvent::PlaybackStopped),
         UiBusEvent::PlaybackError { reason } => Some(BridgeUiEvent::PlaybackError {
-            reason: crate::types::bridge_playback_error_reason(reason),
+            reason: crate::types::BridgePlaybackErrorReason::from_core(reason),
         }),
         UiBusEvent::PlaybackLoading { track_id, track } => Some(BridgeUiEvent::PlaybackLoading {
             track_id,
-            track: track.map(|t| BridgeLoadingTrackInfo {
-                track_title: t.track_info.track_title,
-                artist_names: t.track_info.artist_names,
-                album_id: t.track_info.album_id,
-                album_title: t.track_info.album_title,
-                cover_image_id: t.track_info.cover_image_id,
-                duration_ms: t.duration_ms,
-            }),
+            track: track.map(BridgeLoadingTrackInfo::from_core),
         }),
         UiBusEvent::PlaybackPlaying {
             track_id,
@@ -2016,7 +2203,7 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             mode: BridgeRepeatMode::from_core(mode),
         }),
         UiBusEvent::QueueUpdated(snapshot) => Some(BridgeUiEvent::QueueUpdated {
-            snapshot: convert_queue_snapshot(snapshot),
+            snapshot: BridgeQueueSnapshot::from_core(snapshot),
         }),
         UiBusEvent::QueueItemsAdded { count } => Some(BridgeUiEvent::QueueItemsAdded { count }),
 
@@ -2062,294 +2249,642 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
 
         // ── Errors ─────────────────────────────────────────────────
         UiBusEvent::Error { error } => Some(BridgeUiEvent::Error {
-            error: crate::types::bridge_error(error),
+            error: crate::types::BridgeError::from_core(error),
         }),
         UiBusEvent::ErrorCleared => Some(BridgeUiEvent::ErrorCleared),
     }
 }
 
-fn convert_release_detail(rel: bae_core::album_detail::ReleaseDetail) -> BridgeRelease {
-    let convert_file = |f: bae_core::album_detail::FileDetail| BridgeFile {
-        id: f.id,
-        original_filename: f.original_filename,
-        file_size: f.file_size,
-        is_image: f.is_image,
-        content_type: f.content_type,
-        audio_format: f.audio_format.map(crate::types::audio_format_to_bridge),
-    };
-    let convert_gallery_item = |g: bae_core::album_detail::GalleryItem| BridgeGalleryItem {
-        id: g.id,
-        label: g.label,
-        source: match g.source {
-            bae_core::album_detail::GallerySource::Cover(image) => {
-                crate::types::BridgeGallerySource::Cover {
-                    image: crate::types::BridgeImageRef::from_core(image),
+impl BridgeFile {
+    fn from_core(f: bae_core::album_detail::FileDetail) -> Self {
+        let bae_core::album_detail::FileDetail {
+            id,
+            original_filename,
+            file_size,
+            is_image,
+            content_type,
+            audio_format,
+        } = f;
+        BridgeFile {
+            id,
+            original_filename,
+            file_size,
+            is_image,
+            content_type,
+            audio_format: audio_format.map(crate::types::BridgeAudioFormat::from_core),
+        }
+    }
+}
+
+impl BridgeGalleryItem {
+    fn from_core(g: bae_core::album_detail::GalleryItem) -> Self {
+        let bae_core::album_detail::GalleryItem { id, label, source } = g;
+        BridgeGalleryItem {
+            id,
+            label,
+            source: match source {
+                bae_core::album_detail::GallerySource::Cover(image) => {
+                    crate::types::BridgeGallerySource::Cover {
+                        image: crate::types::BridgeImageRef::from_core(image),
+                    }
                 }
-            }
-            bae_core::album_detail::GallerySource::ReleaseFile { file_id } => {
-                crate::types::BridgeGallerySource::ReleaseFile { file_id }
-            }
-        },
-    };
-    let convert_track = |t: bae_core::album_detail::TrackDetail| BridgeTrack {
-        id: t.id,
-        title: t.title,
-        side: t.side,
-        track_number: t.track_number,
-        duration_ms: t.duration_ms,
-        artist_names: t.artist_names,
-        position_text: t.position_text,
-    };
-    let summary = rel.summary;
-    BridgeRelease {
-        id: summary.id,
-        album_id: summary.album_id,
-        display_name: rel.display_name,
-        release_name: rel.release_name,
-        year: rel.year,
-        format: summary.format,
-        label: rel.label,
-        catalog_number: rel.catalog_number,
-        country: rel.country,
-        storage_state: crate::types::BridgeReleaseStorageState::from_core(summary.storage_state),
-        pinned: summary.pinned,
-        storage_actions: summary
-            .storage_actions
-            .into_iter()
-            .map(crate::types::BridgeReleaseStorageAction::from_core)
-            .collect(),
-        transfer_action: summary
-            .transfer_action
-            .map(crate::types::BridgeReleaseStorageAction::from_core),
-        total_duration_ms: rel.total_duration_ms,
-        tracks: rel.tracks.into_iter().map(convert_track).collect(),
-        track_groups: rel
-            .track_groups
-            .into_iter()
-            .map(|g| BridgeTrackGroup {
-                side: crate::types::BridgeTrackSide::from_core(g.side),
-                tracks: g.tracks.into_iter().map(convert_track).collect(),
-            })
-            .collect(),
-        image_files: rel.image_files.into_iter().map(convert_file).collect(),
-        files: rel.files.into_iter().map(convert_file).collect(),
-        gallery_items: rel
-            .gallery_items
-            .into_iter()
-            .map(convert_gallery_item)
-            .collect(),
-        file_count: summary.file_count,
-        total_size: summary.total_size,
-        cover: summary.cover.map(crate::types::BridgeImageRef::from_core),
+                bae_core::album_detail::GallerySource::ReleaseFile { file_id } => {
+                    crate::types::BridgeGallerySource::ReleaseFile { file_id }
+                }
+            },
+        }
     }
 }
 
-fn convert_storage_row(raw: bae_core::album_detail::StorageRow) -> BridgeStorageRow {
-    BridgeStorageRow {
-        release: convert_release_summary(raw.release),
-        album: convert_album_summary(raw.album),
+impl BridgeTrack {
+    fn from_core(t: bae_core::album_detail::TrackDetail) -> Self {
+        let bae_core::album_detail::TrackDetail {
+            id,
+            title,
+            side,
+            track_number,
+            duration_ms,
+            artist_names,
+            position_text,
+            // Structured position drives core-side grouping (`track_groups`); the
+            // UI renders `position_text` and the group headers, not this.
+            position: _,
+        } = t;
+        BridgeTrack {
+            id,
+            title,
+            side,
+            track_number,
+            duration_ms,
+            artist_names,
+            position_text,
+        }
     }
 }
 
-fn convert_release_summary(s: bae_core::album_detail::ReleaseSummary) -> BridgeReleaseSummary {
-    BridgeReleaseSummary {
-        id: s.id,
-        album_id: s.album_id,
-        format: s.format,
-        storage_state: crate::types::BridgeReleaseStorageState::from_core(s.storage_state),
-        pinned: s.pinned,
-        storage_actions: s
-            .storage_actions
-            .into_iter()
-            .map(crate::types::BridgeReleaseStorageAction::from_core)
-            .collect(),
-        transfer_action: s
-            .transfer_action
-            .map(crate::types::BridgeReleaseStorageAction::from_core),
-        file_count: s.file_count,
-        total_size: s.total_size,
-        cover: s.cover.map(crate::types::BridgeImageRef::from_core),
+impl BridgeTrackGroup {
+    fn from_core(g: bae_core::album_detail::TrackGroup) -> Self {
+        let bae_core::album_detail::TrackGroup { side, tracks } = g;
+        BridgeTrackGroup {
+            side: crate::types::BridgeTrackSide::from_core(side),
+            tracks: tracks.into_iter().map(BridgeTrack::from_core).collect(),
+        }
     }
 }
 
-fn convert_album_detail(detail: bae_core::album_detail::AlbumDetail) -> BridgeAlbumDetail {
-    let release_ids: Vec<String> = detail
-        .releases
-        .iter()
-        .map(|r| r.summary.id.clone())
-        .collect();
-    let releases: Vec<BridgeRelease> = detail
-        .releases
-        .into_iter()
-        .map(convert_release_detail)
-        .collect();
+impl BridgeRelease {
+    fn from_core(rel: bae_core::album_detail::ReleaseDetail) -> Self {
+        let bae_core::album_detail::ReleaseDetail {
+            summary,
+            display_name,
+            release_name,
+            year,
+            label,
+            catalog_number,
+            country,
+            total_duration_ms,
+            tracks,
+            track_groups,
+            files,
+            image_files,
+            gallery_items,
+        } = rel;
+        // Single-source the summary-derived fields through BridgeReleaseSummary,
+        // then exhaustively destructure it into BridgeRelease's flat fields so the
+        // storage/cover projection lives in one place.
+        let BridgeReleaseSummary {
+            id,
+            album_id,
+            format,
+            storage_state,
+            pinned,
+            storage_actions,
+            transfer_action,
+            file_count,
+            total_size,
+            cover,
+        } = BridgeReleaseSummary::from_core(summary);
+        BridgeRelease {
+            id,
+            album_id,
+            display_name,
+            release_name,
+            year,
+            format,
+            label,
+            catalog_number,
+            country,
+            storage_state,
+            pinned,
+            storage_actions,
+            transfer_action,
+            total_duration_ms,
+            tracks: tracks.into_iter().map(BridgeTrack::from_core).collect(),
+            track_groups: track_groups
+                .into_iter()
+                .map(BridgeTrackGroup::from_core)
+                .collect(),
+            image_files: image_files.into_iter().map(BridgeFile::from_core).collect(),
+            files: files.into_iter().map(BridgeFile::from_core).collect(),
+            gallery_items: gallery_items
+                .into_iter()
+                .map(BridgeGalleryItem::from_core)
+                .collect(),
+            file_count,
+            total_size,
+            cover,
+        }
+    }
+}
 
-    BridgeAlbumDetail {
-        album: BridgeAlbum {
-            id: detail.album.id,
-            title: detail.album.title,
-            year: detail.album.year,
-            is_compilation: detail.album.is_compilation,
-            artist_names: detail.artist_names,
-            primary_release_id: detail.primary_release_id,
+impl BridgeAlbumSearchResult {
+    fn from_core(a: bae_core::album_detail::AlbumSearchResult) -> Self {
+        let bae_core::album_detail::AlbumSearchResult {
+            id,
+            title,
+            year,
+            artist_name,
+            cover,
+        } = a;
+        BridgeAlbumSearchResult {
+            id,
+            title,
+            year,
+            artist_name,
+            cover: cover.map(crate::types::BridgeImageRef::from_core),
+        }
+    }
+}
+
+impl BridgeTrackSearchResult {
+    fn from_core(t: bae_core::album_detail::TrackSearchResult) -> Self {
+        let bae_core::db::DbTrackSearchResult {
+            id,
+            title,
+            duration_ms,
+            album_id,
+            album_title,
+            artist_name,
+        } = t;
+        BridgeTrackSearchResult {
+            id,
+            title,
+            duration_ms,
+            album_id,
+            album_title,
+            artist_name,
+        }
+    }
+}
+
+impl BridgeStoragePage {
+    fn from_core(page: bae_core::album_detail::StoragePage) -> Self {
+        let bae_core::album_detail::StoragePage { rows, total_count } = page;
+        BridgeStoragePage {
+            rows: rows.into_iter().map(BridgeStorageRow::from_core).collect(),
+            total_count,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeCandidateSearchResults {
+    /// Echoes back the `tab` and `source` the search ran against so the caller
+    /// routes results into the matching slot even if the user changed either
+    /// during the await.
+    fn from_core(
+        grouped: bae_core::import::GroupedSearchResults,
+        tab: crate::types::BridgeSearchQueryKind,
+        source: crate::types::BridgeMetadataSource,
+    ) -> Self {
+        let bae_core::import::GroupedSearchResults { groups, statuses } = grouped;
+        crate::types::BridgeCandidateSearchResults {
+            tab,
+            source,
+            groups: groups
+                .into_iter()
+                .map(crate::types::BridgeReleaseGroup::from_core)
+                .collect(),
+            statuses: statuses
+                .into_iter()
+                .map(crate::types::BridgeLibraryStatus::from_core)
+                .collect(),
+        }
+    }
+}
+
+impl BridgeStorageRow {
+    fn from_core(raw: bae_core::album_detail::StorageRow) -> Self {
+        let bae_core::album_detail::StorageRow { release, album } = raw;
+        BridgeStorageRow {
+            release: BridgeReleaseSummary::from_core(release),
+            album: BridgeAlbum::from_core(album),
+        }
+    }
+}
+
+impl BridgeReleaseSummary {
+    fn from_core(s: bae_core::album_detail::ReleaseSummary) -> Self {
+        let bae_core::album_detail::ReleaseSummary {
+            id,
+            album_id,
+            format,
+            storage_state,
+            pinned,
+            storage_actions,
+            transfer_action,
+            file_count,
+            total_size,
+            cover,
+        } = s;
+        BridgeReleaseSummary {
+            id,
+            album_id,
+            format,
+            storage_state: crate::types::BridgeReleaseStorageState::from_core(storage_state),
+            pinned,
+            storage_actions: storage_actions
+                .into_iter()
+                .map(crate::types::BridgeReleaseStorageAction::from_core)
+                .collect(),
+            transfer_action: transfer_action
+                .map(crate::types::BridgeReleaseStorageAction::from_core),
+            file_count,
+            total_size,
+            cover: cover.map(crate::types::BridgeImageRef::from_core),
+        }
+    }
+}
+
+impl BridgeAlbumDetail {
+    fn from_core(detail: bae_core::album_detail::AlbumDetail) -> Self {
+        let bae_core::album_detail::AlbumDetail {
+            album,
+            artist_names,
+            releases,
+            primary_release_id,
+            cover,
+        } = detail;
+        let release_ids: Vec<String> = releases.iter().map(|r| r.summary.id.clone()).collect();
+        let bae_core::db::DbAlbum {
+            id,
+            title,
+            year,
+            is_compilation,
+            // The album's own artist FK / created_at aren't surfaced, and the
+            // primary release comes from the detail-level field below.
+            artist_id: _,
+            primary_release_id: _,
+            created_at: _,
+        } = album;
+        // Reassemble the album's slim summary from the detail's DbAlbum plus the
+        // detail-level artist_names/primary_release_id/cover, then reuse
+        // BridgeAlbum::from_core so the BridgeAlbum projection lives in one place.
+        let album = BridgeAlbum::from_core(bae_core::album_detail::AlbumSummary {
+            id,
+            title,
+            year,
+            is_compilation,
+            artist_names,
             release_ids,
-            cover: detail.cover.map(crate::types::BridgeImageRef::from_core),
-        },
-        releases,
+            primary_release_id,
+            cover,
+        });
+        BridgeAlbumDetail {
+            album,
+            releases: releases.into_iter().map(BridgeRelease::from_core).collect(),
+        }
     }
 }
 
-fn convert_album_summary(a: bae_core::album_detail::AlbumSummary) -> BridgeAlbum {
-    BridgeAlbum {
-        id: a.id,
-        title: a.title,
-        year: a.year,
-        is_compilation: a.is_compilation,
-        artist_names: a.artist_names,
-        release_ids: a.release_ids,
-        primary_release_id: a.primary_release_id,
-        cover: a.cover.map(crate::types::BridgeImageRef::from_core),
+impl BridgeAlbum {
+    fn from_core(a: bae_core::album_detail::AlbumSummary) -> Self {
+        let bae_core::album_detail::AlbumSummary {
+            id,
+            title,
+            year,
+            is_compilation,
+            artist_names,
+            release_ids,
+            primary_release_id,
+            cover,
+        } = a;
+        BridgeAlbum {
+            id,
+            title,
+            year,
+            is_compilation,
+            artist_names,
+            release_ids,
+            primary_release_id,
+            cover: cover.map(crate::types::BridgeImageRef::from_core),
+        }
+    }
+
+    fn into_core(self) -> bae_core::album_detail::AlbumSummary {
+        let BridgeAlbum {
+            id,
+            title,
+            year,
+            is_compilation,
+            artist_names,
+            release_ids,
+            primary_release_id,
+            cover,
+        } = self;
+        bae_core::album_detail::AlbumSummary {
+            id,
+            title,
+            year,
+            is_compilation,
+            artist_names,
+            release_ids,
+            primary_release_id,
+            cover: cover.map(crate::types::BridgeImageRef::into_core),
+        }
     }
 }
 
-fn convert_composer_summary(s: bae_core::album_detail::ComposerSummary) -> BridgeComposerSummary {
-    BridgeComposerSummary {
-        artist_id: s.raw.artist.id,
-        name: s.raw.artist.name,
-        sort_name: s.raw.artist.sort_name,
-        work_count: s.raw.work_count,
-        linked_release_count: s.raw.linked_release_count,
-        unlinked_credit_count: s.raw.unlinked_credit_count,
-        image: s.image.map(crate::types::BridgeImageRef::from_core),
+impl BridgeComposerSummary {
+    fn from_core(s: bae_core::album_detail::ComposerSummary) -> Self {
+        let bae_core::album_detail::ComposerSummary { raw, image } = s;
+        let bae_core::db::DbComposerSummary {
+            artist,
+            work_count,
+            linked_release_count,
+            unlinked_credit_count,
+        } = raw;
+        let bae_core::db::DbArtist {
+            id: artist_id,
+            name,
+            sort_name,
+            // Per-source dedup ids and the row timestamp don't cross to the UI.
+            discogs_artist_id: _,
+            musicbrainz_artist_id: _,
+            created_at: _,
+        } = artist;
+        BridgeComposerSummary {
+            artist_id,
+            name,
+            sort_name,
+            work_count,
+            linked_release_count,
+            unlinked_credit_count,
+            image: image.map(crate::types::BridgeImageRef::from_core),
+        }
     }
 }
 
-fn convert_work_summary(s: bae_core::album_detail::WorkSummary) -> BridgeWorkSummary {
-    BridgeWorkSummary {
-        work_id: s.raw.work.id,
-        title: s.raw.work.title,
-        disambiguation: s.raw.work.disambiguation,
-        work_type: s.raw.work.work_type,
-        parent_work_id: s.raw.parent_work_id,
-        composer_names: s.raw.composer_names,
-        linked_release_count: s.raw.linked_release_count,
-        representative_release_id: s.raw.representative_release_id,
-        representative_cover: s
-            .representative_cover
-            .map(crate::types::BridgeImageRef::from_core),
+impl BridgeWorkSummary {
+    fn from_core(s: bae_core::album_detail::WorkSummary) -> Self {
+        let bae_core::album_detail::WorkSummary {
+            raw,
+            representative_cover,
+        } = s;
+        let bae_core::db::DbWorkSummary {
+            work,
+            parent_work_id,
+            representative_release_id,
+            composer_names,
+            linked_release_count,
+        } = raw;
+        let bae_core::db::DbWork {
+            id: work_id,
+            title,
+            disambiguation,
+            work_type,
+            // Row timestamp isn't surfaced.
+            created_at: _,
+        } = work;
+        BridgeWorkSummary {
+            work_id,
+            title,
+            disambiguation,
+            work_type,
+            parent_work_id,
+            composer_names,
+            linked_release_count,
+            representative_release_id,
+            representative_cover: representative_cover.map(crate::types::BridgeImageRef::from_core),
+        }
     }
 }
 
-fn convert_release_role_summary(
-    s: bae_core::album_detail::ReleaseRoleSummary,
-) -> BridgeReleaseRoleSummary {
-    BridgeReleaseRoleSummary {
-        release_id: s.role.release_id,
-        album_id: s.album.id,
-        album_title: s.album.title,
-        source: BridgeMetadataSource::from_core(s.role.source),
-        source_credit: s.role.source_credit,
+impl BridgeReleaseRoleSummary {
+    fn from_core(s: bae_core::album_detail::ReleaseRoleSummary) -> Self {
+        let bae_core::db::DbReleaseRoleSummary { role, album } = s;
+        let bae_core::db::DbReleaseArtistRole {
+            release_id,
+            source,
+            source_credit,
+            id: _,
+            artist_id: _,
+            position: _,
+            created_at: _,
+        } = role;
+        let bae_core::db::DbAlbum {
+            id: album_id,
+            title: album_title,
+            artist_id: _,
+            year: _,
+            primary_release_id: _,
+            is_compilation: _,
+            created_at: _,
+        } = album;
+        BridgeReleaseRoleSummary {
+            release_id,
+            album_id,
+            album_title,
+            source: BridgeMetadataSource::from_core(source),
+            source_credit,
+        }
     }
 }
 
-fn convert_track_role_summary(
-    s: bae_core::album_detail::TrackRoleSummary,
-) -> BridgeTrackRoleSummary {
-    BridgeTrackRoleSummary {
-        track_id: s.role.track_id,
-        track_title: s.track.title,
-        release_id: s.track.release_id,
-        album_id: s.album.id,
-        album_title: s.album.title,
-        artist_id: s.role.artist_id,
-        artist_name: s.artist.name,
-        source: BridgeMetadataSource::from_core(s.role.source),
-        source_credit: s.role.source_credit,
+impl BridgeTrackRoleSummary {
+    fn from_core(s: bae_core::album_detail::TrackRoleSummary) -> Self {
+        let bae_core::db::DbTrackRoleSummary {
+            role,
+            track,
+            album,
+            artist,
+        } = s;
+        let bae_core::db::DbTrackArtistRole {
+            track_id,
+            artist_id,
+            source,
+            source_credit,
+            id: _,
+            position: _,
+            created_at: _,
+        } = role;
+        let bae_core::db::DbTrack {
+            title: track_title,
+            release_id,
+            id: _,
+            side: _,
+            track_number: _,
+            duration_ms: _,
+            discogs_position: _,
+            created_at: _,
+        } = track;
+        let bae_core::db::DbAlbum {
+            id: album_id,
+            title: album_title,
+            artist_id: _,
+            year: _,
+            primary_release_id: _,
+            is_compilation: _,
+            created_at: _,
+        } = album;
+        let bae_core::db::DbArtist {
+            name: artist_name,
+            id: _,
+            sort_name: _,
+            discogs_artist_id: _,
+            musicbrainz_artist_id: _,
+            created_at: _,
+        } = artist;
+        BridgeTrackRoleSummary {
+            track_id,
+            track_title,
+            release_id,
+            album_id,
+            album_title,
+            artist_id,
+            artist_name,
+            source: BridgeMetadataSource::from_core(source),
+            source_credit,
+        }
     }
 }
 
-fn convert_work_track_summary(
-    s: bae_core::album_detail::WorkTrackSummary,
-) -> BridgeWorkTrackSummary {
-    BridgeWorkTrackSummary {
-        track_id: s.link.track_id,
-        track_title: s.track.title,
-        release_id: s.track.release_id,
-        album_id: s.album.id,
-        album_title: s.album.title,
+impl BridgeWorkTrackSummary {
+    fn from_core(s: bae_core::album_detail::WorkTrackSummary) -> Self {
+        let bae_core::db::DbWorkTrackSummary { link, track, album } = s;
+        let bae_core::db::DbTrackWork {
+            track_id,
+            id: _,
+            work_id: _,
+            position: _,
+            source: _,
+            created_at: _,
+        } = link;
+        let bae_core::db::DbTrack {
+            title: track_title,
+            release_id,
+            id: _,
+            side: _,
+            track_number: _,
+            duration_ms: _,
+            discogs_position: _,
+            created_at: _,
+        } = track;
+        let bae_core::db::DbAlbum {
+            id: album_id,
+            title: album_title,
+            artist_id: _,
+            year: _,
+            primary_release_id: _,
+            is_compilation: _,
+            created_at: _,
+        } = album;
+        BridgeWorkTrackSummary {
+            track_id,
+            track_title,
+            release_id,
+            album_id,
+            album_title,
+        }
     }
 }
 
-fn convert_work_release_summary(
-    s: bae_core::album_detail::WorkReleaseSummary,
-) -> BridgeWorkReleaseSummary {
-    BridgeWorkReleaseSummary {
-        release_id: s.release_id,
-        album_id: s.album_id,
-        album_title: s.album_title,
-        display_name: s.display_name,
-        format: s.format,
-        cover: s.cover.map(crate::types::BridgeImageRef::from_core),
+impl BridgeWorkReleaseSummary {
+    fn from_core(s: bae_core::album_detail::WorkReleaseSummary) -> Self {
+        let bae_core::album_detail::WorkReleaseSummary {
+            release_id,
+            album_id,
+            album_title,
+            display_name,
+            format,
+            cover,
+        } = s;
+        BridgeWorkReleaseSummary {
+            release_id,
+            album_id,
+            album_title,
+            display_name,
+            format,
+            cover: cover.map(crate::types::BridgeImageRef::from_core),
+        }
     }
 }
 
-fn convert_composer_detail(d: bae_core::album_detail::ComposerDetail) -> BridgeComposerDetail {
-    BridgeComposerDetail {
-        composer: convert_composer_summary(d.composer),
-        work_groups: d
-            .work_groups
-            .into_iter()
-            .map(|group| BridgeComposerWorkGroup {
-                id: group.id,
-                parent: group.parent.map(convert_work_summary),
-                works: group.works.into_iter().map(convert_work_summary).collect(),
-            })
-            .collect(),
-        unlinked_release_roles: d
-            .unlinked_release_roles
-            .into_iter()
-            .map(convert_release_role_summary)
-            .collect(),
-        unlinked_track_roles: d
-            .unlinked_track_roles
-            .into_iter()
-            .map(convert_track_role_summary)
-            .collect(),
-        default_work_id: d.default_work_id,
+impl BridgeComposerWorkGroup {
+    fn from_core(group: bae_core::album_detail::ComposerWorkGroup) -> Self {
+        let bae_core::album_detail::ComposerWorkGroup { id, parent, works } = group;
+        BridgeComposerWorkGroup {
+            id,
+            parent: parent.map(BridgeWorkSummary::from_core),
+            works: works
+                .into_iter()
+                .map(BridgeWorkSummary::from_core)
+                .collect(),
+        }
     }
 }
 
-fn convert_work_detail(d: bae_core::album_detail::WorkDetail) -> BridgeWorkDetail {
-    BridgeWorkDetail {
-        work: convert_work_summary(d.work),
-        child_works: d
-            .child_works
-            .into_iter()
-            .map(convert_work_summary)
-            .collect(),
-        releases: d
-            .releases
-            .into_iter()
-            .map(convert_work_release_summary)
-            .collect(),
-        tracks: d
-            .tracks
-            .into_iter()
-            .map(convert_work_track_summary)
-            .collect(),
+impl BridgeComposerDetail {
+    fn from_core(d: bae_core::album_detail::ComposerDetail) -> Self {
+        let bae_core::album_detail::ComposerDetail {
+            composer,
+            work_groups,
+            unlinked_release_roles,
+            unlinked_track_roles,
+            default_work_id,
+        } = d;
+        BridgeComposerDetail {
+            composer: BridgeComposerSummary::from_core(composer),
+            work_groups: work_groups
+                .into_iter()
+                .map(BridgeComposerWorkGroup::from_core)
+                .collect(),
+            unlinked_release_roles: unlinked_release_roles
+                .into_iter()
+                .map(BridgeReleaseRoleSummary::from_core)
+                .collect(),
+            unlinked_track_roles: unlinked_track_roles
+                .into_iter()
+                .map(BridgeTrackRoleSummary::from_core)
+                .collect(),
+            default_work_id,
+        }
     }
 }
 
-fn bridge_album_to_summary(a: BridgeAlbum) -> bae_core::album_detail::AlbumSummary {
-    bae_core::album_detail::AlbumSummary {
-        id: a.id,
-        title: a.title,
-        year: a.year,
-        is_compilation: a.is_compilation,
-        artist_names: a.artist_names,
-        release_ids: a.release_ids,
-        primary_release_id: a.primary_release_id,
-        cover: a.cover.map(crate::types::BridgeImageRef::into_core),
+impl BridgeWorkDetail {
+    fn from_core(d: bae_core::album_detail::WorkDetail) -> Self {
+        let bae_core::album_detail::WorkDetail {
+            work,
+            child_works,
+            releases,
+            tracks,
+        } = d;
+        BridgeWorkDetail {
+            work: BridgeWorkSummary::from_core(work),
+            child_works: child_works
+                .into_iter()
+                .map(BridgeWorkSummary::from_core)
+                .collect(),
+            releases: releases
+                .into_iter()
+                .map(BridgeWorkReleaseSummary::from_core)
+                .collect(),
+            tracks: tracks
+                .into_iter()
+                .map(BridgeWorkTrackSummary::from_core)
+                .collect(),
+        }
     }
 }
 
@@ -2363,11 +2898,13 @@ pub fn sort_albums(
     criteria: Vec<BridgeSortCriterion>,
 ) -> Vec<BridgeAlbum> {
     let mut summaries: Vec<bae_core::album_detail::AlbumSummary> =
-        albums.into_iter().map(bridge_album_to_summary).collect();
-    let core_criteria: Vec<bae_core::db::AlbumSortCriterion> =
-        criteria.iter().map(bridge_sort_to_core).collect();
+        albums.into_iter().map(BridgeAlbum::into_core).collect();
+    let core_criteria: Vec<bae_core::db::AlbumSortCriterion> = criteria
+        .into_iter()
+        .map(BridgeSortCriterion::into_core)
+        .collect();
     bae_core::db::sort_albums(&mut summaries, &core_criteria);
-    summaries.into_iter().map(convert_album_summary).collect()
+    summaries.into_iter().map(BridgeAlbum::from_core).collect()
 }
 
 /// Project a prefetched release detail into the editor's user-edit shape,
@@ -2382,10 +2919,10 @@ pub fn shape_user_edit_from_release_detail(
     detail: crate::types::BridgeReleaseDetail,
     choice: crate::types::BridgeIdentityChoice,
 ) -> crate::types::BridgeReleaseUserEdit {
-    let core_detail = crate::types::release_detail_from_bridge(detail);
-    let core_choice = choice.to_core();
+    let core_detail = detail.into_core();
+    let core_choice = choice.into_core();
     let edit = bae_core::import::shape_user_edit_from_search_detail(&core_detail, &core_choice);
-    crate::types::release_user_edit_to_bridge(edit)
+    crate::types::BridgeReleaseUserEdit::from_core(edit)
 }
 
 /// Normalize + validate the editor's raw form into a wire edit. `Valid`
@@ -2399,13 +2936,13 @@ pub fn shape_user_edit_from_release_detail(
 pub fn shape_release_edit(
     raw: crate::types::BridgeRawReleaseEdit,
 ) -> crate::types::BridgeShapeResult {
-    let core_raw = crate::types::raw_release_edit_from_bridge(raw);
+    let core_raw = raw.into_core();
     match core_raw.shape() {
         Ok(edit) => crate::types::BridgeShapeResult::Valid {
-            edit: crate::types::release_user_edit_to_bridge(edit),
+            edit: crate::types::BridgeReleaseUserEdit::from_core(edit),
         },
         Err(e) => crate::types::BridgeShapeResult::Invalid {
-            reason: validation_reason_from_core(e),
+            reason: crate::types::BridgeValidationReason::from_core(e),
         },
     }
 }
@@ -2413,15 +2950,15 @@ pub fn shape_release_edit(
 /// Map bae-core's validation error to its bridge mirror. Kept here, not as a
 /// `From` in bae-core, so bae-core stays unaware of bridge types.
 #[cfg(feature = "desktop")]
-fn validation_reason_from_core(
-    e: bae_core::import::EditValidationError,
-) -> crate::types::BridgeValidationReason {
-    use crate::types::BridgeValidationReason as R;
-    use bae_core::import::EditValidationError as E;
-    match e {
-        E::EmptyAlbumTitle => R::EmptyAlbumTitle,
-        E::NoAlbumArtist => R::NoAlbumArtist,
-        E::InvalidYear => R::InvalidYear,
+impl crate::types::BridgeValidationReason {
+    fn from_core(e: bae_core::import::EditValidationError) -> Self {
+        use crate::types::BridgeValidationReason as R;
+        use bae_core::import::EditValidationError as E;
+        match e {
+            E::EmptyAlbumTitle => R::EmptyAlbumTitle,
+            E::NoAlbumArtist => R::NoAlbumArtist,
+            E::InvalidYear => R::InvalidYear,
+        }
     }
 }
 
@@ -2446,9 +2983,9 @@ pub fn raw_release_edit_from_user_edit(
     edit: crate::types::BridgeReleaseUserEdit,
     track_id_prefix: String,
 ) -> crate::types::BridgeRawReleaseEdit {
-    let core_edit = crate::types::release_user_edit_from_bridge(edit);
+    let core_edit = edit.into_core();
     let raw = bae_core::import::RawReleaseEdit::from_user_edit(core_edit, &track_id_prefix);
-    crate::types::raw_release_edit_to_bridge(raw)
+    crate::types::BridgeRawReleaseEdit::from_core(raw)
 }
 
 #[cfg(test)]
@@ -2714,7 +3251,7 @@ mod tests {
             default_work_id: Some("work-parent-a".to_string()),
         };
 
-        let bridge = super::convert_composer_detail(detail);
+        let bridge = super::BridgeComposerDetail::from_core(detail);
 
         assert_eq!(bridge.work_groups.len(), 1);
         assert_eq!(bridge.default_work_id.as_deref(), Some("work-parent-a"));
@@ -2769,7 +3306,7 @@ mod tests {
             tracks: Vec::new(),
         };
 
-        let bridge = super::convert_work_detail(detail);
+        let bridge = super::BridgeWorkDetail::from_core(detail);
 
         assert_eq!(bridge.releases.len(), 1);
         let release = &bridge.releases[0];
@@ -2778,5 +3315,29 @@ mod tests {
         assert_eq!(release.album_title, "Album Title A");
         assert_eq!(release.display_name, "2026 CD");
         assert_eq!(release.format.as_deref(), Some("CD"));
+    }
+
+    /// Round-trips a fully-populated album summary through `from_core` then
+    /// `into_core`, guarding the `BridgeAlbum` ↔ `AlbumSummary` pair against a
+    /// transposed same-typed field (`AlbumSummary` has no `PartialEq`, so the
+    /// `Debug` forms are compared). Placeholder names only.
+    #[test]
+    fn album_summary_round_trips() {
+        let core = bae_core::album_detail::AlbumSummary {
+            id: "album-a".to_string(),
+            title: "Album Title A".to_string(),
+            year: Some(1990),
+            is_compilation: false,
+            artist_names: "Artist Name A".to_string(),
+            release_ids: vec!["rel-1".to_string(), "rel-2".to_string()],
+            primary_release_id: "rel-1".to_string(),
+            cover: Some(bae_core::album_detail::ImageRef {
+                id: "rel-1".to_string(),
+                version: "v1".to_string(),
+                image_type: bae_core::db::LibraryImageType::Cover,
+            }),
+        };
+        let back = super::BridgeAlbum::from_core(core.clone()).into_core();
+        assert_eq!(format!("{core:?}"), format!("{back:?}"));
     }
 }
