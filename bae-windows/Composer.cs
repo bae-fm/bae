@@ -9,7 +9,7 @@ namespace Bae.Windows;
 
 public sealed class LibrarySearchResults
 {
-    public LibrarySearchResults(BridgeSearchResults results)
+    internal LibrarySearchResults(BridgeSearchResults results)
     {
         Albums = results.Albums.Select(album => new Album(album)).ToList();
         Tracks = results.Tracks.Select(track => new TrackSearchResult(track)).ToList();
@@ -27,7 +27,7 @@ public sealed class TrackSearchResult
 {
     private readonly BridgeTrackSearchResult _track;
 
-    public TrackSearchResult(BridgeTrackSearchResult track)
+    internal TrackSearchResult(BridgeTrackSearchResult track)
     {
         _track = track;
     }
@@ -46,7 +46,7 @@ public sealed class ComposerSummary : INotifyPropertyChanged
     private readonly BridgeComposerSummary _composer;
     private readonly CoverImage.Binding _cover;
 
-    public ComposerSummary(BridgeComposerSummary composer)
+    internal ComposerSummary(BridgeComposerSummary composer)
     {
         _composer = composer;
         _cover = new CoverImage.Binding(composer.Image);
@@ -74,7 +74,7 @@ public sealed class WorkSummary : INotifyPropertyChanged
     private readonly BridgeWorkSummary _work;
     private readonly CoverImage.Binding _cover;
 
-    public WorkSummary(BridgeWorkSummary work)
+    internal WorkSummary(BridgeWorkSummary work)
     {
         _work = work;
         _cover = new CoverImage.Binding(work.RepresentativeCover);
@@ -100,7 +100,7 @@ public sealed class WorkSummary : INotifyPropertyChanged
 
 public sealed class ComposerWorkGroup
 {
-    public ComposerWorkGroup(BridgeComposerWorkGroup group)
+    internal ComposerWorkGroup(BridgeComposerWorkGroup group)
     {
         Id = group.Id;
         Parent = group.Parent is null ? null : new WorkSummary(group.Parent);
@@ -114,7 +114,7 @@ public sealed class ComposerWorkGroup
 
 public sealed class ComposerDetail
 {
-    public ComposerDetail(BridgeComposerDetail detail)
+    internal ComposerDetail(BridgeComposerDetail detail)
     {
         Composer = new ComposerSummary(detail.Composer);
         WorkGroups = detail.WorkGroups.Select(group => new ComposerWorkGroup(group)).ToList();
@@ -134,7 +134,7 @@ public sealed class ReleaseRoleSummary
 {
     private readonly BridgeReleaseRoleSummary _role;
 
-    public ReleaseRoleSummary(BridgeReleaseRoleSummary role)
+    internal ReleaseRoleSummary(BridgeReleaseRoleSummary role)
     {
         _role = role;
     }
@@ -149,7 +149,7 @@ public sealed class TrackRoleSummary
 {
     private readonly BridgeTrackRoleSummary _role;
 
-    public TrackRoleSummary(BridgeTrackRoleSummary role)
+    internal TrackRoleSummary(BridgeTrackRoleSummary role)
     {
         _role = role;
     }
@@ -169,7 +169,7 @@ public sealed class WorkReleaseSummary : INotifyPropertyChanged
     private readonly BridgeWorkReleaseSummary _release;
     private readonly CoverImage.Binding _cover;
 
-    public WorkReleaseSummary(BridgeWorkReleaseSummary release)
+    internal WorkReleaseSummary(BridgeWorkReleaseSummary release)
     {
         _release = release;
         _cover = new CoverImage.Binding(release.Cover);
@@ -198,7 +198,7 @@ public sealed class WorkTrackSummary
 {
     private readonly BridgeWorkTrackSummary _track;
 
-    public WorkTrackSummary(BridgeWorkTrackSummary track)
+    internal WorkTrackSummary(BridgeWorkTrackSummary track)
     {
         _track = track;
     }
@@ -212,7 +212,7 @@ public sealed class WorkTrackSummary
 
 public sealed class WorkDetail
 {
-    public WorkDetail(BridgeWorkDetail detail)
+    internal WorkDetail(BridgeWorkDetail detail)
     {
         Work = new WorkSummary(detail.Work);
         ChildWorks = detail.ChildWorks.Select(work => new WorkSummary(work)).ToList();

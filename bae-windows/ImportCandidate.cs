@@ -67,8 +67,8 @@ public sealed class ImportCandidateRowStatus
     public int Count { get; set; }
     public int ProgressPercent { get; set; }
     public ImportStep? Step { get; set; }
-    public BridgeException? Error { get; set; }
-    public BridgeInvalidReason? InvalidReason { get; set; }
+    internal BridgeException? Error { get; set; }
+    internal BridgeInvalidReason? InvalidReason { get; set; }
 
     public string LocalizedLine
     {

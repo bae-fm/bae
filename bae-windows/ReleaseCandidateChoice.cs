@@ -4,10 +4,19 @@ using uniffi.bae_bridge;
 namespace Bae.Windows;
 
 /// <summary>A release pressing choice shown by import and re-identify pickers.</summary>
-public sealed record ReleaseCandidateChoice(BridgeReleaseGroup Group, BridgeMetadataResult Pressing)
+public sealed class ReleaseCandidateChoice
 {
-    public BridgeMetadataSource Source => Pressing.Source;
-    public string ReleaseId => Pressing.ReleaseId;
+    private readonly BridgeReleaseGroup _group;
+    private readonly BridgeMetadataResult _pressing;
+
+    internal ReleaseCandidateChoice(BridgeReleaseGroup group, BridgeMetadataResult pressing)
+    {
+        _group = group;
+        _pressing = pressing;
+    }
+
+    internal BridgeMetadataSource Source => _pressing.Source;
+    public string ReleaseId => _pressing.ReleaseId;
 
     /// <summary>The one-line label the picker shows, omitting absent fields.</summary>
     public string Summary
@@ -16,13 +25,13 @@ public sealed record ReleaseCandidateChoice(BridgeReleaseGroup Group, BridgeMeta
         {
             var parts = new[]
             {
-                Group.Artist,
-                Group.Title,
-                Pressing.Year?.ToString(),
-                Pressing.Format,
-                Pressing.Label,
-                Pressing.Country,
-                Pressing.CatalogNumber,
+                _group.Artist,
+                _group.Title,
+                _pressing.Year?.ToString(),
+                _pressing.Format,
+                _pressing.Label,
+                _pressing.Country,
+                _pressing.CatalogNumber,
             };
             return string.Join("  ·  ", parts.Where(part => !string.IsNullOrEmpty(part)));
         }

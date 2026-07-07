@@ -38,5 +38,5 @@ public sealed class SignalBadgeState
 
     /// <summary>The structured lookup failure for the "failed" state; null
     /// otherwise. The badge resolves its localized line from this.</summary>
-    public BridgeLookupFailure? Failure { get; set; }
+    internal BridgeLookupFailure? Failure { get; set; }
 }

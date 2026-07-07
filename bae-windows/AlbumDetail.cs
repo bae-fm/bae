@@ -9,7 +9,7 @@ public sealed class AlbumDetail
 {
     private readonly BridgeAlbumDetail _detail;
 
-    public AlbumDetail(BridgeAlbumDetail detail)
+    internal AlbumDetail(BridgeAlbumDetail detail)
     {
         _detail = detail;
         Releases = detail.Releases.Select(release => new Release(release)).ToList();
@@ -27,7 +27,7 @@ public sealed class Release
 {
     private readonly BridgeRelease _release;
 
-    public Release(BridgeRelease release)
+    internal Release(BridgeRelease release)
     {
         _release = release;
         Tracks = release.Tracks.Select(track => new Track(track)).ToList();
@@ -48,7 +48,7 @@ public sealed class Track
 {
     private readonly BridgeTrack _track;
 
-    public Track(BridgeTrack track)
+    internal Track(BridgeTrack track)
     {
         _track = track;
     }
@@ -69,7 +69,7 @@ public sealed class ReleaseFile
 {
     private readonly BridgeFile _file;
 
-    public ReleaseFile(BridgeFile file)
+    internal ReleaseFile(BridgeFile file)
     {
         _file = file;
         AudioFormat = file.AudioFormat is null ? null : new AudioFormat(file.AudioFormat);
@@ -89,7 +89,7 @@ public sealed class AudioFormat
 {
     private readonly BridgeAudioFormat _format;
 
-    public AudioFormat(BridgeAudioFormat format)
+    internal AudioFormat(BridgeAudioFormat format)
     {
         _format = format;
     }

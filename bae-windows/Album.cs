@@ -11,7 +11,7 @@ public sealed class Album : INotifyPropertyChanged
     private readonly BridgeAlbumSearchResult _album;
     private readonly CoverImage.Binding _cover;
 
-    public Album(BridgeAlbumSearchResult album)
+    internal Album(BridgeAlbumSearchResult album)
     {
         _album = album;
         _cover = new CoverImage.Binding(album.Cover);

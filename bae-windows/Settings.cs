@@ -31,14 +31,14 @@ public sealed class Settings
     public List<ExportPreset> ExportPresets { get; set; } = new();
 
     /// <summary>Default selected option in the track export picker.</summary>
-    public BridgeExportSelection DefaultTrackExportSelection { get; set; } = new BridgeExportSelection.Original();
+    internal BridgeExportSelection DefaultTrackExportSelection { get; set; } = new BridgeExportSelection.Original();
 
     /// <summary>Default selected option in the release export picker.</summary>
-    public BridgeExportSelection DefaultReleaseExportSelection { get; set; } = new BridgeExportSelection.Original();
+    internal BridgeExportSelection DefaultReleaseExportSelection { get; set; } = new BridgeExportSelection.Original();
 
     public bool McpEnabled { get; set; }
     public ushort McpPort { get; set; }
-    public BridgeMcpServerStatus McpStatus { get; set; } = new BridgeMcpServerStatus.Disabled();
+    internal BridgeMcpServerStatus McpStatus { get; set; } = new BridgeMcpServerStatus.Disabled();
     public bool HasCloudHome => SyncProvider is not null;
 
     /// <summary>
@@ -154,10 +154,10 @@ public sealed class ExportPreset
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public BridgeExportPresetCodec Codec { get; set; } = new BridgeExportPresetCodec.Flac(BridgeExportBitDepth.Source);
+    internal BridgeExportPresetCodec Codec { get; set; } = new BridgeExportPresetCodec.Flac(BridgeExportBitDepth.Source);
     public string Extension { get; set; } = string.Empty;
     public string FilenameTemplate { get; set; } = string.Empty;
-    public BridgeExportPregapPlacement PregapPlacement { get; set; } = BridgeExportPregapPlacement.AppendToPreviousExceptHtoa;
+    internal BridgeExportPregapPlacement PregapPlacement { get; set; } = BridgeExportPregapPlacement.AppendToPreviousExceptHtoa;
     public bool AppliesToTrack { get; set; }
     public bool AppliesToRelease { get; set; }
 
