@@ -547,4 +547,46 @@ mod tests {
 
         assert!(resolve_preview_probe("path", result).is_none());
     }
+
+    fn probe(sample_rate: u32, channels: u32) -> crate::audio_codec::ProbeResult {
+        crate::audio_codec::ProbeResult {
+            content_type: crate::util::content_type::ContentType::Flac,
+            duration: Duration::from_secs(1),
+            sample_rate,
+            bits_per_sample: Some(16),
+            channels,
+        }
+    }
+
+    /// A usable probe (positive sample rate and channels) resolves to the probe.
+    #[test]
+    fn resolve_preview_probe_accepts_usable_format() {
+        let result: Result<_, tokio::task::JoinError> = Ok(Some(probe(44100, 2)));
+        let resolved = resolve_preview_probe("path", result).expect("a usable format passes");
+        assert_eq!(resolved.sample_rate, 44100);
+        assert_eq!(resolved.channels, 2);
+    }
+
+    /// A probe reporting a zero sample rate is an unusable format and is
+    /// rejected rather than driving a decoder with a nonsense rate.
+    #[test]
+    fn resolve_preview_probe_rejects_zero_sample_rate() {
+        let result: Result<_, tokio::task::JoinError> = Ok(Some(probe(0, 2)));
+        assert!(resolve_preview_probe("path", result).is_none());
+    }
+
+    /// A probe reporting zero channels is likewise unusable.
+    #[test]
+    fn resolve_preview_probe_rejects_zero_channels() {
+        let result: Result<_, tokio::task::JoinError> = Ok(Some(probe(44100, 0)));
+        assert!(resolve_preview_probe("path", result).is_none());
+    }
+
+    /// A file the prober couldn't read at all (`Ok(None)`) yields no probe.
+    #[test]
+    fn resolve_preview_probe_rejects_unprobeable_file() {
+        let result: Result<Option<crate::audio_codec::ProbeResult>, tokio::task::JoinError> =
+            Ok(None);
+        assert!(resolve_preview_probe("path", result).is_none());
+    }
 }
