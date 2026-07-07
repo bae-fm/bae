@@ -210,8 +210,8 @@ pub enum InvalidReason {
     CueParseFailed { path: String },
     #[error("CUE layout is not supported")]
     CueUnsupportedLayout,
-    #[error("CUE references audio files with incompatible formats")]
-    CueIncompatibleSegmentFormats,
+    #[error("CUE audio codec {codec} is not supported for single-file CUE playback")]
+    CueUnsupportedCodec { codec: String },
     #[error("no valid audio files")]
     NoValidAudio,
 }
@@ -473,11 +473,27 @@ pub fn is_audio_file(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// Codec label for a CUE-paired audio file, used to build the `CUE+<codec>`
+/// A CUE-paired audio file's probed codec identity.
+enum CueCodecLabel {
+    /// A codec bae can play back from a single-file CUE. Carries the
+    /// `CUE+<codec>` label component (e.g. "FLAC", "APE").
+    Supported(String),
+    /// A readable codec that can't back single-file CUE playback (e.g. MP3,
+    /// Vorbis). Carries the codec's display name for the invalid-candidate
+    /// reason so the folder surfaces as skipped instead of aborting the scan.
+    Unsupported(String),
+}
+
+/// Codec identity for a CUE-paired audio file, used to build the `CUE+<codec>`
 /// format label. The label comes from FFmpeg's probed codec identity, never
 /// from the extension, because containers such as MP4, Ogg, WAV, and AIFF do
 /// not prove the codec by filename.
-fn cue_pair_codec_label(path: &Path) -> Result<String, String> {
+///
+/// `Err` is a genuine I/O/probe fault (path not UTF-8, file unreadable). A
+/// readable file whose codec bae can't play from a single-file CUE is
+/// `Ok(Unsupported)`, not `Err`, so one such folder surfaces as an invalid
+/// candidate without aborting the whole watched-root walk.
+fn cue_pair_codec_label(path: &Path) -> Result<CueCodecLabel, String> {
     let path_str = path
         .to_str()
         .ok_or_else(|| format!("CUE audio path is not UTF-8: {}", path.display()))?;
@@ -489,14 +505,10 @@ fn cue_pair_codec_label(path: &Path) -> Result<String, String> {
         | crate::util::content_type::ContentType::Alac
         | crate::util::content_type::ContentType::Pcm
         | crate::util::content_type::ContentType::WavPack
-        | crate::util::content_type::ContentType::Dsd => {
-            Ok(probe.content_type.display_name().to_string())
-        }
-        other => Err(format!(
-            "CUE audio codec {} is not supported for single-file CUE playback in {}",
-            other.display_name(),
-            path.display()
+        | crate::util::content_type::ContentType::Dsd => Ok(CueCodecLabel::Supported(
+            probe.content_type.display_name().to_string(),
         )),
+        other => Ok(CueCodecLabel::Unsupported(other.display_name().to_string())),
     }
 }
 
@@ -944,7 +956,15 @@ fn categorize_files_from_tree(
         }
 
         pairs.sort_by(|a, b| a.cue_file.relative_path.cmp(&b.cue_file.relative_path));
-        let codec_label = cue_pair_codec_label(&pairs[0].audio_file.path)?;
+        let codec_label = match cue_pair_codec_label(&pairs[0].audio_file.path)? {
+            CueCodecLabel::Supported(label) => label,
+            CueCodecLabel::Unsupported(codec) => {
+                info!(
+                    "Invalid candidate: CUE audio codec {codec} not supported for single-file CUE playback"
+                );
+                return invalid(InvalidReason::CueUnsupportedCodec { codec });
+            }
+        };
         let audio = AudioContent::CueFlacPairs {
             pairs,
             format_label: format!("CUE+{codec_label}"),

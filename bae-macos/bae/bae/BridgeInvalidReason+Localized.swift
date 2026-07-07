@@ -15,8 +15,9 @@ extension BridgeInvalidReason {
         case .corruptAudioFile(let path), .corruptImage(let path),
             .cueParseFailed(let path):
             return String(format: format, path)
-        case .cueMissingAudio, .cueUnsupportedLayout,
-            .cueIncompatibleSegmentFormats, .noValidAudio:
+        case .cueUnsupportedCodec(let codec):
+            return String(format: format, codec)
+        case .cueMissingAudio, .cueUnsupportedLayout, .noValidAudio:
             return format
         }
     }

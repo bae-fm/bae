@@ -559,6 +559,105 @@ FILE "album.ape" WAVE
     }
 }
 
+/// Bytes of a placeholder audio fixture that probes to a specific codec, used to
+/// build CUE pairs whose probed codec identity is what a test asserts against.
+fn audio_format_fixture(name: &str) -> Vec<u8> {
+    std::fs::read(format!(
+        "{}/test-fixtures/audio-format/{name}",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap_or_else(|e| panic!("read audio fixture {name}: {e}"))
+}
+
+/// A CUE paired with an audio file whose codec can't back single-file CUE
+/// playback (MP3, Vorbis) surfaces as an invalid candidate carrying the codec
+/// name. Crucially it must NOT abort the whole watched-root walk — a sibling
+/// FLAC release under the same root still scans.
+#[test]
+fn cue_with_unsupported_codec_is_invalid_and_siblings_still_scan() {
+    for (folder, audio_name, fixture, codec) in [
+        ("MP3 Album", "album.mp3", "placeholder-mp3.mp3", "MP3"),
+        ("Ogg Album", "album.ogg", "placeholder-vorbis.ogg", "Vorbis"),
+    ] {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = temp_dir.path();
+
+        let bad = root.join(folder);
+        std::fs::create_dir(&bad).unwrap();
+        std::fs::write(
+            bad.join("album.cue"),
+            make_cue_content(audio_name, "Test Album"),
+        )
+        .unwrap();
+        std::fs::write(bad.join(audio_name), audio_format_fixture(fixture)).unwrap();
+
+        let good = root.join("FLAC Album");
+        std::fs::create_dir(&good).unwrap();
+        std::fs::write(good.join("01 Track.flac"), fake_flac()).unwrap();
+
+        let items = scan_items(root.to_path_buf());
+        assert_eq!(items.len(), 2, "{folder}: both leaves surface");
+
+        let invalid = items
+            .iter()
+            .find_map(|i| match i {
+                ScanItem::Invalid(inv) if inv.name == folder => Some(inv),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("{folder}: expected an invalid candidate"));
+        assert_eq!(
+            invalid.reason,
+            InvalidReason::CueUnsupportedCodec {
+                codec: codec.to_string(),
+            },
+            "{folder}: reason names the probed codec",
+        );
+
+        let sibling_scanned = items
+            .iter()
+            .any(|i| matches!(i, ScanItem::Valid(c) if c.name == "FLAC Album"));
+        assert!(
+            sibling_scanned,
+            "{folder}: sibling FLAC release still scans"
+        );
+    }
+}
+
+/// A CUE paired with a codec that CAN back single-file CUE playback yields a
+/// valid candidate labeled `CUE+<codec>`. PCM, WavPack, and DSD are otherwise
+/// untested positive arms of the codec-label match.
+#[test]
+fn cue_with_supported_codec_yields_valid_candidate_labeled() {
+    for (folder, audio_name, fixture, label) in [
+        ("PCM Album", "album.wav", "placeholder-pcm.wav", "CUE+PCM"),
+        (
+            "WavPack Album",
+            "album.wv",
+            "placeholder-wavpack.wv",
+            "CUE+WavPack",
+        ),
+        ("DSD Album", "album.dsf", "placeholder-dsd.dsf", "CUE+DSD"),
+    ] {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = temp_dir.path().join(folder);
+        std::fs::create_dir(&root).unwrap();
+        std::fs::write(
+            root.join("album.cue"),
+            make_cue_content(audio_name, "Test Album"),
+        )
+        .unwrap();
+        std::fs::write(root.join(audio_name), audio_format_fixture(fixture)).unwrap();
+
+        let candidates = scan_valid(root);
+        assert_eq!(candidates.len(), 1, "{folder}: one valid candidate");
+        assert_eq!(
+            candidates[0].files.audio.format_label(),
+            label,
+            "{folder}: CUE+<codec> label",
+        );
+    }
+}
+
 #[test]
 fn test_empty_folder_not_detected() {
     let temp_dir = tempfile::tempdir().unwrap();
@@ -980,18 +1079,13 @@ FILE "02 - Track Two.flac" WAVE
 #[test]
 fn test_cue_pair_codec_label_covers_supported_extensions() {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    assert_eq!(
-        cue_pair_codec_label(&manifest.join("tests/fixtures/flac/01 Test Track 1.flac")).unwrap(),
-        "FLAC"
-    );
-    assert_eq!(
-        cue_pair_codec_label(&manifest.join("tests/fixtures/cue_ape/Test Album.ape")).unwrap(),
-        "APE"
-    );
-    assert_eq!(
-        cue_pair_codec_label(&manifest.join("test-fixtures/alac/cue-alac.m4a")).unwrap(),
-        "ALAC"
-    );
+    let label = |relative: &str| match cue_pair_codec_label(&manifest.join(relative)).unwrap() {
+        CueCodecLabel::Supported(label) => label,
+        CueCodecLabel::Unsupported(codec) => panic!("expected supported codec, got {codec}"),
+    };
+    assert_eq!(label("tests/fixtures/flac/01 Test Track 1.flac"), "FLAC");
+    assert_eq!(label("tests/fixtures/cue_ape/Test Album.ape"), "APE");
+    assert_eq!(label("test-fixtures/alac/cue-alac.m4a"), "ALAC");
 }
 
 /// A CUE+APE pair must report the parsed TRACK count from the CUE sheet,

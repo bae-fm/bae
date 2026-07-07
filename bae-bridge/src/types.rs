@@ -666,7 +666,7 @@ pub enum BridgeInvalidReason {
     CueMissingAudio,
     CueParseFailed { path: String },
     CueUnsupportedLayout,
-    CueIncompatibleSegmentFormats,
+    CueUnsupportedCodec { codec: String },
     NoValidAudio,
 }
 
@@ -678,9 +678,7 @@ impl BridgeInvalidReason {
             Self::CueMissingAudio => "core.import.invalid.cue_missing_audio",
             Self::CueParseFailed { .. } => "core.import.invalid.cue_parse_failed",
             Self::CueUnsupportedLayout => "core.import.invalid.cue_unsupported_layout",
-            Self::CueIncompatibleSegmentFormats => {
-                "core.import.invalid.cue_incompatible_segment_formats"
-            }
+            Self::CueUnsupportedCodec { .. } => "core.import.invalid.cue_unsupported_codec",
             Self::NoValidAudio => "core.import.invalid.no_valid_audio",
         }
     }
@@ -696,7 +694,7 @@ pub(crate) fn invalid_reason_to_bridge(r: bae_core::import::InvalidReason) -> Br
         R::CueMissingAudio => BridgeInvalidReason::CueMissingAudio,
         R::CueParseFailed { path } => BridgeInvalidReason::CueParseFailed { path },
         R::CueUnsupportedLayout => BridgeInvalidReason::CueUnsupportedLayout,
-        R::CueIncompatibleSegmentFormats => BridgeInvalidReason::CueIncompatibleSegmentFormats,
+        R::CueUnsupportedCodec { codec } => BridgeInvalidReason::CueUnsupportedCodec { codec },
         R::NoValidAudio => BridgeInvalidReason::NoValidAudio,
     }
 }
@@ -3668,7 +3666,9 @@ mod loc_key_coverage {
                 path: String::new(),
             },
             BridgeInvalidReason::CueUnsupportedLayout,
-            BridgeInvalidReason::CueIncompatibleSegmentFormats,
+            BridgeInvalidReason::CueUnsupportedCodec {
+                codec: String::new(),
+            },
             BridgeInvalidReason::NoValidAudio,
         ] {
             let expected = match r {
@@ -3681,8 +3681,8 @@ mod loc_key_coverage {
                 BridgeInvalidReason::CueUnsupportedLayout => {
                     "core.import.invalid.cue_unsupported_layout"
                 }
-                BridgeInvalidReason::CueIncompatibleSegmentFormats => {
-                    "core.import.invalid.cue_incompatible_segment_formats"
+                BridgeInvalidReason::CueUnsupportedCodec { .. } => {
+                    "core.import.invalid.cue_unsupported_codec"
                 }
                 BridgeInvalidReason::NoValidAudio => "core.import.invalid.no_valid_audio",
             };
