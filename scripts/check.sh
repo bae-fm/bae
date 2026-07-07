@@ -187,6 +187,13 @@ check "xcodebuild" \
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution build
 
+check "xcodebuild test (baeTests)" \
+  xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
+    CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+    -derivedDataPath bae-macos/bae/.build/derivedData \
+    -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
+    -disableAutomaticPackageResolution test
+
 check "swift-format lint" _swift_format_lint bae-macos/bae/bae
 
 check "swiftlint" swiftlint lint --strict --config .swiftlint.yml bae-macos/bae/bae

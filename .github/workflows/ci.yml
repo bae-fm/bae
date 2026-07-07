@@ -47,6 +47,13 @@ jobs:
     # bug slips through — exactly how the OutboxStore crash in #738 reached
     # main.
 
+    - name: Run macOS unit tests (baeTests)
+      if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}
+      run: |
+        cd bae-macos/bae && xcodebuild -project bae.xcodeproj -scheme bae \
+          -configuration Debug CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+          -derivedDataPath .build/derivedData test
+
     - name: Check Swift formatting
       if: ${{ !cancelled() }}
       run: |
