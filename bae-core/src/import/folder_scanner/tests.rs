@@ -442,6 +442,76 @@ fn audio_format_fixture(name: &str) -> Vec<u8> {
     .unwrap_or_else(|e| panic!("read audio fixture {name}: {e}"))
 }
 
+/// A FLAC with valid `fLaC` magic + well-formed STREAMINFO shape but no audio
+/// frames and `total_samples = 0` (streaming-length unknown). It passes the
+/// header-only `is_valid_flac` check yet has no usable duration, so the FFmpeg
+/// probe can't identify a playable stream — the shape of a download truncated
+/// right after the STREAMINFO block.
+fn header_only_flac_unprobeable() -> Vec<u8> {
+    let mut buf = Vec::new();
+    buf.extend_from_slice(b"fLaC");
+    // STREAMINFO block header: last-block=0, type=0, length=34.
+    buf.extend_from_slice(&[0x00, 0x00, 0x00, 34]);
+    // STREAMINFO data (34 bytes): 44100 Hz, 2ch, 16-bit, total_samples=0.
+    buf.extend_from_slice(&[0x10, 0x00]); // min block size 4096
+    buf.extend_from_slice(&[0x10, 0x00]); // max block size 4096
+    buf.extend_from_slice(&[0x00, 0x00, 0x00]); // min frame size
+    buf.extend_from_slice(&[0x00, 0x00, 0x00]); // max frame size
+    buf.push(0x0A); // sample_rate >> 12
+    buf.push(0xC4); // (sample_rate >> 4) & 0xFF
+    buf.push(0x42); // (sample_rate & 0x0F)<<4 | (ch-1)<<1 | (bps-1)>>4
+    buf.push(0xF0); // (bps-1 & 0x0F)<<4 | total_samples high nibble
+    buf.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]); // total_samples low 32 bits
+    buf.extend_from_slice(&[0u8; 16]); // MD5 signature
+    assert_eq!(buf.len(), 42);
+    buf
+}
+
+/// A CUE-paired audio file that clears the header-only magic check but can't be
+/// probed (no playable stream) surfaces the folder as an invalid candidate — it
+/// must NOT abort the whole watched-root walk. Same failure class as an
+/// unsupported codec, triggered instead by one corrupt/incomplete file. A
+/// sibling FLAC release under the same root still scans.
+#[test]
+fn cue_with_unprobeable_audio_is_invalid_and_siblings_still_scan() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+
+    let bad = root.join("Truncated Album");
+    std::fs::create_dir(&bad).unwrap();
+    std::fs::write(
+        bad.join("album.cue"),
+        make_cue_content("album.flac", "Test Album"),
+    )
+    .unwrap();
+    std::fs::write(bad.join("album.flac"), header_only_flac_unprobeable()).unwrap();
+
+    let good = root.join("FLAC Album");
+    std::fs::create_dir(&good).unwrap();
+    std::fs::write(good.join("01 Track.flac"), fake_flac()).unwrap();
+
+    let items = scan_items(root.to_path_buf());
+    assert_eq!(items.len(), 2, "both leaves surface");
+
+    let invalid = items
+        .iter()
+        .find_map(|i| match i {
+            ScanItem::Invalid(inv) if inv.name == "Truncated Album" => Some(inv),
+            _ => None,
+        })
+        .expect("expected an invalid candidate for the unprobeable CUE audio");
+    assert!(
+        matches!(invalid.reason, InvalidReason::CorruptAudioFile { .. }),
+        "reason names the audio fault, got: {}",
+        invalid.reason,
+    );
+
+    let sibling_scanned = items
+        .iter()
+        .any(|i| matches!(i, ScanItem::Valid(c) if c.name == "FLAC Album"));
+    assert!(sibling_scanned, "sibling FLAC release still scans");
+}
+
 /// A CUE paired with an audio file whose codec can't back single-file CUE
 /// playback (MP3, Vorbis) surfaces as an invalid candidate carrying the codec
 /// name. Crucially it must NOT abort the whole watched-root walk — a sibling
@@ -955,6 +1025,7 @@ fn test_cue_pair_codec_label_covers_supported_extensions() {
     let label = |relative: &str| match cue_pair_codec_label(&manifest.join(relative)).unwrap() {
         CueCodecLabel::Supported(label) => label,
         CueCodecLabel::Unsupported(codec) => panic!("expected supported codec, got {codec}"),
+        CueCodecLabel::Unprobeable => panic!("expected supported codec, got unprobeable audio"),
     };
     assert_eq!(label("tests/fixtures/flac/01 Test Track 1.flac"), "FLAC");
     assert_eq!(label("tests/fixtures/cue_ape/Test Album.ape"), "APE");

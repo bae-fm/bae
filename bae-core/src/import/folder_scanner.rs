@@ -482,6 +482,11 @@ enum CueCodecLabel {
     /// Vorbis). Carries the codec's display name for the invalid-candidate
     /// reason so the folder surfaces as skipped instead of aborting the scan.
     Unsupported(String),
+    /// The file cleared the header-only magic check but FFmpeg can't identify a
+    /// playable stream in it — a download truncated after the header, or
+    /// otherwise corrupt audio. Surfaces the folder as a corrupt-audio invalid
+    /// candidate instead of aborting the scan.
+    Unprobeable,
 }
 
 /// Codec identity for a CUE-paired audio file, used to build the `CUE+<codec>`
@@ -489,16 +494,17 @@ enum CueCodecLabel {
 /// from the extension, because containers such as MP4, Ogg, WAV, and AIFF do
 /// not prove the codec by filename.
 ///
-/// `Err` is a genuine I/O/probe fault (path not UTF-8, file unreadable). A
-/// readable file whose codec bae can't play from a single-file CUE is
-/// `Ok(Unsupported)`, not `Err`, so one such folder surfaces as an invalid
-/// candidate without aborting the whole watched-root walk.
+/// `Err` is reserved for a path that isn't UTF-8 (which FFmpeg can't open at
+/// all). A readable file whose codec bae can't play (`Ok(Unsupported)`) or that
+/// FFmpeg can't probe (`Ok(Unprobeable)`) is not an error — each surfaces its
+/// folder as an invalid candidate without aborting the whole watched-root walk.
 fn cue_pair_codec_label(path: &Path) -> Result<CueCodecLabel, String> {
     let path_str = path
         .to_str()
         .ok_or_else(|| format!("CUE audio path is not UTF-8: {}", path.display()))?;
-    let probe = crate::audio_codec::probe_audio_from_path(path_str)
-        .ok_or_else(|| format!("Failed to probe CUE audio file: {}", path.display()))?;
+    let Some(probe) = crate::audio_codec::probe_audio_from_path(path_str) else {
+        return Ok(CueCodecLabel::Unprobeable);
+    };
     match probe.content_type {
         crate::util::content_type::ContentType::Flac
         | crate::util::content_type::ContentType::Ape
@@ -963,6 +969,11 @@ fn categorize_files_from_tree(
                     "Invalid candidate: CUE audio codec {codec} not supported for single-file CUE playback"
                 );
                 return invalid(InvalidReason::CueUnsupportedCodec { codec });
+            }
+            CueCodecLabel::Unprobeable => {
+                let path = pairs[0].audio_file.relative_path.clone();
+                info!("Invalid candidate: CUE audio file could not be probed: {path}");
+                return invalid(InvalidReason::CorruptAudioFile { path });
             }
         };
         let audio = AudioContent::CueFlacPairs {
