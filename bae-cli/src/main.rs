@@ -699,3 +699,400 @@ impl CliError {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    fn call(command: Command) -> (AutomationTool, Value) {
+        tool_call_for_command(&command).expect("command maps to a tool call")
+    }
+
+    /// The commands whose argument object is built inline from clap-parsed
+    /// values (no file reads, no path validation). Each row is the command and
+    /// the exact `(tool, args)` it must produce.
+    #[test]
+    fn inline_commands_map_to_tool_and_args() {
+        let cases: Vec<(Command, AutomationTool, Value)> = vec![
+            (
+                Command::Config {
+                    command: ConfigCommand::Get,
+                },
+                AutomationTool::ConfigGet,
+                Value::Null,
+            ),
+            (
+                Command::WatchedFolders {
+                    command: WatchedFoldersCommand::List,
+                },
+                AutomationTool::WatchedFoldersList,
+                Value::Null,
+            ),
+            (
+                Command::WatchedFolders {
+                    command: WatchedFoldersCommand::Add {
+                        path: "/music/inbox".to_string(),
+                    },
+                },
+                AutomationTool::WatchedFolderAdd,
+                json!({ "path": "/music/inbox" }),
+            ),
+            (
+                Command::WatchedFolders {
+                    command: WatchedFoldersCommand::Remove {
+                        path: "/music/inbox".to_string(),
+                    },
+                },
+                AutomationTool::WatchedFolderRemove,
+                json!({ "path": "/music/inbox" }),
+            ),
+            (
+                Command::WatchedFolders {
+                    command: WatchedFoldersCommand::Scan {
+                        wait: false,
+                        timeout_ms: 60_000,
+                    },
+                },
+                AutomationTool::WatchedFoldersScan,
+                json!({ "mode": "no_wait" }),
+            ),
+            (
+                Command::WatchedFolders {
+                    command: WatchedFoldersCommand::Scan {
+                        wait: true,
+                        timeout_ms: 45_000,
+                    },
+                },
+                AutomationTool::WatchedFoldersScan,
+                json!({ "mode": "until_finished", "timeout_ms": 45_000 }),
+            ),
+            (
+                Command::Import {
+                    command: ImportCommand::Candidates {
+                        command: ImportCandidatesCommand::List,
+                    },
+                },
+                AutomationTool::ImportCandidatesList,
+                Value::Null,
+            ),
+            (
+                Command::Import {
+                    command: ImportCommand::Candidate {
+                        command: ImportCandidateCommand::Get {
+                            candidate_key: "cand-1".to_string(),
+                        },
+                    },
+                },
+                AutomationTool::ImportCandidateGet,
+                json!({ "candidate_key": "cand-1" }),
+            ),
+            (
+                Command::Import {
+                    command: ImportCommand::Candidate {
+                        command: ImportCandidateCommand::Skip {
+                            command: ImportCandidateSkipCommand::Set {
+                                candidate_key: "cand-1".to_string(),
+                                skipped: true,
+                            },
+                        },
+                    },
+                },
+                AutomationTool::ImportCandidateSkipSet,
+                json!({ "candidate_key": "cand-1", "skipped": true }),
+            ),
+            (
+                Command::Import {
+                    command: ImportCommand::Prefetch {
+                        source: MetadataSource::MusicBrainz,
+                        release_id: "rel-123".to_string(),
+                    },
+                },
+                AutomationTool::ImportReleasePrefetch,
+                json!({ "source": "music_brainz", "release_id": "rel-123" }),
+            ),
+            (
+                Command::Import {
+                    command: ImportCommand::PreviewFileTags {
+                        folder: "/music/inbox".to_string(),
+                    },
+                },
+                AutomationTool::ImportFileTagsPreview,
+                json!({ "folder": "/music/inbox" }),
+            ),
+            (
+                Command::Release {
+                    command: ReleaseCommand::Detail {
+                        release_id: "rel-123".to_string(),
+                    },
+                },
+                AutomationTool::ReleaseDetailGet,
+                json!({ "release_id": "rel-123" }),
+            ),
+            (
+                Command::Release {
+                    command: ReleaseCommand::ExportStatus,
+                },
+                AutomationTool::ExportStatus,
+                json!({}),
+            ),
+            (
+                Command::Release {
+                    command: ReleaseCommand::Metadata {
+                        command: ReleaseMetadataCommand::Reset {
+                            release_id: "rel-123".to_string(),
+                        },
+                    },
+                },
+                AutomationTool::ReleaseMetadataReset,
+                json!({ "release_id": "rel-123" }),
+            ),
+            (
+                Command::Library {
+                    command: LibraryCommand::Search {
+                        query: "artist album".to_string(),
+                    },
+                },
+                AutomationTool::LibrarySearch,
+                json!({ "query": "artist album" }),
+            ),
+        ];
+
+        for (command, expected_tool, expected_args) in cases {
+            let (tool, args) = call(command);
+            assert_eq!(tool, expected_tool);
+            assert_eq!(args, expected_args);
+        }
+    }
+
+    /// The three import-search variants each carry a `kind` discriminator plus
+    /// the fields specific to that kind; the source enum renders snake_case.
+    #[test]
+    fn import_search_kinds_produce_discriminated_queries() {
+        let general = call(Command::Import {
+            command: ImportCommand::Search {
+                command: ImportSearchCommand::General {
+                    artist: "Artist Name".to_string(),
+                    album: "Album Title".to_string(),
+                    source: MetadataSource::MusicBrainz,
+                },
+            },
+        });
+        assert_eq!(general.0, AutomationTool::ImportSearch);
+        assert_eq!(
+            general.1,
+            json!({
+                "kind": "general",
+                "artist": "Artist Name",
+                "album": "Album Title",
+                "source": "music_brainz",
+            })
+        );
+
+        let catalog = call(Command::Import {
+            command: ImportCommand::Search {
+                command: ImportSearchCommand::CatalogNumber {
+                    catalog_number: "CAT-001".to_string(),
+                    source: MetadataSource::Discogs,
+                },
+            },
+        });
+        assert_eq!(catalog.0, AutomationTool::ImportSearch);
+        assert_eq!(
+            catalog.1,
+            json!({
+                "kind": "catalog_number",
+                "catalog_number": "CAT-001",
+                "source": "discogs",
+            })
+        );
+
+        let barcode = call(Command::Import {
+            command: ImportCommand::Search {
+                command: ImportSearchCommand::Barcode {
+                    barcode: "0123456789".to_string(),
+                    source: MetadataSource::Discogs,
+                },
+            },
+        });
+        assert_eq!(barcode.0, AutomationTool::ImportSearch);
+        assert_eq!(
+            barcode.1,
+            json!({
+                "kind": "barcode",
+                "barcode": "0123456789",
+                "source": "discogs",
+            })
+        );
+    }
+
+    #[test]
+    fn export_passes_utf8_target_dir_as_string() {
+        let (tool, args) = call(Command::Release {
+            command: ReleaseCommand::Export {
+                release_id: "rel-123".to_string(),
+                target_dir: PathBuf::from("/export/here"),
+            },
+        });
+        assert_eq!(tool, AutomationTool::ReleaseExport);
+        assert_eq!(
+            args,
+            json!({ "release_id": "rel-123", "target_dir": "/export/here" })
+        );
+    }
+
+    /// clap hands the export target as a raw OS path, which on Unix may hold
+    /// bytes that aren't valid UTF-8. Such a path can't round-trip as a JSON
+    /// string, so the mapping must reject it loudly rather than lossily rewrite
+    /// it to a different directory.
+    #[cfg(unix)]
+    #[test]
+    fn export_rejects_non_utf8_target_dir() {
+        use std::os::unix::ffi::OsStringExt;
+        let non_utf8 = std::ffi::OsString::from_vec(vec![0x2f, 0x66, 0x6f, 0x80, 0x6f]);
+        let command = Command::Release {
+            command: ReleaseCommand::Export {
+                release_id: "rel-123".to_string(),
+                target_dir: PathBuf::from(non_utf8),
+            },
+        };
+        let error = tool_call_for_command(&command).expect_err("non-UTF-8 target is rejected");
+        assert!(matches!(error, CliError::Validation(_)));
+        assert!(error.to_string().contains("not valid UTF-8"));
+    }
+
+    #[test]
+    fn mcp_commands_do_not_map_to_a_tool() {
+        let error = tool_call_for_command(&Command::Mcp {
+            command: McpCommand::Status,
+        })
+        .expect_err("MCP has no automation tool");
+        assert!(matches!(error, CliError::Validation(_)));
+    }
+
+    static TEMP_SEQ: AtomicU64 = AtomicU64::new(0);
+
+    fn write_temp_json(contents: &str) -> PathBuf {
+        let mut path = std::env::temp_dir();
+        let seq = TEMP_SEQ.fetch_add(1, Ordering::Relaxed);
+        path.push(format!("bae-cli-test-{}-{seq}.json", std::process::id()));
+        fs::write(&path, contents).expect("write temp json fixture");
+        path
+    }
+
+    /// The file-backed commands read their JSON payload from the path clap
+    /// parsed and embed the parsed value in the tool args.
+    #[test]
+    fn file_backed_commands_read_and_embed_json() {
+        let start_path = write_temp_json(r#"{"folder":"/music/inbox"}"#);
+        let (tool, args) = call(Command::Import {
+            command: ImportCommand::Start {
+                json: start_path.to_str().unwrap().to_string(),
+            },
+        });
+        assert_eq!(tool, AutomationTool::ImportStart);
+        assert_eq!(args, json!({ "folder": "/music/inbox" }));
+        fs::remove_file(&start_path).ok();
+
+        let detail_path = write_temp_json(r#"{"album_title":"Album Title"}"#);
+        let choice_path = write_temp_json(r#"{"kind":"unknown"}"#);
+        let (tool, args) = call(Command::Import {
+            command: ImportCommand::ShapeEdit {
+                detail_json: detail_path.to_str().unwrap().to_string(),
+                choice_json: choice_path.to_str().unwrap().to_string(),
+            },
+        });
+        assert_eq!(tool, AutomationTool::ImportReleaseEditShape);
+        assert_eq!(
+            args,
+            json!({
+                "detail": { "album_title": "Album Title" },
+                "choice": { "kind": "unknown" },
+            })
+        );
+        fs::remove_file(&detail_path).ok();
+        fs::remove_file(&choice_path).ok();
+
+        let choice_path = write_temp_json(r#"{"kind":"exact","release_id":"rel-123"}"#);
+        let (tool, args) = call(Command::Release {
+            command: ReleaseCommand::Reidentify {
+                release_id: "rel-123".to_string(),
+                choice_json: choice_path.to_str().unwrap().to_string(),
+            },
+        });
+        assert_eq!(tool, AutomationTool::ReleaseReidentify);
+        assert_eq!(
+            args,
+            json!({
+                "release_id": "rel-123",
+                "choice": { "kind": "exact", "release_id": "rel-123" },
+            })
+        );
+        fs::remove_file(&choice_path).ok();
+
+        let edit_path = write_temp_json(r#"{"year":1999}"#);
+        let (tool, args) = call(Command::Release {
+            command: ReleaseCommand::Metadata {
+                command: ReleaseMetadataCommand::Update {
+                    release_id: "rel-123".to_string(),
+                    json: edit_path.to_str().unwrap().to_string(),
+                },
+            },
+        });
+        assert_eq!(tool, AutomationTool::ReleaseMetadataUpdate);
+        assert_eq!(
+            args,
+            json!({ "release_id": "rel-123", "edit": { "year": 1999 } })
+        );
+        fs::remove_file(&edit_path).ok();
+    }
+
+    #[test]
+    fn file_backed_command_surfaces_missing_file() {
+        let error = tool_call_for_command(&Command::Import {
+            command: ImportCommand::Start {
+                json: "/nonexistent/bae-cli-missing.json".to_string(),
+            },
+        })
+        .expect_err("missing file fails the mapping");
+        assert!(matches!(error, CliError::Config(_)));
+    }
+
+    #[test]
+    fn selector_defaults_to_active_when_no_flags() {
+        let selector = LibrarySelector::from_options(None, None).expect("no flags is valid");
+        assert!(matches!(selector, LibrarySelector::Active));
+        assert!(!selector.is_headless());
+    }
+
+    #[test]
+    fn selector_id_flag_is_headless() {
+        let selector = LibrarySelector::from_options(Some("lib-1".to_string()), None)
+            .expect("library id alone is valid");
+        assert!(matches!(selector, LibrarySelector::Id(ref id) if id == "lib-1"));
+        assert!(selector.is_headless());
+    }
+
+    #[test]
+    fn selector_path_flag_is_headless() {
+        let selector = LibrarySelector::from_options(None, Some(PathBuf::from("/lib/here")))
+            .expect("library path alone is valid");
+        assert!(
+            matches!(selector, LibrarySelector::Path(ref path) if path == &PathBuf::from("/lib/here"))
+        );
+        assert!(selector.is_headless());
+    }
+
+    #[test]
+    fn selector_rejects_id_and_path_together() {
+        let result =
+            LibrarySelector::from_options(Some("lib-1".to_string()), Some(PathBuf::from("/lib")));
+        match result {
+            Err(CliError::Validation(message)) => {
+                assert!(message.contains("cannot be used together"));
+            }
+            Ok(_) => panic!("expected a validation error, got a selector"),
+            Err(other) => panic!("expected a validation error, got {other}"),
+        }
+    }
+}
