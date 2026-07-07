@@ -508,25 +508,22 @@ pub fn map_mb_response_to_db(
 
             for (credit_pos, credit) in track.artist_credit.iter().enumerate() {
                 if let Some(artist_obj) = &credit.artist {
-                    let artist_name =
-                        mb_artist_name(artist_obj, Some(&credit.name)).ok_or_else(|| {
-                            format!(
-                                "MusicBrainz release {} track {:?} artist credit {:?} has no artist name",
-                                response.id, track.number, artist_obj.id
-                            )
-                        })?;
+                    // A track credit with no resolvable name (empty credit and no
+                    // artist payload name) is malformed sub-data; skip it and keep
+                    // the track, mirroring how the composer relations above handle
+                    // an unresolvable artist rather than aborting the whole import.
                     let Some(artist_id) = find_or_push_mb_artist(
                         &mut artists,
                         artist_obj,
-                        Some(&artist_name),
+                        Some(credit.name.as_str()),
                         ids,
                         now,
                     ) else {
                         warn!(
                             track_id = %db_track.id,
                             musicbrainz_artist_id = ?artist_obj.id,
-                            artist_name = %artist_name,
-                            "Skipping MusicBrainz track artist credit with unresolved artist"
+                            track_number = ?track.number,
+                            "Skipping MusicBrainz track artist credit with unresolvable artist name"
                         );
                         continue;
                     };
@@ -1524,5 +1521,223 @@ mod tests {
         assert!(matching
             .iter()
             .any(|artist| artist.musicbrainz_artist_id.as_deref() == Some("artist-2")));
+    }
+
+    /// A "parts" work relation with direction "backward" names the current
+    /// work's *parent*, not a child: the related work becomes the parent in
+    /// work_parts (the forward direction is covered by the composer-work-graph
+    /// test above).
+    #[test]
+    fn backward_work_parts_relation_treats_related_work_as_parent() {
+        let parent_work = MbWork {
+            id: "mb-work-parent-a".to_string(),
+            title: "Parent Work".to_string(),
+            disambiguation: None,
+            work_type: Some("work".to_string()),
+            relations: vec![],
+        };
+        let child_work = MbWork {
+            id: "mb-work-child-a".to_string(),
+            title: "Child Work".to_string(),
+            disambiguation: None,
+            work_type: Some("part".to_string()),
+            relations: vec![MbRelation {
+                target_type: Some("work".to_string()),
+                relation_type: Some("parts".to_string()),
+                direction: Some("backward".to_string()),
+                work: Some(parent_work),
+                ..MbRelation::default()
+            }],
+        };
+        let mut track = make_mb_track("1", "Track 1");
+        track.recording.as_mut().unwrap().relations = vec![MbRelation {
+            target_type: Some("work".to_string()),
+            relation_type: Some("performance".to_string()),
+            work: Some(child_work),
+            ..MbRelation::default()
+        }];
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![track],
+        }]);
+
+        let parsed = map(&response, Some(2024), None).unwrap();
+        let wg = &parsed.work_graph;
+
+        assert!(wg.works.iter().any(|w| w.id == "mb-work-parent-a"));
+        assert!(wg.works.iter().any(|w| w.id == "mb-work-child-a"));
+        assert!(
+            wg.work_parts.iter().any(|p| {
+                p.parent_work_id == "mb-work-parent-a" && p.child_work_id == "mb-work-child-a"
+            }),
+            "backward relation should make the related work the parent"
+        );
+    }
+
+    /// A release artist takes its discogs_artist_id from the cross-referenced
+    /// Discogs release, matched on name case-insensitively.
+    #[test]
+    fn release_artist_gets_discogs_id_by_case_insensitive_name() {
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![make_mb_track("1", "Track 1")],
+        }]);
+        let mut discogs_release = discogs_release_with_master(None);
+        discogs_release.artists = vec![crate::discogs::DiscogsArtist {
+            id: "d-artist-7".to_string(),
+            name: "ARTIST NAME A".to_string(),
+        }];
+
+        let parsed = map(&response, None, Some(discogs_release)).unwrap();
+
+        let release_artist = parsed
+            .artists
+            .iter()
+            .find(|a| a.musicbrainz_artist_id.as_deref() == Some("artist-1"))
+            .expect("release artist mapped");
+        assert_eq!(
+            release_artist.discogs_artist_id.as_deref(),
+            Some("d-artist-7")
+        );
+    }
+
+    /// No Discogs artist name matches the release artist -> no cross-ref id.
+    #[test]
+    fn release_artist_discogs_id_is_none_when_no_name_matches() {
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![make_mb_track("1", "Track 1")],
+        }]);
+        let mut discogs_release = discogs_release_with_master(None);
+        discogs_release.artists = vec![crate::discogs::DiscogsArtist {
+            id: "d-artist-7".to_string(),
+            name: "Different Artist".to_string(),
+        }];
+
+        let parsed = map(&response, None, Some(discogs_release)).unwrap();
+
+        let release_artist = parsed
+            .artists
+            .iter()
+            .find(|a| a.musicbrainz_artist_id.as_deref() == Some("artist-1"))
+            .expect("release artist mapped");
+        assert_eq!(release_artist.discogs_artist_id, None);
+    }
+
+    /// A work composer relation with no artist payload is skipped with a
+    /// warning, not silently dropped; the work itself still imports.
+    #[test]
+    fn work_composer_relation_without_artist_payload_is_logged_and_skipped() {
+        let work = MbWork {
+            id: "mb-work-a".to_string(),
+            title: "Work Title".to_string(),
+            disambiguation: None,
+            work_type: Some("work".to_string()),
+            relations: vec![MbRelation {
+                target_type: Some("artist".to_string()),
+                relation_type: Some("composer".to_string()),
+                artist: None,
+                ..MbRelation::default()
+            }],
+        };
+        let mut track = make_mb_track("1", "Track 1");
+        track.recording.as_mut().unwrap().relations = vec![MbRelation {
+            target_type: Some("work".to_string()),
+            relation_type: Some("performance".to_string()),
+            work: Some(work),
+            ..MbRelation::default()
+        }];
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![track],
+        }]);
+
+        let mut parsed = None;
+        let logs = crate::test_logs::capture_warn_logs(|| {
+            parsed = Some(map(&response, Some(2024), None).unwrap());
+        });
+        let parsed = parsed.unwrap();
+
+        assert!(parsed.work_graph.works.iter().any(|w| w.id == "mb-work-a"));
+        assert!(parsed.work_graph.work_artists.is_empty());
+        assert!(
+            logs.contains("work artist relation without artist payload"),
+            "expected a skip warning, got: {logs}"
+        );
+    }
+
+    /// A work "parts" relation with no work payload is skipped with a warning;
+    /// no work-part link is produced.
+    #[test]
+    fn work_parts_relation_without_work_payload_is_logged_and_skipped() {
+        let work = MbWork {
+            id: "mb-work-a".to_string(),
+            title: "Work Title".to_string(),
+            disambiguation: None,
+            work_type: Some("work".to_string()),
+            relations: vec![MbRelation {
+                target_type: Some("work".to_string()),
+                relation_type: Some("parts".to_string()),
+                direction: Some("forward".to_string()),
+                work: None,
+                ..MbRelation::default()
+            }],
+        };
+        let mut track = make_mb_track("1", "Track 1");
+        track.recording.as_mut().unwrap().relations = vec![MbRelation {
+            target_type: Some("work".to_string()),
+            relation_type: Some("performance".to_string()),
+            work: Some(work),
+            ..MbRelation::default()
+        }];
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![track],
+        }]);
+
+        let mut parsed = None;
+        let logs = crate::test_logs::capture_warn_logs(|| {
+            parsed = Some(map(&response, Some(2024), None).unwrap());
+        });
+        let parsed = parsed.unwrap();
+
+        assert!(parsed.work_graph.work_parts.is_empty());
+        assert!(
+            logs.contains("work parts relation without work payload"),
+            "expected a skip warning, got: {logs}"
+        );
+    }
+
+    /// A track artist credit whose name resolves to nothing (empty credit and
+    /// no artist-payload name) is skipped with a warning; the track still maps
+    /// and no track-artist row is produced.
+    #[test]
+    fn track_artist_credit_without_resolvable_name_is_logged_and_skipped() {
+        let mut track = make_mb_track("1", "Track 1");
+        track.artist_credit = vec![MbArtistCredit {
+            name: String::new(),
+            artist: Some(MbArtistRef {
+                id: Some("artist-nameless".to_string()),
+                name: None,
+                sort_name: None,
+            }),
+        }];
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![track],
+        }]);
+
+        let mut parsed = None;
+        let logs = crate::test_logs::capture_warn_logs(|| {
+            parsed = Some(map(&response, Some(2024), None).unwrap());
+        });
+        let parsed = parsed.unwrap();
+
+        assert_eq!(parsed.tracks.len(), 1);
+        assert!(parsed.track_artists.is_empty());
+        assert!(
+            logs.contains("unresolvable artist name"),
+            "expected a skip warning, got: {logs}"
+        );
     }
 }
