@@ -101,6 +101,80 @@ async fn position_after(
     latest.expect("a position update should arrive during playback")
 }
 
+/// Return the first `PositionUpdate` seen for `track_id` (its adjusted
+/// position_ms), or `None` on timeout. Distinct from `wait_for_position_update`
+/// in that it ignores position ticks belonging to a different track — needed
+/// right after a track boundary, when a stale tick for the finishing track can
+/// still be in flight.
+async fn wait_for_track_position(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    track_id: &str,
+    timeout_duration: Duration,
+) -> Option<u64> {
+    let deadline = Instant::now() + timeout_duration;
+    while Instant::now() < deadline {
+        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::PositionUpdate {
+                position_ms,
+                track_id: tid,
+                ..
+            })) if tid == track_id => return Some(position_ms),
+            Ok(Some(_)) => continue,
+            Ok(None) => return None,
+            Err(_) => continue,
+        }
+    }
+    None
+}
+
+/// What a track boundary looked like on the wire. A *gapless* handoff crosses
+/// inside the running stream: `handle_track_crossed` reports the finishing
+/// track's `DecodeStats` but no `TrackCompleted` (that fires only when nothing
+/// is staged and the stream rebuilds). So `completed_for_finishing == false`
+/// with `decode_stats_for_finishing == true` is the gapless signature.
+struct BoundaryOutcome {
+    decode_stats_for_finishing: bool,
+    completed_for_finishing: bool,
+    reached_incoming: bool,
+}
+
+/// Drain progress until `incoming` reaches Playing (or timeout), recording
+/// whether `finishing`'s DecodeStats and/or TrackCompleted were seen along the
+/// way — i.e. whether the boundary was gapless or a rebuild.
+async fn observe_boundary(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    finishing: &str,
+    incoming: &str,
+    timeout_duration: Duration,
+) -> BoundaryOutcome {
+    let deadline = Instant::now() + timeout_duration;
+    let mut outcome = BoundaryOutcome {
+        decode_stats_for_finishing: false,
+        completed_for_finishing: false,
+        reached_incoming: false,
+    };
+    while Instant::now() < deadline {
+        match timeout(Duration::from_millis(200), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::DecodeStats { track_id, .. })) if track_id == finishing => {
+                outcome.decode_stats_for_finishing = true;
+            }
+            Ok(Some(PlaybackProgress::TrackCompleted { track_id })) if track_id == finishing => {
+                outcome.completed_for_finishing = true;
+            }
+            Ok(Some(PlaybackProgress::StateChanged {
+                state: PlaybackState::Playing { track_info, .. },
+            })) if track_info.track_id == incoming => {
+                outcome.reached_incoming = true;
+                break;
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) => break,
+            Err(_) => continue,
+        }
+    }
+    outcome
+}
+
 fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
     library_manager: LibraryManager,
@@ -1483,6 +1557,184 @@ async fn test_auto_advance_to_next_track() {
         total_decode_errors
     );
 }
+
+/// The true gapless handoff: a track played to its natural end with the next
+/// track staged crosses the boundary inside the running stream
+/// (boundary_rx → handle_track_crossed → advance_to_preloaded), never rebuilding
+/// via the TrackCompleted → AutoAdvance path. The signature is that the
+/// finishing track emits its DecodeStats (reported by the boundary handler) but
+/// not TrackCompleted, and the incoming track's position resets to 0.
+#[tokio::test]
+async fn gapless_boundary_hands_off_without_rebuild() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    let second = fixture.track_ids[1].clone();
+
+    fixture.playback_handle.play(first.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the first track should play");
+
+    // Seek partway to bring the natural end sooner while leaving ample runway:
+    // the staged next is re-staged well before the decoder reaches EOF. (Seeking
+    // right up against the end instead is the not-ready-fallback case below.)
+    fixture.playback_handle.seek(Duration::from_secs(3));
+    fixture
+        .wait_for_seeked(Duration::from_secs(5))
+        .await
+        .expect("the seek should land");
+
+    let outcome = observe_boundary(
+        &mut fixture.progress_rx,
+        &first,
+        &second,
+        Duration::from_secs(8),
+    )
+    .await;
+    assert!(
+        outcome.reached_incoming,
+        "playback should cross into the second track at the first track's end"
+    );
+    assert!(
+        outcome.decode_stats_for_finishing,
+        "the gapless boundary handler reports the finishing track's decode stats"
+    );
+    assert!(
+        !outcome.completed_for_finishing,
+        "a gapless handoff must not emit TrackCompleted for the finishing track — \
+         that event only fires on the stream-rebuild path"
+    );
+
+    let position_ms =
+        wait_for_track_position(&mut fixture.progress_rx, &second, Duration::from_secs(2))
+            .await
+            .expect("a position update for the incoming track");
+    assert!(
+        position_ms < 1500,
+        "the incoming track's position resets near 0 at the boundary, got {position_ms}ms"
+    );
+}
+
+/// The boundary handler re-preloads the *following* track, so a chain of natural
+/// ends crosses gaplessly the whole way down. Play track 0 → track 1 (first
+/// crossing, which re-preloads track 2) → track 2: the second crossing is also
+/// gapless, which it can only be if track 2 was staged during the first.
+#[tokio::test]
+async fn gapless_boundary_repreloads_following_track() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    let second = fixture.track_ids[1].clone();
+    let third = fixture.track_ids[2].clone();
+
+    fixture.playback_handle.play(first.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the first track should play");
+
+    fixture.playback_handle.seek(Duration::from_secs(3));
+    fixture
+        .wait_for_seeked(Duration::from_secs(5))
+        .await
+        .expect("the first seek should land");
+    let first_cross = observe_boundary(
+        &mut fixture.progress_rx,
+        &first,
+        &second,
+        Duration::from_secs(8),
+    )
+    .await;
+    assert!(
+        first_cross.reached_incoming,
+        "playback should cross into the second track"
+    );
+
+    // Shorten the second track too, then let it end. If the third track was
+    // re-preloaded and staged during the first crossing, this crosses gaplessly.
+    fixture.playback_handle.seek(Duration::from_secs(3));
+    fixture
+        .wait_for_seeked(Duration::from_secs(5))
+        .await
+        .expect("the second seek should land");
+    let second_cross = observe_boundary(
+        &mut fixture.progress_rx,
+        &second,
+        &third,
+        Duration::from_secs(8),
+    )
+    .await;
+    assert!(
+        second_cross.reached_incoming,
+        "the following track was re-preloaded, so the second boundary also crosses into it"
+    );
+    assert!(
+        second_cross.decode_stats_for_finishing,
+        "the second boundary reports the finishing track's decode stats"
+    );
+    assert!(
+        !second_cross.completed_for_finishing,
+        "the re-preloaded following track crosses gaplessly — no rebuild"
+    );
+}
+
+/// The rebuild advance: seeking right up against the end leaves the post-seek
+/// decoder with ~no samples, so it hits EOF and completes rather than crossing
+/// the staged boundary — driving TrackCompleted → AutoAdvance →
+/// advance_and_play_preloaded, which recovers the preloaded next and plays it
+/// (advance.rs ~407, the has_preloaded_next branch). This is the non-gapless
+/// counterpart to the two handoff tests above: the next track still plays from
+/// its start via the preloaded decoder.
+///
+/// (The sibling not-ready fallback at ~413 — play_track when the staged source
+/// was already consumed — is a defensive race between a boundary crossing and a
+/// concurrent Next/AutoAdvance; the serial command loop keeps those from
+/// interleaving, so it isn't deterministically reachable from a black-box test.)
+#[tokio::test]
+async fn boundary_advances_to_next_track_after_late_seek() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    let second = fixture.track_ids[1].clone();
+
+    fixture.playback_handle.play(first.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the first track should play");
+
+    // Tracks run ~5s; seek to 4.8s leaves ~0.2s before the end.
+    fixture.playback_handle.seek(Duration::from_millis(4800));
+    fixture
+        .wait_for_seeked(Duration::from_secs(5))
+        .await
+        .expect("the seek should land");
+
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
+            Duration::from_secs(10),
+        )
+        .await
+        .expect("playback should advance to the second track at the end");
+    let position_ms =
+        wait_for_track_position(&mut fixture.progress_rx, &second, Duration::from_secs(3))
+            .await
+            .expect("a position update for the second track");
+    assert!(
+        position_ms < 1500,
+        "the next track starts from ~0, got {position_ms}ms"
+    );
+}
+
 #[tokio::test]
 async fn test_position_maintained_across_pause_resume() {
     let mut fixture = PlaybackTestFixture::new().await;
