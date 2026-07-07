@@ -1,5 +1,6 @@
 //! Shared outbound HTTP client configuration.
 
+use reqwest::redirect::Policy;
 use std::time::Duration;
 
 /// User-agent sent on every bae-originated HTTP request (MusicBrainz, Discogs,
@@ -16,17 +17,21 @@ pub(crate) const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 /// Stall guard for any provider socket after the request starts.
 pub(crate) const READ_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// Maximum redirects any provider request may follow.
+pub(crate) const MAX_REDIRECTS: usize = 10;
+
 /// Ceiling for image/cover bodies read into memory.
 pub(crate) const MAX_IMAGE_BYTES: usize = 32 * 1024 * 1024;
 
-/// A `reqwest` client builder pre-set with bae's user-agent. Callers add any
-/// further settings (redirect policy, timeouts) and call `.build()` themselves
+/// A `reqwest` client builder pre-set with bae's outbound HTTP policy. Callers
+/// add any further settings for their endpoint and call `.build()` themselves
 /// so they keep their own error handling.
 pub(crate) fn client_builder() -> reqwest::ClientBuilder {
     reqwest::Client::builder()
         .user_agent(USER_AGENT)
         .connect_timeout(CONNECT_TIMEOUT)
         .read_timeout(READ_TIMEOUT)
+        .redirect(Policy::limited(MAX_REDIRECTS))
 }
 
 #[derive(Debug, thiserror::Error)]
