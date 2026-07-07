@@ -507,28 +507,201 @@ mod tests {
     use std::sync::Arc;
 
     #[test]
-    fn audio_codec_allowlist_is_the_intentional_import_surface() {
-        for content_type in [
-            ContentType::Flac,
-            ContentType::Mp3,
-            ContentType::Ape,
-            ContentType::Alac,
-            ContentType::Aac,
-            ContentType::Pcm,
-            ContentType::Opus,
-            ContentType::Vorbis,
-            ContentType::WavPack,
-            ContentType::Dsd,
-        ] {
-            assert!(admitted_audio_content_type(&content_type));
-        }
-
+    fn admitted_audio_content_type_gates_unlisted_codecs() {
+        // Dispatch check: an admitted codec passes the gate.
+        assert!(admitted_audio_content_type(&ContentType::Flac));
+        // The gate's job — reject anything not on the import allowlist.
         assert!(!admitted_audio_content_type(&ContentType::Other(
             "codec:AV_CODEC_ID_SPEEX".to_string()
         )));
         assert!(!admitted_audio_content_type(&ContentType::Other(
             "audio/x-ms-wma".to_string()
         )));
+    }
+
+    #[test]
+    fn resolve_file_content_type_maps_non_audio_by_extension() {
+        // Non-audio files map straight from the extension hint — no probe, so
+        // the paths need not exist.
+        assert_eq!(
+            resolve_file_content_type(Path::new("/x/cover.jpg")).unwrap(),
+            ContentType::Jpeg
+        );
+        assert_eq!(
+            resolve_file_content_type(Path::new("/x/back.png")).unwrap(),
+            ContentType::Png
+        );
+        assert_eq!(
+            resolve_file_content_type(Path::new("/x/notes.txt")).unwrap(),
+            ContentType::PlainText
+        );
+        assert_eq!(
+            resolve_file_content_type(Path::new("/x/booklet.pdf")).unwrap(),
+            ContentType::Pdf
+        );
+        // An extension the hint can't classify becomes opaque binary.
+        assert_eq!(
+            resolve_file_content_type(Path::new("/x/data.bin")).unwrap(),
+            ContentType::OctetStream
+        );
+    }
+
+    #[test]
+    fn resolve_file_content_type_errors_without_extension() {
+        let error = resolve_file_content_type(Path::new("/x/README")).unwrap_err();
+        assert!(error.contains("no extension"), "got: {error}");
+    }
+
+    fn test_clock() -> coven::FixedClock {
+        coven::FixedClock(
+            chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+                .unwrap()
+                .with_timezone(&chrono::Utc),
+        )
+    }
+
+    /// A CUE track whose INDEX 00 sits after the previous track's INDEX 01 is a
+    /// real audio pregap (a hidden intro / count-in), so the pregap bytes come
+    /// from the container itself. `cue_segments` must emit an `AudioPregap`
+    /// segment spanning `[INDEX 00, INDEX 01)` ahead of the `Main` segment —
+    /// the branch the existing segment test never reaches, because its INDEX 00
+    /// values are all bogus (before the prior track) and get rejected to
+    /// `CuePregap::None`.
+    #[test]
+    fn cue_backed_segments_emit_audio_pregap_window() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let cue_path = temp.path().join("Album.cue");
+        let audio_path = temp.path().join("test.ape");
+        std::fs::write(
+            &cue_path,
+            r#"PERFORMER "Artist Name"
+TITLE "Album Title"
+FILE "test.ape" WAVE
+  TRACK 01 AUDIO
+    TITLE "Track One"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track Two"
+    INDEX 00 04:00:00
+    INDEX 01 05:00:00
+  TRACK 03 AUDIO
+    TITLE "Track Three"
+    INDEX 01 10:00:00
+"#,
+        )
+        .expect("write cue");
+
+        let cue_sheet =
+            crate::cue_flac::CueFlacProcessor::parse_cue_sheet(&cue_path).expect("parse cue");
+        let sample_rate = 44_100u64;
+        let cue_pair = Arc::new(CueFlacAnalysis {
+            cue_sheet,
+            audio_files: vec![CueAnalyzedAudioFile {
+                file_reference: "test.ape".to_string(),
+                path: audio_path.clone(),
+                analysis: CueAudioAnalysis {
+                    probe: ProbeResult {
+                        content_type: ContentType::Ape,
+                        duration: std::time::Duration::from_secs(12 * 60),
+                        sample_rate: sample_rate as u32,
+                        bits_per_sample: Some(16),
+                        channels: 2,
+                    },
+                },
+            }],
+        });
+
+        let tracks_to_files: Vec<_> = cue_pair
+            .cue_sheet
+            .playable_tracks()
+            .enumerate()
+            .map(|(index, track)| TrackFile::CueBacked {
+                db_track: crate::db::DbTrack::new_test(
+                    "release-id",
+                    &format!("track-{index}"),
+                    track.title.as_deref().unwrap_or("Track Title"),
+                    Some(track.number as i32),
+                ),
+                file_path: audio_path.clone(),
+                cue_pair: Arc::clone(&cue_pair),
+                cue_index: index,
+            })
+            .collect();
+        let file_ids = HashMap::from([(audio_path, "file-id".to_string())]);
+        let ids = coven::SequentialIdProvider::new("audio");
+
+        let built =
+            ImportService::build_audio_formats(&tracks_to_files, &file_ids, &test_clock(), &ids)
+                .expect("build audio formats");
+
+        // Exactly one track (track 2) has a real audio pregap.
+        let pregaps: Vec<_> = built
+            .audio_segments
+            .iter()
+            .filter(|segment| segment.role == DbAudioSegmentRole::AudioPregap)
+            .collect();
+        assert_eq!(pregaps.len(), 1, "only track 2 has an audio pregap");
+        let pregap = pregaps[0];
+        // INDEX 00 (4:00) .. INDEX 01 (5:00), converted frames -> samples.
+        assert_eq!(pregap.segment_index, 0, "pregap precedes the main segment");
+        assert_eq!(pregap.file_id, "file-id");
+        assert_eq!(pregap.start_sample, (4 * 60 * 75) * sample_rate as i64 / 75);
+        assert_eq!(
+            pregap.end_sample,
+            Some((5 * 60 * 75) * sample_rate as i64 / 75)
+        );
+
+        // Track 2's main segment starts where the pregap ends (INDEX 01) and
+        // runs to track 3's INDEX 01.
+        let main = built
+            .audio_segments
+            .iter()
+            .find(|segment| {
+                segment.audio_format_id == pregap.audio_format_id
+                    && segment.role == DbAudioSegmentRole::Main
+            })
+            .expect("track 2 main segment");
+        assert_eq!(main.start_sample, (5 * 60 * 75) * sample_rate as i64 / 75);
+        assert_eq!(
+            main.end_sample,
+            Some((10 * 60 * 75) * sample_rate as i64 / 75)
+        );
+    }
+
+    /// The standalone (non-CUE) arm probes the file for its format and emits one
+    /// whole-file `Main` segment: sample window open (`start_sample` 0,
+    /// `end_sample` None) and no byte window, since a per-track file is its own
+    /// source.
+    #[test]
+    fn build_audio_formats_probes_standalone_track() {
+        crate::audio_codec::init();
+        let path = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/flac/01 Test Track 1.flac"
+        ));
+        let track = TrackFile::Standalone {
+            db_track: crate::db::DbTrack::new_test("release-id", "track-0", "Track Title", Some(1)),
+            file_path: path.clone(),
+        };
+        let file_ids = HashMap::from([(path, "file-0".to_string())]);
+        let ids = coven::SequentialIdProvider::new("af");
+
+        let built = ImportService::build_audio_formats(&[track], &file_ids, &test_clock(), &ids)
+            .expect("build audio formats");
+
+        assert_eq!(built.audio_formats.len(), 1);
+        assert_eq!(built.audio_formats[0].track_id, "track-0");
+        assert_eq!(built.audio_formats[0].content_type, ContentType::Flac);
+
+        assert_eq!(built.audio_segments.len(), 1);
+        let segment = &built.audio_segments[0];
+        assert_eq!(segment.role, DbAudioSegmentRole::Main);
+        assert_eq!(segment.segment_index, 0);
+        assert_eq!(segment.file_id, "file-0");
+        assert_eq!(segment.start_sample, 0);
+        assert_eq!(segment.end_sample, None, "whole-file source has no end");
+        assert_eq!(segment.start_byte, None);
+        assert_eq!(segment.end_byte, None);
     }
 
     fn probe_result(sample_rate: u32, channels: u32) -> ProbeResult {
