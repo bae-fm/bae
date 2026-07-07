@@ -917,7 +917,7 @@ impl Database {
             // album) are gone, any of these left referenced by nothing is a row
             // finalize inserted purely for this import; the reference check when
             // deleting spares any artist another release/album still points at.
-            let candidate_artist_ids: Vec<String> = {
+            let mut candidate_artist_ids: Vec<String> = {
                 let mut stmt = conn.prepare(
                     "SELECT artist_id FROM album_artists WHERE album_id = ?1
                      UNION
@@ -936,6 +936,48 @@ impl Database {
                     .collect::<coven::rusqlite::Result<Vec<String>>>()?;
                 ids
             };
+
+            // The work-graph component this release touches: every work one of
+            // its tracks performs, plus every work joined to those through the
+            // work_parts hierarchy (a symphony and its movements are one
+            // component, reached in either direction). Captured before the
+            // cascade clears this release's track_works. Finalize inserts works
+            // globally (no release FK), so nothing else deletes them.
+            let candidate_work_ids: Vec<String> = {
+                let mut stmt = conn.prepare(
+                    "WITH RECURSIVE component(work_id) AS (
+                         SELECT tw.work_id FROM track_works tw
+                           JOIN tracks t ON t.id = tw.track_id
+                          WHERE t.release_id = ?1
+                         UNION
+                         SELECT wp.parent_work_id FROM work_parts wp
+                           JOIN component c ON wp.child_work_id = c.work_id
+                         UNION
+                         SELECT wp.child_work_id FROM work_parts wp
+                           JOIN component c ON wp.parent_work_id = c.work_id
+                     )
+                     SELECT work_id FROM component",
+                )?;
+                let ids = stmt
+                    .query_map(params![release_id], |row| row.get(0))?
+                    .collect::<coven::rusqlite::Result<Vec<String>>>()?;
+                ids
+            };
+
+            // Composers are linked only through work_artists, so they never
+            // appear in the artist query above. Add them as artist candidates:
+            // once the orphaned works below drop their work_artists rows, a
+            // composer referenced by nothing else falls to the artist cleanup.
+            {
+                let mut stmt =
+                    conn.prepare("SELECT artist_id FROM work_artists WHERE work_id = ?1")?;
+                for work_id in &candidate_work_ids {
+                    let composers = stmt
+                        .query_map(params![work_id], |row| row.get::<_, String>(0))?
+                        .collect::<coven::rusqlite::Result<Vec<String>>>()?;
+                    candidate_artist_ids.extend(composers);
+                }
+            }
 
             conn.execute(
                 "DELETE FROM local_blob_refs
@@ -965,6 +1007,35 @@ impl Database {
                     "UPDATE albums SET primary_release_id = NULL, _updated_at = ? WHERE id = ?",
                     params![reg, album_id],
                 )?;
+            }
+
+            // Delete the works this release owned, now that its track_works are
+            // gone. A work still reachable from a surviving track — directly, or
+            // as part of the same work_parts hierarchy — stays; the rest of this
+            // release's component is unreferenced and goes. Deleting a work
+            // cascades its work_artists and work_parts rows.
+            let live_work_ids: std::collections::HashSet<String> = {
+                let mut stmt = conn.prepare(
+                    "WITH RECURSIVE live(work_id) AS (
+                         SELECT DISTINCT work_id FROM track_works
+                         UNION
+                         SELECT wp.parent_work_id FROM work_parts wp
+                           JOIN live l ON wp.child_work_id = l.work_id
+                         UNION
+                         SELECT wp.child_work_id FROM work_parts wp
+                           JOIN live l ON wp.parent_work_id = l.work_id
+                     )
+                     SELECT work_id FROM live",
+                )?;
+                let ids = stmt
+                    .query_map([], |row| row.get(0))?
+                    .collect::<coven::rusqlite::Result<std::collections::HashSet<String>>>()?;
+                ids
+            };
+            for work_id in &candidate_work_ids {
+                if !live_work_ids.contains(work_id) {
+                    conn.execute("DELETE FROM works WHERE id = ?", params![work_id])?;
+                }
             }
 
             // Delete each candidate artist now that the release/album cascade

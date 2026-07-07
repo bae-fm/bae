@@ -14,8 +14,8 @@ use bae_core::import::{
 };
 use bae_core::library::LibraryManager;
 use bae_core::musicbrainz::{
-    ExternalUrls, MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbReleaseGroupRef,
-    MbReleaseResponse, MbTrack,
+    ExternalUrls, MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbRelation,
+    MbReleaseGroupRef, MbReleaseResponse, MbTrack, MbWork,
 };
 use bae_core::sync::CloudCipher;
 use coven::EncryptionService;
@@ -1488,6 +1488,277 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
         artist_count, 1,
         "only the prior artist remains; the rolled-back import's artist row is gone",
     );
+    assert!(
+        f.db.find_release_by_id(&prior_release_id)
+            .await
+            .unwrap()
+            .is_some(),
+        "the prior release is untouched by the failed remote import",
+    );
+}
+
+/// An MbWork with a composer relation and, optionally, one child part.
+fn work_with_composer(id: &str, title: &str, composer_mb: &str, part: Option<MbWork>) -> MbWork {
+    let mut relations = vec![MbRelation {
+        target_type: Some("artist".to_string()),
+        relation_type: Some("composer".to_string()),
+        artist: Some(MbArtistRef {
+            id: Some(composer_mb.to_string()),
+            name: Some(format!("Composer {composer_mb}")),
+            sort_name: Some(format!("Composer {composer_mb}")),
+        }),
+        target_credit: Some(format!("Composer {composer_mb}")),
+        ..MbRelation::default()
+    }];
+    if let Some(part) = part {
+        relations.push(MbRelation {
+            target_type: Some("work".to_string()),
+            relation_type: Some("parts".to_string()),
+            direction: Some("forward".to_string()),
+            work: Some(part),
+            ..MbRelation::default()
+        });
+    }
+    MbWork {
+        id: id.to_string(),
+        title: title.to_string(),
+        disambiguation: None,
+        work_type: Some("work".to_string()),
+        relations,
+    }
+}
+
+/// An MbTrack whose recording performs `work`.
+fn mb_track_performing(position: i64, title: &str, work: MbWork) -> MbTrack {
+    MbTrack {
+        position: Some(position),
+        number: Some(position.to_string()),
+        title: Some(title.to_string()),
+        length: None,
+        recording: Some(MbRecording {
+            id: Some(format!("rec-{position}-{}", work.id)),
+            title: Some(title.to_string()),
+            artist_credit: vec![],
+            relations: vec![MbRelation {
+                target_type: Some("work".to_string()),
+                relation_type: Some("performance".to_string()),
+                work: Some(work),
+                ..MbRelation::default()
+            }],
+        }),
+        artist_credit: vec![],
+    }
+}
+
+/// Seed a MusicBrainz release (no Discogs cross-link) whose recordings perform
+/// the given work graph. Returns the MB release id.
+fn seed_mb_release_with_works(
+    mb_release_id: &str,
+    mb_group_id: &str,
+    title: &str,
+    tracks: Vec<MbTrack>,
+) -> String {
+    let response = MbReleaseResponse {
+        id: mb_release_id.to_string(),
+        title: title.to_string(),
+        date: Some("1996".to_string()),
+        country: Some("US".to_string()),
+        barcode: None,
+        artist_credit: vec![MbArtistCredit {
+            name: "Artist Name".to_string(),
+            artist: Some(MbArtistRef {
+                id: Some("mb-artist-1".to_string()),
+                name: Some("Artist Name".to_string()),
+                sort_name: Some("Artist Name".to_string()),
+            }),
+        }],
+        release_group: Some(MbReleaseGroupRef {
+            id: mb_group_id.to_string(),
+            first_release_date: None,
+            relations: None,
+        }),
+        label_info: vec![],
+        media: vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks,
+        }],
+        relations: vec![],
+    };
+    bae_core::musicbrainz::seed_release_cache(
+        mb_release_id,
+        (
+            response,
+            ExternalUrls {
+                discogs_release_url: None,
+            },
+            "{}".to_string(),
+        ),
+    );
+    bae_core::musicbrainz::seed_release_group_json_cache(mb_group_id, "{}".to_string());
+    mb_release_id.to_string()
+}
+
+/// Work-graph sibling of `remote_transition_failure_rolls_back_finalized_release`.
+/// A classical MusicBrainz import finalizes works, work_parts, work_artists
+/// (composers), and track_works; a post-finalize transition failure must roll
+/// all of that back too. Otherwise every failed classical remote import leaks
+/// orphaned works, and the composer artist rows those surviving work_artists
+/// keep alive slip past the artist-rollback guard. A work still performed by a
+/// surviving release — and its composer — must be left alone.
+#[tokio::test]
+#[serial]
+async fn remote_transition_failure_rolls_back_finalized_works() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+
+    // A prior LOCAL MusicBrainz import that survives. Its recording performs
+    // the shared work, so that work and its composer are referenced by a
+    // release the failed remote import below must not touch.
+    let prior_mb = seed_mb_release_with_works(
+        "mb-rel-prior",
+        "mb-group-prior",
+        "Prior Symphony",
+        vec![mb_track_performing(
+            1,
+            "Prior Movement",
+            work_with_composer("mb-work-shared", "Shared Work", "composer-shared", None),
+        )],
+    );
+    let prior_dir = f.temp_path().join("prior");
+    fs::create_dir_all(&prior_dir).unwrap();
+    generate_album_files(&prior_dir, &["01 Prior Movement.flac"]);
+    let (prior_release_id, _) = import_folder(
+        &f,
+        &prior_dir,
+        None,
+        StorageMode::Local,
+        IdentityChoice::Exact {
+            release_ref: MetadataRef::new(prior_mb, MetadataSource::MusicBrainz),
+        },
+    )
+    .await
+    .expect("prior local MB import succeeds");
+
+    // The failing REMOTE import: one recording performs the shared work (also
+    // performed by the prior release), the other an exclusive work that has its
+    // own child part and its own composer.
+    let remote_mb = seed_mb_release_with_works(
+        "mb-rel-remote",
+        "mb-group-remote",
+        "Remote Symphony",
+        vec![
+            mb_track_performing(
+                1,
+                "Remote Movement One",
+                work_with_composer("mb-work-shared", "Shared Work", "composer-shared", None),
+            ),
+            mb_track_performing(
+                2,
+                "Remote Movement Two",
+                work_with_composer(
+                    "mb-work-exclusive",
+                    "Exclusive Work",
+                    "composer-exclusive",
+                    Some(MbWork {
+                        id: "mb-work-part".to_string(),
+                        title: "Exclusive Part".to_string(),
+                        disambiguation: None,
+                        work_type: Some("part".to_string()),
+                        relations: vec![],
+                    }),
+                ),
+            ),
+        ],
+    );
+    let album_dir = f.temp_path().join("remote");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_album_files(
+        &album_dir,
+        &["01 Remote Movement One.flac", "02 Remote Movement Two.flac"],
+    );
+
+    let import_id = f.ids.new_id();
+    f.handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            selected_cover: None,
+            storage_mode: StorageMode::Remote,
+            pin: false,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(remote_mb, MetadataSource::MusicBrainz),
+            },
+            user_edit: None,
+        })
+        .unwrap();
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let error = support::try_wait_for_import_complete(&mut progress_rx)
+        .await
+        .expect_err("remote transition without a sync provider fails");
+    assert!(error.contains("cloud upload"), "unexpected error: {error}");
+
+    let (
+        shared_work,
+        exclusive_work,
+        part_work,
+        work_parts_count,
+        shared_composer,
+        exclusive_composer,
+        orphan_work_artists,
+    ): (bool, bool, bool, i64, bool, bool, i64) =
+        f.db.handle()
+            .sql(|sql| {
+                let conn = sql.tx();
+                let exists = |q: &str| -> coven::rusqlite::Result<bool> {
+                    Ok(conn.query_row(q, [], |r| r.get::<_, i64>(0))? > 0)
+                };
+                Ok::<_, coven::CovenError>((
+                exists("SELECT COUNT(*) FROM works WHERE id = 'mb-work-shared'")?,
+                exists("SELECT COUNT(*) FROM works WHERE id = 'mb-work-exclusive'")?,
+                exists("SELECT COUNT(*) FROM works WHERE id = 'mb-work-part'")?,
+                conn.query_row("SELECT COUNT(*) FROM work_parts", [], |r| r.get(0))?,
+                exists(
+                    "SELECT COUNT(*) FROM artists WHERE musicbrainz_artist_id = 'composer-shared'",
+                )?,
+                exists(
+                    "SELECT COUNT(*) FROM artists \
+                     WHERE musicbrainz_artist_id = 'composer-exclusive'",
+                )?,
+                conn.query_row(
+                    "SELECT COUNT(*) FROM work_artists wa \
+                     WHERE wa.work_id NOT IN (SELECT work_id FROM track_works)",
+                    [],
+                    |r| r.get(0),
+                )?,
+            ))
+            })
+            .await
+            .unwrap();
+
+    assert!(
+        shared_work,
+        "the shared work stays; the prior release still performs it",
+    );
+    assert!(shared_composer, "the shared work's composer stays");
+    assert!(
+        !exclusive_work,
+        "the failed import's exclusive work is deleted",
+    );
+    assert!(!part_work, "the exclusive work's child part is deleted");
+    assert_eq!(
+        work_parts_count, 0,
+        "no work_parts rows survive the rollback"
+    );
+    assert!(
+        !exclusive_composer,
+        "the exclusive composer, referenced by nothing else, is deleted",
+    );
+    assert_eq!(
+        orphan_work_artists, 0,
+        "no work_artists point at a work with no surviving track link",
+    );
+
     assert!(
         f.db.find_release_by_id(&prior_release_id)
             .await
