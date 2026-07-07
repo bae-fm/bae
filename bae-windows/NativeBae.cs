@@ -316,23 +316,30 @@ internal static class NativeBae
     internal static string JoinFromCode(string code, string? oauthTokenJson) =>
         BaeBridgeMethods.JoinFromCode(code, oauthTokenJson).Id;
 
-    [DllImport(Dll, EntryPoint = "bae_restore_from_cloud", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr RestoreFromCloudPtr(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string libraryId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string encryptionKeyHex,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string? libraryName,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string sourceJson);
-
     /// <summary>
-    /// Restore a library by entering its cloud location and credentials directly
-    /// (no restore code); returns a result JSON (<c>{library_id, error}</c>).
-    /// <paramref name="sourceJson"/> is a tagged source (<c>{"type":"s3",…}</c>);
-    /// an empty <paramref name="libraryName"/> generates one. Blocks on a cloud
-    /// pull — call off the UI thread. Copies and frees.
+    /// Restore an S3-backed library by entering its cloud location and credentials
+    /// directly, returning the restored library id. An empty
+    /// <paramref name="libraryName"/> generates one. Blocks on a cloud pull — call
+    /// off the UI thread.
     /// </summary>
-    internal static string? RestoreFromCloud(
-        string libraryId, string encryptionKeyHex, string? libraryName, string sourceJson) =>
-        CopyAndFree(RestoreFromCloudPtr(libraryId, encryptionKeyHex, libraryName, sourceJson));
+    internal static string RestoreFromS3(
+        string libraryId,
+        string encryptionKeyHex,
+        string? libraryName,
+        string bucket,
+        string region,
+        string? endpoint,
+        string accessKey,
+        string secretKey)
+    {
+        var source = new BridgeRestoreSource.S3(
+            bucket,
+            region,
+            string.IsNullOrWhiteSpace(endpoint) ? null : endpoint.Trim(),
+            accessKey,
+            secretKey);
+        return BaeBridgeMethods.RestoreFromCloud(libraryId, encryptionKeyHex, libraryName, source).Id;
+    }
 
     /// <summary>
     /// Initialize the app for <paramref name="libraryId"/>. Returns an opaque

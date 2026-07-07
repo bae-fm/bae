@@ -1559,17 +1559,6 @@ public sealed partial class MainWindow : Window
 
         restoreButton.Click += async (_, _) =>
         {
-            object source = new
-            {
-                type = "s3",
-                bucket = s3Bucket.Text?.Trim() ?? string.Empty,
-                region = s3Region.Text?.Trim() ?? string.Empty,
-                endpoint = s3Endpoint.Text?.Trim() ?? string.Empty,
-                access_key = s3AccessKey.Password?.Trim() ?? string.Empty,
-                secret_key = s3SecretKey.Password ?? string.Empty,
-            };
-            var sourceJson = JsonSerializer.Serialize(source);
-
             restoreButton.IsEnabled = false;
             status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
             status.Text = Loc.Chrome("restore.in_progress");
@@ -1578,22 +1567,32 @@ public sealed partial class MainWindow : Window
             var libraryId = libraryIdBox.Text?.Trim() ?? string.Empty;
             var key = keyBox.Password?.Trim() ?? string.Empty;
             var name = nameBox.Text?.Trim() ?? string.Empty;
-            var resultJson = await System.Threading.Tasks.Task.Run(
-                () => NativeBae.RestoreFromCloud(libraryId, key, name, sourceJson));
-            var result = resultJson is null
-                ? null
-                : JsonSerializer.Deserialize<RestoreResult>(resultJson, JsonOptions);
-            if (result?.LibraryId is null)
+            string restoredLibraryId;
+            try
             {
+                restoredLibraryId = await System.Threading.Tasks.Task.Run(
+                    () => NativeBae.RestoreFromS3(
+                        libraryId,
+                        key,
+                        name,
+                        s3Bucket.Text?.Trim() ?? string.Empty,
+                        s3Region.Text?.Trim() ?? string.Empty,
+                        s3Endpoint.Text?.Trim(),
+                        s3AccessKey.Password?.Trim() ?? string.Empty,
+                        s3SecretKey.Password ?? string.Empty));
+            }
+            catch (BridgeException exception)
+            {
+                BaeDiagnostics.Logger.Error("Failed to restore S3 library.", exception);
                 status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
-                status.Text = result?.Error ?? Loc.Chrome("restore.failed");
+                status.Text = Loc.Chrome("restore.failed");
                 restoreButton.IsEnabled = true;
                 return;
             }
 
             dialog.Hide();
             DismissWelcome();
-            OpenLibrary(result.LibraryId);
+            OpenLibrary(restoredLibraryId);
         };
 
         await dialog.ShowAsync();
