@@ -315,12 +315,6 @@ mod tests {
     }
 
     #[test]
-    fn test_zero_byte_flac() {
-        let file = write_temp_file("flac", &[]);
-        assert!(!is_valid_flac(file.path()).unwrap());
-    }
-
-    #[test]
     fn test_flac_unknown_length() {
         // total_samples = 0 is a valid streaming-length STREAMINFO value.
         let mut data = make_flac_header(44100, 2, 16, 0);
@@ -391,9 +385,17 @@ mod tests {
     }
 
     #[test]
-    fn test_zero_byte_mp3() {
-        let file = write_temp_file("mp3", &[]);
-        assert!(!is_valid_mp3(file.path()).unwrap());
+    fn truncated_mp3_header_is_rejected() {
+        // is_valid_mp3 needs 3 bytes to see either the ID3 tag or the MPEG
+        // sync word; a 1- or 2-byte file is a short read, not a valid MP3.
+        for bytes in [&b"\xff"[..], &b"ID"[..]] {
+            let file = write_temp_file("mp3", bytes);
+            assert!(
+                !is_valid_mp3(file.path()).unwrap(),
+                "{}-byte mp3 must be rejected",
+                bytes.len(),
+            );
+        }
     }
 
     #[test]
@@ -411,50 +413,47 @@ mod tests {
     }
 
     #[test]
-    fn test_zero_byte_ape() {
-        let file = write_temp_file("ape", &[]);
-        assert!(!is_valid_ape(file.path()).unwrap());
+    fn is_valid_audio_dispatches_by_extension() {
+        // A recognized audio extension routes to its magic validator: valid
+        // magic passes, and wrong magic fails — proving it dispatched rather
+        // than falling through the unknown-extension passthrough.
+        let mut flac = make_flac_header(44100, 2, 16, 10_000_000);
+        flac.resize(5_000_000, 0xAA);
+        let file = write_temp_file("flac", &flac);
+        assert!(is_valid_audio(file.path()).unwrap());
+        let file = write_temp_file("flac", b"NOPE and then some more bytes");
+        assert!(!is_valid_audio(file.path()).unwrap());
+
+        // An unrecognized extension is assumed valid (passthrough branch).
+        let file = write_temp_file("xyz", b"whatever bytes");
+        assert!(is_valid_audio(file.path()).unwrap());
     }
 
     #[test]
-    fn test_is_valid_audio_dispatch() {
-        // FLAC
-        let mut data = make_flac_header(44100, 2, 16, 10_000_000);
-        data.resize(5_000_000, 0xAA);
-        let file = write_temp_file("flac", &data);
-        assert!(is_valid_audio(file.path()).unwrap());
-
-        // MP3
-        let file = write_temp_file("mp3", b"ID3\x04\x00\x00\x00\x00\x00\x00");
-        assert!(is_valid_audio(file.path()).unwrap());
-
-        // APE
-        let file = write_temp_file("ape", b"MAC \x00\x00\x00\x00");
-        assert!(is_valid_audio(file.path()).unwrap());
-
-        // WAV
-        let file = write_temp_file("wav", b"RIFF\x24\x00\x00\x00WAVE");
-        assert!(is_valid_audio(file.path()).unwrap());
-
-        // AIFF
+    fn is_valid_audio_accepts_aiff_and_aifc_via_dispatch() {
+        // is_valid_aiff accepts both the AIFF and AIFC FORM types, reached
+        // through the aiff/aif/aifc dispatch arms.
+        for ext in ["aiff", "aif", "aifc"] {
+            let file = write_temp_file(ext, b"FORM\x00\x00\x00\x04AIFC");
+            assert!(
+                is_valid_audio(file.path()).unwrap(),
+                ".{ext} with AIFC magic must be accepted",
+            );
+        }
         let file = write_temp_file("aiff", b"FORM\x00\x00\x00\x04AIFF");
         assert!(is_valid_audio(file.path()).unwrap());
+    }
 
-        // Ogg
-        let file = write_temp_file("ogg", b"OggS\x00\x02");
-        assert!(is_valid_audio(file.path()).unwrap());
-
-        // WavPack
-        let file = write_temp_file("wv", b"wvpk\x00\x00\x00\x00");
-        assert!(is_valid_audio(file.path()).unwrap());
-
-        // DSF
-        let file = write_temp_file("dsf", b"DSD \x00\x00\x00\x00");
-        assert!(is_valid_audio(file.path()).unwrap());
-
-        // DFF
-        let file = write_temp_file("dff", b"FRM8\x00\x00\x00\x04DSD ");
-        assert!(is_valid_audio(file.path()).unwrap());
+    #[test]
+    fn is_valid_audio_accepts_oga_and_opus_via_dispatch() {
+        // .ogg, .oga, and .opus all dispatch to the OggS magic check.
+        for ext in ["ogg", "oga", "opus"] {
+            let file = write_temp_file(ext, b"OggS\x00\x02\x00\x00");
+            assert!(
+                is_valid_audio(file.path()).unwrap(),
+                ".{ext} with OggS magic must be accepted",
+            );
+        }
     }
 
     #[test]
@@ -521,9 +520,21 @@ mod tests {
     }
 
     #[test]
-    fn test_zero_byte_image() {
-        let file = write_temp_file("jpg", &[]);
-        assert!(!is_valid_image(file.path()).unwrap());
+    fn truncated_image_headers_are_rejected() {
+        // Each image magic is checked against `bytes_read`, so a file shorter
+        // than its magic (webp=12, gif=4, bmp=2) is rejected without an
+        // out-of-bounds read.
+        for (ext, bytes) in [
+            ("webp", &b"RIFF\x00\x00\x00\x00WEB"[..]), // 11 bytes, needs 12
+            ("gif", &b"GIF"[..]),                      // 3 bytes, needs 4
+            ("bmp", &b"B"[..]),                        // 1 byte, needs 2
+        ] {
+            let file = write_temp_file(ext, bytes);
+            assert!(
+                !is_valid_image(file.path()).unwrap(),
+                ".{ext} with a truncated magic must be rejected",
+            );
+        }
     }
 
     #[test]
@@ -531,5 +542,27 @@ mod tests {
         let data = [0x00, 0x01, 0x02, 0x03];
         let file = write_temp_file("tiff", &data);
         assert!(is_valid_image(file.path()).unwrap());
+    }
+
+    /// Zero-byte files are rejected by every magic validator (audio and
+    /// image), collapsing the former per-format zero-byte tests.
+    #[test]
+    fn zero_byte_files_are_rejected() {
+        for ext in [
+            "flac", "mp3", "ape", "wav", "aiff", "ogg", "wv", "dsf", "dff",
+        ] {
+            let file = write_temp_file(ext, &[]);
+            assert!(
+                !is_valid_audio(file.path()).unwrap(),
+                "zero-byte .{ext} audio must be rejected",
+            );
+        }
+        for ext in ["jpg", "png", "webp", "gif", "bmp"] {
+            let file = write_temp_file(ext, &[]);
+            assert!(
+                !is_valid_image(file.path()).unwrap(),
+                "zero-byte .{ext} image must be rejected",
+            );
+        }
     }
 }
