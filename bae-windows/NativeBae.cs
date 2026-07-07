@@ -990,9 +990,6 @@ internal static class NativeBae
             _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unknown sync provider"),
         };
 
-    private static string MetadataSourceTag(BridgeMetadataSource source) =>
-        source == BridgeMetadataSource.Discogs ? "discogs" : "musicbrainz";
-
     private static string SignalKindTag(BridgeSignalKind kind) =>
         kind switch
         {
