@@ -26,30 +26,38 @@ pub async fn lookup_barcode(
     )
     .await?;
 
-    let discogs = match discogs_client {
-        Some(client) => {
-            match search_discogs(
-                client,
-                DiscogsSearchParams {
-                    barcode: Some(barcode.to_string()),
-                    ..Default::default()
-                },
-            )
-            .await
-            {
-                Ok(results) => Some(results),
-                Err(e) => {
-                    // A provider outage on Discogs must not fail the phase — the
-                    // MB results still stand. Skip and log.
-                    tracing::debug!("Discogs barcode search failed for {barcode}: {e}");
-                    None
-                }
-            }
-        }
-        None => None,
-    };
+    let discogs = discogs_barcode_lookup(discogs_client, barcode).await;
 
     Ok(merge_barcode_results(mb, discogs))
+}
+
+/// Look up a barcode against Discogs, tolerating a provider outage.
+///
+/// Returns `None` when there is no client or the search fails; `Some(results)`
+/// on success. A failure is logged and skipped rather than propagated: Discogs
+/// is the best-effort secondary source, so its outage must not fail the phase
+/// or drop the MB matches. The skip is logged at `warn` because silently
+/// dropping a whole source from a user-facing lookup is abnormal.
+async fn discogs_barcode_lookup(
+    discogs_client: Option<&DiscogsClient>,
+    barcode: &str,
+) -> Option<Vec<MetadataResult>> {
+    let client = discogs_client?;
+    match search_discogs(
+        client,
+        DiscogsSearchParams {
+            barcode: Some(barcode.to_string()),
+            ..Default::default()
+        },
+    )
+    .await
+    {
+        Ok(results) => Some(results),
+        Err(e) => {
+            tracing::warn!("Discogs barcode search failed for {barcode}, skipping Discogs: {e}");
+            None
+        }
+    }
 }
 
 /// Merge one barcode's MB and Discogs matches, MB first then Discogs.
@@ -150,5 +158,41 @@ mod tests {
         let merged = merge_barcode_results(mb, Some(vec![]));
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0].release_id, "mb-1");
+    }
+
+    /// A Discogs lookup that genuinely fails (client pointed at a refused port)
+    /// is skipped, not propagated: the helper returns `None` and logs a warning.
+    /// Combined with the merge tests above, this is the "Discogs failure logged
+    /// and skipped, MB results still stand" path. No MB network is touched — the
+    /// merge with `None` (MB-only) is covered separately.
+    #[tokio::test]
+    async fn discogs_lookup_failure_is_logged_and_skipped() {
+        // Port 1 refuses immediately, so the search returns a transport error
+        // without a live Discogs dependency.
+        let client = DiscogsClient::with_base_url(
+            "test-token".to_string(),
+            "http://127.0.0.1:1".to_string(),
+        );
+
+        let mut outcome = None;
+        let logs = crate::test_logs::capture_warn_logs_async(|| async {
+            outcome = Some(discogs_barcode_lookup(Some(&client), "0123456789").await);
+        })
+        .await;
+
+        assert!(
+            outcome.expect("closure ran").is_none(),
+            "a failed Discogs lookup is skipped (None)"
+        );
+        assert!(
+            logs.contains("Discogs barcode search failed"),
+            "the skip should be logged at warn, got: {logs}"
+        );
+    }
+
+    /// No Discogs client → `None`, no lookup attempted, no warning.
+    #[tokio::test]
+    async fn discogs_lookup_without_client_is_none() {
+        assert!(discogs_barcode_lookup(None, "0123456789").await.is_none());
     }
 }

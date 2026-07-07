@@ -386,6 +386,17 @@ impl DiscogsClient {
         }
     }
 
+    /// A client whose requests target `base_url` instead of the live API — used
+    /// by tests to point at a local mock or a refused port. Public API is
+    /// unchanged; production always goes through `new` / `with_observer`.
+    #[cfg(test)]
+    pub(crate) fn with_base_url(api_key: String, base_url: String) -> Self {
+        Self {
+            base_url,
+            ..Self::build(api_key, None)
+        }
+    }
+
     /// Report a call's outcome to the observer (if any). A 401 is the only error
     /// that reveals the key is bad; a success confirms it; network/rate-limit
     /// errors carry no signal.
