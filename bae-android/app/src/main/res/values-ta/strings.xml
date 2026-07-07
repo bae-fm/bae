@@ -67,6 +67,8 @@
     <string name="library_mode_albums">ஆல்பங்கள்</string>
     <string name="sort_name">பெயர்</string>
     <string name="gallery_load_failed">படத்தை ஏற்ற முடியவில்லை</string>
+    <string name="settings_library">நூலகம்</string>
+    <string name="library_discovery_failed">இந்த சாதனத்தில் உள்ள நூலகங்களைப் படிக்க முடியவில்லை.</string>
     <string name="settings_sync">ஒத்திசைவு</string>
     <string name="settings_cloud_sync_on">மேக ஒத்திசைவு இயக்கத்தில்</string>
     <string name="settings_local_only">உள்ளூரில் மட்டும்</string>

@@ -67,6 +67,8 @@
     <string name="library_mode_albums">الألبومات</string>
     <string name="sort_name">الاسم</string>
     <string name="gallery_load_failed">تعذّر تحميل الصورة</string>
+    <string name="settings_library">المكتبة</string>
+    <string name="library_discovery_failed">تعذّر قراءة المكتبات على هذا الجهاز.</string>
     <string name="settings_sync">المزامنة</string>
     <string name="settings_cloud_sync_on">المزامنة السحابية مفعّلة</string>
     <string name="settings_local_only">محلي فقط</string>

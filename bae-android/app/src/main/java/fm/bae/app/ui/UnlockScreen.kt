@@ -1,5 +1,6 @@
 package fm.bae.app.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +14,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +51,7 @@ private data class UnlockLibraryInfo(
 private data class UnlockCallbacks(
     val onKeyHexChange: (String) -> Unit,
     val onUnlock: () -> Unit,
+    val onCancel: () -> Unit,
 )
 
 @Composable
@@ -57,12 +60,14 @@ fun UnlockScreen(
     libraryName: String,
     fingerprint: String?,
     onUnlocked: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     var keyHex by remember { mutableStateOf("") }
     var isUnlocking by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val appContext = LocalContext.current
+    BackHandler { onCancel() }
     UnlockForm(
         info = UnlockLibraryInfo(libraryName, fingerprint),
         keyHex = keyHex,
@@ -85,6 +90,7 @@ fun UnlockScreen(
                         }
                     }
                 },
+                onCancel = onCancel,
             ),
     )
 }
@@ -142,6 +148,10 @@ private fun UnlockForm(
             } else {
                 Text(stringResource(R.string.unlock_action))
             }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        TextButton(onClick = callbacks.onCancel) {
+            Text(stringResource(R.string.cancel))
         }
         if (error != null) {
             Spacer(modifier = Modifier.height(16.dp))

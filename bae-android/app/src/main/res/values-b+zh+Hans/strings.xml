@@ -67,6 +67,8 @@
     <string name="library_mode_albums">专辑</string>
     <string name="sort_name">名称</string>
     <string name="gallery_load_failed">无法加载图片</string>
+    <string name="settings_library">库</string>
+    <string name="library_discovery_failed">无法读取此设备上的库。</string>
     <string name="settings_sync">同步</string>
     <string name="settings_cloud_sync_on">云同步已开启</string>
     <string name="settings_local_only">仅本地</string>

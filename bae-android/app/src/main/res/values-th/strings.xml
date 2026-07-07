@@ -67,6 +67,8 @@
     <string name="library_mode_albums">อัลบั้ม</string>
     <string name="sort_name">ชื่อ</string>
     <string name="gallery_load_failed">โหลดภาพไม่ได้</string>
+    <string name="settings_library">คลัง</string>
+    <string name="library_discovery_failed">ไม่สามารถอ่านคลังบนอุปกรณ์นี้ได้</string>
     <string name="settings_sync">ซิงค์</string>
     <string name="settings_cloud_sync_on">เปิดการซิงค์คลาวด์</string>
     <string name="settings_local_only">เฉพาะในเครื่อง</string>

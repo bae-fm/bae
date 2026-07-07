@@ -67,6 +67,8 @@
     <string name="library_mode_albums">ఆల్బమ్‌లు</string>
     <string name="sort_name">పేరు</string>
     <string name="gallery_load_failed">చిత్రాన్ని లోడ్ చేయలేకపోయింది</string>
+    <string name="settings_library">లైబ్రరీ</string>
+    <string name="library_discovery_failed">ఈ పరికరంలోని లైబ్రరీలను చదవలేకపోయాము.</string>
     <string name="settings_sync">సింక్</string>
     <string name="settings_cloud_sync_on">క్లౌడ్ సింక్ ఆన్‌లో ఉంది</string>
     <string name="settings_local_only">లోకల్ మాత్రమే</string>

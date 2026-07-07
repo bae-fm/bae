@@ -69,10 +69,12 @@ import fm.bae.app.R
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeComposerSortCriterion
+import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
@@ -197,6 +199,8 @@ internal fun rememberLibraryPage(
 @Composable
 fun LibraryScreen(
     session: OpenLibrary,
+    libraries: StateFlow<List<BridgeLibrary>>,
+    onSwitchLibrary: (BridgeLibrary) -> Unit,
     onLeaveLibrary: () -> Unit,
 ) {
     val navigator = remember { LibraryNavigator() }
@@ -223,8 +227,10 @@ fun LibraryScreen(
                 LibraryDestinationScreen(
                     session = session,
                     destination = entry.destination,
+                    libraries = libraries,
                     onBack = popEntry,
                     onPush = navigator::push,
+                    onSwitchLibrary = onSwitchLibrary,
                     onLeaveLibrary = onLeaveLibrary,
                 )
             }

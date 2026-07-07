@@ -67,6 +67,8 @@
     <string name="library_mode_albums">Albümler</string>
     <string name="sort_name">Ad</string>
     <string name="gallery_load_failed">Görüntü yüklenemedi</string>
+    <string name="settings_library">Kitaplık</string>
+    <string name="library_discovery_failed">Bu cihazdaki kitaplıklar okunamadı.</string>
     <string name="settings_sync">Eşzamanlama</string>
     <string name="settings_cloud_sync_on">Bulutun Eşzamanlama</string>
     <string name="settings_local_only">Yalnızca yerel</string>

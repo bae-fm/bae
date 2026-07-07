@@ -67,6 +67,8 @@
     <string name="library_mode_albums">專輯</string>
     <string name="sort_name">名稱</string>
     <string name="gallery_load_failed">無法載入影像</string>
+    <string name="settings_library">資料庫</string>
+    <string name="library_discovery_failed">無法讀取此裝置上的資料庫。</string>
     <string name="settings_sync">同步</string>
     <string name="settings_cloud_sync_on">你的雲 同步</string>
     <string name="settings_local_only">僅本機</string>

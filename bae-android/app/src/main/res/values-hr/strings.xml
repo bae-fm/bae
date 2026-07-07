@@ -67,6 +67,8 @@
     <string name="library_mode_albums">Albumi</string>
     <string name="sort_name">Naziv</string>
     <string name="gallery_load_failed">Nije moguće učitati sliku</string>
+    <string name="settings_library">Fonoteka</string>
+    <string name="library_discovery_failed">Nije moguće pročitati fonoteke na ovom uređaju.</string>
     <string name="settings_sync">Sinkronizacija</string>
     <string name="settings_cloud_sync_on">Sinkronizacija s oblakom uključena</string>
     <string name="settings_local_only">Samo lokalno</string>

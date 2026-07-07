@@ -3,6 +3,8 @@ package fm.bae.app.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
 import fm.bae.app.OpenLibrary
+import kotlinx.coroutines.flow.StateFlow
+import uniffi.bae_bridge.BridgeLibrary
 
 internal data class AlbumTarget(
     val albumId: String,
@@ -66,8 +68,10 @@ internal class LibraryNavigator {
 internal fun LibraryDestinationScreen(
     session: OpenLibrary,
     destination: LibraryDestination,
+    libraries: StateFlow<List<BridgeLibrary>>,
     onBack: () -> Unit,
     onPush: (LibraryDestination) -> Unit,
+    onSwitchLibrary: (BridgeLibrary) -> Unit,
     onLeaveLibrary: () -> Unit,
 ) {
     val pushWork: (String) -> Unit = { onPush(LibraryDestination.Work(it)) }
@@ -112,8 +116,10 @@ internal fun LibraryDestinationScreen(
         LibraryDestination.Settings -> {
             SettingsScreen(
                 session = session,
+                libraries = libraries,
                 onBack = onBack,
                 onManageDevices = { onPush(LibraryDestination.Members) },
+                onSwitchLibrary = onSwitchLibrary,
                 onLeaveLibrary = onLeaveLibrary,
             )
         }

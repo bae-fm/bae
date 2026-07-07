@@ -67,6 +67,8 @@
     <string name="library_mode_albums">ਐਲਬਮਾਂ</string>
     <string name="sort_name">ਨਾਂ</string>
     <string name="gallery_load_failed">ਚਿੱਤਰ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ</string>
+    <string name="settings_library">ਲਾਇਬ੍ਰੇਰੀ</string>
+    <string name="library_discovery_failed">ਇਸ ਡਿਵਾਈਸ ਦੀਆਂ ਲਾਇਬ੍ਰੇਰੀਆਂ ਪੜ੍ਹੀਆਂ ਨਹੀਂ ਜਾ ਸਕੀਆਂ।</string>
     <string name="settings_sync">ਸਿੰਕ</string>
     <string name="settings_cloud_sync_on">ਕਲਾਊਡ ਸਿੰਕ ਚਾਲੂ</string>
     <string name="settings_local_only">ਕੇਵਲ ਲੋਕਲ</string>

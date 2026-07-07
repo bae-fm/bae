@@ -67,6 +67,8 @@
     <string name="library_mode_albums">البمز</string>
     <string name="sort_name">نام</string>
     <string name="gallery_load_failed">تصویر لوڈ نہیں ہو سکی</string>
+    <string name="settings_library">لائبریری</string>
+    <string name="library_discovery_failed">اس آلے پر موجود لائبریریاں پڑھی نہیں جا سکیں۔</string>
     <string name="settings_sync">مطابقت پذیری</string>
     <string name="settings_cloud_sync_on">کلاؤڈ مطابقت پذیری آن ہے</string>
     <string name="settings_local_only">صرف مقامی</string>

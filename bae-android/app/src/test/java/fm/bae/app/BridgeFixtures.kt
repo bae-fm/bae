@@ -11,6 +11,7 @@ import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeExportLocation
 import uniffi.bae_bridge.BridgeExportSelection
 import uniffi.bae_bridge.BridgeGalleryItem
+import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseStorageState
@@ -161,6 +162,18 @@ object BridgeFixtures {
                     failed = failed,
                 ),
             paused = paused,
+        )
+
+    fun library(
+        id: String,
+        name: String = "Library $id",
+    ): BridgeLibrary =
+        BridgeLibrary(
+            id = id,
+            name = name,
+            path = "/tmp/$id",
+            cloudProvider = null,
+            isActive = false,
         )
 
     fun config(libraryId: String = "lib-1"): BridgeConfig =

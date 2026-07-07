@@ -67,6 +67,8 @@
     <string name="library_mode_albums">אלבומים</string>
     <string name="sort_name">שם</string>
     <string name="gallery_load_failed">לא ניתן לטעון את התמונה.</string>
+    <string name="settings_library">ספרייה</string>
+    <string name="library_discovery_failed">לא ניתן לקרוא את הספריות במכשיר הזה.</string>
     <string name="settings_sync">סנכרון</string>
     <string name="settings_cloud_sync_on">סנכרון ענן מופעל</string>
     <string name="settings_local_only">מקומי בלבד</string>

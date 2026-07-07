@@ -19,6 +19,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
@@ -26,7 +30,6 @@ import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.UiEventCallback
-import uniffi.bae_bridge.discoverLibraries
 import uniffi.bae_bridge.initApp
 
 private const val TAG = "bae.AppSession"
@@ -129,6 +132,27 @@ class OpenLibrary(
     }
 }
 
+/**
+ * Local libraries discovered on this device — drives the Settings library
+ * switcher. Replaced by each discovery scan; a freshly-linked library is
+ * appended directly (it is not in the launch scan).
+ */
+internal class DiscoveredLibraries {
+    private val state = MutableStateFlow<List<BridgeLibrary>>(emptyList())
+    val libraries: StateFlow<List<BridgeLibrary>> = state.asStateFlow()
+
+    fun replaceAll(libraries: List<BridgeLibrary>) {
+        state.value = libraries
+    }
+
+    /** Append [library] unless a library with its id is already known. */
+    fun noteLinked(library: BridgeLibrary) {
+        state.update { known ->
+            if (known.any { it.id == library.id }) known else known + library
+        }
+    }
+}
+
 /** Lifecycle state for the app root. */
 sealed interface AppScreen {
     data object Loading : AppScreen
@@ -165,19 +189,30 @@ object AppSessionHolder {
      */
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
+    private val discovered = DiscoveredLibraries()
+
+    /** Local libraries on this device, for the Settings switcher. */
+    val libraries: StateFlow<List<BridgeLibrary>> get() = discovered.libraries
+
     /** The currently open library, if any. Reused across re-opens of the same id. */
     @Volatile
     private var current: OpenLibrary? = null
 
-    suspend fun discoverFirstLibrary(): BridgeLibrary? =
-        withContext(Dispatchers.IO) {
-            try {
-                discoverLibraries().firstOrNull()
-            } catch (e: Exception) {
-                logger.error("discoverLibraries failed", e)
-                null
-            }
-        }
+    /**
+     * Scan for local libraries off-main, publish the result to [libraries], and
+     * return it. Throws when the scan itself fails, so callers can surface it
+     * rather than mistaking a failed scan for an empty device.
+     */
+    suspend fun discoverLibraries(): List<BridgeLibrary> {
+        val result = withContext(Dispatchers.IO) { uniffi.bae_bridge.discoverLibraries() }
+        discovered.replaceAll(result)
+        return result
+    }
+
+    /** Record a library produced by the link/join flow (not in the launch scan). */
+    fun onLinked(library: BridgeLibrary) {
+        discovered.noteLinked(library)
+    }
 
     /** The open session whose lifecycle the holder owns, if a library is open. */
     fun currentSession(): OpenLibrary? = current
@@ -205,9 +240,31 @@ object AppSessionHolder {
         }
         session.closeForgottenLibrary()
         current = null
+        openDiscoveredOrOnboard(context, onScreen)
+    }
 
+    /**
+     * Publish a fresh scan and open the first remaining library, or onboard when
+     * the device has none left. A failed scan surfaces as [AppScreen.Failed]
+     * rather than an empty device, so the user isn't invited to restore a
+     * duplicate library on top of one that already exists.
+     */
+    suspend fun openDiscoveredOrOnboard(
+        context: Context,
+        onScreen: (AppScreen) -> Unit,
+    ) {
         onScreen(AppScreen.Loading)
-        val next = discoverFirstLibrary()
+        val remaining =
+            try {
+                discoverLibraries()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.error("discoverLibraries failed", e)
+                onScreen(AppScreen.Failed(e.message ?: context.getString(R.string.library_discovery_failed)))
+                return
+            }
+        val next = remaining.firstOrNull()
         if (next == null) {
             onScreen(AppScreen.Onboarding)
         } else {

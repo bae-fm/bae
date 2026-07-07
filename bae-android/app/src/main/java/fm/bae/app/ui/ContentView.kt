@@ -48,12 +48,7 @@ fun ContentView(
             screen = AppScreen.LibraryOpen(open)
             return@LaunchedEffect
         }
-        val existing = AppSessionHolder.discoverFirstLibrary()
-        if (existing == null) {
-            screen = AppScreen.Onboarding
-        } else {
-            AppSessionHolder.openLibrary(context, existing.id) { screen = it }
-        }
+        AppSessionHolder.openDiscoveredOrOnboard(context) { screen = it }
     }
 
     // One cover-bytes cache for the app's composition lifetime, handed to every
@@ -98,6 +93,7 @@ private fun AppScreenRouter(
                 oauthLinking = oauthLinking,
                 oauthLinkingError = oauthLinkingError,
                 onLinked = { info ->
+                    AppSessionHolder.onLinked(info)
                     scope.launch { AppSessionHolder.openLibrary(context, info.id, onScreen) }
                 },
             )
@@ -111,12 +107,20 @@ private fun AppScreenRouter(
                 onUnlocked = {
                     scope.launch { AppSessionHolder.openLibrary(context, current.libraryId, onScreen) }
                 },
+                onCancel = {
+                    val open = AppSessionHolder.currentSession()
+                    onScreen(if (open != null) AppScreen.LibraryOpen(open) else AppScreen.Onboarding)
+                },
             )
         }
 
         is AppScreen.LibraryOpen -> {
             LibraryScreen(
                 session = current.session,
+                libraries = AppSessionHolder.libraries,
+                onSwitchLibrary = { library ->
+                    scope.launch { AppSessionHolder.openLibrary(context, library.id, onScreen) }
+                },
                 onLeaveLibrary = {
                     scope.launch { AppSessionHolder.forgetActiveLibrary(context, onScreen) }
                 },

@@ -67,6 +67,8 @@
     <string name="library_mode_albums">Alba</string>
     <string name="sort_name">Název</string>
     <string name="gallery_load_failed">Nelze načíst obrázek</string>
+    <string name="settings_library">Knihovna</string>
+    <string name="library_discovery_failed">Nelze načíst knihovny v tomto zařízení.</string>
     <string name="settings_sync">Synchronizace</string>
     <string name="settings_cloud_sync_on">Synchronizace s cloudem zapnuta</string>
     <string name="settings_local_only">Pouze místně</string>

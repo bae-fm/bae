@@ -67,6 +67,8 @@
     <string name="library_mode_albums">एल्बम</string>
     <string name="sort_name">नाम</string>
     <string name="gallery_load_failed">छवि लोड नहीं हो सकी</string>
+    <string name="settings_library">लाइब्रेरी</string>
+    <string name="library_discovery_failed">इस डिवाइस की लाइब्रेरी नहीं पढ़ी जा सकीं।</string>
     <string name="settings_sync">सिंक</string>
     <string name="settings_cloud_sync_on">आपका क्लाउड सिंक</string>
     <string name="settings_local_only">केवल स्थानीय</string>

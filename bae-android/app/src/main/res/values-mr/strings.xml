@@ -67,6 +67,8 @@
     <string name="library_mode_albums">अल्बम</string>
     <string name="sort_name">नाव</string>
     <string name="gallery_load_failed">प्रतिमा लोड करता आली नाही</string>
+    <string name="settings_library">लायब्ररी</string>
+    <string name="library_discovery_failed">या डिव्हाइसवरील लायब्ररी वाचता आल्या नाहीत.</string>
     <string name="settings_sync">समक्रमण</string>
     <string name="settings_cloud_sync_on">क्लाउड समक्रमण सुरू</string>
     <string name="settings_local_only">फक्त स्थानिक</string>

@@ -95,6 +95,8 @@
     <string name="gallery_load_failed">Couldn\'t load image</string>
 
     <!-- Settings -->
+    <string name="settings_library">Library</string>
+    <string name="library_discovery_failed">Could not read the libraries on this device.</string>
     <string name="settings_sync">Sync</string>
     <string name="settings_cloud_sync_on">Cloud sync on</string>
     <string name="settings_local_only">Local only</string>

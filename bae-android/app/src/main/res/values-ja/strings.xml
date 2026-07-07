@@ -67,6 +67,8 @@
     <string name="library_mode_albums">アルバム</string>
     <string name="sort_name">名前</string>
     <string name="gallery_load_failed">画像を読み込めませんでした</string>
+    <string name="settings_library">ライブラリ</string>
+    <string name="library_discovery_failed">このデバイスのライブラリを読み込めませんでした。</string>
     <string name="settings_sync">同期</string>
     <string name="settings_cloud_sync_on">クラウド同期オン</string>
     <string name="settings_local_only">ローカルのみ</string>

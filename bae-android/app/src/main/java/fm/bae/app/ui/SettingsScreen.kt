@@ -1,5 +1,6 @@
 package fm.bae.app.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -38,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -52,10 +55,12 @@ import fm.bae.app.localizedLine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeLibrary
 
 private const val TAG = "bae.SettingsScreen"
 private val logger = BaeLogger(TAG)
@@ -69,18 +74,29 @@ private val logger = BaeLogger(TAG)
 @Composable
 fun SettingsScreen(
     session: OpenLibrary,
+    libraries: StateFlow<List<BridgeLibrary>>,
     onBack: () -> Unit,
     onManageDevices: () -> Unit,
+    onSwitchLibrary: (BridgeLibrary) -> Unit,
     onLeaveLibrary: () -> Unit,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val config by session.configStore.config.collectAsState()
     val syncReady by session.configStore.syncReady.collectAsState()
+    val allLibraries by libraries.collectAsState()
     var confirmLeave by remember { mutableStateOf(false) }
     var showRecoveryCode by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         SettingsTopBar(onBack = onBack)
+        if (allLibraries.size > 1) {
+            SettingsLibrarySection(
+                libraries = allLibraries,
+                activeLibraryId = session.libraryId,
+                onSwitchLibrary = onSwitchLibrary,
+            )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        }
         SettingsConfigSection(
             session = session,
             config = config,
@@ -137,6 +153,46 @@ private fun SettingsTopBar(onBack: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
+        }
+    }
+}
+
+@Composable
+private fun SettingsLibrarySection(
+    libraries: List<BridgeLibrary>,
+    activeLibraryId: String,
+    onSwitchLibrary: (BridgeLibrary) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.settings_library),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        libraries.forEach { library ->
+            // The active library is derived from the open session, not the
+            // BridgeLibrary.isActive snapshot: that snapshot is taken at launch
+            // discovery and goes stale after an in-app switch.
+            val isActive = library.id == activeLibraryId
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !isActive) { onSwitchLibrary(library) },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = library.name, modifier = Modifier.weight(1f))
+                // Always present but alpha-toggled so switching the active row
+                // never re-measures the row heights.
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    modifier = Modifier.alpha(if (isActive) 1f else 0f),
+                )
+            }
         }
     }
 }

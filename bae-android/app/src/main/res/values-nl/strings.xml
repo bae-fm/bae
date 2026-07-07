@@ -67,6 +67,8 @@
     <string name="library_mode_albums">Albums</string>
     <string name="sort_name">Naam</string>
     <string name="gallery_load_failed">Kan afbeelding niet laden</string>
+    <string name="settings_library">Bibliotheek</string>
+    <string name="library_discovery_failed">Kan de bibliotheken op dit apparaat niet lezen.</string>
     <string name="settings_sync">Synchronisatie</string>
     <string name="settings_cloud_sync_on">Je cloud Synchronisatie</string>
     <string name="settings_local_only">Alleen lokaal</string>

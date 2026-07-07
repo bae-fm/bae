@@ -67,6 +67,8 @@
     <string name="library_mode_albums">Албуми</string>
     <string name="sort_name">Име</string>
     <string name="gallery_load_failed">Изображението не може да бъде заредено</string>
+    <string name="settings_library">Библиотека</string>
+    <string name="library_discovery_failed">Библиотеките на това устройство не могат да бъдат прочетени.</string>
     <string name="settings_sync">Синхронизиране</string>
     <string name="settings_cloud_sync_on">Облачната синхронизация е включена</string>
     <string name="settings_local_only">Само локално</string>

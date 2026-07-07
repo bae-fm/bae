@@ -67,6 +67,8 @@
     <string name="library_mode_albums">অ্যালবাম</string>
     <string name="sort_name">নাম</string>
     <string name="gallery_load_failed">ছবি লোড করা যায়নি</string>
+    <string name="settings_library">লাইব্রেরি</string>
+    <string name="library_discovery_failed">এই ডিভাইসের লাইব্রেরিগুলো পড়া যায়নি।</string>
     <string name="settings_sync">সিঙ্ক</string>
     <string name="settings_cloud_sync_on">আপনার ক্লাউড সিঙ্ক</string>
     <string name="settings_local_only">শুধু স্থানীয়</string>

@@ -67,6 +67,8 @@
     <string name="library_mode_albums">Alben</string>
     <string name="sort_name">Name</string>
     <string name="gallery_load_failed">Bild konnte nicht geladen werden</string>
+    <string name="settings_library">Bibliothek</string>
+    <string name="library_discovery_failed">Die Bibliotheken auf diesem Gerät konnten nicht gelesen werden.</string>
     <string name="settings_sync">Synchronisierung</string>
     <string name="settings_cloud_sync_on">Cloud-Sync ein</string>
     <string name="settings_local_only">Nur lokal</string>

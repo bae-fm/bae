@@ -67,6 +67,8 @@
     <string name="library_mode_albums">Альбоми</string>
     <string name="sort_name">Назва</string>
     <string name="gallery_load_failed">Не вдалося завантажити зображення</string>
+    <string name="settings_library">Бібліотека</string>
+    <string name="library_discovery_failed">Не вдалося прочитати бібліотеки на цьому пристрої.</string>
     <string name="settings_sync">Синхронізація</string>
     <string name="settings_cloud_sync_on">Хмарну синхронізацію ввімкнено</string>
     <string name="settings_local_only">Лише локально</string>

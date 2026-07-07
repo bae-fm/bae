@@ -67,6 +67,8 @@
     <string name="library_mode_albums">આલ્બમો</string>
     <string name="sort_name">નામ</string>
     <string name="gallery_load_failed">છબી લોડ કરી શકાયી નહીં</string>
+    <string name="settings_library">લાઇબ્રેરી</string>
+    <string name="library_discovery_failed">આ ઉપકરણ પરની લાઇબ્રેરીઓ વાંચી શકાઈ નથી.</string>
     <string name="settings_sync">સિંક</string>
     <string name="settings_cloud_sync_on">ક્લાઉડ સિંક ચાલુ</string>
     <string name="settings_local_only">માત્ર સ્થાનિક</string>

@@ -67,6 +67,8 @@
     <string name="library_mode_albums">ಆಲ್ಬಮ್‌ಗಳು</string>
     <string name="sort_name">ಹೆಸರು</string>
     <string name="gallery_load_failed">ಚಿತ್ರ ಲೋಡ್ ಆಗಲಿಲ್ಲ</string>
+    <string name="settings_library">ಗ್ರಂಥಾಲಯ</string>
+    <string name="library_discovery_failed">ಈ ಸಾಧನದಲ್ಲಿನ ಗ್ರಂಥಾಲಯಗಳನ್ನು ಓದಲಾಗಲಿಲ್ಲ.</string>
     <string name="settings_sync">ಸಿಂಕ್</string>
     <string name="settings_cloud_sync_on">ಕ್ಲೌಡ್ ಸಿಂಕ್ ಆನ್</string>
     <string name="settings_local_only">ಸ್ಥಳೀಯ ಮಾತ್ರ</string>
