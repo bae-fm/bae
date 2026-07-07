@@ -1,0 +1,41 @@
+---
+title: 아키텍처
+description: coven 위의 하나의 Rust 코어와 네이티브 앱
+---
+
+bae는 하나의 Rust 코어에 네 개의 네이티브 앱을 씌운 형태입니다. 제품을 정의하는 모든 것, 라이브러리 모델, 가져오기, 재생, 동기화, 암호화는 Rust에 있으며 모든 플랫폼에서 똑같이 동작합니다. 각 앱은 그 위의 얇은 네이티브 UI입니다.
+
+## 계층
+
+- **`bae-core`**: 제품입니다. 라이브러리와 메타데이터 모델, 가져오기와 식별 pipeline, FFmpeg 재생 엔진, loudness 분석, 내보내기, 그리고 아래의 coven 통합이 들어 있습니다. 가져오기와 식별은 데스크톱에서만 컴파일됩니다. 모바일 빌드는 동기화와 재생 클라이언트입니다.
+- **[coven](https://coven.bae.fm)**: 데이터 계층인 별도 라이브러리입니다. coven은 SQLite 연결을 소유하고, bae가 커밋하는 모든 변경을 캡처하며, 사용자의 클라우드 저장소를 통해 종단 간 암호화된 상태로 그 변경을 동기화합니다. blob 저장소(오디오 바이트, 이미지), 로컬 캐시, 신원 키, 구성원도 coven이 소유합니다. bae는 정확한 coven 리비전을 고정하고 모든 바이너리에 찍습니다. 이 값이 빌드 간 동기화 호환 세대를 정의합니다.
+- **`bae-bridge`**: UniFFI 경계입니다. Bridge type은 Rust에서 한 번 정의되고 빌드 때 Swift와 Kotlin으로 생성됩니다.
+- **앱**: macOS와 iOS의 SwiftUI, Android의 Jetpack Compose, 네이티브 Windows 앱입니다. 각 앱은 코어가 요청하는 플랫폼 부분도 구현합니다. 오디오 출력, 아트워크 텍스트 인식, 미디어 컨트롤, keychain 접근, crash reporting입니다.
+
+앱 옆에는 `bae-mcp`(MCP 서버), `bae-cli`(명령줄), `bae-automation`(둘이 함께 쓰는 도구 계층)이 있습니다.
+
+## 디스크 위의 하나의 라이브러리
+
+라이브러리는 `~/.bae/libraries/<library-id>/`에 있습니다(모바일에서는 플랫폼 데이터 디렉터리).
+
+```
+~/.bae/libraries/<id>/
+  library.db        # SQLite: catalog, credits, playback specs
+  config.yaml       # device-local settings, never synced
+  storage/
+    local/          # blobs this device owns (covers, artist images)
+    cache/          # evictable copies of cloud blobs
+    pinned/         # pinned-for-offline copies, never evicted
+```
+
+데이터베이스는 coven을 통해서만 열립니다. coven은 자체 bookkeeping table(sync cursors, outbox, blob state)을 bae schema 옆에 두고 bae migration을 실행합니다. 관리되지 않는 상태로 가져온 오디오 파일은 `~/.bae` 아래에 전혀 없습니다. 데이터베이스가 가져온 위치의 경로를 참조합니다.
+
+비밀 값은 이 파일들에 절대 들어가지 않습니다. 신원 키, 라이브러리 암호화 키, 클라우드 자격 증명, API token은 OS keyring에 있습니다(Apple 플랫폼에서는 Keychain, iCloud Keychain을 통해 동기화됨. 다른 곳에서는 플랫폼 대응 항목).
+
+## 에디션
+
+모든 플랫폼에는 두 가지 빌드 타임 에디션이 있습니다. **bae**는 OAuth 제공자(Google Drive, Dropbox, OneDrive), CloudKit, telemetry를 컴파일에 포함합니다. **baeium**은 이를 모두 제외합니다. S3 호환 저장소만 지원하고, telemetry가 없으며, dependency tree에 독점 구성요소가 없습니다. 두 에디션은 같은 소스와 같은 코어입니다. feature flag가 제공자 목록과 diagnostics 배선을 결정합니다.
+
+## 버전
+
+앱 버전은 플랫폼별 `MAJOR.MINOR`입니다. major는 호환 시대이며 모든 앱이 공유합니다. 같은 major의 기기는 라이브러리를 동기화할 수 있습니다. 전송 형식이나 디스크 형식이 깨질 때만 올라가며, 가장 흔한 원인은 고정된 coven 리비전입니다. minor는 앱별 릴리스 수를 세며 플랫폼 간 비교 대상이 아닙니다.

@@ -1,0 +1,43 @@
+---
+title: 가져오기 pipeline
+description: 스캔, 증거, 교차 확인, 원자적 커밋
+---
+
+가져오기는 파일 폴더를 바이트 하나 수정하지 않고 릴리스 기준 카탈로그 항목으로 바꿉니다. 이 페이지는 [사용 가이드](/ko/guide/importing)에 설명된 흐름 뒤의 pipeline입니다.
+
+## 스캔
+
+감시 폴더는 플랫폼의 file-system event로 감시되고, debounce된 뒤 변경 시 다시 스캔됩니다. 스캔은 처음부터 다시 시작하는 대신 기존 후보 목록과 맞춰 봅니다. Scanner는 폴더를 하나의 릴리스(오디오가 바로 들어 있거나 `CD1`/`CD2` 같은 디스크 형태 하위 폴더)로 분류하거나, 모음으로 보고 내부로 내려갑니다. 파일은 확장자로 audio, artwork, document로 분류한 뒤 audio를 검사합니다. 중요한 codec은 파일 확장자가 아니라 FFmpeg가 바이트에서 찾은 것입니다. 부분 다운로드 marker가 있는 폴더는 다운로드가 끝날 때까지 제외됩니다.
+
+CUE sheet는 하나의 audio image를 트랙 목록으로 바꿉니다. Parser는 pregap과 postgap, 트랙별 performer와 ISRC, single-file image와 one-file-per-track CUE layout을 처리합니다. 트랙 경계는 CUE frame(1/75초)에서 정확한 sample position으로 변환되고, 나중에 재생이 쓰는 byte 및 sample window가 됩니다.
+
+## 태그가 아니라 증거
+
+식별은 폴더에서 세 종류의 증거를 한 번에 읽습니다.
+
+- **disc ID**: CD의 정확한 트랙 배치에 대한 MusicBrainz fingerprint이며, rip log나 CUE sheet에서 계산됩니다.
+- **barcodes**: 플랫폼 vision framework가 artwork scan에서 해독하고 CUE catalog field에서 읽습니다.
+- **text**: artwork OCR, 폴더와 파일 이름, 리핑본의 텍스트 파일에서 얻은 catalog number와 free text입니다.
+
+내장 오디오 태그는 의도적으로 증거가 아닙니다. 태그 작성자가 믿은 내용을 설명할 뿐, 프레싱이 무엇인지를 말하지 않습니다. (사용자가 릴리스를 unknown으로 가져올 때 fallback metadata의 seed로는 사용됩니다.)
+
+Disc ID와 barcode는 동시에 조회됩니다. Disc ID는 MusicBrainz에서, barcode는 MusicBrainz와 Discogs에서 동시에 조회됩니다. 결과는 교차 확인됩니다. 같은 release group에 동의하는 결과는 모이고, catalog-number match는 pressing list를 좁히며, 신호끼리 다르면 조용한 추측 대신 명시적인 conflict로 사용자에게 보여줍니다. 모든 결과는 provenance(found by disc ID, by barcode, catalog match)를 담으므로 UI가 왜 이 row를 제시하는지 말할 수 있습니다.
+
+## 소스
+
+MusicBrainz는 익명으로, 초당 한 요청의 엄격한 속도로 조회됩니다. Discogs는 keyring에 있는 사용자의 personal token으로 인증하고, 제한 안에서 속도를 조절하며 재시도합니다. 거부된 token은 그대로 보고되어 UI가 조용히 검색에 실패하지 않고 표시할 수 있습니다. 응답은 session별로 cache되며, 이긴 source의 raw JSON은 나중에 다시 해석할 수 있도록 데이터베이스에 보관됩니다.
+
+## 커밋
+
+가져오기 확인은 순서대로 다음을 실행합니다.
+
+1. **Decode verification**: 모든 트랙을 처음부터 끝까지 디코딩합니다. 끝까지 디코딩할 수 없는 리핑본은 무엇도 쓰기 전에 가져오기에 실패합니다(config flag로 끌 수 있습니다).
+2. **Loudness analysis**: 같은 decode pass에서 트랙별 및 앨범별 integrated loudness와 true peak를 측정하고 replay-gain용으로 저장합니다.
+3. **Cover selection**: 선택한 아트(remote, folder image, embedded)를 표시용 thumbnail로 다시 렌더링합니다. 폴더에서 온 원본은 릴리스 파일 사이에 보관됩니다.
+4. **Atomic write**: release, tracks, credits, identities, formats, segments, files, cover가 하나의 transaction으로 커밋됩니다. 반쯤 가져온 상태는 없습니다.
+
+릴리스는 사용자의 파일을 제자리에서 참조한 채 들어갑니다. 사용자가 cloud-managed를 골랐다면 업로드는 커밋 뒤 저장소 전환으로 일어나며, 파일의 원본 바이트는 내내 source of truth로 남습니다. 사용자가 bae에 준 것은 절대 삭제되거나 변경되지 않습니다.
+
+## 리핑본 인식
+
+각 릴리스는 가져온 폴더 구조(상대 경로와 크기, 위치와 무관)에 대한 content hash를 기록합니다. 다시 스캔할 때 이를 써서 이미 라이브러리에 있는 폴더를 표시하고, 같은 리핑본을 다시 가져오면 중복 대신 이전 릴리스를 찾아 교체합니다.

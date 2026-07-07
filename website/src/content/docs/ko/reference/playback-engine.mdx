@@ -1,0 +1,34 @@
+---
+title: 재생 엔진
+description: 디코딩, 끊김 없는 재생, 프리갭, loudness의 정확한 동작
+---
+
+재생 엔진의 계약은 소스에 대한 충실성입니다. 사용자의 원본 바이트를 소스 자체의 rate로 디코딩하고, 릴리스 구조를 유지합니다. 이 페이지는 그 뒤의 specification입니다.
+
+## 디코딩
+
+모든 디코딩은 모든 플랫폼에서 in-process FFmpeg로 합니다. 가져오기가 받아들이는 것은 FLAC, MP3, APE, ALAC, AAC, PCM(WAV/AIFF), Ogg Vorbis, Opus, WavPack, DSD이며, 기록되는 codec은 파일 확장자가 아니라 FFmpeg가 바이트에서 보고한 것입니다. Sample은 output stage로 32-bit float로 나옵니다. Sample format conversion만 수행됩니다.
+
+출력은 플랫폼의 네이티브 오디오 API입니다(데스크톱과 iOS는 cpal을 통한 Core Audio, Android는 AAudio). 출력 스트림은 **소스의 샘플 레이트와 채널 수**로 설정됩니다. 96 kHz 파일은 96 kHz로 재생됩니다. 리샘플링 단계는 없습니다. 기본 출력 장치는 스트림을 만들 때마다 다시 결정되므로 재생은 시스템의 기기 전환을 따릅니다. Android에서는 하드웨어 지원 코덱이 FFmpeg를 완전히 우회해 오프로드 디코딩을 할 수 있습니다.
+
+## 스트리밍 읽기
+
+재생은 전체 파일이 필요하지 않습니다. 오디오는 local file, cache, cloud에서 필요한 byte range를 가져오는 sparse buffer를 통해 읽습니다. 탐색은 대상 sample을 byte position에 매핑하므로 아직 가져오지 않은 영역으로 이동하면 그곳부터 가져옵니다. Fetch arbiter는 재생 중인 트랙의 읽기를 preloading보다 우선하므로 다음 트랙이 현재 트랙을 지연시키지 않습니다.
+
+## 창으로 보는 트랙
+
+트랙은 파일이 아닙니다. CUE sheet나 파일 자체 범위에서 가져오기 때 만들어진, 하나 이상의 파일 위의 정렬된 sample window 목록입니다. 이 하나의 표현이 모든 디스크 형태를 담습니다. 트랙별 파일, 하나의 image에 담긴 전체 디스크, 한 파일 끝과 다른 파일 시작에 걸친 pregap, 트랙별 파일로 잘린 lossy rip입니다.
+
+Pregap window는 그렇게 표시됩니다. 트랙에 pregap이 있으면(index 00, 숨은 트랙 오디오 포함) 재생은 pregap에서 트랙에 들어가지만, clock은 track time을 보여줍니다. 위치는 트랙 본문이 시작될 때까지 0으로 고정되고 표시 duration은 pregap을 제외하여 CD player 동작과 맞춥니다.
+
+## 끊김 없는 재생
+
+현재 트랙이 재생되는 동안 다음 트랙을 열고 buffer합니다. 두 트랙이 샘플 레이트와 채널 수를 공유하면 엔진은 실시간 오디오 콜백 안에서 둘을 이어 붙입니다. 스트림은 멈추지 않고 경계는 샘플 단위로 정확합니다. 형식이 다르면 스트림을 다시 만듭니다. 이것은 형식 변화 때문에 경계가 들릴 수 있는 경우입니다.
+
+## 음량
+
+가져오기는 decode-verification pass 중에 트랙별 및 앨범별 integrated loudness(EBU R128)와 true peak를 측정합니다. Replay gain은 파일에 굽지 않고 재생 때 그 측정값에서 계산됩니다. target −18 LUFS, true peak가 clip되지 않도록 제한, 트랙별 또는 앨범별 적용, gapless boundary에서 명확히 전환됩니다. 이 mode는 현재 settings UI 없이 배포되며 기본값은 off입니다. 라이브러리 config file에서 설정할 수 있습니다.
+
+## 면 일시 정지
+
+트랙 목록은 면과 디스크 구조를 가지고 있으며, 사용자가 pause-between-sides를 켜면 엔진은 면 경계에서 멈추고 계속할지 prompt를 표시할 수 있습니다. 이 hold는 decoding된 silence가 아니라 playback-service state이므로 재개는 즉시 일어납니다.

@@ -1,0 +1,37 @@
+---
+title: 클라우드 저장소
+description: 제공자, 인증, 클라우드 홈의 형태
+---
+
+클라우드 홈은 사용자가 이미 소유한 저장소 안 한 위치입니다. 모든 제공자는 [coven](https://coven.bae.fm)의 같은 저장소 interface를 통해 구동됩니다. 제공자별 차이는 인증과 두 번째 기기에 접근 권한을 주는 방식입니다.
+
+## 제공자
+
+| 제공자 | 인증 | 새 기기의 접근 |
+|---|---|---|
+| S3-compatible | Access key + secret | 초대에 포함된 자격 증명 |
+| Google Drive | OAuth (PKCE) | 참가자의 계정에 폴더 공유 |
+| Dropbox | OAuth (PKCE) | 참가자의 계정에 폴더 공유 |
+| OneDrive | OAuth (PKCE) | 참가자의 계정에 폴더 공유 |
+| iCloud (CloudKit) | Apple ID, 로그인 없음 | 참가자가 수락한 CloudKit 공유 |
+
+S3 호환은 AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, 그리고 API를 말하는 다른 모든 것을 포함합니다. bucket, region, endpoint, key prefix를 설정할 수 있고, 설정을 저장하기 전에 버킷을 검사하므로 오타는 첫 동기화가 아니라 설정 때 실패합니다. OAuth 제공자는 전체 **bae** 에디션에만 있습니다. **baeium** 빌드는 이를 컴파일에서 제외합니다.
+
+## OAuth
+
+로그인은 public client로서 PKCE를 쓰는 authorization-code flow입니다. 데스크톱에서는 한 번의 callback을 위해 로컬 포트에 묶인 loopback server로 redirect가 도착합니다. 모바일에서는 앱이 custom-scheme redirect를 받습니다. bae는 작업에 필요한 가장 좁은 scope를 요청합니다. Google Drive에서는 앱이 직접 만든 파일에만 접근합니다. Token은 OS keyring에 저장되고, 제공자의 refresh grant로 갱신됩니다. refresh가 거부되면 조용한 재시도 loop가 아니라 다시 연결하라는 prompt로 드러납니다.
+
+CloudKit은 flow가 전혀 필요 없습니다. 앱에서 구현해 코어에 넘긴 플랫폼의 CloudKit driver가 로그인된 Apple ID로 동작합니다.
+
+## 홈의 배치
+
+홈 안에서 coven은 기기별 changeset 스트림, snapshot 세대, 구성원 레코드, blob namespace를 배치합니다. bae는 세 가지 blob namespace를 더합니다. `release_files`, `covers`, `artist_images`입니다.
+
+객체 key 방식은 홈을 만들 때 고정되는 저장소 모드에 따라 달라집니다.
+
+- **불투명**: 객체가 암호화되고 아무것도 드러내지 않는 content-derived key 아래에 저장됩니다. 암호학을 신뢰하는 모드입니다. [암호화](/ko/reference/encryption)를 보세요.
+- **탐색 가능**: 객체는 업로드 때 blob별로 기록된 읽을 수 있는 경로에 평문으로 저장됩니다. `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`입니다. 버킷은 사용할 수 있는 파일 트리이기도 합니다. 그 대신 암호화와 구성원이 없으므로 탐색 가능한 홈은 다른 사람에게 공유할 수 없습니다.
+
+## 실제 네트워크에서의 동작
+
+재생 읽기는 range 단위입니다. 플레이어는 전체 파일이 아니라 필요한 byte window를 스트리밍합니다. 크기 기준을 넘는 업로드는 제공자가 지원할 때 multipart로 진행합니다. Rate limiting과 일시적 제공자 오류는 exponential backoff로 재시도하며, retry-after가 있으면 따릅니다. 만료된 OAuth token은 그 자리에서 갱신됩니다. 동기화 outbox는 재시작을 견딥니다. 앱 종료로 중단된 업로드는 처음부터가 아니라 이어서 진행됩니다.
