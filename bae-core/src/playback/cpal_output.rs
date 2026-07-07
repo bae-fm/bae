@@ -1,13 +1,12 @@
 use super::audio_output::{
-    AudioDrain, AudioError, AudioLockMissLog, AudioOutput, AudioOutputControls, AudioState,
-    AudioStream, CompletionEvent, DrainStatus, PositionEvent,
+    AudioDrain, AudioError, AudioEventSender, AudioLockMissLog, AudioOutput, AudioOutputControls,
+    AudioState, AudioStream,
 };
 use crate::playback::source::PlaybackSource;
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{SampleRate, Stream, StreamConfig};
 use std::sync::Arc;
 use std::sync::Mutex;
-use tokio::sync::mpsc as tokio_mpsc;
 use tracing::{error, info};
 
 // -- cpal::Stream implements AudioStream --
@@ -48,8 +47,7 @@ impl AudioOutput for CpalAudioOutput {
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
-        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
-        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+        audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         // Resolve the current default output device on every build so playback
@@ -80,8 +78,7 @@ impl AudioOutput for CpalAudioOutput {
         let mut drain = AudioDrain::new(
             self.controls.clone(),
             source,
-            position_tx,
-            completion_tx,
+            audio_events,
             position_update_interval_ms,
         );
         let mut lock_miss = AudioLockMissLog::new();
@@ -90,12 +87,7 @@ impl AudioOutput for CpalAudioOutput {
             .build_output_stream(
                 &stream_config,
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                    if matches!(
-                        drain.drain_iteration(data, true, true, Some(&mut lock_miss)),
-                        DrainStatus::Completed
-                    ) {
-                        info!("Streaming audio callback: End of stream");
-                    }
+                    let _ = drain.drain_iteration(data, true, true, Some(&mut lock_miss));
                 },
                 |err| {
                     error!("Streaming audio error: {:?}", err);

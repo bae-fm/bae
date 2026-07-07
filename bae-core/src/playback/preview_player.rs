@@ -11,7 +11,7 @@
 //! uses. The demand-driven local fill keeps the ring fed; the audio callback
 //! outputs silence until the first samples land.
 
-use crate::playback::audio_output::{AudioOutput, AudioStream};
+use crate::playback::audio_output::{AudioEvent, AudioOutput, AudioStream};
 use crate::playback::data_source::{AudioDataReader, LocalReader};
 use crate::playback::progress::{emit_progress, PlaybackProgress, PreviewState};
 use crate::playback::service::{
@@ -26,7 +26,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::task::JoinHandle;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// A second audio player dedicated to previewing a local file. Holds all preview
 /// state; the main player coordinates pause/resume around it but never reaches
@@ -35,10 +35,10 @@ pub(crate) struct PreviewPlayer {
     /// Progress sink, cloned from the service so preview emits the same
     /// `PlaybackProgress` stream the UI already subscribes to.
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-    /// Command sink, used by the completion listener to post `PreviewCompleted`
+    /// Command sink, used by the event listener to post `PreviewCompleted`
     /// back to the service's command loop.
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
-    /// How often (ms) the audio callback sends position updates to the UI.
+    /// How often (ms) the audio callback emits position updates to the UI.
     position_update_interval_ms: u32,
     /// Separate audio output for preview (lazily created on first play).
     audio_output: Option<Box<dyn AudioOutput>>,
@@ -52,7 +52,7 @@ pub(crate) struct PreviewPlayer {
     path: Option<String>,
     /// Last known duration for the preview file.
     duration: Duration,
-    /// Abort handles for preview position/completion listener tasks.
+    /// Abort handles for preview event listener tasks.
     listener_handle: Option<JoinHandle<()>>,
     /// Sparse buffer for the current preview (retained across seeks).
     buffer: Option<SharedSparseBuffer>,
@@ -225,7 +225,7 @@ impl PreviewPlayer {
 
         // When seeking while paused, no tick will fire to carry the new
         // position — emit explicitly so the NSView updates. When seeking
-        // while playing, the position listener task picks up from the new
+        // while playing, the event listener task picks up from the new
         // offset on its next tick, so no explicit emit is needed.
         if was_paused {
             let pos_ms = position.as_millis() as u64;
@@ -319,7 +319,7 @@ impl PreviewPlayer {
         }
     }
 
-    /// Abort preview position/completion listener tasks.
+    /// Abort preview event listener tasks.
     fn abort_listeners(&mut self) {
         if let Some(handle) = self.listener_handle.take() {
             handle.abort();
@@ -362,10 +362,8 @@ impl PreviewPlayer {
         self.decoder_handle = Some(decoder_handle);
         self.decoder_cancel_token = Some(decoder_cancel_token);
 
-        // Preview never chains; wrap in a PlaybackSource and drop the boundary
-        // receiver so the sender's sends are no-ops. The fmt's values aren't
-        // consumed by a boundary listener, but the position listener reads them
-        // from the position event.
+        // Preview never chains; the fmt's values are read from the audio
+        // event stream by the listener.
         let preview_fmt = TrackFmt {
             track_id: path.clone(),
             duration_ms: duration.as_millis() as u64,
@@ -374,12 +372,7 @@ impl PreviewPlayer {
             // Preview plays an unimported file (no stored measurements) at unity.
             replay_gain_linear: 1.0,
         };
-        let (preview_boundary_tx, _preview_boundary_rx) = tokio_mpsc::unbounded_channel();
-        let source = Arc::new(Mutex::new(source::PlaybackSource::new(
-            source,
-            preview_fmt,
-            preview_boundary_tx,
-        )));
+        let source = Arc::new(Mutex::new(source::PlaybackSource::new(source, preview_fmt)));
 
         if self.audio_output.is_none() {
             match default_audio_output() {
@@ -445,34 +438,117 @@ impl PreviewPlayer {
 
         let progress_tx = self.progress_tx.clone();
         let command_tx = self.command_tx.clone();
-        let mut position_rx_async = setup.position_rx;
-        let mut completion_rx_async = setup.completion_rx;
+        let mut audio_events = setup.audio_events;
 
         let h3 = tokio::spawn(async move {
+            let mut event_tick = tokio::time::interval(Duration::from_millis(10));
+            event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             loop {
-                tokio::select! {
-                    // Preview is single-track; the audio callback tags every
-                    // tick with the same fmt we built above. Read its fields
-                    // directly so the listener doesn't carry parallel copies.
-                    Some((fmt, pos)) = position_rx_async.recv() => {
-                        let actual_pos_ms = (fmt.position_offset + pos).as_millis() as u64;
-                        emit_progress(
-                            &progress_tx,
-                            PlaybackProgress::PreviewPositionUpdate {
-                                position_ms: actual_pos_ms,
-                                progress: crate::playback::format::compute_progress(actual_pos_ms, fmt.duration_ms, fmt.pregap_ms),
-                            },
-                        );
+                event_tick.tick().await;
+                let mut completed = false;
+                while let Some(event) = audio_events.pop() {
+                    match event {
+                        // Preview is single-track; the audio callback tags
+                        // every tick with the same fmt we built above. Read
+                        // its fields directly so the listener doesn't carry
+                        // parallel copies.
+                        AudioEvent::Position((fmt, pos)) => {
+                            let actual_pos_ms = (fmt.position_offset + pos).as_millis() as u64;
+                            emit_progress(
+                                &progress_tx,
+                                PlaybackProgress::PreviewPositionUpdate {
+                                    position_ms: actual_pos_ms,
+                                    progress: crate::playback::format::compute_progress(
+                                        actual_pos_ms,
+                                        fmt.duration_ms,
+                                        fmt.pregap_ms,
+                                    ),
+                                },
+                            );
+                        }
+                        AudioEvent::Completion((_fmt, _error_count, _samples_decoded)) => {
+                            // Preview doesn't track decode stats — it is not a
+                            // library track. The stats carried by the uniform
+                            // event are dropped here by design.
+                            dispatch_command(&command_tx, PlaybackCommand::PreviewCompleted);
+                            completed = true;
+                        }
+                        AudioEvent::TrackCrossing(_) => {}
+                        AudioEvent::SourceLockMissed { missed_ms } => {
+                            warn!(
+                                missed_ms,
+                                "preview audio callback could not lock playback source while playing"
+                            );
+                        }
+                        AudioEvent::SourceLockReacquired { missed_ms } => {
+                            debug!(
+                                missed_ms,
+                                "preview audio callback reacquired playback source lock"
+                            );
+                        }
+                        AudioEvent::Starved {
+                            fmt,
+                            starved_ms,
+                            position_ms,
+                            producer_finished,
+                            samples_decoded,
+                            decode_errors,
+                            has_next,
+                        } => {
+                            warn!(
+                                track_id = %fmt.track_id,
+                                starved_ms,
+                                position_ms,
+                                producer_finished,
+                                samples_decoded,
+                                decode_errors,
+                                has_next,
+                                "preview playback source has no decoded samples while current track is not finished"
+                            );
+                        }
+                        AudioEvent::StarvationEnded {
+                            fmt,
+                            starved_ms,
+                            position_ms,
+                            samples_decoded,
+                            decode_errors,
+                        } => {
+                            debug!(
+                                track_id = %fmt.track_id,
+                                starved_ms,
+                                position_ms,
+                                samples_decoded,
+                                decode_errors,
+                                "preview playback source resumed after decoded sample starvation"
+                            );
+                        }
                     }
-                    Some((_fmt, _error_count, _samples_decoded)) = completion_rx_async.recv() => {
-                        // Preview doesn't track decode stats — it's a quick
-                        // playback, not a library track. The stats carried by
-                        // CompletionEvent (uniform with main playback) are
-                        // dropped here by design.
-                        dispatch_command(&command_tx, PlaybackCommand::PreviewCompleted);
+                    if completed {
                         break;
                     }
-                    else => break,
+                }
+                let dropped_required = audio_events.take_dropped_required_count();
+                if dropped_required > 0 {
+                    error!(
+                        dropped_required,
+                        "preview audio callback event queue dropped required events"
+                    );
+                    emit_progress(
+                        &progress_tx,
+                        PlaybackProgress::PlaybackError {
+                            reason: crate::ui::PlaybackErrorReason::internal(
+                                "Preview event queue dropped a required audio event".to_string(),
+                            ),
+                        },
+                    );
+                    break;
+                }
+                let dropped = audio_events.take_dropped_count();
+                if dropped > 0 {
+                    warn!(dropped, "preview audio callback event queue dropped events");
+                }
+                if completed {
+                    break;
                 }
             }
         });

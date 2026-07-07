@@ -323,12 +323,12 @@ impl PlaybackService {
         // completion log + stats for every track except the album's last.
         info!(
             "Track completed (gapless): {} ({} decode errors, {} samples)",
-            crossing.finished_track_id, crossing.decode_error_count, crossing.samples_decoded
+            crossing.finished_fmt.track_id, crossing.decode_error_count, crossing.samples_decoded
         );
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::DecodeStats {
-                track_id: crossing.finished_track_id,
+                track_id: crossing.finished_fmt.track_id.clone(),
                 error_count: crossing.decode_error_count,
                 samples_decoded: crossing.samples_decoded,
             },
@@ -338,7 +338,7 @@ impl PlaybackService {
             Some(preloaded) => preloaded,
             None => {
                 warn!(
-                    track_id = %crossing.incoming_track_id,
+                    track_id = %crossing.incoming_fmt.track_id,
                     "Gapless boundary fired with no preloaded track; ignoring"
                 );
                 return;
@@ -349,7 +349,7 @@ impl PlaybackService {
             decoder_handle,
             ..
         } = preloaded;
-        let track_id = crossing.incoming_track_id;
+        let track_id = crossing.incoming_fmt.track_id.clone();
         info!("Gapless boundary: now playing {}", track_id);
 
         // The previous track's decoder has finished; the next track's decoder

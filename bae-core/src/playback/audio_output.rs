@@ -6,13 +6,14 @@
 //! shape are defined here so the concrete sinks in `cpal_output`/`aaudio_output`
 //! depend only on this module, not on each other or on cpal.
 
-use crate::playback::source::{PlaybackSource, TrackFmt};
+use crate::playback::source::{PlaybackSource, TrackCrossing, TrackFmt};
+use rtrb::{Consumer, Producer, RingBuffer};
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex;
-use tokio::sync::mpsc as tokio_mpsc;
-use tracing::{debug, warn};
+
+const AUDIO_EVENT_CAPACITY: usize = 2048;
 
 /// Audio output state - directly controls what the audio callback does.
 ///
@@ -119,20 +120,19 @@ impl AudioLockMissLog {
         }
     }
 
-    fn acquired(&mut self) {
+    fn acquired(&mut self, audio_events: &mut AudioEventSender) {
         if let Some(started) = self.started.take() {
             let missed = started.elapsed();
             if missed >= std::time::Duration::from_millis(250) {
-                debug!(
-                    missed_ms = missed.as_millis(),
-                    "audio callback reacquired playback source lock"
-                );
+                audio_events.push(AudioEvent::SourceLockReacquired {
+                    missed_ms: duration_millis(missed),
+                });
             }
             self.last_log = None;
         }
     }
 
-    fn missed(&mut self) {
+    fn missed(&mut self, audio_events: &mut AudioEventSender) {
         let now = std::time::Instant::now();
         let started = *self.started.get_or_insert(now);
         let missed = now.duration_since(started);
@@ -141,10 +141,9 @@ impl AudioLockMissLog {
                 .last_log
                 .is_none_or(|last| now.duration_since(last) >= std::time::Duration::from_secs(1))
         {
-            warn!(
-                missed_ms = missed.as_millis(),
-                "audio callback could not lock playback source while playing"
-            );
+            audio_events.push(AudioEvent::SourceLockMissed {
+                missed_ms: duration_millis(missed),
+            });
             self.last_log = Some(now);
         }
     }
@@ -153,8 +152,7 @@ impl AudioLockMissLog {
 pub(crate) struct AudioDrain {
     controls: AudioOutputControls,
     source: Arc<Mutex<PlaybackSource>>,
-    position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
-    completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+    audio_events: AudioEventSender,
     position_update_interval: std::time::Duration,
     last_position_update: std::time::Instant,
     completion_sent: bool,
@@ -164,15 +162,13 @@ impl AudioDrain {
     pub(crate) fn new(
         controls: AudioOutputControls,
         source: Arc<Mutex<PlaybackSource>>,
-        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
-        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+        audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Self {
         Self {
             controls,
             source,
-            position_tx,
-            completion_tx,
+            audio_events,
             position_update_interval: std::time::Duration::from_millis(
                 position_update_interval_ms as u64,
             ),
@@ -198,13 +194,13 @@ impl AudioDrain {
         let mut source_guard = match self.source.try_lock() {
             Ok(guard) => {
                 if let Some(lock_miss) = lock_miss {
-                    lock_miss.acquired();
+                    lock_miss.acquired(&mut self.audio_events);
                 }
                 guard
             }
             Err(_) => {
                 if let Some(lock_miss) = lock_miss {
-                    lock_miss.missed();
+                    lock_miss.missed(&mut self.audio_events);
                 }
                 if zero_unfilled {
                     buf.fill(0.0);
@@ -213,18 +209,13 @@ impl AudioDrain {
             }
         };
 
-        let read = source_guard.pull_samples(buf);
+        let read = source_guard.pull_samples(buf, &mut self.audio_events);
 
         if read == 0 {
             if source_guard.is_finished() && !self.completion_sent {
                 self.controls.set_state(AudioState::Stopped);
-                if self
-                    .completion_tx
-                    .send(source_guard.completion_event())
-                    .is_err()
-                {
-                    warn!("Failed to send completion signal");
-                }
+                self.audio_events
+                    .push_required(AudioEvent::Completion(source_guard.completion_event()));
                 self.completion_sent = true;
             }
             if zero_unfilled {
@@ -248,13 +239,8 @@ impl AudioDrain {
         }
 
         if self.last_position_update.elapsed() >= self.position_update_interval {
-            if self
-                .position_tx
-                .send(source_guard.position_event())
-                .is_err()
-            {
-                debug!("Position tick: receiver dropped");
-            }
+            self.audio_events
+                .push(AudioEvent::Position(source_guard.position_event()));
             self.last_position_update = std::time::Instant::now();
         }
 
@@ -294,8 +280,99 @@ pub type PositionEvent = (Arc<TrackFmt>, std::time::Duration);
 
 /// A completion signal, tagged with the finishing track's identity + decode
 /// stats. Fires once when the source's last track drains; gaplessly-advanced
-/// tracks signal via the boundary channel instead.
+/// tracks signal via `AudioEvent::TrackCrossing` instead.
 pub type CompletionEvent = (Arc<TrackFmt>, u32, u64);
+
+#[derive(Debug)]
+pub(crate) enum AudioEvent {
+    Position(PositionEvent),
+    Completion(CompletionEvent),
+    TrackCrossing(TrackCrossing),
+    SourceLockMissed {
+        missed_ms: u64,
+    },
+    SourceLockReacquired {
+        missed_ms: u64,
+    },
+    Starved {
+        fmt: Arc<TrackFmt>,
+        starved_ms: u64,
+        position_ms: u64,
+        producer_finished: bool,
+        samples_decoded: u64,
+        decode_errors: u32,
+        has_next: bool,
+    },
+    StarvationEnded {
+        fmt: Arc<TrackFmt>,
+        starved_ms: u64,
+        position_ms: u64,
+        samples_decoded: u64,
+        decode_errors: u32,
+    },
+}
+
+pub struct AudioEventSender {
+    producer: Producer<AudioEvent>,
+    dropped_events: Arc<AtomicU64>,
+    dropped_required_events: Arc<AtomicU64>,
+}
+
+impl AudioEventSender {
+    pub(crate) fn push(&mut self, event: AudioEvent) {
+        if self.producer.push(event).is_err() {
+            self.dropped_events.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    pub(crate) fn push_required(&mut self, event: AudioEvent) {
+        if self.producer.push(event).is_err() {
+            self.dropped_required_events.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+}
+
+pub(crate) struct AudioEventReceiver {
+    consumer: Consumer<AudioEvent>,
+    dropped_events: Arc<AtomicU64>,
+    dropped_required_events: Arc<AtomicU64>,
+}
+
+impl AudioEventReceiver {
+    pub(crate) fn pop(&mut self) -> Option<AudioEvent> {
+        self.consumer.pop().ok()
+    }
+
+    pub(crate) fn take_dropped_count(&self) -> u64 {
+        self.dropped_events.swap(0, Ordering::Relaxed)
+    }
+
+    pub(crate) fn take_dropped_required_count(&self) -> u64 {
+        self.dropped_required_events.swap(0, Ordering::Relaxed)
+    }
+}
+
+pub(crate) fn audio_event_channel() -> (AudioEventSender, AudioEventReceiver) {
+    let (producer, consumer) = RingBuffer::new(AUDIO_EVENT_CAPACITY);
+    let dropped_events = Arc::new(AtomicU64::new(0));
+    let dropped_required_events = Arc::new(AtomicU64::new(0));
+    (
+        AudioEventSender {
+            producer,
+            dropped_events: dropped_events.clone(),
+            dropped_required_events: dropped_required_events.clone(),
+        },
+        AudioEventReceiver {
+            consumer,
+            dropped_events,
+            dropped_required_events,
+        },
+    )
+}
+
+pub(crate) fn duration_millis(duration: std::time::Duration) -> u64 {
+    duration.as_millis().min(u64::MAX as u128) as u64
+}
 
 /// Audio output abstraction. Implementations pull samples from a PlaybackSource
 /// and send them somewhere (real device, capture buffer, etc).
@@ -305,8 +382,7 @@ pub trait AudioOutput: Send + 'static {
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
-        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
-        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+        audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError>;
 
@@ -388,8 +464,7 @@ fn spawn_capture_stream<F>(
     controls: AudioOutputControls,
     captured: Arc<Mutex<Vec<f32>>>,
     source: Arc<Mutex<PlaybackSource>>,
-    position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
-    completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+    audio_events: AudioEventSender,
     position_update_interval_ms: u32,
     mut after_samples: F,
 ) -> (
@@ -404,13 +479,8 @@ where
 
     let thread = std::thread::spawn(move || {
         let mut buf = vec![0.0f32; 4096];
-        let mut drain = AudioDrain::new(
-            controls,
-            source,
-            position_tx,
-            completion_tx,
-            position_update_interval_ms,
-        );
+        let mut drain =
+            AudioDrain::new(controls, source, audio_events, position_update_interval_ms);
 
         loop {
             if stop_clone.load(Ordering::Acquire) {
@@ -492,8 +562,7 @@ impl AudioOutput for CaptureAudioOutput {
         source: Arc<Mutex<PlaybackSource>>,
         _source_sample_rate: u32,
         _source_channels: u32,
-        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
-        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+        audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         let (controls, captured) = self.core.prepare_stream()?;
@@ -501,8 +570,7 @@ impl AudioOutput for CaptureAudioOutput {
             controls,
             captured,
             source,
-            position_tx,
-            completion_tx,
+            audio_events,
             position_update_interval_ms,
             |_| {},
         );
@@ -523,8 +591,7 @@ impl AudioOutput for RealtimeCaptureAudioOutput {
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
-        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
-        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+        audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         let (controls, captured) = self.core.prepare_stream()?;
@@ -533,8 +600,7 @@ impl AudioOutput for RealtimeCaptureAudioOutput {
             controls,
             captured,
             source,
-            position_tx,
-            completion_tx,
+            audio_events,
             position_update_interval_ms,
             move |read| sleep_realtime_buffer(read, channels, source_sample_rate),
         );
@@ -638,8 +704,7 @@ impl AudioOutput for RealtimeProbeOutput {
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
-        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
-        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+        audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         let controls = self.controls.clone();
@@ -650,13 +715,8 @@ impl AudioOutput for RealtimeProbeOutput {
         let thread = std::thread::spawn(move || {
             // 1024 frames/buffer — the pacing granularity, not the total work.
             let mut buf = vec![0.0f32; 1024 * channels as usize];
-            let mut drain = AudioDrain::new(
-                controls,
-                source,
-                position_tx,
-                completion_tx,
-                position_update_interval_ms,
-            );
+            let mut drain =
+                AudioDrain::new(controls, source, audio_events, position_update_interval_ms);
 
             loop {
                 if stop_clone.load(Ordering::Acquire) {

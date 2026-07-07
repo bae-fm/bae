@@ -9,8 +9,8 @@
 //! the device instead of a capture buffer.
 
 use super::audio_output::{
-    AudioDrain, AudioError, AudioOutput, AudioOutputControls, AudioState, AudioStream,
-    CompletionEvent, DrainStatus, PositionEvent,
+    AudioDrain, AudioError, AudioEventSender, AudioOutput, AudioOutputControls, AudioState,
+    AudioStream, DrainStatus,
 };
 use crate::playback::source::PlaybackSource;
 use ndk::audio::{
@@ -20,7 +20,6 @@ use ndk::audio::{
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc as tokio_mpsc;
 use tracing::{debug, error, info, warn};
 
 /// Number of frames pulled and written per loop iteration. Interleaved across
@@ -164,8 +163,7 @@ impl AudioOutput for AAudioOutput {
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
-        position_tx: tokio_mpsc::UnboundedSender<PositionEvent>,
-        completion_tx: tokio_mpsc::UnboundedSender<CompletionEvent>,
+        audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         let controls = self.controls.clone();
@@ -187,8 +185,7 @@ impl AudioOutput for AAudioOutput {
             let mut drain = AudioDrain::new(
                 controls.clone(),
                 source,
-                position_tx,
-                completion_tx,
+                audio_events,
                 position_update_interval_ms,
             );
             // Tracks whether the device stream is started; pause/stop idles it

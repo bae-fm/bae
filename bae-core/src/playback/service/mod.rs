@@ -31,7 +31,9 @@ use crate::db::{DbAudioSegmentRole, DbPlaybackContext, DbPlaybackState};
 use crate::library::LibraryEvent;
 use crate::library::LibraryManager;
 use crate::library::ResolvedTrackAudio;
-use crate::playback::audio_output::{AudioOutput, AudioStream, CompletionEvent, PositionEvent};
+use crate::playback::audio_output::{
+    audio_event_channel, AudioEvent, AudioEventReceiver, AudioOutput, AudioStream,
+};
 use crate::playback::data_source::{create_audio_reader, FetchArbiter};
 use crate::playback::error::PlaybackError;
 use crate::playback::progress::emit_progress;
@@ -802,8 +804,8 @@ pub struct PlaybackService {
     current_playback_source: Option<Arc<Mutex<source::PlaybackSource>>>,
     /// JoinHandle for the current decoder thread (needed for seek cancellation)
     current_decoder_handle: Option<std::thread::JoinHandle<()>>,
-    /// Listener task handles for the current track (position ticks + completion)
-    current_listener_handle: Option<tokio::task::JoinHandle<()>>,
+    /// Receiver for events emitted by the current stream's audio callback.
+    current_audio_events: Option<AudioEventReceiver>,
     /// Preloaded next track state, either staged into the current gapless source
     /// or held for a stream rebuild.
     preloaded_next: Option<PreloadedNext>,
@@ -823,12 +825,6 @@ pub struct PlaybackService {
     /// Shared with PlaybackHandle. Written on every position tick and by
     /// `emit_position_display`; read by late-mounting views.
     last_position_display: Arc<std::sync::Mutex<Option<f64>>>,
-    /// Sender cloned into each `PlaybackSource`; fired by the audio callback
-    /// when it crosses a gapless track boundary, carrying the finishing and
-    /// incoming track identities + the finishing track's decode stats.
-    boundary_tx: tokio_mpsc::UnboundedSender<TrackCrossing>,
-    /// Receiver side of `boundary_tx`, drained by the service loop.
-    boundary_rx: tokio_mpsc::UnboundedReceiver<TrackCrossing>,
     pending_side_pause: Option<SidePauseDecision>,
     /// Prioritizes byte fetches across tracks: the current track's reader fetches
     /// immediately, a next-track preload's reader yields to it. Shared into every
@@ -845,6 +841,154 @@ impl PlaybackService {
         if let Some(prepared) = &self.current_prepared {
             if let Some(segment) = prepared.segments.first() {
                 self.fetch_arbiter.set_foreground(segment.buffer.id());
+            }
+        }
+    }
+
+    fn handle_position_event(&mut self, fmt: Arc<TrackFmt>, pos: std::time::Duration) {
+        let actual_pos = fmt.position_offset + pos;
+        *self.current_position_shared.lock().unwrap() = Some(actual_pos);
+        let raw_pos_ms = actual_pos.as_millis() as u64;
+        let progress =
+            crate::playback::format::compute_progress(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
+        *self.last_position_display.lock().unwrap() = Some(progress);
+        let (adjusted_pos_ms, adjusted_dur_ms) =
+            crate::playback::format::adjust_for_pregap(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::PositionUpdate {
+                position_ms: adjusted_pos_ms,
+                duration_ms: adjusted_dur_ms,
+                track_id: fmt.track_id.clone(),
+                progress,
+            },
+        );
+    }
+
+    fn handle_completion_event(
+        &mut self,
+        fmt: Arc<TrackFmt>,
+        error_count: u32,
+        samples_decoded: u64,
+    ) {
+        info!(
+            "Track completed: {} ({} decode errors, {} samples)",
+            fmt.track_id, error_count, samples_decoded
+        );
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::TrackCompleted {
+                track_id: fmt.track_id.clone(),
+            },
+        );
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::DecodeStats {
+                track_id: fmt.track_id.clone(),
+                error_count,
+                samples_decoded,
+            },
+        );
+        self.current_audio_events = None;
+    }
+
+    fn log_audio_diagnostic(&self, event: AudioEvent) {
+        match event {
+            AudioEvent::SourceLockMissed { missed_ms } => {
+                warn!(
+                    missed_ms,
+                    "audio callback could not lock playback source while playing"
+                );
+            }
+            AudioEvent::SourceLockReacquired { missed_ms } => {
+                debug!(missed_ms, "audio callback reacquired playback source lock");
+            }
+            AudioEvent::Starved {
+                fmt,
+                starved_ms,
+                position_ms,
+                producer_finished,
+                samples_decoded,
+                decode_errors,
+                has_next,
+            } => {
+                warn!(
+                    track_id = %fmt.track_id,
+                    starved_ms,
+                    position_ms,
+                    producer_finished,
+                    samples_decoded,
+                    decode_errors,
+                    has_next,
+                    "playback source has no decoded samples while current track is not finished"
+                );
+            }
+            AudioEvent::StarvationEnded {
+                fmt,
+                starved_ms,
+                position_ms,
+                samples_decoded,
+                decode_errors,
+            } => {
+                debug!(
+                    track_id = %fmt.track_id,
+                    starved_ms,
+                    position_ms,
+                    samples_decoded,
+                    decode_errors,
+                    "playback source resumed after decoded sample starvation"
+                );
+            }
+            AudioEvent::Position(_) | AudioEvent::Completion(_) | AudioEvent::TrackCrossing(_) => {}
+        }
+    }
+
+    async fn handle_audio_event(&mut self, event: AudioEvent) {
+        match event {
+            AudioEvent::Position((fmt, pos)) => self.handle_position_event(fmt, pos),
+            AudioEvent::Completion((fmt, error_count, samples_decoded)) => {
+                self.handle_completion_event(fmt, error_count, samples_decoded);
+            }
+            AudioEvent::TrackCrossing(crossing) => self.handle_track_crossed(crossing).await,
+            event => self.log_audio_diagnostic(event),
+        }
+    }
+
+    async fn drain_current_audio_events(&mut self) {
+        while let Some(event) = self
+            .current_audio_events
+            .as_mut()
+            .and_then(AudioEventReceiver::pop)
+        {
+            self.handle_audio_event(event).await;
+        }
+
+        let dropped_required = self
+            .current_audio_events
+            .as_ref()
+            .map(AudioEventReceiver::take_dropped_required_count)
+            .unwrap_or(0);
+        if dropped_required > 0 {
+            error!(
+                dropped_required,
+                "audio callback event queue dropped required events"
+            );
+            emit_progress(
+                &self.progress_tx,
+                PlaybackProgress::PlaybackError {
+                    reason: crate::ui::PlaybackErrorReason::internal(
+                        "Playback event queue dropped a required audio event".to_string(),
+                    ),
+                },
+            );
+            self.stop().await;
+            return;
+        }
+
+        if let Some(events) = &self.current_audio_events {
+            let dropped = events.take_dropped_count();
+            if dropped > 0 {
+                warn!(dropped, "audio callback event queue dropped events");
             }
         }
     }
@@ -898,8 +1042,7 @@ pub(crate) fn default_audio_output(
 
 pub(crate) struct StreamSetup {
     pub(crate) stream: Box<dyn AudioStream>,
-    pub(crate) position_rx: tokio_mpsc::UnboundedReceiver<PositionEvent>,
-    pub(crate) completion_rx: tokio_mpsc::UnboundedReceiver<CompletionEvent>,
+    pub(crate) audio_events: AudioEventReceiver,
 }
 
 pub(crate) async fn setup_audio_stream(
@@ -912,15 +1055,13 @@ pub(crate) async fn setup_audio_stream(
         (guard.sample_rate(), guard.channels())
     };
 
-    let (position_tx, position_rx) = tokio_mpsc::unbounded_channel();
-    let (completion_tx, completion_rx) = tokio_mpsc::unbounded_channel();
+    let (audio_event_tx, audio_events) = audio_event_channel();
 
     let stream = match audio_output.create_stream(
         source,
         source_sample_rate,
         source_channels,
-        position_tx,
-        completion_tx,
+        audio_event_tx,
         position_update_interval_ms,
     ) {
         Ok(stream) => stream,
@@ -931,8 +1072,7 @@ pub(crate) async fn setup_audio_stream(
 
     Ok(StreamSetup {
         stream,
-        position_rx,
-        completion_rx,
+        audio_events,
     })
 }
 
@@ -1108,7 +1248,6 @@ impl PlaybackService {
                 }
             }
         });
-        let (boundary_tx, boundary_rx) = tokio_mpsc::unbounded_channel::<TrackCrossing>();
         std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -1143,7 +1282,7 @@ impl PlaybackService {
                     current_prepared: None,
                     current_playback_source: None,
                     current_decoder_handle: None,
-                    current_listener_handle: None,
+                    current_audio_events: None,
                     preloaded_next: None,
                     preview,
                     main_was_playing_before_preview: false,
@@ -1152,8 +1291,6 @@ impl PlaybackService {
                     position_update_interval_ms,
                     shared_file_buffers: HashMap::new(),
                     last_position_display,
-                    boundary_tx,
-                    boundary_rx,
                     pending_side_pause: None,
                     fetch_arbiter: FetchArbiter::new(),
                 };
@@ -1196,8 +1333,13 @@ impl PlaybackService {
     async fn run(&mut self) {
         info!("PlaybackService started");
         let mut library_event_rx = self.library_manager.subscribe_events();
+        let mut audio_event_tick = tokio::time::interval(std::time::Duration::from_millis(10));
+        audio_event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
             tokio::select! {
+                _ = audio_event_tick.tick(), if self.current_audio_events.is_some() => {
+                    self.drain_current_audio_events().await;
+                }
                 Some(command) = self.command_rx.recv() => {
             match command {
                 PlaybackCommand::Play(track_id) => {
@@ -1663,9 +1805,6 @@ impl PlaybackService {
                     if let LibraryEvent::TracksDeleted { track_ids } = event {
                         self.handle_tracks_deleted(track_ids).await;
                     }
-                }
-                Some(crossing) = self.boundary_rx.recv() => {
-                    self.handle_track_crossed(crossing).await;
                 }
                 else => break,
             }

@@ -8,11 +8,9 @@ impl PlaybackService {
             .map(|p| p.track_info.track_id.as_str())
     }
 
-    /// Abort current track listener tasks (position ticks + completion).
+    /// Drop current audio callback events when the stream is no longer live.
     pub(super) fn abort_current_listeners(&mut self) {
-        if let Some(handle) = self.current_listener_handle.take() {
-            handle.abort();
-        }
+        self.current_audio_events = None;
     }
 
     /// Tear down the outgoing track before a manual switch (Play / SkipTo /
@@ -54,7 +52,7 @@ impl PlaybackService {
 
     /// Initialize streaming infrastructure without changing audio state.
     ///
-    /// Sets up the cpal stream, position listeners, and completion handlers.
+    /// Sets up the cpal stream and attaches its event receiver to the service loop.
     /// The audio output state remains unchanged - caller must explicitly
     /// call `audio_output.set_state(Playing)` to start audio output.
     ///
@@ -71,11 +69,7 @@ impl PlaybackService {
 
         // Wrap the track source in a PlaybackSource so the audio callback can
         // advance to a pre-staged next track without rebuilding the stream.
-        let gapless = Arc::new(Mutex::new(source::PlaybackSource::new(
-            source,
-            fmt,
-            self.boundary_tx.clone(),
-        )));
+        let gapless = Arc::new(Mutex::new(source::PlaybackSource::new(source, fmt)));
 
         let setup = match setup_audio_stream(
             &mut *self.audio_output,
@@ -99,62 +93,8 @@ impl PlaybackService {
         // Update state
         self.stream = Some(setup.stream);
         self.current_playback_source = Some(gapless);
+        self.current_audio_events = Some(setup.audio_events);
         *self.current_position_shared.lock().unwrap() = Some(position_offset);
-
-        // Spawn position/completion listener. Each event arrives tagged with
-        // the fmt of the track it belongs to (set by the audio callback at
-        // emit time), so the handlers are pure functions of their payload.
-        let progress_tx = self.progress_tx.clone();
-        let current_position_shared = self.current_position_shared.clone();
-        let last_position_display = self.last_position_display.clone();
-        let mut position_rx_async = setup.position_rx;
-        let mut completion_rx_async = setup.completion_rx;
-
-        let listener_handle = tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    Some((fmt, pos)) = position_rx_async.recv() => {
-                        let actual_pos = fmt.position_offset + pos;
-                        *current_position_shared.lock().unwrap() = Some(actual_pos);
-                        let raw_pos_ms = actual_pos.as_millis() as u64;
-                        let progress = crate::playback::format::compute_progress(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
-                        *last_position_display.lock().unwrap() = Some(progress);
-                        let (adjusted_pos_ms, adjusted_dur_ms) =
-                            crate::playback::format::adjust_for_pregap(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
-                        emit_progress(
-                            &progress_tx,
-                            PlaybackProgress::PositionUpdate {
-                                position_ms: adjusted_pos_ms,
-                                duration_ms: adjusted_dur_ms,
-                                track_id: fmt.track_id.clone(),
-                                progress,
-                            },
-                        );
-                    }
-                    Some((fmt, error_count, samples_decoded)) = completion_rx_async.recv() => {
-                        info!("Track completed: {} ({} decode errors, {} samples)", fmt.track_id, error_count, samples_decoded);
-                        emit_progress(
-                            &progress_tx,
-                            PlaybackProgress::TrackCompleted {
-                                track_id: fmt.track_id.clone(),
-                            },
-                        );
-                        emit_progress(
-                            &progress_tx,
-                            PlaybackProgress::DecodeStats {
-                                track_id: fmt.track_id.clone(),
-                                error_count,
-                                samples_decoded,
-                            },
-                        );
-                        break;
-                    }
-                    else => break,
-                }
-            }
-        });
-
-        self.current_listener_handle = Some(listener_handle);
 
         true
     }

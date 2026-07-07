@@ -12,20 +12,19 @@
 //! Only same-format tracks are staged (the persistent output stream is built
 //! for one sample rate / channel count).
 
+use crate::playback::audio_output::{duration_millis, AudioEvent, AudioEventSender};
 use crate::playback::track_stream::TrackStream;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::mpsc::UnboundedSender;
-use tracing::{debug, warn};
 
 const STARVATION_LOG_AFTER: Duration = Duration::from_millis(250);
 const STARVATION_LOG_EVERY: Duration = Duration::from_secs(1);
 
-/// Per-track context the position/completion listener needs to label its
-/// output (`PositionUpdate`, `TrackCompleted`, `DecodeStats`). Carried with
-/// every tick and completion so the listener is a pure function of its input:
+/// Per-track context the service needs to label its playback events
+/// (`PositionUpdate`, `TrackCompleted`, `DecodeStats`). Carried with every
+/// tick and completion so event handling is a pure function of its input:
 /// across a track boundary the audio callback emits the new track's fmt with
-/// the new track's first tick, without the listener having to consult any
+/// the new track's first tick, without the service having to consult any
 /// shared cell.
 ///
 /// `track_id`/`duration_ms`/`pregap_ms` are intrinsic to the track;
@@ -48,15 +47,13 @@ pub struct TrackFmt {
 /// Payload of the boundary signal. Carries the finishing track's identity +
 /// decode stats so the service's boundary handler can emit `DecodeStats`
 /// without reading shared state, plus the incoming track's identity for state
-/// updates. Only the track ids are surfaced — the boundary handler doesn't
-/// need duration/pregap/offset, which live in the prepared track on the
-/// service side.
+/// updates.
 #[derive(Debug, Clone)]
 pub struct TrackCrossing {
-    pub finished_track_id: String,
+    pub finished_fmt: Arc<TrackFmt>,
     pub decode_error_count: u32,
     pub samples_decoded: u64,
-    pub incoming_track_id: String,
+    pub incoming_fmt: Arc<TrackFmt>,
 }
 
 /// What the audio callback pulls from: the current track's PCM source plus an
@@ -66,31 +63,16 @@ pub struct PlaybackSource {
     current: TrackStream,
     current_fmt: Arc<TrackFmt>,
     next: Option<(TrackStream, Arc<TrackFmt>)>,
-    /// Fired once each time playback crosses from `current` into `next`,
-    /// carrying the finishing track's stats so the service can report them
-    /// (a track advanced via the chain never reaches the completion path). An
-    /// async (tokio) sender so it can be sent from the audio callback yet
-    /// drain via a cancellable async receiver — a blocking receiver would
-    /// wedge runtime shutdown, since this sender outlives any single stream.
-    boundary_tx: UnboundedSender<TrackCrossing>,
     starvation_started: Option<Instant>,
     last_starvation_log: Option<Instant>,
 }
 
 impl PlaybackSource {
-    /// A chained source. `boundary_tx` is signalled on every track crossing.
-    /// For single-track use (preview), pass a sender whose receiver is
-    /// dropped — the sends become no-ops and `stage_next` is simply not called.
-    pub fn new(
-        current: TrackStream,
-        current_fmt: TrackFmt,
-        boundary_tx: UnboundedSender<TrackCrossing>,
-    ) -> Self {
+    pub fn new(current: TrackStream, current_fmt: TrackFmt) -> Self {
         Self {
             current,
             current_fmt: Arc::new(current_fmt),
             next: None,
-            boundary_tx,
             starvation_started: None,
             last_starvation_log: None,
         }
@@ -146,7 +128,11 @@ impl PlaybackSource {
     /// At most one boundary is crossed per call: only one track is staged at a
     /// time, and the next track's staging happens after the service handles
     /// this crossing.
-    pub fn pull_samples(&mut self, output: &mut [f32]) -> usize {
+    pub fn pull_samples(
+        &mut self,
+        output: &mut [f32],
+        audio_events: &mut AudioEventSender,
+    ) -> usize {
         let mut filled = self.current.pull_samples(output);
 
         if filled < output.len() && self.current.is_finished() {
@@ -156,43 +142,34 @@ impl PlaybackSource {
                 // advanced via the chain never reaches the completion path.
                 let (finished_fmt, decode_error_count, samples_decoded) = self.completion_event();
                 let crossing = TrackCrossing {
-                    finished_track_id: finished_fmt.track_id.clone(),
+                    finished_fmt,
                     decode_error_count,
                     samples_decoded,
-                    incoming_track_id: next_fmt.track_id.clone(),
+                    incoming_fmt: next_fmt.clone(),
                 };
                 self.current = next;
                 self.current_fmt = next_fmt;
-                // Notify the service to promote track bookkeeping. Matches
-                // the existing completion-signal pattern (a send from the
-                // audio callback); fired only at track boundaries, not per
-                // callback. A failed send means the receiver was dropped
-                // (service shutting down) — log it once, the boundary's stats
-                // are then forfeit for this crossing.
-                if self.boundary_tx.send(crossing).is_err() {
-                    warn!("Failed to send track boundary signal");
-                }
+                audio_events.push_required(AudioEvent::TrackCrossing(crossing));
                 filled += self.current.pull_samples(&mut output[filled..]);
             }
         }
 
-        self.log_starvation_if_needed(filled);
+        self.record_starvation_if_needed(filled, audio_events);
         filled
     }
 
-    fn log_starvation_if_needed(&mut self, filled: usize) {
+    fn record_starvation_if_needed(&mut self, filled: usize, audio_events: &mut AudioEventSender) {
         if filled > 0 {
             if let Some(started) = self.starvation_started.take() {
                 let starved = started.elapsed();
                 if starved >= STARVATION_LOG_AFTER {
-                    debug!(
-                        track_id = %self.current_fmt.track_id,
-                        starved_ms = starved.as_millis(),
-                        position_ms = self.position().as_millis(),
-                        samples_decoded = self.current.samples_decoded(),
-                        decode_errors = self.current.decode_error_count(),
-                        "playback source resumed after decoded sample starvation"
-                    );
+                    audio_events.push(AudioEvent::StarvationEnded {
+                        fmt: self.current_fmt.clone(),
+                        starved_ms: duration_millis(starved),
+                        position_ms: duration_millis(self.position()),
+                        samples_decoded: self.current.samples_decoded(),
+                        decode_errors: self.current.decode_error_count(),
+                    });
                 }
                 self.last_starvation_log = None;
             }
@@ -213,16 +190,15 @@ impl PlaybackSource {
                 .last_starvation_log
                 .is_none_or(|last| now.duration_since(last) >= STARVATION_LOG_EVERY)
         {
-            warn!(
-                track_id = %self.current_fmt.track_id,
-                starved_ms = starved.as_millis(),
-                position_ms = self.position().as_millis(),
-                producer_finished = self.current.producer_finished(),
-                samples_decoded = self.current.samples_decoded(),
-                decode_errors = self.current.decode_error_count(),
-                has_next = self.next.is_some(),
-                "playback source has no decoded samples while current track is not finished"
-            );
+            audio_events.push(AudioEvent::Starved {
+                fmt: self.current_fmt.clone(),
+                starved_ms: duration_millis(starved),
+                position_ms: duration_millis(self.position()),
+                producer_finished: self.current.producer_finished(),
+                samples_decoded: self.current.samples_decoded(),
+                decode_errors: self.current.decode_error_count(),
+                has_next: self.next.is_some(),
+            });
             self.last_starvation_log = Some(now);
         }
     }
@@ -257,6 +233,7 @@ impl PlaybackSource {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::playback::audio_output::audio_event_channel;
     use crate::playback::track_stream::create_track_stream_pair;
 
     fn fmt(track_id: &str) -> TrackFmt {
@@ -294,8 +271,8 @@ mod tests {
         assert_eq!(sink2.push_samples(&[10.0, 11.0]), 2);
         sink2.mark_finished();
 
-        let (boundary_tx, mut boundary_rx) = tokio::sync::mpsc::unbounded_channel();
-        let mut source = PlaybackSource::new(src1, fmt("t1"), boundary_tx);
+        let (mut audio_tx, mut audio_rx) = audio_event_channel();
+        let mut source = PlaybackSource::new(src1, fmt("t1"));
         source.stage_next(src2, fmt("t2"));
         assert!(source.has_next());
         assert!(!source.is_finished());
@@ -303,18 +280,21 @@ mod tests {
 
         // One pull spans the boundary: track 1 then track 2, contiguous.
         let mut out = [0.0f32; 8];
-        let n = source.pull_samples(&mut out);
+        let n = source.pull_samples(&mut out, &mut audio_tx);
         assert_eq!(n, 5, "should yield track 1 (3) + track 2 (2)");
         assert_eq!(&out[..5], &[1.0, 2.0, 3.0, 10.0, 11.0]);
 
         // The boundary fired exactly once, carrying t1's finishing stats and
         // both tracks' identities.
-        let crossing = boundary_rx.try_recv().unwrap();
-        assert_eq!(crossing.finished_track_id, "t1");
-        assert_eq!(crossing.incoming_track_id, "t2");
+        let crossing = match audio_rx.pop().unwrap() {
+            AudioEvent::TrackCrossing(crossing) => crossing,
+            event => panic!("expected crossing event, got {event:?}"),
+        };
+        assert_eq!(crossing.finished_fmt.track_id, "t1");
+        assert_eq!(crossing.incoming_fmt.track_id, "t2");
         assert_eq!(crossing.decode_error_count, 7);
         assert_eq!(crossing.samples_decoded, 3);
-        assert!(boundary_rx.try_recv().is_err());
+        assert!(audio_rx.pop().is_none());
 
         // After the crossing the fmt advanced to the new track.
         assert_eq!(source.position_event().0.track_id, "t2");
@@ -332,15 +312,15 @@ mod tests {
         assert_eq!(sink.push_samples(&[1.0, 2.0]), 2);
         sink.mark_finished();
 
-        let (boundary_tx, mut boundary_rx) = tokio::sync::mpsc::unbounded_channel();
-        let mut source = PlaybackSource::new(src, fmt("t1"), boundary_tx);
+        let (mut audio_tx, mut audio_rx) = audio_event_channel();
+        let mut source = PlaybackSource::new(src, fmt("t1"));
 
         let mut out = [0.0f32; 8];
-        assert_eq!(source.pull_samples(&mut out), 2);
+        assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 2);
         assert_eq!(&out[..2], &[1.0, 2.0]);
         assert!(source.is_finished());
         assert!(
-            boundary_rx.try_recv().is_err(),
+            audio_rx.pop().is_none(),
             "no boundary without a staged next"
         );
     }
@@ -357,8 +337,8 @@ mod tests {
         assert_eq!(sink2.push_samples(&[10.0]), 1);
         sink2.mark_finished();
 
-        let (boundary_tx, mut boundary_rx) = tokio::sync::mpsc::unbounded_channel();
-        let mut source = PlaybackSource::new(src1, fmt("t1"), boundary_tx);
+        let (mut audio_tx, mut audio_rx) = audio_event_channel();
+        let mut source = PlaybackSource::new(src1, fmt("t1"));
         source.stage_next(src2, fmt("t2"));
         let taken = source.take_next();
         assert!(taken.is_some());
@@ -367,9 +347,9 @@ mod tests {
         assert!(!source.has_next());
 
         let mut out = [0.0f32; 8];
-        assert_eq!(source.pull_samples(&mut out), 1);
+        assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 1);
         assert!(source.is_finished());
-        assert!(boundary_rx.try_recv().is_err());
+        assert!(audio_rx.pop().is_none());
     }
 
     /// Replay gain is per-track, so crossing into the staged next track swaps in
@@ -385,8 +365,8 @@ mod tests {
         assert_eq!(sink2.push_samples(&[3.0]), 1);
         sink2.mark_finished();
 
-        let (boundary_tx, _boundary_rx) = tokio::sync::mpsc::unbounded_channel();
-        let mut source = PlaybackSource::new(src1, fmt_gain("t1", 0.5), boundary_tx);
+        let (mut audio_tx, _audio_rx) = audio_event_channel();
+        let mut source = PlaybackSource::new(src1, fmt_gain("t1", 0.5));
         source.stage_next(src2, fmt_gain("t2", 2.0));
 
         // Before the crossing the callback reads the current track's gain.
@@ -394,7 +374,7 @@ mod tests {
 
         // One pull spans the boundary into t2.
         let mut out = [0.0f32; 8];
-        assert_eq!(source.pull_samples(&mut out), 3);
+        assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 3);
 
         // After the crossing the incoming track's gain takes effect.
         assert_eq!(source.current_replay_gain_linear(), 2.0);
@@ -409,8 +389,7 @@ mod tests {
         let (sink1, src1, _r1) = create_track_stream_pair(44100, 1);
         let (sink2, src2, _r2) = create_track_stream_pair(44100, 1);
 
-        let (boundary_tx, _boundary_rx) = tokio::sync::mpsc::unbounded_channel();
-        let mut source = PlaybackSource::new(src1, fmt("t1"), boundary_tx);
+        let mut source = PlaybackSource::new(src1, fmt("t1"));
         source.stage_next(src2, fmt("t2"));
 
         assert!(!sink1.is_cancelled());

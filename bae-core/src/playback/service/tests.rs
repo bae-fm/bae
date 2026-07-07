@@ -100,11 +100,9 @@ fn clear_preloaded_next_cancels_held_unshared_buffer() {
 fn clear_preloaded_next_removes_staged_source() {
     let (_current_sink, current_source, _current_ready) = create_track_stream_pair(44_100, 2);
     let (_next_sink, next_source, _next_ready) = create_track_stream_pair(44_100, 2);
-    let (boundary_tx, _boundary_rx) = tokio_mpsc::unbounded_channel();
     let gapless = Arc::new(Mutex::new(source::PlaybackSource::new(
         current_source,
         test_track_fmt("current-track"),
-        boundary_tx,
     )));
     gapless
         .lock()
