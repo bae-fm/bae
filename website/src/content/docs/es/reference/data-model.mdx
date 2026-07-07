@@ -1,0 +1,43 @@
+---
+title: Modelo de datos
+description: El esquema, que se sincroniza y que permanece en el dispositivo
+---
+
+El catálogo de bae es SQLite ordinario, declarado a [coven](https://coven.bae.fm) tabla por tabla: las tablas sincronizadas llevan un reloj de conflicto y viajan a cada dispositivo; las tablas no declaradas nunca salen del dispositivo. La division es la decision más determinante del modelo de datos, así que está página se organiza alrededor de ella.
+
+## El grafo del catálogo
+
+El corazon sincronizado del esquema:
+
+- **`artists`**, **`albums`**, **`works`**: la capa de agrupación. Un álbum agrega sus lanzamientos y apunta a uno principal; las obras forman un grafo padre/hijo para estructura clásica.
+- **`releases`**: la entidad central, una fila por edición. Lleva los datos de edición (sello, número de catálogo, código de barras, país, formato, año), la fuente de metadatos, un hash de contenido de la carpeta importada y la sonoridad medida del álbum.
+- **`release_identities`**: lo que un lanzamiento *es*, por fuente. Sin filas significa desconocido; una fila de MusicBrainz o Discogs con un release ID significa exacto; sin uno, aproximado. Un lanzamiento puede contener identidades en ambas fuentes a la vez.
+- **`tracks`** con **`track_artists`**, más **`release_artist_roles`** y **`track_artist_roles`**: listas de pistas y créditos, cada crédito etiquetado con su fuente.
+- **`track_works`**, **`work_parts`**, **`work_artists`**: grabaciones vinculadas a las obras que interpretan.
+- **`audio_formats`** y **`audio_format_segments`**: las especificaciones de reproducción. Por pista: codec, frecuencia de muestreo, profundidad de bits, canales, sonoridad y pico medidos, y longitudes de pregap. Los segmentos mapean una pista a ventanas ordenadas de bytes y muestras de sus archivos fuente, que es como una pista de una copia CUE, incluido el pregap, puede abarcar regiones de un archivo grande o varios archivos.
+- **`release_files`**, **`covers`**, **`artist_images`**: tablas que llevan blobs. Las filas son entradas de catálogo; los bytes viven en la capa de blobs de coven (ver abajo).
+
+## Sincronizado, condicionado, local
+
+Todo lo anterior se sincroniza, pero no incondicionalmente. `releases` se declara como raíz condicionada por su columna `remote`: una fila de lanzamiento y todo su subárbol (pistas, archivos, créditos, formatos, portada) se sincronizan solo mientras `remote` sea true, es decir, mientras el lanzamiento esté administrado en la nube. Cambiar un lanzamiento a administrado publica el subárbol; un lanzamiento no administrado permanece por completo en el dispositivo que lo importó, aunque su esquema esté sincronizado. Las tablas ancestras (`artists`, `albums`, `works`) se sincronizan solo mientras algún lanzamiento sincronizado todavía las referencia, así que un dispositivo nunca recibe un artista sin nada debajo.
+
+Tablas totalmente locales, nunca declaradas a coven:
+
+- **`playback_state`**: pista actual, posición, cola, volumen, aleatorio y repetición. La reproducción es un hecho del dispositivo.
+- **`imports`**: seguimiento de operaciones de importación.
+- **`release_metadata`**: JSON sin procesar archivado de MusicBrainz y Discogs, guardado para reinterpretación futura.
+- **`attribution_names`**: nombres de visualización para claves de miembros.
+
+Cada tabla sincronizada lleva una columna `_updated_at` de reloj lógico híbrido, el registro por el que la combinación campo por campo de coven ordena ediciones concurrentes; una prueba exige que el conjunto sincronizado y el conjunto que lleva reloj sean exactamente iguales.
+
+## Blobs
+
+El audio y las imágenes pasan por la capa de blobs de coven en tres espacios de nombres, cada uno con su propio presupuesto de caché por dispositivo: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+
+Los archivos de lanzamiento los aporta el usuario y se guardan en caché bajo demanda: para un lanzamiento no administrado el blob es una referencia externa al archivo del usuario en su ruta original; para uno administrado es un objeto subido que se trae a la caché en la primera lectura. Las portadas e imágenes de artistas las aporta el host y se guardan en caché con anticipación: bae produce los bytes (las portadas se vuelven a renderizar como miniaturas JPEG de como máximo 600px de ancho), y cada dispositivo las obtiene al traer cambios para que las cuadrículas se muestren localmente.
+
+En un hogar opaco, los blobs se suben bajo claves de contenido sin significado. En un hogar explorable cada fila de blob registra una ruta legible en la nube (`{artist}/{album}/{filename}` para audio, `{album}/{release}/cover.{ext}` para portadas), calculada una vez al subir para que un cambio de nombre posterior nunca mueva el objeto.
+
+## Identidad de una copia
+
+`releases.content_hash` es un SHA-256 sobre la estructura de archivos de la carpeta importada (rutas relativas y tamaños), independiente de donde esté la carpeta en disco. Así reconoce bae una copia ya importada cuando aparece otra vez en una carpeta vigilada, y así las reimportaciones encuentran el lanzamiento que deben reemplazar.

@@ -1,0 +1,25 @@
+---
+title: Exportación
+description: Saca música en la forma que necesitas
+---
+
+No quedar encerrado funciona en ambos sentidos: bae no cambia tus archivos al entrar, y no los retiene al salir. Los lanzamientos no administrados ya son archivos en tus carpetas. Los lanzamientos administrados pueden volver a hacerse locales en cualquier momento, byte por byte. Y cuando necesitas una forma *distinta*, una codificación apta para teléfono, una imagen lista para grabar, exportar la produce sin tocar los originales.
+
+## Dos exportaciones
+
+- **Exportación de pista**: clic derecho en una pista, **Save As**, elige un formato, listo.
+- **Exportación de lanzamiento**: desde el menú del álbum o el Administrador de almacenamiento, exporta un lanzamiento completo a una carpeta. Se ejecuta en una cola con progreso, pausa y reintento.
+
+Los archivos originales se exportan tal como están. Todo lo demás se codifica al salir.
+
+## Preajustes
+
+Los formatos de exportacion son preajustes que defines una vez en Settings: FLAC, MP3, Opus, WAV o AIFF, con los parámetros del codec (profundidad de bits para los formatos sin pérdida, bitrate para los con pérdida) y una plantilla de nombre de archivo construida desde tokens como título, artista, álbum, año y número de pista. Define un preajuste predeterminado para pistas y otro para lanzamientos, y elige si las exportaciones de lanzamiento siempre piden destino o siempre usan una carpeta fija.
+
+## Pregaps en exportaciones
+
+Las copias de CD con pregaps plantean una pregunta real al salir: adónde va el audio oculto? Cada preajuste elige una política:
+
+- **Adjuntar a la pista anterior**, la convención comun, con la elección de si el audio oculto antes de la pista uno se conserva al inicio de la pista uno o se omite.
+- **Excluir** los pregaps por completo: límites limpios de pista, audio oculto omitido.
+- **Archivo único con CUE**: el disco como un archivo de audio más una hoja CUE, preservando exactamente la disposición original.

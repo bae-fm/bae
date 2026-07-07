@@ -1,0 +1,34 @@
+---
+title: Motor de reproducción
+description: Decodificación, sin pausas, pregaps y sonoridad, con precision
+---
+
+El contrato del motor de reproducción es fidelidad a la fuente: decodificar los bytes originales del usuario, a la frecuencia propia de la fuente, con la estructura del lanzamiento intacta. Esta página es la especificación detrás de eso.
+
+## Decodificación
+
+Toda decodificación es FFmpeg, dentro del proceso, en cada plataforma: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack y DSD son lo que acepta importación, y cualquier cosa que FFmpeg reporte desde los bytes, no la extensión del archivo, es el codec registrado. Las muestras salen como float de 32 bits para la etapa de salida; la conversión de formato de muestra es la única conversión realizada.
+
+La salida es la API nativa de audio de la plataforma (Core Audio via cpal en escritorio e iOS, AAudio en Android). El flujo de salida se configura con la **frecuencia de muestreo y el número de canales de la fuente**: un archivo de 96 kHz suena a 96 kHz. No hay etapa de remuestreo. El dispositivo de salida predeterminado se resuelve en cada construcción de flujo, así que la reproducción sigue los cambios de dispositivo del sistema. En Android, los codecs admitidos por hardware pueden omitir FFmpeg por completo para decodificación descarga.
+
+## Lecturas de transmision
+
+La reproducción no necesita archivos completos. El audio se lee mediante un buffer disperso que trae rangos de bytes bajo demanda, desde un archivo local, la caché o la nube, y la búsqueda mapea la muestra objetivo a una posición de byte para que una búsqueda en una región no descarga empiece a traer desde ahí. Un árbitro de búsqueda prioriza las lecturas de la pista en reproducción sobre la precarga, así que una pista próxima nunca retrasa la actual.
+
+## Pistas como ventanas
+
+Una pista no es un archivo; es una lista ordenada de ventanas de muestras sobre uno o más archivos, construida al importar desde la hoja CUE o desde la propia extensión del archivo. Esta única representacion lleva cada forma de disco: un archivo por pista, un disco entero en una imagen, un pregap que vive al final de un archivo y al inicio de otro, y copias con pérdida cortadas en un archivo por pista.
+
+Las ventanas de pregap se marcan como tales. La reproducción entra a una pista por su pregap cuando tiene uno (index 00, audio de pista oculta incluido) mientras el reloj muestra tiempo de pista: la posición queda fijada en cero hasta que empieza la pista propiamente dicha, y la duración mostrada excluye el pregap, igual que un reproductor de CD.
+
+## Sin pausas
+
+La siguiente pista se abre y se guarda en buffer mientras suena la actual. Cuando ambas comparten frecuencia de muestreo y número de canales, el motor las encadena dentro de la llamada de audio en vivo: el flujo nunca se detiene, y el límite es exacto a nivel de muestra. Cuando los formatos difieren, el flujo se reconstruye, que es el caso en que un cambio de formato hace audible un límite de todas formas.
+
+## Sonoridad
+
+La importación mide sonoridad integrada (EBU R128) y pico verdadero, por pista y por álbum, durante la pasada de verificación de decodificación. Replay gain se deriva de esas mediciones al reproducir, nunca se graba en los archivos: objetivo -18 LUFS, limitado para que el pico verdadero no recorte, aplicado por pista o por álbum, cambiando limpiamente en límites sin pausa. El modo se distribuye actualmente sin UI de configuración y está desactivado de forma predeterminada; puede ajustarse en el archivo de configuración de la biblioteca.
+
+## Pausas de cara
+
+Las listas de pistas llevan su estructura de cara y disco, y el motor puede detenerse en un límite de cara, mostrando una indicación para continuar, cuando el usuario activa pausa entre caras. La detencion es un estado del servicio de reproducción, no silencio decodificado, así que reanudar es inmediato.

@@ -1,0 +1,37 @@
+---
+title: Almacenamiento en la nube
+description: Proveedores, autenticación y la forma del hogar en la nube
+---
+
+El hogar en la nube es una ubicación en almacenamiento que el usuario ya posee. Cada proveedor se maneja mediante la misma interfaz de almacenamiento en [coven](https://coven.bae.fm); lo que difiere por proveedor es la autenticación y como se concede acceso a un segundo dispositivo.
+
+## Proveedores
+
+| Proveedor | Auth | Acceso para un dispositivo nuevo |
+|---|---|---|
+| Compatible con S3 | Access key + secret | Credenciales incluidas en la invitación |
+| Google Drive | OAuth (PKCE) | Carpeta compartida con la cuenta de quien se une |
+| Dropbox | OAuth (PKCE) | Carpeta compartida con la cuenta de quien se une |
+| OneDrive | OAuth (PKCE) | Carpeta compartida con la cuenta de quien se une |
+| iCloud (CloudKit) | Apple ID, sin inicio de sesión | Recurso compartido de CloudKit aceptado por quien se une |
+
+Compatible con S3 cubre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO y cualquier otro que hable la API; bucket, región, endpoint y prefijo de clave son configurables, y el bucket se prueba antes de guardar la configuración para que un error de tipeo falle al configurar, no en la primera sincronización. Los proveedores OAuth existen solo en la edición completa **bae**; las compilaciones **baeium** los excluyen.
+
+## OAuth
+
+El inicio de sesión es un flujo de código de autorización con PKCE, como cliente público. En escritorio la redirección llega a un servidor loopback enlazado a un puerto local para la única llamada de retorno; en móvil la app captura en su lugar una redirección de esquema personalizado. bae solicita el alcance más estrecho que ofrece el proveedor para el trabajo; en Google Drive eso es acceso solo a los archivos que la app crea. Los tokens se guardan en el llavero del sistema operativo, se actualizan con la concesión de actualización del proveedor, y una actualización rechazada aparece como solicitud de reconexión en vez de un bucle silencioso de reintentos.
+
+CloudKit no necesita ningún flujo: el controlador CloudKit de la plataforma, implementado en la app y entregado al núcleo, opera como el Apple ID con sesión iniciada.
+
+## La disposición del hogar
+
+Dentro del hogar, coven dispone flujos de changeset por dispositivo, generaciones de snapshot, registros de membresía y espacios de nombres de blobs. bae aporta tres espacios de nombres de blobs: `release_files`, `covers` y `artist_images`.
+
+Como se nombran los objetos depende del modo de almacenamiento del hogar, fijado al crearlo:
+
+- **Opaco**: los objetos se cifran y se almacenan bajo claves derivadas del contenido que no revelan nada. Este es el modo de confianza completa en la criptografía; consulta [Cifrado](/es/reference/encryption).
+- **Explorable**: los objetos son texto plano en rutas legibles registradas por blob al subir: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. El bucket funciona también como árbol de archivos utilizable; el intercambio es que no hay cifrado ni membresía, así que los hogares explorables no se pueden compartir con otras personas.
+
+## Comportamiento en redes reales
+
+Las lecturas para reproducción son por rangos: el reproductor transmite las ventanas de bytes que necesita en vez de archivos completos. Las subidas por encima de un umbral de tamaño usan multipart donde el proveedor lo admite. Los límites de frecuencia y errores transitorios del proveedor reintentan con espera exponencial, respetando el retry-after del proveedor cuando se entrega; los tokens OAuth caducados se actualizan en su sitio. La bandeja de salida de sincronización sobrevive reinicios: una subida interrumpida al cerrar la app se reanuda en vez de empezar de nuevo.

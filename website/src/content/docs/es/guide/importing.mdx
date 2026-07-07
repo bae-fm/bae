@@ -1,0 +1,64 @@
+---
+title: Importación
+description: Empareja tus carpetas con lanzamientos reales
+---
+
+Una carpeta de copias sabe casi nada sobre sí misma. El lanzamiento del que salió, la edición, el sello, los créditos, dónde termina realmente la pista 12: todo eso vive en bases de datos como MusicBrainz y Discogs, no en tus nombres de archivo. Importar es como bae conecta ambos lados: le apuntas a tu música, averigua qué lanzamiento es cada carpeta, y la biblioteca registra la carpeta como ese lanzamiento.
+
+La importación ocurre en escritorio (macOS, Windows). Tus archivos se leen, nunca se cambian: bae no mueve, renombra, cambia etiquetas ni recodifica nada. Consulta [Almacenamiento y sin conexión](/es/guide/storage) para saber dónde viven los archivos después de importarlos.
+
+## Carpetas vigiladas
+
+Cambia a la sección **Import** y agrega una carpeta: elige una, arrástrala a la ventana o pulsa <kbd>⌘I</kbd>. bae vigila la carpeta desde entonces. La música nueva que pongas ahí aparece por sí sola como nuevos candidatos; no vuelves a analizar a mano. Las carpetas que todavía se están descargando se ignoran hasta que terminan.
+
+Un análisis reconoce lanzamientos con las formas que toman las copias reales:
+
+| Disposición | Cómo se ve |
+|--------|-------------------|
+| Archivo por pista | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE + imagen | `álbum.cue` + `álbum.flac`, un archivo para todo el disco |
+| Varios discos | subcarpetas `CD1/`, `CD2/`, con cualquiera de las dos formas dentro |
+| Colecciones | una carpeta de carpetas, cada una su propio lanzamiento |
+
+bae importa los formatos que reproduce: FLAC, MP3, APE, ALAC y AAC en `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack y DSD (`.dsf`/`.dff`). Las imágenes y documentos (hojas CUE, registros de copia, archivos de texto) en la carpeta se reconocen y se conservan con el lanzamiento.
+
+## Identificar un lanzamiento
+
+Selecciona un candidato y bae empieza a identificarlo. En vez de adivinar por etiquetas, lee las pruebas de la carpeta y busca cada pieza:
+
+- **Disc ID.** Una huella de la disposición exacta de pistas del CD, calculada desde el registro de copia o la hoja CUE. Cuando coincide, identifica la edición precisa del CD.
+- **Código de barras.** Leído de escaneos de portada en la carpeta mediante reconocimiento de texto, o desde la hoja CUE.
+- **Números de catálogo y texto.** Números de catálogo encontrados en imágenes y en nombres de archivos y carpetas, usados para reducir los resultados.
+
+Las señales se buscan en MusicBrainz y Discogs al mismo tiempo, y los resultados se contrastan. Cada señal aparece como una insignia sobre los resultados: puedes ver que se encontró, de dónde vino (pasa el cursor para ver el origen: TOC del disco, hoja CUE, escaneo de portada, nombre de carpeta), y desactivar señales individuales si una confunde.
+
+Tres resultados:
+
+- **Encontrado.** Las pruebas coinciden en un grupo de lanzamientos. Eliges la edición exacta de su lista.
+- **Conflicto.** Dos señales apuntan a lanzamientos distintos, por ejemplo el disc ID y el código de barras no concuerdan. bae muestra ambos lados y eliges en cuál confiar, o ignoras una señal.
+- **No se encontró nada.** Busca a mano: artista y álbum, número de catálogo o código de barras, en cualquiera de las dos bases de datos. El texto reconocido de las imágenes se ofrece como autocompletado.
+
+También puedes **omitir la identificación** e importar como lanzamiento desconocido. bae recurre entonces a las etiquetas incrustadas de tus archivos para los nombres, y puedes volver a identificarlo más tarde, cuando el lanzamiento exista en una base de datos o tengas mejores pruebas.
+
+## Exacto o aproximado
+
+Cuando seleccionas una coincidencia, bae la compara con tus archivos y señala una diferencia en el número de pistas. Entonces declaras que es la coincidencia:
+
+- **Exacto**: tus archivos son esta edición.
+- **Solo metadatos**: álbum correcto, pero no necesariamente esta edición exacta. bae usa los metadatos y recuerda que la edición es aproximada.
+
+Si el lanzamiento ya está en tu biblioteca, o hay otra edición del mismo álbum, bae te lo dice antes de que importes un duplicado.
+
+## Confirmar e importar
+
+El panel de confirmación muestra todo lo que escribirá la importación:
+
+- **Portada.** Elegida del arte de las bases de datos, de imágenes en tu carpeta o del arte incrustado en los archivos. Puedes cambiarla más tarde.
+- **Metadatos.** Álbum, artista, año, sello, número de catálogo, país, código de barras y cada pista: todo editable aquí mismo antes de guardar nada.
+- **Almacenamiento.** Si hay un hogar en la nube conectado, elige si bae debe administrar los archivos en tu nube y si también debe conservar una copia local. Consulta [Almacenamiento y sin conexión](/es/guide/storage).
+
+La importación se ejecuta en segundo plano: bae verifica que cada pista se decodifique completa, mide sonoridad para el álbum y cada pista, guarda el lanzamiento y, para importaciones administradas, empieza la subida. La lista de candidatos pasa a la siguiente carpeta, y el lanzamiento se puede reproducir de inmediato.
+
+## Fuentes de datos
+
+**MusicBrainz** no necesita cuenta ni clave. **Discogs** requiere tu propio token de API gratuito; pégalo en Settings, y bae te avisa si deja de funcionar. Sin token, la búsqueda en Discogs y los metadatos provenientes de Discogs no están disponibles, y todo lo demás funciona. Ambos servicios limitan la frecuencia; bae espacia sus solicitudes para mantenerse dentro de los límites.

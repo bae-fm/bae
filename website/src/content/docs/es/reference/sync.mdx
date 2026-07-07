@@ -1,0 +1,40 @@
+---
+title: Sincronización
+description: Como se mueven los cambios entre dispositivos y como se combinan
+---
+
+La sincronización de bae es la sincronización de [coven](https://coven.bae.fm): bae declara sus tablas y blobs, y coven hace el resto. Esta página describe los mecanismos como se aplican a bae; la propia documentación de coven cubre cada pieza en profundidad.
+
+## Captura
+
+coven posee la conexión SQLite, así que cada escritura que confirma bae pasa por él. La extensión de sesiones de SQLite registra exactamente qué cambió en cada transacción; los cambios a tablas sincronizadas se convierten en un **changeset**, sellado con la clave de biblioteca y firmado con la clave de identidad del dispositivo. Sin cálculo de diferencias, sin marcas de suciedad: la captura es una propiedad de la conexión, y una escritura no puede perderse.
+
+## Flujos
+
+Cada dispositivo agrega sus changesets a su propio flujo en el hogar en la nube, numerados secuencialmente. Los dispositivos nunca escriben en los flujos de otros, así que no hay conflictos de escritura en almacenamiento, y cada dispositivo lleva un cursor por flujo de par. Un ciclo de sincronización empuja la bandeja de salida local, luego trae cada flujo de par desde su cursor hacia adelante, verificando la firma de cada changeset y la membresía de su autor antes de aplicarlo.
+
+El ciclo se ejecuta después de cambios locales, con un temporizador en reposo con espera progresiva (hasta cinco minutos entre consultas), e inmediatamente con **Sync Now**. Los fallos esperan y reintentan; el bucle reporta el resultado de cada ciclo a la UI como estado, texto de error y número de filas aplicadas.
+
+## Combinación
+
+Que dos dispositivos editen la misma biblioteca mientras están separados es el caso normal, no la excepción. Cuando sus cambios se encuentran:
+
+- Las ediciones a **filas distintas o columnas distintas** se aplican ambas. Editar el año de un lanzamiento en el portátil y su sello en el escritorio produce ambos cambios.
+- Las ediciones a la **misma columna de la misma fila** se ordenan por el reloj lógico híbrido `_updated_at` de la fila: gana la edición posterior, de forma determinista e idéntica en cada dispositivo.
+- **Las eliminaciones ganan** sobre ediciones concurrentes: un lanzamiento eliminado en un dispositivo sigue eliminado aunque otro dispositivo lo haya editado en el mismo intervalo.
+
+No hay UI de conflictos porque no hay estado sin resolver: cada dispositivo converge al mismo resultado desde cualquier orden de aplicación.
+
+## Arranque
+
+Un dispositivo que se une o restaura no reproduce el historial desde el principio. Descarga un **snapshot**, una imagen SQLite completa publicada periódicamente en el hogar en la nube, y luego aplica solo los changesets que cada flujo acumuló después. Los metadatos del snapshot registran la versión del esquema y los cursores por flujo que contiene.
+
+## Versiones de esquema
+
+El esquema de bae migra por una escalera numerada, y el peldaño superior de la escalera se estampa en cada changeset que escribe el dispositivo. Un dispositivo que trae un changeset de un esquema más nuevo que el suyo aparca ese flujo, sin aplicar nada posterior, hasta que la app se actualiza; nada se pierde y nada se aplica mal. El propio archivo de base de datos se niega a abrir bajo un binario más antiguo que su esquema.
+
+Más gruesa que la versión de esquema es la **era de compatibilidad**: la revisión fijada de coven incluida en cada binario. Dos compilaciones sincronizan solo dentro de una era; una ruptura del formato de red de coven es una era nueva y un aumento de versión major en cada app. Antes de 1.0, cada compilación está en la era cero y los formatos cambian sin migración.
+
+## Qué ve el proveedor
+
+En un hogar opaco el proveedor almacena changesets cifrados, blobs cifrados y registros de membresía firmados; puede contar objetos y observar tamaños y tiempos, y no puede leer nada de ello. Cada objeto que trae un dispositivo se verifica por firma y membresía, antes de que algo toque la base de datos: el almacenamiento es un buzón tonto y no confiable. Consulta [Cifrado](/es/reference/encryption) e [Identidad y membresía](/es/reference/membership).

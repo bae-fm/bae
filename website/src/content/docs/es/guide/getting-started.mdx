@@ -1,0 +1,44 @@
+---
+title: Primeros pasos
+description: Crea una biblioteca, importa tu primer álbum y reprodúcelo
+---
+
+bae es un hogar para los álbumes que posees. Construyes la biblioteca en tu escritorio, y está te sigue a todos tus dispositivos: sincronizada mediante el almacenamiento en la nube que ya tienes, cifrada para que solo tus dispositivos puedan leerla.
+
+Las apps de escritorio (macOS, Windows) son la herramienta completa: crean bibliotecas, importan música y editan metadatos. Las apps de teléfono (iOS, Android) son reproductores: se unen a una biblioteca que creo tu escritorio, y luego exploran, descargan y reproducen.
+
+## Crear una biblioteca
+
+Abre bae en tu escritorio. Si no hay ningúna biblioteca en la máquina, la pantalla de bienvenida ofrece tres opciones:
+
+- **Crear una biblioteca nueva**, si este es tu primer dispositivo.
+- **Unirse a una biblioteca**, si otro dispositivo ya tiene una y su propietario te aprobará. Consulta [Dispositivos y miembros](/es/guide/devices).
+- **Restaurar desde la nube**, si es tu propia biblioteca y tienes su código de recuperación. Consulta [Dispositivos y miembros](/es/guide/devices#recovery-codes).
+
+Crea una. Una biblioteca empieza local: todo vive en está máquina, nada necesita una cuenta y no interviene ningúna nube hasta que conectas una.
+
+## Importar tu primer álbum
+
+1. Cambia a la sección **Import** en la barra de título.
+2. Agrega una carpeta de música. Puedes elegirla, arrastrarla a la ventana o pulsar <kbd>⌘I</kbd>.
+3. bae analiza la carpeta y enumera los lanzamientos que encuentra. Selecciona uno.
+4. bae lo identifica con MusicBrainz y Discogs y muestra la coincidencia. Confirma la edición, elige una portada y ajusta cualquier detalle.
+5. Haz clic en **Import**.
+
+Tus archivos no se mueven, copian ni reescriben. bae los cataloga dónde están. El flujo completo, incluido que hacer cuando la identificación necesita ayuda, está en [Importación](/es/guide/importing).
+
+## Reproducirlo
+
+De vuelta en la sección **Library**, el álbum está en la cuadrícula. Haz clic en el y pulsa reproducir. La reproducción usa tus archivos originales, con su calidad original. [Reproducción](/es/guide/playback) cubre la cola, aleatorio y repetición, y los detalles que bae conserva: pregaps de CD, separaciones de caras en vinilo, álbumes sin pausas.
+
+## Llevarla a todas partes
+
+Cuando quieras tener la biblioteca en más de un dispositivo, conecta un hogar en la nube: tu propio Google Drive, Dropbox, OneDrive, iCloud o cualquier bucket compatible con S3. Todo lo que bae pone allí se cifra antes de subirse; el proveedor lo almacena pero no puede leerlo.
+
+- [Sincronización](/es/guide/sync): conecta un hogar en la nube y elige que almacena.
+- [Dispositivos y miembros](/es/guide/devices): agrega tu teléfono u otro escritorio.
+- [Almacenamiento y sin conexión](/es/guide/storage): conserva música en el dispositivo, o transmitela desde tu nube y fija lo que necesitas sin conexión.
+
+## Dónde viven las cosas
+
+Cada biblioteca guarda su base de datos y configuración en `~/.bae/libraries/` en escritorio. Tu audio permanece dónde lo importaste, a menos que le pidas a bae que lo administre en tu nube. Las claves y credenciales viven en el llavero del sistema operativo, no en archivos.

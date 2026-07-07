@@ -1,0 +1,28 @@
+---
+title: Cifrado
+description: Que es la clave de biblioteca, dónde vive y que texto cifrado conserva el proveedor
+---
+
+Todo lo que bae pone en un hogar opaco en la nube se cifra antes de salir del dispositivo. bae no implementa criptografía propia: todo el esquema es de [coven](https://coven.bae.fm), y está página describe cómo lo usa bae. Los hogares explorables optan por no usarlo; nada de lo siguiente se aplica a ellos.
+
+## La clave de biblioteca
+
+Una biblioteca opaca tiene un secreto raíz: una clave aleatoria de 256 bits creada cuando se crea el hogar. Vive en el llavero del sistema operativo, nunca en un archivo; en plataformas Apple la entrada del llavero se sincroniza mediante iCloud Keychain. La configuración de bae guarda solo una huella de la clave, suficiente para distinguir una clave incorrecta de una correcta al desbloquear sin conservar el secreto.
+
+La clave viaja entre dispositivos de dos formas, ambas descritas en [Identidad y membresía](/es/reference/membership): sellada para la clave pública de un dispositivo aprobado durante una invitación, y transportada dentro de un código de recuperación.
+
+## Generaciones
+
+La clave de biblioteca es en realidad un llavero de generaciones numeradas. Eliminar un miembro agrega una generación nueva que el miembro eliminado nunca recibe: todo lo escrito después usa la generación nueva y le resulta ilegible, mientras los miembros restantes conservan cada generación y pueden leer todo el historial. Cada objeto sellado registra, en claro, que generación lo abre.
+
+## Que se sella
+
+Cada objeto en el hogar: changesets, snapshots, blobs de audio, imágenes, registros de membresía, objetos de control. Los objetos se sellan con XChaCha20-Poly1305 en fragmentos de 64 KB, cada fragmento autenticado, y vinculados a su contexto: un objeto sellado se descifra solo como el objeto para el que fue escrito, para está biblioteca, con está clave. La fragmentacion es la razon por la que la transmision funciona: el reproductor puede descifrar exactamente los rangos de bytes que trae.
+
+## Que puede ver el proveedor
+
+Conteo de objetos, tamaños de objetos, momento de subida y patrones de acceso. No nombres, no metadatos, no audio, no imágenes, no membresía. No hay recuperación del lado del servidor: un usuario que pierde cada dispositivo y cada copia de la clave ha perdido para siempre el texto cifrado de la biblioteca, que es el diseño funcionando como se pretendía.
+
+## Desbloquear y bloquear
+
+Abrir una biblioteca lee la clave desde el llavero. Si la biblioteca espera una clave y el llavero no la tiene, bae trata la biblioteca como bloqueada: pide la clave antes de abrir, validando la entrada contra la huella almacenada antes de guardarla de nuevo en el llavero. Bloquear una biblioteca elimina deliberadamente la clave del llavero; nada en el hogar en la nube puede leerse ni escribirse hasta que se introduzca otra vez.

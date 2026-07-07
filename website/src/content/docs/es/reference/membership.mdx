@@ -1,0 +1,35 @@
+---
+title: Identidad y membresía
+description: Claves como identidades, el intercambio de unión, roles y revocación
+---
+
+No hay sistema de cuentas en ningún lugar de bae. La identidad de un dispositivo es un par de claves Ed25519 que genera para sí mismo y conserva en el llavero del sistema operativo; la clave pública *es* la identidad. Quien pertenece a una biblioteca es un conjunto de registros firmados en el hogar en la nube, verificables por cualquiera que los tenga, emitidos por ningún servidor. La maquinaria es de [coven](https://coven.bae.fm); está página muestra como la usa bae.
+
+## Registros de membresía
+
+Cada propietario escribe un flujo de solo anexo de entradas de membresía firmadas en el hogar en la nube: está clave se agrego con este rol, está clave se elimino. Cada entrada enlaza a la anterior, y cada propietario firma una cabeza que declara la punta de su flujo, así que un proveedor que elimina o reordena registros se detecta en vez de ser creido. Lo que la biblioteca acepta es la unión de cada flujo verificado de propietarios.
+
+En cada descarga, el autor de cada changeset se comprueba contra este registro: firmado por un miembro actual, con un rol que puede escribir. Los changesets de dispositivos eliminados, de claves nunca agregadas o con firmas inválidas no se aplican. El proveedor almacena los registros pero no puede falsificarlos; solo quienes poseen claves de propietario pueden cambiar la membresía.
+
+## Roles
+
+**Owner** y **Member** leen y escriben la biblioteca; los propietarios además aprueban y eliminan dispositivos. El dispositivo fundador de bae es propietario y cada dispositivo que aprueba se une como miembro. (Existe un tercer rol en la maquinaria subyacente, un seguidor de solo lectura, que bae no asigna actualmente.)
+
+## El intercambio de unión
+
+Agregar un dispositivo es un intercambio de dos códigos con verificación humana explicita en medio:
+
+1. El dispositivo que se une genera su par de claves y muestra una **solicitud de unión**: su clave pública, una huella corta de ella y (para proveedores OAuth) la cuenta de nube con la que compartir la carpeta.
+2. Un propietario decodifica la solicitud, y las dos pantallas muestran la misma huella. La persona comprueba que coincidan; este es el paso que derrota una clave sustituida.
+3. La aprobación hace tres cosas a la vez: concede a la cuenta del recién llegado acceso al hogar en la nube (carpeta compartida en nubes de consumo, credenciales incrustadas en S3, un recurso compartido de CloudKit en iCloud), sella la clave de biblioteca para la clave pública del recién llegado, y firma una entrada de membresía que lo agrega. Todo se empaqueta en un **código de invitación**.
+4. El dispositivo que se une consume la invitación, abre la clave, arranca desde el snapshot más reciente y sincroniza.
+
+La invitación está sellada para la clave solicitante: interceptarla no concede nada.
+
+## Revocación
+
+Eliminar un miembro agrega una eliminación firmada y rota la clave de biblioteca a una generación nueva que la clave eliminada nunca recibe (consulta [Cifrado](/es/reference/encryption#generations)). En almacenamiento que puede revocar acceso, el acceso también se retira. Lo que ya se había sincronizado al dispositivo eliminado permanece con él; los datos no se pueden retirar. Todo lo posterior a la rotación queda fuera de su alcance.
+
+## Códigos de recuperación
+
+Un código de recuperación evita la membresía a propósito: son las coordenadas del hogar en la nube más la clave de biblioteca, en una sola cadena al portador, para restaurar tu propia biblioteca sin un aprobador sobreviviente. Se genera bajo demanda, se guarda automáticamente en el Llavero de iCloud en plataformas Apple, y es exactamente tan sensible como la biblioteca misma.

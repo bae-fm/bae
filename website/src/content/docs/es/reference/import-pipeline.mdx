@@ -1,0 +1,43 @@
+---
+title: Proceso de importación
+description: Análisis, pruebas, triangulación y confirmación atómica
+---
+
+La importación convierte una carpeta de archivos en una entrada de catálogo precisa por lanzamiento sin modificar ni un byte de los archivos. Esta página es el proceso detrás del flujo descrito en la [guía de uso](/es/guide/importing).
+
+## Análisis
+
+Las carpetas vigiladas se observan mediante eventos del sistema de archivos de la plataforma, se agrupan para evitar repetición, y se vuelven a analizar al cambiar; los análisis concilian contra la lista existente de candidatos en vez de empezar de cero. El analizador clasifica una carpeta como un lanzamiento (audio directamente dentro, o subcarpetas con forma de disco como `CD1`/`CD2`), o entra recursivamente en ella como colección. Los archivos se clasifican por extensión en audio, imágenes y documentos, luego se inspecciona el audio: el codec que importa es el que FFmpeg encuentra en los bytes, no la extensión del archivo. Las carpetas que contienen marcadores de descarga parcial se excluyen hasta que la descarga termina.
+
+Una hoja CUE convierte una imagen de audio en una lista de pistas. El parser maneja pregaps y postgaps, interpretes e ISRCs por pista, y tanto imágenes de archivo único como disposiciones CUE de un archivo por pista. Los límites de pista se convierten de frames CUE (1/75 de segundo) a posiciones exactas de muestra, que luego se convierten en las ventanas de bytes y muestras que usa la reproducción.
+
+## Pruebas, no etiquetas
+
+La identificación lee tres tipos de prueba de la carpeta en una pasada:
+
+- un **disc ID**, la huella MusicBrainz de la disposición exacta de pistas de un CD, calculada desde un registro de copia o desde la hoja CUE;
+- **códigos de barras**, descodificados de escaneos de imágenes por el marco de visión de la plataforma y leídos de campos catalog de CUE;
+- **texto**: números de catálogo y texto libre de OCR de imágenes, nombres de carpetas y archivos, y archivos de texto de la copia.
+
+Las etiquetas de audio incrustadas no son prueba deliberadamente: describen lo que creyó quien etiquetó, no qué edición es. (Alimentan los metadatos de respaldo cuando el usuario importa un lanzamiento como desconocido.)
+
+Disc ID y código de barras se buscan de forma concurrente, el disc ID en MusicBrainz, el código de barras en MusicBrainz y Discogs a la vez, y los resultados se triangulan: los resultados que coinciden en un grupo de lanzamientos convergen, las coincidencias de número de catálogo reducen la lista de ediciones, y el desacuerdo entre señales aparece como conflicto explícito para el usuario en vez de una mejor suposición silenciosa. Cada resultado lleva su procedencia (encontrado por disc ID, por código de barras, coincidencia de catálogo) para que la UI pueda decir por qué se ofrece una fila.
+
+## Fuentes
+
+MusicBrainz se consulta anónimamente con un ritmo estricto de una solicitud por segundo. Discogs se autentica con el token personal del usuario desde el llavero, se espacia y reintenta dentro de sus límites de frecuencia, y un token rechazado se reporta como tal para que la UI pueda señalarlo en vez de que las búsquedas fallen en silencio. Las respuestas se guardan en caché por sesión, y el JSON sin procesar de la fuente que gane se archiva en la base de datos para reinterpretación futura.
+
+## Confirmacion
+
+Confirmar una importación ejecuta, en orden:
+
+1. **Verificación de decodificación**: cada pista se decodifica de punta a punta; una copia que no puede decodificarse completa falla la importación antes de escribir nada (una marca de configuración puede desactivar esto).
+2. **Análisis de sonoridad**: la sonoridad integrada y el pico verdadero se miden por pista y por álbum durante esa misma pasada de decodificación, guardados para uso de replay-gain.
+3. **Selección de portada**: el arte elegido (remoto, imagen de carpeta o incrustado) se vuelve a renderizar como miniatura de visualización; el original se conserva entre los archivos del lanzamiento si vino de la carpeta.
+4. **Escritura atómica**: el lanzamiento, pistas, créditos, identidades, formatos, segmentos, archivos y portada se confirman en una transacción. No existe un estado medio importado.
+
+El lanzamiento queda referenciando los archivos del usuario en su lugar. Si el usuario eligió administración en la nube, la subida ocurre después de la confirmación como una transición de almacenamiento, y los bytes originales de los archivos siguen siendo la fuente de verdad en todo momento; nada de lo que el usuario le dio a bae se elimina o altera.
+
+## Reconocer copias
+
+Cada lanzamiento registra un hash de contenido sobre la estructura de su carpeta importada (rutas relativas y tamaños, independiente de ubicación). Los nuevos análisis lo usan para marcar carpetas que ya están en la biblioteca, y las reimportaciones de la misma copia encuentran y reemplazan su lanzamiento anterior en vez de duplicarlo.

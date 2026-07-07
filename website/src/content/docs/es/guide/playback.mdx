@@ -1,0 +1,41 @@
+---
+title: Reproducción
+description: Calidad original y los detalles con los que se hicieron los lanzamientos
+---
+
+Los discos se hicieron con una estructura que los reproductores de archivos tienden a aplanar: caras que terminan, audio oculto antes de la pista uno, canciones que se funden entre si. bae conserva los detalles de reproducción de un lanzamiento y los reproduce como el lanzamiento los pretendía, desde tus archivos originales, intactos.
+
+## Calidad original
+
+La reproducción decodifica tus archivos tal como se importaron. No hay transcodificación, no se reescribe la sonoridad, no se recodifica en servidor; el dispositivo de audio se controla a la frecuencia de muestreo propia del archivo. Lo que copiaste es lo que suena. Cada formato que bae importa, lo reproduce: FLAC, MP3, APE, ALAC, AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack, DSD.
+
+## Sin pausas
+
+Los álbumes mezclados como una pieza continua suenan así. La siguiente pista se prepara mientras suena la actual, y cuando ambas comparten formato el audio nunca se detiene en el límite: sin pausa, sin clic.
+
+## Pregaps de CD
+
+Los CD pueden ocultar audio en el espacio antes de que empiece una pista, incluso antes de la pista uno, el truco clásico de pista oculta. Cuando un lanzamiento se importa desde una copia con hoja CUE, bae sabe dónde está cada pregap y los reproduce: el contador de tiempo de la pista empieza en cero donde empieza la pista propiamente dicha, y el audio oculto anterior suena en el espacio, exactamente como en el CD. Las exportaciones pueden conservar, omitir o volver a adjuntar pregaps; consulta [Exportación](/es/guide/exporting).
+
+## Separaciones de caras
+
+Los lanzamientos en vinilo y casete tienen caras, y algunos discos usan la pausa entre ellas de forma deliberada. Activa **Pause between sides** en la configuración de Playback y bae pausa la reproducción en cada límite de cara, pidiéndote continuar: el cambio de cara sin darle la vuelta. Las listas de pistas se agrupan por cara y disco, así que la estructura está visible mientras exploras.
+
+## La cola
+
+La reproducción siempre tiene un contexto: el lanzamiento que iniciaste, o toda la biblioteca si la pusiste en aleatorio. La cola muestra dos carriles:
+
+- **Up Next**: pistas que agregaste a mano, reproducidas primero. Arrastra pistas, reordenalas, quitalas.
+- **Playing from**: el resto del contexto, con su propio interruptor de aleatorio.
+
+**Play Next** y **Add to Queue** están en cada pista y álbum. Repetir alterna entre desactivado, repetir el contexto y repetir una pista.
+
+## Controles
+
+Reproducir/pausar con <kbd>Space</kbd>, siguiente y anterior desde el teclado, el deslizador para buscar. bae se integra con el sistema: teclas multimedia, Control Center en plataformas Apple, notificaciones multimedia en Android, controles de pantalla bloqueada en el teléfono, con portada e información de pista donde el sistema las muestre.
+
+Al salir, la app de escritorio puede guardar lo que estába sonando, incluida la cola y la posición, y retomarlo al siguiente inicio: **Restore on launch** en la configuración de Playback.
+
+## Sin conexión
+
+Un lanzamiento se reproduce donde puedan alcanzarse sus bytes: los archivos locales se reproducen directamente, los lanzamientos administrados en la nube se transmiten mientras suenan, y los lanzamientos fijados siempre están en el dispositivo. Consulta [Almacenamiento y sin conexión](/es/guide/storage).

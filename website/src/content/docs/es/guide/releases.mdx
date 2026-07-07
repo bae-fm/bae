@@ -1,0 +1,39 @@
+---
+title: Lanzamientos y metadatos
+description: Una biblioteca precisa por lanzamiento, y como mantenerla correcta
+---
+
+La mayoría de las apps de música modelan "un álbum": un título, una portada, una lista de pistas. Las colecciones reales no funcionan así. Podrías tener el CD original, la remasterización y una edición en vinilo del mismo disco, y difieren en listas de pistas, tiempos, arte y créditos. bae modela **lanzamientos**: cada importación es una edición específica, y las ediciones del mismo álbum se agrupan.
+
+## Los álbumes agrupan lanzamientos
+
+En la biblioteca, un álbum con varias ediciones es una entrada. La página del álbum muestra un selector de lanzamiento; cada lanzamiento conserva su propia lista de pistas, portada, año, sello, número de catálogo y créditos. Un lanzamiento es el **principal**: el que usan de forma predeterminada la cuadrícula de álbumes y la reproducción. Marca cualquier lanzamiento como principal desde el menú del álbum, y elige otro lanzamiento para escuchar en cualquier momento; bae recuerda tu elección por álbum.
+
+## Lo que sabe un lanzamiento
+
+Los lanzamientos identificados llevan el conocimiento de las bases de datos, no solo nombres de pistas:
+
+- Detalles de edición: sello, número de catálogo, código de barras, país, formato, año.
+- Creditos: interpretes, productores, ingenieros, por lanzamiento y por pista.
+- Estructura clásica: compositores, obras y sus partes, vinculadas a sus grabaciones. La vista de compositores de la biblioteca se construye a partir de esto; consulta [Exploración y búsqueda](/es/guide/browsing).
+- Identidad: qué entrada de MusicBrainz o Discogs es, y si la coincidencia es exacta o aproximada.
+
+Los registros de origen sin procesar también se conservan, para que el lanzamiento pueda reinterpretarse más tarde sin volver a preguntar a las bases de datos.
+
+## Edicion
+
+Los metadatos son tuyos para corregir. **Edit metadata** en cualquier lanzamiento abre el mismo formulario que usa la confirmación de importación: título y artista del álbum, detalles de edición, y título, artista y numeración de cada pista. **Reset to source** vuelve a lo que dijo la base de datos.
+
+Las ediciones viven solo en la base de datos de bae. Las etiquetas incrustadas de tus archivos nunca se reescriben; los archivos permanecen byte por byte como se importaron.
+
+## Reidentificar
+
+Si un lanzamiento se importó como desconocido, se emparejó con la edición incorrecta, o la base de datos ha mejorado desde entonces, **Re-identify** ejecuta de nuevo el flujo de identificación sobre el lanzamiento existente: mismas señales, mismas herramientas de búsqueda. Después de confirmar la nueva coincidencia, bae pregunta si debe actualizar los metadatos desde la nueva fuente (sobrescribiendo tus ediciones) o conservar lo que tienes.
+
+## Portadas
+
+Cada lanzamiento tiene una portada de visualización. **Change cover** ofrece el arte de las bases de datos y los archivos de imagen que vinieron con el lanzamiento. bae conserva su propia copia de la portada elegida, dimensionada para mostrarse, así que el escaneo original de tu carpeta queda intacto. Toca una portada en cualquier lugar para abrir la galería completa de imágenes de un lanzamiento.
+
+## Eliminacion
+
+Eliminar un lanzamiento lo quita de la biblioteca y, para lanzamientos administrados, de tu hogar en la nube. Los archivos que se importaron en su lugar, no administrados, nunca se eliminan: bae solo se olvida de ellos.
