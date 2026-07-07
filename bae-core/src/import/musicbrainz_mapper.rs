@@ -22,7 +22,8 @@ use crate::db::{
 use crate::import::types::ReleaseIdentity;
 use crate::import::MetadataSource;
 use crate::musicbrainz::{
-    fetch_release_group_json, ExternalUrls, MbArtistRef, MbRelation, MbReleaseResponse, MbWork,
+    fetch_release_group_json, ExternalUrls, MbArtistRef, MbMedium, MbRelation, MbReleaseResponse,
+    MbWork,
 };
 use coven::Clock;
 use coven::IdProvider;
@@ -273,6 +274,86 @@ pub async fn fetch_mb_response(
     Ok((response, external_urls, metadata_pairs))
 }
 
+/// Vinyl/cassette side assignment for one medium, shared by the DB mapper and
+/// the UI-detail builder in `search.rs` so the two never diverge.
+pub(crate) struct MediumSides {
+    /// Side offset (0-based, relative to the medium's lowest side letter) for
+    /// each track, in track order.
+    pub offsets: Vec<u32>,
+    /// Number of sides this medium occupies; advances the running side base
+    /// between media.
+    pub side_span: u32,
+}
+
+/// Assign each track of a medium to a vinyl/cassette side.
+///
+/// Multi-side media (format contains "Vinyl" or "Cassette") derive the side
+/// from the leading letter of the track number ("A1" -> offset 0, "B2" ->
+/// offset 1), relative to the medium's lowest side letter — so a second medium
+/// lettered C/D yields offsets 0/1, not 2/3. Single-side media put every track
+/// on offset 0.
+///
+/// Errors when the medium has no tracks, or when a multi-side track has no
+/// leading side letter: there is no correct side for it, and silently bucketing
+/// it onto side 0 would corrupt the numbering.
+pub(crate) fn medium_sides(release_id: &str, medium: &MbMedium) -> Result<MediumSides, String> {
+    if medium.tracks.is_empty() {
+        return Err(format!(
+            "MusicBrainz release {} has a medium with no tracks",
+            release_id
+        ));
+    }
+
+    let is_multi_side = medium
+        .format
+        .as_deref()
+        .is_some_and(|f| f.contains("Vinyl") || f.contains("Cassette"));
+
+    if !is_multi_side {
+        return Ok(MediumSides {
+            offsets: vec![0; medium.tracks.len()],
+            side_span: 1,
+        });
+    }
+
+    // Offsets are relative to this medium's lowest side letter, so a second
+    // medium lettered C/D yields 0/1 rather than 2/3.
+    let base_letter = medium
+        .tracks
+        .iter()
+        .filter_map(|t| t.number.as_deref()?.chars().next())
+        .filter(|c| c.is_ascii_alphabetic())
+        .map(|c| c.to_ascii_uppercase() as u32)
+        .min()
+        .unwrap_or('A' as u32);
+
+    let mut offsets = Vec::with_capacity(medium.tracks.len());
+    for track in &medium.tracks {
+        let side_letter = track
+            .number
+            .as_deref()
+            .and_then(|n| n.chars().next())
+            .filter(|c| c.is_ascii_alphabetic())
+            .ok_or_else(|| {
+                format!(
+                    "MusicBrainz multi-side medium track has no side letter: \
+                     number={:?}, title={:?}",
+                    track.number,
+                    track.recording.as_ref().and_then(|r| r.title.as_ref()),
+                )
+            })?;
+        offsets.push((side_letter.to_ascii_uppercase() as u32) - base_letter);
+    }
+
+    let side_span = offsets
+        .iter()
+        .copied()
+        .max()
+        .expect("non-empty medium has at least one offset")
+        + 1;
+    Ok(MediumSides { offsets, side_span })
+}
+
 /// Map a typed MusicBrainz release response into database models (pure, no I/O).
 ///
 /// `discogs_release`: optional Discogs data resolved from MB url-rels (path 2).
@@ -384,40 +465,13 @@ pub fn map_mb_response_to_db(
     let mut side_base = 0i32;
 
     for medium in &response.media {
-        if medium.tracks.is_empty() {
-            return Err(format!(
-                "MusicBrainz release {} has a medium with no tracks",
-                response.id
-            ));
-        }
+        let sides = medium_sides(&response.id, medium)?;
 
-        let is_multi_side_medium = medium
-            .format
-            .as_deref()
-            .is_some_and(|f| f.contains("Vinyl") || f.contains("Cassette"));
-
-        // For multi-side media (vinyl/cassette), derive side from the track's `number` field
-        // (e.g., "A1" -> side offset 0, "B2" -> side offset 1). Offsets are relative to the
-        // first letter in this medium (so medium 2 with C/D tracks gets offsets 0/1, not 2/3).
-        // For single-side media, all tracks = 1 side.
+        // Running 1-based position within each side of this medium.
         let mut per_side_count: std::collections::HashMap<i32, i32> =
             std::collections::HashMap::new();
 
-        // Find the first letter in this medium to use as the base for relative offsets
-        let medium_base_letter = if is_multi_side_medium {
-            medium
-                .tracks
-                .iter()
-                .filter_map(|t| t.number.as_deref()?.chars().next())
-                .filter(|c| c.is_ascii_alphabetic())
-                .map(|c| c.to_ascii_uppercase() as i32)
-                .min()
-                .unwrap_or('A' as i32)
-        } else {
-            'A' as i32
-        };
-
-        for track in &medium.tracks {
+        for (track, &side_offset) in medium.tracks.iter().zip(&sides.offsets) {
             let title = track
                 .recording
                 .as_ref()
@@ -432,32 +486,11 @@ pub fn map_mb_response_to_db(
                 })?
                 .to_string();
 
-            let (side_offset, track_number) = if is_multi_side_medium {
-                // Derive side offset relative to this medium's first letter.
-                // A multi-side medium track without a leading side letter (e.g. "A1",
-                // "B2") is malformed — there's no way to assign it to a side, and
-                // silently grouping it onto offset 0 would corrupt side numbering.
-                let side_letter = track
-                    .number
-                    .as_deref()
-                    .and_then(|n| n.chars().next())
-                    .filter(|c| c.is_ascii_alphabetic())
-                    .ok_or_else(|| {
-                        format!(
-                            "MusicBrainz multi-side medium track has no side letter: \
-                             number={:?}, title={:?}",
-                            track.number,
-                            track.recording.as_ref().and_then(|r| r.title.as_ref()),
-                        )
-                    })?;
-                let offset = (side_letter.to_ascii_uppercase() as i32) - medium_base_letter;
-                let count = per_side_count.entry(offset).or_insert(0);
+            let side_offset = side_offset as i32;
+            let track_number = {
+                let count = per_side_count.entry(side_offset).or_insert(0);
                 *count += 1;
-                (offset, *count)
-            } else {
-                let count = per_side_count.entry(0).or_insert(0);
-                *count += 1;
-                (0, *count)
+                *count
             };
 
             let side = side_base + side_offset + 1;
@@ -600,20 +633,8 @@ pub fn map_mb_response_to_db(
             tracks.push(db_track);
         }
 
-        // Advance side_base for the next medium
-        if is_multi_side_medium {
-            // Each vinyl/cassette medium contributes as many sides as we saw.
-            // per_side_count is non-empty: the medium has tracks (checked above)
-            // and every track inserts an entry.
-            let max_offset = per_side_count
-                .keys()
-                .copied()
-                .max()
-                .expect("per_side_count populated by non-empty medium");
-            side_base += max_offset + 1;
-        } else {
-            side_base += 1;
-        }
+        // Advance side_base for the next medium.
+        side_base += sides.side_span as i32;
     }
 
     Ok(ParsedAlbum {

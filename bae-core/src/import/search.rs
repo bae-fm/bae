@@ -13,7 +13,6 @@ use crate::import::types::MetadataSource;
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use crate::retry::retry_with_backoff;
 use crate::signals::LookupFailure;
-use tracing::warn;
 
 /// A unified metadata search result from either MusicBrainz or Discogs.
 ///
@@ -328,59 +327,16 @@ fn build_mb_detail(
     release_id: &str,
     mb_response: &crate::musicbrainz::MbReleaseResponse,
     cover_art: Vec<RemoteCover>,
-) -> ImportSearchReleaseDetail {
+) -> Result<ImportSearchReleaseDetail, String> {
     let year = parse_year(mb_response.date.as_deref());
 
     let mut side_base: u32 = 0;
     let mut tracks: Vec<ReleaseTrack> = Vec::new();
 
     for medium in &mb_response.media {
-        let is_multi_side = medium
-            .format
-            .as_deref()
-            .is_some_and(|f| f.contains("Vinyl") || f.contains("Cassette"));
+        let sides = crate::import::musicbrainz_mapper::medium_sides(release_id, medium)?;
 
-        let mut max_side_offset: u32 = 0;
-
-        let medium_base_letter = if is_multi_side {
-            medium
-                .tracks
-                .iter()
-                .filter_map(|t| t.number.as_deref()?.chars().next())
-                .filter(|c| c.is_ascii_alphabetic())
-                .map(|c| c.to_ascii_uppercase() as u32)
-                .min()
-                .unwrap_or('A' as u32)
-        } else {
-            'A' as u32
-        };
-
-        for t in &medium.tracks {
-            let side_offset = if is_multi_side {
-                let parsed = t
-                    .number
-                    .as_deref()
-                    .and_then(|n| n.chars().next())
-                    .filter(|c| c.is_ascii_alphabetic())
-                    .map(|c| (c.to_ascii_uppercase() as u32) - medium_base_letter);
-                match parsed {
-                    Some(offset) => offset,
-                    None => {
-                        warn!(
-                            release_id = release_id,
-                            track_number = ?t.number,
-                            "multi-side medium track missing side letter; defaulting to side 0"
-                        );
-                        0
-                    }
-                }
-            } else {
-                0
-            };
-            if side_offset > max_side_offset {
-                max_side_offset = side_offset;
-            }
-
+        for (t, &side_offset) in medium.tracks.iter().zip(&sides.offsets) {
             let side = side_base + side_offset + 1;
 
             tracks.push(ReleaseTrack {
@@ -399,11 +355,7 @@ fn build_mb_detail(
             });
         }
 
-        side_base += if is_multi_side {
-            max_side_offset + 1
-        } else {
-            1
-        };
+        side_base += sides.side_span;
     }
 
     let format = mb_response.media.first().and_then(|m| m.format.clone());
@@ -419,7 +371,7 @@ fn build_mb_detail(
         })
         .unwrap_or((None, None));
 
-    ImportSearchReleaseDetail {
+    Ok(ImportSearchReleaseDetail {
         release_id: mb_response.id.clone(),
         source: MetadataSource::MusicBrainz,
         source_group_id: mb_response.release_group.as_ref().map(|rg| rg.id.clone()),
@@ -434,7 +386,7 @@ fn build_mb_detail(
         track_count: tracks.len() as u32,
         tracks,
         cover_art,
-    }
+    })
 }
 
 /// Prefetch path for MusicBrainz: pure MB fetch + picker/confirm detail. No
@@ -450,7 +402,7 @@ pub async fn prefetch_mb_release(
     let cover_art = cover_art_archive
         .fetch_candidates(Some(response.id.as_str()), release_group_id)
         .await;
-    Ok(build_mb_detail(release_id, &response, cover_art))
+    build_mb_detail(release_id, &response, cover_art)
 }
 
 /// Commit path for MusicBrainz: fetch + Discogs cross-ref + map to DB shape.
@@ -603,7 +555,47 @@ pub async fn commit_discogs_release(
 mod tests {
     use super::*;
     use crate::discogs::client::DiscogsSearchResult;
-    use crate::musicbrainz::{MbArtistCredit, MbMedium, MbReleaseGroupRef, MbReleaseResponse};
+    use crate::musicbrainz::{
+        MbArtistCredit, MbMedium, MbRecording, MbReleaseGroupRef, MbReleaseResponse, MbTrack,
+    };
+
+    fn make_mb_track(number: &str, title: &str) -> MbTrack {
+        MbTrack {
+            position: None,
+            number: Some(number.to_string()),
+            title: None,
+            length: None,
+            recording: Some(MbRecording {
+                id: None,
+                title: Some(title.to_string()),
+                artist_credit: vec![],
+                relations: vec![],
+            }),
+            artist_credit: vec![],
+        }
+    }
+
+    fn response_with_media(media: Vec<MbMedium>) -> MbReleaseResponse {
+        MbReleaseResponse {
+            id: "mb-release-1".to_string(),
+            title: "Album Title".to_string(),
+            date: None,
+            country: None,
+            barcode: None,
+            artist_credit: vec![MbArtistCredit {
+                name: "Artist Name".to_string(),
+                artist: None,
+            }],
+            release_group: Some(MbReleaseGroupRef {
+                id: "mb-group-1".to_string(),
+                first_release_date: None,
+                relations: None,
+            }),
+            label_info: vec![],
+            media,
+            relations: vec![],
+        }
+    }
 
     fn result_with_title(title: &str) -> DiscogsSearchResult {
         DiscogsSearchResult {
@@ -666,28 +658,10 @@ mod tests {
 
     #[test]
     fn mb_detail_uses_supplied_cover_art_archive_candidates() {
-        let response = MbReleaseResponse {
-            id: "mb-release-1".to_string(),
-            title: "Album Title".to_string(),
-            date: None,
-            country: None,
-            barcode: None,
-            artist_credit: vec![MbArtistCredit {
-                name: "Artist Name".to_string(),
-                artist: None,
-            }],
-            release_group: Some(MbReleaseGroupRef {
-                id: "mb-group-1".to_string(),
-                first_release_date: None,
-                relations: None,
-            }),
-            label_info: vec![],
-            media: vec![MbMedium {
-                format: Some("CD".to_string()),
-                tracks: vec![],
-            }],
-            relations: vec![],
-        };
+        let response = response_with_media(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![make_mb_track("1", "Track Title")],
+        }]);
         let cover_art = vec![RemoteCover {
             url: "https://caa.example/cover.jpg".to_string(),
             thumbnail_url: "https://caa.example/thumb.jpg".to_string(),
@@ -695,8 +669,53 @@ mod tests {
             source: MetadataSource::MusicBrainz,
         }];
 
-        let detail = build_mb_detail("mb-release-1", &response, cover_art.clone());
+        let detail = build_mb_detail("mb-release-1", &response, cover_art.clone()).unwrap();
 
         assert_eq!(detail.cover_art, cover_art);
+    }
+
+    /// Vinyl side numbering runs continuously across media: medium 1 (A/B) is
+    /// sides 1-2, medium 2 (C/D) is sides 3-4. Same shared assignment the DB
+    /// mapper uses.
+    #[test]
+    fn mb_detail_numbers_vinyl_sides_across_media() {
+        let response = response_with_media(vec![
+            MbMedium {
+                format: Some("12\" Vinyl".to_string()),
+                tracks: vec![
+                    make_mb_track("A1", "Track A1"),
+                    make_mb_track("B1", "Track B1"),
+                ],
+            },
+            MbMedium {
+                format: Some("12\" Vinyl".to_string()),
+                tracks: vec![
+                    make_mb_track("C1", "Track C1"),
+                    make_mb_track("D1", "Track D1"),
+                ],
+            },
+        ]);
+
+        let detail = build_mb_detail("mb-release-1", &response, vec![]).unwrap();
+        let sides: Vec<u32> = detail.tracks.iter().map(|t| t.side).collect();
+        assert_eq!(sides, vec![1, 2, 3, 4]);
+    }
+
+    /// A multi-side medium track without a leading side letter is malformed MB
+    /// data. The search detail path propagates the error rather than bucketing
+    /// the track onto side 0.
+    #[test]
+    fn mb_detail_errors_on_multi_side_track_without_side_letter() {
+        let response = response_with_media(vec![MbMedium {
+            format: Some("12\" Vinyl".to_string()),
+            tracks: vec![
+                make_mb_track("A1", "Track A1"),
+                make_mb_track("1", "Numeric-only Track"),
+            ],
+        }]);
+
+        let err = build_mb_detail("mb-release-1", &response, vec![])
+            .expect_err("expected error for vinyl track without side letter");
+        assert!(err.contains("no side letter"), "unexpected error: {}", err);
     }
 }
