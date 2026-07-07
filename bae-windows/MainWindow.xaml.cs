@@ -4858,14 +4858,14 @@ public sealed partial class MainWindow : Window
         // spinner where the remote covers will land.
         async System.Threading.Tasks.Task LoadRemote()
         {
-            var (current, coversJson) = await RunForCurrentHandle(
-                handle => NativeBae.FetchRemoteCoversJson(handle, releaseId));
+            var (current, covers) = await RunForCurrentHandle(
+                handle => NativeBae.FetchRemoteCovers(handle, releaseId).Covers);
             if (!current)
             {
                 return;
             }
             loading.Visibility = Visibility.Collapsed;
-            if (coversJson is null)
+            if (covers is null)
             {
                 statusText.Text = Loc.Chrome("cover.fetch_failed");
                 statusText.Visibility = Visibility.Visible;
@@ -4874,9 +4874,7 @@ public sealed partial class MainWindow : Window
 
             try
             {
-                var covers = JsonSerializer.Deserialize<List<RemoteCover>>(coversJson, JsonOptions)
-                    ?? new List<RemoteCover>();
-                if (covers.Count == 0)
+                if (covers.Length == 0)
                 {
                     remoteGrid.Children.Add(new TextBlock { Text = Loc.Chrome("cover.none_remote") });
                     return;
@@ -4884,9 +4882,8 @@ public sealed partial class MainWindow : Window
 
                 foreach (var cover in covers)
                 {
-                    var source = new BitmapImage(new Uri(cover.ThumbnailUrl));
-                    var selection = JsonSerializer.Serialize(
-                        new { type = "remote_cover", url = cover.Url, source = cover.Source });
+                    var source = new BitmapImage(new Uri(NativeBae.RemoteCoverThumbnailUrl(cover)));
+                    var selection = NativeBae.RemoteCoverSelectionJson(cover);
                     remoteGrid.Children.Add(Tile(source, cover.Label, selection));
                 }
             }

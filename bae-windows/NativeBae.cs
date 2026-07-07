@@ -621,8 +621,23 @@ internal static class NativeBae
             return detail?.ImageFiles.Where(file => file.IsImage).ToArray() ?? [];
         });
 
-    internal static string? FetchRemoteCoversJson(AppHandle handle, string releaseId) =>
-        CaptureValue(() => Json(Await(handle.FetchRemoteCovers(releaseId)).Select(RemoteCoverJson).ToArray()));
+    internal static (BridgeRemoteCover[]? Covers, string? Error) FetchRemoteCovers(AppHandle handle, string releaseId) =>
+        CaptureBridgeValue(() => Await(handle.FetchRemoteCovers(releaseId)));
+
+    internal static string RemoteCoverThumbnailUrl(BridgeRemoteCover cover) =>
+        CoverImageSourceUrl(cover.CoverChoice.ThumbnailSource);
+
+    internal static string RemoteCoverSelectionJson(BridgeRemoteCover cover)
+    {
+        var selection = cover.CoverChoice.Selection as BridgeCoverSelection.RemoteCover
+            ?? throw new JsonException("remote cover choice did not carry a remote selection");
+        return Json(new
+        {
+            type = "remote_cover",
+            url = selection.Selection.Url,
+            source = MetadataSourceTag(selection.Selection.Source),
+        });
+    }
 
     internal static string? ChangeCover(AppHandle handle, string albumId, string releaseId, string selectionJson) =>
         CaptureError(() => Await(handle.ChangeCover(albumId, releaseId, CoverSelection(selectionJson))));
