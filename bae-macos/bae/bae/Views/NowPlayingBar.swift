@@ -80,8 +80,11 @@ private struct StablePopoverBehavior: NSViewRepresentable {
     func makeNSView(context _: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
-            if let popover = view.window?.value(forKey: "_popover")
-                as? NSPopover
+            if let window = view.window,
+                let popover = ObjCExceptionGuard.value(
+                    forKey: "_popover",
+                    on: window
+                ) as? NSPopover
             {
                 popover.behavior = .applicationDefined
             }
