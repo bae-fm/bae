@@ -765,29 +765,28 @@ pub fn shape_user_edit_from_search_detail(
         }
     };
 
-    // Number tracks per side, matching the per-side numbering the commit-side
-    // mappers assign (musicbrainz_mapper / discogs_mapper reset their count at
-    // each side, so A1,A2,B1,B2 -> 1,2,1,2). `detail.tracks` carries each
-    // track's already-resolved `side` in the same order the seed was built, so
-    // a counter keyed on side reproduces those numbers exactly. A release-global
-    // `i + 1` index would diverge and, since `apply_user_edit_to_seed` writes
-    // `track_number` verbatim onto the seed, corrupt the per-side numbers of any
-    // multi-side vinyl/cassette/multi-disc release.
-    let mut per_side_count: std::collections::HashMap<u32, i32> = std::collections::HashMap::new();
+    // Number tracks per side with the same function the commit-side assembler
+    // uses (`per_side_positions`). Both planes run identical code over side
+    // sequences produced by the same side-derivation (`medium_sides` for MB,
+    // `process_tracklist` for Discogs), so the editor seed and the committed
+    // rows can never disagree on numbering. A release-global `i + 1` index would
+    // diverge and, since `apply_user_edit_to_seed` writes `track_number`
+    // verbatim onto the seed, corrupt the per-side numbers of any multi-side
+    // vinyl/cassette/multi-disc release.
+    let numbers = crate::import::assemble::per_side_positions(detail.tracks.iter().map(|t| t.side));
     let tracks = detail
         .tracks
         .iter()
-        .map(|t| {
+        .zip(numbers)
+        .map(|(t, number)| {
             let artist_names = match t.artist.as_deref() {
                 Some(a) if !a.is_empty() && a != primary_album_artist => vec![a.to_string()],
                 _ => Vec::new(),
             };
-            let count = per_side_count.entry(t.side).or_insert(0);
-            *count += 1;
             super::TrackUserEdit {
                 title: t.title.clone(),
                 side: t.side as i32,
-                track_number: Some(*count),
+                track_number: Some(number),
                 artist_names,
             }
         })

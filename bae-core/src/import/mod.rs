@@ -1,4 +1,5 @@
 pub mod artist_image;
+mod assemble;
 pub mod commit;
 pub mod cover_art;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -34,47 +35,13 @@ use crate::db::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
 };
-use coven::IdProvider;
 
-pub(crate) fn find_or_push_artist(
-    artists: &mut Vec<DbArtist>,
-    matches: impl Fn(&DbArtist) -> bool,
-    seed: impl FnOnce() -> (String, Option<String>, Option<String>, Option<String>),
-    ids: &dyn IdProvider,
-    now: chrono::DateTime<chrono::Utc>,
-) -> String {
-    if let Some(existing) = artists.iter().find(|artist| matches(artist)) {
-        return existing.id.clone();
-    }
-
-    let (name, sort_name, discogs_artist_id, musicbrainz_artist_id) = seed();
-    let artist = DbArtist {
-        id: ids.new_id(),
-        name,
-        sort_name,
-        discogs_artist_id,
-        musicbrainz_artist_id,
-        created_at: now,
-    };
-    let id = artist.id.clone();
-    artists.push(artist);
-    id
-}
-
-pub(crate) fn album_artist_links(
-    album_id: &str,
-    artists: &[DbArtist],
-    ids: &dyn IdProvider,
-    now: chrono::DateTime<chrono::Utc>,
-) -> Vec<DbAlbumArtist> {
-    artists
-        .iter()
-        .enumerate()
-        .skip(1)
-        .map(|(position, artist)| {
-            DbAlbumArtist::new(album_id, &artist.id, position as i32, ids.new_id(), now)
-        })
-        .collect()
+/// The four-digit year at the head of a metadata date string (`"1998"`,
+/// `"1998-05-01"`), or `None` when the value is absent or has no leading year.
+/// The single date→year parser shared by the source mappers and the search
+/// detail builder.
+pub(crate) fn parse_year(date: Option<&str>) -> Option<i32> {
+    date?.split('-').next()?.parse().ok()
 }
 
 #[derive(Debug, Clone)]

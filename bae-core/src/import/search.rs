@@ -9,6 +9,7 @@
 
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::import::cover_art::{CoverArtArchiveClient, RemoteCover};
+use crate::import::parse_year;
 use crate::import::types::MetadataSource;
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use crate::retry::retry_with_backoff;
@@ -147,10 +148,6 @@ pub fn discogs_search_result_to_metadata(
         cover_art,
         source_group_id,
     }
-}
-
-fn parse_year(date: Option<&str>) -> Option<i32> {
-    date?.split('-').next()?.parse().ok()
 }
 
 fn mb_release_to_metadata(r: MbReleaseResponse, cover_art: Option<RemoteCover>) -> MetadataResult {
@@ -555,9 +552,20 @@ pub async fn commit_discogs_release(
 mod tests {
     use super::*;
     use crate::discogs::client::DiscogsSearchResult;
+    use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
+    use crate::import::{IdentityChoice, MetadataRef};
     use crate::musicbrainz::{
         MbArtistCredit, MbMedium, MbRecording, MbReleaseGroupRef, MbReleaseResponse, MbTrack,
     };
+    use coven::{FixedClock, SequentialIdProvider};
+
+    fn test_clock() -> FixedClock {
+        FixedClock(
+            chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+                .unwrap()
+                .with_timezone(&chrono::Utc),
+        )
+    }
 
     fn make_mb_track(number: &str, title: &str) -> MbTrack {
         MbTrack {
@@ -737,5 +745,122 @@ mod tests {
         let err = build_mb_detail("mb-release-1", &response, vec![])
             .expect_err("expected error for vinyl track without side letter");
         assert!(err.contains("no side letter"), "unexpected error: {}", err);
+    }
+
+    /// Assert the commit plane and the editor-seed plane assign identical
+    /// `(side, track_number)` to every track: the commit rows from
+    /// `map_*_to_db` and the editor seed from a detail →
+    /// `shape_user_edit_from_search_detail(Exact)` line up position for
+    /// position.
+    fn assert_planes_agree_on_numbering(
+        parsed: &crate::import::ParsedAlbum,
+        detail: &ImportSearchReleaseDetail,
+        release_ref: MetadataRef,
+    ) {
+        let user_edit = crate::import::shape_user_edit_from_search_detail(
+            detail,
+            &IdentityChoice::Exact { release_ref },
+        );
+        let commit: Vec<(i32, Option<i32>)> = parsed
+            .tracks
+            .iter()
+            .map(|t| (t.side, t.track_number))
+            .collect();
+        let seed: Vec<(i32, Option<i32>)> = user_edit
+            .tracks
+            .iter()
+            .map(|t| (t.side, t.track_number))
+            .collect();
+        assert_eq!(commit, seed);
+    }
+
+    /// The commit plane (`map_mb_response_to_db`) and the editor-seed plane
+    /// (`build_mb_detail` → `shape_user_edit_from_search_detail`) agree on
+    /// `(side, track_number)` for every track of a multi-side vinyl release:
+    /// both number through `per_side_positions` over side values from the same
+    /// `medium_sides` derivation.
+    #[test]
+    fn mb_commit_and_editor_seed_agree_on_side_and_number() {
+        let response = response_with_media(vec![
+            MbMedium {
+                format: Some("12\" Vinyl".to_string()),
+                tracks: vec![
+                    make_mb_track("A1", "Track A1"),
+                    make_mb_track("A2", "Track A2"),
+                    make_mb_track("B1", "Track B1"),
+                ],
+            },
+            MbMedium {
+                format: Some("12\" Vinyl".to_string()),
+                tracks: vec![
+                    make_mb_track("C1", "Track C1"),
+                    make_mb_track("D1", "Track D1"),
+                ],
+            },
+        ]);
+        let clock = test_clock();
+        let ids = SequentialIdProvider::new("mb");
+        let parsed = crate::import::musicbrainz_mapper::map_mb_response_to_db(
+            &response, None, None, &clock, &ids,
+        )
+        .unwrap();
+        let detail = build_mb_detail("mb-release-1", &response, vec![]).unwrap();
+
+        assert_planes_agree_on_numbering(
+            &parsed,
+            &detail,
+            MetadataRef::new("mb-release-1", MetadataSource::MusicBrainz),
+        );
+    }
+
+    /// The same numbering agreement over a multi-disc Discogs release, whose
+    /// sides come from `process_tracklist`.
+    #[test]
+    fn discogs_commit_and_editor_seed_agree_on_side_and_number() {
+        let make_track = |position: &str, title: &str| DiscogsTrack {
+            position: position.to_string(),
+            title: title.to_string(),
+            duration: None,
+            artists: vec![],
+            type_: "track".to_string(),
+            extraartists: None,
+        };
+        let release = DiscogsRelease {
+            id: "discogs-release-1".to_string(),
+            title: "Album Title".to_string(),
+            year: Some(2024),
+            genre: vec![],
+            style: vec![],
+            format: vec![],
+            country: None,
+            label: vec![],
+            cover_image: None,
+            thumb: None,
+            catno: None,
+            artists: vec![DiscogsArtist {
+                id: "artist-1".to_string(),
+                name: "Artist Name".to_string(),
+            }],
+            extraartists: Some(vec![]),
+            tracklist: vec![
+                make_track("1-1", "Disc 1 Track 1"),
+                make_track("1-2", "Disc 1 Track 2"),
+                make_track("2-1", "Disc 2 Track 1"),
+                make_track("2-2", "Disc 2 Track 2"),
+            ],
+            master_id: None,
+        };
+        let clock = test_clock();
+        let ids = SequentialIdProvider::new("d");
+        let parsed =
+            crate::import::discogs_mapper::map_discogs_to_db(&release, None, None, &clock, &ids)
+                .unwrap();
+        let detail = build_discogs_detail(&release);
+
+        assert_planes_agree_on_numbering(
+            &parsed,
+            &detail,
+            MetadataRef::new("discogs-release-1", MetadataSource::Discogs),
+        );
     }
 }

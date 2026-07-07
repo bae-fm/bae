@@ -14,11 +14,12 @@
 //! produce only a Discogs identity row at first; the reverse cross-link
 //! is resolved via MB's URL endpoint.
 
-use super::{album_artist_links, ParsedAlbum, ParsedWorkGraph};
-use crate::db::{
-    DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackArtist, DbTrackArtistRole, DbTrackWork, DbWork,
-    DbWorkArtist, DbWorkPart,
+use super::assemble::{
+    assemble_parsed_album, AlbumArtistScope, ArtistRef, PartDirection, ReleaseIr, TrackEvent,
+    TrackIr, TrackNumber, WorkEvent, WorkGraphRef, WorkNode,
 };
+use super::ParsedAlbum;
+use crate::db::{is_various_artists, Pressing, ReleaseMetadataSource};
 use crate::import::types::ReleaseIdentity;
 use crate::import::MetadataSource;
 use crate::musicbrainz::{
@@ -57,86 +58,38 @@ fn mb_artist_name(artist: &MbArtistRef, credit: Option<&str>) -> Option<String> 
         .or_else(|| artist.name.clone())
 }
 
-fn find_or_push_mb_artist(
-    artists: &mut Vec<DbArtist>,
-    artist_ref: &MbArtistRef,
-    credit: Option<&str>,
-    ids: &(impl IdProvider + ?Sized),
-    now: chrono::DateTime<chrono::Utc>,
-) -> Option<String> {
-    let artist_name = mb_artist_name(artist_ref, credit)?;
-    let mb_artist_id = artist_ref.id.clone();
-    if let Some(existing) =
-        artists.iter().find(
-            |artist| match (&artist.musicbrainz_artist_id, &mb_artist_id) {
-                (Some(existing_id), Some(new_id)) => existing_id == new_id,
-                (None, None) => artist.name.eq_ignore_ascii_case(&artist_name),
-                _ => false,
-            },
-        )
-    {
-        return Some(existing.id.clone());
-    }
-
-    let artist = DbArtist {
-        id: ids.new_id(),
-        name: artist_name.clone(),
-        sort_name: artist_ref.sort_name.clone(),
-        discogs_artist_id: None,
-        musicbrainz_artist_id: mb_artist_id,
-        created_at: now,
-    };
-    let id = artist.id.clone();
-    artists.push(artist);
-    Some(id)
-}
-
 fn mb_relation_is_composer(relation: &MbRelation) -> bool {
     relation.relation_type.as_deref() == Some("composer")
 }
 
-fn push_work_graph(
-    work: &MbWork,
-    parent: Option<&str>,
-    artists: &mut Vec<DbArtist>,
-    works: &mut Vec<DbWork>,
-    work_artists: &mut Vec<DbWorkArtist>,
-    work_parts: &mut Vec<DbWorkPart>,
-    seen_works: &mut HashSet<String>,
-    expanded_works: &mut HashSet<String>,
-    ids: &(impl IdProvider + ?Sized),
-    now: chrono::DateTime<chrono::Utc>,
-) {
-    if seen_works.insert(work.id.clone()) {
-        works.push(DbWork::new(
-            &work.id,
-            &work.title,
-            work.disambiguation.clone(),
-            work.work_type.clone(),
-            now,
-        ));
+/// An [`ArtistRef`] for a MusicBrainz artist: `name` is the resolved credit
+/// name; sort name and MB id come from the artist payload; MB artists carry no
+/// Discogs id here (release-level cross-ref enrichment is handled inline).
+fn mb_artist_ref(name: String, artist: &MbArtistRef) -> ArtistRef {
+    ArtistRef {
+        name,
+        sort_name: artist.sort_name.clone(),
+        musicbrainz_artist_id: artist.id.clone(),
+        discogs_artist_id: None,
+    }
+}
+
+/// Resolve an `MbWork` into a [`WorkGraphRef`], validating relations (malformed
+/// ones are dropped and logged here, at the source→IR boundary, so the
+/// assembler's walk never meets one).
+///
+/// `converted` is release-scoped: the first reference to a work id returns an
+/// `Expanded` node carrying its walked sub-graph; every later reference returns
+/// `AlreadyExpanded`, so each work's relations are walked and logged exactly
+/// once per release and the assembler emits its row and sub-graph once.
+fn mb_work_ref(work: &MbWork, converted: &mut HashSet<String>) -> WorkGraphRef {
+    if !converted.insert(work.id.clone()) {
+        return WorkGraphRef::AlreadyExpanded {
+            id: work.id.clone(),
+        };
     }
 
-    if let Some(parent_work_id) = parent {
-        if !work_parts
-            .iter()
-            .any(|part| part.parent_work_id == parent_work_id && part.child_work_id == work.id)
-        {
-            work_parts.push(DbWorkPart::new(
-                parent_work_id,
-                &work.id,
-                work_parts.len() as i32,
-                MetadataSource::MusicBrainz,
-                ids.new_id(),
-                now,
-            ));
-        }
-    }
-
-    if work.relations.is_empty() || !expanded_works.insert(work.id.clone()) {
-        return;
-    }
-
+    let mut events = Vec::new();
     for relation in &work.relations {
         if relation.target_type.as_deref() == Some("artist") {
             if mb_relation_is_composer(relation) {
@@ -148,13 +101,8 @@ fn push_work_graph(
                     );
                     continue;
                 };
-                let Some(artist_id) = find_or_push_mb_artist(
-                    artists,
-                    artist_ref,
-                    relation.target_credit.as_deref(),
-                    ids,
-                    now,
-                ) else {
+                let Some(name) = mb_artist_name(artist_ref, relation.target_credit.as_deref())
+                else {
                     warn!(
                         work_id = %work.id,
                         musicbrainz_artist_id = ?artist_ref.id,
@@ -162,20 +110,7 @@ fn push_work_graph(
                     );
                     continue;
                 };
-                if !work_artists.iter().any(|link| {
-                    link.work_id == work.id
-                        && link.artist_id == artist_id
-                        && link.source == MetadataSource::MusicBrainz
-                }) {
-                    work_artists.push(DbWorkArtist::new(
-                        &work.id,
-                        &artist_id,
-                        work_artists.len() as i32,
-                        MetadataSource::MusicBrainz,
-                        ids.new_id(),
-                        now,
-                    ));
-                }
+                events.push(WorkEvent::Composer(mb_artist_ref(name, artist_ref)));
             } else {
                 debug!(
                     work_id = %work.id,
@@ -194,48 +129,24 @@ fn push_work_graph(
                 );
                 continue;
             };
-            match relation.direction.as_deref() {
-                Some("backward") => {
-                    push_work_graph(
-                        child_or_parent,
-                        None,
-                        artists,
-                        works,
-                        work_artists,
-                        work_parts,
-                        seen_works,
-                        expanded_works,
-                        ids,
-                        now,
-                    );
-                    if !work_parts.iter().any(|part| {
-                        part.parent_work_id == child_or_parent.id && part.child_work_id == work.id
-                    }) {
-                        work_parts.push(DbWorkPart::new(
-                            &child_or_parent.id,
-                            &work.id,
-                            work_parts.len() as i32,
-                            MetadataSource::MusicBrainz,
-                            ids.new_id(),
-                            now,
-                        ));
-                    }
-                }
-                _ => push_work_graph(
-                    child_or_parent,
-                    Some(&work.id),
-                    artists,
-                    works,
-                    work_artists,
-                    work_parts,
-                    seen_works,
-                    expanded_works,
-                    ids,
-                    now,
-                ),
-            }
+            let direction = match relation.direction.as_deref() {
+                Some("backward") => PartDirection::Backward,
+                _ => PartDirection::Forward,
+            };
+            events.push(WorkEvent::Part {
+                direction,
+                work: mb_work_ref(child_or_parent, converted),
+            });
         }
     }
+
+    WorkGraphRef::Expanded(WorkNode {
+        id: work.id.clone(),
+        title: work.title.clone(),
+        disambiguation: work.disambiguation.clone(),
+        work_type: work.work_type.clone(),
+        events,
+    })
 }
 
 /// Fetch a MusicBrainz release. Pure MB: no Discogs client, no cross-ref.
@@ -366,9 +277,10 @@ pub fn map_mb_response_to_db(
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, String> {
-    let now = clock.now();
-    let mut artists = Vec::new();
-
+    // Release-level artist credits → `ArtistRef`s, keeping the credit-name
+    // preference and the Discogs cross-ref `discogs_artist_id` name-match
+    // enrichment.
+    let mut release_refs: Vec<ArtistRef> = Vec::new();
     for credit in &response.artist_credit {
         if let Some(artist_obj) = &credit.artist {
             let artist_name = mb_artist_name(artist_obj, Some(&credit.name)).ok_or_else(|| {
@@ -377,51 +289,34 @@ pub fn map_mb_response_to_db(
                     response.id, artist_obj.id
                 )
             })?;
-
-            let mb_artist_id = artist_obj.id.clone();
-
             let discogs_artist_id = discogs_release.as_ref().and_then(|dr| {
                 dr.artists
                     .iter()
                     .find(|da| da.name.eq_ignore_ascii_case(&artist_name))
                     .map(|da| da.id.clone())
             });
-
-            let artist = DbArtist {
-                id: ids.new_id(),
+            release_refs.push(ArtistRef {
                 name: artist_name,
                 sort_name: artist_obj.sort_name.clone(),
+                musicbrainz_artist_id: artist_obj.id.clone(),
                 discogs_artist_id,
-                musicbrainz_artist_id: mb_artist_id,
-                created_at: now,
-            };
-            artists.push(artist);
+            });
         }
     }
-
-    if artists.is_empty() {
+    if release_refs.is_empty() {
         let artist_name = response
             .artist_credit
             .first()
             .ok_or_else(|| format!("MusicBrainz release {} has no artist credits", response.id))?
             .name
             .clone();
-        let artist = DbArtist {
-            id: ids.new_id(),
-            name: artist_name.clone(),
+        release_refs.push(ArtistRef {
+            name: artist_name,
             sort_name: None,
-            discogs_artist_id: None,
             musicbrainz_artist_id: None,
-            created_at: now,
-        };
-        artists.push(artist);
+            discogs_artist_id: None,
+        });
     }
-
-    let primary_artist_id = &artists[0].id;
-
-    let album =
-        DbAlbum::from_mb_response(response, master_year, primary_artist_id, ids.new_id(), now);
-    let db_release = DbRelease::from_mb_response(&album.id, response, ids.new_id(), now);
 
     // Identity rows. Always one for MB (every MB release belongs to a
     // release group; absence is a structural bug in the response, not a
@@ -449,27 +344,54 @@ pub fn map_mb_response_to_db(
         }
     }
 
-    let album_artists = album_artist_links(&album.id, &artists, ids, now);
+    // Album year: release-group first-release-date, then the release date,
+    // then the Discogs master year.
+    let album_year = super::parse_year(
+        response
+            .release_group
+            .as_ref()
+            .and_then(|rg| rg.first_release_date.as_deref()),
+    )
+    .or_else(|| super::parse_year(response.date.as_deref()))
+    .or(master_year.map(|y| y as i32));
+    let is_compilation = response
+        .artist_credit
+        .first()
+        .map(|ac| is_various_artists(&ac.name))
+        .unwrap_or(false);
 
-    let mut tracks = Vec::new();
-    let mut track_artists = Vec::new();
-    let mut works = Vec::new();
-    let mut work_artists = Vec::new();
-    let mut work_parts = Vec::new();
-    let mut track_works = Vec::new();
-    let mut track_artist_roles = Vec::new();
-    let mut seen_works = HashSet::new();
-    let mut expanded_works = HashSet::new();
+    // Pressing: this release's own date year, first medium format, first label.
+    let pressing_year = super::parse_year(response.date.as_deref());
+    let format = response.media.first().and_then(|m| m.format.clone());
+    let (label, catalog_number) = response
+        .label_info
+        .first()
+        .map(|li| {
+            (
+                li.label.as_ref().and_then(|l| l.name.clone()),
+                li.catalog_number.clone(),
+            )
+        })
+        .unwrap_or((None, None));
+    let pressing = Pressing {
+        year: pressing_year,
+        format,
+        label,
+        catalog_number,
+        country: response.country.clone(),
+        barcode: response.barcode.clone(),
+    };
 
-    // Compute side base: each medium contributes 1 or 2 sides depending on format.
+    // Each medium contributes 1 or 2 sides; `side_base` advances so side values
+    // never repeat across media, and every track's number is its position within
+    // its final side value, assigned by the assembler's single per-side pass.
+    let mut tracks: Vec<TrackIr> = Vec::new();
     let mut side_base = 0i32;
-
+    // Release-scoped: each work's relations are converted (and its skip lines
+    // logged) at most once, no matter how many tracks reference it.
+    let mut converted_works: HashSet<String> = HashSet::new();
     for medium in &response.media {
         let sides = medium_sides(&response.id, medium)?;
-
-        // Running 1-based position within each side of this medium.
-        let mut per_side_count: std::collections::HashMap<i32, i32> =
-            std::collections::HashMap::new();
 
         for (track, &side_offset) in medium.tracks.iter().zip(&sides.offsets) {
             let title = track
@@ -486,171 +408,116 @@ pub fn map_mb_response_to_db(
                 })?
                 .to_string();
 
-            let side_offset = side_offset as i32;
-            let track_number = {
-                let count = per_side_count.entry(side_offset).or_insert(0);
-                *count += 1;
-                *count
-            };
+            let side = side_base + side_offset as i32 + 1;
 
-            let side = side_base + side_offset + 1;
-
-            let db_track = DbTrack {
-                id: ids.new_id(),
-                release_id: db_release.id.clone(),
-                title,
-                side,
-                track_number: Some(track_number),
-                duration_ms: None,
-                discogs_position: track.number.clone(),
-                created_at: now,
-            };
+            let mut events: Vec<TrackEvent> = Vec::new();
 
             for (credit_pos, credit) in track.artist_credit.iter().enumerate() {
                 if let Some(artist_obj) = &credit.artist {
                     // A track credit with no resolvable name (empty credit and no
                     // artist payload name) is malformed sub-data; skip it and keep
-                    // the track, mirroring how the composer relations above handle
-                    // an unresolvable artist rather than aborting the whole import.
-                    let Some(artist_id) = find_or_push_mb_artist(
-                        &mut artists,
-                        artist_obj,
-                        Some(credit.name.as_str()),
-                        ids,
-                        now,
-                    ) else {
+                    // the track, mirroring how the composer relations handle an
+                    // unresolvable artist rather than aborting the whole import.
+                    let Some(name) = mb_artist_name(artist_obj, Some(credit.name.as_str())) else {
                         warn!(
-                            track_id = %db_track.id,
                             musicbrainz_artist_id = ?artist_obj.id,
                             track_number = ?track.number,
+                            track_title = %title,
                             "Skipping MusicBrainz track artist credit with unresolvable artist name"
                         );
                         continue;
                     };
-
-                    track_artists.push(DbTrackArtist::new(
-                        &db_track.id,
-                        &artist_id,
-                        credit_pos as i32,
-                        ids.new_id(),
-                        now,
-                    ));
+                    events.push(TrackEvent::Credit {
+                        position: credit_pos as i32,
+                        artist: mb_artist_ref(name, artist_obj),
+                    });
                 }
             }
 
-            // A recording can carry more than one performance relation to the
-            // same work; track_works is uniquely keyed on (track_id, work_id),
-            // so link each work to this track at most once.
-            let mut track_work_ids = HashSet::new();
             if let Some(recording) = track.recording.as_ref() {
                 for (relation_pos, relation) in recording.relations.iter().enumerate() {
                     if mb_relation_is(relation, "work", "performance") {
                         let Some(work) = relation.work.as_ref() else {
                             warn!(
-                                track_id = %db_track.id,
+                                track_title = %title,
                                 relation_type = ?relation.relation_type,
                                 "Skipping MusicBrainz recording work relation without work payload"
                             );
                             continue;
                         };
-                        push_work_graph(
-                            work,
-                            None,
-                            &mut artists,
-                            &mut works,
-                            &mut work_artists,
-                            &mut work_parts,
-                            &mut seen_works,
-                            &mut expanded_works,
-                            ids,
-                            now,
-                        );
-                        if !track_work_ids.insert(work.id.clone()) {
-                            debug!(
-                                track_id = %db_track.id,
-                                work_id = %work.id,
-                                "Skipping duplicate MusicBrainz recording performance relation to the same work"
-                            );
-                            continue;
-                        }
-                        track_works.push(DbTrackWork::new(
-                            &db_track.id,
-                            &work.id,
-                            relation_pos as i32,
-                            MetadataSource::MusicBrainz,
-                            ids.new_id(),
-                            now,
-                        ));
+                        events.push(TrackEvent::Work {
+                            position: relation_pos as i32,
+                            source: MetadataSource::MusicBrainz,
+                            work: mb_work_ref(work, &mut converted_works),
+                        });
                     } else if relation.target_type.as_deref() == Some("artist") {
                         if mb_relation_is_composer(relation) {
                             let Some(artist_ref) = relation.artist.as_ref() else {
                                 warn!(
-                                    track_id = %db_track.id,
+                                    track_title = %title,
                                     relation_type = ?relation.relation_type,
                                     "Skipping MusicBrainz recording artist relation without artist payload"
                                 );
                                 continue;
                             };
-                            let Some(artist_id) = find_or_push_mb_artist(
-                                &mut artists,
-                                artist_ref,
-                                relation.target_credit.as_deref(),
-                                ids,
-                                now,
-                            ) else {
+                            let Some(name) =
+                                mb_artist_name(artist_ref, relation.target_credit.as_deref())
+                            else {
                                 warn!(
-                                    track_id = %db_track.id,
+                                    track_title = %title,
                                     musicbrainz_artist_id = ?artist_ref.id,
                                     "Skipping MusicBrainz recording artist relation with unresolved artist"
                                 );
                                 continue;
                             };
-                            track_artist_roles.push(DbTrackArtistRole::new(
-                                &db_track.id,
-                                &artist_id,
-                                relation_pos as i32,
-                                MetadataSource::MusicBrainz,
-                                relation.relation_type.clone(),
-                                ids.new_id(),
-                                now,
-                            ));
+                            events.push(TrackEvent::Role {
+                                position: relation_pos as i32,
+                                artist: mb_artist_ref(name, artist_ref),
+                                source: MetadataSource::MusicBrainz,
+                                source_credit: relation.relation_type.clone(),
+                            });
                         } else {
                             debug!(
-                                track_id = %db_track.id,
+                                track_title = %title,
                                 relation_type = ?relation.relation_type,
                                 target_type = ?relation.target_type,
                                 target_credit = ?relation.target_credit,
                                 "Skipping MusicBrainz recording artist relation with non-composer relation type"
                             );
-                        };
+                        }
                     }
                 }
             }
 
-            tracks.push(db_track);
+            tracks.push(TrackIr {
+                title,
+                side,
+                number: TrackNumber::PerSide,
+                source_position: track.number.clone(),
+                events,
+            });
         }
 
-        // Advance side_base for the next medium.
         side_base += sides.side_span as i32;
     }
 
-    Ok(ParsedAlbum {
-        album,
-        release: db_release,
+    let primary_artist = release_refs.remove(0);
+    let ir = ReleaseIr {
+        album_title: response.title.clone(),
+        primary_artist,
+        additional_artists: release_refs,
+        album_year,
+        is_compilation,
+        pressing,
+        metadata_source: ReleaseMetadataSource::MusicBrainz,
+        metadata_source_release_id: Some(response.id.clone()),
+        album_artist_scope: AlbumArtistScope::ReleaseCredits,
+        release_roles: Vec::new(),
         tracks,
-        artists,
-        album_artists,
-        track_artists,
-        work_graph: ParsedWorkGraph {
-            works,
-            work_artists,
-            work_parts,
-            track_works,
-        },
-        release_artist_roles: Vec::new(),
-        track_artist_roles,
         identities,
-    })
+    };
+
+    Ok(assemble_parsed_album(ir, clock, ids))
 }
 
 #[cfg(test)]
@@ -1488,6 +1355,48 @@ mod tests {
             .any(|role| role.artist_id == composer.id));
     }
 
+    /// An id-less track credit sharing the release artist's name creates a
+    /// *separate* artist rather than merging into the id-bearing release
+    /// artist. The MB matcher's `(None, None)` name arm only fires when the
+    /// existing artist also lacks an MB id, so an id-bearing artist is never a
+    /// merge target for an id-less credit. (The mirror of
+    /// `known_mb_artist_id_does_not_merge_into_same_name_artist_without_id`,
+    /// which withholds the id on the existing side rather than the new side.)
+    #[test]
+    fn id_less_track_credit_does_not_merge_into_id_bearing_release_artist() {
+        // Release artist "Artist Name A" carries MB id "artist-1".
+        let mut track = make_mb_track("1", "Track 1");
+        track.artist_credit = vec![MbArtistCredit {
+            name: "Artist Name A".to_string(),
+            artist: Some(MbArtistRef {
+                id: None,
+                name: Some("Artist Name A".to_string()),
+                sort_name: None,
+            }),
+        }];
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![track],
+        }]);
+
+        let parsed = map(&response, Some(2024), None).unwrap();
+
+        let matching: Vec<_> = parsed
+            .artists
+            .iter()
+            .filter(|a| a.name == "Artist Name A")
+            .collect();
+        assert_eq!(
+            matching.len(),
+            2,
+            "an id-less credit must not merge into the id-bearing release artist"
+        );
+        assert!(matching
+            .iter()
+            .any(|a| a.musicbrainz_artist_id.as_deref() == Some("artist-1")));
+        assert!(matching.iter().any(|a| a.musicbrainz_artist_id.is_none()));
+    }
+
     #[test]
     fn known_mb_artist_ids_keep_same_name_artists_separate() {
         let mut track = make_mb_track("1", "Track 1");
@@ -1663,6 +1572,65 @@ mod tests {
         assert!(
             logs.contains("work artist relation without artist payload"),
             "expected a skip warning, got: {logs}"
+        );
+    }
+
+    /// A work reached from two tracks is converted once per release: its
+    /// malformed composer relation is logged a single time, and its sub-graph is
+    /// walked once, no matter how many tracks reference it. (Locks `mb_work_ref`'s
+    /// per-release memoization.)
+    #[test]
+    fn work_referenced_by_two_tracks_logs_skip_once() {
+        let work = MbWork {
+            id: "mb-work-a".to_string(),
+            title: "Work Title".to_string(),
+            disambiguation: None,
+            work_type: Some("work".to_string()),
+            relations: vec![MbRelation {
+                target_type: Some("artist".to_string()),
+                relation_type: Some("composer".to_string()),
+                artist: None,
+                ..MbRelation::default()
+            }],
+        };
+        let performance = |work: MbWork| MbRelation {
+            target_type: Some("work".to_string()),
+            relation_type: Some("performance".to_string()),
+            work: Some(work),
+            ..MbRelation::default()
+        };
+        let mut track_one = make_mb_track("1", "Track 1");
+        track_one.recording.as_mut().unwrap().relations = vec![performance(work.clone())];
+        let mut track_two = make_mb_track("2", "Track 2");
+        track_two.recording.as_mut().unwrap().relations = vec![performance(work)];
+        let response = make_response(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![track_one, track_two],
+        }]);
+
+        let mut parsed = None;
+        let logs = crate::test_logs::capture_warn_logs(|| {
+            parsed = Some(map(&response, Some(2024), None).unwrap());
+        });
+        let parsed = parsed.unwrap();
+
+        // The work row lands once and both tracks link it.
+        assert!(parsed.work_graph.works.iter().any(|w| w.id == "mb-work-a"));
+        assert_eq!(
+            parsed
+                .work_graph
+                .track_works
+                .iter()
+                .filter(|l| l.work_id == "mb-work-a")
+                .count(),
+            2
+        );
+        // The skip line is logged exactly once, not once per referencing track.
+        assert_eq!(
+            logs.matches("work artist relation without artist payload")
+                .count(),
+            1,
+            "expected the work's skip to log once per release, got: {logs}"
         );
     }
 

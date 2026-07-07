@@ -20,10 +20,12 @@
 //! from any tag carrying a date. Both stay `None` if not determinable
 //! rather than being defaulted.
 
-use super::{album_artist_links, find_or_push_artist, ParsedAlbum, ParsedWorkGraph};
+use super::assemble::{
+    assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, TrackEvent, TrackIr, TrackNumber,
+};
+use super::ParsedAlbum;
 use crate::cue_flac::CueSheet;
-use crate::db::ReleaseMetadataSource;
-use crate::db::{DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackArtist};
+use crate::db::{Pressing, ReleaseMetadataSource};
 use crate::import::folder_scanner::{AudioContent, CategorizedFiles};
 use crate::util::content_type::ContentType;
 use coven::Clock;
@@ -134,8 +136,7 @@ pub fn map_file_tags_to_db(
         *entry = *entry || t.track_number.is_some();
     }
 
-    let mut per_side_count: std::collections::HashMap<i32, i32> = std::collections::HashMap::new();
-    let tracks: Vec<TrackSeed> = extracted
+    let tracks: Vec<TrackIr> = extracted
         .iter()
         .map(|t| {
             // The folder scanner only admits files with a recognised audio
@@ -152,40 +153,93 @@ pub fn map_file_tags_to_db(
             });
 
             let side = side_of(t);
-            let count = per_side_count.entry(side).or_insert(0);
-            *count += 1;
-            let side_partially_tagged = side_has_tagged_track.get(&side).copied().unwrap_or(false);
-            let track_number = match t.track_number {
-                Some(0) => None,
-                Some(n) if n > i32::MAX as u32 => None,
-                Some(n) => Some(n as i32),
+            let side_has_tagged = side_has_tagged_track.get(&side).copied().unwrap_or(false);
+            let number = match t.track_number {
+                Some(0) => TrackNumber::Explicit(None),
+                Some(n) if n > i32::MAX as u32 => TrackNumber::Explicit(None),
+                Some(n) => TrackNumber::Explicit(Some(n as i32)),
                 // Untagged file on a side that has tagged siblings — leave it
                 // for the user rather than backfill a colliding position.
-                None if side_partially_tagged => None,
-                // Fully-untagged side — positional by file order.
-                None => Some(*count),
+                None if side_has_tagged => TrackNumber::Explicit(None),
+                // Fully-untagged side — positional by file order, numbered by
+                // the assembler's per-side pass.
+                None => TrackNumber::PerSide,
             };
 
-            TrackSeed {
+            TrackIr {
                 title,
-                artist: t.track_artist.clone(),
                 side,
-                track_number,
+                number,
+                source_position: None,
+                events: file_tag_credit_events(t.track_artist.as_deref()),
             }
         })
         .collect();
 
     Ok(assemble_parsed_album(
-        AlbumSeed {
-            album_title,
-            album_artist_name,
-            year,
-            format,
-            tracks,
-        },
+        file_tag_release_ir(album_title, &album_artist_name, year, format, tracks),
         clock,
         ids,
     ))
+}
+
+/// An [`ArtistRef`] for a file-tag ARTIST/PERFORMER value: the name doubles as
+/// its own sort name, and the file tags carry no source artist ids.
+fn file_tag_artist_ref(name: &str) -> ArtistRef {
+    ArtistRef {
+        name: name.to_string(),
+        sort_name: Some(name.to_string()),
+        musicbrainz_artist_id: None,
+        discogs_artist_id: None,
+    }
+}
+
+/// The track's credit events: a single display credit at position 0 when the
+/// source carries an ARTIST/PERFORMER, else none. The junction row is emitted
+/// whenever a name is present, regardless of whether it matches the album
+/// artist — the junction is the source of truth for per-track credits.
+fn file_tag_credit_events(artist: Option<&str>) -> Vec<TrackEvent> {
+    match artist {
+        Some(name) => vec![TrackEvent::Credit {
+            position: 0,
+            artist: file_tag_artist_ref(name),
+        }],
+        None => Vec::new(),
+    }
+}
+
+/// The [`ReleaseIr`] shared by the file-tag and CUE-sheet seeders. `identities`
+/// is always empty (Unknown makes no identity claim); `metadata_source` is
+/// `FileTags`; `album_artist_scope` is `FullPool` so a divergent per-track
+/// artist also becomes an album artist.
+fn file_tag_release_ir(
+    album_title: String,
+    album_artist_name: &str,
+    year: Option<i32>,
+    format: Option<String>,
+    tracks: Vec<TrackIr>,
+) -> ReleaseIr {
+    ReleaseIr {
+        album_title,
+        primary_artist: file_tag_artist_ref(album_artist_name),
+        additional_artists: Vec::new(),
+        album_year: year,
+        is_compilation: false,
+        pressing: Pressing {
+            year,
+            format,
+            label: None,
+            catalog_number: None,
+            country: None,
+            barcode: None,
+        },
+        metadata_source: ReleaseMetadataSource::FileTags,
+        metadata_source_release_id: None,
+        album_artist_scope: AlbumArtistScope::FullPool,
+        release_roles: Vec::new(),
+        tracks,
+        identities: Vec::new(),
+    }
 }
 
 /// Map an Unknown import candidate to the metadata seed used by preview and
@@ -214,157 +268,6 @@ pub fn map_unknown_candidate_to_db(
             let audio_files = tracks.iter().map(|f| f.path.clone()).collect::<Vec<_>>();
             map_file_tags_to_db(&audio_files, folder_name, clock, ids)
         }
-    }
-}
-
-/// One track's source-agnostic seed. Produced from embedded file tags
-/// (per-track rips, [`map_file_tags_to_db`]) or a CUE sheet (single-image
-/// rips, [`map_cue_sheets_to_db`]); both feed [`assemble_parsed_album`].
-struct TrackSeed {
-    title: String,
-    /// Track ARTIST/PERFORMER when the source carries one, else `None`. A
-    /// `Some` emits a track-artists junction row, deduped against the album
-    /// artist by name.
-    artist: Option<String>,
-    side: i32,
-    track_number: Option<i32>,
-}
-
-/// Album-level seed plus per-track seeds, source-agnostic.
-struct AlbumSeed {
-    album_title: String,
-    album_artist_name: String,
-    year: Option<i32>,
-    format: Option<String>,
-    tracks: Vec<TrackSeed>,
-}
-
-/// Assemble a [`ParsedAlbum`] from source-agnostic seeds — the single place
-/// the Unknown path builds album / artist / release / track rows, shared by
-/// the file-tag and CUE-sheet seeders. `identities` is always empty (Unknown
-/// makes no identity claim) and `metadata_source` is `FileTags`.
-fn assemble_parsed_album(seed: AlbumSeed, clock: &dyn Clock, ids: &dyn IdProvider) -> ParsedAlbum {
-    let now = clock.now();
-
-    // ── Album / artists / album-artist junction ────────────────────────
-    let primary_artist = DbArtist {
-        id: ids.new_id(),
-        name: seed.album_artist_name.clone(),
-        sort_name: Some(seed.album_artist_name.clone()),
-        discogs_artist_id: None,
-        musicbrainz_artist_id: None,
-        created_at: now,
-    };
-
-    let mut artists: Vec<DbArtist> = vec![primary_artist];
-
-    let album = DbAlbum {
-        id: ids.new_id(),
-        title: seed.album_title,
-        artist_id: artists[0].id.clone(),
-        year: seed.year,
-        primary_release_id: None,
-        is_compilation: false,
-        created_at: now,
-    };
-
-    let release = DbRelease {
-        id: ids.new_id(),
-        album_id: album.id.clone(),
-        release_name: None,
-        pressing: crate::db::Pressing {
-            year: seed.year,
-            format: seed.format,
-            label: None,
-            catalog_number: None,
-            country: None,
-            barcode: None,
-        },
-        disc_id: None,
-        metadata_source: ReleaseMetadataSource::FileTags,
-        metadata_source_release_id: None,
-        // Imports land local; the upload observer flips `remote` true once
-        // the release's audio is durably in the cloud.
-        remote: false,
-        source_folder_name: None,
-        content_hash: None,
-        // Album loudness is measured in `build_audio_formats` and written to the
-        // release row in the finalize transaction, not here.
-        album_loudness_lufs: None,
-        album_peak_linear: None,
-        created_at: now,
-    };
-
-    let mut tracks: Vec<DbTrack> = Vec::with_capacity(seed.tracks.len());
-    let mut track_artists: Vec<DbTrackArtist> = Vec::new();
-
-    for seed_track in seed.tracks {
-        let db_track = DbTrack {
-            id: ids.new_id(),
-            release_id: release.id.clone(),
-            title: seed_track.title,
-            side: seed_track.side,
-            track_number: seed_track.track_number,
-            duration_ms: None,
-            discogs_position: None,
-            created_at: now,
-        };
-
-        // Per-track artist: emit a track_artists junction row whenever the
-        // source carries an ARTIST/PERFORMER, regardless of whether it matches
-        // the album artist. Mirrors map_mb_response_to_db / map_discogs_to_db,
-        // which emit a row for every track-artist credit unconditionally — the
-        // junction is the source of truth for per-track credits, not a
-        // divergence-only annotation.
-        if let Some(track_artist_name) = seed_track.artist.as_ref() {
-            let artist_id = find_or_push_artist(
-                &mut artists,
-                |artist| artist.name.eq_ignore_ascii_case(track_artist_name),
-                || {
-                    (
-                        track_artist_name.to_string(),
-                        Some(track_artist_name.to_string()),
-                        None,
-                        None,
-                    )
-                },
-                ids,
-                now,
-            );
-
-            track_artists.push(DbTrackArtist::new(
-                &db_track.id,
-                &artist_id,
-                0,
-                ids.new_id(),
-                now,
-            ));
-        }
-
-        tracks.push(db_track);
-    }
-
-    // Additional artists (beyond the primary) go in the album-artists
-    // junction. Seeds don't carry positional album artists the way MB does;
-    // the junction stays empty unless a per-track artist introduced one.
-    let album_artists = album_artist_links(&album.id, &artists, ids, now);
-
-    ParsedAlbum {
-        album,
-        release,
-        tracks,
-        artists,
-        album_artists,
-        track_artists,
-        work_graph: ParsedWorkGraph {
-            works: Vec::new(),
-            work_artists: Vec::new(),
-            work_parts: Vec::new(),
-            track_works: Vec::new(),
-        },
-        release_artist_roles: Vec::new(),
-        track_artist_roles: Vec::new(),
-        identities: Vec::new(),
     }
 }
 
@@ -412,30 +315,27 @@ pub fn map_cue_sheets_to_db(
         .and_then(|p| probe_content_type(p))
         .map(|content_type| content_type.display_name().to_string());
 
-    let mut tracks: Vec<TrackSeed> = Vec::new();
+    // Each sheet is one side and its playable tracks are already in order, so
+    // per-side numbering by the assembler reproduces `position + 1` exactly.
+    let mut tracks: Vec<TrackIr> = Vec::new();
     for (disc_index, sheet) in sheets.iter().enumerate() {
         let side = disc_index as i32 + 1;
-        for (position, track) in sheet.playable_tracks().enumerate() {
+        for track in sheet.playable_tracks() {
             // A CUE track without a TITLE is rare; seed a blank for the user
             // rather than fabricate a placeholder.
             let title = non_empty(track.title.clone()).unwrap_or_default();
-            tracks.push(TrackSeed {
+            tracks.push(TrackIr {
                 title,
-                artist: non_empty(track.performer.clone()),
                 side,
-                track_number: Some(position as i32 + 1),
+                number: TrackNumber::PerSide,
+                source_position: None,
+                events: file_tag_credit_events(non_empty(track.performer.clone()).as_deref()),
             });
         }
     }
 
     Ok(assemble_parsed_album(
-        AlbumSeed {
-            album_title,
-            album_artist_name,
-            year,
-            format,
-            tracks,
-        },
+        file_tag_release_ir(album_title, &album_artist_name, year, format, tracks),
         clock,
         ids,
     ))
@@ -1073,6 +973,13 @@ mod tests {
         assert_eq!(parsed.track_artists[0].artist_id, parsed.artists[0].id);
         assert_eq!(parsed.track_artists[1].track_id, parsed.tracks[1].id);
         assert_eq!(parsed.track_artists[1].artist_id, parsed.artists[1].id);
+
+        // The divergent per-track artist joins the album-artists junction: the
+        // file-tag path scopes album artists to the whole pool, so any artist
+        // introduced by a per-track credit also becomes an album artist.
+        assert_eq!(parsed.album_artists.len(), 1);
+        assert_eq!(parsed.album_artists[0].artist_id, parsed.artists[1].id);
+        assert_eq!(parsed.album_artists[0].position, 1);
     }
 
     /// Missing optional tags (no year, no DISCNUMBER) → year is None,

@@ -731,77 +731,10 @@ impl DbAlbum {
             created_at: now,
         }
     }
-    /// Create a logical album from a Discogs release
-    /// Note: Artists should be created separately and linked via DbAlbumArtist
-    ///
-    /// master_year is the original release year (from the Discogs master release).
-    /// Falls back to the specific release year if master_year is unavailable.
-    pub fn from_discogs_release(
-        release: &crate::discogs::DiscogsRelease,
-        master_year: Option<u32>,
-        primary_artist_id: &str,
-        id: String,
-        now: DateTime<Utc>,
-    ) -> Self {
-        let is_compilation = release
-            .artists
-            .first()
-            .map(|a| is_various_artists(&a.name))
-            .unwrap_or(false);
-        let year = master_year
-            .map(|y| y as i32)
-            .or(release.year.map(|y| y as i32));
-        DbAlbum {
-            id,
-            title: release.title.clone(),
-            artist_id: primary_artist_id.to_string(),
-            year,
-            primary_release_id: None,
-            is_compilation,
-            created_at: now,
-        }
-    }
-    pub fn from_mb_response(
-        response: &crate::musicbrainz::MbReleaseResponse,
-        master_year: Option<u32>,
-        primary_artist_id: &str,
-        id: String,
-        now: DateTime<Utc>,
-    ) -> Self {
-        let first_release_date = response
-            .release_group
-            .as_ref()
-            .and_then(|rg| rg.first_release_date.clone())
-            .filter(|s| !s.is_empty());
-        let year = first_release_date
-            .as_ref()
-            .and_then(|d| d.split('-').next().and_then(|y| y.parse::<i32>().ok()))
-            .or_else(|| {
-                response
-                    .date
-                    .as_ref()
-                    .and_then(|d| d.split('-').next().and_then(|y| y.parse::<i32>().ok()))
-            })
-            .or(master_year.map(|y| y as i32));
-        let is_compilation = response
-            .artist_credit
-            .first()
-            .map(|ac| is_various_artists(&ac.name))
-            .unwrap_or(false);
-        DbAlbum {
-            id,
-            title: response.title.clone(),
-            artist_id: primary_artist_id.to_string(),
-            year,
-            primary_release_id: None,
-            is_compilation,
-            created_at: now,
-        }
-    }
 }
 
 /// Check if an artist name indicates a "Various Artists" compilation
-fn is_various_artists(name: &str) -> bool {
+pub(crate) fn is_various_artists(name: &str) -> bool {
     let lower = name.trim().to_lowercase();
     lower == "various" || lower == "various artists"
 }
@@ -826,90 +759,6 @@ impl DbRelease {
             created_at: now,
         }
     }
-    /// Create a release from a Discogs release
-    pub fn from_discogs_release(
-        album_id: &str,
-        release: &crate::discogs::DiscogsRelease,
-        id: String,
-        now: DateTime<Utc>,
-    ) -> Self {
-        let format = if release.format.is_empty() {
-            None
-        } else {
-            Some(release.format.join(", "))
-        };
-        DbRelease {
-            id,
-            album_id: album_id.to_string(),
-            release_name: None,
-            pressing: Pressing {
-                year: release.year.map(|y| y as i32),
-                format,
-                label: release.label.first().cloned(),
-                catalog_number: release.catno.clone(),
-                country: release.country.clone(),
-                barcode: None,
-            },
-            disc_id: None,
-            metadata_source: ReleaseMetadataSource::Discogs,
-            metadata_source_release_id: Some(release.id.clone()),
-            // Imports land local; the upload observer flips `remote` true
-            // once the release's audio is durably in the cloud.
-            remote: false,
-            source_folder_name: None,
-            content_hash: None,
-            album_loudness_lufs: None,
-            album_peak_linear: None,
-            created_at: now,
-        }
-    }
-    pub fn from_mb_response(
-        album_id: &str,
-        response: &crate::musicbrainz::MbReleaseResponse,
-        id: String,
-        now: DateTime<Utc>,
-    ) -> Self {
-        let year = response
-            .date
-            .as_ref()
-            .and_then(|d| d.split('-').next().and_then(|y| y.parse::<i32>().ok()));
-        let format = response.media.first().and_then(|m| m.format.clone());
-        let (label, catalog_number) = response
-            .label_info
-            .first()
-            .map(|li| {
-                (
-                    li.label.as_ref().and_then(|l| l.name.clone()),
-                    li.catalog_number.clone(),
-                )
-            })
-            .unwrap_or((None, None));
-        DbRelease {
-            id,
-            album_id: album_id.to_string(),
-            release_name: None,
-            pressing: Pressing {
-                year,
-                format,
-                label,
-                catalog_number,
-                country: response.country.clone(),
-                barcode: response.barcode.clone(),
-            },
-            disc_id: None,
-            metadata_source: ReleaseMetadataSource::MusicBrainz,
-            metadata_source_release_id: Some(response.id.clone()),
-            // Imports land local; the upload observer flips `remote` true
-            // once the release's audio is durably in the cloud.
-            remote: false,
-            source_folder_name: None,
-            content_hash: None,
-            album_loudness_lufs: None,
-            album_peak_linear: None,
-            created_at: now,
-        }
-    }
-
     /// Storage state — Local (local) or Remote (cloud) — from the shared
     /// `remote` fact. Pinned-ness is the orthogonal coven-cache property the
     /// caller carries separately; it is never part of this.
@@ -935,27 +784,6 @@ impl DbTrack {
             track_number,
             duration_ms: None,
             discogs_position: None,
-
-            created_at: now,
-        }
-    }
-    pub fn from_discogs_track(
-        title: &str,
-        release_id: &str,
-        track_number: i32,
-        side: i32,
-        discogs_position: Option<String>,
-        id: String,
-        now: DateTime<Utc>,
-    ) -> Self {
-        DbTrack {
-            id,
-            release_id: release_id.to_string(),
-            title: title.to_string(),
-            side,
-            track_number: Some(track_number),
-            duration_ms: None,
-            discogs_position,
 
             created_at: now,
         }
