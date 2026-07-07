@@ -2,8 +2,7 @@
 
   <!--
     Unpackaged WinUI 3 (C#/.NET) desktop app, x64. Binds bae-core through the
-    hand-written C ABI in bae-windows-ffi (bae_windows_ffi.dll), the way macOS and
-    Android bind it through uniffi. This project is C#, not a cargo crate, so it is
+    generated uniffi C# bindings. This project is C#, not a cargo crate, so it is
     deliberately outside the Rust workspace.
 
     Unpackaged distribution: WindowsPackageType=None makes the Windows App SDK

@@ -7,8 +7,8 @@ namespace Bae.Windows;
 /// <summary>
 /// Localized-string resolution and locale-aware value formatting — the one
 /// computation the UI is required to do because the locale never crosses the
-/// bridge. bae-core and bae-windows-ffi emit raw numbers, typed enums, and
-/// stable <c>core.*</c> / <c>ui.*</c> catalog keys; this class turns a key (and
+/// bridge. bae-core and bae-bridge emit raw numbers, typed enums, and stable
+/// <c>core.*</c> / <c>ui.*</c> catalog keys; this class turns a key (and
 /// its MessageFormat arguments) into a string for the current locale, and
 /// formats raw byte counts / durations / numbers the way macOS does with
 /// <c>ByteCountFormatter</c> / <c>DateComponentsFormatter</c>.
