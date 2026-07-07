@@ -210,59 +210,6 @@ async fn test_get_active_imports_includes_preparing_and_importing() {
     assert!(ids.contains(&"import-importing"));
 }
 
-/// Verify that when validation fails during import preparation, no DbImport
-/// record is left in the database.
-///
-/// Previously, DbImport was inserted at the start of send_folder_request
-/// (before validation), so a validation failure (e.g., track count mismatch)
-/// would leave a stuck "preparing" record with no release_id. That record
-/// would reappear after every app restart.
-///
-/// Now, send_folder_request runs validation (map_tracks_to_files) BEFORE
-/// calling db.insert_import(). When validation fails, the function returns
-/// Err early with no side effects -- no DbImport row is created.
-///
-/// This test models the two outcomes: a successful import creates a record,
-/// while a failed validation for a different import leaves no trace.
-#[tokio::test]
-async fn test_no_import_record_when_validation_fails() {
-    tracing_init();
-    let (db, _temp) = create_test_db().await;
-
-    // Successful import: validation passed, so insert_import is called
-    let successful_import = DbImport::new(
-        "success-import",
-        "Album Title",
-        "Artist Name",
-        "/music/library/album-title",
-        chrono::Utc::now(),
-    );
-    db.insert_import(&successful_import).await.unwrap();
-
-    // Failed import: validation would have failed (track count mismatch),
-    // so insert_import is never called. We model this by simply not inserting.
-    // The import_id "failed-validation-import" was never written to the DB.
-
-    // Only the successful import should exist
-    let active = db.get_active_imports().await.unwrap();
-    assert_eq!(
-        active.len(),
-        1,
-        "Only the successful import should be active"
-    );
-    assert_eq!(active[0].id, "success-import");
-
-    // The failed validation import has no record at all
-    let failed_lookup = db
-        .find_import_by_id("failed-validation-import")
-        .await
-        .unwrap();
-    assert!(
-        failed_lookup.is_none(),
-        "No import record should exist for a validation failure"
-    );
-}
-
 /// Test that deleting an import removes it from the database.
 /// This is needed for the UI dismiss functionality to properly clean up
 /// stuck imports so they don't reappear after app restart.
@@ -303,9 +250,12 @@ async fn test_delete_nonexistent_import_is_ok() {
     assert!(result.is_ok());
 }
 
-/// Test multiple concurrent imports are tracked independently.
+/// Each import row is tracked independently through status changes: three
+/// rows start active, then completing / failing / deleting one each drops it
+/// from `get_active_imports`. Exercises the DB row bookkeeping, not concurrency
+/// (the "imports" all run on one thread, in sequence).
 #[tokio::test]
-async fn test_multiple_concurrent_imports() {
+async fn active_imports_reflect_per_row_status_transitions() {
     tracing_init();
     let (db, _temp) = create_test_db().await;
 
@@ -347,36 +297,30 @@ async fn test_active_imports_ordered_by_created_at_desc() {
     tracing_init();
     let (db, _temp) = create_test_db().await;
 
-    // Insert with 1 second delays to ensure different timestamps
-    // (SQLite stores timestamps at second precision)
-    let import1 = DbImport::new(
-        "first",
-        "First Album",
-        "Artist",
-        "/path/1",
-        chrono::Utc::now(),
-    );
+    // `created_at` is stored at second precision, so the rows must carry
+    // distinct whole-second timestamps for the DESC order to be well-defined.
+    // Set them explicitly instead of sleeping between inserts.
+    let base = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    let import1 = DbImport::new("first", "First Album", "Artist", "/path/1", base);
     db.insert_import(&import1).await.unwrap();
-
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
     let import2 = DbImport::new(
         "second",
         "Second Album",
         "Artist",
         "/path/2",
-        chrono::Utc::now(),
+        base + chrono::Duration::seconds(1),
     );
     db.insert_import(&import2).await.unwrap();
-
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
     let import3 = DbImport::new(
         "third",
         "Third Album",
         "Artist",
         "/path/3",
-        chrono::Utc::now(),
+        base + chrono::Duration::seconds(2),
     );
     db.insert_import(&import3).await.unwrap();
 
