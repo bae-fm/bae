@@ -150,6 +150,15 @@ final class ReleaseSummary: Identifiable {
     private static func transferState(
         from action: BridgeReleaseStorageAction?
     ) -> TransferState? {
-        action.map { TransferState(label: $0.transferProgressVerb) }
+        action.map {
+            TransferState(
+                label: NSLocalizedString(
+                    bridgeTransferActionKey(action: $0),
+                    tableName: "Core",
+                    bundle: .main,
+                    comment: ""
+                )
+            )
+        }
     }
 }

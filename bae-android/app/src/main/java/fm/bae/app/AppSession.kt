@@ -102,7 +102,18 @@ class OpenLibrary(
      * the runtime, sync, and playback engine). Called when a different library
      * is opened so the old session doesn't leak its handle.
      */
-    suspend fun dispose(shutdownHandle: Boolean = true) {
+    suspend fun dispose() {
+        stopSessionServices()
+        appHandle.shutdown()
+        appHandle.close()
+    }
+
+    suspend fun closeForgottenLibrary() {
+        stopSessionServices()
+        appHandle.close()
+    }
+
+    private fun stopSessionServices() {
         // Detach the audio-focus listener + becoming-noisy receiver: they call
         // appHandle.pause()/resume() on their own (system-driven, no user
         // action), so they must stop touching the handle before it's closed. The
@@ -115,10 +126,6 @@ class OpenLibrary(
         eventJob = null
         eventChannel = null
         appContext.stopService(Intent(appContext, PlaybackService::class.java))
-        if (shutdownHandle) {
-            appHandle.shutdown()
-        }
-        appHandle.close()
     }
 }
 
@@ -196,7 +203,7 @@ object AppSessionHolder {
             onScreen(AppScreen.Failed(e.message ?: "Failed to remove library"))
             return
         }
-        session.dispose(shutdownHandle = false)
+        session.closeForgottenLibrary()
         current = null
 
         onScreen(AppScreen.Loading)

@@ -85,7 +85,6 @@ public sealed partial class MainWindow : Window
 
     private readonly object _handleGate = new();
     private IntPtr _handle;
-    private bool _teardownInProgress;
     private int _sessionGeneration;
 
     // Releases whose unmanage is running right now. Unmanage is a blocking
@@ -372,7 +371,6 @@ public sealed partial class MainWindow : Window
         lock (_handleGate)
         {
             _handle = handle;
-            _teardownInProgress = false;
             _sessionGeneration++;
         }
 
@@ -565,14 +563,13 @@ public sealed partial class MainWindow : Window
         IntPtr handle;
         lock (_handleGate)
         {
-            if (_handle == IntPtr.Zero || _teardownInProgress)
+            if (_handle == IntPtr.Zero)
             {
                 return;
             }
 
             handle = _handle;
             _handle = IntPtr.Zero;
-            _teardownInProgress = true;
             _sessionGeneration++;
         }
 
@@ -580,15 +577,8 @@ public sealed partial class MainWindow : Window
         {
             lock (_handleGate)
             {
-                try
-                {
-                    NativeBae.Shutdown(handle);
-                    NativeBae.HandleFree(handle);
-                }
-                finally
-                {
-                    _teardownInProgress = false;
-                }
+                NativeBae.Shutdown(handle);
+                NativeBae.HandleFree(handle);
             }
         });
     }
@@ -600,7 +590,7 @@ public sealed partial class MainWindow : Window
         {
             lock (_handleGate)
             {
-                if (_handle == IntPtr.Zero || _teardownInProgress)
+                if (_handle == IntPtr.Zero)
                 {
                     return (Ran: false, Generation: _sessionGeneration, Result: default!);
                 }
@@ -629,7 +619,7 @@ public sealed partial class MainWindow : Window
     {
         lock (_handleGate)
         {
-            if (_handle == IntPtr.Zero || _teardownInProgress)
+            if (_handle == IntPtr.Zero)
             {
                 return false;
             }
@@ -643,7 +633,7 @@ public sealed partial class MainWindow : Window
     {
         lock (_handleGate)
         {
-            if (_handle == IntPtr.Zero || _teardownInProgress)
+            if (_handle == IntPtr.Zero)
             {
                 return (false, default!);
             }
@@ -656,7 +646,7 @@ public sealed partial class MainWindow : Window
     {
         lock (_handleGate)
         {
-            return _teardownInProgress ? IntPtr.Zero : _handle;
+            return _handle;
         }
     }
 

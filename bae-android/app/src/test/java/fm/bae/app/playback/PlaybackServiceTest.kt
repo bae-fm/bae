@@ -140,7 +140,7 @@ internal class FakeAppHandle(
         resumeCount++
     }
 
-    override fun savePlaybackState() {}
+    override suspend fun savePlaybackState() {}
 
     override fun subscribeUiEvents(callback: UiEventCallback) {}
 

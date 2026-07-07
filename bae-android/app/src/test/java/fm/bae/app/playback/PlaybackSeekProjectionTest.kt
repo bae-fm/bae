@@ -330,7 +330,7 @@ class PlaybackSeekProjectionTest {
             previousTrackFailure?.let { throw it }
         }
 
-        override fun savePlaybackState() {}
+        override suspend fun savePlaybackState() {}
 
         override fun subscribeUiEvents(callback: UiEventCallback) {}
     }

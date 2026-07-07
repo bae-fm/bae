@@ -489,56 +489,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
         loadInitialState()
     }
 
-    func application(_: NSApplication, open urls: [URL]) {
-        for url in urls {
-            var isDir: ObjCBool = false
-            guard
-                FileManager.default.fileExists(
-                    atPath: url.path,
-                    isDirectory: &isDir
-                ),
-                isDir.boolValue
-            else {
-                continue
-            }
-            do {
-                try appService?.appHandle
-                    .addWatchedFolder(path: url.path)
-            }
-            catch {
-                uiStore.showError(
-                    String(
-                        localized:
-                            "Couldn't add folder: \(error.localizedDescription)"
-                    )
-                )
-            }
-            uiStore.navigateToImport()
-        }
-    }
-
-    func applicationWillTerminate(_: Notification) {
-        guard UserDefaults.standard.bool(forKey: "persistPlayback"),
-            let appService
-        else {
-            return
-        }
-        Task { [handle = appService.appHandle] in
-            await handle.shutdown()
-        }
-    }
-
-    func applicationDidBecomeActive(_: Notification) {
-        // Refresh the library list when bae returns to the foreground so the
-        // Open Library submenu reflects libraries created, renamed, or removed
-        // elsewhere while we were in the background. Only meaningful once a
-        // library is open — the menu that consumes the list exists only then.
-        guard !skipsApplicationServices, appService != nil else {
-            return
-        }
-        reloadLibraries()
-    }
-
     // MARK: - Library lifecycle
 
     private func loadInitialState() {
@@ -574,19 +524,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
         openTask?.cancel()
         openTask = Task { @MainActor in
             do {
-                let handle = try await DetachedWork.run {
-                    try initApp(
-                        libraryId: libraryId,
-                        positionUpdateIntervalMs: 200,
-                    )
-                }
+                let handle = try await openHandle(libraryId: libraryId)
                 // A newer open may have superseded this one while `initApp`
                 // ran; bail before touching screen/appService so the stale open
                 // can't clobber the current one. `handle` drops here.
                 try Task.checkCancellation()
                 let cfg = handle.getConfig()
-                if cfg.encryptionKeyStored, !handle.hasEncryptionKey() {
-                    self.screen = .unlock(
+                if needsUnlock(handle: handle, config: cfg) {
+                    screen = .unlock(
                         libraryId: libraryId,
                         libraryName: cfg.libraryName,
                         fingerprint: cfg.encryptionKeyFingerprint,
@@ -598,20 +543,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
                     initialOutbox = try await handle.getOutboxSnapshot()
                 }
                 catch {
-                    logger.error("Failed to seed outbox snapshot: \(error)")
-                    self.loadError = error.localizedDescription
-                    self.screen = .welcome
-                    await handle.shutdown()
+                    await failOpenBeforeService(handle: handle, error: error)
                     return
                 }
-                let service = AppService(
-                    appHandle: handle,
-                    mediaControlService: mediaControlService,
+                let service = makeService(
+                    handle: handle,
                     uiStore: store,
                     config: cfg,
                     initialOutbox: initialOutbox
                 )
-                service.wireUp()
                 if handle.isSyncReady() {
                     service.sync.storeRestoreCodeInKeychain(
                         libraryId: cfg.libraryId,
@@ -643,6 +583,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
                 }
             }
         }
+    }
+
+    private func openHandle(libraryId: String) async throws -> AppHandle {
+        try await DetachedWork.run {
+            try initApp(
+                libraryId: libraryId,
+                positionUpdateIntervalMs: 200,
+            )
+        }
+    }
+
+    private func needsUnlock(handle: AppHandle, config: BridgeConfig) -> Bool {
+        config.encryptionKeyStored && !handle.hasEncryptionKey()
+    }
+
+    private func failOpenBeforeService(handle: AppHandle, error: Error) async {
+        logger.error("Failed to seed outbox snapshot: \(error)")
+        loadError = error.localizedDescription
+        screen = .welcome
+        await handle.shutdown()
+    }
+
+    @MainActor
+    private func makeService(
+        handle: AppHandle,
+        uiStore: UiStore,
+        config: BridgeConfig,
+        initialOutbox: BridgeOutboxSnapshot
+    ) -> AppService {
+        let service = AppService(
+            appHandle: handle,
+            mediaControlService: mediaControlService,
+            uiStore: uiStore,
+            config: config,
+            initialOutbox: initialOutbox
+        )
+        service.wireUp()
+        return service
     }
 
     /// Close the open library and return to the welcome chooser. Stops
@@ -760,5 +738,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
                 loadError = error.localizedDescription
             }
         }
+    }
+}
+
+extension AppDelegate {
+    func applicationWillTerminate(_: Notification) {
+        guard UserDefaults.standard.bool(forKey: "persistPlayback"),
+            let appService
+        else {
+            return
+        }
+        Task { [handle = appService.appHandle] in
+            await handle.shutdown()
+        }
+    }
+
+    func applicationDidBecomeActive(_: Notification) {
+        // Refresh the library list when bae returns to the foreground so the
+        // Open Library submenu reflects libraries created, renamed, or removed
+        // elsewhere while we were in the background. Only meaningful once a
+        // library is open — the menu that consumes the list exists only then.
+        guard !skipsApplicationServices, appService != nil else {
+            return
+        }
+        reloadLibraries()
+    }
+
+    func application(_: NSApplication, open urls: [URL]) {
+        for url in urls {
+            addWatchedFolderFromOpenURL(url)
+        }
+    }
+
+    private func addWatchedFolderFromOpenURL(_ url: URL) {
+        var isDir: ObjCBool = false
+        guard
+            FileManager.default.fileExists(
+                atPath: url.path,
+                isDirectory: &isDir
+            ),
+            isDir.boolValue
+        else {
+            return
+        }
+        do {
+            try appService?.appHandle.addWatchedFolder(path: url.path)
+        }
+        catch {
+            uiStore.showError(
+                String(
+                    localized:
+                        "Couldn't add folder: \(error.localizedDescription)"
+                )
+            )
+        }
+        uiStore.navigateToImport()
     }
 }

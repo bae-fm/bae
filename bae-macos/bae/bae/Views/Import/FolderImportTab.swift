@@ -167,17 +167,6 @@ struct FolderImportTab: View {
             .sorted()
     }
 
-    private var candidateList: some View {
-        ImportCandidateListContent(
-            importStore: importStore,
-            selectedKey: candidateSelectionBinding,
-            isLikelyDupe: importedSourceFolderNames.contains,
-            onAddFolder: { pickFolderAndAdd() },
-            onRemoveFolder: { path in removeWatchedFolder(path) },
-            onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
-        )
-    }
-
     private func refreshImportedSourceFolderNames(_ names: [String]) async {
         var imported: Set<String> = []
         for name in names {
@@ -233,6 +222,21 @@ struct FolderImportTab: View {
                 )
             )
         }
+    }
+}
+
+// MARK: - Candidate list
+
+extension FolderImportTab {
+    fileprivate var candidateList: some View {
+        ImportCandidateListContent(
+            importStore: importStore,
+            selectedKey: candidateSelectionBinding,
+            isLikelyDupe: importedSourceFolderNames.contains,
+            onAddFolder: { pickFolderAndAdd() },
+            onRemoveFolder: { path in removeWatchedFolder(path) },
+            onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
+        )
     }
 
     // MARK: - Main pane

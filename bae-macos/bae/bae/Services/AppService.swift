@@ -155,6 +155,31 @@ final class AppService: @unchecked Sendable, Observable {
         revalidateDiscogsToken()
     }
 
+    func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
+        playbackStore.applyQueueSnapshot(snapshot)
+        mediaControlService.updateCommandAvailability(
+            hasNext: snapshot.hasNext,
+            hasPrevious: snapshot.hasPrevious
+        )
+    }
+
+    /// Re-check a Discogs key that was saved while offline. App-launch half of
+    /// the deferred validation (the settings tab covers tab-open, a real search
+    /// covers use-time). Core no-ops unless the stored key is `Unvalidated`, so
+    /// this calls unconditionally rather than inspecting the status here.
+    private func revalidateDiscogsToken() {
+        let discogs = discogs
+        Task {
+            do { try await discogs.revalidateDiscogsToken() }
+            catch {
+                logger.error("Discogs revalidation on launch failed: \(error)")
+            }
+        }
+    }
+
+}
+
+extension AppService {
     private func registerRootProjections() {
         precondition(projectionRegistrations.isEmpty)
         projectionRegistrations = [
@@ -374,27 +399,4 @@ final class AppService: @unchecked Sendable, Observable {
             onError: { [uiStore] error in uiStore.showError(error) }
         )
     }
-
-    func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
-        playbackStore.applyQueueSnapshot(snapshot)
-        mediaControlService.updateCommandAvailability(
-            hasNext: snapshot.hasNext,
-            hasPrevious: snapshot.hasPrevious
-        )
-    }
-
-    /// Re-check a Discogs key that was saved while offline. App-launch half of
-    /// the deferred validation (the settings tab covers tab-open, a real search
-    /// covers use-time). Core no-ops unless the stored key is `Unvalidated`, so
-    /// this calls unconditionally rather than inspecting the status here.
-    private func revalidateDiscogsToken() {
-        let discogs = discogs
-        Task {
-            do { try await discogs.revalidateDiscogsToken() }
-            catch {
-                logger.error("Discogs revalidation on launch failed: \(error)")
-            }
-        }
-    }
-
 }

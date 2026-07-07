@@ -17,6 +17,22 @@ struct NowPlayingMetadata {
     let playbackRate: Double
 }
 
+private final class ActiveMediaSession {
+    weak var playback: Playback?
+    weak var previewAudio: PreviewAudio?
+    weak var playbackStore: PlaybackStore?
+
+    init(
+        playback: Playback,
+        previewAudio: PreviewAudio,
+        playbackStore: PlaybackStore
+    ) {
+        self.playback = playback
+        self.previewAudio = previewAudio
+        self.playbackStore = playbackStore
+    }
+}
+
 /// Bridges playback state to macOS Now Playing (Control Center widget + media keys).
 final class MediaControlService: @unchecked Sendable {
     private var commandsRegistered = false
@@ -25,18 +41,18 @@ final class MediaControlService: @unchecked Sendable {
     private var artworkTask: Task<Void, Never>?
     private var isShowingPreview = false
     private var currentDurationMs: UInt64?
-    private weak var playback: Playback?
-    private weak var previewAudio: PreviewAudio?
-    private weak var playbackStore: PlaybackStore?
+    private var activeSession: ActiveMediaSession?
 
     func activate(
         playback: Playback,
         previewAudio: PreviewAudio,
         playbackStore: PlaybackStore
     ) {
-        self.playback = playback
-        self.previewAudio = previewAudio
-        self.playbackStore = playbackStore
+        activeSession = ActiveMediaSession(
+            playback: playback,
+            previewAudio: previewAudio,
+            playbackStore: playbackStore
+        )
 
         guard !commandsRegistered else {
             return
@@ -50,12 +66,15 @@ final class MediaControlService: @unchecked Sendable {
     }
 
     func deactivate(playbackStore: PlaybackStore) {
-        guard self.playbackStore === playbackStore else {
+        guard let activeSession else {
+            logger.error("Media controls deactivated without an active session")
             return
         }
-        playback = nil
-        previewAudio = nil
-        self.playbackStore = nil
+        guard activeSession.playbackStore === playbackStore else {
+            logger.error("Media controls deactivated for a non-current session")
+            return
+        }
+        self.activeSession = nil
         isShowingPreview = false
         artworkTask?.cancel()
         artworkTask = nil
@@ -68,64 +87,66 @@ final class MediaControlService: @unchecked Sendable {
         center: MPRemoteCommandCenter
     ) {
         center.playCommand.addTarget { [weak self] _ in
-            guard let self, let playback, let previewAudio else {
-                return .noActionableNowPlayingItem
-            }
-            if isShowingPreview {
-                previewAudio.previewTogglePause()
-            }
-            else {
-                playback.resume()
-            }
-            return .success
+            self?
+                .handlePlaybackCommand(
+                    preview: { $0.previewTogglePause() },
+                    library: { $0.resume() }
+                ) ?? .noActionableNowPlayingItem
         }
 
         center.pauseCommand.addTarget { [weak self] _ in
-            guard let self, let playback, let previewAudio else {
-                return .noActionableNowPlayingItem
-            }
-            if isShowingPreview {
-                previewAudio.previewTogglePause()
-            }
-            else {
-                playback.pause()
-            }
-            return .success
+            self?
+                .handlePlaybackCommand(
+                    preview: { $0.previewTogglePause() },
+                    library: { $0.pause() }
+                ) ?? .noActionableNowPlayingItem
         }
 
         center.togglePlayPauseCommand.addTarget { [weak self] _ in
-            guard let self, let playback, let previewAudio else {
-                return .noActionableNowPlayingItem
-            }
-            if isShowingPreview {
-                previewAudio.previewTogglePause()
-            }
-            else {
-                playback.togglePlayPause()
-            }
-            return .success
+            self?
+                .handlePlaybackCommand(
+                    preview: { $0.previewTogglePause() },
+                    library: { $0.togglePlayPause() }
+                ) ?? .noActionableNowPlayingItem
         }
+    }
+
+    private func handlePlaybackCommand(
+        preview: (PreviewAudio) -> Void,
+        library: (Playback) -> Void
+    ) -> MPRemoteCommandHandlerStatus {
+        guard let activeSession,
+            let playback = activeSession.playback,
+            let previewAudio = activeSession.previewAudio
+        else {
+            return .noActionableNowPlayingItem
+        }
+        if isShowingPreview {
+            preview(previewAudio)
+        }
+        else {
+            library(playback)
+        }
+        return .success
     }
 
     private func registerTrackCommands(
         center: MPRemoteCommandCenter
     ) {
         center.nextTrackCommand.addTarget { [weak self] _ in
-            guard let self, let playback, let previewAudio else {
-                return .noActionableNowPlayingItem
-            }
-            previewAudio.previewStop()
-            playback.nextTrack()
-            return .success
+            self?
+                .handlePlaybackCommand(
+                    preview: { $0.previewStop() },
+                    library: { $0.nextTrack() }
+                ) ?? .noActionableNowPlayingItem
         }
 
         center.previousTrackCommand.addTarget { [weak self] _ in
-            guard let self, let playback, let previewAudio else {
-                return .noActionableNowPlayingItem
-            }
-            previewAudio.previewStop()
-            playback.previousTrack()
-            return .success
+            self?
+                .handlePlaybackCommand(
+                    preview: { $0.previewStop() },
+                    library: { $0.previousTrack() }
+                ) ?? .noActionableNowPlayingItem
         }
     }
 
@@ -134,9 +155,10 @@ final class MediaControlService: @unchecked Sendable {
     ) {
         center.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let self,
-                let playback,
-                let previewAudio,
-                let playbackStore,
+                let activeSession,
+                let playback = activeSession.playback,
+                let previewAudio = activeSession.previewAudio,
+                let playbackStore = activeSession.playbackStore,
                 let positionEvent = event
                     as? MPChangePlaybackPositionCommandEvent
             else {
@@ -165,6 +187,10 @@ final class MediaControlService: @unchecked Sendable {
             return .success
         }
     }
+}
+
+extension MediaControlService {
+    // MARK: - Library Now Playing
 
     func updateNowPlaying(state: BridgePlaybackState, appHandle: AppHandle) {
         guard !isShowingPreview else {

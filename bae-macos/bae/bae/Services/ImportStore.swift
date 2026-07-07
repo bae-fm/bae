@@ -235,7 +235,9 @@ class ImportStore {
             mutateFolderCandidate(key: key, mutate)
         }
     }
+}
 
+extension ImportStore {
     /// The state tab a candidate belongs to. Skipped wins (a skipped candidate
     /// stays under Skipped even if it was also imported); otherwise a candidate
     /// that completed an import this session or matches an already-imported
