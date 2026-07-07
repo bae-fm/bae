@@ -142,7 +142,6 @@ async fn test_cue_ape_records_correct_durations() {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -328,7 +327,6 @@ async fn test_cue_ape_records_track_timing() {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -457,7 +455,6 @@ impl CueApeTestFixture {
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let library_manager = LibraryManager::new(
             database.clone(),
-            library_dir.clone(),
             config_handle,
             key_service,
             std::sync::Arc::new(coven::SystemClock),

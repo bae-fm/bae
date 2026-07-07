@@ -55,7 +55,6 @@ impl ImportFixture {
         let ids: Arc<dyn coven::IdProvider> = Arc::new(coven::UuidProvider);
         let library_manager = LibraryManager::new(
             db.clone(),
-            library_dir.clone(),
             config_handle.clone(),
             key_service,
             std::sync::Arc::new(coven::SystemClock),
@@ -2521,7 +2520,6 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         .expect("set verify_decode_on_import");
     let library_manager = LibraryManager::new(
         db.clone(),
-        library_dir,
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),

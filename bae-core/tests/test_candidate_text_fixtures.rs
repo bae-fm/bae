@@ -261,7 +261,6 @@ async fn make_library_manager() -> (bae_core::library::LibraryManager, TempDir) 
     let key_service = bae_core::keys::KeyService::new(library_id);
     let manager = bae_core::library::LibraryManager::new(
         database,
-        library_dir,
         config_handle,
         key_service,
         clock,

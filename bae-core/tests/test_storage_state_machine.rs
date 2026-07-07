@@ -78,7 +78,6 @@ async fn setup_manager(
     .unwrap();
     let mgr = LibraryManager::new(
         db.clone(),
-        library_dir,
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),

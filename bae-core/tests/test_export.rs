@@ -53,7 +53,6 @@ impl ExportFixture {
         let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
         let mgr = LibraryManager::new(
             db.clone(),
-            library_dir,
             config_handle,
             key_service,
             Arc::new(coven::SystemClock),

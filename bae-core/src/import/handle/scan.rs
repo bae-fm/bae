@@ -8,7 +8,7 @@ impl ImportServiceHandle {
     pub fn set_candidate_skipped(&self, path: String, skipped: bool) -> Result<(), String> {
         let library_dir = self.library_manager.library_dir();
         let mut registry = self.folder_registry.lock().unwrap();
-        let changed = registry.set_skipped(library_dir, path.clone(), skipped)?;
+        let changed = registry.set_skipped(&library_dir, path.clone(), skipped)?;
         drop(registry);
         if changed {
             self.candidate_state

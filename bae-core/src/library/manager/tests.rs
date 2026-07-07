@@ -11,6 +11,7 @@ use crate::util::content_type::ContentType;
 use chrono::Utc;
 #[cfg(feature = "test-utils")]
 use coven::InMemoryCloudHome;
+use coven::LibraryDir;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -54,7 +55,6 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
     let key_service = KeyService::new(library_id.to_string());
     let manager = LibraryManager::new(
         database,
-        library_dir,
         config_handle,
         key_service,
         Arc::new(coven::SystemClock),
@@ -149,7 +149,6 @@ async fn setup_forget_library_manager_at(
     let key_service = KeyService::new(library_id.to_string());
     LibraryManager::new(
         database,
-        LibraryDir::new(library_dir),
         config_handle,
         key_service,
         Arc::new(coven::SystemClock),

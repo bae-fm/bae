@@ -1,16 +1,16 @@
 //! Orchestrator layer: the one place where raw DB aggregates meet util
 //! formatters and filesystem paths to produce resolved types.
 //!
-//! `LibraryManager` owns `library_dir` and the database handle. Its surface
-//! is split into per-entity modules — `release`, `album`, `track`, `artist`,
-//! `identity`, `image`, `import`, `export`, `storage` — each holding that
-//! entity's I/O operations (reads `&Database` / `&CovenHandle` to gather the
-//! covers, pin state, and joins a resolved shape needs). The pure projection
-//! from a `Db*` aggregate to its resolved counterpart lives on the produced
-//! type as a `from_raw` constructor in `crate::album_detail`. Public methods
-//! return the resolved shapes — `AlbumSummary`, `ReleaseStorageSummary`,
-//! `SearchResults`, `AlbumDetail`, `ReleaseDetail` — never the raw `Db*`
-//! aggregates.
+//! `LibraryManager` owns the database handle. Desktop import-folder appdata
+//! reads the directory from the live config handle. Its surface is split into
+//! per-entity modules — `release`, `album`, `track`, `artist`, `identity`,
+//! `image`, `import`, `export`, `storage` — each holding that entity's I/O
+//! operations (reads `&Database` / `&CovenHandle` to gather the covers, pin
+//! state, and joins a resolved shape needs). The pure projection from a `Db*`
+//! aggregate to its resolved counterpart lives on the produced type as a
+//! `from_raw` constructor in `crate::album_detail`. Public methods return the
+//! resolved shapes — `AlbumSummary`, `ReleaseStorageSummary`, `SearchResults`,
+//! `AlbumDetail`, `ReleaseDetail` — never the raw `Db*` aggregates.
 //!
 //! Rule for additions: new DB-backed data flows through this layer. If you
 //! need a new resolved shape, add the raw type to `crate::db::models`, the
@@ -60,7 +60,6 @@ use coven::CloudHome;
 use coven::CovenHandle;
 use coven::EncryptionService;
 use coven::IdRef;
-use coven::LibraryDir;
 
 /// Library events can burst during imports and sync catch-up; lag is recoverable
 /// through UI invalidations, and this bound keeps ordinary bursts in order.
@@ -618,7 +617,6 @@ pub enum LibraryEvent {
 #[derive(Clone)]
 pub struct LibraryManager {
     database: Database,
-    library_dir: LibraryDir,
     config_handle: Arc<ConfigHandle>,
     key_service: KeyService,
     clock: ClockRef,
@@ -710,7 +708,6 @@ impl LibraryManager {
         let database = Database::from_handle(handle.clone(), clock.clone());
         observer.set_database(Arc::new(database.clone()));
         observer.set_handle(handle.clone());
-        let library_dir = config_handle.config().library_dir.clone();
         let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&handle)));
 
         let sync = SyncController::new(
@@ -727,7 +724,6 @@ impl LibraryManager {
 
         let manager = LibraryManager {
             database,
-            library_dir,
             config_handle,
             key_service,
             clock,
@@ -753,7 +749,6 @@ impl LibraryManager {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         database: Database,
-        library_dir: LibraryDir,
         config_handle: Arc<ConfigHandle>,
         key_service: KeyService,
         clock: ClockRef,
@@ -778,7 +773,6 @@ impl LibraryManager {
 
         let manager = LibraryManager {
             database,
-            library_dir,
             config_handle,
             key_service,
             clock,
@@ -901,13 +895,13 @@ impl LibraryManager {
         &self.ids
     }
 
-    /// The library's on-disk directory. The import layer reads/writes its
-    /// sibling appdata files (e.g. the watched-folder registry) under it.
+    /// The library's on-disk directory. The import layer reads/writes sibling
+    /// appdata files (e.g. the watched-folder registry) under it.
     /// Desktop-only: the import module that uses it is gated off iOS/Android,
     /// and playback reads blobs through coven's handle rather than this path.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn library_dir(&self) -> &LibraryDir {
-        &self.library_dir
+    pub(crate) fn library_dir(&self) -> coven::LibraryDir {
+        self.config_handle.config().library_dir.clone()
     }
 
     /// Start background listeners (sync status → library events).

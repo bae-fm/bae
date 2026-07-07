@@ -459,7 +459,6 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database,
-        library_dir,
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -532,7 +531,6 @@ impl CueFlacCaptureFixture {
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let library_manager = LibraryManager::new(
             database.clone(),
-            library_dir.clone(),
             config_handle,
             key_service,
             std::sync::Arc::new(coven::SystemClock),

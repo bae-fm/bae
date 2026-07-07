@@ -23,7 +23,6 @@ async fn setup_import_service() -> (ImportService, TempDir) {
     crate::config::install_test_keyring();
     let manager = LibraryManager::new(
         database,
-        library_dir,
         Arc::new(ConfigHandle::new(config)),
         KeyService::new(library_id),
         Arc::new(coven::SystemClock),
@@ -314,7 +313,7 @@ async fn rescan_seeded_root(
     let (event_tx, events) = tokio::sync::broadcast::channel(16);
     let folder_registry = Arc::new(Mutex::new(
         crate::import::folder_registry::ImportFolderRegistry::load(
-            service.library_manager.library_dir(),
+            &service.library_manager.library_dir(),
         ),
     ));
     let candidate_state = Arc::new(Mutex::new(

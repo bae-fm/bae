@@ -117,7 +117,6 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
     let key_service = crate::keys::KeyService::new(library_id);
     let manager = crate::library::LibraryManager::new(
         database,
-        library_dir,
         config_handle,
         key_service,
         clock,

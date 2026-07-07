@@ -103,7 +103,6 @@ async fn import_single_m4a_fixture(
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -338,7 +337,6 @@ async fn import_cue_alac_pair() {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),

@@ -40,7 +40,6 @@ async fn setup_test_manager() -> (LibraryManager, TempDir) {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let manager = LibraryManager::new(
         database,
-        library_dir,
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),

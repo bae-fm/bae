@@ -124,7 +124,6 @@ where
     let runtime_handle = tokio::runtime::Handle::current();
     let library_manager = LibraryManager::new(
         (*database_arc).clone(),
-        library_dir,
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -700,7 +699,6 @@ impl CueFlacTestFixture {
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let library_manager = LibraryManager::new(
             (*database_arc).clone(),
-            library_dir.clone(),
             config_handle,
             key_service,
             std::sync::Arc::new(coven::SystemClock),
@@ -2905,7 +2903,6 @@ impl HighSampleRateTestFixture {
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let library_manager = LibraryManager::new(
             (*database_arc).clone(),
-            library_dir.clone(),
             config_handle,
             key_service,
             std::sync::Arc::new(coven::SystemClock),
@@ -3392,7 +3389,6 @@ async fn test_real_library_cpu_usage() {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -3574,7 +3570,6 @@ async fn test_pause_seek_cue_flac() {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -3804,7 +3799,6 @@ async fn test_playing_seek_cue_flac() {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -3985,7 +3979,6 @@ async fn test_restore_populates_last_position_display() {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         (*database_arc).clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -4092,7 +4085,6 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         (*database_arc).clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -4217,7 +4209,6 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         (*database_arc).clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -4326,7 +4317,6 @@ async fn restore_test_library() -> RestoreTestLibrary {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         (*database_arc).clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -4618,7 +4608,6 @@ impl CloudOnlyPlaybackFixture {
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let library_manager = LibraryManager::new(
             database,
-            library_dir,
             config_handle,
             key_service,
             std::sync::Arc::new(coven::SystemClock),

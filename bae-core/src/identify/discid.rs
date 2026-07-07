@@ -315,7 +315,6 @@ mod tests {
         let key_service = KeyService::new(library_id);
         let manager = LibraryManager::new(
             database.clone(),
-            library_dir,
             config_handle,
             key_service,
             Arc::new(coven::SystemClock),
@@ -460,7 +459,6 @@ mod tests {
         let key_service = KeyService::new(library_id);
         let manager = LibraryManager::new(
             database.clone(),
-            library_dir,
             config_handle,
             key_service,
             Arc::new(coven::SystemClock),

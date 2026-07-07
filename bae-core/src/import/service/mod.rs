@@ -355,7 +355,7 @@ impl ImportService {
         // The same `Arc` is shared by the watcher (which reads the skip set while
         // stamping candidates) and the handle (which mutates it on add/remove/skip).
         let folder_registry = Arc::new(Mutex::new(ImportFolderRegistry::load(
-            library_manager_for_handle.library_dir(),
+            &library_manager_for_handle.library_dir(),
         )));
         let candidate_state = Arc::new(Mutex::new(ImportCandidateState::default()));
 

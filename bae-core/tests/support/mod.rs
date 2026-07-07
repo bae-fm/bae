@@ -193,11 +193,8 @@ pub fn setup_fresh_library(
         .set_encryption_key(&enc_key_hex)
         .expect("seed encryption key into test keyring");
     let config_handle = std::sync::Arc::new(bae_core::config::ConfigHandle::new(config));
-    let library_dir = config_handle.config().library_dir.clone();
-
     let lm = bae_core::library::LibraryManager::new(
         database,
-        library_dir,
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),

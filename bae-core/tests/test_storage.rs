@@ -87,7 +87,6 @@ async fn test_local_import() {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -234,7 +233,6 @@ async fn test_local_delete_preserves_files() {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -353,7 +351,6 @@ async fn run_import_with_cover_test() {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -693,7 +690,6 @@ async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),
@@ -811,7 +807,6 @@ async fn test_local_import_not_in_temp_dir() {
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
-        library_dir.clone(),
         config_handle,
         key_service,
         std::sync::Arc::new(coven::SystemClock),

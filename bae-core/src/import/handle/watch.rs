@@ -14,7 +14,7 @@ impl ImportServiceHandle {
     pub fn add_watched_folder(&self, path: String) -> Result<(), String> {
         let library_dir = self.library_manager.library_dir();
         let mut registry = self.folder_registry.lock().unwrap();
-        let added = registry.add(library_dir, path.clone())?;
+        let added = registry.add(&library_dir, path.clone())?;
         let folders = registry.watched_folders();
         drop(registry);
         if !added {
@@ -36,7 +36,7 @@ impl ImportServiceHandle {
     pub fn remove_watched_folder(&self, path: String) -> Result<(), String> {
         let library_dir = self.library_manager.library_dir();
         let mut registry = self.folder_registry.lock().unwrap();
-        let removed = registry.remove(library_dir, &path)?;
+        let removed = registry.remove(&library_dir, &path)?;
         let folders = registry.watched_folders();
         drop(registry);
         if removed {
