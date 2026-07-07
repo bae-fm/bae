@@ -267,14 +267,8 @@ internal static class NativeBae
     }
 
     /// <summary>The libraries discovered on this device.</summary>
-    internal static List<Library> Libraries() =>
+    internal static List<BridgeLibrary> Libraries() =>
         BaeBridgeMethods.DiscoverLibraries()
-            .Select(library => new Library
-            {
-                Id = library.Id,
-                Name = library.Name,
-                IsActive = library.IsActive,
-            })
             .ToList();
 
     /// <summary>Create a new library; returns its id.</summary>

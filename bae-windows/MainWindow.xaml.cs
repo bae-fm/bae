@@ -330,7 +330,7 @@ public sealed partial class MainWindow : Window
 
     // The libraries discovered on this device. Empty when discovery fails or none
     // exist; callers pick the active one, or list them.
-    private List<Library> LoadLibraries()
+    private List<BridgeLibrary> LoadLibraries()
     {
         try
         {
@@ -340,7 +340,7 @@ public sealed partial class MainWindow : Window
         {
             BaeDiagnostics.Logger.Error("Failed to discover libraries.", exception);
             StatusText.Text = exception.Message;
-            return new List<Library>();
+            return new List<BridgeLibrary>();
         }
     }
 
