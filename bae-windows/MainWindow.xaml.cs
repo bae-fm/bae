@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
+using uniffi.bae_bridge;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.System;
@@ -316,23 +317,32 @@ public sealed partial class MainWindow : Window
     // on failure. Callers diverge only in how they open it.
     private string? CreateLibraryOrReport(Action<string> reportError)
     {
-        var id = NativeBae.CreateLibrary();
-        if (id is null)
+        try
         {
-            reportError(Loc.Chrome("library.create_failed"));
+            return NativeBae.CreateLibrary();
         }
-
-        return id;
+        catch (BridgeException exception)
+        {
+            BaeDiagnostics.Logger.Error("Failed to create library.", exception);
+            reportError(exception.Message);
+            return null;
+        }
     }
 
     // The libraries discovered on this device. Empty when discovery fails or none
     // exist; callers pick the active one, or list them.
     private List<Library> LoadLibraries()
     {
-        var json = NativeBae.LibrariesJson();
-        return json is null
-            ? new List<Library>()
-            : JsonSerializer.Deserialize<List<Library>>(json, JsonOptions) ?? new List<Library>();
+        try
+        {
+            return NativeBae.Libraries();
+        }
+        catch (BridgeException exception)
+        {
+            BaeDiagnostics.Logger.Error("Failed to discover libraries.", exception);
+            StatusText.Text = exception.Message;
+            return new List<Library>();
+        }
     }
 
     private void LoadLibrary()

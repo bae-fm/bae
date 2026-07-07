@@ -211,19 +211,19 @@ internal static class NativeBae
     internal static string? TransferActionKey(string action) =>
         CopyAndFree(TransferActionKeyPtr(action));
 
-    /// <summary>Discovered libraries as JSON, or null. Copies and frees.</summary>
-    [DllImport(Dll, EntryPoint = "bae_libraries", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr LibrariesPtr();
+    /// <summary>The libraries discovered on this device.</summary>
+    internal static List<Library> Libraries() =>
+        BaeBridgeMethods.DiscoverLibraries()
+            .Select(library => new Library
+            {
+                Id = library.Id,
+                Name = library.Name,
+                IsActive = library.IsActive,
+            })
+            .ToList();
 
-    /// <summary>Create a library; returns its id string, or null. Copies and frees.</summary>
-    [DllImport(Dll, EntryPoint = "bae_create_library", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr CreateLibraryPtr();
-
-    /// <summary>The discovered libraries as a JSON string, or null.</summary>
-    internal static string? LibrariesJson() => CopyAndFree(LibrariesPtr());
-
-    /// <summary>Create a new library; returns its id, or null on error.</summary>
-    internal static string? CreateLibrary() => CopyAndFree(CreateLibraryPtr());
+    /// <summary>Create a new library; returns its id.</summary>
+    internal static string CreateLibrary() => BaeBridgeMethods.CreateLibrary(name: null).Id;
 
     [DllImport(Dll, EntryPoint = "bae_decode_restore_code", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr DecodeRestoreCodePtr([MarshalAs(UnmanagedType.LPUTF8Str)] string code);
@@ -340,14 +340,9 @@ internal static class NativeBae
     [return: MarshalAs(UnmanagedType.I1)]
     internal static extern bool HasEncryptionKey(IntPtr handle);
 
-    [DllImport(Dll, EntryPoint = "bae_unlock_library", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr UnlockLibraryPtr(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string libraryId,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string keyHex);
-
     /// <summary>Store a library's hex key so it can be opened; null on success, else the error.</summary>
     internal static string? UnlockLibrary(string libraryId, string keyHex) =>
-        ResultMessage(UnlockLibraryPtr(libraryId, keyHex));
+        CaptureError(() => BaeBridgeMethods.UnlockLibrary(libraryId, keyHex));
 
     [DllImport(Dll, EntryPoint = "bae_lock_active_library", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr LockActiveLibraryPtr(IntPtr handle);
