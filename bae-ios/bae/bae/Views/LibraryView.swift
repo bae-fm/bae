@@ -66,12 +66,12 @@ struct LibraryView: View {
         BridgeComposerSortCriterion(field: .name, direction: .ascending)
 
     private var listSelection: LibraryListSelection {
-        LibraryListSelection(
-            mode: mode,
-            albumSortField: sortField,
-            albumSortDirection: sortDirection,
-            composerSortCriterion: composerSortCriterion
-        )
+        switch mode {
+        case .albums:
+            .albums(field: sortField, direction: sortDirection)
+        case .composers:
+            .composers(composerSortCriterion)
+        }
     }
 
     var body: some View {
@@ -542,11 +542,9 @@ private struct LibraryContentView: View {
     }
 }
 
-private struct LibraryListSelection: Hashable {
-    let mode: LibraryBrowserMode
-    let albumSortField: BridgeSortField
-    let albumSortDirection: BridgeSortDirection
-    let composerSortCriterion: BridgeComposerSortCriterion
+private enum LibraryListSelection: Hashable {
+    case albums(field: BridgeSortField, direction: BridgeSortDirection)
+    case composers(BridgeComposerSortCriterion)
 }
 
 private extension Array where Element == LibraryRoute {

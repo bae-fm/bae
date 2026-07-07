@@ -5611,7 +5611,7 @@ public sealed partial class MainWindow : Window
             }
             try
             {
-                var (current, error) = await RunForCurrentHandle(handle =>
+                var (storageActionCurrent, error) = await RunForCurrentHandle(handle =>
                 {
                     foreach (var releaseId in releaseIds)
                     {
@@ -5624,7 +5624,7 @@ public sealed partial class MainWindow : Window
 
                     return (string?)null;
                 });
-                return current ? error : null;
+                return storageActionCurrent ? error : null;
             }
             finally
             {
@@ -5834,8 +5834,8 @@ public sealed partial class MainWindow : Window
         {
             if (!disconnectArmed)
             {
-                var (current, warning) = await RunForCurrentHandle(NativeBae.DisconnectWarning);
-                if (!current)
+                var (warningCurrent, warning) = await RunForCurrentHandle(NativeBae.DisconnectWarning);
+                if (!warningCurrent)
                 {
                     return;
                 }
@@ -5848,8 +5848,8 @@ public sealed partial class MainWindow : Window
             }
 
             disconnectArmed = false;
-            var (current, error) = WithCurrentHandle(NativeBae.DisconnectCloud);
-            if (!current)
+            var (disconnectCurrent, error) = WithCurrentHandle(NativeBae.DisconnectCloud);
+            if (!disconnectCurrent)
             {
                 return;
             }
@@ -6715,8 +6715,8 @@ public sealed partial class MainWindow : Window
         _refreshSettings = null;
         if (lockRequested)
         {
-            var (current, error) = await RunForCurrentHandle(NativeBae.LockActiveLibrary);
-            if (!current)
+            var (lockCurrent, error) = await RunForCurrentHandle(NativeBae.LockActiveLibrary);
+            if (!lockCurrent)
             {
                 return;
             }
