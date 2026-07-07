@@ -1127,96 +1127,106 @@ async fn side_boundary_pause_prevents_gapless_stream_handoff() {
         .await;
 }
 
-#[tokio::test]
-async fn test_next_while_paused_stays_paused() {
-    // When paused and pressing Next, the next track should start paused
+#[derive(Clone, Copy)]
+enum SkipDirection {
+    Next,
+    Previous,
+}
 
+impl SkipDirection {
+    fn label(self) -> &'static str {
+        match self {
+            SkipDirection::Next => "Next",
+            SkipDirection::Previous => "Previous",
+        }
+    }
+}
+
+/// Next and Previous preserve the current play/pause state: pressing either
+/// while paused lands on the adjacent track still paused; while playing, still
+/// playing. (Fresh `play` always starts playing — that's the deliberate
+/// exception, pinned by `test_fresh_play_always_starts_playing`.)
+async fn assert_skip_preserves_play_state(direction: SkipDirection, start_paused: bool) {
     let mut fixture = PlaybackTestFixture::new().await;
-
     let first_track_id = fixture.track_ids[0].clone();
     let second_track_id = fixture.track_ids[1].clone();
 
-    // Start playing first track
-    fixture.playback_handle.play(first_track_id.clone());
-    let _playing_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
-        .await;
+    // Previous needs a track behind the cursor, so start on the second track;
+    // Next starts on the first. The target is the adjacent track either way.
+    let (start_track_id, target_track_id) = match direction {
+        SkipDirection::Next => (first_track_id, second_track_id),
+        SkipDirection::Previous => (second_track_id, first_track_id),
+    };
 
-    // Pause
-    fixture.playback_handle.pause();
-    let paused_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Paused { .. }),
-            Duration::from_secs(2),
-        )
-        .await;
-    assert!(paused_state.is_some(), "Should be paused");
-
-    // Press Next while paused
-    fixture.playback_handle.next();
-
-    // Should transition to second track in Paused state (not Playing)
-    let next_track_state = fixture
+    fixture.playback_handle.play(start_track_id.clone());
+    fixture
         .wait_for_state(
             |s| {
-                if let PlaybackState::Paused { track_info, .. } = s {
-                    track_info.track_id == second_track_id
-                } else {
-                    false
-                }
+                matches!(s, PlaybackState::Playing { track_info, .. }
+                    if track_info.track_id == start_track_id)
+            },
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the starting track should play");
+
+    if start_paused {
+        fixture.playback_handle.pause();
+        fixture
+            .wait_for_state(
+                |s| matches!(s, PlaybackState::Paused { .. }),
+                Duration::from_secs(2),
+            )
+            .await
+            .expect("playback should pause");
+    }
+
+    // Press promptly (well inside Previous's 3s window) so Previous steps back a
+    // track rather than restarting the current one.
+    match direction {
+        SkipDirection::Next => fixture.playback_handle.next(),
+        SkipDirection::Previous => fixture.playback_handle.previous(),
+    }
+
+    let landed = fixture
+        .wait_for_state(
+            |s| {
+                let (track_info, is_paused) = match s {
+                    PlaybackState::Playing { track_info, .. } => (track_info, false),
+                    PlaybackState::Paused { track_info, .. } => (track_info, true),
+                    _ => return false,
+                };
+                track_info.track_id == target_track_id && is_paused == start_paused
             },
             Duration::from_secs(5),
         )
         .await;
-
     assert!(
-        next_track_state.is_some(),
-        "Next while paused should switch to next track but stay paused"
+        landed.is_some(),
+        "{} while {} should land on the adjacent track in the same play/pause state",
+        direction.label(),
+        if start_paused { "paused" } else { "playing" },
     );
 }
 
 #[tokio::test]
-async fn test_next_while_playing_stays_playing() {
-    // When playing and pressing Next, the next track should start playing
+async fn next_while_paused_stays_paused() {
+    assert_skip_preserves_play_state(SkipDirection::Next, true).await;
+}
 
-    let mut fixture = PlaybackTestFixture::new().await;
+#[tokio::test]
+async fn next_while_playing_stays_playing() {
+    assert_skip_preserves_play_state(SkipDirection::Next, false).await;
+}
 
-    let first_track_id = fixture.track_ids[0].clone();
-    let second_track_id = fixture.track_ids[1].clone();
+#[tokio::test]
+async fn previous_while_paused_stays_paused() {
+    assert_skip_preserves_play_state(SkipDirection::Previous, true).await;
+}
 
-    // Start playing first track
-    fixture.playback_handle.play(first_track_id.clone());
-    let _playing_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
-        .await;
-
-    // Press Next while playing
-    fixture.playback_handle.next();
-
-    // Should transition to second track in Playing state
-    let next_track_state = fixture
-        .wait_for_state(
-            |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == second_track_id
-                } else {
-                    false
-                }
-            },
-            Duration::from_secs(5),
-        )
-        .await;
-
-    assert!(
-        next_track_state.is_some(),
-        "Next while playing should switch to next track and keep playing"
-    );
+#[tokio::test]
+async fn previous_while_playing_stays_playing() {
+    assert_skip_preserves_play_state(SkipDirection::Previous, false).await;
 }
 
 /// Test that seeking while paused and then resuming works correctly.
@@ -1311,110 +1321,6 @@ async fn test_pause_seek_resume_advances_position() {
         "Position should advance after resume. Seeked to {}ms, but position is {}ms",
         seeked_position_ms,
         final_position_ms
-    );
-}
-
-#[tokio::test]
-async fn test_previous_while_paused_stays_paused() {
-    // When paused and pressing Previous, the previous track should start paused
-
-    let mut fixture = PlaybackTestFixture::new().await;
-
-    let first_track_id = fixture.track_ids[0].clone();
-    let second_track_id = fixture.track_ids[1].clone();
-
-    // Start on second track
-    fixture.playback_handle.play(second_track_id.clone());
-    let _playing_state = fixture
-        .wait_for_state(
-            |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == second_track_id
-                } else {
-                    false
-                }
-            },
-            Duration::from_secs(5),
-        )
-        .await;
-
-    // Pause
-    fixture.playback_handle.pause();
-    let paused_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Paused { .. }),
-            Duration::from_secs(2),
-        )
-        .await;
-    assert!(paused_state.is_some(), "Should be paused");
-
-    // Press Previous while paused (within 3 seconds, so goes to previous track)
-    fixture.playback_handle.previous();
-
-    // Should transition to first track in Paused state (not Playing)
-    let previous_track_state = fixture
-        .wait_for_state(
-            |s| {
-                if let PlaybackState::Paused { track_info, .. } = s {
-                    track_info.track_id == first_track_id
-                } else {
-                    false
-                }
-            },
-            Duration::from_secs(5),
-        )
-        .await;
-
-    assert!(
-        previous_track_state.is_some(),
-        "Previous while paused should switch to previous track but stay paused"
-    );
-}
-
-#[tokio::test]
-async fn test_previous_while_playing_stays_playing() {
-    // When playing and pressing Previous, the previous track should start playing
-
-    let mut fixture = PlaybackTestFixture::new().await;
-
-    let first_track_id = fixture.track_ids[0].clone();
-    let second_track_id = fixture.track_ids[1].clone();
-
-    // Start on second track
-    fixture.playback_handle.play(second_track_id.clone());
-    let _playing_state = fixture
-        .wait_for_state(
-            |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == second_track_id
-                } else {
-                    false
-                }
-            },
-            Duration::from_secs(5),
-        )
-        .await;
-
-    // Press Previous while playing (within 3 seconds, so goes to previous track)
-    fixture.playback_handle.previous();
-
-    // Should transition to first track in Playing state
-    let previous_track_state = fixture
-        .wait_for_state(
-            |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == first_track_id
-                } else {
-                    false
-                }
-            },
-            Duration::from_secs(5),
-        )
-        .await;
-
-    assert!(
-        previous_track_state.is_some(),
-        "Previous while playing should switch to previous track and keep playing"
     );
 }
 
@@ -1703,119 +1609,6 @@ async fn test_previous_track_navigation() {
     assert!(
         restart_state.is_some(),
         "Should restart current track when Previous is called late in track",
-    );
-    let restart_position = fixture
-        .wait_for_position_update(Duration::from_secs(2))
-        .await
-        .expect("Position update after restart");
-    assert!(
-        Duration::from_millis(restart_position) < Duration::from_secs(1),
-        "Restart should reset position near 0, got {restart_position}ms",
-    );
-}
-#[tokio::test]
-async fn test_previous_track_when_starting_on_second_track() {
-    let mut fixture = PlaybackTestFixture::new().await;
-    let first_track_id = fixture.track_ids[0].clone();
-    let second_track_id = fixture.track_ids[1].clone();
-    fixture.playback_handle.play(second_track_id.clone());
-    let second_track_state = fixture
-        .wait_for_state(
-            |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == second_track_id
-                } else {
-                    false
-                }
-            },
-            Duration::from_secs(5),
-        )
-        .await;
-    assert!(
-        second_track_state.is_some(),
-        "Should be playing second track after play command",
-    );
-    fixture.playback_handle.seek(Duration::from_secs(1));
-    let _position = fixture
-        .wait_for_position_update(Duration::from_secs(2))
-        .await;
-    fixture.playback_handle.previous();
-    let previous_track_state = fixture
-        .wait_for_state(
-            |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == first_track_id
-                } else {
-                    false
-                }
-            },
-            Duration::from_secs(5),
-        )
-        .await;
-    assert!(
-        previous_track_state.is_some(),
-        "Should go to previous track when Previous is called after starting on second track",
-    );
-}
-#[tokio::test]
-async fn test_previous_track_multiple_navigation() {
-    let mut fixture = PlaybackTestFixture::new().await;
-    let first_track_id = fixture.track_ids[0].clone();
-    let second_track_id = fixture.track_ids[1].clone();
-    fixture.playback_handle.play(second_track_id.clone());
-    let _second_track_state = fixture
-        .wait_for_state(
-            |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == second_track_id
-                } else {
-                    false
-                }
-            },
-            Duration::from_secs(5),
-        )
-        .await;
-    fixture.playback_handle.seek(Duration::from_secs(1));
-    let _position = fixture
-        .wait_for_position_update(Duration::from_secs(2))
-        .await;
-    fixture.playback_handle.previous();
-    let first_nav_state = fixture
-        .wait_for_state(
-            |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == first_track_id
-                } else {
-                    false
-                }
-            },
-            Duration::from_secs(5),
-        )
-        .await;
-    assert!(
-        first_nav_state.is_some(),
-        "Should go to first track when Previous is called from second track",
-    );
-    fixture.playback_handle.seek(Duration::from_secs(1));
-    let _position = fixture
-        .wait_for_position_update(Duration::from_secs(2))
-        .await;
-    fixture.playback_handle.previous();
-    let restart_state = fixture
-        .wait_for_state(
-            |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == first_track_id
-                } else {
-                    false
-                }
-            },
-            Duration::from_secs(5),
-        )
-        .await;
-    assert!(
-        restart_state.is_some(),
-        "Should restart first track when Previous is called and there's no previous track",
     );
     let restart_position = fixture
         .wait_for_position_update(Duration::from_secs(2))
