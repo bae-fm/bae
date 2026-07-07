@@ -68,8 +68,11 @@ jobs:
 
     - name: Run bae-core tests
       run: |
-        # Serial: the device-sync round-trip in test_multi_device_sync.rs has a
-        # CI-specific parallelism race, and the playback CPU test reads
-        # process-wide getrusage. The CPU test runs here too — its probe sink
-        # pulls and discards at real time with no audio device.
-        cargo test -p bae-core --features bae-core/test-utils -- --test-threads=1
+        # The CPU test reads process-wide getrusage, so it runs as its own
+        # invocation after the rest of the suite. Everything else runs at
+        # default parallelism; tests that share process-global state (the
+        # import integration suite's metadata caches) serialize themselves
+        # with #[serial]. The CPU test's probe sink pulls and discards at
+        # real time with no audio device, so it runs here too.
+        cargo test -p bae-core --features bae-core/test-utils -- --skip test_playback_cpu
+        cargo test -p bae-core --features bae-core/test-utils --test test_playback_cpu
