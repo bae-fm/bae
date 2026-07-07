@@ -1,0 +1,43 @@
+---
+title: Import pipeline
+description: Scanning, evidence, triangulation, and the atomic commit
+---
+
+Import turns a folder of files into a release-accurate catalog entry without modifying a byte of the files. This page is the pipeline behind the flow described in the [use guide](/guide/importing).
+
+## Scanning
+
+Watched folders are monitored by the platform's file-system events, debounced, and re-scanned on change; scans reconcile against the existing candidate list rather than starting over. The scanner classifies a folder as one release (audio directly inside, or disc-shaped subfolders like `CD1`/`CD2`), or recurses into it as a collection. Files classify by extension into audio, artwork, and documents, then audio is probed: the codec that matters is the one FFmpeg finds in the bytes, not the file extension. Folders containing partial-download markers are excluded until the download finishes.
+
+A CUE sheet turns one audio image into a track list. The parser handles pregaps and postgaps, per-track performers and ISRCs, and both single-file images and one-file-per-track CUE layouts. Track boundaries convert from CUE frames (1/75th of a second) to exact sample positions, which later become the byte and sample windows playback uses.
+
+## Evidence, not tags
+
+Identification reads three kinds of evidence out of the folder in one pass:
+
+- a **disc ID**, the MusicBrainz fingerprint of a CD's exact track layout, computed from a rip log or from the CUE sheet;
+- **barcodes**, decoded from artwork scans by the platform's vision framework and read from CUE catalog fields;
+- **text**: catalog numbers and free text from artwork OCR, folder and file names, and text files in the rip.
+
+Embedded audio tags are deliberately not evidence: they describe what a tagger believed, not what the pressing is. (They seed the fallback metadata when the user imports a release as unknown.)
+
+Disc ID and barcode are looked up concurrently, the disc ID against MusicBrainz, the barcode against MusicBrainz and Discogs at once, and the results are triangulated: results that agree on a release group converge, catalog-number matches narrow the pressing list, and disagreement between signals surfaces as an explicit conflict for the user rather than a silent best guess. Every result carries its provenance (found by disc ID, by barcode, catalog match) so the UI can say why a row is being offered.
+
+## Sources
+
+MusicBrainz is queried anonymously with a strict one-request-per-second pace. Discogs authenticates with the user's personal token from the keyring, paced and retried within its rate limits, and a rejected token is reported as such so the UI can flag it rather than fail searches quietly. Responses are cached per session, and the raw JSON of whatever source wins is archived in the database for future re-interpretation.
+
+## Commit
+
+Confirming an import runs, in order:
+
+1. **Decode verification**: every track is decoded end to end; a rip that cannot fully decode fails the import before anything is written (a config flag can disable this).
+2. **Loudness analysis**: integrated loudness and true peak are measured per track and per album during that same decode pass, stored for replay-gain use.
+3. **Cover selection**: the chosen art (remote, folder image, or embedded) is re-rendered to a display thumbnail; the original is kept among the release's files if it came from the folder.
+4. **Atomic write**: the release, tracks, credits, identities, formats, segments, files, and cover commit in one transaction. There is no half-imported state.
+
+The release lands referencing the user's files in place. If the user chose cloud-managed, the upload happens after the commit as a storage transition, and the files' original bytes remain the source of truth throughout; nothing the user gave bae is ever deleted or altered.
+
+## Recognizing rips
+
+Each release records a content hash over its imported folder's structure (relative paths and sizes, location-independent). Re-scans use it to mark folders already in the library, and re-imports of the same rip find and replace their prior release instead of duplicating it.

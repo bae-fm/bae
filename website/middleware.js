@@ -3,11 +3,8 @@ import { DEFAULT_LOCALE, LOCALES } from './src/lib/locales.mjs';
 
 const LOCALE_COOKIE = 'bae_locale';
 const ROUTED_PREFIXES = [
-  '/architecture/',
-  '/getting-started/',
-  '/importing/',
-  '/library/',
-  '/storage/',
+  '/guide/',
+  '/reference/',
 ];
 
 const HEADER_TAGS = new Map([
@@ -54,11 +51,8 @@ const LOCALE_PATHS = new Set(LOCALES.map((locale) => locale.path).filter(Boolean
 export const config = {
   matcher: [
     '/',
-    '/architecture/:path*',
-    '/getting-started/:path*',
-    '/importing/:path*',
-    '/library/:path*',
-    '/storage/:path*',
+    '/guide/:path*',
+    '/reference/:path*',
   ],
 };
 

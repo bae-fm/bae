@@ -1,0 +1,64 @@
+---
+title: Importing
+description: Match your folders to real releases
+---
+
+A folder of rips knows almost nothing about itself. The release it came from, the pressing, the label, the credits, where track 12 actually ends: all of that lives in databases like MusicBrainz and Discogs, not in your filenames. Importing is how bae connects the two: you point it at your music, it works out which release each folder is, and the library records the folder as that release.
+
+Importing happens on desktop (macOS, Windows). Your files are read, never changed: bae does not move, rename, retag, or re-encode anything. See [Storage and offline](/guide/storage) for where files live after import.
+
+## Watched folders
+
+Switch to the **Import** section and add a folder: pick it, drag it onto the window, or press <kbd>⌘I</kbd>. bae watches the folder from then on. New music dropped into it shows up as new candidates on its own; you don't re-scan by hand. Folders that are still downloading are ignored until they finish.
+
+A scan recognizes releases in the shapes rips actually take:
+
+| Layout | What it looks like |
+|--------|-------------------|
+| File per track | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE + image | `album.cue` + `album.flac`, one file for the whole disc |
+| Multi-disc | `CD1/`, `CD2/` subfolders, either shape inside |
+| Collections | a folder of folders, each its own release |
+
+bae imports the formats it plays: FLAC, MP3, APE, ALAC and AAC in `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack, and DSD (`.dsf`/`.dff`). Artwork and documents (CUE sheets, rip logs, text files) in the folder are recognized and kept with the release.
+
+## Identifying a release
+
+Select a candidate and bae starts identifying it. Rather than guessing from tags, it reads the evidence in the folder and looks each piece up:
+
+- **Disc ID.** A fingerprint of the CD's exact track layout, computed from the rip log or the CUE sheet. When it matches, it identifies the precise CD edition.
+- **Barcode.** Read off cover scans in the folder using text recognition, or from the CUE sheet.
+- **Catalog numbers and text.** Catalog numbers found on artwork and in file and folder names, used to narrow results.
+
+The signals are looked up against MusicBrainz and Discogs at the same time, and the results are cross-checked. Each signal appears as a badge above the results: you can see what was found, where it came from (hover for the origin: disc TOC, CUE sheet, cover scan, folder name), and turn individual signals off if one is misleading.
+
+Three outcomes:
+
+- **Found.** The evidence agrees on one release group. You pick the exact pressing from its list.
+- **Conflict.** Two signals point at different releases, say the disc ID and the barcode disagree. bae shows both sides and you choose which to trust, or ignore a signal.
+- **Nothing found.** Search by hand: artist and album, catalog number, or barcode, against either database. Text recognized from the artwork is offered as autocomplete.
+
+You can also **skip identifying** and import as an unknown release. bae then falls back to your files' embedded tags for names, and you can re-identify later, when the release exists in a database or you have better evidence.
+
+## Exact or approximate
+
+When you select a match, bae checks it against your files, and flags a track count mismatch. You then declare what the match is:
+
+- **Exact**: your files are this pressing.
+- **Metadata only**: right album, but not necessarily this exact pressing. bae uses the metadata and remembers that the pressing is approximate.
+
+If the release is already in your library, or another pressing of the same album is, bae tells you before you import a duplicate.
+
+## Confirm and import
+
+The confirmation pane shows everything the import will write:
+
+- **Cover.** Chosen from the databases' art, images in your folder, or art embedded in the files. You can change it later.
+- **Metadata.** Album, artist, year, label, catalog number, country, barcode, and every track: all editable right here before anything is saved.
+- **Storage.** If a cloud home is connected, choose whether bae should manage the files in your cloud, and whether to also keep a local copy. See [Storage and offline](/guide/storage).
+
+Import runs in the background: bae verifies every track decodes cleanly, measures loudness for the album and each track, saves the release, and, for managed imports, starts the upload. The candidate list moves on to the next folder, and the release is playable immediately.
+
+## Data sources
+
+**MusicBrainz** needs no account and no key. **Discogs** requires your own free API token; paste it in Settings, and bae tells you if it stops working. Without a token, Discogs search and Discogs-sourced metadata are unavailable, and everything else works. Both services are rate-limited; bae paces its requests to stay inside the limits.

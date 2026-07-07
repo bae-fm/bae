@@ -1,0 +1,35 @@
+---
+title: Identity and membership
+description: Keys as identities, the join handshake, roles, and revocation
+---
+
+There is no account system anywhere in bae. A device's identity is an Ed25519 keypair it generates for itself and keeps in the OS keyring; the public key *is* the identity. Who belongs to a library is a set of signed records in the cloud home, verifiable by anyone holding them, issued by no server. The machinery is [coven](https://coven.bae.fm)'s; this page is how bae uses it.
+
+## Membership records
+
+Each owner writes an append-only stream of signed membership entries into the cloud home: this key was added with this role, this key was removed. Every entry links to the previous one, and each owner signs a head declaring their stream's tip, so a provider that drops or reorders records is detected rather than believed. What the library accepts is the union of every owner's verified stream.
+
+On every pull, each changeset's author is checked against this record: signed by a current member, with a role that may write. Changesets from removed devices, from keys never added, or with invalid signatures do not apply. The provider stores the records but cannot forge them; only holders of owner keys can change membership.
+
+## Roles
+
+**Owner** and **Member** both read and write the library; owners additionally approve and remove devices. bae's founding device is an owner and every device it approves joins as a member. (A third role exists in the underlying machinery, a read-only follower, which bae does not currently assign.)
+
+## The join handshake
+
+Adding a device is a two-code exchange with explicit human verification in the middle:
+
+1. The joining device generates its keypair and shows a **join request**: its public key, a short fingerprint of it, and (for OAuth providers) the cloud account to share the folder with.
+2. An owner decodes the request, and the two screens show the same fingerprint. The human checks they match; this is the step that defeats a swapped key.
+3. Approval does three things at once: grants the newcomer's account access to the cloud home (folder share on consumer clouds, embedded credentials on S3, a CloudKit share on iCloud), seals the library key to the newcomer's public key, and signs a membership entry adding it. All of it is packed into an **invite code**.
+4. The joining device consumes the invite, unseals the key, bootstraps from the latest snapshot, and syncs.
+
+The invite is sealed to the requesting key: intercepting it grants nothing.
+
+## Revocation
+
+Removing a member appends a signed removal and rotates the library key to a new generation the removed key never receives (see [Encryption](/reference/encryption#generations)). On storage that can revoke access, access is also withdrawn. What was already synced to the removed device stays with it; data cannot be unsent. Everything after the rotation is out of its reach.
+
+## Recovery codes
+
+A recovery code bypasses membership on purpose: it is the cloud home's coordinates plus the library key, in one bearer string, for restoring your own library with no surviving approver. It is generated on demand, stored automatically in the iCloud Keychain on Apple platforms, and is exactly as sensitive as the library itself.

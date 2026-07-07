@@ -1,0 +1,16 @@
+---
+title: Automation
+description: Drive the library from agents, scripts, and the command line
+---
+
+The library can be driven by software you run: AI agents over MCP, and scripts over a command-line tool. Both expose the same operations the UI uses: search, release details, imports, storage actions, playback state.
+
+## The MCP server
+
+Turn on the MCP server in Settings, Automation. It serves the Model Context Protocol over HTTP on a local port (47777 by default), so MCP clients like Claude can browse your library, look up releases, and act on them. Access requires a bearer token: copy it from the same settings pane, and rotate it there whenever you want to cut off everything that had it.
+
+The server is off by default and only runs while the app does.
+
+## The command line
+
+The `bae` CLI drives the same operations from a terminal: JSON in, JSON out, suitable for scripts. It can also act as an MCP client, bridging the desktop's server onto stdio for tools that expect a local MCP process.

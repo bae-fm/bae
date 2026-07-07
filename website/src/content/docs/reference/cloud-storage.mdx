@@ -1,0 +1,37 @@
+---
+title: Cloud storage
+description: Providers, authentication, and the shape of the cloud home
+---
+
+The cloud home is one location in storage the user already owns. Every provider is driven through the same storage interface in [coven](https://coven.bae.fm); what differs per provider is authentication and how a second device is granted access.
+
+## Providers
+
+| Provider | Auth | Access for a new device |
+|---|---|---|
+| S3-compatible | Access key + secret | Credentials embedded in the invite |
+| Google Drive | OAuth (PKCE) | Folder shared to the joiner's account |
+| Dropbox | OAuth (PKCE) | Folder shared to the joiner's account |
+| OneDrive | OAuth (PKCE) | Folder shared to the joiner's account |
+| iCloud (CloudKit) | Apple ID, no sign-in | CloudKit share accepted by the joiner |
+
+S3-compatible covers AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, and anything else speaking the API; bucket, region, endpoint, and key prefix are configurable, and the bucket is probed before the config is saved so a typo fails at setup, not at the first sync. The OAuth providers exist only in the full **bae** edition; **baeium** builds compile them out.
+
+## OAuth
+
+Sign-in is an authorization-code flow with PKCE, as a public client. On desktop the redirect lands on a loopback server bound to a local port for the one callback; on mobile the app captures a custom-scheme redirect instead. bae requests the narrowest scope the provider offers for the job, on Google Drive that's access only to files the app itself creates. Tokens are stored in the OS keyring, refreshed with the provider's refresh grant, and a rejected refresh surfaces as a reconnect prompt rather than a silent retry loop.
+
+CloudKit needs no flow at all: the platform's CloudKit driver, implemented in the app and handed to the core, operates as the signed-in Apple ID.
+
+## The home's layout
+
+Inside the home, coven lays out per-device changeset streams, snapshot generations, membership records, and blob namespaces. bae contributes three blob namespaces: `release_files`, `covers`, and `artist_images`.
+
+How objects are keyed depends on the home's storage mode, fixed at creation:
+
+- **Opaque**: objects are encrypted and stored under content-derived keys that reveal nothing. This is the full-trust-in-cryptography mode; see [Encryption](/reference/encryption).
+- **Browsable**: objects are plaintext at readable paths recorded per blob at upload time: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. The bucket doubles as a usable file tree; the tradeoff is no encryption and no membership, so browsable homes cannot be shared to other people.
+
+## Behavior under real networks
+
+Reads for playback are ranged: the player streams the byte windows it needs rather than whole files. Uploads above a size threshold go multipart where the provider supports it. Rate limiting and transient provider errors retry with exponential backoff, honoring the provider's retry-after when given; expired OAuth tokens refresh in place. The sync outbox survives restarts: an upload interrupted by quitting the app resumes rather than restarts.

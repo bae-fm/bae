@@ -23,7 +23,7 @@ const macFullUrl = (await getLatest()).macos?.full?.url;
 if (!macFullUrl) {
   console.warn('index: no macOS full build resolved; landing CTAs fall back to the install page');
 }
-const macUrl = macFullUrl ?? href('/getting-started/installation');
+const macUrl = macFullUrl ?? href('/guide/installation');
 ---
 <!DOCTYPE html>
 <html lang={localeMeta.lang} dir={localeMeta.dir} class="no-js">
@@ -372,7 +372,7 @@ const macUrl = macFullUrl ?? href('/getting-started/installation');
   <span class="brand"><img src="/app-icon.png" alt="" width="30" height="30" decoding="async" />bae</span>
   <div class="navlinks">
     <div class="desktoplinks">
-      <a href={href('/getting-started/installation')}>{text.navDocs}</a>
+      <a href={href('/guide/installation')}>{text.navDocs}</a>
       <a href="https://github.com/bae-fm/bae">GitHub</a>
     </div>
     <a class="btn pink" href="#get">{text.navDownload}</a>
@@ -393,7 +393,7 @@ const macUrl = macFullUrl ?? href('/getting-started/installation');
       <summary class="iconbtn menubtn" aria-label={`${text.navDocs}, GitHub, ${text.languageLabel}`}><span aria-hidden="true"></span></summary>
       <div class="navpanel">
         <div class="menulinks">
-          <a href={href('/getting-started/installation')}>{text.navDocs}</a>
+          <a href={href('/guide/installation')}>{text.navDocs}</a>
           <a href="https://github.com/bae-fm/bae">GitHub</a>
         </div>
         <details class="menulang">
@@ -472,7 +472,7 @@ const macUrl = macFullUrl ?? href('/getting-started/installation');
       <div class="dsub">{text.holdsKeys}</div>
     </div>
   </div>
-  <p class="dfoot r d2"><a href={href('/architecture/encryption')}>{text.encryptionLink}</a></p>
+  <p class="dfoot r d2"><a href={href('/reference/encryption')}>{text.encryptionLink}</a></p>
 </div></section>
 
 <section class="sec" id="features"><div class="wrap">
@@ -581,13 +581,13 @@ const macUrl = macFullUrl ?? href('/getting-started/installation');
   <p class="r d2">{text.endText}</p>
   <div class="cta r d3" style="justify-content:center;">
     <a class="btn pink" href={macUrl}>{text.downloadMac}</a>
-    <a class="btn" href={href('/architecture/overview')}>{text.readArchitecture}</a>
+    <a class="btn" href={href('/reference/architecture')}>{text.readArchitecture}</a>
   </div>
 </div></section>
 
 <footer><div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;width:100%;">
   <span class="fb"><img src="/app-icon.png" alt="" width="26" height="26" loading="lazy" decoding="async" />bae</span>
-  <div class="links"><a href={href('/getting-started/installation')}>{text.navDocs}</a><a href="https://github.com/bae-fm/bae">GitHub</a></div>
+  <div class="links"><a href={href('/guide/installation')}>{text.navDocs}</a><a href="https://github.com/bae-fm/bae">GitHub</a></div>
   <span class="cp">{text.footerStatus}</span>
 </div></footer>
 

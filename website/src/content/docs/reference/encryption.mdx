@@ -1,0 +1,28 @@
+---
+title: Encryption
+description: What the library key is, where it lives, and what ciphertext the provider holds
+---
+
+Everything bae puts in an opaque cloud home is encrypted before it leaves the device. bae implements no cryptography of its own: the entire scheme is [coven](https://coven.bae.fm)'s, and this page describes how bae wears it. Browsable homes opt out of all of it; nothing below applies to them.
+
+## The library key
+
+An opaque library has one root secret: a random 256-bit key minted when the home is created. It lives in the OS keyring, never in a file; on Apple platforms the keyring entry syncs through iCloud Keychain. bae's config stores only a fingerprint of the key, enough to tell a wrong key from a right one at unlock without holding the secret.
+
+The key travels between devices in two ways, both described in [Identity and membership](/reference/membership): sealed to an approved device's public key during an invite, and carried inside a recovery code.
+
+## Generations
+
+The library key is really a keyring of numbered generations. Removing a member appends a new generation that the removed member never receives: everything written afterward uses the new generation and is unreadable to them, while surviving members keep every generation and can read all history. Each sealed object records, in the clear, which generation opens it.
+
+## What gets sealed
+
+Every object in the home: changesets, snapshots, audio blobs, artwork, membership records, control objects. Objects are sealed with XChaCha20-Poly1305 in 64 KB chunks, each chunk authenticated, and bound to their context: a sealed object decrypts only as the object it was written to be, for this library, at this key. Chunking is why streaming works, the player can decrypt exactly the byte ranges it fetches.
+
+## What the provider can see
+
+Object count, object sizes, upload timing, and access patterns. Not names, not metadata, not audio, not artwork, not membership. There is no server-side recovery: a user who loses every device and every copy of the key has lost the library's ciphertext forever, which is the design working as intended.
+
+## Unlock and lock
+
+Opening a library reads the key from the keyring. If the library expects a key and the keyring doesn't have it, bae treats the library as locked: it prompts for the key before opening, validating the entry against the stored fingerprint before saving it back to the keyring. Locking a library removes the key from the keyring on purpose; nothing in the cloud home can be read or written until it's entered again.

@@ -1,0 +1,44 @@
+---
+title: Getting started
+description: Create a library, import your first album, and play it
+---
+
+bae is a home for the albums you own. You build the library on your desktop, and it follows you to every device: synced through cloud storage you already have, encrypted so only your devices can read it.
+
+The desktop apps (macOS, Windows) are the full tool: they create libraries, import music, and edit metadata. The phone apps (iOS, Android) are players: they join a library your desktop created, then browse, download, and play.
+
+## Create a library
+
+Open bae on your desktop. With no library on the machine, the welcome screen offers three choices:
+
+- **Create a new library**, if this is your first device.
+- **Join a library**, if another device already has one and its owner will approve you. See [Devices and members](/guide/devices).
+- **Restore from cloud**, if this is your own library and you have its recovery code. See [Devices and members](/guide/devices#recovery-codes).
+
+Create one. A library starts local: everything lives on this machine, nothing needs an account, and no cloud is involved until you connect one.
+
+## Import your first album
+
+1. Switch to the **Import** section in the title bar.
+2. Add a folder of music. You can pick it, drag it onto the window, or press <kbd>⌘I</kbd>.
+3. bae scans the folder and lists the releases it finds. Select one.
+4. bae identifies it against MusicBrainz and Discogs and shows the match. Confirm the pressing, pick a cover, adjust any details.
+5. Click **Import**.
+
+Your files are not moved, copied, or rewritten. bae catalogs them where they are. The full flow, including what to do when identification needs help, is in [Importing](/guide/importing).
+
+## Play it
+
+Back in the **Library** section, the album is in the grid. Click it, press play. Playback uses your original files, at their original quality. [Playback](/guide/playback) covers the queue, shuffle and repeat, and the details bae preserves: CD pregaps, vinyl side breaks, gapless albums.
+
+## Take it everywhere
+
+When you want the library on more than one device, connect a cloud home: your own Google Drive, Dropbox, OneDrive, iCloud, or any S3-compatible bucket. Everything bae puts there is encrypted before upload; the provider stores it but cannot read it.
+
+- [Sync](/guide/sync): connect a cloud home and choose what it stores.
+- [Devices and members](/guide/devices): add your phone or another desktop.
+- [Storage and offline](/guide/storage): keep music on the device, or stream it from your cloud and pin what you need offline.
+
+## Where things live
+
+Each library keeps its database and settings under `~/.bae/libraries/` on desktop. Your audio stays wherever you imported it from, unless you ask bae to manage it in your cloud. Keys and credentials live in the operating system's keyring, not in files.

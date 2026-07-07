@@ -1,0 +1,36 @@
+---
+title: Storage and offline
+description: Where your music lives, and what plays without a network
+---
+
+Your files stay yours. bae never moves, renames, or rewrites them; the question storage answers is only where the *playable copy* of each release lives: on the device, in your cloud, or both.
+
+## Unmanaged and managed
+
+Every release is one or the other, chosen at import and changeable any time:
+
+- **Unmanaged**: bae catalogs your files where they are and plays them from there. Nothing is copied. The release exists in the catalog on every synced device, but its audio lives only on the machine that imported it.
+- **Managed**: the files are encrypted and uploaded to the cloud home. Now every device can play the release, streaming it on demand or downloading it for offline. Your original files are untouched by the upload; whether to keep using them locally is your call (**Keep local copy** at import pins them).
+
+Moving between the two is a release-level action: **Manage** uploads an unmanaged release; **Make local** downloads a managed release's files to a folder you choose, and they're yours again as plain files.
+
+## Streaming and the cache
+
+Managed releases play everywhere, network permitting: playback streams the file from your cloud, and the bytes are kept in a local cache so the next play is instant and free. The cache manages itself within a budget (20 GB for audio on each device), evicting what you haven't played when space runs low. Covers and artist images are cached separately, so a big album can't push your artwork out.
+
+## Pinning for offline
+
+Pinning a release downloads all of it and keeps it: pinned music never gets evicted and always plays offline. Pin from the release's storage sheet or the Storage Manager; unpin returns the files to the normal cache, where they remain playable but reclaimable. On the phone, pinned downloads show their progress right in the library.
+
+## The Storage Manager
+
+The desktop's Storage Manager (<kbd>⌘0</kbd>) is the whole picture in one window:
+
+- Every release with its size and state: unmanaged, managed, uploading. Filter, sort, select many, act on all of them at once.
+- **Downloads**: pin downloads in flight, pausable, retryable.
+- **Exports**: the export queue. See [Exporting](/guide/exporting).
+- **Uploads**: the sync outbox, with per-release progress, throughput and time remaining, pending deletions, pause and resume.
+
+## Deleting
+
+Deleting a managed release removes it from the library and the cloud home. Deleting an unmanaged release removes the catalog entry only: bae never deletes files it didn't put there.

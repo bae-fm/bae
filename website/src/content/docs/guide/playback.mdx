@@ -1,0 +1,41 @@
+---
+title: Playback
+description: Original quality, and the details releases were made with
+---
+
+Records were made with structure that file players tend to flatten: sides that end, hidden audio before track one, songs that run into each other. bae keeps a release's playback details and plays them the way the release intended, from your original files, untouched.
+
+## Original quality
+
+Playback decodes your files as imported. There is no transcoding, no loudness rewrite, no server re-encode; the audio device is driven at the file's own sample rate. What you ripped is what plays. Every format bae imports, it plays: FLAC, MP3, APE, ALAC, AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack, DSD.
+
+## Gapless
+
+Albums mixed as one continuous piece play that way. The next track is prepared while the current one plays, and when the two share a format the audio never stops at the boundary: no gap, no click.
+
+## CD pregaps
+
+CDs can hide audio in the gap before a track starts, including before track one, the classic hidden-track trick. When a release is imported from a CUE-sheet rip, bae knows where every pregap is and plays them: the track's time display starts at zero where the track proper begins, and the hidden audio before it plays in the gap, exactly like the CD did. Exports can keep, drop, or re-attach pregaps; see [Exporting](/guide/exporting).
+
+## Side breaks
+
+Vinyl and cassette releases have sides, and some records use the pause between them deliberately. Turn on **Pause between sides** in Playback settings and bae pauses playback at each side boundary, prompting you to continue, the flip without the flipping. Track lists group by side and disc, so the structure is visible while you browse.
+
+## The queue
+
+Playback always has a context: the release you started, or the whole library if you shuffled it. The queue shows two lanes:
+
+- **Up Next**: tracks you queued by hand, played first. Drag tracks in, reorder them, remove them.
+- **Playing from**: the rest of the context, with its own shuffle toggle.
+
+**Play Next** and **Add to Queue** are on every track and album. Repeat cycles between off, repeating the context, and repeating one track.
+
+## Controls
+
+Play/pause on <kbd>Space</kbd>, next and previous from the keyboard, the scrubber to seek. bae integrates with the system: media keys, Control Center on Apple platforms, media notifications on Android, lock-screen controls on the phone, with artwork and track info wherever the system shows them.
+
+On quit, the desktop app can save what was playing, queue and position included, and pick it up on next launch: **Restore on launch** in Playback settings.
+
+## Offline
+
+A release plays wherever its bytes can be reached: local files play directly, cloud-managed releases stream as they play, and pinned releases are always on the device. See [Storage and offline](/guide/storage).

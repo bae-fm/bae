@@ -1,0 +1,43 @@
+---
+title: Data model
+description: The schema, what syncs, and what stays on the device
+---
+
+bae's catalog is ordinary SQLite, declared to [coven](https://coven.bae.fm) table by table: synced tables carry a conflict clock and travel to every device; undeclared tables never leave the device. The split is the data model's most load-bearing decision, so this page is organized around it.
+
+## The catalog graph
+
+The synced heart of the schema:
+
+- **`artists`**, **`albums`**, **`works`**: the grouping layer. An album aggregates its releases and points at a primary one; works form a parent/child graph for classical structure.
+- **`releases`**: the central entity, one row per pressing. Carries the pressing facts (label, catalog number, barcode, country, format, year), the metadata source, a content hash of the imported folder, and measured album loudness.
+- **`release_identities`**: what a release *is*, per source. No rows means unknown; a MusicBrainz or Discogs row with a release ID means exact; without one, approximate. A release can hold identities in both sources at once.
+- **`tracks`** with **`track_artists`**, plus **`release_artist_roles`** and **`track_artist_roles`**: track lists and credits, each credit tagged with its source.
+- **`track_works`**, **`work_parts`**, **`work_artists`**: recordings linked to the works they perform.
+- **`audio_formats`** and **`audio_format_segments`**: the playback specs. Per track: codec, sample rate, bit depth, channels, measured loudness and peak, and pregap lengths. Segments map a track onto ordered byte and sample windows of its source files, which is how a CUE rip's track, pregap included, can span regions of one big file, or several files.
+- **`release_files`**, **`covers`**, **`artist_images`**: blob-bearing tables. Rows are catalog entries; the bytes live in coven's blob layer (see below).
+
+## Synced, gated, local
+
+All of the above sync, but not unconditionally. `releases` is declared as a gated root on its `remote` column: a release row and its whole subtree (tracks, files, credits, formats, cover) sync only while `remote` is true, that is, while the release is cloud-managed. Flipping a release to managed publishes the subtree; an unmanaged release stays entirely on the importing device, even though its schema is synced. The ancestor tables (`artists`, `albums`, `works`) sync only while some synced release still references them, so a device never receives an artist with nothing under it.
+
+Fully local tables, never declared to coven:
+
+- **`playback_state`**: current track, position, queue, volume, shuffle and repeat. Playback is a device fact.
+- **`imports`**: import operation tracking.
+- **`release_metadata`**: archived raw JSON from MusicBrainz and Discogs, kept for future re-interpretation.
+- **`attribution_names`**: display names for member keys.
+
+Every synced table carries an `_updated_at` hybrid-logical-clock column, the register coven's field-by-field merge orders concurrent edits by; a test enforces that the synced set and the clock-carrying set are exactly equal.
+
+## Blobs
+
+Audio and images go through coven's blob layer in three namespaces, each with its own device cache budget: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+
+Release files are user-provided and lazily cached: for an unmanaged release the blob is an external reference to the user's file at its original path; for a managed one it's an uploaded object fetched into cache on first read. Covers and artist images are host-provided and eagerly cached: bae produces the bytes (covers are re-rendered as JPEG thumbnails at most 600px wide), and every device fetches them on pull so grids render locally.
+
+On an opaque home, blobs upload under meaningless content keys. On a browsable home each blob row records a readable cloud path (`{artist}/{album}/{filename}` for audio, `{album}/{release}/cover.{ext}` for covers), computed once at upload so a later rename never moves the object.
+
+## Identity of a rip
+
+`releases.content_hash` is a SHA-256 over the imported folder's file structure (relative paths and sizes), independent of where the folder sits on disk. It is how bae recognizes an already-imported rip when it shows up in a watched folder again, and how re-imports find the release they should replace.

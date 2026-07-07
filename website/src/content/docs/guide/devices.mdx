@@ -1,0 +1,43 @@
+---
+title: Devices and members
+description: Add your phone, approve a device, recover your library
+---
+
+There is no bae account. A device's identity is a key pair it generates for itself and keeps in the operating system's keyring; the library recognizes devices by their keys. Adding a device means an existing device vouching for a new one, cryptographically, with no one in the middle.
+
+Two different doors, for two different situations:
+
+- **Joining**: a new device is approved by a device that already has the library. Use this to add your phone, or another person's device.
+- **Restoring**: your own new or reinstalled device recovers the library directly from the cloud home, using a recovery code. No approver involved.
+
+## Adding a device
+
+On the new device, choose **Join a library**. It shows a short code, also as a QR: the join request, carrying the device's public key and a fingerprint you can read aloud.
+
+On a device that already has the library, an owner opens Settings, Devices, **Add a device**, and scans or pastes that request. bae shows the joining device's fingerprint; confirm it matches what the new device displays. Approving produces an invite code: hand it back to the new device (scan the QR or paste it), and the new device downloads the library and starts syncing.
+
+Behind the handshake: the approving device grants the newcomer access to the cloud home (consumer clouds share the folder to the newcomer's account; S3 invites embed credentials) and seals the library's encryption key to the newcomer's public key. The invite is useless to any other device. Details in [Identity and membership](/reference/membership).
+
+## Members and roles
+
+Settings, Devices lists every member: fingerprint, role, and which one is this device. The founding device is an **owner**; devices it approves join as **members**. Both read and write the library; only owners approve and remove devices.
+
+## Removing a device
+
+Owners can remove any member. Removal doesn't just close the door: the library's encryption key is rotated, and the removed device never receives the new key. What it already copied it keeps, nothing can unsend data, but everything the library writes from that point on is unreadable to it.
+
+## Recovery codes
+
+A recovery code is a bearer secret for your own library: cloud home coordinates plus the encryption key, in one string. **Show recovery code** in Settings displays it; store it somewhere safe, like a password manager. On a new device, **Restore from cloud** with the code rebuilds the library, no approver needed.
+
+On Apple platforms the code is also kept in the iCloud Keychain automatically, so a new Mac or iPhone signed into your Apple ID can restore with one tap.
+
+Anyone holding the code holds the library, so treat it like the key it is.
+
+## Locking
+
+**Lock Library** removes the encryption key from the device's keyring. The library stays on disk, unreadable, until someone enters the key again; bae checks it against a stored fingerprint before accepting it. Use it for a laptop that leaves the house.
+
+## On the phone
+
+iOS and Android join and restore exactly this way; it's their whole onboarding. A phone can also remove its copy of the library (Settings, remove from this device), which deletes local files and touches nothing in the cloud.

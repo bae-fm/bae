@@ -1,0 +1,43 @@
+---
+title: Sync
+description: Your whole library on every device, through your own cloud
+---
+
+Sync usually means someone else's server: an account, a subscription, a company that can read your library. bae syncs through **your** cloud, storage you already have, and runs no server at all. Your devices write encrypted changes to that storage and read each other's; the provider holds the bytes and cannot read them.
+
+One library, every device, and the only account involved is one you already own.
+
+## The cloud home
+
+A library's cloud home is one location in your storage: a folder in your Google Drive, Dropbox, or OneDrive, your iCloud, or any S3-compatible bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). It holds everything the library syncs: the catalog changes, artwork, and the audio of releases you let bae manage.
+
+Set it up in Settings, under Sync:
+
+1. Pick a provider. Consumer clouds sign in with the provider's own login page; nothing about your account is stored beyond the tokens it issues. iCloud uses your Apple ID as is. S3 takes bucket, region, endpoint, and keys, checked before they're saved.
+2. Choose how the home stores objects (see below).
+3. bae starts syncing.
+
+A library with no cloud home is complete on its own. Local-only is a mode, not a limitation, and disconnecting the cloud home returns to it.
+
+## Opaque or browsable
+
+At setup you choose what the provider gets to see, and the choice is permanent for that home:
+
+- **Opaque** (the default): every object is encrypted on your device before upload and stored under meaningless names. The provider, or anyone who gets into the bucket, sees ciphertext. This is the mode the [encryption](/reference/encryption) page describes, and the only mode that supports adding other devices and members.
+- **Browsable**: objects are stored in the clear with real filenames, in folders named by artist and album. You can open the bucket with any tool and copy or play your files directly. Nothing is encrypted, so the bucket's own access control is the only protection, and the home cannot be shared.
+
+## What syncs
+
+- The catalog: albums, releases, tracks, credits, works, identities, edits. Every device gets all of it.
+- Artwork: covers and artist images, fetched eagerly so grids render everywhere.
+- Audio: only for releases you chose to manage in the cloud. Unmanaged releases stay purely local, catalog entries included on other devices but bytes only where you imported them.
+
+Per-device state does not sync: playback position, volume, queue, and device settings stay on the device.
+
+## When it syncs
+
+Sync runs on its own: after changes, on a timer, and on demand with **Sync Now**. Edits land on other devices as small changes, seconds later under normal conditions. Two devices editing at the same time both win where they don't collide: bae merges concurrent edits field by field, and a deleted release stays deleted even if it was edited elsewhere at the same moment. Nothing ever asks you to resolve a conflict.
+
+## When it fails
+
+Sync failures don't interrupt the library; you keep browsing, playing, and importing locally while bae retries with backoff. The status line shows syncing and last-synced time; a failure shows a banner with the error, and uploads can be paused, retried, and inspected in the [Storage Manager](/guide/storage#the-storage-manager). If the cloud home's sign-in expires, bae asks you to reconnect.

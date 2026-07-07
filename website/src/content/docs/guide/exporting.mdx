@@ -1,0 +1,25 @@
+---
+title: Exporting
+description: Get music out, in the shape you need it
+---
+
+No lock-in cuts both ways: bae doesn't change your files coming in, and it doesn't hold them hostage going out. Unmanaged releases are already just files in your folders. Managed releases can be made local again at any time, byte-for-byte. And when you need a *different* shape, a phone-friendly encode, a burn-ready image, exporting produces it without touching the originals.
+
+## Two exports
+
+- **Track export**: right-click a track, **Save As**, pick a format, done.
+- **Release export**: from the album menu or the Storage Manager, exports a whole release to a folder. Runs on a queue with progress, pause, and retry.
+
+Original files export as they are. Everything else is encoded on the way out.
+
+## Presets
+
+Export formats are presets you define once in Settings: FLAC, MP3, Opus, WAV, or AIFF, with the codec's parameters (bit depth for the lossless formats, bitrate for the lossy ones) and a filename template built from tokens like title, artist, album, year, and track number. Set a default preset for tracks and one for releases, and choose whether release exports always ask for a destination or always use a fixed folder.
+
+## Pregaps in exports
+
+CD rips with pregaps raise a real question on the way out: where does the hidden audio go? Each preset picks a policy:
+
+- **Append to the previous track**, the common convention, with the choice of whether the audio hidden before track one is kept at the start of track one or dropped.
+- **Exclude** pregaps entirely: clean track boundaries, hidden audio omitted.
+- **Single file with CUE**: the disc as one audio file plus a CUE sheet, preserving the original layout exactly.

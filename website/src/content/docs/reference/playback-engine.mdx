@@ -1,0 +1,34 @@
+---
+title: Playback engine
+description: Decoding, gapless, pregaps, and loudness, precisely
+---
+
+The playback engine's contract is fidelity to the source: decode the user's original bytes, at the source's own rate, with the release's structure intact. This page is the specification behind that.
+
+## Decoding
+
+All decoding is FFmpeg, in-process, on every platform: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack, and DSD are what import accepts, and whatever FFmpeg reports from the bytes, not the file extension, is the codec of record. Samples come out as 32-bit float for the output stage; sample format conversion is the only conversion performed.
+
+Output is the platform's native audio API (Core Audio via cpal on the desktop and iOS, AAudio on Android). The output stream is configured to the **source's sample rate and channel count**: a 96 kHz file plays at 96 kHz. There is no resampling stage. The default output device is resolved at every stream build, so playback follows the system's device switches. On Android, hardware-supported codecs can bypass FFmpeg entirely for offloaded decoding.
+
+## Streaming reads
+
+Playback does not need whole files. Audio is read through a sparse buffer that fetches byte ranges on demand, from a local file, the cache, or the cloud, and seeking maps the target sample to a byte position so a seek into an unfetched region fetches from there. A fetch arbiter prioritizes the playing track's reads over preloading, so an upcoming track never delays the current one.
+
+## Tracks as windows
+
+A track is not a file; it is an ordered list of sample windows over one or more files, built at import from the CUE sheet or the file's own extent. This one representation carries every disc shape: a file per track, a whole disc in one image, a pregap living at the end of one file and the start of another, and lossy rips cut one file per track.
+
+Pregap windows are marked as such. Playback enters a track at its pregap when it has one (index 00, hidden-track audio included) while the clock shows track time: position clamps to zero until the track proper begins, and the displayed duration excludes the pregap, matching a CD player's behavior.
+
+## Gapless
+
+The next track is opened and buffered while the current one plays. When the two share sample rate and channel count, the engine chains them inside the live audio callback: the stream never stops, and the boundary is sample-exact. When formats differ, the stream is rebuilt, which is the case where a format change makes a boundary audible anyway.
+
+## Loudness
+
+Import measures integrated loudness (EBU R128) and true peak, per track and per album, during the decode-verification pass. Replay gain is derived from those measurements at play time, never baked into files: target −18 LUFS, capped so true peak cannot clip, applied per track or per album, switching cleanly at gapless boundaries. The mode currently ships without a settings UI and defaults to off; it can be set in the library's config file.
+
+## Side pauses
+
+Track lists carry their side and disc structure, and the engine can hold at a side boundary, surfacing a prompt to continue, when the user enables pause-between-sides. The hold is a playback-service state, not a decoded silence, so resuming is instant.

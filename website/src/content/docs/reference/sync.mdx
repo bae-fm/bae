@@ -1,0 +1,40 @@
+---
+title: Sync
+description: How changes move between devices, and how they merge
+---
+
+bae's sync is [coven](https://coven.bae.fm)'s sync: bae declares its tables and blobs, and coven does the rest. This page is the mechanics as they apply to bae; coven's own docs cover each piece in full depth.
+
+## Capture
+
+coven owns the SQLite connection, so every write bae commits passes through it. SQLite's session extension records exactly what changed in each transaction; the changes to synced tables become a **changeset**, sealed with the library key and signed with the device's identity key. No diffing, no dirty flags: capture is a property of the connection, and a write cannot be missed.
+
+## Streams
+
+Each device appends its changesets to its own stream in the cloud home, numbered sequentially. Devices never write to each other's streams, so there are no write conflicts in storage, and each device tracks a cursor per peer stream. A sync cycle pushes the local outbox, then pulls each peer's stream from its cursor forward, verifying each changeset's signature and its author's membership before applying it.
+
+The cycle runs after local changes, on an idle timer with backoff (up to five minutes between polls), and immediately on **Sync Now**. Failures back off and retry; the loop reports each cycle's outcome to the UI as status, error text, and the number of rows applied.
+
+## Merge
+
+Two devices editing the same library while apart is the normal case, not the exception. When their changes meet:
+
+- Edits to **different rows or different columns** both apply. Editing a release's year on the laptop and its label on the desktop yields both.
+- Edits to the **same column of the same row** are ordered by the row's `_updated_at` hybrid logical clock: the later edit wins, deterministically and identically on every device.
+- **Deletes win** over concurrent edits: a release deleted on one device stays deleted even if another device edited it in the same interval.
+
+There is no conflict UI because there is no unresolved state: every device converges to the same result from any application order.
+
+## Bootstrap
+
+A device joining or restoring doesn't replay history from the beginning. It downloads a **snapshot**, a full SQLite image published periodically to the cloud home, then applies only the changesets each stream accumulated after it. Snapshot metadata records the schema version and the per-stream cursors it embodies.
+
+## Schema versions
+
+bae's schema migrates through a numbered ladder, and the ladder's top rung is stamped on every changeset the device writes. A device that pulls a changeset from a newer schema than its own parks that stream, applying nothing past it, until the app updates; nothing is lost and nothing misapplies. The database file itself refuses to open under a binary older than its schema.
+
+Coarser than the schema version is the **compatibility era**: the pinned coven revision baked into each binary. Two builds sync only within an era; a coven wire-format break is a new era and a major version bump across every app. Pre-1.0, every build is era zero and formats change without migration.
+
+## What the provider sees
+
+On an opaque home the provider stores ciphertext changesets, ciphertext blobs, and signed membership records; it can count objects and observe sizes and timing, and read none of it. Every object a device pulls is verified, signature and membership, before anything touches the database: the storage is a dumb, untrusted mailbox. See [Encryption](/reference/encryption) and [Identity and membership](/reference/membership).

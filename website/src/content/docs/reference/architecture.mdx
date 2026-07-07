@@ -1,0 +1,41 @@
+---
+title: Architecture
+description: Native apps on one Rust core, on coven
+---
+
+bae is one Rust core wearing four native apps. Everything that defines the product, the library model, import, playback, sync, encryption, lives in Rust and behaves identically on every platform; each app is a thin native UI over it.
+
+## The layers
+
+- **`bae-core`**: the product. Library and metadata model, the import and identify pipelines, the FFmpeg playback engine, loudness analysis, export, and the integration with coven below it. Import and identify compile only on desktop; mobile builds are sync and playback clients.
+- **[coven](https://coven.bae.fm)**: the data layer, a separate library. coven owns the SQLite connection, captures every change bae commits, and syncs those changes end-to-end encrypted through the user's cloud storage. It also owns blob storage (audio bytes, artwork), the local cache, identity keys, and membership. bae pins an exact coven revision and stamps it into every binary; it defines the sync-compatibility generation between builds.
+- **`bae-bridge`**: the UniFFI boundary. Bridge types are defined once in Rust and generated into Swift and Kotlin at build time.
+- **The apps**: SwiftUI on macOS and iOS, Jetpack Compose on Android, and a native Windows app. Each also implements the platform pieces the core asks for: audio output, artwork text recognition, media controls, keychain access, crash reporting.
+
+Alongside the apps: `bae-mcp` (the MCP server), `bae-cli` (command line), and `bae-automation` (the shared tool layer both use).
+
+## One library on disk
+
+A library lives at `~/.bae/libraries/<library-id>/` (a platform data directory on mobile):
+
+```
+~/.bae/libraries/<id>/
+  library.db        # SQLite: catalog, credits, playback specs
+  config.yaml       # device-local settings, never synced
+  storage/
+    local/          # blobs this device owns (covers, artist images)
+    cache/          # evictable copies of cloud blobs
+    pinned/         # pinned-for-offline copies, never evicted
+```
+
+The database is opened only through coven, which layers its own bookkeeping tables (sync cursors, outbox, blob state) next to bae's schema and runs bae's migrations. Audio files imported unmanaged are not under `~/.bae` at all: the database references them at the paths where they were imported.
+
+Secrets never live in these files. Identity keys, the library encryption key, cloud credentials, and API tokens live in the OS keyring (Keychain on Apple platforms, synced via iCloud Keychain; the platform equivalents elsewhere).
+
+## Editions
+
+Two build-time editions exist on every platform. **bae** compiles in the OAuth providers (Google Drive, Dropbox, OneDrive), CloudKit, and telemetry. **baeium** compiles all of that out: S3-compatible storage only, and no telemetry, nothing proprietary in the dependency tree. The editions are the same source and the same core; a feature flag decides the provider list and the diagnostics wiring.
+
+## Versioning
+
+Apps version as `MAJOR.MINOR` per platform. The major is the compatibility era, shared by every app: devices on the same major can sync a library. It bumps only when a wire or on-disk format breaks, most often the pinned coven revision. Minors count releases per app and are not comparable across platforms.
