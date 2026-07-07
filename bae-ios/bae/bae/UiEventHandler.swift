@@ -300,7 +300,7 @@ private func updatePlaybackPosition(
     )
 }
 
-private enum PlaybackTransportEvent {
+enum PlaybackTransportEvent {
     case playing(PlaybackNowPlayingUpdate)
     case paused(PlaybackNowPlayingUpdate, BridgePlaybackPauseReason)
     case loading(trackId: String, track: BridgeLoadingTrackInfo?)
@@ -370,7 +370,7 @@ private enum PlaybackTransportEvent {
     }
 }
 
-private enum PlaybackStateEvent {
+enum PlaybackStateEvent {
     case error(BridgePlaybackErrorReason)
     case progress(
         trackId: String,
@@ -422,7 +422,7 @@ private enum PlaybackStateEvent {
     }
 }
 
-private enum PlaybackControlEvent {
+enum PlaybackControlEvent {
     case volume(Float)
     case mute(Bool)
     case repeatMode(BridgeRepeatMode)
@@ -452,7 +452,7 @@ private enum PlaybackControlEvent {
     }
 }
 
-private struct PlaybackNowPlayingUpdate {
+struct PlaybackNowPlayingUpdate {
     let track: NowPlayingTrack
     let albumTitle: String
 
