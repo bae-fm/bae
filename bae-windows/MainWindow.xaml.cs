@@ -2015,14 +2015,11 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var (current, json) = await RunForCurrentHandle(NativeBae.ImportCandidatesJson);
+        var (current, candidates) = await RunForCurrentHandle(NativeBae.ImportCandidates);
         if (!current)
         {
             return;
         }
-        var candidates = json is null
-            ? null
-            : JsonSerializer.Deserialize<List<ImportCandidate>>(json, JsonOptions);
         if (candidates is null)
         {
             ShowImportBanner(Loc.Chrome("import.failed"));
@@ -2555,7 +2552,7 @@ public sealed partial class MainWindow : Window
     // empty), choose a storage mode, and import.
     private async System.Threading.Tasks.Task ShowImportPicker(ImportCandidate candidate)
     {
-        var results = new List<Candidate>(candidate.Matches);
+        var results = new List<ReleaseCandidateChoice>(candidate.Matches);
         var resultsList = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
@@ -2626,22 +2623,21 @@ public sealed partial class MainWindow : Window
             var artist = artistBox.Text;
             var album = albumBox.Text;
             searchButton.IsEnabled = false;
-            var (current, json) = await RunForCurrentHandle(
-                handle => NativeBae.SearchReleasesJson(handle, source, artist, album));
+            var (current, search) = await RunForCurrentHandle(
+                handle => NativeBae.SearchReleases(handle, source, artist, album));
             searchButton.IsEnabled = true;
             if (!current)
             {
                 return;
             }
-            var parsed = json is null ? null : JsonSerializer.Deserialize<List<Candidate>>(json, JsonOptions);
-            if (parsed is null)
+            if (search.Error is not null)
             {
-                status.Text = Loc.Chrome("search.failed");
+                status.Text = search.Error;
                 status.Visibility = Visibility.Visible;
                 return;
             }
 
-            results = parsed;
+            results = search.Candidates ?? [];
             RenderResults();
             dialog.IsPrimaryButtonEnabled = false;
         };
@@ -2717,7 +2713,7 @@ public sealed partial class MainWindow : Window
     // Returns true when the user chose "Back to Search" — the caller re-opens the
     // picker so they can pick or search for a different release.
     private async System.Threading.Tasks.Task<bool> ShowImportConfirm(
-        ImportCandidate candidate, Candidate chosen)
+        ImportCandidate candidate, ReleaseCandidateChoice chosen)
     {
         var (current, prefetched) = await RunForCurrentHandle(
             handle => NativeBae.PrefetchCandidateEdit(
@@ -4552,7 +4548,7 @@ public sealed partial class MainWindow : Window
             IsPrimaryButtonEnabled = false,
         };
 
-        var candidates = new List<Candidate>();
+        var candidates = new List<ReleaseCandidateChoice>();
 
         // The generated bridge search and commit both block on network/DB work; run them off
         // the UI thread so the dialog stays responsive.
@@ -4562,23 +4558,22 @@ public sealed partial class MainWindow : Window
             var artist = artistBox.Text;
             var album = albumBox.Text;
             searchButton.IsEnabled = false;
-            var (current, json) = await RunForCurrentHandle(
-                handle => NativeBae.SearchReleasesJson(handle, source, artist, album));
+            var (current, search) = await RunForCurrentHandle(
+                handle => NativeBae.SearchReleases(handle, source, artist, album));
             searchButton.IsEnabled = true;
             if (!current)
             {
                 return;
             }
 
-            var parsed = json is null ? null : JsonSerializer.Deserialize<List<Candidate>>(json, JsonOptions);
-            if (parsed is null)
+            if (search.Error is not null)
             {
-                status.Text = Loc.Chrome("search.failed");
+                status.Text = search.Error;
                 status.Visibility = Visibility.Visible;
                 return;
             }
 
-            candidates = parsed;
+            candidates = search.Candidates ?? [];
             resultsList.ItemsSource = candidates.Select(candidate => candidate.Summary).ToList();
             status.Text = Loc.Chrome("search.no_matches");
             status.Visibility = candidates.Count == 0 ? Visibility.Visible : Visibility.Collapsed;

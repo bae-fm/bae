@@ -802,16 +802,22 @@ internal static class NativeBae
     internal static string? ApplyReleaseEdit(AppHandle handle, string releaseId, BridgeRawReleaseEdit edit) =>
         CaptureError(() => Await(handle.UpdateReleaseMetadataUserEdit(releaseId, ReleaseUserEdit(edit))));
 
-    internal static string? SearchReleasesJson(AppHandle handle, string source, string artist, string album) =>
-        CaptureValue(() => Json(Candidates(Await(handle.SearchForCandidate(new BridgeSearchQuery.General(artist, album, MetadataSource(source)))))));
+    internal static (List<ReleaseCandidateChoice>? Candidates, string? Error) SearchReleases(
+        AppHandle handle,
+        string source,
+        string artist,
+        string album) =>
+        CaptureBridgeValue(() => CandidateChoices(Await(handle.SearchForCandidate(
+            new BridgeSearchQuery.General(artist, album, MetadataSource(source))))));
 
-    internal static string? ReidentifyRelease(AppHandle handle, string releaseId, string chosenReleaseId, string source) =>
-        CaptureError(() => Await(handle.ReIdentifyRelease(releaseId, new BridgeIdentityChoice.Exact(chosenReleaseId, MetadataSource(source)))));
+    internal static string? ReidentifyRelease(AppHandle handle, string releaseId, string chosenReleaseId, BridgeMetadataSource source) =>
+        CaptureError(() => Await(handle.ReIdentifyRelease(releaseId, new BridgeIdentityChoice.Exact(chosenReleaseId, source))));
 
     internal static string? ScanFolder(AppHandle handle, string path, bool clearFirst) =>
         CaptureError(() => handle.AddWatchedFolder(path));
 
-    internal static string? ImportCandidatesJson(AppHandle handle) => Json(ImportCandidates(handle.GetImportCandidates()));
+    internal static List<ImportCandidate> ImportCandidates(AppHandle handle) =>
+        ImportCandidateRows(handle.GetImportCandidates());
 
     internal static void AutoIdentifyFolder(AppHandle handle, string candidateKey, string folderPath) =>
         handle.AutoIdentifyFolder(candidateKey, folderPath);
@@ -831,9 +837,9 @@ internal static class NativeBae
     internal static (PrefetchedEdit? Prefetched, string? Error) PrefetchCandidateEdit(
         AppHandle handle,
         string releaseId,
-        string source,
+        BridgeMetadataSource source,
         string folderPath) =>
-        CaptureBridgeValue(() => PrefetchedEdit(handle, releaseId, MetadataSource(source), folderPath));
+        CaptureBridgeValue(() => PrefetchedEdit(handle, releaseId, source, folderPath));
 
     internal static (BridgeLibraryStatus? Status, string? Error) CheckReleaseInLibrary(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() =>
@@ -845,14 +851,14 @@ internal static class NativeBae
         });
 
     internal static string? ImportCandidate(
-        AppHandle handle, string candidateKey, string folderPath, string chosenReleaseId, string source, string storageMode, bool pin, BridgeRawReleaseEdit userEdit, string selectedCoverJson) =>
+        AppHandle handle, string candidateKey, string folderPath, string chosenReleaseId, BridgeMetadataSource source, string storageMode, bool pin, BridgeRawReleaseEdit userEdit, string selectedCoverJson) =>
         CaptureError(() => handle.StartImport(
             candidateKey,
             folderPath,
             CoverSelectionOrNull(selectedCoverJson),
             StorageMode(storageMode),
             pin,
-            new BridgeIdentityChoice.Exact(chosenReleaseId, MetadataSource(source)),
+            new BridgeIdentityChoice.Exact(chosenReleaseId, source),
             ReleaseUserEdit(userEdit)));
 
     internal static byte[]? ImageBytes(AppHandle? handle, ImageRef image) =>
@@ -1093,24 +1099,10 @@ internal static class NativeBae
         }).ToArray(),
     };
 
-    private static object[] Candidates(BridgeCandidateSearchResults results) =>
+    private static List<ReleaseCandidateChoice> CandidateChoices(BridgeCandidateSearchResults results) =>
         results.Groups
-            .SelectMany(group => group.Pressings.Select(pressing => Candidate(group, pressing)))
-            .ToArray();
-
-    private static object Candidate(BridgeReleaseGroup group, BridgeMetadataResult pressing) =>
-        new
-        {
-            source = MetadataSourceTag(pressing.Source),
-            release_id = pressing.ReleaseId,
-            title = group.Title,
-            artist = group.Artist,
-            year = pressing.Year,
-            format = pressing.Format,
-            label = pressing.Label,
-            catalog_number = pressing.CatalogNumber,
-            country = pressing.Country,
-        };
+            .SelectMany(group => group.Pressings.Select(pressing => new ReleaseCandidateChoice(group, pressing)))
+            .ToList();
 
     private static PrefetchedEdit PrefetchedEdit(
         AppHandle handle,
@@ -1153,128 +1145,120 @@ internal static class NativeBae
         };
     }
 
-    private static object[] ImportCandidates(BridgeImportCandidatesSnapshot snapshot)
+    private static List<ImportCandidate> ImportCandidateRows(BridgeImportCandidatesSnapshot snapshot)
     {
         var folderRows = snapshot.FolderCandidates
-            .Select(candidate => ImportCandidate(candidate.Candidate, candidate.Runtime));
-        var invalidRows = snapshot.InvalidCandidates.Select(InvalidImportCandidate);
-        return folderRows.Concat(invalidRows).ToArray();
+            .Select(candidate => ImportCandidateRow(candidate.Candidate, candidate.Runtime));
+        var invalidRows = snapshot.InvalidCandidates.Select(InvalidImportCandidateRow);
+        return folderRows.Concat(invalidRows).ToList();
     }
 
-    private static object ImportCandidate(
+    private static ImportCandidate ImportCandidateRow(
         BridgeFolderCandidate candidate,
         BridgeCandidateRuntimeSnapshot runtime) =>
-        new
+        new()
         {
-            key = candidate.FolderPath,
-            name = candidate.SourceFolderName,
-            track_count = checked((int)candidate.TrackCount),
-            format = ImportFormat(candidate.Files.Audio),
-            row_status = ImportRowStatus(runtime),
-            matches = ImportMatches(runtime.IdentifyState),
-            signals = runtime.SignalsToolbar.Signals.Select(SignalBadge).ToArray(),
-            audio_paths = AudioPaths(candidate.Files.Audio),
-            folder_path = candidate.FolderPath,
+            Key = candidate.FolderPath,
+            Name = candidate.SourceFolderName,
+            TrackCount = checked((int)candidate.TrackCount),
+            Format = ImportFormat(candidate.Files.Audio),
+            RowStatus = ImportRowStatus(runtime),
+            Matches = ImportMatches(runtime.IdentifyState),
+            Signals = runtime.SignalsToolbar.Signals.Select(SignalBadge).ToList(),
+            AudioPaths = AudioPaths(candidate.Files.Audio).ToList(),
+            FolderPath = candidate.FolderPath,
         };
 
-    private static object InvalidImportCandidate(BridgeInvalidCandidate candidate) =>
-        new
+    private static ImportCandidate InvalidImportCandidateRow(BridgeInvalidCandidate candidate) =>
+        new()
         {
-            key = candidate.FolderPath,
-            name = candidate.SourceFolderName,
-            track_count = 0,
-            format = string.Empty,
-            row_status = new
+            Key = candidate.FolderPath,
+            Name = candidate.SourceFolderName,
+            TrackCount = 0,
+            Format = string.Empty,
+            RowStatus = new ImportCandidateRowStatus
             {
-                kind = "error",
-                error = new
+                Kind = "error",
+                Error = new DiagnosticError
                 {
-                    kind = "diagnostic",
-                    category = "import",
-                    detail = InvalidReasonTag(candidate.Reason),
+                    Kind = "diagnostic",
+                    Category = "import",
+                    Detail = InvalidReasonTag(candidate.Reason),
                 },
             },
-            matches = Array.Empty<object>(),
-            signals = Array.Empty<object>(),
-            audio_paths = Array.Empty<string>(),
-            folder_path = candidate.FolderPath,
+            Matches = [],
+            Signals = [],
+            AudioPaths = [],
+            FolderPath = candidate.FolderPath,
         };
 
-    private static object ImportRowStatus(BridgeCandidateRuntimeSnapshot runtime)
+    private static ImportCandidateRowStatus ImportRowStatus(BridgeCandidateRuntimeSnapshot runtime)
     {
         if (runtime.ImportStatus is BridgeCandidateImportStatus.Importing importing)
         {
-            return new
+            return new ImportCandidateRowStatus
             {
-                kind = "importing",
-                progress_percent = checked((int)importing.ProgressPercent),
-                step = importing.Step is null ? null : ImportStepJson(importing.Step),
+                Kind = "importing",
+                ProgressPercent = checked((int)importing.ProgressPercent),
+                Step = importing.Step is null ? null : ImportStep(importing.Step),
             };
         }
         if (runtime.ImportStatus is BridgeCandidateImportStatus.Complete)
         {
-            return new { kind = "complete" };
+            return new ImportCandidateRowStatus { Kind = "complete" };
         }
         if (runtime.ImportStatus is BridgeCandidateImportStatus.Error error)
         {
-            return new
+            return new ImportCandidateRowStatus
             {
-                kind = "error",
-                error = ToDiagnosticError(error.ErrorValue),
+                Kind = "error",
+                Error = ToDiagnosticError(error.ErrorValue),
             };
         }
 
         return runtime.IdentifyState switch
         {
-            BridgeIdentifyState.Idle => new { kind = string.Empty },
-            BridgeIdentifyState.Triangulating => new { kind = "identifying" },
-            BridgeIdentifyState.Found found => new { kind = "found", count = checked((int)found.Group.Pressings.Length) },
-            BridgeIdentifyState.Conflict => new { kind = "conflict" },
-            BridgeIdentifyState.NotFoundAnywhere => new { kind = "not_found" },
-            BridgeIdentifyState.ManualOnly => new { kind = "manual" },
+            BridgeIdentifyState.Idle => new ImportCandidateRowStatus { Kind = string.Empty },
+            BridgeIdentifyState.Triangulating => new ImportCandidateRowStatus { Kind = "identifying" },
+            BridgeIdentifyState.Found found => new ImportCandidateRowStatus { Kind = "found", Count = checked((int)found.Group.Pressings.Length) },
+            BridgeIdentifyState.Conflict => new ImportCandidateRowStatus { Kind = "conflict" },
+            BridgeIdentifyState.NotFoundAnywhere => new ImportCandidateRowStatus { Kind = "not_found" },
+            BridgeIdentifyState.ManualOnly => new ImportCandidateRowStatus { Kind = "manual" },
             _ => throw new ArgumentOutOfRangeException(nameof(runtime), runtime.IdentifyState, "Unknown identify state"),
         };
     }
 
-    private static object[] ImportMatches(BridgeIdentifyState state) =>
+    private static List<ReleaseCandidateChoice> ImportMatches(BridgeIdentifyState state) =>
         state is BridgeIdentifyState.Found found
-            ? found.Group.Pressings.Select(pressing => Candidate(found.Group, pressing)).ToArray()
-            : Array.Empty<object>();
+            ? found.Group.Pressings.Select(pressing => new ReleaseCandidateChoice(found.Group, pressing)).ToList()
+            : [];
 
-    private static object SignalBadge(BridgeToolbarSignal signal) =>
-        new
+    private static SignalBadge SignalBadge(BridgeToolbarSignal signal) =>
+        new()
         {
-            kind = SignalKindTag(signal.Kind),
-            value = signal.Value,
-            state = SignalState(signal.State),
-            excluded = signal.Excluded,
+            Kind = SignalKindTag(signal.Kind),
+            Value = signal.Value,
+            State = SignalState(signal.State),
+            Excluded = signal.Excluded,
         };
 
-    private static object SignalState(BridgeSignalState state) =>
+    private static SignalBadgeState SignalState(BridgeSignalState state) =>
         state switch
         {
-            BridgeSignalState.LookingUp => new { kind = "looking_up", count = (uint?)null, failure = (object?)null },
-            BridgeSignalState.Found found => new { kind = "found", count = (uint?)found.Count, failure = (object?)null },
-            BridgeSignalState.NoMatch => new { kind = "no_match", count = (uint?)null, failure = (object?)null },
-            BridgeSignalState.Skipped => new { kind = "skipped", count = (uint?)null, failure = (object?)null },
-            BridgeSignalState.Failed failed => new { kind = "failed", count = (uint?)null, failure = LookupFailureJson(failed.Failure) },
-            BridgeSignalState.Confirms confirms => new { kind = "confirms", count = (uint?)confirms.Count, failure = (object?)null },
+            BridgeSignalState.LookingUp => new() { Kind = "looking_up" },
+            BridgeSignalState.Found found => new() { Kind = "found", Count = found.Count },
+            BridgeSignalState.NoMatch => new() { Kind = "no_match" },
+            BridgeSignalState.Skipped => new() { Kind = "skipped" },
+            BridgeSignalState.Failed failed => new() { Kind = "failed", Failure = LookupFailure(failed.Failure) },
+            BridgeSignalState.Confirms confirms => new() { Kind = "confirms", Count = confirms.Count },
             _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown signal state"),
         };
 
-    private static object? ImportStepJson(BridgeImportStep step) =>
+    private static ImportStep ImportStep(BridgeImportStep step) =>
         step switch
         {
-            BridgeImportStep.Preparing preparing => new
-            {
-                kind = "preparing",
-                step = PrepareStepTag(preparing.Step),
-            },
-            BridgeImportStep.Running running => new
-            {
-                kind = "running",
-                phase = ImportPhaseTag(running.Phase),
-            },
+            BridgeImportStep.Preparing preparing => new() { Kind = "preparing", StepTag = PrepareStepTag(preparing.Step) },
+            BridgeImportStep.Running running => new() { Kind = "running", Phase = ImportPhaseTag(running.Phase) },
             _ => throw new ArgumentOutOfRangeException(nameof(step), step, "Unknown import step"),
         };
 
@@ -1385,14 +1369,14 @@ internal static class NativeBae
     private static string MetadataSourceTag(BridgeMetadataSource source) =>
         source == BridgeMetadataSource.Discogs ? "discogs" : "musicbrainz";
 
-    private static object LookupFailureJson(BridgeLookupFailure failure) =>
+    private static LookupFailure LookupFailure(BridgeLookupFailure failure) =>
         failure switch
         {
-            BridgeLookupFailure.Network => new { kind = "network", status = (int?)null, detail = (string?)null },
-            BridgeLookupFailure.Provider provider => new { kind = "provider", status = provider.Status is null ? null : checked((int?)provider.Status.Value), detail = (string?)null },
-            BridgeLookupFailure.Timeout => new { kind = "timeout", status = (int?)null, detail = (string?)null },
-            BridgeLookupFailure.ArtworkAnalysis => new { kind = "artwork_analysis", status = (int?)null, detail = (string?)null },
-            BridgeLookupFailure.Diagnostic diagnostic => new { kind = "diagnostic", status = (int?)null, detail = (string?)diagnostic.Detail },
+            BridgeLookupFailure.Network => new() { Kind = "network" },
+            BridgeLookupFailure.Provider provider => new() { Kind = "provider", Status = provider.Status is null ? null : checked((int?)provider.Status.Value) },
+            BridgeLookupFailure.Timeout => new() { Kind = "timeout" },
+            BridgeLookupFailure.ArtworkAnalysis => new() { Kind = "artwork_analysis" },
+            BridgeLookupFailure.Diagnostic diagnostic => new() { Kind = "diagnostic", Detail = diagnostic.Detail },
             _ => throw new ArgumentOutOfRangeException(nameof(failure), failure, "Unknown lookup failure"),
         };
 

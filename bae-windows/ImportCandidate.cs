@@ -31,7 +31,7 @@ public sealed class ImportCandidate
     }
 
     /// <summary>Candidate identities from a "found" result; empty otherwise.</summary>
-    public List<Candidate> Matches { get; set; } = new();
+    public List<ReleaseCandidateChoice> Matches { get; set; } = new();
 
     /// <summary>The signals-toolbar badges (disc ID, barcode, catalog), each with
     /// its live lookup state. Core pre-shapes the list; the row iterates and
