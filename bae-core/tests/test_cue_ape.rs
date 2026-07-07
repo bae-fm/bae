@@ -1346,19 +1346,53 @@ async fn test_cue_ape_next_track() {
     // track's CUE start time. Search within 2s for alignment.
     let max_alignment = sample_rate as usize * channels * 2;
 
-    let needed = max_alignment + snippet_len;
-    let captured_snapshot =
-        bae_core::playback::wait_for_samples(&captured, needed + 1, Duration::from_secs(60)).await;
+    let track2_sample_count = timeout(Duration::from_secs(10), async {
+        loop {
+            match fixture.progress_rx.recv().await {
+                Some(PlaybackProgress::DecodeStats {
+                    track_id,
+                    samples_decoded,
+                    ..
+                }) if track_id == track2_id => break samples_decoded as usize,
+                Some(_) => continue,
+                None => panic!("Track 2 should emit decode stats"),
+            }
+        }
+    })
+    .await
+    .expect("Track 2 should emit decode stats within 10s");
     assert!(
-        captured_snapshot.len() > needed,
+        track2_sample_count > snippet_len,
+        "Track 2 should produce enough samples to compare: {} (needed more than {})",
+        track2_sample_count,
+        snippet_len,
+    );
+    assert!(
+        reference_f32.len() >= track2_sample_count,
+        "Track 2 XLD reference should cover decoded track: {} (needed {})",
+        reference_f32.len(),
+        track2_sample_count,
+    );
+
+    let captured_snapshot = bae_core::playback::wait_for_samples(
+        &captured,
+        track2_sample_count,
+        Duration::from_secs(60),
+    )
+    .await;
+    assert!(
+        captured_snapshot.len() >= track2_sample_count,
         "Not enough captured samples after Next (60s): {} (needed {})",
         captured_snapshot.len(),
-        needed,
+        track2_sample_count,
     );
+
+    let track2_end = track2_sample_count;
+    let alignment_limit = max_alignment.min(track2_end - snippet_len);
 
     let mut best_max_diff: f32 = f32::MAX;
     let mut best_offset: usize = 0;
-    for offset in 0..max_alignment.min(captured_snapshot.len().saturating_sub(snippet_len)) {
+    for offset in 0..=alignment_limit {
         let mut max_diff: f32 = 0.0;
         for i in 0..snippet_len {
             let diff = (captured_snapshot[offset + i] - reference_f32[i]).abs();
@@ -1383,9 +1417,7 @@ async fn test_cue_ape_next_track() {
         best_max_diff,
     );
 
-    let compare_count = (sample_rate as usize * channels)
-        .min(captured_snapshot.len() - best_offset)
-        .min(reference_f32.len());
+    let compare_count = track2_end - best_offset;
 
     for i in 0..compare_count {
         let diff = (captured_snapshot[best_offset + i] - reference_f32[i]).abs();
