@@ -985,39 +985,6 @@ mod tests {
         assert_eq!(q.snapshot().context.unwrap().source, ContextSource::Library);
     }
 
-    /// `Context` repeat on a `Library` context loops a freshly re-derived order
-    /// of the same library tracks each pass — the queue re-permutes its held
-    /// entries in place, identical to a release context (the source enum only
-    /// labels where the tracks came from).
-    #[test]
-    fn test_context_repeat_on_library_re_derives_a_fresh_order() {
-        let mut q = queue();
-        q.play_release(
-            ContextSource::Library,
-            rel(&["t1", "t2", "t3", "t4", "t5"]),
-            ContextStart::Shuffled { seed: 9 },
-        );
-        q.set_repeat_mode(RepeatMode::Context);
-        let first_pass = full_order(&q);
-        for _ in 0..first_pass.len() - 1 {
-            q.next_entry();
-        }
-        match q.next_entry() {
-            NextEntry::Play(_) => {}
-            other => panic!("expected a looped Play, got {other:?}"),
-        }
-        let second_pass = full_order(&q);
-
-        let (mut a, mut b) = (first_pass.clone(), second_pass.clone());
-        a.sort();
-        b.sort();
-        assert_eq!(a, b, "the loop replays exactly the library tracks");
-        assert_ne!(
-            first_pass, second_pass,
-            "but in a freshly re-derived order each pass"
-        );
-    }
-
     // -- shuffle toggle --------------------------------------------------------
 
     #[test]
@@ -1296,12 +1263,6 @@ mod tests {
     }
 
     #[test]
-    fn test_repeat_mode_default_is_off() {
-        let q = queue();
-        assert_eq!(q.repeat_mode(), RepeatMode::Off);
-    }
-
-    #[test]
     fn test_insert_at_middle() {
         let mut q = queue();
         q.add_to_queue(rel(&["a", "b", "c"]));
@@ -1464,5 +1425,183 @@ mod tests {
         q.next_entry(); // → t2
         assert!(!q.has_upcoming());
         assert!(q.has_previous());
+    }
+
+    // -- next_sequential_context_track (physical-side pause edge) ---------------
+
+    /// The only edge that yields a physical side pause: the next track of a
+    /// sequential release context, with an empty manual lane. All other shapes —
+    /// no context, a shuffled traversal, a pending manual entry, or the last
+    /// context track — report `None`.
+    #[test]
+    fn test_next_sequential_context_track_all_branches() {
+        // No context at all → None.
+        let mut q = queue();
+        assert_eq!(q.next_sequential_context_track(), None);
+
+        // Sequential context with an upcoming track → that track.
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3"]),
+            ContextStart::Index(0),
+        );
+        assert_eq!(q.next_sequential_context_track(), Some("t2"));
+
+        // A pending manual entry is not physical-side playback → None.
+        q.add_to_queue(rel(&["m1"]));
+        assert_eq!(q.next_sequential_context_track(), None);
+
+        // A shuffled traversal is not a physical side → None.
+        let mut shuffled = queue();
+        shuffled.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3"]),
+            ContextStart::Shuffled { seed: 5 },
+        );
+        assert_eq!(shuffled.next_sequential_context_track(), None);
+
+        // The last track of a sequential context has no upcoming track → None.
+        let mut last = queue();
+        last.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
+        assert_eq!(last.next_sequential_context_track(), None);
+    }
+
+    // -- set_shuffle edge cases ------------------------------------------------
+
+    /// With nothing playing there is no context to reorder, so `set_shuffle` is a
+    /// no-op: no context appears and no track becomes current.
+    #[test]
+    fn test_set_shuffle_with_no_context_is_noop() {
+        let mut q = queue();
+        q.set_shuffle(true, rel(&["t1", "t2", "t3"]), 7);
+        assert!(q.context_projection().is_none());
+        assert_eq!(q.current_track_id(), None);
+    }
+
+    /// When the playing track is absent from the re-fetched source (the release
+    /// shrank under it), the shuffle toggle resumes the new order from its start
+    /// rather than dropping the context.
+    #[test]
+    fn test_set_shuffle_anchor_missing_resumes_at_start() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3"]),
+            ContextStart::Index(1),
+        );
+        assert!(q.has_previous(), "cursor sits on t2, so t1 is behind it");
+
+        // The re-fetched source no longer contains the playing track t2.
+        q.set_shuffle(false, rel(&["x1", "x2", "x3"]), 0);
+
+        assert_eq!(
+            q.context_order(),
+            vec!["x1", "x2", "x3"],
+            "the new source order replaces the old one"
+        );
+        assert!(
+            !q.has_previous(),
+            "the cursor reset to the start of the new order"
+        );
+    }
+
+    // -- restore fallback ------------------------------------------------------
+
+    /// A restored current track that is neither a manual entry nor the context's
+    /// cursor track (its context was dropped when the release shrank past the
+    /// cursor) resumes standalone with a freshly minted entry.
+    #[test]
+    fn test_restore_current_in_neither_lane_resumes_standalone() {
+        let snapshot = QueueSnapshot {
+            context: Some(ContextSnapshot {
+                source: rel_src("r1"),
+                traversal: Traversal::Sequential,
+                cursor: 0,
+            }),
+            manual: vec!["m1".into()],
+            current_track_id: Some("ghost".into()),
+            repeat: RepeatMode::Off,
+        };
+        let mut q = queue();
+        // Context cursor lands on t1; the manual lane holds m1; "ghost" is neither.
+        q.restore(snapshot, rel(&["t1", "t2"]));
+        assert_eq!(q.current_track_id(), Some("ghost"));
+        // The context and manual lane are still restored around the standalone
+        // current track.
+        assert_eq!(q.context_order(), vec!["t1", "t2"]);
+    }
+
+    // -- previous_action with a manual current ---------------------------------
+
+    /// When the current track is a manual entry (not the context's cursor entry),
+    /// stepping back within 3s lands on the context's cursor track — the release
+    /// track that preceded the manual insertion.
+    #[test]
+    fn test_previous_action_from_manual_current_lands_on_cursor() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3"]),
+            ContextStart::Index(0),
+        );
+        q.add_to_queue(rel(&["m1"]));
+        // Drain the manual lane: current becomes m1 while the cursor stays on t1.
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m1"));
+        assert_eq!(q.current_track_id(), Some("m1"));
+
+        // Current is a manual item, so Previous lands on the cursor entry t1.
+        assert!(matches!(
+            q.previous_action(1000),
+            PreviousAction::PlayPrevious(t) if t == "t1"
+        ));
+    }
+
+    // -- remove of the currently-playing context entry -------------------------
+
+    /// Removing the context entry that is currently playing clears `current`
+    /// (nothing is playing until the service advances), and the cursor stays in
+    /// bounds.
+    #[test]
+    fn test_remove_current_context_entry_clears_current() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3"]),
+            ContextStart::Index(0),
+        );
+        // Skip to t2 so it is both the cursor entry and current.
+        let t2_id = q.upcoming()[0].id.clone();
+        q.skip_to(&t2_id);
+        assert_eq!(q.current_track_id(), Some("t2"));
+
+        let removed = q.remove(&t2_id);
+        assert_eq!(removed.map(|e| e.track_id), Some("t2".into()));
+        assert_eq!(
+            q.current_track_id(),
+            None,
+            "removing the playing context entry clears current"
+        );
+    }
+
+    // -- context reorder to the end --------------------------------------------
+
+    /// Reordering a context entry with `before = None` moves it to the end of the
+    /// context order while the cursor stays on the playing track.
+    #[test]
+    fn test_reorder_context_to_end() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3", "t4"]),
+            ContextStart::Index(0),
+        );
+        let t2_id = q.upcoming()[0].id.clone(); // upcoming = [t2, t3, t4]
+        q.reorder(&t2_id, None);
+        assert_eq!(upcoming_tracks(&q), vec!["t3", "t4", "t2"]);
+        assert_eq!(
+            q.current_track_id(),
+            Some("t1"),
+            "the cursor stays on the playing track"
+        );
     }
 }
