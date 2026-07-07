@@ -19,7 +19,7 @@ pub fn init_keyring() {
     // host must set once before any keyring access — coven's getters panic
     // otherwise. "bae" keeps bae's coven key entries from colliding with any
     // other coven-based app on the same machine. Set-once, so it's safe to run
-    // through every init path (bridge, windows-ffi, bae-core bootstrap, tests).
+    // through every init path (bridge, bae-core bootstrap, tests).
     coven::set_keyring_service("bae");
 
     #[cfg(target_os = "macos")]

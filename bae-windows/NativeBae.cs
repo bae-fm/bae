@@ -284,7 +284,7 @@ internal static class NativeBae
         return BaeBridgeMethods.RestoreFromCloud(libraryId, encryptionKeyHex, libraryName, source).Id;
     }
 
-    internal sealed class EventCallback(Action<BridgeUiEvent> onEvent) : UiEventCallback
+    internal sealed class UiEventSink(Action<BridgeUiEvent> onEvent) : UiEventCallback
     {
         public void OnEvent(BridgeUiEvent @event) => onEvent(@event);
     }
@@ -306,7 +306,7 @@ internal static class NativeBae
 
     internal static void HandleFree(AppHandle handle) => handle.Dispose();
 
-    internal static void Subscribe(AppHandle handle, EventCallback callback) =>
+    internal static void Subscribe(AppHandle handle, UiEventSink callback) =>
         handle.SubscribeUiEvents(callback);
 
     internal static string? LockActiveLibrary(AppHandle handle) =>

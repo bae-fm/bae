@@ -7,7 +7,6 @@ members = [
     "bae-desktop",
     "bae-loc",
     "bae-mcp",
-    "bae-windows-ffi",
 ]
 resolver = "2"
 

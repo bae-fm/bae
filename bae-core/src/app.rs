@@ -1,10 +1,9 @@
 //! Composition root: builds and starts the whole application for a library and
-//! hands back a [`RunningApp`]. Shared by the Rust frontends that wrap it — the
-//! uniffi bridge (`bae-bridge`, via its `AppHandle`) and the Windows FFI
-//! (`bae-windows-ffi`). Keeping the wiring here means there is one place that
-//! opens the DB, unlocks encryption, starts sync, playback, and (on desktop)
-//! the import/identify/extraction services, and wires the UI event bus — no
-//! per-frontend duplicate to drift.
+//! hands back a [`RunningApp`]. Shared by the Rust frontends that wrap it through
+//! the uniffi bridge (`bae-bridge`, via its `AppHandle`). Keeping the wiring here
+//! means there is one place that opens the DB, unlocks encryption, starts sync,
+//! playback, and (on desktop) the import/identify/extraction services, and wires
+//! the UI event bus — no per-frontend duplicate to drift.
 
 use std::path::PathBuf;
 use std::sync::Arc;

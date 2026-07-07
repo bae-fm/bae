@@ -98,7 +98,7 @@ public sealed partial class MainWindow : Window
 
     // Held for the subscription's lifetime; the generated callback map keeps the
     // managed object rooted while Rust holds the callback handle.
-    private NativeBae.EventCallback? _eventCallback;
+    private NativeBae.UiEventSink? _eventCallback;
 
     // Latest queue snapshot from QueueUpdated; the queue dialog reads it on open.
     // The two lanes are kept separate so the dialog renders them as distinct
@@ -398,7 +398,7 @@ public sealed partial class MainWindow : Window
         RefreshSyncStatus();
 
         var generation = _sessionGeneration;
-        _eventCallback = new NativeBae.EventCallback(evt => OnNativeEvent(generation, evt));
+        _eventCallback = new NativeBae.UiEventSink(evt => OnNativeEvent(generation, evt));
         NativeBae.Subscribe(handle, _eventCallback);
     }
 

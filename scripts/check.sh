@@ -6,8 +6,8 @@
 # Runs the same non-Windows gates as CI. Missing platform toolchains or lint
 # tools are failures.
 #
-# Only Windows is excluded: bae-windows and bae-windows-ffi require the Windows
-# toolchain and can only be validated in CI.
+# Only Windows is excluded: bae-windows requires the Windows toolchain and can
+# only be validated in CI.
 
 set -uo pipefail
 

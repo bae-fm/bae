@@ -74,12 +74,16 @@ jobs:
           # full = OAuth providers on (bae.exe); baeium = no features (baeium.exe).
           # The C# app is identical for both; only the dll's exported symbols differ.
           if ("${{ matrix.edition }}" -eq "baeium") {
-            "CARGO_FEATURES=" | Out-File $env:GITHUB_ENV -Append
+            "BAE_BRIDGE_FEATURES=desktop" | Out-File $env:GITHUB_ENV -Append
+            "BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium" | Out-File $env:GITHUB_ENV -Append
+            "MSBUILD_BRIDGE_BINDINGS_DIR=..\bae-bridge\csharp-bindings-baeium" | Out-File $env:GITHUB_ENV -Append
             "EXE_NAME=baeium.exe" | Out-File $env:GITHUB_ENV -Append
             "ZIP_NAME=baeium-windows-x64.zip" | Out-File $env:GITHUB_ENV -Append
             "STAGE_DIR=baeium" | Out-File $env:GITHUB_ENV -Append
           } else {
-            "CARGO_FEATURES=--features oauth-providers" | Out-File $env:GITHUB_ENV -Append
+            "BAE_BRIDGE_FEATURES=oauth-providers,desktop" | Out-File $env:GITHUB_ENV -Append
+            "BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full" | Out-File $env:GITHUB_ENV -Append
+            "MSBUILD_BRIDGE_BINDINGS_DIR=..\bae-bridge\csharp-bindings-full" | Out-File $env:GITHUB_ENV -Append
             "EXE_NAME=bae.exe" | Out-File $env:GITHUB_ENV -Append
             "ZIP_NAME=bae-windows-x64.zip" | Out-File $env:GITHUB_ENV -Append
             "STAGE_DIR=bae" | Out-File $env:GITHUB_ENV -Append
@@ -128,8 +132,12 @@ jobs:
           C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-lame mingw-w64-x86_64-opus mingw-w64-x86_64-libiconv mingw-w64-x86_64-zlib mingw-w64-x86_64-gcc-libs"
           echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
-      - name: Build the Windows FFI cdylib (release, per edition)
-        run: cargo build -p bae-windows-ffi --target x86_64-pc-windows-msvc --release ${{ env.CARGO_FEATURES }}
+      - name: Install uniffi-bindgen-cs
+        run: cargo install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag 'v0.11.0+v0.31.0' uniffi-bindgen-cs --locked
+
+      - name: Build the Windows bridge (release, per edition)
+        shell: bash
+        run: ./bae-bridge/build-windows.sh --release
 
       - name: Install .NET 8 SDK
         uses: actions/setup-dotnet@v5
@@ -154,7 +162,8 @@ jobs:
             /p:BAE_DATADOG_SITE="$env:BAE_DATADOG_SITE" `
             /p:BAE_DATADOG_CLIENT_TOKEN="$env:BAE_DATADOG_CLIENT_TOKEN" `
             /p:BAE_SENTRY_DSN="$env:BAE_SENTRY_DSN" `
-            /p:BAE_GIT_COMMIT="$gitCommit"
+            /p:BAE_GIT_COMMIT="$gitCommit" `
+            /p:BridgeBindingsDir="$env:MSBUILD_BRIDGE_BINDINGS_DIR"
 
       - name: Build sentry-native
         if: matrix.edition == 'full'
@@ -182,10 +191,11 @@ jobs:
           if (-not (Test-Path $pub)) { Write-Host "FAIL: publish dir not found at $pub"; exit 1 }
           Copy-Item "$pub\*" $stage -Recurse -Force
 
-          # The Rust FFI dll (P/Invoke resolves it from the app directory).
-          Copy-Item "target\x86_64-pc-windows-msvc\release\bae_windows_ffi.dll" $stage -Force
+          # The generated bridge DLLs are resolved from the app directory.
+          Copy-Item "target-windows\x86_64-pc-windows-msvc\release\bae_bridge.dll" $stage -Force
+          Copy-Item "target-windows\x86_64-pc-windows-msvc\release\uniffi_bae_bridge.dll" $stage -Force
 
-          # FFmpeg DLLs (the FFI links them) + their mingw runtime deps + libdiscid.
+          # FFmpeg DLLs (the bridge links them) + their mingw runtime deps + libdiscid.
           Copy-Item "$env:FFMPEG_DIR\bin\*.dll" $stage -Force
           foreach ($d in @("libiconv-2.dll","libmp3lame-0.dll","libopus-0.dll","zlib1.dll","libwinpthread-1.dll","libgcc_s_seh-1.dll","libstdc++-6.dll")) {
             $src = "C:\msys64\mingw64\bin\$d"

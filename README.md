@@ -28,8 +28,7 @@ You pick releases from MusicBrainz or Discogs, point bae at your files, and it h
 | Crate | Description |
 |-------|-------------|
 | `bae-core` | Library, database, sync engine, encryption, cloud backends, import pipeline |
-| `bae-bridge` | UniFFI bridge for the macOS/iOS/Android native apps |
-| `bae-windows-ffi` | Hand-written C ABI over bae-core for the Windows (WinUI/C#) app |
+| `bae-bridge` | UniFFI bridge for the macOS/iOS/Android/Windows native apps |
 
 ## Roadmap
 
@@ -112,7 +111,7 @@ baeium needs nothing proprietary to build, run, or distribute.
   cd bae-android && ./gradlew assembleBaeiumDebug
   ```
 
-- **macOS / Windows** — build with `BAE_BRIDGE_FEATURES=` (macOS keeps the `desktop` feature: `BAE_BRIDGE_FEATURES=desktop`). The Windows native library (`bae_windows_ffi.dll`) builds baeium by default (`cargo build -p bae-windows-ffi` with no features).
+- **macOS / Windows** — build with `BAE_BRIDGE_FEATURES=desktop` for macOS and `BAE_BRIDGE_FEATURES=desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium ./bae-bridge/build-windows.sh` for Windows.
 
 ## Configuration
 
