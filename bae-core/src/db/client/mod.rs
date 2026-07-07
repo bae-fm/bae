@@ -589,13 +589,25 @@ fn storage_filter_where(filter: StorageFilter) -> &'static str {
 }
 
 fn album_artist_names_sql() -> &'static str {
-    "(SELECT art_primary.name FROM artists art_primary WHERE art_primary.id = a.artist_id) \
-    || COALESCE(( \
-        SELECT ', ' || GROUP_CONCAT(ar.name, ', ' ORDER BY aa.position) \
-        FROM album_artists aa \
-        JOIN artists ar ON ar.id = aa.artist_id \
-        WHERE aa.album_id = a.id \
-    ), '')"
+    "(SELECT CASE \
+        WHEN primary_name = '' THEN extra_names \
+        WHEN extra_names = '' THEN primary_name \
+        ELSE primary_name || ', ' || extra_names \
+    END \
+    FROM ( \
+        SELECT \
+            COALESCE(( \
+                SELECT art_primary.name \
+                FROM artists art_primary \
+                WHERE art_primary.id = a.artist_id \
+            ), '') AS primary_name, \
+            COALESCE(( \
+                SELECT GROUP_CONCAT(ar.name, ', ' ORDER BY aa.position) \
+                FROM album_artists aa \
+                JOIN artists ar ON ar.id = aa.artist_id \
+                WHERE aa.album_id = a.id \
+            ), '') AS extra_names \
+    ))"
 }
 
 fn album_release_ids_json_sql() -> &'static str {

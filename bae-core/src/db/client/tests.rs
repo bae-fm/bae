@@ -273,6 +273,71 @@ mod aggregate_ordering_tests {
         );
     }
 
+    #[tokio::test]
+    async fn album_and_storage_pages_allow_missing_primary_artist() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        db.call(|conn| {
+            conn.execute_batch(
+                "
+                INSERT INTO artists (id, name, _updated_at, created_at)
+                VALUES
+                    ('artist-first', 'Artist Name First', 'stamp', '2026-01-01T00:00:00Z'),
+                    ('artist-second', 'Artist Name Second', 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
+                VALUES
+                    ('album-empty', 'Album Title Empty', NULL, 2026, 'release-empty', 0, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('album-extra', 'Album Title Extra', NULL, 2026, 'release-extra', 0, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO album_artists (id, album_id, artist_id, position, _updated_at, created_at)
+                VALUES
+                    ('album-extra-artist-second', 'album-extra', 'artist-second', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('album-extra-artist-first', 'album-extra', 'artist-first', 0, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+                VALUES
+                    ('release-empty', 'album-empty', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('release-extra', 'album-extra', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+
+        let album_sort = [AlbumSortCriterion {
+            field: AlbumSortField::Title,
+            direction: SortDirection::Ascending,
+        }];
+        let albums = db.get_album_page(&album_sort, 0, 10).await.unwrap();
+        assert_eq!(albums.len(), 2);
+        assert_eq!(albums[0].artist_names, "");
+        assert_eq!(
+            albums[1].artist_names,
+            "Artist Name First, Artist Name Second"
+        );
+
+        let storage_sort = StorageSortCriterion {
+            field: StorageSortField::AlbumTitle,
+            direction: SortDirection::Ascending,
+        };
+        let rows = db
+            .get_storage_page(&storage_sort, StorageFilter::All, 0, 10)
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].album.artist_names, "");
+        assert_eq!(
+            rows[1].album.artist_names,
+            "Artist Name First, Artist Name Second"
+        );
+    }
+
     async fn queue_db() -> (Database, tempfile::TempDir) {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
