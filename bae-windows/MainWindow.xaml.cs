@@ -85,7 +85,7 @@ public sealed partial class MainWindow : Window
         PlaybackPositionState? Position);
 
     private readonly object _handleGate = new();
-    private AppHandle? _handle;
+    private LibraryHandle? _handle;
     private int _sessionGeneration;
 
     // Releases whose unmanage is running right now. Unmanage is a blocking
@@ -380,7 +380,7 @@ public sealed partial class MainWindow : Window
 
         lock (_handleGate)
         {
-            _handle = handle;
+            _handle = new LibraryHandle(handle);
             _sessionGeneration++;
         }
 
@@ -570,7 +570,7 @@ public sealed partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShutdownAndFreeCurrentHandle()
     {
-        AppHandle handle;
+        LibraryHandle handle;
         lock (_handleGate)
         {
             if (_handle == null)
@@ -585,11 +585,7 @@ public sealed partial class MainWindow : Window
 
         await System.Threading.Tasks.Task.Run(() =>
         {
-            lock (_handleGate)
-            {
-                NativeBae.Shutdown(handle);
-                NativeBae.HandleFree(handle);
-            }
+            handle.ShutdownAndFree();
         });
     }
 
@@ -598,6 +594,8 @@ public sealed partial class MainWindow : Window
     {
         var response = await System.Threading.Tasks.Task.Run(() =>
         {
+            LibraryHandle handle;
+            int generation;
             lock (_handleGate)
             {
                 if (_handle == null)
@@ -605,10 +603,13 @@ public sealed partial class MainWindow : Window
                     return (Ran: false, Generation: _sessionGeneration, Result: default!);
                 }
 
-                var generation = _sessionGeneration;
-                var result = action(_handle);
-                return (Ran: true, Generation: generation, Result: result);
+                handle = _handle;
+                generation = _sessionGeneration;
             }
+
+            return handle.TryUse(action, out var result)
+                ? (Ran: true, Generation: generation, Result: result)
+                : (Ran: false, Generation: generation, Result: default!);
         });
         return (
             response.Ran && response.Generation == _sessionGeneration,
@@ -627,6 +628,7 @@ public sealed partial class MainWindow : Window
 
     private bool WithCurrentHandle(Action<AppHandle> action)
     {
+        LibraryHandle handle;
         lock (_handleGate)
         {
             if (_handle == null)
@@ -634,13 +636,15 @@ public sealed partial class MainWindow : Window
                 return false;
             }
 
-            action(_handle);
-            return true;
+            handle = _handle;
         }
+
+        return handle.TryUse(action);
     }
 
     private (bool Current, T Result) WithCurrentHandle<T>(Func<AppHandle, T> action)
     {
+        LibraryHandle handle;
         lock (_handleGate)
         {
             if (_handle == null)
@@ -648,15 +652,19 @@ public sealed partial class MainWindow : Window
                 return (false, default!);
             }
 
-            return (true, action(_handle));
+            handle = _handle;
         }
+
+        return handle.TryUse(action, out var result)
+            ? (true, result)
+            : (false, default!);
     }
 
-    private AppHandle? CurrentHandleOrNull()
+    private LibraryHandle? CurrentHandleOrNull()
     {
         lock (_handleGate)
         {
-            return _handle;
+            return _handle is { IsOpen: true } ? _handle : null;
         }
     }
 

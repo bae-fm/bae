@@ -17,7 +17,7 @@ public sealed class Album
     public string Title => _album.Title;
     public string Artist => _album.ArtistName;
 
-    internal AppHandle? Handle { get; set; }
+    internal LibraryHandle? Handle { get; set; }
 
     public ImageSource? Cover => CoverImage.LoadByImageRef(Handle, _album.Cover);
 }

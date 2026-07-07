@@ -39,7 +39,7 @@ internal static class CoverImage
     /// <paramref name="cover"/> is null or the bytes can't be read or decoded.
     /// Used by the grid tile and the gallery's cover slot.
     /// </summary>
-    public static BitmapImage? LoadByImageRef(AppHandle? handle, BridgeImageRef? cover)
+    public static BitmapImage? LoadByImageRef(LibraryHandle? handle, BridgeImageRef? cover)
     {
         if (cover is null)
         {
@@ -52,7 +52,9 @@ internal static class CoverImage
             return cached;
         }
 
-        var bitmap = Decode(NativeBae.ImageBytes(handle, cover));
+        var bitmap = Decode(ReadBytes(
+            handle,
+            appHandle => NativeBae.ImageBytes(appHandle, cover)));
         if (bitmap is not null)
         {
             Cache[key] = bitmap;
@@ -67,22 +69,29 @@ internal static class CoverImage
     /// cache under); null when <paramref name="imageId"/> is empty or the bytes
     /// can't be read or decoded.
     /// </summary>
-    public static BitmapImage? LoadImage(AppHandle? handle, string? imageId)
+    public static BitmapImage? LoadImage(LibraryHandle? handle, string? imageId)
     {
         if (string.IsNullOrEmpty(imageId))
         {
             return null;
         }
 
-        return Decode(NativeBae.CoverImageBytes(handle, imageId));
+        return Decode(ReadBytes(
+            handle,
+            appHandle => NativeBae.CoverImageBytes(appHandle, imageId)));
     }
 
     /// <summary>
     /// The decoded image for a gallery slot, given the item's generated source.
     /// Decoded fresh each call; null when the bytes can't be read or decoded.
     /// </summary>
-    public static BitmapImage? LoadGalleryBytes(AppHandle? handle, string releaseId, BridgeGallerySource source) =>
-        Decode(NativeBae.GalleryBytes(handle, releaseId, source));
+    public static BitmapImage? LoadGalleryBytes(LibraryHandle? handle, string releaseId, BridgeGallerySource source) =>
+        Decode(ReadBytes(
+            handle,
+            appHandle => NativeBae.GalleryBytes(appHandle, releaseId, source)));
+
+    private static byte[]? ReadBytes(LibraryHandle? handle, Func<AppHandle, byte[]?> read) =>
+        handle is not null && handle.TryUse(read, out var bytes) ? bytes : null;
 
     /// <summary>
     /// Decode image bytes into a <see cref="BitmapImage"/> through an in-memory

@@ -55,7 +55,7 @@ public sealed class ComposerSummary
     public long LinkedReleaseCount => _composer.LinkedReleaseCount;
     public long UnlinkedCreditCount => _composer.UnlinkedCreditCount;
 
-    internal AppHandle? Handle { get; set; }
+    internal LibraryHandle? Handle { get; set; }
 
     public ImageSource? Cover => CoverImage.LoadByImageRef(Handle, _composer.Image);
     public string WorkCountText => Loc.Chrome("work.count", "count", Loc.Number(WorkCount));
@@ -79,7 +79,7 @@ public sealed class WorkSummary
     public long LinkedReleaseCount => _work.LinkedReleaseCount;
     public string? RepresentativeReleaseId => _work.RepresentativeReleaseId;
 
-    internal AppHandle? Handle { get; set; }
+    internal LibraryHandle? Handle { get; set; }
 
     public ImageSource? Cover => CoverImage.LoadByImageRef(Handle, _work.RepresentativeCover);
 }
@@ -165,7 +165,7 @@ public sealed class WorkReleaseSummary
     public string DisplayName => _release.DisplayName;
     public string? Format => _release.Format;
 
-    internal AppHandle? Handle { get; set; }
+    internal LibraryHandle? Handle { get; set; }
 
     public ImageSource? CoverImage => Bae.Windows.CoverImage.LoadByImageRef(Handle, _release.Cover);
     public string DisplaySubtitle =>
