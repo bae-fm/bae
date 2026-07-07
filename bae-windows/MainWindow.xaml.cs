@@ -535,10 +535,10 @@ public sealed partial class MainWindow : Window
     }
 
     // Switch the active library: persist the current one's playback state, tear
-    // down its handle and view state, then open the target. generated bridge init writes the
-    // target as the new active library; a locked target lands on the unlock
-    // prompt. Used for switching to an existing library and for a freshly
-    // created one.
+    // down its handle and view state, then open the target. generated bridge init records the
+    // target as the active library once it opens unlocked; a locked target lands
+    // on the unlock prompt. Used for switching to an existing library and for a
+    // freshly created one.
     private async System.Threading.Tasks.Task SwitchLibrary(string libraryId)
     {
         await TearDownLibrary();

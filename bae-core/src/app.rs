@@ -48,6 +48,10 @@ pub enum BootstrapError {
 /// tick. Returns once the DB is open, sync is attached (if the library is
 /// unlocked on this device), and playback (plus the desktop import pipeline) is
 /// running; background work continues on the returned runtime.
+///
+/// Opening by registered id records the library as this device's active library
+/// only once the open fully completes and the library is unlocked on this device;
+/// a locked or failed open leaves the pointer unchanged.
 pub fn bootstrap(
     library_id: String,
     position_update_interval_ms: u32,
@@ -110,11 +114,6 @@ fn bootstrap_inner(
     let ids: IdRef = Arc::new(UuidProvider);
 
     let (config, save_active_library) = load_bootstrap_config(target, ids.as_ref())?;
-    if save_active_library {
-        config
-            .save_active_library()
-            .map_err(|e| BootstrapError::Config(e.to_string()))?;
-    }
     let library_id = config.library_id.clone();
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -168,6 +167,12 @@ fn bootstrap_inner(
     } else {
         None
     };
+
+    // Locked: encryption was set up but this device's keyring lacks the key.
+    // Bootstrap still completes (sync deferred); the caller diverts to an unlock
+    // screen the user may cancel without ever entering this library.
+    let locked = config.encryption_key_stored && pending_enc.is_none();
+    let advance_active_pointer = save_active_library && !locked;
 
     // A browsable home (a provider is configured but the home is stored in the
     // clear) has no key, so the opaque/locked resolution above leaves
@@ -268,6 +273,21 @@ fn bootstrap_inner(
     let ui_event_bus = UiEventBus::new();
     ui_event_bus.wire(&app_services, runtime.handle());
 
+    // The durable active-library pointer names the library the user last actually
+    // landed in, so launch ordering (discovery sorts active-first), the CLI's
+    // active-library selector, and forget_library's pointer check all refer to a
+    // library that opens. It advances only over a fully-realized open: written
+    // after every fallible step above has succeeded, and never for a locked
+    // library — cancelling the unlock screen must leave the previously-active
+    // library in charge. A successful unlock re-runs bootstrap unlocked, which
+    // advances the pointer then.
+    if advance_active_pointer {
+        config_handle
+            .config()
+            .save_active_library()
+            .map_err(|e| BootstrapError::Config(e.to_string()))?;
+    }
+
     Ok(RunningApp {
         runtime,
         services: app_services,
@@ -275,6 +295,10 @@ fn bootstrap_inner(
     })
 }
 
+/// Load the config for a bootstrap target. The returned bool is whether this
+/// open should advance the active-library pointer once fully realized:
+/// registered-id targets yes (they name a device library), explicit-path targets
+/// no.
 fn load_bootstrap_config(
     target: BootstrapTarget,
     ids: &dyn coven::IdProvider,
