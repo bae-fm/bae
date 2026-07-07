@@ -76,10 +76,6 @@ final class MediaControlService: @unchecked Sendable {
         }
         self.activeSession = nil
         isShowingPreview = false
-        artworkTask?.cancel()
-        artworkTask = nil
-        cachedArtworkImageId = nil
-        cachedArtwork = nil
         clearNowPlaying(on: MPNowPlayingInfoCenter.default())
     }
 
@@ -272,6 +268,7 @@ extension MediaControlService {
 
     private func clearNowPlaying(on infoCenter: MPNowPlayingInfoCenter) {
         currentDurationMs = nil
+        clearArtworkLoad()
         infoCenter.nowPlayingInfo = nil
         let center = MPRemoteCommandCenter.shared()
         center.nextTrackCommand.isEnabled = false
@@ -348,7 +345,7 @@ extension MediaControlService {
 
         case .idle:
             isShowingPreview = false
-            currentDurationMs = nil
+            clearNowPlaying(on: infoCenter)
         }
     }
 
@@ -399,10 +396,7 @@ extension MediaControlService {
         into info: inout [String: Any]
     ) {
         guard let imageId else {
-            cachedArtworkImageId = nil
-            cachedArtwork = nil
-            artworkTask?.cancel()
-            artworkTask = nil
+            clearArtworkLoad()
             info.removeValue(forKey: MPMediaItemPropertyArtwork)
             return
         }
@@ -481,13 +475,25 @@ extension MediaControlService {
             imageBox.value
         }
         await MainActor.run {
+            guard !Task.isCancelled else {
+                return
+            }
+            let infoCenter = MPNowPlayingInfoCenter.default()
+            guard var info = infoCenter.nowPlayingInfo else {
+                return
+            }
             cachedArtworkImageId = imageId
             cachedArtwork = artwork
-            let infoCenter = MPNowPlayingInfoCenter.default()
-            var info = infoCenter.nowPlayingInfo ?? [:]
             info[MPMediaItemPropertyArtwork] = artwork
             infoCenter.nowPlayingInfo = info
         }
+    }
+
+    private func clearArtworkLoad() {
+        artworkTask?.cancel()
+        artworkTask = nil
+        cachedArtworkImageId = nil
+        cachedArtwork = nil
     }
 }
 
