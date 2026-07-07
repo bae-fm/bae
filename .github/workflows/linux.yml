@@ -60,6 +60,7 @@ jobs:
         cargo test -p bae-bridge --lib
         cargo test -p bae-automation
         cargo test -p bae-mcp
+        cargo test -p bae-cli
         # chrome-string orphan gate (core.* keys are covered by the bae-bridge
         # loc_key_coverage test above); fails on unreferenced, un-allowlisted keys.
         python3 scripts/loc-chrome-orphans.py
