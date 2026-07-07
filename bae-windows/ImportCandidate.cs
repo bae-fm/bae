@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
@@ -66,7 +67,8 @@ public sealed class ImportCandidateRowStatus
     public int Count { get; set; }
     public int ProgressPercent { get; set; }
     public ImportStep? Step { get; set; }
-    public DiagnosticError? Error { get; set; }
+    public BridgeException? Error { get; set; }
+    public BridgeInvalidReason? InvalidReason { get; set; }
 
     public string LocalizedLine
     {
@@ -81,13 +83,19 @@ public sealed class ImportCandidateRowStatus
                 "manual" => Loc.Chrome("identify.manual"),
                 "importing" => ImportingLine,
                 "complete" => Loc.Chrome("import.complete"),
-                "error" => Error is null
+                "error" => ErrorLine is null
                     ? Loc.Chrome("import.failed")
-                    : $"{Loc.Chrome("import.failed")}: {Error.LocalizedLine}",
+                    : $"{Loc.Chrome("import.failed")}: {ErrorLine}",
                 _ => string.Empty,
             };
         }
     }
+
+    private string? ErrorLine => InvalidReason is { } reason
+        ? BridgeDisplay.LocalizedLine(reason)
+        : Error is { } error
+            ? BridgeDisplay.LocalizedLine(error)
+            : null;
 
     private string ImportingLine
     {

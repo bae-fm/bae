@@ -150,65 +150,6 @@ internal static class NativeBae
     internal static string? AudioChannelsKey(long channels) =>
         BaeBridgeMethods.BridgeAudioChannelsKey(channels);
 
-    /// <summary>The catalog key for a diagnostic error category's generic line
-    /// (the wire tag an FfiError carries), or null for an unknown tag.</summary>
-    internal static string? ErrorCategoryKey(string category)
-    {
-        BridgeErrorCategory? bridgeCategory = category switch
-        {
-            "database" => BridgeErrorCategory.Database,
-            "config" => BridgeErrorCategory.Config,
-            "internal" => BridgeErrorCategory.Internal,
-            "import" => BridgeErrorCategory.Import,
-            "export" => BridgeErrorCategory.Export,
-            _ => null,
-        };
-        return bridgeCategory is null ? null : BaeBridgeMethods.BridgeErrorCategoryKey(bridgeCategory.Value);
-    }
-
-    /// <summary>The catalog key for a missing entity's "… not found" line (the
-    /// wire tag an FfiError carries), or null for an unknown tag.</summary>
-    internal static string? EntityNotFoundKey(string entity)
-    {
-        BridgeEntityKind? bridgeEntity = entity switch
-        {
-            "library" => BridgeEntityKind.Library,
-            "album" => BridgeEntityKind.Album,
-            "release" => BridgeEntityKind.Release,
-            "track" => BridgeEntityKind.Track,
-            "file" => BridgeEntityKind.File,
-            _ => null,
-        };
-        return bridgeEntity is null ? null : BaeBridgeMethods.BridgeEntityNotFoundKey(bridgeEntity.Value);
-    }
-
-    /// <summary>The catalog key for a lookup-failure line (the wire tag an
-    /// FfiLookupFailure carries), or null for diagnostic/unknown tags.</summary>
-    internal static string? LookupFailureKey(string kind, int? status)
-    {
-        ushort? bridgeStatus = null;
-        if (status is not null)
-        {
-            bridgeStatus = checked((ushort)status.Value);
-        }
-
-        BridgeLookupFailure? bridgeFailure = kind switch
-        {
-            "network" => new BridgeLookupFailure.Network(),
-            "provider" => new BridgeLookupFailure.Provider(bridgeStatus),
-            "timeout" => new BridgeLookupFailure.Timeout(),
-            "artwork_analysis" => new BridgeLookupFailure.ArtworkAnalysis(),
-            _ => null,
-        };
-        return bridgeFailure is null ? null : BaeBridgeMethods.BridgeLookupFailureKey(bridgeFailure);
-    }
-
-    /// <summary>The catalog key for an actionable playback-error reason (the wire
-    /// tag the reason carries), or null for the "diagnostic" reason (rendered
-    /// through the error-category path) and unknown tags.</summary>
-    internal static string? PlaybackErrorReasonKey(BridgePlaybackErrorReason reason) =>
-        BaeBridgeMethods.BridgePlaybackErrorReasonKey(reason);
-
     /// <summary>The catalog key for an import prepare-step wire tag, or null for
     /// an unknown tag.</summary>
     internal static string? PrepareStepKey(string step)
@@ -367,45 +308,6 @@ internal static class NativeBae
 
     internal static void Subscribe(AppHandle handle, EventCallback callback) =>
         handle.SubscribeUiEvents(callback);
-
-    internal static DiagnosticError ToDiagnosticError(BridgeException exception) =>
-        exception switch
-        {
-            BridgeException.NotFound notFound => new DiagnosticError
-            {
-                Kind = "not_found",
-                Entity = EntityKindTag(notFound.entity),
-                Id = notFound.id,
-            },
-            BridgeException.Diagnostic diagnostic => new DiagnosticError
-            {
-                Kind = "diagnostic",
-                Category = ErrorCategoryTag(diagnostic.category),
-                Detail = diagnostic.detail,
-            },
-            _ => new DiagnosticError(),
-        };
-
-    private static string EntityKindTag(BridgeEntityKind entity) =>
-        entity switch
-        {
-            BridgeEntityKind.Library => "library",
-            BridgeEntityKind.Album => "album",
-            BridgeEntityKind.Release => "release",
-            BridgeEntityKind.Track => "track",
-            BridgeEntityKind.File => "file",
-            _ => "library",
-        };
-
-    private static string ErrorCategoryTag(BridgeErrorCategory category) =>
-        category switch
-        {
-            BridgeErrorCategory.Database => "database",
-            BridgeErrorCategory.Config => "config",
-            BridgeErrorCategory.Import => "import",
-            BridgeErrorCategory.Export => "export",
-            _ => "internal",
-        };
 
     internal static string? LockActiveLibrary(AppHandle handle) =>
         CaptureError(() => handle.LockActiveLibrary());
@@ -924,12 +826,7 @@ internal static class NativeBae
             RowStatus = new ImportCandidateRowStatus
             {
                 Kind = "error",
-                Error = new DiagnosticError
-                {
-                    Kind = "diagnostic",
-                    Category = "import",
-                    Detail = InvalidReasonTag(candidate.Reason),
-                },
+                InvalidReason = candidate.Reason,
             },
             Matches = [],
             Signals = [],
@@ -957,7 +854,7 @@ internal static class NativeBae
             return new ImportCandidateRowStatus
             {
                 Kind = "error",
-                Error = ToDiagnosticError(error.ErrorValue),
+                Error = error.ErrorValue,
             };
         }
 
@@ -994,7 +891,7 @@ internal static class NativeBae
             BridgeSignalState.Found found => new() { Kind = "found", Count = found.Count },
             BridgeSignalState.NoMatch => new() { Kind = "no_match" },
             BridgeSignalState.Skipped => new() { Kind = "skipped" },
-            BridgeSignalState.Failed failed => new() { Kind = "failed", Failure = LookupFailure(failed.Failure) },
+            BridgeSignalState.Failed failed => new() { Kind = "failed", Failure = failed.Failure },
             BridgeSignalState.Confirms confirms => new() { Kind = "confirms", Count = confirms.Count },
             _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown signal state"),
         };
@@ -1095,17 +992,6 @@ internal static class NativeBae
     private static string MetadataSourceTag(BridgeMetadataSource source) =>
         source == BridgeMetadataSource.Discogs ? "discogs" : "musicbrainz";
 
-    private static LookupFailure LookupFailure(BridgeLookupFailure failure) =>
-        failure switch
-        {
-            BridgeLookupFailure.Network => new() { Kind = "network" },
-            BridgeLookupFailure.Provider provider => new() { Kind = "provider", Status = provider.Status is null ? null : checked((int?)provider.Status.Value) },
-            BridgeLookupFailure.Timeout => new() { Kind = "timeout" },
-            BridgeLookupFailure.ArtworkAnalysis => new() { Kind = "artwork_analysis" },
-            BridgeLookupFailure.Diagnostic diagnostic => new() { Kind = "diagnostic", Detail = diagnostic.Detail },
-            _ => throw new ArgumentOutOfRangeException(nameof(failure), failure, "Unknown lookup failure"),
-        };
-
     private static string SignalKindTag(BridgeSignalKind kind) =>
         kind switch
         {
@@ -1133,19 +1019,6 @@ internal static class NativeBae
             BridgeImportPhase.MeasuringLoudness => "measuring_loudness",
             BridgeImportPhase.Finalizing => "finalizing",
             _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, "Unknown import phase"),
-        };
-
-    private static string InvalidReasonTag(BridgeInvalidReason reason) =>
-        reason switch
-        {
-            BridgeInvalidReason.CorruptAudioFile file => $"corrupt audio file: {file.Path}",
-            BridgeInvalidReason.CorruptImage image => $"corrupt image: {image.Path}",
-            BridgeInvalidReason.CueMissingAudio => "cue sheet is missing its audio file",
-            BridgeInvalidReason.CueParseFailed cue => $"cue parse failed: {cue.Path}",
-            BridgeInvalidReason.CueUnsupportedLayout => "cue sheet layout is unsupported",
-            BridgeInvalidReason.CueIncompatibleSegmentFormats => "cue sheet has incompatible segment formats",
-            BridgeInvalidReason.NoValidAudio => "no valid audio files",
-            _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown invalid candidate reason"),
         };
 
     private static string ValidationReasonTag(BridgeValidationReason reason) =>

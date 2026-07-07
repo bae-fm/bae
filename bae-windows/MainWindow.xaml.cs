@@ -439,7 +439,7 @@ public sealed partial class MainWindow : Window
 
     private void RenderSyncStatus(BridgeSyncStatusSnapshot status)
     {
-        var syncLine = status.Error is null ? null : NativeBae.ToDiagnosticError(status.Error).LocalizedLine;
+        var syncLine = status.Error is null ? null : BridgeDisplay.LocalizedLine(status.Error);
         if (syncLine is null)
         {
             SyncBanner.IsOpen = false;
@@ -1928,7 +1928,7 @@ public sealed partial class MainWindow : Window
             case BridgeUiEvent.Error error:
                 Banner.Severity = InfoBarSeverity.Error;
                 Banner.Title = Loc.Chrome("error.title");
-                Banner.Message = NativeBae.ToDiagnosticError(error.ErrorValue).LocalizedLine;
+                Banner.Message = BridgeDisplay.LocalizedLine(error.ErrorValue);
                 Banner.ActionButton = null;
                 Banner.IsOpen = true;
                 break;
@@ -1977,15 +1977,7 @@ public sealed partial class MainWindow : Window
 
     private static string PlaybackErrorLine(BridgePlaybackErrorReason reason)
     {
-        var key = NativeBae.PlaybackErrorReasonKey(reason);
-        if (key is not null)
-        {
-            return Loc.Core(key);
-        }
-
-        return reason is BridgePlaybackErrorReason.Diagnostic diagnostic
-            ? NativeBae.ToDiagnosticError(diagnostic.Error).LocalizedLine
-            : Loc.Core("core.error.category.internal");
+        return BridgeDisplay.LocalizedLine(reason);
     }
 
     private void HandleInvalidation(BridgeInvalidation invalidation)
@@ -2525,7 +2517,7 @@ public sealed partial class MainWindow : Window
                 // the hover tooltip; no prose crosses the bridge.
                 if (signal.State.Failure is { } failure)
                 {
-                    ToolTipService.SetToolTip(warning, failure.LocalizedLine);
+                    ToolTipService.SetToolTip(warning, BridgeDisplay.LocalizedLine(failure));
                 }
                 return warning;
             default:

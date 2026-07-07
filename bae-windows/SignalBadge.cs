@@ -1,9 +1,10 @@
-﻿namespace Bae.Windows;
+﻿using uniffi.bae_bridge;
+
+namespace Bae.Windows;
 
 /// <summary>
-/// One signals-toolbar badge — a flat, pre-shaped mirror of the FFI's
-/// <c>FfiSignal</c>. Core derives all
-/// per-signal state; the UI iterates and renders these directly. <see cref="Kind"/>
+/// One signals-toolbar badge. Core derives all per-signal state; the UI
+/// iterates and renders these directly. <see cref="Kind"/>
 /// is the snake_case wire name the badge view maps to an icon / label.
 /// </summary>
 public sealed class SignalBadge
@@ -24,11 +25,10 @@ public sealed class SignalBadge
 }
 
 /// <summary>
-/// A badge's live lookup/match state — a tag plus the one payload each variant
-/// carries. Mirrors the FFI's <c>FfiSignalState</c>: <see cref="Count"/> is set
-/// for "found"/"confirms", <see cref="Failure"/> for "failed", both null
-/// otherwise. The locale never crosses the bridge, so the failed state carries
-/// the structured <see cref="LookupFailure"/>, not a prose message.
+/// A badge's live lookup/match state. <see cref="Count"/> is set for
+/// "found"/"confirms", <see cref="Failure"/> for "failed", both null otherwise.
+/// The locale never crosses the bridge, so the failed state carries the
+/// generated bridge failure, not a prose message.
 /// </summary>
 public sealed class SignalBadgeState
 {
@@ -38,5 +38,5 @@ public sealed class SignalBadgeState
 
     /// <summary>The structured lookup failure for the "failed" state; null
     /// otherwise. The badge resolves its localized line from this.</summary>
-    public LookupFailure? Failure { get; set; }
+    public BridgeLookupFailure? Failure { get; set; }
 }
