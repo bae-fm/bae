@@ -715,8 +715,8 @@ internal static class NativeBae
     internal static string? WorkDetailJson(AppHandle handle, string workId) =>
         CaptureValue(() => Json(Await(handle.GetWorkDetail(workId))));
 
-    internal static string? SettingsJson(AppHandle handle) =>
-        Json(Settings(handle.GetConfig(), handle.GetMcpServerStatus(), handle.GetSyncStatus()));
+    internal static Settings GetSettings(AppHandle handle) =>
+        Settings(handle.GetConfig(), handle.GetMcpServerStatus(), handle.GetSyncStatus());
 
     internal static string? SetPauseBetweenSides(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetPauseBetweenSides(enabled));
@@ -739,7 +739,7 @@ internal static class NativeBae
     internal static string? SetMcpServerConfig(AppHandle handle, bool enabled, ushort port) =>
         CaptureError(() => handle.SetMcpServerConfig(enabled, port));
 
-    internal static string? McpServerStatusJson(AppHandle handle) => Json(McpStatusJson(handle.GetMcpServerStatus()));
+    internal static BridgeMcpServerStatus McpServerStatus(AppHandle handle) => handle.GetMcpServerStatus();
 
     internal static string? GetMcpToken(AppHandle handle) => CaptureValue(handle.GetMcpToken);
 
@@ -1031,27 +1031,27 @@ internal static class NativeBae
         return new BridgeCoverSelection.ReleaseImage(root.GetProperty("file_id").GetString() ?? string.Empty);
     }
 
-    private static object Settings(
+    private static Settings Settings(
         BridgeConfig config,
         BridgeMcpServerStatus mcpStatus,
         BridgeSyncStatusSnapshot syncStatus) =>
-        new
+        new()
         {
-            library_name = config.LibraryName,
-            library_id = config.LibraryId,
-            discogs_status = DiscogsStatusTag(config.DiscogsTokenStatus),
-            discogs_usable = config.DiscogsUsable,
-            sync_provider = config.Sync is null ? null : SyncProviderTag(config.Sync.Provider),
-            sync_account = config.Sync?.CloudAccountDisplay,
-            sync_ready = syncStatus.SyncReady,
-            pause_between_sides = config.PauseBetweenSides,
-            export_filename_template = config.ExportFilenameTemplate,
-            export_presets = config.ExportPresets.Select(ExportPresetJson).ToArray(),
-            default_track_export_selection = ExportSelectionJson(config.DefaultTrackExportSelection),
-            default_release_export_selection = ExportSelectionJson(config.DefaultReleaseExportSelection),
-            mcp_enabled = config.Mcp.Enabled,
-            mcp_port = config.Mcp.Port,
-            mcp_status = McpStatusJson(mcpStatus),
+            LibraryName = config.LibraryName,
+            LibraryId = config.LibraryId,
+            DiscogsStatus = DiscogsStatusTag(config.DiscogsTokenStatus),
+            DiscogsUsable = config.DiscogsUsable,
+            SyncProvider = config.Sync is null ? null : SyncProviderTag(config.Sync.Provider),
+            SyncAccount = config.Sync?.CloudAccountDisplay,
+            SyncReady = syncStatus.SyncReady,
+            PauseBetweenSides = config.PauseBetweenSides,
+            ExportFilenameTemplate = config.ExportFilenameTemplate,
+            ExportPresets = config.ExportPresets.Select(ExportPreset).ToList(),
+            DefaultTrackExportSelection = ExportSelection(config.DefaultTrackExportSelection),
+            DefaultReleaseExportSelection = ExportSelection(config.DefaultReleaseExportSelection),
+            McpEnabled = config.Mcp.Enabled,
+            McpPort = config.Mcp.Port,
+            McpStatus = mcpStatus,
         };
 
     private static object SearchResults(BridgeSearchResults results) =>
@@ -1308,17 +1308,17 @@ internal static class NativeBae
             audio_format = file.AudioFormat,
         };
 
-    private static object ExportPresetJson(BridgeExportPreset preset) =>
-        new
+    private static ExportPreset ExportPreset(BridgeExportPreset preset) =>
+        new()
         {
-            id = preset.Id,
-            name = preset.Name,
-            codec = ExportPresetCodecJson(preset.Codec),
-            extension = preset.Extension,
-            filename_template = preset.FilenameTemplate,
-            pregap_placement = ExportPregapPlacementTag(preset.PregapPlacement),
-            applies_to_track = preset.AppliesToTrack,
-            applies_to_release = preset.AppliesToRelease,
+            Id = preset.Id,
+            Name = preset.Name,
+            Codec = ExportPresetCodec(preset.Codec),
+            Extension = preset.Extension,
+            FilenameTemplate = preset.FilenameTemplate,
+            PregapPlacement = ExportPregapPlacementTag(preset.PregapPlacement),
+            AppliesToTrack = preset.AppliesToTrack,
+            AppliesToRelease = preset.AppliesToRelease,
         };
 
     private static BridgeExportPreset ExportPresetBridge(ExportPreset preset) =>
@@ -1343,42 +1343,23 @@ internal static class NativeBae
             _ => throw new ArgumentOutOfRangeException(nameof(codec), codec.Kind, "Unknown export codec"),
         };
 
-    private static object ExportPresetCodecJson(BridgeExportPresetCodec codec) =>
+    private static ExportPresetCodec ExportPresetCodec(BridgeExportPresetCodec codec) =>
         codec switch
         {
-            BridgeExportPresetCodec.Flac flac => new { kind = "flac", bit_depth = ExportBitDepthTag(flac.BitDepth) },
-            BridgeExportPresetCodec.Mp3 mp3 => new { kind = "mp3", bitrate_kbps = mp3.BitrateKbps },
-            BridgeExportPresetCodec.OpusOgg opus => new { kind = "opus_ogg", bitrate_kbps = opus.BitrateKbps },
-            BridgeExportPresetCodec.Wav wav => new { kind = "wav", bit_depth = ExportBitDepthTag(wav.BitDepth) },
-            BridgeExportPresetCodec.Aiff aiff => new { kind = "aiff", bit_depth = ExportBitDepthTag(aiff.BitDepth) },
+            BridgeExportPresetCodec.Flac flac => new() { Kind = "flac", BitDepth = ExportBitDepthTag(flac.BitDepth) },
+            BridgeExportPresetCodec.Mp3 mp3 => new() { Kind = "mp3", BitrateKbps = mp3.BitrateKbps },
+            BridgeExportPresetCodec.OpusOgg opus => new() { Kind = "opus_ogg", BitrateKbps = opus.BitrateKbps },
+            BridgeExportPresetCodec.Wav wav => new() { Kind = "wav", BitDepth = ExportBitDepthTag(wav.BitDepth) },
+            BridgeExportPresetCodec.Aiff aiff => new() { Kind = "aiff", BitDepth = ExportBitDepthTag(aiff.BitDepth) },
             _ => throw new ArgumentOutOfRangeException(nameof(codec), codec, "Unknown export codec"),
         };
 
-    private static object ExportSelectionJson(BridgeExportSelection selection) =>
+    private static ExportSelection ExportSelection(BridgeExportSelection selection) =>
         selection switch
         {
-            BridgeExportSelection.Original => new { kind = "original", preset_id = (string?)null },
-            BridgeExportSelection.Preset preset => new { kind = "preset", preset_id = preset.PresetId },
+            BridgeExportSelection.Original => ExportSelection.Original(),
+            BridgeExportSelection.Preset preset => ExportSelection.Preset(preset.PresetId),
             _ => throw new ArgumentOutOfRangeException(nameof(selection), selection, "Unknown export selection"),
-        };
-
-    private static object McpStatusJson(BridgeMcpServerStatus status) =>
-        status switch
-        {
-            BridgeMcpServerStatus.Disabled => new { status = "disabled", url = (string?)null, error = (object?)null },
-            BridgeMcpServerStatus.Running running => new { status = "running", url = running.Url, error = (object?)null },
-            BridgeMcpServerStatus.Error error => new { status = "error", url = (string?)null, error = McpErrorJson(error.ErrorValue) },
-            _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown MCP status"),
-        };
-
-    private static object McpErrorJson(BridgeMcpServerError error) =>
-        error switch
-        {
-            BridgeMcpServerError.InvalidConfig invalid => new { kind = "invalid_config", detail = invalid.Detail },
-            BridgeMcpServerError.TokenUnavailable token => new { kind = "token_unavailable", detail = token.Detail },
-            BridgeMcpServerError.BindFailed bind => new { kind = "bind_failed", detail = bind.Detail },
-            BridgeMcpServerError.ServerFailed server => new { kind = "server_failed", detail = server.Detail },
-            _ => throw new ArgumentOutOfRangeException(nameof(error), error, "Unknown MCP error"),
         };
 
     private static string DiscogsStatusTag(BridgeDiscogsTokenStatus status) =>

@@ -2732,25 +2732,9 @@ public sealed partial class MainWindow : Window
             return false;
         }
 
-        var (settingsCurrent, settingsJson) = await RunForCurrentHandle(NativeBae.SettingsJson);
+        var (settingsCurrent, settings) = await RunForCurrentHandle(NativeBae.GetSettings);
         if (!settingsCurrent)
         {
-            return false;
-        }
-        if (settingsJson is null)
-        {
-            await ShowError(Loc.Chrome("import.error.load_storage_settings"));
-            return false;
-        }
-        Settings settings;
-        try
-        {
-            settings = JsonSerializer.Deserialize<Settings>(settingsJson, JsonOptions)
-                ?? throw new JsonException("settings payload was empty");
-        }
-        catch (JsonException ex)
-        {
-            await ShowError(Loc.Chrome("import.error.read_storage_settings"), ex.Message);
             return false;
         }
         var form = new ReleaseEditForm(prefetched.Edit, 520);
@@ -4025,22 +4009,9 @@ public sealed partial class MainWindow : Window
                 var picker = new global::Windows.Storage.Pickers.FileSavePicker();
                 WinRT.Interop.InitializeWithWindow.Initialize(
                     picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
-                var (settingsCurrent, settingsJson) = await RunForCurrentHandle(NativeBae.SettingsJson);
+                var (settingsCurrent, settings) = await RunForCurrentHandle(NativeBae.GetSettings);
                 if (!settingsCurrent)
                 {
-                    return;
-                }
-                if (settingsJson is null)
-                {
-                    exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
-                    exportStatus.Visibility = Visibility.Visible;
-                    return;
-                }
-                var settings = JsonSerializer.Deserialize<Settings>(settingsJson, JsonOptions);
-                if (settings is null)
-                {
-                    exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
-                    exportStatus.Visibility = Visibility.Visible;
                     return;
                 }
                 var trackPresets = settings.ExportPresets
@@ -4333,20 +4304,9 @@ public sealed partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShowExportRelease(string releaseId)
     {
-        var (settingsCurrent, settingsJson) = await RunForCurrentHandle(NativeBae.SettingsJson);
+        var (settingsCurrent, settings) = await RunForCurrentHandle(NativeBae.GetSettings);
         if (!settingsCurrent)
         {
-            return;
-        }
-        if (settingsJson is null)
-        {
-            StatusText.Text = Loc.Chrome("track.export.prepare_failed");
-            return;
-        }
-        var settings = JsonSerializer.Deserialize<Settings>(settingsJson, JsonOptions);
-        if (settings is null)
-        {
-            StatusText.Text = Loc.Chrome("track.export.prepare_failed");
             return;
         }
         var choices = new List<(string Label, ExportSelection Selection)>
@@ -5737,18 +5697,8 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var (current, json) = WithCurrentHandle(NativeBae.SettingsJson);
+        var (current, s) = WithCurrentHandle(NativeBae.GetSettings);
         if (!current)
-        {
-            return;
-        }
-        if (json is null)
-        {
-            return;
-        }
-
-        var s = JsonSerializer.Deserialize<Settings>(json, JsonOptions);
-        if (s is null)
         {
             return;
         }
@@ -6529,18 +6479,12 @@ public sealed partial class MainWindow : Window
 
         async System.Threading.Tasks.Task RefreshMcpStatus()
         {
-            var (current, json) = await RunForCurrentHandle(NativeBae.McpServerStatusJson);
+            var (current, status) = await RunForCurrentHandle(NativeBae.McpServerStatus);
             if (!current)
             {
                 return;
             }
-            var parsed = json is null ? null : JsonSerializer.Deserialize<McpServerStatus>(json, JsonOptions);
-            if (parsed is null)
-            {
-                ShowSettingsError(Loc.Chrome("settings.automation.status_unavailable"));
-                return;
-            }
-            mcpStatus.Text = new Settings { McpStatus = parsed }.McpStatusText;
+            mcpStatus.Text = Settings.McpStatusTextFor(status);
         }
 
         async System.Threading.Tasks.Task CopyMcpToken(Func<AppHandle, string?> readToken, string successKey)
@@ -6751,18 +6695,8 @@ public sealed partial class MainWindow : Window
         // them in place instead of requiring a reopen.
         _refreshSettings = () =>
         {
-            var (current, freshJson) = WithCurrentHandle(NativeBae.SettingsJson);
+            var (current, fresh) = WithCurrentHandle(NativeBae.GetSettings);
             if (!current)
-            {
-                return;
-            }
-            if (freshJson is null)
-            {
-                return;
-            }
-
-            var fresh = JsonSerializer.Deserialize<Settings>(freshJson, JsonOptions);
-            if (fresh is null)
             {
                 return;
             }

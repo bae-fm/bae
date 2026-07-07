@@ -1,8 +1,9 @@
 ﻿using System.Text.Json.Serialization;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
-/// <summary>App settings from the FFI's <c>bae_settings</c> JSON.</summary>
+/// <summary>App settings from the generated bridge config.</summary>
 public sealed class Settings
 {
     public string LibraryName { get; set; } = string.Empty;
@@ -37,7 +38,7 @@ public sealed class Settings
 
     public bool McpEnabled { get; set; }
     public ushort McpPort { get; set; }
-    public McpServerStatus McpStatus { get; set; } = new();
+    public BridgeMcpServerStatus McpStatus { get; set; } = new BridgeMcpServerStatus.Disabled();
     public bool HasCloudHome => SyncProvider is not null;
 
     /// <summary>
@@ -123,15 +124,30 @@ public sealed class Settings
     };
 
     [JsonIgnore]
-    public string McpStatusText => McpStatus.Status switch
+    public string McpStatusText => McpStatusTextFor(McpStatus);
+
+    internal static string McpStatusTextFor(BridgeMcpServerStatus status) => status switch
     {
-        "running" when !string.IsNullOrEmpty(McpStatus.Url) => Loc.Chrome(
+        BridgeMcpServerStatus.Running running when !string.IsNullOrEmpty(running.Url) => Loc.Chrome(
             "settings.automation.status.running",
             "url",
-            McpStatus.Url),
-        "error" when McpStatus.Error is not null => McpStatus.Error.DisplayText,
+            running.Url),
+        BridgeMcpServerStatus.Error error => McpErrorDisplayText(error.ErrorValue),
         _ => Loc.Chrome("settings.automation.status.disabled"),
     };
+
+    private static string McpErrorDisplayText(BridgeMcpServerError error)
+    {
+        var (summary, detail) = error switch
+        {
+            BridgeMcpServerError.InvalidConfig invalid => (Loc.Chrome("settings.automation.status.invalid_config"), invalid.Detail),
+            BridgeMcpServerError.TokenUnavailable token => (Loc.Chrome("settings.automation.status.token_unavailable"), token.Detail),
+            BridgeMcpServerError.BindFailed bind => (Loc.Chrome("settings.automation.status.bind_failed"), bind.Detail),
+            BridgeMcpServerError.ServerFailed server => (Loc.Chrome("settings.automation.status.server_failed"), server.Detail),
+            _ => (Loc.Chrome("settings.automation.status_unavailable"), string.Empty),
+        };
+        return string.IsNullOrEmpty(detail) ? summary : $"{summary}: {detail}";
+    }
 }
 
 public sealed class ExportPreset
@@ -174,30 +190,4 @@ public sealed class ExportSelection
 
     [JsonIgnore]
     public bool IsOriginal => Kind == "original";
-}
-
-public sealed class McpServerStatus
-{
-    public string Status { get; set; } = "disabled";
-    public string? Url { get; set; }
-    public McpServerStatusError? Error { get; set; }
-}
-
-public sealed class McpServerStatusError
-{
-    public string Kind { get; set; } = string.Empty;
-    public string Detail { get; set; } = string.Empty;
-
-    [JsonIgnore]
-    public string Summary => Kind switch
-    {
-        "invalid_config" => Loc.Chrome("settings.automation.status.invalid_config"),
-        "token_unavailable" => Loc.Chrome("settings.automation.status.token_unavailable"),
-        "bind_failed" => Loc.Chrome("settings.automation.status.bind_failed"),
-        "server_failed" => Loc.Chrome("settings.automation.status.server_failed"),
-        _ => Loc.Chrome("settings.automation.status_unavailable"),
-    };
-
-    [JsonIgnore]
-    public string DisplayText => string.IsNullOrEmpty(Detail) ? Summary : $"{Summary}: {Detail}";
 }
