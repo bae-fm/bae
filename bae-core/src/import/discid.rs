@@ -433,6 +433,14 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
+    /// Resolve a checked-in test fixture by path relative to the crate root, so
+    /// tests don't depend on the process working directory.
+    fn fixture(rel: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures")
+            .join(rel)
+    }
+
     fn assert_invalid_data(result: Result<String, MetadataDetectionError>) {
         let error = result.expect_err("out-of-range sector should return an error");
         match error {
@@ -486,46 +494,9 @@ mod tests {
 
     #[test]
     fn test_extract_leadout_from_log() {
-        let log_path = PathBuf::from("tests/fixtures/test_album.log");
-        let log_path = if log_path.exists() {
-            log_path
-        } else {
-            PathBuf::from("bae/tests/fixtures/test_album.log")
-        };
-        if !log_path.exists() {
-            eprintln!("LOG file not found at: {:?}", log_path);
-            eprintln!("Current directory: {:?}", std::env::current_dir().unwrap());
-            return;
-        }
-        println!("Testing LOG file parsing");
-        println!("   LOG: {:?}", log_path);
-        if let Err(e) = tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::DEBUG)
-            .try_init()
-        {
-            eprintln!("tracing init: {}", e);
-        }
-        let log_content = crate::text_encoding::read_text_file(&log_path)
-            .expect("Failed to read LOG file")
+        let log_content = crate::text_encoding::read_text_file(&fixture("test_album.log"))
+            .expect("LOG fixture should be readable")
             .text;
-        println!(
-            "LOG file decoded, length: {} chars, {} lines",
-            log_content.len(),
-            log_content.lines().count(),
-        );
-        println!("TOC section:");
-        let mut in_toc = false;
-        for (i, line) in log_content.lines().enumerate() {
-            if line.contains("TOC of the extracted") {
-                in_toc = true;
-            }
-            if in_toc {
-                println!("   {}: {}", i + 1, line);
-                if line.contains("Range status") || line.contains("AccurateRip") {
-                    break;
-                }
-            }
-        }
         let toc_sectors = extract_log_toc_sectors(&log_content).expect("LOG TOC should parse");
         let last_end_sector = toc_sectors
             .last()
@@ -542,84 +513,18 @@ mod tests {
             "Expected raw lead-out sector to be 188815 (188814 + 1)",
         );
     }
+
     #[test]
     fn test_calculate_mb_discid_from_log() {
-        let log_path = PathBuf::from("tests/fixtures/test_album.log");
-        let log_path = if log_path.exists() {
-            log_path
-        } else {
-            PathBuf::from("bae/tests/fixtures/test_album.log")
-        };
-        if !log_path.exists() {
-            eprintln!("LOG file not found at: {:?}", log_path);
-            eprintln!("Current directory: {:?}", std::env::current_dir().unwrap());
-            return;
-        }
-        println!("Testing MB DiscID calculation from LOG file alone");
-        println!("   LOG: {:?}", log_path);
-        if let Err(e) = tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::DEBUG)
-            .try_init()
-        {
-            eprintln!("tracing init: {}", e);
-        }
-        match calculate_mb_discid_from_log(&log_path) {
-            Ok(discid) => {
-                println!(
-                    "Successfully calculated MusicBrainz DiscID from LOG: {}",
-                    discid,
-                );
-                assert_eq!(discid.len(), 28, "DiscID should be 28 characters");
-                assert!(
-                    discid
-                        .chars()
-                        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'),
-                    "DiscID should contain only alphanumeric characters, dashes, and underscores",
-                );
-            }
-            Err(e) => {
-                eprintln!("❌ Failed to calculate DiscID from LOG: {}", e);
-                panic!("Failed to calculate DiscID from LOG: {}", e);
-            }
-        }
-    }
-    #[test]
-    fn test_calculate_mb_discid_from_log_cue_log() {
-        let log_path = PathBuf::from("tests/fixtures/test_album.log");
-        let log_path = if log_path.exists() {
-            log_path
-        } else {
-            PathBuf::from("bae/tests/fixtures/test_album.log")
-        };
-        if !log_path.exists() {
-            eprintln!("LOG file not found, skipping test");
-            eprintln!("  LOG: {:?} (exists: {})", log_path, log_path.exists());
-            return;
-        }
-        println!("Testing MB DiscID calculation from LOG file alone");
-        println!("   LOG: {:?}", log_path);
-        if let Err(e) = tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::DEBUG)
-            .try_init()
-        {
-            eprintln!("tracing init: {}", e);
-        }
-        match calculate_mb_discid_from_log(&log_path) {
-            Ok(discid) => {
-                println!("Successfully calculated MusicBrainz DiscID: {}", discid);
-                assert_eq!(discid.len(), 28, "DiscID should be 28 characters");
-                assert!(
-                    discid
-                        .chars()
-                        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'),
-                    "DiscID should contain only alphanumeric characters, dashes, and underscores",
-                );
-            }
-            Err(e) => {
-                eprintln!("❌ Failed to calculate DiscID: {}", e);
-                panic!("Failed to calculate DiscID: {}", e);
-            }
-        }
+        let discid = calculate_mb_discid_from_log(&fixture("test_album.log"))
+            .expect("disc ID should compute from the LOG fixture");
+        assert_eq!(discid.len(), 28, "DiscID should be 28 characters");
+        assert!(
+            discid
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'),
+            "DiscID should contain only alphanumeric characters, dashes, and underscores",
+        );
     }
 
     /// The shared duration-based disc ID path is container-agnostic: given a
@@ -814,11 +719,7 @@ mod tests {
     #[test]
     fn test_compute_discid_routes_cue_ape() {
         use tempfile::TempDir;
-        let fixture_dir = PathBuf::from("tests/fixtures/cue_ape");
-        if !fixture_dir.exists() {
-            eprintln!("CUE+APE fixture not found at {:?}", fixture_dir);
-            return;
-        }
+        let fixture_dir = fixture("cue_ape");
         let tmp = TempDir::new().unwrap();
         let folder = tmp.path();
         std::fs::copy(
@@ -871,18 +772,16 @@ mod tests {
                 "128k",
                 mp3_path.to_str().unwrap(),
             ])
-            .output();
-        let Ok(output) = output else {
-            eprintln!("ffmpeg not available; skipping CUE+MP3 dispatcher test");
-            return;
-        };
-        if !output.status.success() {
-            eprintln!(
-                "ffmpeg failed to generate MP3 fixture:\nstderr: {}",
-                String::from_utf8_lossy(&output.stderr)
+            .output()
+            .expect(
+                "ffmpeg must be installed to run the CUE+MP3 dispatcher test \
+                 (macOS: `brew install ffmpeg`)",
             );
-            return;
-        }
+        assert!(
+            output.status.success(),
+            "ffmpeg failed to generate the MP3 fixture:\nstderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
 
         let cue_body = "PERFORMER \"Artist Name\"\n\
                         TITLE \"Album Title\"\n\
@@ -896,5 +795,148 @@ mod tests {
         let disc_id = compute_discid_from_paths(&[], &[cue_path], &[mp3_path])
             .expect("CUE+MP3 pair must compute a disc ID");
         assert_eq!(disc_id.len(), 28, "MusicBrainz disc IDs are 28 chars");
+    }
+
+    #[test]
+    fn parse_log_toc_row_accepts_valid_and_rejects_malformed() {
+        // A well-formed EAC/XLD TOC row: track | start | length | start | end.
+        assert_eq!(
+            parse_log_toc_row("   1 | 0:00.00 | 1:00.00 |      0 |  188814"),
+            Some((0, 188814))
+        );
+        // Fewer than five pipe-separated columns.
+        assert_eq!(parse_log_toc_row("1 | 0:00.00 | 1:00.00 | 0"), None);
+        // Track number outside 1..=99.
+        assert_eq!(parse_log_toc_row("0 | 0:00.00 | 1:00.00 | 0 | 100"), None);
+        assert_eq!(parse_log_toc_row("100 | 0:00.00 | 1:00.00 | 0 | 100"), None);
+        // Non-numeric track / sector cells.
+        assert_eq!(parse_log_toc_row("x | 0:00.00 | 1:00.00 | 0 | 100"), None);
+        assert_eq!(parse_log_toc_row("1 | 0:00.00 | 1:00.00 | a | 100"), None);
+        // Negative start sector, or non-positive end sector.
+        assert_eq!(parse_log_toc_row("1 | 0:00.00 | 1:00.00 | -1 | 100"), None);
+        assert_eq!(parse_log_toc_row("1 | 0:00.00 | 1:00.00 | 0 | 0"), None);
+    }
+
+    #[test]
+    fn extract_log_toc_sectors_errors_without_toc_rows() {
+        let log = "Some header line\nRandom prose\nNo TOC table anywhere\n";
+        let err = extract_log_toc_sectors(log).expect_err("a LOG with no TOC rows must error");
+        match err {
+            MetadataDetectionError::Io(e) => {
+                assert_eq!(e.kind(), std::io::ErrorKind::InvalidData);
+            }
+        }
+    }
+
+    #[test]
+    fn extract_log_toc_sectors_parses_headerless_table() {
+        // A bare TOC table with no "TOC of the extracted CD" header still parses:
+        // the first parseable row opens the section.
+        let log = "   1 | 0:00.00 | 1:00.00 | 0 | 100\n   2 | 1:00.00 | 1:00.00 | 100 | 200\n";
+        let rows = extract_log_toc_sectors(log).expect("headerless TOC table should parse");
+        assert_eq!(rows, vec![(0, 100), (100, 200)]);
+    }
+
+    #[test]
+    fn extract_log_toc_sectors_skips_unparseable_rows() {
+        // A header, a malformed row (track 0), then a valid row: the bad row is
+        // dropped rather than aborting the parse.
+        let log = "TOC of the extracted CD\n\
+                   Track | Start | Length | Start sector | End sector\n\
+                   ---------------------------------------------------\n\
+                   0 | 0:00.00 | 1:00.00 | 0 | 100\n\
+                   1 | 0:00.00 | 1:00.00 | 10 | 200\n\
+                   \n\
+                   Range status and errors\n";
+        let rows = extract_log_toc_sectors(log).expect("the valid row should parse");
+        assert_eq!(rows, vec![(10, 200)], "the invalid track-0 row is dropped");
+    }
+
+    fn audio_cue_track(number: u32, file_reference: &str) -> crate::cue_flac::CueTrack {
+        use crate::cue_flac::{CueIndex, CuePregap, CueTrack, CueTrackMode};
+        CueTrack {
+            number,
+            mode: CueTrackMode::Audio,
+            title: Some(format!("Track {number:02}")),
+            performer: None,
+            composer: None,
+            songwriter: None,
+            isrc: None,
+            flags: Vec::new(),
+            indexes: vec![CueIndex {
+                number: 1,
+                frames: 0,
+                file_reference: file_reference.to_string(),
+            }],
+            postgap_frames: None,
+            file_reference: file_reference.to_string(),
+            start_cue_frames: 0,
+            pregap: CuePregap::None,
+            pregap_cue_frames: None,
+            generated_pregap_frames: None,
+            end_cue_frames: None,
+        }
+    }
+
+    fn cue_sheet_with(tracks: Vec<crate::cue_flac::CueTrack>) -> CueSheet {
+        CueSheet {
+            title: Some("Album Title".to_string()),
+            performer: Some("Artist Name".to_string()),
+            composer: None,
+            songwriter: None,
+            catalog: None,
+            date: None,
+            tracks,
+        }
+    }
+
+    /// A single-FILE CUE matches the audio file whose stem equals the FILE
+    /// reference's stem, ignoring extension and unrelated files.
+    #[test]
+    fn find_matching_audio_for_cue_matches_by_stem() {
+        let sheet = cue_sheet_with(vec![
+            audio_cue_track(1, "Album Image.flac"),
+            audio_cue_track(2, "Album Image.flac"),
+        ]);
+        let audio_files = vec![
+            PathBuf::from("/rip/Some Other.mp3"),
+            PathBuf::from("/rip/Album Image.flac"),
+        ];
+
+        let matched =
+            find_matching_audio_for_cue(Path::new("/rip/Album.cue"), &sheet, &audio_files);
+        assert_eq!(matched, Some(&PathBuf::from("/rip/Album Image.flac")));
+    }
+
+    /// No audio file shares the FILE reference's stem → no match.
+    #[test]
+    fn find_matching_audio_for_cue_no_stem_match_is_none() {
+        let sheet = cue_sheet_with(vec![audio_cue_track(1, "Album Image.flac")]);
+        let audio_files = vec![PathBuf::from("/rip/Different Name.flac")];
+
+        assert!(
+            find_matching_audio_for_cue(Path::new("/rip/Album.cue"), &sheet, &audio_files)
+                .is_none()
+        );
+    }
+
+    /// A multi-FILE CUE (one file per track) is not a disc-ID candidate — the
+    /// sectors would have to come from one concatenated container, so the
+    /// matcher returns `None` regardless of the audio files present.
+    #[test]
+    fn find_matching_audio_for_cue_multi_file_is_none() {
+        let sheet = cue_sheet_with(vec![
+            audio_cue_track(1, "Track 01.flac"),
+            audio_cue_track(2, "Track 02.flac"),
+        ]);
+        let audio_files = vec![
+            PathBuf::from("/rip/Track 01.flac"),
+            PathBuf::from("/rip/Track 02.flac"),
+        ];
+
+        assert!(
+            find_matching_audio_for_cue(Path::new("/rip/Album.cue"), &sheet, &audio_files)
+                .is_none()
+        );
     }
 }
