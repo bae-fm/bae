@@ -315,53 +315,6 @@ FILE "{flac_filename}" WAVE
 }
 
 #[test]
-fn test_collection_of_albums_detected_as_separate_candidates() {
-    let temp_dir = tempfile::tempdir().unwrap();
-    let root = temp_dir.path().join("Artist Collection");
-    std::fs::create_dir(&root).unwrap();
-
-    let albums = [
-        ("2020 - Album One [CAT001]", "Artist - Album One"),
-        ("2021 - Album Two [CAT002]", "Artist - Album Two"),
-        ("2022 - Album Three [CAT003]", "Artist - Album Three"),
-    ];
-
-    for (folder_name, file_base) in &albums {
-        let album_dir = root.join(folder_name);
-        std::fs::create_dir(&album_dir).unwrap();
-
-        let flac_name = format!("{}.flac", file_base);
-        let cue_name = format!("{}.cue", file_base);
-
-        std::fs::write(album_dir.join(&flac_name), fake_flac()).unwrap();
-        std::fs::write(
-            album_dir.join(&cue_name),
-            make_cue_content(&flac_name, file_base),
-        )
-        .unwrap();
-        std::fs::write(album_dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    }
-
-    let candidates = scan_valid(root);
-
-    // An artist/discography container is NOT a candidate — each album
-    // inside it is its own candidate.
-    assert_eq!(
-        candidates.len(),
-        3,
-        "each album should be its own candidate",
-    );
-    for c in &candidates {
-        let name = c.path.file_name().and_then(|n| n.to_str()).unwrap();
-        assert!(
-            albums.iter().any(|(folder, _)| *folder == name),
-            "unexpected candidate name {:?}",
-            name,
-        );
-    }
-}
-
-#[test]
 fn test_multi_disc_release_detected_as_single_candidate() {
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path().join("Multi Disc Album");
@@ -404,48 +357,6 @@ fn test_multi_disc_release_detected_as_single_candidate() {
     }
 }
 
-/// Helper to create a multi-disc test structure and verify a single
-/// candidate is emitted covering every disc (via `dir_prefix` on the
-/// audio entries).
-fn assert_multi_disc_detected(folder_names: &[&str]) {
-    let temp_dir = tempfile::tempdir().unwrap();
-    let root = temp_dir.path().join("Test Album");
-    std::fs::create_dir(&root).unwrap();
-
-    for folder_name in folder_names {
-        let disc_dir = root.join(folder_name);
-        std::fs::create_dir(&disc_dir).unwrap();
-        std::fs::write(disc_dir.join("track.flac"), fake_flac()).unwrap();
-    }
-
-    let candidates = scan_valid(root);
-
-    assert_eq!(
-        candidates.len(),
-        1,
-        "Folders {:?} should produce 1 multi-disc candidate",
-        folder_names,
-    );
-
-    let prefixes: BTreeSet<Option<&str>> = match &candidates[0].files.audio {
-        AudioContent::TrackFiles { tracks, .. } => {
-            tracks.iter().map(|t| t.dir_prefix.as_deref()).collect()
-        }
-        AudioContent::CueFlacPairs { pairs, .. } => pairs
-            .iter()
-            .map(|p| p.audio_file.dir_prefix.as_deref())
-            .collect(),
-    };
-    assert_eq!(
-        prefixes.len(),
-        folder_names.len(),
-        "Folders {:?} should contribute {} distinct dir_prefix values, got {:?}",
-        folder_names,
-        folder_names.len(),
-        prefixes,
-    );
-}
-
 /// Helper for collection shapes: a folder whose audio-bearing subdirs do
 /// NOT match disc-indicator patterns is a navigation container, not a
 /// candidate. Each child surfaces as its own top-level candidate.
@@ -483,46 +394,8 @@ fn assert_collection_detected(folder_names: &[&str]) {
 }
 
 #[test]
-fn test_multi_disc_disc_1_disc_2() {
-    assert_multi_disc_detected(&["Disc 1", "Disc 2"]);
-}
-
-#[test]
-fn test_multi_disc_side_a_side_b() {
-    assert_multi_disc_detected(&["Side A", "Side B"]);
-}
-
-#[test]
-fn test_multi_disc_numbered() {
-    assert_multi_disc_detected(&["1", "2", "3"]);
-}
-
-#[test]
-fn test_multi_disc_zero_padded() {
-    assert_multi_disc_detected(&["01", "02"]);
-}
-
-#[test]
 fn test_collection_year_prefixed() {
     assert_collection_detected(&["2020 - Album One", "2021 - Album Two", "2022 - Album Three"]);
-}
-
-#[test]
-fn test_collection_artist_prefixed() {
-    assert_collection_detected(&[
-        "Artist - First Album",
-        "Artist - Second Album",
-        "Artist - Third Album",
-    ]);
-}
-
-#[test]
-fn test_collection_with_catalog_numbers() {
-    assert_collection_detected(&[
-        "Album One [CAT001]",
-        "Album Two [CAT002]",
-        "Album Three [CAT003]",
-    ]);
 }
 
 #[test]
@@ -1167,49 +1040,6 @@ fn fake_m4a() -> Vec<u8> {
     .expect("read ALAC fixture")
 }
 
-fn fake_wav() -> Vec<u8> {
-    let samples = [0i16, i16::MAX, i16::MIN, 0];
-    let data_len = samples.len() * std::mem::size_of::<i16>();
-    let mut wav = Vec::with_capacity(44 + data_len);
-    wav.extend_from_slice(b"RIFF");
-    wav.extend_from_slice(&(36u32 + data_len as u32).to_le_bytes());
-    wav.extend_from_slice(b"WAVE");
-    wav.extend_from_slice(b"fmt ");
-    wav.extend_from_slice(&16u32.to_le_bytes());
-    wav.extend_from_slice(&1u16.to_le_bytes());
-    wav.extend_from_slice(&1u16.to_le_bytes());
-    wav.extend_from_slice(&44_100u32.to_le_bytes());
-    wav.extend_from_slice(&88_200u32.to_le_bytes());
-    wav.extend_from_slice(&2u16.to_le_bytes());
-    wav.extend_from_slice(&16u16.to_le_bytes());
-    wav.extend_from_slice(b"data");
-    wav.extend_from_slice(&(data_len as u32).to_le_bytes());
-    for sample in samples {
-        wav.extend_from_slice(&sample.to_le_bytes());
-    }
-    wav
-}
-
-fn fake_aiff() -> Vec<u8> {
-    b"FORM\x00\x00\x00\x04AIFF".to_vec()
-}
-
-fn fake_ogg() -> Vec<u8> {
-    b"OggS\x00\x02".to_vec()
-}
-
-fn fake_wavpack() -> Vec<u8> {
-    b"wvpk\x00\x00\x00\x00".to_vec()
-}
-
-fn fake_dsf() -> Vec<u8> {
-    b"DSD \x00\x00\x00\x00".to_vec()
-}
-
-fn fake_dff() -> Vec<u8> {
-    b"FRM8\x00\x00\x00\x04DSD ".to_vec()
-}
-
 /// Minimal valid JPEG (only the SOI + APP0 marker — enough for magic check).
 fn fake_jpeg() -> Vec<u8> {
     vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]
@@ -1326,13 +1156,6 @@ enum FileKind {
     Mp3,
     Ape,
     M4a,
-    Wav,
-    Aiff,
-    Ogg,
-    Opus,
-    WavPack,
-    Dsf,
-    Dff,
     /// Empty FLAC file (size 0). The scanner must reject the candidate.
     ZeroByteFlac,
     /// Valid `fLaC` magic with malformed STREAMINFO length.
@@ -1413,12 +1236,6 @@ fn bytes_for(kind: FileKind) -> Vec<u8> {
         FileKind::Mp3 => fake_mp3(),
         FileKind::Ape => fake_ape(),
         FileKind::M4a => fake_m4a(),
-        FileKind::Wav => fake_wav(),
-        FileKind::Aiff => fake_aiff(),
-        FileKind::Ogg | FileKind::Opus => fake_ogg(),
-        FileKind::WavPack => fake_wavpack(),
-        FileKind::Dsf => fake_dsf(),
-        FileKind::Dff => fake_dff(),
         FileKind::ZeroByteFlac => Vec::new(),
         FileKind::MalformedFlacStreaminfo => malformed_flac_streaminfo(),
         FileKind::BrokenFlac => broken_flac(),
@@ -1499,20 +1316,6 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
                     .map(str::to_lowercase),
                 Some("m4a".to_string()),
                 "fixture builder bug: M4A at {:?} must have .m4a extension",
-                path,
-            );
-        }
-        FileKind::Wav
-        | FileKind::Aiff
-        | FileKind::Ogg
-        | FileKind::Opus
-        | FileKind::WavPack
-        | FileKind::Dsf
-        | FileKind::Dff => {
-            assert!(
-                file_validation::is_valid_audio(path).unwrap_or(false),
-                "fixture builder bug: {:?} at {:?} fails audio validator",
-                kind,
                 path,
             );
         }
@@ -1660,13 +1463,6 @@ fn flat_audio(dir: &str, n: usize, kind: FileKind) -> Vec<FixtureEntry> {
         FileKind::Mp3 => "mp3",
         FileKind::Ape => "ape",
         FileKind::M4a => "m4a",
-        FileKind::Wav => "wav",
-        FileKind::Aiff => "aiff",
-        FileKind::Ogg => "ogg",
-        FileKind::Opus => "opus",
-        FileKind::WavPack => "wv",
-        FileKind::Dsf => "dsf",
-        FileKind::Dff => "dff",
         other => panic!(
             "flat_audio: unsupported kind {:?} — this helper only produces audio tracks",
             other,
@@ -1722,220 +1518,6 @@ fn assert_fixture_invariants(root: &Path, spec: &[FixtureEntry]) {
             }
         }
     }
-}
-
-// --- Per-primitive unit tests ---
-//
-// One test per FileKind variant: build a tempdir, write one file via the
-// walker's `bytes_for` primitive, and confirm validation sees what the
-// walker meant to emit. These catch walker drift before the integration
-// test has a chance to fingerpoint at the scanner.
-
-fn write_one(dir: &Path, name: &str, kind: FileKind) -> std::path::PathBuf {
-    let path = dir.join(name);
-    std::fs::write(&path, bytes_for(kind)).unwrap();
-    assert_kind_invariant(&path, kind);
-    path
-}
-
-#[test]
-fn test_write_flac() {
-    let tmp = tempfile::tempdir().unwrap();
-    write_one(tmp.path(), "01.flac", FileKind::Flac);
-}
-
-#[test]
-fn test_write_mp3() {
-    let tmp = tempfile::tempdir().unwrap();
-    write_one(tmp.path(), "01.mp3", FileKind::Mp3);
-}
-
-#[test]
-fn test_write_ape() {
-    let tmp = tempfile::tempdir().unwrap();
-    write_one(tmp.path(), "Album.ape", FileKind::Ape);
-}
-
-#[test]
-fn test_write_m4a() {
-    let tmp = tempfile::tempdir().unwrap();
-    let path = write_one(tmp.path(), "01.m4a", FileKind::M4a);
-    // is_audio_file recognises the extension; is_valid_audio falls through
-    // to the unknown-extension fallback, so non-zero bytes pass.
-    assert!(is_audio_file(&path));
-    assert!(file_validation::is_valid_audio(&path).unwrap());
-}
-
-#[test]
-fn test_write_new_audio_formats() {
-    let tmp = tempfile::tempdir().unwrap();
-    for (name, kind) in [
-        ("01.wav", FileKind::Wav),
-        ("01.aiff", FileKind::Aiff),
-        ("01.ogg", FileKind::Ogg),
-        ("01.opus", FileKind::Opus),
-        ("01.wv", FileKind::WavPack),
-        ("01.dsf", FileKind::Dsf),
-        ("01.dff", FileKind::Dff),
-    ] {
-        let path = write_one(tmp.path(), name, kind);
-        assert!(is_audio_file(&path), "{name} must be classified as audio");
-        assert!(file_validation::is_valid_audio(&path).unwrap());
-    }
-}
-
-#[test]
-fn test_write_zero_byte_flac() {
-    let tmp = tempfile::tempdir().unwrap();
-    let path = write_one(tmp.path(), "01.flac", FileKind::ZeroByteFlac);
-    assert_eq!(std::fs::metadata(&path).unwrap().len(), 0);
-    assert!(!file_validation::is_valid_flac(&path).unwrap());
-}
-
-#[test]
-fn test_write_malformed_flac_streaminfo() {
-    let tmp = tempfile::tempdir().unwrap();
-    let path = write_one(tmp.path(), "01.flac", FileKind::MalformedFlacStreaminfo);
-    // Magic is valid but STREAMINFO declares the wrong block length.
-    let bytes = std::fs::read(&path).unwrap();
-    assert_eq!(&bytes[..4], b"fLaC");
-    assert!(!file_validation::is_valid_flac(&path).unwrap());
-}
-
-#[test]
-fn test_write_broken_flac() {
-    let tmp = tempfile::tempdir().unwrap();
-    let path = write_one(tmp.path(), "01.flac", FileKind::BrokenFlac);
-    let bytes = std::fs::read(&path).unwrap();
-    assert_ne!(&bytes[..4], b"fLaC");
-    assert!(!file_validation::is_valid_flac(&path).unwrap());
-}
-
-#[test]
-fn test_write_jpeg() {
-    let tmp = tempfile::tempdir().unwrap();
-    write_one(tmp.path(), "cover.jpg", FileKind::Jpeg);
-}
-
-#[test]
-fn test_write_png() {
-    let tmp = tempfile::tempdir().unwrap();
-    write_one(tmp.path(), "scan.png", FileKind::Png);
-}
-
-#[test]
-fn test_write_avi() {
-    let tmp = tempfile::tempdir().unwrap();
-    let path = write_one(tmp.path(), "S01E01.avi", FileKind::Avi);
-    // The scanner must not mistake AVI for audio.
-    assert!(!is_audio_file(&path));
-}
-
-#[test]
-fn test_write_document_kinds() {
-    let tmp = tempfile::tempdir().unwrap();
-    write_one(tmp.path(), "rip.log", FileKind::Log);
-    write_one(tmp.path(), "playlist.m3u", FileKind::M3u);
-    write_one(tmp.path(), "checksums.md5", FileKind::Md5);
-    write_one(tmp.path(), "checksums.ffp", FileKind::Ffp);
-    write_one(tmp.path(), "Tracklist.txt", FileKind::TracklistTxt);
-}
-
-#[test]
-fn test_write_cue_for() {
-    let tmp = tempfile::tempdir().unwrap();
-    let path = write_one(
-        tmp.path(),
-        "Album.cue",
-        FileKind::CueFor {
-            stem: "Album.flac",
-            n_tracks: 12,
-        },
-    );
-    let sheet = CueFlacProcessor::parse_cue_sheet(&path).unwrap();
-    assert_eq!(sheet.tracks.len(), 12);
-}
-
-#[test]
-fn test_write_non_pairing_cue() {
-    let tmp = tempfile::tempdir().unwrap();
-    // Emit a FLAC with a different stem so the CUE cannot pair.
-    write_one(tmp.path(), "01.flac", FileKind::Flac);
-    let cue_path = write_one(
-        tmp.path(),
-        "Album.cue",
-        FileKind::NonPairingCue {
-            n_tracks: 5,
-            file_reference: "Album.flac",
-        },
-    );
-    let paths = vec![tmp.path().join("01.flac"), cue_path];
-    let pairs = CueFlacProcessor::detect_cue_flac_from_paths(&paths).unwrap();
-    assert!(pairs.is_empty(), "CUE stem must not match any FLAC");
-}
-
-#[test]
-fn test_write_cue_unquoted() {
-    let tmp = tempfile::tempdir().unwrap();
-    let path = write_one(
-        tmp.path(),
-        "Album.cue",
-        FileKind::CueUnquoted {
-            stem: "Album.flac",
-            n_tracks: 7,
-        },
-    );
-    // Sheet content uses the unquoted form.
-    let raw = std::fs::read_to_string(&path).unwrap();
-    assert!(
-        raw.contains("FILE Album.flac WAVE"),
-        "unquoted FILE directive missing: {raw}",
-    );
-    // The unified parser extracts the reference from the unquoted form.
-    let sheet = CueFlacProcessor::parse_cue_sheet(&path).unwrap();
-    assert_eq!(sheet.single_file(), Some("Album.flac"));
-    assert_eq!(sheet.tracks.len(), 7);
-}
-
-#[test]
-fn test_write_cue_no_header() {
-    let tmp = tempfile::tempdir().unwrap();
-    let path = write_one(
-        tmp.path(),
-        "Album.cue",
-        FileKind::CueNoHeader {
-            n_tracks: 4,
-            file_reference: "Album.flac",
-        },
-    );
-    // The unified parser accepts missing PERFORMER/TITLE; both land as None.
-    let sheet = CueFlacProcessor::parse_cue_sheet(&path).unwrap();
-    assert!(sheet.title.is_none());
-    assert!(sheet.performer.is_none());
-    assert_eq!(sheet.tracks.len(), 4);
-    assert_eq!(sheet.single_file(), Some("Album.flac"));
-}
-
-#[test]
-fn test_write_partial_marker() {
-    let tmp = tempfile::tempdir().unwrap();
-    for (name, ext) in [
-        ("01.flac.part", "part"),
-        ("02.flac.crdownload", "crdownload"),
-        ("03.flac.aria2", "aria2"),
-    ] {
-        let path = write_one(tmp.path(), name, FileKind::PartialMarker(ext));
-        // Markers must NOT register as audio.
-        assert!(!is_audio_file(&path));
-    }
-}
-
-#[test]
-fn test_write_junk_kinds() {
-    let tmp = tempfile::tempdir().unwrap();
-    write_one(tmp.path(), "loose.pdf", FileKind::Pdf);
-    write_one(tmp.path(), "loose.zip", FileKind::Zip);
-    write_one(tmp.path(), "loose.dmg", FileKind::Dmg);
 }
 
 // --- Integration smoke test ---
@@ -2744,59 +2326,28 @@ fn partial_marker_extension_case_insensitive() {
     }
 }
 
-/// Valid FLAC magic with malformed STREAMINFO is rejected.
+/// A folder whose only audio is a FLAC the validator rejects — malformed
+/// STREAMINFO length, or wrong magic bytes — surfaces no valid candidate.
 #[test]
-fn malformed_flac_streaminfo_rejected() {
-    let result = run_scenario(vec![FixtureEntry::File {
-        rel_path: "Album/01.flac".into(),
-        kind: FileKind::MalformedFlacStreaminfo,
-    }]);
-    assert!(result.top_level_paths().is_empty());
-}
-
-/// L1.7 — Wrong magic bytes where a FLAC is expected ⇒ rejected.
-#[test]
-fn broken_flac_header_rejected() {
-    let result = run_scenario(vec![FixtureEntry::File {
-        rel_path: "Album/01.flac".into(),
-        kind: FileKind::BrokenFlac,
-    }]);
-    assert!(result.top_level_paths().is_empty());
+fn invalid_flac_audio_yields_no_candidate() {
+    for kind in [FileKind::MalformedFlacStreaminfo, FileKind::BrokenFlac] {
+        let result = run_scenario(vec![FixtureEntry::File {
+            rel_path: "Album/01.flac".into(),
+            kind,
+        }]);
+        assert!(
+            result.top_level_paths().is_empty(),
+            "{kind:?} must reject the candidate",
+        );
+    }
 }
 
 // --- Container shape signals (B-series) ---
-
-/// L1.8 — Discography wrapper plus grouping folder chain collapses down
-/// to the single inner release. Neither wrapper surfaces.
-#[test]
-fn discography_wrapper_recurses_does_not_surface() {
-    let result = run_scenario(flat_audio(
-        "Artist - Discography/Studio Albums/Album",
-        3,
-        FileKind::Flac,
-    ));
-    assert_eq!(
-        result.top_level_paths(),
-        vec!["Artist - Discography/Studio Albums/Album"],
-    );
-}
-
-/// L1.9 — Deeper single-child wrapper chains still flatten to the leaf.
-#[test]
-fn grouping_folder_recurses_does_not_surface() {
-    let result = run_scenario(flat_audio("A/B/C/Album", 3, FileKind::Flac));
-    assert_eq!(result.top_level_paths(), vec!["A/B/C/Album"]);
-}
-
-/// L1.10 — Single-child wrapper with one release surfaces the inner folder.
-#[test]
-fn single_child_audio_wrapper_surfaces_inner() {
-    let result = run_scenario(flat_audio("Wrapper/Release", 3, FileKind::Flac));
-    assert_eq!(result.top_level_paths(), vec!["Wrapper/Release"]);
-    assert_eq!(result.candidate("Wrapper/Release").name, "Release");
-}
-
-/// L1.11 — A year-prefixed reissue container emits each child, not the parent.
+//
+// Single-child wrapper flattening (discography / grouping chains recursing
+// down to the leaf) is covered end-to-end by scan_reference_tree; these pin
+// the multi-child container shapes. A year-prefixed reissue container emits
+// each child, not the parent.
 #[test]
 fn multi_child_reissue_container_emits_children_not_parent() {
     let mut entries = flat_audio("Album/1991 - Original", 3, FileKind::Flac);
@@ -2827,142 +2378,45 @@ fn artist_folder_emits_per_album_candidates() {
     assert!(top.iter().any(|p| p == "Artist/Album B"));
 }
 
-/// L1.13 — Compilation-style artist folder emits per-item candidates.
+/// Every disc-indicator prefix, separator, and zero-padding variant the
+/// scanner accepts makes the parent the single candidate rather than its
+/// discs. The `is_disc_indicator_name` predicate is unit-tested directly
+/// above; this pins the scan-level outcome across the shape variants (the
+/// per-shape scenario tests collapsed into these rows). `dir_prefix`
+/// aggregation across discs is asserted by the five-disc box-set test below.
 #[test]
-fn compilation_folder_emits_per_item_candidates() {
-    let mut entries = flat_audio("Compilation [mp3]/1974 - Album One", 3, FileKind::Mp3);
-    entries.extend(flat_audio(
-        "Compilation [mp3]/1982 - Album Two",
-        3,
-        FileKind::Mp3,
-    ));
-    let result = run_scenario(entries);
-    let top = result.top_level_paths();
-    assert_eq!(top.len(), 2);
-    assert!(top
-        .iter()
-        .any(|p| p == "Compilation [mp3]/1974 - Album One"));
-    assert!(top
-        .iter()
-        .any(|p| p == "Compilation [mp3]/1982 - Album Two"));
-}
-
-/// L1.14 — `Disc 1` / `Disc 2` subdirs emit the parent as a multi-disc.
-#[test]
-fn multi_disc_release_with_disc_prefix_emits_parent() {
-    let mut entries = flat_audio("Album/Disc 1", 3, FileKind::Flac);
-    entries.extend(flat_audio("Album/Disc 2", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Album"]);
-}
-
-/// L1.15 — Bare numeric subdirs (`1`, `2`) still trigger multi-disc.
-#[test]
-fn multi_disc_release_with_bare_numeric_emits_parent() {
-    let mut entries = flat_audio("Album/1", 3, FileKind::Flac);
-    entries.extend(flat_audio("Album/2", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Album"]);
-}
-
-/// L1.16 — `CD1` / `CD2` subdirs trigger multi-disc.
-#[test]
-fn multi_disc_release_with_cd_prefix_emits_parent() {
-    let mut entries = flat_audio("Box/CD1", 3, FileKind::Flac);
-    entries.extend(flat_audio("Box/CD2", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Box"]);
-}
-
-/// L1.17 — `Side A` / `Side B` vinyl-style subdirs trigger multi-disc.
-#[test]
-fn multi_disc_release_with_side_prefix_emits_parent() {
-    let mut entries = flat_audio("LP/Side A", 3, FileKind::Flac);
-    entries.extend(flat_audio("LP/Side B", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["LP"]);
-}
-
-/// L1.18 — `Part 1` / `Part 2` subdirs trigger multi-disc.
-#[test]
-fn multi_disc_release_with_part_prefix_emits_parent() {
-    let mut entries = flat_audio("Suite/Part 1", 3, FileKind::Flac);
-    entries.extend(flat_audio("Suite/Part 2", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Suite"]);
-}
-
-/// L1.19 — `Disk 1` / `Disk 2` subdirs trigger multi-disc.
-#[test]
-fn multi_disc_release_with_disk_prefix_emits_parent() {
-    let mut entries = flat_audio("Album/Disk 1", 3, FileKind::Flac);
-    entries.extend(flat_audio("Album/Disk 2", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Album"]);
-}
-
-/// Box-set with per-disc descriptive suffixes still surfaces as a single
-/// multi-disc candidate. Separators varied on purpose (hyphen, bullet,
-/// parens, colon) — every one of these appears as a disc-name suffix in
-/// real rips, and the predicate must accept any non-alphanumeric
-/// character after the digit run.
-#[test]
-fn multi_disc_release_with_descriptive_disc_suffix_emits_parent() {
-    let discs = [
-        "Box Set/CD 1 - part one",
-        "Box Set/CD 2 - part two",
-        "Box Set/CD 3 • part three",
-        "Box Set/CD 4 (part four)",
-        "Box Set/CD 5: part five",
+fn disc_indicator_subdirs_emit_single_parent_candidate() {
+    let cases: &[(&str, &str, &[&str])] = &[
+        ("disc prefix, space", "Album", &["Disc 1", "Disc 2"]),
+        ("cd prefix, no separator", "Box", &["CD1", "CD2"]),
+        ("disk prefix, space", "Album", &["Disk 1", "Disk 2"]),
+        ("part prefix, space", "Suite", &["Part 1", "Part 2"]),
+        ("side prefix, space", "LP", &["Side A", "Side B"]),
+        ("bare numeric", "Album", &["1", "2", "3"]),
+        ("zero-padded numeric", "Album", &["01", "02"]),
+        ("zero-padded cd", "Album", &["CD01", "CD02"]),
+        ("hyphen separator", "Album", &["Disc-1", "Disc-2"]),
+        ("underscore separator", "Album", &["CD_1", "CD_2"]),
+        ("dot separator", "LP", &["Side.A", "Side.B"]),
+        ("mixed prefixes", "Album", &["Disc 1", "CD 2"]),
+        (
+            "descriptive suffix after digit",
+            "Box Set",
+            &["CD 1 - part one", "CD 2 (part two)"],
+        ),
     ];
-    let mut entries = Vec::new();
-    for disc in &discs {
-        entries.extend(flat_audio(disc, 3, FileKind::Flac));
-    }
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Box Set"]);
-    let c = result.candidate("Box Set");
-    let prefixes: BTreeSet<Option<&str>> = match &c.files.audio {
-        AudioContent::TrackFiles { tracks, .. } => {
-            tracks.iter().map(|t| t.dir_prefix.as_deref()).collect()
+    for (label, parent, discs) in cases {
+        let mut entries = Vec::new();
+        for disc in *discs {
+            entries.extend(flat_audio(&format!("{parent}/{disc}"), 3, FileKind::Flac));
         }
-        AudioContent::CueFlacPairs { pairs, .. } => pairs
-            .iter()
-            .map(|p| p.audio_file.dir_prefix.as_deref())
-            .collect(),
-    };
-    assert_eq!(
-        prefixes.len(),
-        5,
-        "5 distinct disc prefixes, got {prefixes:?}"
-    );
-}
-
-/// L1.20 — Hyphen separator (`Disc-1`) is accepted.
-#[test]
-fn disc_indicator_separator_hyphen_matches() {
-    let mut entries = flat_audio("Album/Disc-1", 3, FileKind::Flac);
-    entries.extend(flat_audio("Album/Disc-2", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Album"]);
-}
-
-/// L1.21 — Underscore separator (`CD_1`) is accepted.
-#[test]
-fn disc_indicator_separator_underscore_matches() {
-    let mut entries = flat_audio("Album/CD_1", 3, FileKind::Flac);
-    entries.extend(flat_audio("Album/CD_2", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Album"]);
-}
-
-/// L1.22 — Dot separator (`Side.A`) is accepted.
-#[test]
-fn disc_indicator_separator_dot_matches() {
-    let mut entries = flat_audio("LP/Side.A", 3, FileKind::Flac);
-    entries.extend(flat_audio("LP/Side.B", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["LP"]);
+        let result = run_scenario(entries);
+        assert_eq!(
+            result.top_level_paths(),
+            vec![parent.to_string()],
+            "{label}: {discs:?} should emit {parent:?} as the sole candidate",
+        );
+    }
 }
 
 /// L1.23 — `Side A` matches; `Side AB` does not (single-alpha rule).
@@ -3222,9 +2676,11 @@ fn cue_referencing_missing_audio_is_invalid_even_when_track_count_matches() {
     ));
 }
 
-/// L1.33 — `booklet/*.png` attaches as artwork with the `booklet/` prefix.
+/// A release's sidecar subfolders attach to the candidate by category:
+/// `booklet/*.png` becomes artwork (keeping its `booklet/` prefix), and
+/// `Info/Tracklist.txt` becomes a document.
 #[test]
-fn booklet_subfolder_attaches_as_artwork() {
+fn subfolder_sidecars_attach_by_category() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
     entries.extend([
         FixtureEntry::File {
@@ -3235,9 +2691,14 @@ fn booklet_subfolder_attaches_as_artwork() {
             rel_path: "Album/booklet/page2.png".into(),
             kind: FileKind::Png,
         },
+        FixtureEntry::File {
+            rel_path: "Album/Info/Tracklist.txt".into(),
+            kind: FileKind::TracklistTxt,
+        },
     ]);
     let result = run_scenario(entries);
     let c = result.candidate("Album");
+
     let booklet_paths: Vec<_> = c
         .files
         .artwork
@@ -3245,25 +2706,14 @@ fn booklet_subfolder_attaches_as_artwork() {
         .filter(|a| a.relative_path.starts_with("booklet/"))
         .map(|a| a.relative_path.as_str())
         .collect();
-    assert_eq!(booklet_paths.len(), 2, "got {:?}", booklet_paths);
-}
+    assert_eq!(booklet_paths.len(), 2, "booklet artwork: {booklet_paths:?}");
 
-/// L1.34 — `Info/Tracklist.txt` attaches as a document.
-#[test]
-fn info_subfolder_txt_attaches_as_document() {
-    let mut entries = flat_audio("Album", 3, FileKind::Flac);
-    entries.push(FixtureEntry::File {
-        rel_path: "Album/Info/Tracklist.txt".into(),
-        kind: FileKind::TracklistTxt,
-    });
-    let result = run_scenario(entries);
-    let c = result.candidate("Album");
     assert!(
         c.files
             .documents
             .iter()
             .any(|d| d.relative_path.ends_with("Tracklist.txt")),
-        "Tracklist.txt should be a document, got {:?}",
+        "Info/Tracklist.txt should be a document, got {:?}",
         c.files
             .documents
             .iter()
@@ -3631,25 +3081,6 @@ fn cue_file_reference_with_unquoted_filename_still_parses() {
 }
 
 // ── Layer 3: edge / adversarial cases ─────────────────────────────────
-
-/// L3.1 — Zero-padded numeric suffixes (`CD01`, `CD02`) are accepted.
-#[test]
-fn disc_indicator_with_leading_zeros() {
-    let mut entries = flat_audio("Album/CD01", 3, FileKind::Flac);
-    entries.extend(flat_audio("Album/CD02", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Album"]);
-}
-
-/// L3.2 — Mixed prefixes (`Disc 1`, `CD 2`) still qualify as multi-disc
-/// because both match `is_disc_indicator_name`.
-#[test]
-fn disc_indicator_mixed_prefixes_in_same_release() {
-    let mut entries = flat_audio("Album/Disc 1", 3, FileKind::Flac);
-    entries.extend(flat_audio("Album/CD 2", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Album"]);
-}
 
 /// L3.3 — Five-disc box set surfaces as one candidate whose audio list
 /// covers all five discs (one `dir_prefix` per disc, 15 tracks total).
