@@ -698,13 +698,14 @@ internal static class NativeBae
             return detail is null ? null : Json(GalleryItems(detail.GalleryItems));
         });
 
-    internal static string? StorageJson(AppHandle handle)
-    {
-        var filter = BridgeStorageFilter.All;
-        var sort = new BridgeStorageSort(BridgeStorageSortField.AlbumTitle, BridgeStorageSortDirection.Ascending);
-        var count = Await(handle.StorageCount(filter));
-        return CaptureValue(() => Json(StorageRows(Await(handle.StoragePage(sort, filter, 0, count)).Rows)));
-    }
+    internal static (BridgeStorageRow[]? Rows, string? Error) StorageRows(AppHandle handle) =>
+        CaptureBridgeValue(() =>
+        {
+            var filter = BridgeStorageFilter.All;
+            var sort = new BridgeStorageSort(BridgeStorageSortField.AlbumTitle, BridgeStorageSortDirection.Ascending);
+            var count = Await(handle.StorageCount(filter));
+            return Await(handle.StoragePage(sort, filter, 0, count)).Rows;
+        });
 
     internal static string? PinRelease(AppHandle handle, string releaseId) =>
         CaptureError(() => Await(handle.QueuePinReleases([releaseId])));
@@ -718,11 +719,11 @@ internal static class NativeBae
     internal static string? MakeReleaseLocal(AppHandle handle, string releaseId, string newPath) =>
         CaptureError(() => Await(handle.MakeReleaseLocal(releaseId, newPath)));
 
-    internal static string? OutboxSnapshotJson(AppHandle handle) =>
-        CaptureValue(() => Json(OutboxSnapshot(Await(handle.GetOutboxSnapshot()))));
+    internal static (BridgeOutboxSnapshot? Snapshot, string? Error) OutboxSnapshot(AppHandle handle) =>
+        CaptureBridgeValue(() => Await(handle.GetOutboxSnapshot()));
 
-    internal static string? DownloadSnapshotJson(AppHandle handle) =>
-        Json(DownloadSnapshot(handle.GetDownloadSnapshot()));
+    internal static (BridgeDownloadSnapshot? Snapshot, string? Error) DownloadSnapshot(AppHandle handle) =>
+        CaptureBridgeValue(handle.GetDownloadSnapshot);
 
     internal static string? SyncStatusJson(AppHandle handle) =>
         Json(new SyncStatus
@@ -984,6 +985,22 @@ internal static class NativeBae
         }
     }
 
+    private static (T? Value, string? Error) CaptureBridgeValue<T>(Func<T> action) where T : class
+    {
+        try
+        {
+            return (action(), null);
+        }
+        catch (BridgeException.Cancelled)
+        {
+            return (null, null);
+        }
+        catch (BridgeException exception)
+        {
+            return (null, exception.Message);
+        }
+    }
+
     private static byte[]? CaptureBytes(Func<byte[]?> action)
     {
         try
@@ -1097,20 +1114,6 @@ internal static class NativeBae
             works = results.Works,
         };
 
-    private static object[] StorageRows(IEnumerable<BridgeStorageRow> rows) =>
-        rows.Select(row => new
-        {
-            release_id = row.Release.Id,
-            album_title = row.Album.Title,
-            artist = row.Album.ArtistNames,
-            format = row.Release.Format,
-            total_size = row.Release.TotalSize,
-            file_count = row.Release.FileCount,
-            state = StorageStateTag(row.Release.StorageState),
-            pinned = row.Release.Pinned,
-            actions = row.Release.StorageActions.Select(StorageActionTag).ToArray(),
-        }).ToArray();
-
     private static object AlbumDetail(BridgeAlbumDetail detail) =>
         new
         {
@@ -1134,36 +1137,6 @@ internal static class NativeBae
             files = release.Files.Select(FileJson).ToArray(),
         }).ToArray(),
     };
-
-    private static object DownloadSnapshot(BridgeDownloadSnapshot snapshot) =>
-        new
-        {
-            downloads = snapshot.Downloads.Select(download => new
-            {
-                release_id = download.ReleaseId,
-                title = download.Title,
-                file_count = download.FileCount,
-                total_size = download.TotalSize,
-                state = DownloadStateTag(download.State),
-                progress = DownloadProgressOrNull(download.State),
-                error = DownloadErrorOrNull(download.State),
-            }).ToArray(),
-            total = snapshot.Total,
-            paused = snapshot.Paused,
-        };
-
-    private static object OutboxSnapshot(BridgeOutboxSnapshot snapshot) =>
-        new
-        {
-            upload_groups = snapshot.UploadGroups,
-            deletes = snapshot.Deletes,
-            per_release = snapshot.PerRelease,
-            total = snapshot.Total,
-            pending_deletes = snapshot.PendingDeletes,
-            paused = snapshot.Paused,
-            throughput_bps = checked((long)snapshot.ThroughputBps),
-            eta_seconds = snapshot.EtaSeconds is null ? null : checked((long?)snapshot.EtaSeconds.Value),
-        };
 
     private static object Membership(BridgeMembership membership) =>
         new
@@ -1319,7 +1292,7 @@ internal static class NativeBae
             return new
             {
                 kind = "error",
-                error = ToDiagnosticError(error.Error),
+                error = ToDiagnosticError(error.ErrorValue),
             };
         }
 
@@ -1509,34 +1482,6 @@ internal static class NativeBae
             BridgeSyncProvider.CloudKit => "cloudkit",
             _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unknown sync provider"),
         };
-
-    private static string StorageStateTag(BridgeReleaseStorageState state) =>
-        state == BridgeReleaseStorageState.Remote ? "managed" : "unmanaged";
-
-    private static string StorageActionTag(BridgeReleaseStorageAction action) =>
-        action switch
-        {
-            BridgeReleaseStorageAction.Pin => "pin",
-            BridgeReleaseStorageAction.Unpin => "unpin",
-            BridgeReleaseStorageAction.MakeRemote => "manage",
-            BridgeReleaseStorageAction.MakeLocal => "unmanage",
-            _ => throw new ArgumentOutOfRangeException(nameof(action), action, "Unknown storage action"),
-        };
-
-    private static string DownloadStateTag(BridgeDownloadState state) =>
-        state switch
-        {
-            BridgeDownloadState.Active => "active",
-            BridgeDownloadState.Failed => "failed",
-            BridgeDownloadState.Queued => "queued",
-            _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown download state"),
-        };
-
-    private static BridgeDownloadTransferProgress? DownloadProgressOrNull(BridgeDownloadState state) =>
-        state is BridgeDownloadState.Active active ? active.Progress : null;
-
-    private static string? DownloadErrorOrNull(BridgeDownloadState state) =>
-        state is BridgeDownloadState.Failed failed ? failed.Error : null;
 
     private static string MemberRoleTag(BridgeMemberRole role) =>
         role switch

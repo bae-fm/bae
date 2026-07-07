@@ -4916,7 +4916,7 @@ public sealed partial class MainWindow : Window
         var selected = new HashSet<string>();
         // The current rows, kept so the right-tap menu can resolve a release's
         // allowed actions (for the multi-select intersection) by id.
-        var rowsById = new Dictionary<string, StorageRow>();
+        var rowsById = new Dictionary<string, BridgeStorageRow>();
 
         // Each row shows its summary; a left-click toggles its selection and a
         // right-click opens a menu of the transitions the core says it allows
@@ -4925,46 +4925,43 @@ public sealed partial class MainWindow : Window
         // release.
         async System.Threading.Tasks.Task LoadStorageRows()
         {
-            var (current, json) = await RunForCurrentHandle(
-                handle => NativeBae.StorageJson(handle));
+            var (current, result) = await RunForCurrentHandle(NativeBae.StorageRows);
             if (!current)
             {
                 return;
             }
-            if (json is null)
+            if (result.Error is not null)
+            {
+                storageStatus.Text = result.Error;
+                storageStatus.Visibility = Visibility.Visible;
+                return;
+            }
+            if (result.Rows is null)
             {
                 storageStatus.Text = Loc.Chrome("storage.load_failed");
                 storageStatus.Visibility = Visibility.Visible;
                 return;
             }
 
-            var rows = JsonSerializer.Deserialize<List<StorageRow>>(json, JsonOptions);
-            if (rows is null)
-            {
-                storageStatus.Text = Loc.Chrome("storage.read_failed");
-                storageStatus.Visibility = Visibility.Visible;
-                return;
-            }
-
             storageStatus.Visibility = Visibility.Collapsed;
             rowsById.Clear();
-            foreach (var row in rows)
+            foreach (var row in result.Rows)
             {
-                rowsById[row.ReleaseId] = row;
+                rowsById[row.Release.Id] = row;
             }
             // Drop selections for releases no longer present after a transition.
             selected.IntersectWith(rowsById.Keys);
 
             listPanel.Children.Clear();
-            foreach (var row in rows)
+            foreach (var row in result.Rows)
             {
                 var text = new TextBlock
                 {
-                    Text = row.Summary,
+                    Text = StorageRowSummary(row),
                     VerticalAlignment = VerticalAlignment.Center,
                     TextWrapping = TextWrapping.Wrap,
                 };
-                var releaseId = row.ReleaseId;
+                var releaseId = row.Release.Id;
                 var rowBorder = new Border
                 {
                     Child = text,
@@ -5035,14 +5032,18 @@ public sealed partial class MainWindow : Window
         async System.Threading.Tasks.Task LoadDownloads()
         {
             downloadsPanel.Children.Clear();
-            var (current, json) = await RunForCurrentHandle(NativeBae.DownloadSnapshotJson);
+            var (current, result) = await RunForCurrentHandle(NativeBae.DownloadSnapshot);
             if (!current)
             {
                 return;
             }
-            var snapshot = json is null
-                ? null
-                : JsonSerializer.Deserialize<DownloadSnapshot>(json, JsonOptions);
+            if (result.Error is not null)
+            {
+                storageStatus.Text = result.Error;
+                storageStatus.Visibility = Visibility.Visible;
+                return;
+            }
+            var snapshot = result.Snapshot;
             if (snapshot is null)
             {
                 storageStatus.Text = Loc.Chrome("storage.read_failed");
@@ -5051,19 +5052,19 @@ public sealed partial class MainWindow : Window
             }
 
             // Hidden when the pin queue is idle, like the outbox panel.
-            if (snapshot.Downloads.Count == 0)
+            if (snapshot.Downloads.Length == 0)
             {
                 return;
             }
 
-            string StateLabel(DownloadOp op) => op.State switch
+            string StateLabel(BridgeDownloadOp op) => op.State switch
             {
-                "active" => Loc.Chrome("download.state.downloading"),
-                "failed" => Loc.Chrome("download.state.failed"),
+                BridgeDownloadState.Active => Loc.Chrome("download.state.downloading"),
+                BridgeDownloadState.Failed => Loc.Chrome("download.state.failed"),
                 _ => Loc.Chrome("download.state.queued"),
             };
 
-            string DownloadDetail(DownloadOp op)
+            string DownloadDetail(BridgeDownloadOp op)
             {
                 static string DisplayBytes(ulong bytes) =>
                     Loc.Bytes(checked((long)bytes));
@@ -5074,7 +5075,7 @@ public sealed partial class MainWindow : Window
                     Loc.Bytes(op.TotalSize),
                     StateLabel(op),
                 };
-                if (op.Progress is { } progress)
+                if (DownloadProgress(op.State) is { } progress)
                 {
                     parts.Add(
                         Loc.Core(
@@ -5134,7 +5135,7 @@ public sealed partial class MainWindow : Window
                     Text = DownloadDetail(op),
                     Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
                 });
-                if (op.Progress is { } progress)
+                if (DownloadProgress(op.State) is { } progress)
                 {
                     labelColumn.Children.Add(new ProgressBar
                     {
@@ -5179,37 +5180,36 @@ public sealed partial class MainWindow : Window
         async System.Threading.Tasks.Task LoadOutbox()
         {
             outboxPanel.Children.Clear();
-            var (current, json) = await RunForCurrentHandle(NativeBae.OutboxSnapshotJson);
+            var (current, result) = await RunForCurrentHandle(NativeBae.OutboxSnapshot);
             if (!current)
             {
                 return;
             }
-            if (json is null)
+            if (result.Error is not null)
+            {
+                storageStatus.Text = result.Error;
+                storageStatus.Visibility = Visibility.Visible;
+                return;
+            }
+            var snapshot = result.Snapshot;
+            if (snapshot is null)
             {
                 storageStatus.Text = Loc.Chrome("outbox.load_failed");
                 storageStatus.Visibility = Visibility.Visible;
                 return;
             }
 
-            var snapshot = JsonSerializer.Deserialize<OutboxSnapshot>(json, JsonOptions);
-            if (snapshot is null)
-            {
-                storageStatus.Text = Loc.Chrome("outbox.read_failed");
-                storageStatus.Visibility = Visibility.Visible;
-                return;
-            }
-
-            if (snapshot.UploadGroups.Count == 0 && snapshot.Deletes.Count == 0)
+            if (snapshot.UploadGroups.Length == 0 && snapshot.Deletes.Length == 0)
             {
                 return;
             }
 
-            // With work queued at least one count is non-zero, so the core's
-            // summary is non-empty — render it directly.
+            // With work queued at least one count is non-zero, so compose the
+            // localized queue summary from the generated snapshot counts.
             var band = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
             band.Children.Add(new TextBlock
             {
-                Text = snapshot.Summary,
+                Text = OutboxSummary(snapshot),
                 VerticalAlignment = VerticalAlignment.Center,
             });
             var retry = new Button { Content = Loc.Chrome("outbox.retry_now") };
@@ -5247,28 +5247,31 @@ public sealed partial class MainWindow : Window
             outboxPanel.Children.Add(band);
 
             // Master progress strip: a byte-progress bar (dimmed while paused) and
-            // the bytes / throughput / ETA labels the core pre-formats.
+            // locale-formatted byte / throughput / ETA labels.
             if (snapshot.Total.BytesTotal > 0)
             {
                 outboxPanel.Children.Add(new ProgressBar
                 {
                     Minimum = 0,
-                    Maximum = snapshot.Total.BytesTotal,
-                    Value = snapshot.Total.BytesDone,
+                    Maximum = checked((long)snapshot.Total.BytesTotal),
+                    Value = checked((long)snapshot.Total.BytesDone),
                     Opacity = paused ? 0.4 : 1.0,
                 });
                 var detail = new List<string>();
-                if (!string.IsNullOrEmpty(snapshot.BytesLabel))
+                var bytesLabel = OutboxBytesLabel(snapshot);
+                if (!string.IsNullOrEmpty(bytesLabel))
                 {
-                    detail.Add(snapshot.BytesLabel);
+                    detail.Add(bytesLabel);
                 }
-                if (!string.IsNullOrEmpty(snapshot.ThroughputLabel))
+                var throughputLabel = OutboxThroughputLabel(snapshot);
+                if (!string.IsNullOrEmpty(throughputLabel))
                 {
-                    detail.Add(snapshot.ThroughputLabel);
+                    detail.Add(throughputLabel);
                 }
-                if (!string.IsNullOrEmpty(snapshot.EtaLabel))
+                var etaLabel = OutboxEtaLabel(snapshot);
+                if (!string.IsNullOrEmpty(etaLabel))
                 {
-                    detail.Add(snapshot.EtaLabel);
+                    detail.Add(etaLabel);
                 }
                 if (detail.Count > 0)
                 {
@@ -5351,8 +5354,8 @@ public sealed partial class MainWindow : Window
                     ? new ProgressBar
                     {
                         Minimum = 0,
-                        Maximum = group.Progress.BytesTotal,
-                        Value = group.Progress.BytesDone,
+                        Maximum = checked((long)group.Progress.BytesTotal),
+                        Value = checked((long)group.Progress.BytesDone),
                     }
                     : null;
                 MenuFlyout? menu = group.ReleaseId is string releaseId
@@ -5368,7 +5371,7 @@ public sealed partial class MainWindow : Window
                 var id = delete.Id;
                 cancel.Click += async (_, _) => await RunCancel(
                     handle => NativeBae.CancelOutboxItem(handle, id));
-                AddOutboxRow(delete.Label, null, trailing: cancel, contextMenu: null);
+                AddOutboxRow(DeleteLabel(delete), null, trailing: cancel, contextMenu: null);
             }
         }
 
@@ -5389,8 +5392,7 @@ public sealed partial class MainWindow : Window
             XamlRoot = Content.XamlRoot,
         };
         // Refresh both the outbox panel and the storage rows live while the dialog
-        // is open as uploads/deletes progress — the rows show each release's pending
-        // upload count, which would otherwise go stale. Stops once the dialog closes.
+        // is open as uploads/deletes progress. Stops once the dialog closes.
         _refreshOutbox = () =>
         {
             _ = LoadOutbox();
@@ -5425,41 +5427,89 @@ public sealed partial class MainWindow : Window
             ? new SolidColorBrush(Microsoft.UI.Colors.SteelBlue) { Opacity = 0.25 }
             : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
 
-    // User-facing label for a storage transition wire name, matching the macOS
+    // User-facing label for a storage transition, matching the macOS
     // "Storage…" sheet / context menu wording.
-    private static string StorageActionLabel(string action) => action switch
+    private static string StorageRowSummary(BridgeStorageRow row)
     {
-        "manage" => Loc.Chrome("storage.action.manage"),
-        "unmanage" => Loc.Chrome("storage.action.unmanage"),
-        "pin" => Loc.Chrome("storage.action.pin"),
-        "unpin" => Loc.Chrome("storage.action.unpin"),
-        _ => action,
+        var format = string.IsNullOrEmpty(row.Release.Format) ? string.Empty : $" · {row.Release.Format}";
+        var files = Loc.Chrome("storage.files", "count", row.Release.FileCount);
+        return $"{row.Album.Title} — {row.Album.ArtistNames}{format} · {files} · {Loc.Bytes(row.Release.TotalSize)} · {StorageStateLabel(row.Release.StorageState)}{PinIndicator(row.Release)}";
+    }
+
+    private static string StorageStateLabel(BridgeReleaseStorageState state) => state switch
+    {
+        BridgeReleaseStorageState.Remote => Loc.Chrome("storage.state.managed"),
+        BridgeReleaseStorageState.Local => Loc.Chrome("storage.state.unmanaged"),
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown storage state"),
+    };
+
+    private static string PinIndicator(BridgeReleaseSummary release) =>
+        release.Pinned ? $" · {Loc.Chrome("storage.pinned")}" : string.Empty;
+
+    private static BridgeDownloadTransferProgress? DownloadProgress(BridgeDownloadState state) =>
+        state is BridgeDownloadState.Active active ? active.Progress : null;
+
+    private static string OutboxSummary(BridgeOutboxSnapshot snapshot)
+    {
+        var parts = new List<string>();
+        if (snapshot.Total.Active > 0) parts.Add(Loc.Core("core.queue.uploading", "count", snapshot.Total.Active));
+        if (snapshot.Total.Failed > 0) parts.Add(Loc.Core("core.queue.failed", "count", snapshot.Total.Failed));
+        if (snapshot.Total.Queued > 0) parts.Add(Loc.Core("core.queue.queued", "count", snapshot.Total.Queued));
+        if (snapshot.Deletes.Length > 0)
+            parts.Add(Loc.Core("core.outbox.pending_deletes", "count", snapshot.Deletes.Length));
+        return string.Join(" · ", parts);
+    }
+
+    private static string OutboxThroughputLabel(BridgeOutboxSnapshot snapshot) =>
+        snapshot.ThroughputBps > 0
+            ? Loc.Core("core.outbox.throughput", "rate", Loc.Bytes(checked((long)snapshot.ThroughputBps)))
+            : string.Empty;
+
+    private static string OutboxEtaLabel(BridgeOutboxSnapshot snapshot) =>
+        snapshot.EtaSeconds is { } seconds
+            ? Loc.Core("core.outbox.eta", "duration", Loc.Duration(checked(checked((long)seconds) * 1000)))
+            : string.Empty;
+
+    private static string OutboxBytesLabel(BridgeOutboxSnapshot snapshot)
+    {
+        if (snapshot.Total.BytesTotal == 0) return string.Empty;
+        return Loc.Core(
+            "core.outbox.bytes_progress",
+            new Dictionary<string, object?>
+            {
+                ["done"] = Loc.Bytes(checked((long)snapshot.Total.BytesDone)),
+                ["total"] = Loc.Bytes(checked((long)snapshot.Total.BytesTotal)),
+            });
+    }
+
+    private static string DeleteLabel(BridgeDeleteOp delete) =>
+        $"{delete.CloudKey} — {Loc.Chrome("outbox.delete.kind")}";
+
+    private static string StorageActionLabel(BridgeReleaseStorageAction action) => action switch
+    {
+        BridgeReleaseStorageAction.MakeRemote => Loc.Chrome("storage.action.manage"),
+        BridgeReleaseStorageAction.MakeLocal => Loc.Chrome("storage.action.unmanage"),
+        BridgeReleaseStorageAction.Pin => Loc.Chrome("storage.action.pin"),
+        BridgeReleaseStorageAction.Unpin => Loc.Chrome("storage.action.unpin"),
+        _ => throw new ArgumentOutOfRangeException(nameof(action), action, "Unknown storage action"),
     };
 
     // The transitions every release in the selection allows, intersected so the
     // menu only offers actions applicable to all. Order follows the first
-    // release's action list (the core's order). Suppressed entirely when any
-    // targeted release has uploads in flight: acting mid-upload races the
-    // observer that completes the local → cloud step (the gate the core
-    // leaves to the UI, mirroring the macOS "Storage…" sheet).
-    private static List<string> IntersectedStorageActions(
-        List<string> releaseIds, Dictionary<string, StorageRow> rowsById)
+    // release's action list (the core's order). The caller suppresses actions
+    // when any targeted release has a transition in flight, matching the macOS
+    // "Storage…" sheet.
+    private static List<BridgeReleaseStorageAction> IntersectedStorageActions(
+        List<string> releaseIds, Dictionary<string, BridgeStorageRow> rowsById)
     {
-        var anyUploading = releaseIds.Any(
-            id => rowsById.TryGetValue(id, out var r) && r.PendingUploads > 0);
-        if (anyUploading)
-        {
-            return new List<string>();
-        }
-
         var perRelease = releaseIds
             .Select(id => rowsById.TryGetValue(id, out var row)
-                ? new HashSet<string>(row.Actions)
-                : new HashSet<string>())
+                ? new HashSet<BridgeReleaseStorageAction>(row.Release.StorageActions)
+                : new HashSet<BridgeReleaseStorageAction>())
             .ToList();
         if (perRelease.Count == 0)
         {
-            return new List<string>();
+            return new List<BridgeReleaseStorageAction>();
         }
 
         var common = perRelease[0];
@@ -5469,8 +5519,8 @@ public sealed partial class MainWindow : Window
         }
         // Preserve the core's action order from the first release's row.
         var order = rowsById.TryGetValue(releaseIds[0], out var firstRow)
-            ? firstRow.Actions
-            : new List<string>();
+            ? firstRow.Release.StorageActions
+            : [];
         return order.Where(common.Contains).ToList();
     }
 
@@ -5479,7 +5529,7 @@ public sealed partial class MainWindow : Window
     // item runs the action on every targeted release, then reloads the rows.
     private async System.Threading.Tasks.Task<MenuFlyout> BuildStorageRowMenu(
         List<string> releaseIds,
-        Dictionary<string, StorageRow> rowsById,
+        Dictionary<string, BridgeStorageRow> rowsById,
         TextBlock storageStatus,
         Func<System.Threading.Tasks.Task> reload)
     {
@@ -5551,14 +5601,18 @@ public sealed partial class MainWindow : Window
         List<string> releaseIds,
         TextBlock storageStatus)
     {
-        var (current, json) = await RunForCurrentHandle(NativeBae.OutboxSnapshotJson);
+        var (current, result) = await RunForCurrentHandle(NativeBae.OutboxSnapshot);
         if (!current)
         {
             return new List<string>();
         }
-        var snapshot = json is null
-            ? null
-            : JsonSerializer.Deserialize<OutboxSnapshot>(json, JsonOptions);
+        if (result.Error is not null)
+        {
+            storageStatus.Text = result.Error;
+            storageStatus.Visibility = Visibility.Visible;
+            return new List<string>();
+        }
+        var snapshot = result.Snapshot;
         if (snapshot is null)
         {
             // Couldn't read the outbox; surface it like the panel load does
@@ -5575,14 +5629,18 @@ public sealed partial class MainWindow : Window
     private async System.Threading.Tasks.Task<List<string>> DownloadingReleases(
         List<string> releaseIds)
     {
-        var (current, json) = await RunForCurrentHandle(NativeBae.DownloadSnapshotJson);
+        var (current, result) = await RunForCurrentHandle(NativeBae.DownloadSnapshot);
         if (!current)
         {
             return new List<string>();
         }
-        var snapshot = json is null
-            ? null
-            : JsonSerializer.Deserialize<DownloadSnapshot>(json, JsonOptions);
+        if (result.Error is not null)
+        {
+            BaeDiagnostics.Logger.Warning(
+                $"couldn't read the download snapshot; pin-cancel unavailable: {result.Error}");
+            return new List<string>();
+        }
+        var snapshot = result.Snapshot;
         if (snapshot is null)
         {
             // The pin queue is in-memory and read is infallible bar a dropped
@@ -5602,9 +5660,9 @@ public sealed partial class MainWindow : Window
     // release into it. Returns null on success (or a cancelled picker), else the
     // first error message.
     private async System.Threading.Tasks.Task<string?> RunStorageActionForReleases(
-        string action, List<string> releaseIds)
+        BridgeReleaseStorageAction action, List<string> releaseIds)
     {
-        if (action == "unmanage")
+        if (action == BridgeReleaseStorageAction.MakeLocal)
         {
             var picker = new global::Windows.Storage.Pickers.FolderPicker();
             picker.FileTypeFilter.Add("*");
@@ -5655,13 +5713,12 @@ public sealed partial class MainWindow : Window
             {
                 var error = action switch
                 {
-                    "pin" => NativeBae.PinRelease(handle, releaseId),
-                    "unpin" => NativeBae.UnpinRelease(handle, releaseId),
-                    "manage" => NativeBae.MakeReleaseRemote(handle, releaseId, pin: false),
-                    // A null return reads as success; an unknown action is a
-                    // UI/core contract mismatch, so surface it rather than
-                    // reload as if it worked.
-                    _ => $"unknown storage action: {action}",
+                    BridgeReleaseStorageAction.Pin => NativeBae.PinRelease(handle, releaseId),
+                    BridgeReleaseStorageAction.Unpin => NativeBae.UnpinRelease(handle, releaseId),
+                    BridgeReleaseStorageAction.MakeRemote => NativeBae.MakeReleaseRemote(handle, releaseId, pin: false),
+                    BridgeReleaseStorageAction.MakeLocal => throw new InvalidOperationException(
+                        "make-local storage actions must choose a destination before running"),
+                    _ => throw new ArgumentOutOfRangeException(nameof(action), action, "Unknown storage action"),
                 };
                 if (error is not null)
                 {
