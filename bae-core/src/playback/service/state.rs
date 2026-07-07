@@ -1,6 +1,12 @@
 use super::*;
 
 impl PlaybackService {
+    /// The current track's id, once one exists (Active in any phase). None while
+    /// the slot is Stopped or still resolving a fresh load.
+    pub(super) fn current_track_id(&self) -> Option<&str> {
+        self.slot.current_track_id()
+    }
+
     /// Compute the display values for `position_ms` on the current track,
     /// write them to `last_position_display`, and emit a `Seeked` progress event.
     ///
@@ -9,9 +15,10 @@ impl PlaybackService {
     /// NSView stale; emitting without writing the Arc would leave late-mounting
     /// views without a cached value to query. Always go through this helper.
     pub(super) fn emit_position_display(&self, position_ms: u64, track_id: String) {
-        let Some(prepared) = &self.current_prepared else {
+        let PlaybackSlot::Active(cur) = &self.slot else {
             return;
         };
+        let prepared = &cur.prepared;
         let raw_dur_ms = prepared.duration.as_millis() as u64;
         let pregap_ms = prepared.total_pregap_ms();
         let (adjusted_pos_ms, adjusted_dur_ms) =
@@ -32,45 +39,126 @@ impl PlaybackService {
         );
     }
 
-    /// The fields the Playing and Paused states share, read from the current
-    /// prepared track. Position data is excluded — it flows through
-    /// PositionUpdate/Seeked events.
-    pub(super) fn current_state_fields(&self) -> (PlaybackTrackInfo, u64) {
-        let prepared = self.current_prepared.as_ref().expect("no current_prepared");
-        (
-            prepared.track_info.clone(),
-            pregap_adjusted_duration(prepared),
+    /// Pure map of the current slot to the public `PlaybackState`. Position data
+    /// is excluded — it flows through `PositionUpdate`/`Seeked` events.
+    pub(super) fn playback_state(&self) -> PlaybackState {
+        match &self.slot {
+            PlaybackSlot::Stopped => PlaybackState::Stopped,
+            PlaybackSlot::Loading { track_id, resolved } => PlaybackState::Loading {
+                track_id: track_id.clone(),
+                resolved: resolved.clone(),
+            },
+            PlaybackSlot::Active(cur) => match &cur.phase {
+                TrackPhase::Loading { .. } => PlaybackState::Loading {
+                    track_id: cur.prepared.track_info.track_id.clone(),
+                    resolved: Some(LoadingTrack::from_prepared(&cur.prepared)),
+                },
+                TrackPhase::Playing => PlaybackState::Playing {
+                    track_info: cur.prepared.track_info.clone(),
+                    duration_ms: pregap_adjusted_duration(&cur.prepared),
+                },
+                TrackPhase::Paused(pause) => PlaybackState::Paused {
+                    track_info: cur.prepared.track_info.clone(),
+                    duration_ms: pregap_adjusted_duration(&cur.prepared),
+                    reason: pause.to_reason(),
+                },
+                // A Completed track emits no public state — the machine leaves
+                // Completed via AutoAdvance / stop / side-pause, each emitting its
+                // own terminal state. This arm is the assertion that nothing calls
+                // `emit_state` while Completed.
+                TrackPhase::Completed => {
+                    unreachable!("Completed is never emitted as a public state")
+                }
+            },
+        }
+    }
+
+    /// The ONLY place a `StateChanged` is emitted. Every transition mutates the
+    /// slot (and syncs the atomic), then calls this. Emitting while the current
+    /// track is Completed is a bug — `playback_state` treats it as unreachable.
+    pub(super) fn emit_state(&self) {
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::StateChanged {
+                state: self.playback_state(),
+            },
+        );
+    }
+
+    /// Write the shared `AudioState` atomic as a projection of the slot. The
+    /// atomic is the realtime plane the audio callback reads lock-free every
+    /// buffer; the slot is the truth. Call after every slot/phase mutation.
+    pub(super) fn sync_audio_state(&self) {
+        use crate::playback::audio_output::AudioState;
+        let projected = match &self.slot {
+            PlaybackSlot::Stopped => Some(AudioState::Stopped),
+            // No stream is attached, so the atomic is inert; leave it as it is
+            // until the load's stream attaches and this runs again.
+            PlaybackSlot::Loading { .. } => None,
+            PlaybackSlot::Active(cur) => Some(match cur.phase.intent() {
+                PlayIntent::Playing => AudioState::Playing,
+                PlayIntent::Paused => AudioState::Paused,
+                PlayIntent::Stopped => AudioState::Stopped,
+            }),
+        };
+        if let Some(state) = projected {
+            self.audio_output.set_state(state);
+        }
+    }
+
+    /// The play/pause intent to carry to a track we switch to (Next / Previous /
+    /// restart). A side-pause is meaningless for a different track, so it
+    /// collapses to a plain manual pause; Completed carries Playing.
+    pub(super) fn current_play_target(&self) -> PlayTarget {
+        match &self.slot {
+            PlaybackSlot::Active(cur) => match &cur.phase {
+                TrackPhase::Playing | TrackPhase::Completed => PlayTarget::Playing,
+                TrackPhase::Paused(_) => PlayTarget::Paused(PausePhase::Manual),
+                TrackPhase::Loading { target, .. } => match target {
+                    PlayTarget::Playing => PlayTarget::Playing,
+                    PlayTarget::Paused(_) => PlayTarget::Paused(PausePhase::Manual),
+                },
+            },
+            _ => PlayTarget::Playing,
+        }
+    }
+
+    /// Whether the current track is paused at a physical-side boundary.
+    pub(super) fn is_side_paused(&self) -> bool {
+        matches!(
+            &self.slot,
+            PlaybackSlot::Active(cur)
+                if matches!(cur.phase, TrackPhase::Paused(PausePhase::SideEnded(_)))
         )
     }
 
-    /// Build a Playing state from the current prepared track and track info.
-    pub(super) fn make_playing_state(&self) -> PlaybackState {
-        let (track_info, duration_ms) = self.current_state_fields();
-        PlaybackState::Playing {
-            track_info,
-            duration_ms,
-        }
-    }
-
-    /// Build a Paused state from the current prepared track and track info.
-    pub(super) fn make_paused_state(&self, reason: PlaybackPauseReason) -> PlaybackState {
-        let (track_info, duration_ms) = self.current_state_fields();
-        PlaybackState::Paused {
-            track_info,
-            duration_ms,
-            reason,
-        }
-    }
-
-    /// Emit a `StateChanged` for the current track's play/pause state. Shared
-    /// by the play, gapless-advance, and rebuild-advance paths.
-    pub(super) fn emit_current_state(&self) {
-        let state = if self.audio_output.is_paused() {
-            self.make_paused_state(PlaybackPauseReason::Manual)
-        } else {
-            self.make_playing_state()
+    /// Resolve a load's `TrackReady`: if it matches the current Loading phase's
+    /// generation, advance the phase to that load's target (Playing/Paused) and
+    /// emit. A stale generation (a superseded load, or a pause/preview that
+    /// collapsed the Loading phase) is dropped.
+    pub(super) fn resolve_track_ready(&mut self, track_id: String, generation: LoadGeneration) {
+        let resolved = match &mut self.slot {
+            PlaybackSlot::Active(cur) => match &cur.phase {
+                TrackPhase::Loading {
+                    generation: live, ..
+                } if *live == generation => {
+                    if let TrackPhase::Loading { target, .. } =
+                        std::mem::replace(&mut cur.phase, TrackPhase::Playing)
+                    {
+                        cur.phase = target.into_track_phase();
+                    }
+                    true
+                }
+                _ => false,
+            },
+            _ => false,
         };
-        emit_progress(&self.progress_tx, PlaybackProgress::StateChanged { state });
+        if resolved {
+            self.sync_audio_state();
+            self.emit_state();
+        } else {
+            debug!(track_id, "ignoring stale TrackReady from an abandoned load");
+        }
     }
 
     /// Restore playback from the validated device-local resume cache.
@@ -207,13 +295,12 @@ impl PlaybackService {
             .current_track_id()
             .map(|s| s.to_string())
         {
-            self.audio_output
-                .set_state(crate::playback::audio_output::AudioState::Paused);
             let start = parsed
                 .position_ms
                 .map(|pos| TrackStart::Position(std::time::Duration::from_millis(pos)))
                 .unwrap_or(TrackStart::Direct);
-            self.play_track(&track_id, start, true).await;
+            self.play_track(&track_id, start, PlayTarget::Paused(PausePhase::Manual))
+                .await;
 
             // Emit the position we restored to so late-mounting views can read it
             // on mount. `None` means none was captured — the track's start (0).
@@ -254,8 +341,15 @@ impl PlaybackService {
     /// The log is the never-mask escape hatch — a write failure is recorded, not
     /// conflated with "nothing was playing".
     pub(super) async fn persist_playback_state(&self) {
-        use crate::playback::audio_output::AudioState;
-        if self.audio_output.get_state() == AudioState::Stopped {
+        // Clear the durable row when there is nothing to resume: the slot is
+        // Stopped, or the track drained naturally (Completed). A Loading or
+        // playing/paused Active track writes the row.
+        let nothing_to_resume = matches!(&self.slot, PlaybackSlot::Stopped)
+            || matches!(
+                &self.slot,
+                PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Completed)
+            );
+        if nothing_to_resume {
             if let Err(e) = self.library_manager.clear_playback_state().await {
                 warn!("couldn't clear playback state: {e}");
             }
@@ -295,16 +389,13 @@ impl PlaybackService {
     }
 
     pub(super) async fn pause(&mut self) {
-        self.pending_side_pause = None;
-        self.audio_output
-            .set_state(crate::playback::audio_output::AudioState::Paused);
-        if self.current_prepared.is_some() {
-            emit_progress(
-                &self.progress_tx,
-                PlaybackProgress::StateChanged {
-                    state: self.make_paused_state(PlaybackPauseReason::Manual),
-                },
-            );
+        // Pausing during a load collapses the Loading phase to Paused, so the
+        // pending TrackReady no longer matches and is ignored. A Stopped or
+        // still-resolving slot is a no-op (nothing is playing to pause).
+        if let PlaybackSlot::Active(cur) = &mut self.slot {
+            cur.phase = TrackPhase::Paused(PausePhase::Manual);
+            self.sync_audio_state();
+            self.emit_state();
         }
     }
 
@@ -314,20 +405,15 @@ impl PlaybackService {
             self.stop_preview_for_main_playback();
         }
 
-        if self.pending_side_pause.is_some() {
+        if self.is_side_paused() {
             self.resume_from_side_pause().await;
             return;
         }
 
-        self.audio_output
-            .set_state(crate::playback::audio_output::AudioState::Playing);
-        if self.current_prepared.is_some() {
-            emit_progress(
-                &self.progress_tx,
-                PlaybackProgress::StateChanged {
-                    state: self.make_playing_state(),
-                },
-            );
+        if let PlaybackSlot::Active(cur) = &mut self.slot {
+            cur.phase = TrackPhase::Playing;
+            self.sync_audio_state();
+            self.emit_state();
         }
     }
 }

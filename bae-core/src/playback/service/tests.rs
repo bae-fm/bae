@@ -99,11 +99,8 @@ async fn test_playback_service() -> (
         playback_queue: PlaybackQueue::new(queue_ids),
         current_position_shared: Arc::new(std::sync::Mutex::new(None)),
         audio_output: Box::new(TestAudioOutput::new()),
-        stream: None,
-        current_prepared: None,
-        current_playback_source: None,
-        current_decoder_handle: None,
-        current_audio_events: None,
+        slot: PlaybackSlot::Stopped,
+        load_generation_counter: 0,
         preloaded_next: None,
         preview,
         main_was_playing_before_preview: false,
@@ -112,10 +109,26 @@ async fn test_playback_service() -> (
         position_update_interval_ms: 50,
         shared_file_buffers: HashMap::new(),
         last_position_display: Arc::new(std::sync::Mutex::new(None)),
-        pending_side_pause: None,
         fetch_arbiter: FetchArbiter::new(),
     };
     (home, service, progress_rx)
+}
+
+/// Build an `Active` slot from a prepared track, wrapping a fresh test stream
+/// source and audio-events channel. Tests that need a specific source or
+/// pending audio event build the slot inline instead.
+fn active_slot(prepared: PlaybackPreparedTrack, phase: TrackPhase) -> PlaybackSlot {
+    let (_sink, source, _ready) = create_track_stream_pair(prepared.sample_rate, prepared.channels);
+    let track_fmt = prepared.track_fmt(std::time::Duration::ZERO);
+    let (_tx, audio_events) = audio_event_channel();
+    PlaybackSlot::Active(CurrentTrack {
+        prepared,
+        stream: Box::new(TestAudioStream),
+        source: Arc::new(Mutex::new(source::PlaybackSource::new(source, track_fmt))),
+        decoder_handle: finished_decoder_handle(),
+        audio_events,
+        phase,
+    })
 }
 
 fn test_track_info(track_id: &str) -> PlaybackTrackInfo {
@@ -262,18 +275,25 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
 
     let finished_buffer = create_sparse_buffer(1_024);
     let incoming_buffer = create_sparse_buffer(1_024);
-    service.current_prepared = Some(test_prepared_track(
-        "finished-track",
-        finished_buffer.clone(),
-        false,
-    ));
-    service.current_playback_source = {
-        let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
-        Some(Arc::new(Mutex::new(source::PlaybackSource::new(
+    let (mut audio_tx, audio_rx) = audio_event_channel();
+    audio_tx.push_required(AudioEvent::TrackCrossing(TrackCrossing {
+        finished_fmt: Arc::new(test_track_fmt("finished-track")),
+        decode_error_count: 0,
+        samples_decoded: 44_100,
+        incoming_fmt: Arc::new(test_track_fmt("incoming-track")),
+    }));
+    let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
+    service.slot = PlaybackSlot::Active(CurrentTrack {
+        prepared: test_prepared_track("finished-track", finished_buffer.clone(), false),
+        stream: Box::new(TestAudioStream),
+        source: Arc::new(Mutex::new(source::PlaybackSource::new(
             source,
             test_track_fmt("finished-track"),
-        ))))
-    };
+        ))),
+        decoder_handle: finished_decoder_handle(),
+        audio_events: audio_rx,
+        phase: TrackPhase::Playing,
+    });
     service.current_position_shared =
         Arc::new(std::sync::Mutex::new(Some(std::time::Duration::ZERO)));
     service.preloaded_next = Some(PreloadedNext {
@@ -282,26 +302,9 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
         source: PreloadedNextSource::Staged,
     });
 
-    let (mut audio_tx, audio_rx) = audio_event_channel();
-    audio_tx.push_required(AudioEvent::TrackCrossing(TrackCrossing {
-        finished_fmt: Arc::new(test_track_fmt("finished-track")),
-        decode_error_count: 0,
-        samples_decoded: 44_100,
-        incoming_fmt: Arc::new(test_track_fmt("incoming-track")),
-    }));
-    service.current_audio_events = Some(audio_rx);
-
     service.seek(std::time::Duration::ZERO).await;
 
-    assert_eq!(
-        service
-            .current_prepared
-            .as_ref()
-            .unwrap()
-            .track_info
-            .track_id,
-        "incoming-track"
-    );
+    assert_eq!(service.slot.current_track_id().unwrap(), "incoming-track");
     let mut saw_incoming_seek = false;
     while let Ok(progress) = progress_rx.try_recv() {
         if let PlaybackProgress::Seeked { track_id, .. } = progress {
@@ -313,6 +316,98 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
         "seek should emit for the crossed-into track"
     );
     assert!(finished_buffer.is_cancelled());
+}
+
+/// After a track drains naturally, the decoder-completion callback flips the
+/// shared audio-state atomic to `Stopped` while the track's bookkeeping is
+/// retained (so AutoAdvance / the side-pause decision can still read it). A seek
+/// arriving in that window must resume audible playback at the seek target — not
+/// rebuild a stream that stays silent because the atomic is still `Stopped`.
+#[tokio::test]
+async fn seek_after_natural_completion_resumes_audibly() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    service.playback_queue.play_release(
+        ContextSource::Release("release-id".to_string()),
+        vec!["finished-track".to_string()],
+        ContextStart::Index(0),
+    );
+
+    let buffer = create_sparse_buffer(1_024);
+    // The track drained: phase is Completed with its bookkeeping retained, and
+    // the audio callback already flipped the atomic to Stopped.
+    service.slot = active_slot(
+        test_prepared_track("finished-track", buffer.clone(), false),
+        TrackPhase::Completed,
+    );
+    service.current_position_shared =
+        Arc::new(std::sync::Mutex::new(Some(std::time::Duration::ZERO)));
+    service
+        .audio_output
+        .set_state(crate::playback::audio_output::AudioState::Stopped);
+
+    service.seek(std::time::Duration::from_millis(500)).await;
+
+    assert_eq!(
+        service.audio_output.get_state(),
+        crate::playback::audio_output::AudioState::Playing,
+        "seeking after a track finished naturally should resume audible playback"
+    );
+}
+
+/// Skipping to the next track after the current one drained naturally must
+/// resume audible playback, not carry the completion's Stopped atomic forward as
+/// a silent/paused next track. Drives the real `handle_next` over a Completed
+/// slot (the phase a track sits in briefly after natural completion, before
+/// AutoAdvance runs) with a preloaded next so no DB lookup is needed. This locks
+/// the `TrackPhase::Completed` arm of `current_play_target`; reverting that arm
+/// to a paused/stopped target turns the atomic assertion red.
+#[tokio::test]
+async fn next_after_natural_completion_resumes_audibly() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    service.playback_queue.play_release(
+        ContextSource::Release("release-id".to_string()),
+        vec!["finished-track".to_string(), "next-track".to_string()],
+        ContextStart::Index(0),
+    );
+
+    // The current track drained naturally: phase Completed, and the audio
+    // callback already flipped the atomic to Stopped.
+    let finished_buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(
+        test_prepared_track("finished-track", finished_buffer, false),
+        TrackPhase::Completed,
+    );
+    service.current_position_shared =
+        Arc::new(std::sync::Mutex::new(Some(std::time::Duration::ZERO)));
+    service
+        .audio_output
+        .set_state(crate::playback::audio_output::AudioState::Stopped);
+
+    // A next track is preloaded and ready to play without a fresh decode.
+    let (_next_sink, next_source, _next_ready) = create_track_stream_pair(44_100, 2);
+    let next_buffer = create_sparse_buffer(1_024);
+    service.preloaded_next = Some(PreloadedNext {
+        prepared: test_prepared_track("next-track", next_buffer, false),
+        decoder_handle: finished_decoder_handle(),
+        source: PreloadedNextSource::Held(next_source),
+    });
+
+    service.handle_next().await;
+
+    assert_eq!(
+        service.audio_output.get_state(),
+        crate::playback::audio_output::AudioState::Playing,
+        "Next after natural completion should resume audible playback on the new track"
+    );
+    assert!(
+        matches!(
+            &service.slot,
+            PlaybackSlot::Active(cur)
+                if cur.prepared.track_info.track_id == "next-track"
+                    && matches!(cur.phase, TrackPhase::Playing)
+        ),
+        "the next track should be current and Playing"
+    );
 }
 
 #[tokio::test]
@@ -332,12 +427,15 @@ async fn gapless_crossing_evicts_finished_track_file_buffer() {
     service
         .shared_file_buffers
         .insert("incoming-file".to_string(), incoming_buffer.clone());
-    service.current_prepared = Some(test_prepared_track_with_file(
-        "finished-track",
-        "finished-file",
-        finished_buffer.clone(),
-        false,
-    ));
+    service.slot = active_slot(
+        test_prepared_track_with_file(
+            "finished-track",
+            "finished-file",
+            finished_buffer.clone(),
+            false,
+        ),
+        TrackPhase::Playing,
+    );
     service.preloaded_next = Some(PreloadedNext {
         prepared: test_prepared_track_with_file(
             "incoming-track",
@@ -376,12 +474,15 @@ async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
     service
         .shared_file_buffers
         .insert("shared-file".to_string(), shared_buffer.clone());
-    service.current_prepared = Some(test_prepared_track_with_file(
-        "finished-track",
-        "shared-file",
-        shared_buffer.clone(),
-        false,
-    ));
+    service.slot = active_slot(
+        test_prepared_track_with_file(
+            "finished-track",
+            "shared-file",
+            shared_buffer.clone(),
+            false,
+        ),
+        TrackPhase::Playing,
+    );
     service.preloaded_next = Some(PreloadedNext {
         prepared: test_prepared_track_with_file(
             "incoming-track",
@@ -404,6 +505,178 @@ async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
 
     assert!(service.shared_file_buffers.contains_key("shared-file"));
     assert!(!shared_buffer.is_cancelled());
+}
+
+/// A `TrackReady` from a superseded load (same track id, replayed through a
+/// fresh load) carries the old generation and must be dropped; only the live
+/// load's generation resolves the phase and emits. A same-id replay is exactly
+/// the case load identity must reject.
+#[tokio::test]
+async fn track_ready_with_stale_generation_is_ignored() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let stale = service.next_load_generation();
+    let live = service.next_load_generation();
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(
+        test_prepared_track("t", buffer, false),
+        TrackPhase::Loading {
+            generation: live,
+            target: PlayTarget::Playing,
+        },
+    );
+
+    service.resolve_track_ready("t".to_string(), stale);
+    assert!(
+        progress_rx.try_recv().is_err(),
+        "a stale-generation TrackReady must not emit"
+    );
+    assert!(
+        matches!(
+            &service.slot,
+            PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Loading { .. })
+        ),
+        "the phase must stay Loading after a stale signal"
+    );
+
+    service.resolve_track_ready("t".to_string(), live);
+    assert!(
+        matches!(
+            progress_rx.try_recv(),
+            Ok(PlaybackProgress::StateChanged {
+                state: PlaybackState::Playing { .. }
+            })
+        ),
+        "the live load resolves to Playing and emits"
+    );
+}
+
+/// Pausing during a load collapses the Loading phase to Paused (emitting Paused
+/// once); the pending `TrackReady` then no longer matches the phase and is
+/// dropped rather than re-emitting a second Paused.
+#[tokio::test]
+async fn pause_during_load_emits_paused_and_supersedes_track_ready() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let generation = service.next_load_generation();
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(
+        test_prepared_track("t", buffer, false),
+        TrackPhase::Loading {
+            generation,
+            target: PlayTarget::Playing,
+        },
+    );
+
+    service.pause().await;
+    assert!(
+        matches!(
+            progress_rx.try_recv(),
+            Ok(PlaybackProgress::StateChanged {
+                state: PlaybackState::Paused {
+                    reason: PlaybackPauseReason::Manual,
+                    ..
+                }
+            })
+        ),
+        "pause during a load emits Paused(Manual)"
+    );
+
+    service.resolve_track_ready("t".to_string(), generation);
+    assert!(
+        progress_rx.try_recv().is_err(),
+        "the collapsed load's TrackReady must not emit a second state"
+    );
+}
+
+/// `halt_on_error` is a no-op when the slot is already Stopped, so a failure
+/// dispatched after a self-handled stop doesn't emit a duplicate Stopped.
+#[tokio::test]
+async fn halt_on_error_noops_when_stopped() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    // The slot starts Stopped.
+    service.halt_on_error().await;
+    assert!(
+        progress_rx.try_recv().is_err(),
+        "halting an already-stopped slot must emit nothing"
+    );
+}
+
+/// Table-drive `playback_state()` over each slot/phase.
+#[tokio::test]
+async fn playback_state_mapping() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+
+    service.slot = PlaybackSlot::Stopped;
+    assert!(matches!(service.playback_state(), PlaybackState::Stopped));
+
+    service.slot = PlaybackSlot::Loading {
+        track_id: "t".to_string(),
+        resolved: None,
+    };
+    assert!(matches!(
+        service.playback_state(),
+        PlaybackState::Loading { resolved: None, .. }
+    ));
+
+    let generation = service.next_load_generation();
+    service.slot = active_slot(
+        test_prepared_track("t", buffer.clone(), false),
+        TrackPhase::Loading {
+            generation,
+            target: PlayTarget::Playing,
+        },
+    );
+    assert!(matches!(
+        service.playback_state(),
+        PlaybackState::Loading {
+            resolved: Some(_),
+            ..
+        }
+    ));
+
+    service.slot = active_slot(
+        test_prepared_track("t", buffer.clone(), false),
+        TrackPhase::Playing,
+    );
+    assert!(matches!(
+        service.playback_state(),
+        PlaybackState::Playing { .. }
+    ));
+
+    service.slot = active_slot(
+        test_prepared_track("t", buffer.clone(), false),
+        TrackPhase::Paused(PausePhase::Manual),
+    );
+    assert!(matches!(
+        service.playback_state(),
+        PlaybackState::Paused {
+            reason: PlaybackPauseReason::Manual,
+            ..
+        }
+    ));
+
+    let prompt = PlaybackSidePausePrompt {
+        id: "id".to_string(),
+        title_key: SIDE_PAUSE_TITLE_KEY,
+        side_letter: "B".to_string(),
+        message_key: SIDE_PAUSE_VINYL_MESSAGE_KEY,
+    };
+    service.slot = active_slot(
+        test_prepared_track("t", buffer, false),
+        TrackPhase::Paused(PausePhase::SideEnded(SidePauseDecision {
+            track_id: "next".to_string(),
+            prompt,
+        })),
+    );
+    assert!(matches!(
+        service.playback_state(),
+        PlaybackState::Paused {
+            reason: PlaybackPauseReason::SideEnded(_),
+            ..
+        }
+    ));
+    // Completed is never emitted as a public state, so `playback_state` treats it
+    // as unreachable rather than mapping it — no arm to assert here.
 }
 
 #[test]

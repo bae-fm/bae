@@ -59,7 +59,13 @@ mod pipeline;
 mod preview;
 mod queue_commands;
 mod seek;
+mod slot;
 mod state;
+
+use pipeline::StartedStream;
+use slot::{
+    CurrentTrack, LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase,
+};
 
 #[cfg(test)]
 mod tests;
@@ -113,6 +119,17 @@ pub struct LoadingTrack {
     pub duration_ms: u64,
 }
 
+impl LoadingTrack {
+    /// The metadata a `Loading` state carries for a resolved track: its info plus
+    /// the pregap-adjusted duration `Playing`/`Paused` also report.
+    fn from_prepared(prepared: &PlaybackPreparedTrack) -> Self {
+        Self {
+            track_info: prepared.track_info.clone(),
+            duration_ms: pregap_adjusted_duration(prepared),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaybackSidePausePrompt {
     pub id: String,
@@ -132,15 +149,15 @@ pub enum PlaybackPauseReason {
     SideEnded(PlaybackSidePausePrompt),
 }
 
-#[derive(Clone)]
-struct SidePauseDecision {
+#[derive(Debug, Clone)]
+pub(super) struct SidePauseDecision {
     track_id: String,
     prompt: PlaybackSidePausePrompt,
 }
 
 /// Playback commands sent to the service
 #[derive(Debug)]
-pub enum PlaybackCommand {
+pub(crate) enum PlaybackCommand {
     Play(String),
     PlayRelease {
         release_id: String,
@@ -157,18 +174,18 @@ pub enum PlaybackCommand {
     Next,
     /// Auto-advance from track completion (play pregap)
     AutoAdvance,
-    /// Internal: the in-core decoder for `track_id` filled its ring buffer to
-    /// the play threshold (or reached EOF). Sent from a watcher task awaiting
-    /// the decoder's ready signal; the handler emits Playing/Paused only if this
-    /// is still the live load. Identity is the prepared track's `cancel_token`
-    /// Arc, not the track id: RepeatCurrent / RestartCurrent / re-Play replay the
-    /// SAME id through a fresh load, so an id match would accept a ready signal
-    /// from the abandoned load. A new load mints a new token, so comparing the
-    /// Arc by pointer against `current_prepared` rejects the stale signal. The
-    /// id is carried only to name the dropped track in the debug log.
+    /// Internal: the in-core decoder for a load filled its ring buffer to the
+    /// play threshold (or reached EOF). Sent from a watcher task awaiting the
+    /// decoder's ready signal; the handler resolves the current track's phase to
+    /// its target (Playing/Paused) only if this is still the live load. Identity
+    /// is the load `generation`, not the track id: RepeatCurrent / RestartCurrent
+    /// / re-Play replay the SAME id through a fresh load, so an id match would
+    /// accept a ready signal from the abandoned load. A new load mints a new
+    /// generation, so a stale signal no longer matches. The id is carried only to
+    /// name the dropped track in the debug log.
     TrackReady {
         track_id: String,
-        cancel_token: Arc<std::sync::atomic::AtomicBool>,
+        generation: LoadGeneration,
     },
     /// Internal: a mid-flight read failure (cloud or local) emitted a
     /// `PlaybackProgress::PlaybackError`. Sent from the progress self-subscription
@@ -816,17 +833,14 @@ pub struct PlaybackService {
     playback_queue: PlaybackQueue,
     current_position_shared: Arc<std::sync::Mutex<Option<std::time::Duration>>>,
     audio_output: Box<dyn AudioOutput>,
-    stream: Option<Box<dyn AudioStream>>,
-    /// Current track prepared data and streaming state
-    current_prepared: Option<PlaybackPreparedTrack>,
-    /// Current playing source. A `PlaybackSource` wraps the current track and an
-    /// optional pre-staged next track so the audio callback can advance across a
-    /// track boundary without rebuilding the stream.
-    current_playback_source: Option<Arc<Mutex<source::PlaybackSource>>>,
-    /// JoinHandle for the current decoder thread (needed for seek cancellation)
-    current_decoder_handle: Option<std::thread::JoinHandle<()>>,
-    /// Receiver for events emitted by the current stream's audio callback.
-    current_audio_events: Option<AudioEventReceiver>,
+    /// The single authority for what is current and in what phase. Owns the
+    /// stream, source, decoder handle, audio-events receiver, and prepared track
+    /// as one consistent whole; the `AudioState` atomic is written as a
+    /// projection of it via `sync_audio_state`.
+    slot: PlaybackSlot,
+    /// Mints a fresh `LoadGeneration` per decoder load so a `TrackReady` from an
+    /// abandoned load can be told from the live one.
+    load_generation_counter: u64,
     /// Preloaded next track state, either staged into the current gapless source
     /// or held for a stream rebuild.
     preloaded_next: Option<PreloadedNext>,
@@ -846,7 +860,6 @@ pub struct PlaybackService {
     /// Shared with PlaybackHandle. Written on every position tick and by
     /// `emit_position_display`; read by late-mounting views.
     last_position_display: Arc<std::sync::Mutex<Option<f64>>>,
-    pending_side_pause: Option<SidePauseDecision>,
     /// Prioritizes byte fetches across tracks: the current track's reader fetches
     /// immediately, a next-track preload's reader yields to it. Shared into every
     /// reader; the current track is designated foreground via
@@ -859,9 +872,67 @@ impl PlaybackService {
     /// priority, so its reader fetches immediately and a next-track preload's
     /// reader yields to it. Called wherever a track becomes the current one.
     fn mark_current_foreground(&self) {
-        if let Some(prepared) = &self.current_prepared {
-            if let Some(segment) = prepared.segments.first() {
+        if let PlaybackSlot::Active(cur) = &self.slot {
+            if let Some(segment) = cur.prepared.segments.first() {
                 self.fetch_arbiter.set_foreground(segment.buffer.id());
+            }
+        }
+    }
+
+    /// Mint a fresh load generation. Each fresh play or seek gets its own so a
+    /// `TrackReady` from an abandoned load can be told from the live one.
+    fn next_load_generation(&mut self) -> LoadGeneration {
+        let generation = LoadGeneration(self.load_generation_counter);
+        self.load_generation_counter += 1;
+        generation
+    }
+
+    /// Drive playback down to Stopped after a mid-flight read/decode failure
+    /// surfaced a `PlaybackError`. The self-handled failure paths in `play_track`
+    /// emit `PlaybackError` AND call `stop()` synchronously before returning to
+    /// the loop, so by the time this dequeues the slot is already Stopped and a
+    /// second `stop()` would emit a duplicate Stopped — no-op there. A genuine
+    /// mid-flight failure leaves the slot Active, so the teardown fires. The
+    /// serial loop can't interleave a new load between `stop()` finishing and
+    /// this running, so the guard is race-free. `stop()` emits no `PlaybackError`,
+    /// so this can't feed back into the self-subscription that dispatched it.
+    async fn halt_on_error(&mut self) {
+        if matches!(self.slot, PlaybackSlot::Stopped) {
+            debug!("HaltOnError: playback already stopped, nothing to halt");
+        } else {
+            self.stop().await;
+        }
+    }
+
+    /// Manual skip to the next track (skip pregap). A side-pause forces the next
+    /// side to start playing; any other state carries the outgoing track's
+    /// play/pause intent forward (a naturally-completed track carries Playing, so
+    /// the skip resumes audibly rather than inheriting the Stopped atomic).
+    async fn handle_next(&mut self) {
+        let target = if self.is_side_paused() {
+            PlayTarget::Playing
+        } else {
+            self.current_play_target()
+        };
+        info!("Next command received");
+        // If we have a preloaded track, use it directly.
+        if let Some(preloaded_track_id) = self.next_track_id().map(|s| s.to_string()) {
+            self.advance_and_play_preloaded(&preloaded_track_id, false, target)
+                .await;
+        } else {
+            // No preloaded track, use PlaybackQueue decision logic.
+            match self.playback_queue.next_entry() {
+                NextEntry::Play(next_track) => {
+                    info!("No preloaded track, playing from queue: {}", next_track);
+                    self.emit_queue_update();
+                    self.play_track(&next_track, TrackStart::Direct, target)
+                        .await;
+                }
+                _ => {
+                    info!("No next track available, stopping");
+                    self.emit_queue_update();
+                    self.stop().await;
+                }
             }
         }
     }
@@ -910,7 +981,15 @@ impl PlaybackService {
                 samples_decoded,
             },
         );
-        self.current_audio_events = None;
+        // The track drained: mark the phase Completed. The stream/source/decoder
+        // stay in the slot because AutoAdvance and the side-pause decision still
+        // read them; the audio-events receiver is retained but no longer polled
+        // (the drain tick's guard skips a Completed slot). The audio callback
+        // already flipped the atomic to Stopped, which `sync_audio_state` confirms.
+        if let PlaybackSlot::Active(cur) = &mut self.slot {
+            cur.phase = TrackPhase::Completed;
+        }
+        self.sync_audio_state();
     }
 
     fn log_audio_diagnostic(&self, event: AudioEvent) {
@@ -977,16 +1056,16 @@ impl PlaybackService {
 
     async fn drain_current_audio_events(&mut self) {
         while let Some(event) = self
-            .current_audio_events
-            .as_mut()
+            .slot
+            .pollable_audio_events()
             .and_then(AudioEventReceiver::pop)
         {
             self.handle_audio_event(event).await;
         }
 
         let dropped_required = self
-            .current_audio_events
-            .as_ref()
+            .slot
+            .pollable_audio_events_ref()
             .map(AudioEventReceiver::take_dropped_required_count)
             .unwrap_or(0);
         if dropped_required > 0 {
@@ -1006,7 +1085,7 @@ impl PlaybackService {
             return;
         }
 
-        if let Some(events) = &self.current_audio_events {
+        if let Some(events) = self.slot.pollable_audio_events_ref() {
             let dropped = events.take_dropped_count();
             if dropped > 0 {
                 warn!(dropped, "audio callback event queue dropped events");
@@ -1299,11 +1378,8 @@ impl PlaybackService {
                     playback_queue: PlaybackQueue::new(queue_ids),
                     current_position_shared: Arc::new(std::sync::Mutex::new(None)),
                     audio_output,
-                    stream: None,
-                    current_prepared: None,
-                    current_playback_source: None,
-                    current_decoder_handle: None,
-                    current_audio_events: None,
+                    slot: PlaybackSlot::Stopped,
+                    load_generation_counter: 0,
                     preloaded_next: None,
                     preview,
                     main_was_playing_before_preview: false,
@@ -1312,7 +1388,6 @@ impl PlaybackService {
                     position_update_interval_ms,
                     shared_file_buffers: HashMap::new(),
                     last_position_display,
-                    pending_side_pause: None,
                     fetch_arbiter: FetchArbiter::new(),
                 };
                 match service.library_manager.load_playback_state().await {
@@ -1358,7 +1433,7 @@ impl PlaybackService {
         audio_event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
             tokio::select! {
-                _ = audio_event_tick.tick(), if self.current_audio_events.is_some() => {
+                _ = audio_event_tick.tick(), if self.slot.has_pollable_audio_events() => {
                     self.drain_current_audio_events().await;
                 }
                 Some(command) = self.command_rx.recv() => {
@@ -1382,9 +1457,8 @@ impl PlaybackService {
                             self.playback_queue.play_single(track_id.clone());
                         }
                     }
-                    self.pending_side_pause = None;
                     self.emit_queue_update();
-                    self.play_track(&track_id, TrackStart::Direct, false).await;
+                    self.play_track(&track_id, TrackStart::Direct, PlayTarget::Playing).await;
                 }
                 PlaybackCommand::PlayRelease { release_id, start_track_index, shuffle } => {
                     let track_ids = match self.library_manager.get_track_ids(&release_id).await {
@@ -1429,9 +1503,8 @@ impl PlaybackService {
                         track_ids,
                         start,
                     );
-                    self.pending_side_pause = None;
                     self.emit_queue_update();
-                    self.play_track(&first_track, TrackStart::Direct, false).await;
+                    self.play_track(&first_track, TrackStart::Direct, PlayTarget::Playing).await;
                 }
                 PlaybackCommand::PlayLibraryShuffled => {
                     let track_ids = match self.fetch_source_tracks(&ContextSource::Library).await {
@@ -1455,9 +1528,8 @@ impl PlaybackService {
                             seed: rand::random(),
                         },
                     );
-                    self.pending_side_pause = None;
                     self.emit_queue_update();
-                    self.play_track(&first_track, TrackStart::Direct, false).await;
+                    self.play_track(&first_track, TrackStart::Direct, PlayTarget::Playing).await;
                 }
                 PlaybackCommand::Pause => {
                     self.pause().await;
@@ -1469,37 +1541,7 @@ impl PlaybackService {
                     self.stop().await;
                 }
                 PlaybackCommand::Next => {
-                    let was_side_paused = self.pending_side_pause.is_some();
-                    if was_side_paused {
-                        self.pending_side_pause = None;
-                    }
-                    info!("Next command received");
-                    // If we have a preloaded track, use it directly
-                    if let Some(preloaded_track_id) = self.next_track_id().map(|s| s.to_string()) {
-                        // skip pregap, preserve paused
-                        self.advance_and_play_preloaded(
-                            &preloaded_track_id,
-                            false,
-                            !was_side_paused,
-                        )
-                            .await;
-                    } else {
-                        // No preloaded track, use PlaybackQueue decision logic
-                        match self.playback_queue.next_entry() {
-                            NextEntry::Play(next_track) => {
-                                info!("No preloaded track, playing from queue: {}", next_track);
-                                self.emit_queue_update();
-                                self.play_track(&next_track, TrackStart::Direct, !was_side_paused)
-                                    .await;
-                                // preserve paused
-                            }
-                            _ => {
-                                info!("No next track available, stopping");
-                                self.emit_queue_update();
-                                self.stop().await;
-                            }
-                        }
-                    }
+                    self.handle_next().await;
                 }
                 PlaybackCommand::AutoAdvance => {
                     info!("AutoAdvance command received (natural transition)");
@@ -1522,7 +1564,7 @@ impl PlaybackService {
                             self.next_track_id().map(|s| s.to_string())
                         {
                             // natural transition, start playing
-                            self.advance_and_play_preloaded(&preloaded_track_id, true, false)
+                            self.advance_and_play_preloaded(&preloaded_track_id, true, PlayTarget::Playing)
                                 .await;
                             continue;
                         }
@@ -1532,12 +1574,12 @@ impl PlaybackService {
                     match self.playback_queue.next_entry() {
                         NextEntry::RepeatCurrent(track_id) => {
                             info!("Repeat mode: track, replaying {}", track_id);
-                            self.play_track(&track_id, TrackStart::Natural, false).await;
+                            self.play_track(&track_id, TrackStart::Natural, PlayTarget::Playing).await;
                         }
                         NextEntry::Play(next_track) => {
                             info!("Playing from queue: {}", next_track);
                             self.emit_queue_update();
-                            self.play_track(&next_track, TrackStart::Natural, false).await;
+                            self.play_track(&next_track, TrackStart::Natural, PlayTarget::Playing).await;
                         }
                         NextEntry::Stop => {
                             info!("No next track available, stopping");
@@ -1548,54 +1590,25 @@ impl PlaybackService {
                 }
                 PlaybackCommand::TrackReady {
                     track_id,
-                    cancel_token,
+                    generation,
                 } => {
-                    // Emit Playing/Paused now that audio is actually flowing. A
-                    // signal from an abandoned load (the user switched tracks, or
-                    // replayed the same track via RepeatCurrent / RestartCurrent /
-                    // re-Play) carries the old load's token; only the live load's
-                    // token is the current prepared track's. Comparing the id
-                    // alone would accept a same-id replay's stale signal, so match
-                    // the token Arc by pointer and drop anything that isn't it.
-                    let is_live = self
-                        .current_prepared
-                        .as_ref()
-                        .is_some_and(|p| Arc::ptr_eq(&p.cancel_token, &cancel_token));
-                    if is_live {
-                        self.emit_current_state();
-                    } else {
-                        debug!(
-                            track_id,
-                            "ignoring stale TrackReady from an abandoned load"
-                        );
-                    }
+                    // Resolve the current track's phase to its target now that
+                    // audio is actually flowing. A signal from an abandoned load
+                    // (the user switched tracks, or replayed the same track via
+                    // RepeatCurrent / RestartCurrent / re-Play, or a pause/preview
+                    // collapsed the Loading phase) carries a generation that no
+                    // longer matches the current load; drop it.
+                    self.resolve_track_ready(track_id, generation);
                 }
                 PlaybackCommand::HaltOnError => {
-                    // The self-handled failure paths in play_track (prepare
-                    // failure, init_streaming failure) emit PlaybackError AND call
-                    // stop() synchronously before returning to this loop. The
-                    // command loop is serial: stop() has fully run by the time the
-                    // HaltOnError it triggered is dequeued, so playback is already
-                    // Stopped and a second stop() would emit a duplicate Stopped.
-                    // No-op when nothing is prepared and the output is stopped —
-                    // race-free because the serial loop can't interleave a new
-                    // load between stop() finishing and this command running.
-                    // A genuine mid-flight reader/decoder failure leaves a track
-                    // prepared and Playing, so the no-op doesn't fire there.
-                    let already_stopped = self.current_prepared.is_none()
-                        && self.audio_output.get_state()
-                            == crate::playback::audio_output::AudioState::Stopped;
-                    if already_stopped {
-                        debug!("HaltOnError: playback already stopped, nothing to halt");
-                    } else {
-                        // stop() does not emit PlaybackError, so this can't feed
-                        // back into the self-subscription that dispatched it.
-                        self.stop().await;
-                    }
+                    self.halt_on_error().await;
                 }
                 PlaybackCommand::Previous => {
-                    self.pending_side_pause = None;
                     if let Some(current_track_id) = self.current_track_id().map(|s| s.to_string()) {
+                        // Carry the outgoing track's play/pause intent to the
+                        // track we land on (a side-pause collapses to a plain
+                        // manual pause across the track change).
+                        let target = self.current_play_target();
                         let current_position = self
                             .current_position_shared
                             .lock()
@@ -1609,12 +1622,12 @@ impl PlaybackService {
                                 // previous_action already stepped the context cursor
                                 // back and made this track current; just play it.
                                 self.emit_queue_update();
-                                self.play_track(&previous_track_id, TrackStart::Direct, true)
+                                self.play_track(&previous_track_id, TrackStart::Direct, target)
                                     .await;
                             }
                             PreviousAction::RestartCurrent => {
                                 info!("Restarting current track from beginning");
-                                self.play_track(&current_track_id, TrackStart::Direct, true).await;
+                                self.play_track(&current_track_id, TrackStart::Direct, target).await;
                             }
                         }
                     }
@@ -1623,12 +1636,16 @@ impl PlaybackService {
                     self.seek(position).await;
                 }
                 PlaybackCommand::SeekByRatio(ratio) => {
-                    if let Some(prepared) = &self.current_prepared {
+                    let position_ms = if let PlaybackSlot::Active(cur) = &self.slot {
+                        let prepared = &cur.prepared;
                         let pregap_ms = prepared.pregap_ms.unwrap_or(0).max(0) as u64;
                         let duration_ms = prepared.duration.as_millis() as u64;
                         let track_duration = duration_ms.saturating_sub(pregap_ms);
-                        let position_ms =
-                            pregap_ms + (ratio.clamp(0.0, 1.0) * track_duration as f64) as u64;
+                        Some(pregap_ms + (ratio.clamp(0.0, 1.0) * track_duration as f64) as u64)
+                    } else {
+                        None
+                    };
+                    if let Some(position_ms) = position_ms {
                         self.seek(std::time::Duration::from_millis(position_ms))
                             .await;
                     }
@@ -1775,9 +1792,8 @@ impl PlaybackService {
                             entry.id.0, entry.track_id
                         );
 
-                        self.pending_side_pause = None;
                         self.emit_queue_update();
-                        self.play_track(&entry.track_id, TrackStart::Direct, false).await;
+                        self.play_track(&entry.track_id, TrackStart::Direct, PlayTarget::Playing).await;
                     }
                 }
                 PlaybackCommand::PreviewPlay(path) => {
@@ -1796,11 +1812,17 @@ impl PlaybackService {
                     self.preview_completed();
                 }
                 PlaybackCommand::TogglePlayPause => {
-                    use crate::playback::audio_output::AudioState;
-                    match self.audio_output.get_state() {
-                        AudioState::Playing => self.pause().await,
-                        AudioState::Paused => self.resume().await,
-                        AudioState::Stopped => {}
+                    // Dispatch on the slot's play intent, not the atomic. A load
+                    // still filling counts as its target intent; Completed and a
+                    // stopped/loading slot are no-ops (there is nothing to toggle).
+                    let intent = match &self.slot {
+                        PlaybackSlot::Active(cur) => Some(cur.phase.intent()),
+                        _ => None,
+                    };
+                    match intent {
+                        Some(PlayIntent::Playing) => self.pause().await,
+                        Some(PlayIntent::Paused) => self.resume().await,
+                        Some(PlayIntent::Stopped) | None => {}
                     }
                 }
                 PlaybackCommand::GetVolume(reply) => {

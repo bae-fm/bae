@@ -23,7 +23,8 @@ impl PlaybackService {
 
             // Advance to next track if queue has one, otherwise stay stopped
             if let Some(next_id) = self.playback_queue.advance_to_front() {
-                self.play_track(&next_id, TrackStart::Direct, false).await;
+                self.play_track(&next_id, TrackStart::Direct, PlayTarget::Playing)
+                    .await;
             }
         } else {
             // Current track is fine, but check preloaded next track
@@ -92,18 +93,18 @@ impl PlaybackService {
         // Otherwise hold it for the rebuild path (format change, no live
         // stream yet, or repeat-track mode where the current track replays
         // instead) which the completion → AutoAdvance flow handles.
-        let stage_target = match (&self.current_prepared, &self.current_playback_source) {
-            (Some(current), Some(gapless))
-                if current.sample_rate == prepared.sample_rate
-                    && current.channels == prepared.channels
+        let stage_source: Option<Arc<Mutex<source::PlaybackSource>>> = match &self.slot {
+            PlaybackSlot::Active(cur)
+                if cur.prepared.sample_rate == prepared.sample_rate
+                    && cur.prepared.channels == prepared.channels
                     && self.playback_queue.repeat_mode() != RepeatMode::Track
-                    && !self.should_hold_for_side_pause(current, &prepared) =>
+                    && !self.should_hold_for_side_pause(&cur.prepared, &prepared) =>
             {
-                Some(gapless)
+                Some(cur.source.clone())
             }
             _ => None,
         };
-        if let Some(gapless) = stage_target {
+        if let Some(gapless) = stage_source {
             info!(
                 "Preload: staged next track into gapless chain: {}",
                 track_id
@@ -139,11 +140,10 @@ impl PlaybackService {
             return Ok(None);
         }
 
-        let Some(current) = self
-            .current_prepared
-            .as_ref()
-            .map(|prepared| prepared.track_info.clone())
-        else {
+        let Some(current) = (match &self.slot {
+            PlaybackSlot::Active(cur) => Some(cur.prepared.track_info.clone()),
+            _ => None,
+        }) else {
             error!("side-pause decision requested without current track metadata");
             return Err(());
         };
@@ -219,51 +219,72 @@ impl PlaybackService {
     }
 
     pub(super) fn pause_for_side_end(&mut self, decision: SidePauseDecision) {
-        self.pending_side_pause = Some(decision.clone());
-        self.audio_output
-            .set_state(crate::playback::audio_output::AudioState::Paused);
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::StateChanged {
-                state: self.make_paused_state(PlaybackPauseReason::SideEnded(decision.prompt)),
-            },
-        );
+        // The current track drained (phase Completed); fold the side-pause into
+        // the phase, carrying the track it resumes into.
+        if let PlaybackSlot::Active(cur) = &mut self.slot {
+            cur.phase = TrackPhase::Paused(PausePhase::SideEnded(decision));
+        }
+        self.sync_audio_state();
+        self.emit_state();
         self.emit_queue_update();
     }
 
     pub(super) async fn resume_from_side_pause(&mut self) {
-        let Some(pending) = self.pending_side_pause.clone() else {
+        let Some(pending_track_id) = self.side_pause_resume_track_id() else {
             warn!("side-pause resume requested without pending side-pause state");
             return;
         };
-        let pending_track_id = pending.track_id;
 
         if self.next_track_id() == Some(pending_track_id.as_str()) {
-            self.advance_and_play_preloaded(&pending_track_id, true, false)
+            self.advance_and_play_preloaded(&pending_track_id, true, PlayTarget::Playing)
                 .await;
-            self.pending_side_pause = None;
             return;
         }
 
         let Some(front) = self.playback_queue.front().map(str::to_string) else {
             error!("side-pause resume expected {pending_track_id}, but the queue is empty");
-            self.pending_side_pause = None;
+            self.demote_side_pause_to_manual();
             return;
         };
         if front != pending_track_id {
             error!("side-pause resume expected {pending_track_id}, but queue front is {front}");
-            self.pending_side_pause = None;
+            self.demote_side_pause_to_manual();
             return;
         }
         match self.playback_queue.next_entry() {
             NextEntry::Play(track_id) => {
-                self.pending_side_pause = None;
                 self.emit_queue_update();
-                self.play_track(&track_id, TrackStart::Natural, false).await;
+                self.play_track(&track_id, TrackStart::Natural, PlayTarget::Playing)
+                    .await;
             }
             other => {
                 error!("side-pause resume expected Play for {pending_track_id}, got {other:?}");
-                self.pending_side_pause = None;
+                self.demote_side_pause_to_manual();
+            }
+        }
+    }
+
+    /// The track a side-pause resumes into, if the current phase is a side-pause.
+    fn side_pause_resume_track_id(&self) -> Option<String> {
+        match &self.slot {
+            PlaybackSlot::Active(cur) => match &cur.phase {
+                TrackPhase::Paused(PausePhase::SideEnded(decision)) => {
+                    Some(decision.track_id.clone())
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// Demote a side-pause to a plain manual pause without emitting. Used when a
+    /// queue mutation invalidates the pending next side, or on a side-pause
+    /// resume that can no longer find its target — the UI keeps showing the last
+    /// emitted state (still paused) while the machine forgets the side-pause.
+    pub(super) fn demote_side_pause_to_manual(&mut self) {
+        if let PlaybackSlot::Active(cur) = &mut self.slot {
+            if matches!(cur.phase, TrackPhase::Paused(PausePhase::SideEnded(_))) {
+                cur.phase = TrackPhase::Paused(PausePhase::Manual);
             }
         }
     }
@@ -288,11 +309,19 @@ impl PlaybackService {
         }
     }
 
+    /// The current track's playback source, if a track is active.
+    pub(super) fn current_source(&self) -> Option<&Arc<Mutex<source::PlaybackSource>>> {
+        match &self.slot {
+            PlaybackSlot::Active(cur) => Some(&cur.source),
+            _ => None,
+        }
+    }
+
     pub(super) fn clear_next_track_state(&mut self) {
-        clear_preloaded_next(
-            &mut self.preloaded_next,
-            self.current_playback_source.as_ref(),
-        );
+        // Clone the Arc so the borrow of the slot ends before we mutate
+        // `preloaded_next` (both are fields of self).
+        let current_source = self.current_source().cloned();
+        clear_preloaded_next(&mut self.preloaded_next, current_source.as_ref());
     }
 
     /// Whether a preloaded next-track source is available.
@@ -303,8 +332,7 @@ impl PlaybackService {
         match &preloaded.source {
             PreloadedNextSource::Held(_) => true,
             PreloadedNextSource::Staged => self
-                .current_playback_source
-                .as_ref()
+                .current_source()
                 .is_some_and(|gapless| gapless.lock().unwrap().has_next()),
         }
     }
@@ -352,16 +380,25 @@ impl PlaybackService {
         let track_id = crossing.incoming_fmt.track_id.clone();
         info!("Gapless boundary: now playing {}", track_id);
 
-        // The previous track's decoder has finished; the next track's decoder
-        // becomes the current one.
-        self.current_decoder_handle = Some(decoder_handle);
-
+        // The `PlaybackSource` already advanced within the same stream; swap the
+        // finishing track's prepared + decoder for the incoming one in place. The
+        // phase stays Playing — a crossing only fires while samples are pulling.
+        let Some(cur) = (match &mut self.slot {
+            PlaybackSlot::Active(cur) => Some(cur),
+            _ => None,
+        }) else {
+            warn!(
+                track_id = %crossing.incoming_fmt.track_id,
+                "Gapless boundary fired with no active track; ignoring"
+            );
+            return;
+        };
         // Release the previous track's buffer (unless shared with the new one).
-        if let Some(prev) = self.current_prepared.take() {
-            prev.release_buffers_not_used_by(&next_prepared, &mut self.shared_file_buffers);
-        }
+        cur.prepared
+            .release_buffers_not_used_by(&next_prepared, &mut self.shared_file_buffers);
+        cur.prepared = next_prepared;
+        cur.decoder_handle = decoder_handle;
 
-        self.current_prepared = Some(next_prepared);
         // The crossed-into track is now playing: hand its reader fetch priority
         // over the track preloaded below.
         self.mark_current_foreground();
@@ -373,7 +410,8 @@ impl PlaybackService {
         *self.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
 
         // Tell the UI which track is now playing (StateChanged covers the transition).
-        self.emit_current_state();
+        self.sync_audio_state();
+        self.emit_state();
 
         self.preload_queue_front().await;
 
@@ -401,12 +439,12 @@ impl PlaybackService {
         &mut self,
         preloaded_track_id: &str,
         natural: bool,
-        preserve_paused: bool,
+        target: PlayTarget,
     ) {
         if self.has_preloaded_next() {
             info!("Using preloaded track: {}", preloaded_track_id);
             self.advance_to_preloaded();
-            self.play_preloaded_track(natural, preserve_paused).await;
+            self.play_preloaded_track(natural, target).await;
         } else {
             // Preload started but the streaming source isn't ready yet.
             self.advance_to_preloaded();
@@ -414,7 +452,7 @@ impl PlaybackService {
             self.play_track(
                 preloaded_track_id,
                 TrackStart::from_natural_transition(natural),
-                preserve_paused,
+                target,
             )
             .await;
         }
@@ -428,7 +466,7 @@ impl PlaybackService {
     pub(super) async fn play_preloaded_track(
         &mut self,
         is_natural_transition: bool,
-        preserve_paused: bool,
+        target: PlayTarget,
     ) {
         let preloaded = match self.preloaded_next.take() {
             Some(preloaded) => preloaded,
@@ -452,15 +490,13 @@ impl PlaybackService {
         if !is_natural_transition && pregap_ms.is_some_and(|p| p > 0) {
             info!("Pregap skip needed for preloaded track - falling back to play_track");
             next_prepared.cancel_unshared_buffers();
-            if let Some(source) =
-                detach_preloaded_source(self.current_playback_source.as_ref(), preloaded_source)
-            {
+            if let Some(source) = detach_preloaded_source(self.current_source(), preloaded_source) {
                 source.cancel();
             }
             self.play_track(
                 &track_id,
                 TrackStart::from_natural_transition(is_natural_transition),
-                preserve_paused,
+                target,
             )
             .await;
             return;
@@ -468,49 +504,51 @@ impl PlaybackService {
 
         // Recover the preloaded next source (staged in the gapless chain or held
         // for the rebuild path) BEFORE tearing down the current stream.
-        let source =
-            detach_preloaded_source(self.current_playback_source.as_ref(), preloaded_source)
-                .expect("Preloaded track has no streaming source");
+        let source = detach_preloaded_source(self.current_source(), preloaded_source)
+            .expect("Preloaded track has no streaming source");
 
-        // Cancel current streaming state
-        if let Some(gapless) = self.current_playback_source.take() {
-            if let Ok(guard) = gapless.lock() {
+        // Tear down the current track. Cancel its source so the callback goes
+        // silent, then release its buffers (unless shared with the incoming
+        // track). The preloaded track's already-running decoder becomes current.
+        if let PlaybackSlot::Active(cur) = std::mem::replace(&mut self.slot, PlaybackSlot::Stopped)
+        {
+            if let Ok(guard) = cur.source.lock() {
                 guard.cancel();
             }
+            cur.prepared
+                .release_buffers_not_used_by(&next_prepared, &mut self.shared_file_buffers);
+            // Dropping `cur` drops the old stream/events and detaches its decoder.
         }
-        if let Some(prepared) = &self.current_prepared {
-            prepared.release_buffers_not_used_by(&next_prepared, &mut self.shared_file_buffers);
-        }
-
-        // Swap next to current. The preloaded track's decoder becomes the current
-        // one; the previous track's decoder was cancelled above via the source.
-        self.current_decoder_handle = Some(decoder_handle);
-        self.current_prepared = Some(next_prepared);
-        // The preloaded track is now the playing one: hand its reader fetch
-        // priority over whatever gets preloaded next.
-        self.mark_current_foreground();
 
         // Natural transition: start at position 0 (INDEX 00, pregap plays).
-        let fmt = self
-            .current_prepared
-            .as_ref()
-            .expect("current_prepared just set above")
-            .track_fmt(std::time::Duration::ZERO);
+        let fmt = next_prepared.track_fmt(std::time::Duration::ZERO);
 
-        // Initialize streaming with the preloaded source
-        if !self.init_streaming(source, fmt).await {
-            self.stop().await;
-            return;
-        }
+        // Initialize streaming with the preloaded source. On failure the caller
+        // owns the failure path: surface a PlaybackError, then stop() to resolve
+        // the transition to Stopped (as play_track does when audio can't start).
+        let parts = match self.init_streaming(source, fmt).await {
+            Ok(parts) => parts,
+            Err(_) => {
+                emit_progress(
+                    &self.progress_tx,
+                    PlaybackProgress::PlaybackError {
+                        reason: crate::ui::PlaybackErrorReason::internal(
+                            "Couldn't start audio output for the next track.",
+                        ),
+                    },
+                );
+                self.stop().await;
+                return;
+            }
+        };
 
-        // Set audio state: always Playing unless preserving paused state
-        if !preserve_paused {
-            self.audio_output
-                .set_state(crate::playback::audio_output::AudioState::Playing);
-        }
-
-        // Send state notification
-        self.emit_current_state();
+        // The preloaded track's already-running decoder becomes current.
+        let started = StartedStream {
+            parts,
+            decoder_handle,
+        };
+        self.install_active_track(next_prepared, started, target.into_track_phase());
+        self.emit_state();
 
         self.preload_queue_front().await;
 

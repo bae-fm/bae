@@ -8,19 +8,21 @@ impl PlaybackService {
     /// Pause main player for preview. Called after a preview successfully starts
     /// so that a failed preview start doesn't leave the main player paused.
     pub(super) fn pause_main_for_preview(&mut self) {
-        if self.audio_output.get_state() == crate::playback::audio_output::AudioState::Playing {
-            self.main_was_playing_before_preview = true;
-            self.audio_output
-                .set_state(crate::playback::audio_output::AudioState::Paused);
-
-            if self.current_prepared.is_some() {
-                emit_progress(
-                    &self.progress_tx,
-                    PlaybackProgress::StateChanged {
-                        state: self.make_paused_state(PlaybackPauseReason::Manual),
-                    },
-                );
+        // Pause the main player only if it is actually playing (a load still
+        // filling counts as playing intent). A paused/stopped main player is left
+        // alone, and the resume marker stays clear so preview stop doesn't
+        // spuriously resume it.
+        let paused = match &mut self.slot {
+            PlaybackSlot::Active(cur) if cur.phase.intent() == PlayIntent::Playing => {
+                cur.phase = TrackPhase::Paused(PausePhase::Manual);
+                true
             }
+            _ => false,
+        };
+        if paused {
+            self.main_was_playing_before_preview = true;
+            self.sync_audio_state();
+            self.emit_state();
         }
     }
 
@@ -30,16 +32,16 @@ impl PlaybackService {
             return;
         }
         self.main_was_playing_before_preview = false;
-        self.audio_output
-            .set_state(crate::playback::audio_output::AudioState::Playing);
-
-        if self.current_prepared.is_some() {
-            emit_progress(
-                &self.progress_tx,
-                PlaybackProgress::StateChanged {
-                    state: self.make_playing_state(),
-                },
-            );
+        let resumed = match &mut self.slot {
+            PlaybackSlot::Active(cur) => {
+                cur.phase = TrackPhase::Playing;
+                true
+            }
+            _ => false,
+        };
+        if resumed {
+            self.sync_audio_state();
+            self.emit_state();
         }
     }
 

@@ -388,9 +388,6 @@ pub trait AudioOutput: Send + 'static {
 
     fn set_state(&self, state: AudioState);
     fn get_state(&self) -> AudioState;
-    fn is_paused(&self) -> bool {
-        self.get_state() == AudioState::Paused
-    }
     fn set_volume(&self, volume: f32);
     fn get_volume(&self) -> f32;
 }
