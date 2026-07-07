@@ -1,6 +1,8 @@
 ﻿using System.Globalization;
+#if !BAE_PURE_FORMATTERS
 using Jeffijoe.MessageFormat;
 using Microsoft.Windows.ApplicationModel.Resources;
+#endif
 
 namespace Bae.Windows;
 
@@ -24,6 +26,7 @@ namespace Bae.Windows;
 /// </summary>
 internal static class Loc
 {
+#if !BAE_PURE_FORMATTERS
     // The Core table holds bridge-originated keys (core.*) and shared chrome
     // (ui.*); both are generated from the master catalog. Bare app chrome lives
     // in the default Resources table. ResourceLoader maps a table name to its
@@ -111,6 +114,7 @@ internal static class Loc
         }
         return formatter.FormatMessage(pattern, data);
     }
+#endif
 
     // ── Value formatters (locale-aware) ──────────────────────────────────────
 

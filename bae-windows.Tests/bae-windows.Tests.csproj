@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Unit tests for bae-windows' locale-aware value formatters (Loc.Bytes /
+    Loc.Duration / Loc.Number) — the reimplementation of macOS's
+    ByteCountFormatter / DateComponentsFormatter, where parity matters.
+
+    These formatters are pure (System.Globalization only), so this is a plain
+    net8.0 xUnit project that runs on any host, including the macOS dev machine.
+    It compiles Loc.cs directly with BAE_PURE_FORMATTERS defined, which strips
+    the Windows-only catalog-resolution half of the file (WinUI ResourceLoader +
+    the MessageFormat parser). The WinUI build never defines that symbol, so its
+    view of Loc.cs is unchanged.
+
+    The rest of bae-windows' pure logic (ReleaseCandidateChoice.Summary,
+    ImportCandidate status/ToString, BridgeDisplay) depends on the generated
+    uniffi.bae_bridge C# bindings, which only exist after the Rust bridge is
+    built on Windows — so those aren't testable on the macOS host and aren't
+    included here.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Bae.Windows.Tests</RootNamespace>
+    <!-- The app targets net8.0; run the tests on whatever shared runtime the host
+         has (macOS dev boxes may only carry a newer major). No-op on Windows CI,
+         which installs the 8.0.x runtime. -->
+    <RollForward>Major</RollForward>
+    <DefineConstants>$(DefineConstants);BAE_PURE_FORMATTERS</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../bae-windows/Loc.cs" Link="Loc.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+</Project>
