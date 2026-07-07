@@ -6,4 +6,11 @@ extension BridgeDownloadOp {
     var totalSizeText: String {
         totalSize.formatted(.byteCount(style: .file))
     }
+
+    /// A download-queue row's secondary line: the release's file count (a
+    /// localized plural) and its total size, e.g. "12 files · 350 MB".
+    var detailText: String {
+        let files = String(localized: "\(fileCount) files")
+        return "\(files) · \(totalSizeText)"
+    }
 }

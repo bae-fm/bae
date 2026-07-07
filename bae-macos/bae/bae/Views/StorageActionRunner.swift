@@ -101,7 +101,7 @@ final class StorageActionRunner {
             runEach(
                 releaseIds,
                 String(localized: "remove local copy"),
-                releaseEditor.unpinRelease
+                downloads.unpinRelease
             )
         }
     }

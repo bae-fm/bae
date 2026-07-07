@@ -58,6 +58,7 @@ struct ContentView: View {
                         .environment(service.configStore)
                         .environment(service.playbackStore)
                         .environment(service.downloadStore)
+                        .environment(service.downloads)
                         .environment(service.projectionRegistry)
                         .environment(service.mediaPaths)
                         .environment(service.library)

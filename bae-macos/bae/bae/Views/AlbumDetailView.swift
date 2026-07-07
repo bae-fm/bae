@@ -537,9 +537,9 @@ extension AlbumDetailView {
     }
 
     private func unpinRelease(releaseId: String) {
-        let releaseEditor = releaseEditor
+        let downloads = downloads
         runStorageTransition(releaseId: releaseId) {
-            try await releaseEditor.unpinRelease(releaseId)
+            try await downloads.unpinRelease(releaseId)
         }
     }
 

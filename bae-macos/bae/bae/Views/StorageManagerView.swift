@@ -270,7 +270,7 @@ private struct DownloadRow: View {
                     Text(op.title)
                         .lineLimit(1)
 
-                    Text(detailText)
+                    Text(op.detailText)
                         .font(.caption)
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
@@ -323,10 +323,6 @@ private struct DownloadRow: View {
         if case .active(let progress) = op.state {
             DownloadTransferProgressView(progress: progress)
         }
-    }
-
-    private var detailText: String {
-        "\(op.fileCount) files · \(op.totalSizeText)"
     }
 }
 

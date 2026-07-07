@@ -10,7 +10,6 @@ final class ReleaseEditor: Sendable, Observable {
             _ albumId: String, _ releaseId: String,
             _ selection: BridgeCoverSelection
         ) async throws -> Void
-    let unpinRelease: @Sendable (_ releaseId: String) async throws -> Void
     let manageRelease:
         @Sendable (_ releaseId: String, _ pin: Bool) async throws -> Void
     let unmanageRelease:
@@ -35,9 +34,6 @@ final class ReleaseEditor: Sendable, Observable {
         changeCover:
             @escaping @Sendable (String, String, BridgeCoverSelection)
             async throws -> Void = { _, _, _ in },
-        unpinRelease: @escaping @Sendable (String) async throws -> Void = {
-            _ in
-        },
         manageRelease:
             @escaping @Sendable (String, Bool) async throws -> Void =
             { _, _ in },
@@ -70,7 +66,6 @@ final class ReleaseEditor: Sendable, Observable {
             }
     ) {
         self.changeCover = changeCover
-        self.unpinRelease = unpinRelease
         self.manageRelease = manageRelease
         self.unmanageRelease = unmanageRelease
         self.deleteRelease = deleteRelease
@@ -91,7 +86,6 @@ final class ReleaseEditor: Sendable, Observable {
                     selection: $2
                 )
             },
-            unpinRelease: { try await handle.unpinRelease(releaseId: $0) },
             manageRelease: {
                 try await handle.makeReleaseRemote(releaseId: $0, pin: $1)
             },

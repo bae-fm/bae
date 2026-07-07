@@ -10,6 +10,9 @@ final class Downloads: Sendable, Observable {
     /// queue; the worker drains them one at a time. Fire-and-forget — progress
     /// and queue state arrive via `downloadQueueChanged` events.
     let queuePins: @Sendable (_ releaseIds: [String]) async -> Void
+    /// Unpin a release: coven moves its blobs from storage/pinned/ to the
+    /// evictable cache; the release stays Remote and playable.
+    let unpinRelease: @Sendable (_ releaseId: String) async throws -> Void
     /// Pause or resume the download queue. In-flight downloads finish; the
     /// queue stops starting new ones until resumed.
     let setDownloadsPaused: @Sendable (_ paused: Bool) -> Void
@@ -21,11 +24,15 @@ final class Downloads: Sendable, Observable {
 
     init(
         queuePins: @escaping @Sendable ([String]) async -> Void = { _ in },
+        unpinRelease: @escaping @Sendable (String) async throws -> Void = {
+            _ in
+        },
         setDownloadsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
         cancelDownload: @escaping @Sendable (String) -> Void = { _ in },
         retryDownloads: @escaping @Sendable () -> Void = {}
     ) {
         self.queuePins = queuePins
+        self.unpinRelease = unpinRelease
         self.setDownloadsPaused = setDownloadsPaused
         self.cancelDownload = cancelDownload
         self.retryDownloads = retryDownloads
@@ -34,6 +41,7 @@ final class Downloads: Sendable, Observable {
     convenience init(handle: any AppHandleProtocol) {
         self.init(
             queuePins: { await handle.queuePinReleases(releaseIds: $0) },
+            unpinRelease: { try await handle.unpinRelease(releaseId: $0) },
             setDownloadsPaused: { handle.setDownloadsPaused(paused: $0) },
             cancelDownload: { handle.cancelDownload(releaseId: $0) },
             retryDownloads: { handle.retryDownloads() }

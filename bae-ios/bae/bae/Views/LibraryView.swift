@@ -18,6 +18,49 @@ private enum LibraryRoute: Hashable {
     case work(String)
 }
 
+/// Maps a `LibraryRoute` to its pushed screen, threading navigation callbacks
+/// back through the shared route path so a destination can open further ones.
+private struct LibraryRouteDestination: View {
+    let route: LibraryRoute
+    @Binding
+    var routePath: [LibraryRoute]
+
+    var body: some View {
+        switch route {
+        case .album(let albumId, let releaseId, let context):
+            AlbumDetailView(
+                albumId: albumId,
+                initialReleaseId: releaseId,
+                context: context
+            )
+        case .composer(let artistId):
+            ComposerDetailScreen(
+                artistId: artistId,
+                openWork: { routePath.append(.work($0)) },
+                openAlbum: { albumId, releaseId in
+                    routePath.appendAlbum(
+                        albumId: albumId,
+                        initialReleaseId: releaseId,
+                        context: nil
+                    )
+                }
+            )
+        case .work(let workId):
+            WorkDetailScreen(
+                workId: workId,
+                openWork: { routePath.append(.work($0)) },
+                openAlbum: { release in
+                    routePath.appendAlbum(
+                        albumId: release.albumId,
+                        initialReleaseId: release.releaseId,
+                        context: AlbumDetailContext(workRelease: release)
+                    )
+                }
+            )
+        }
+    }
+}
+
 /// Library browse root: a top bar with sync status, an album grid paged from
 /// the database, navigation into album detail, and a persistent now-playing
 /// bar. The grid re-queries when core invalidates the album or composer list.
@@ -37,6 +80,8 @@ struct LibraryView: View {
 
     @State
     private var showSettings = false
+    @State
+    private var showDownloads = false
     @State
     private var mode: LibraryBrowserMode = .albums
     @State
@@ -79,43 +124,12 @@ struct LibraryView: View {
             VStack(spacing: 0) {
                 LibraryBanner()
                 LibraryModePicker(mode: $mode)
-                DownloadProgressStrip()
+                DownloadsStrip { showDownloads = true }
                 content
             }
             .background(Theme.background)
             .navigationDestination(for: LibraryRoute.self) { route in
-                switch route {
-                case .album(let albumId, let releaseId, let context):
-                    AlbumDetailView(
-                        albumId: albumId,
-                        initialReleaseId: releaseId,
-                        context: context
-                    )
-                case .composer(let artistId):
-                    ComposerDetailScreen(
-                        artistId: artistId,
-                        openWork: { routePath.append(.work($0)) },
-                        openAlbum: { albumId, releaseId in
-                            routePath.appendAlbum(
-                                albumId: albumId,
-                                initialReleaseId: releaseId,
-                                context: nil
-                            )
-                        }
-                    )
-                case .work(let workId):
-                    WorkDetailScreen(
-                        workId: workId,
-                        openWork: { routePath.append(.work($0)) },
-                        openAlbum: { release in
-                            routePath.appendAlbum(
-                                albumId: release.albumId,
-                                initialReleaseId: release.releaseId,
-                                context: AlbumDetailContext(workRelease: release)
-                            )
-                        }
-                    )
-                }
+                LibraryRouteDestination(route: route, routePath: $routePath)
             }
             .navigationTitle("bae")
             .navigationBarTitleDisplayMode(.inline)
@@ -166,6 +180,9 @@ struct LibraryView: View {
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
+            }
+            .sheet(isPresented: $showDownloads) {
+                DownloadsView()
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 NowPlayingBar()
@@ -290,39 +307,53 @@ struct LibraryView: View {
     }
 }
 
-private struct DownloadProgressStrip: View {
+/// Compact one-line download summary between the mode picker and the grid:
+/// the active download's bar (the queue is serial, so at most one) plus the
+/// count summary / paused chip. Tapping opens the Downloads sheet. Hidden
+/// when the queue is empty — the queue is transient, so there is nothing to
+/// manage then.
+private struct DownloadsStrip: View {
+    let onTap: () -> Void
+
     @Environment(DownloadStore.self)
     private var downloadStore
 
     var body: some View {
-        VStack(spacing: 0) {
-            ForEach(downloadStore.snapshot.downloads, id: \.releaseId) { op in
-                DownloadProgressRow(op: op)
+        let snapshot = downloadStore.snapshot
+        if !snapshot.downloads.isEmpty {
+            Button(action: onTap) {
+                HStack(spacing: 12) {
+                    Image(systemName: "arrow.down.circle")
+                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        DownloadQueueSummaryLine(snapshot: snapshot, compact: true)
+                        if let progress = activeProgress(snapshot) {
+                            ProgressView(value: progress.fraction)
+                                .progressViewStyle(.linear)
+                        }
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
+                .background(Theme.surface)
             }
+            .buttonStyle(.plain)
         }
     }
-}
 
-private struct DownloadProgressRow: View {
-    let op: BridgeDownloadOp
-
-    var body: some View {
-        switch op.state {
-        case .active(let progress):
-            DownloadTransferProgressView(progress: progress)
-                .padding(.horizontal)
-                .padding(.vertical, 6)
-                .background(Theme.surface)
-        case .failed(let error):
-            Text(error)
-                .font(.caption2)
-                .foregroundStyle(.red)
-                .padding(.horizontal)
-                .padding(.vertical, 6)
-                .background(Theme.surface)
-        default:
-            EmptyView()
+    private func activeProgress(
+        _ snapshot: BridgeDownloadSnapshot
+    ) -> BridgeDownloadTransferProgress? {
+        for op in snapshot.downloads {
+            if case .active(let progress) = op.state {
+                return progress
+            }
         }
+        return nil
     }
 }
 

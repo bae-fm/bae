@@ -56,16 +56,20 @@ extension BridgeDownloadSnapshot {
     }
 }
 
-extension BridgeExportSnapshot {
-    var summaryText: String {
-        var parts: [String] = []
-        for (key, count) in [
-            ("core.queue.exporting", total.active),
-            ("core.queue.failed", total.failed),
-            ("core.queue.queued", total.queued),
-        ] where count > 0 {
-            parts.append(QueueSummary.countLabel(key, count))
+// The export queue is desktop-gated, so `BridgeExportSnapshot` isn't generated
+// for iOS. The outbox and download snapshots exist on both platforms.
+#if !os(iOS)
+    extension BridgeExportSnapshot {
+        var summaryText: String {
+            var parts: [String] = []
+            for (key, count) in [
+                ("core.queue.exporting", total.active),
+                ("core.queue.failed", total.failed),
+                ("core.queue.queued", total.queued),
+            ] where count > 0 {
+                parts.append(QueueSummary.countLabel(key, count))
+            }
+            return parts.joined(separator: " · ")
         }
-        return parts.joined(separator: " · ")
     }
-}
+#endif

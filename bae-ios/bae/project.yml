@@ -45,6 +45,10 @@ targets:
       - path: ../../bae-macos/bae/bae/DownloadTransferProgressView.swift
       - path: ../../bae-macos/bae/bae/DurationClock.swift
       - path: ../../bae-macos/bae/bae/Concurrency/DetachedWork.swift
+      - path: ../../bae-macos/bae/bae/Services/Downloads.swift
+      - path: ../../bae-macos/bae/bae/Services/Store/DownloadStore.swift
+      - path: ../../bae-macos/bae/bae/QueueSummary.swift
+      - path: ../../bae-macos/bae/bae/BridgeDownloadOp+Size.swift
       - path: ../../bae-macos/bae/bae/Services/PlaybackStore.swift
       - path: ../../bae-macos/bae/bae/Services/PlaybackPositionEvent.swift
       - path: ../../bae-macos/bae/bae/Services/ConfigStore.swift

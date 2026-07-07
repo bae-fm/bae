@@ -35,6 +35,7 @@ final class AppService: Observable {
     let queue: Queue
     let mediaPaths: MediaPaths
     let sync: Sync
+    let downloads: Downloads
 
     init(appHandle: AppHandle, config: BridgeConfig) {
         self.appHandle = appHandle
@@ -89,6 +90,10 @@ final class AppService: Observable {
             }
         )
         sync = Sync(handle: appHandle)
+        // Every pin/unpin/queue-control bridge method is present on iOS, so the
+        // convenience init wires them all — unlike `Library`/`MediaPaths`, which
+        // are built from closures because some of their methods are desktop-only.
+        downloads = Downloads(handle: appHandle)
     }
 
     /// Subscribe to the live event stream and register media-control remote
@@ -170,7 +175,7 @@ final class AppService: Observable {
                 }
             },
             apply: { [downloadStore] snapshot in
-                downloadStore.snapshot = snapshot
+                downloadStore.applySnapshot(snapshot)
             },
             onError: { [configStore] error in configStore.showError(error) }
         )
