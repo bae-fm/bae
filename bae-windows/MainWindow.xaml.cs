@@ -413,22 +413,22 @@ public sealed partial class MainWindow : Window
 
     private void RefreshSyncStatus()
     {
-        var (current, json) = WithCurrentHandle(NativeBae.SyncStatusJson);
+        var (current, result) = WithCurrentHandle(NativeBae.SyncStatus);
         if (!current)
         {
             return;
         }
-        if (json is null)
+        if (result.Error is not null)
         {
-            BaeDiagnostics.Logger.Error("Failed to read sync status snapshot.");
+            BaeDiagnostics.Logger.Error($"Failed to read sync status snapshot: {result.Error}");
             ResetSyncIndicator();
             return;
         }
 
-        var status = JsonSerializer.Deserialize<SyncStatus>(json, JsonOptions);
+        var status = result.Status;
         if (status is null)
         {
-            BaeDiagnostics.Logger.Error("Failed to decode sync status snapshot.");
+            BaeDiagnostics.Logger.Error("Failed to read sync status snapshot.");
             ResetSyncIndicator();
             return;
         }
@@ -436,9 +436,9 @@ public sealed partial class MainWindow : Window
         RenderSyncStatus(status);
     }
 
-    private void RenderSyncStatus(SyncStatus status)
+    private void RenderSyncStatus(BridgeSyncStatusSnapshot status)
     {
-        var syncLine = status.Error?.LocalizedLine;
+        var syncLine = status.Error is null ? null : NativeBae.ToDiagnosticError(status.Error).LocalizedLine;
         if (syncLine is null)
         {
             SyncBanner.IsOpen = false;

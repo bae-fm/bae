@@ -609,7 +609,7 @@ internal static class NativeBae
             _ => new PlaybackPauseReason { Kind = "manual" },
         };
 
-    private static DiagnosticError ToDiagnosticError(BridgeException exception) =>
+    internal static DiagnosticError ToDiagnosticError(BridgeException exception) =>
         exception switch
         {
             BridgeException.NotFound notFound => new DiagnosticError
@@ -725,14 +725,8 @@ internal static class NativeBae
     internal static (BridgeDownloadSnapshot? Snapshot, string? Error) DownloadSnapshot(AppHandle handle) =>
         CaptureBridgeValue(handle.GetDownloadSnapshot);
 
-    internal static string? SyncStatusJson(AppHandle handle) =>
-        Json(new SyncStatus
-        {
-            Error = handle.GetSyncStatus().Error is { } error ? ToDiagnosticError(error) : null,
-            LastSyncTime = handle.GetSyncStatus().LastSyncTime,
-            Syncing = handle.GetSyncStatus().Syncing,
-            SyncReady = handle.GetSyncStatus().SyncReady,
-        });
+    internal static (BridgeSyncStatusSnapshot? Status, string? Error) SyncStatus(AppHandle handle) =>
+        CaptureBridgeValue(handle.GetSyncStatus);
 
     internal static void SetDownloadsPaused(AppHandle handle, bool paused) => handle.SetDownloadsPaused(paused);
 
