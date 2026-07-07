@@ -3439,15 +3439,15 @@ public sealed partial class MainWindow : Window
         }
         foreach (var album in results.Albums)
         {
-            album.Handle = handle;
+            album.AttachCover(handle, DispatcherQueue);
         }
         foreach (var composer in results.Composers)
         {
-            composer.Handle = handle;
+            composer.AttachCover(handle, DispatcherQueue);
         }
         foreach (var work in results.Works)
         {
-            work.Handle = handle;
+            work.AttachCover(handle, DispatcherQueue);
         }
 
         if (results.Albums.Count == 0 && results.Tracks.Count == 0
@@ -3532,7 +3532,7 @@ public sealed partial class MainWindow : Window
 
         foreach (var album in albums)
         {
-            album.Handle = handle;
+            album.AttachCover(handle, DispatcherQueue);
             Albums.Add(album);
         }
 
@@ -3567,7 +3567,7 @@ public sealed partial class MainWindow : Window
         }
         foreach (var composer in page.Composers)
         {
-            composer.Handle = handle;
+            composer.AttachCover(handle, DispatcherQueue);
             Composers.Add(composer);
         }
         StatusText.Text = page.Composers.Count == 0 ? Loc.Chrome("library.no_composers") : string.Empty;
@@ -3603,16 +3603,16 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
-        detail.Composer.Handle = handle;
+        detail.Composer.AttachCover(handle, DispatcherQueue);
         foreach (var group in detail.WorkGroups)
         {
             if (group.Parent is not null)
             {
-                group.Parent.Handle = handle;
+                group.Parent.AttachCover(handle, DispatcherQueue);
             }
             foreach (var work in group.Works)
             {
-                work.Handle = handle;
+                work.AttachCover(handle, DispatcherQueue);
             }
         }
 
@@ -3717,14 +3717,14 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
-        detail.Work.Handle = handle;
+        detail.Work.AttachCover(handle, DispatcherQueue);
         foreach (var work in detail.ChildWorks)
         {
-            work.Handle = handle;
+            work.AttachCover(handle, DispatcherQueue);
         }
         foreach (var release in detail.Releases)
         {
-            release.Handle = handle;
+            release.AttachCover(handle, DispatcherQueue);
         }
 
         ShowComposerBrowser();

@@ -74,7 +74,7 @@
                             Height="180"
                             CornerRadius="6"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                            <Image Source="{x:Bind Cover}" Stretch="UniformToFill" />
+                            <Image Source="{x:Bind Cover, Mode=OneWay}" Stretch="UniformToFill" />
                         </Border>
                         <TextBlock
                             Text="{x:Bind Title}"
@@ -115,7 +115,7 @@
                                 Height="42"
                                 CornerRadius="6"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                                <Image Source="{x:Bind Cover}" Stretch="UniformToFill" />
+                                <Image Source="{x:Bind Cover, Mode=OneWay}" Stretch="UniformToFill" />
                             </Border>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="{x:Bind Name}" MaxLines="1" TextTrimming="CharacterEllipsis" />

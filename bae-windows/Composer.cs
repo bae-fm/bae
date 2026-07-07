@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media;
 using uniffi.bae_bridge;
 
@@ -39,14 +41,19 @@ public sealed class TrackSearchResult
     public string DurationLabel => Loc.Duration(DurationMs);
 }
 
-public sealed class ComposerSummary
+public sealed class ComposerSummary : INotifyPropertyChanged
 {
     private readonly BridgeComposerSummary _composer;
+    private readonly CoverImage.Binding _cover;
 
     public ComposerSummary(BridgeComposerSummary composer)
     {
         _composer = composer;
+        _cover = new CoverImage.Binding(composer.Image);
+        _cover.SourceChanged += () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Cover)));
     }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public string ArtistId => _composer.ArtistId;
     public string Name => _composer.Name;
@@ -55,20 +62,26 @@ public sealed class ComposerSummary
     public long LinkedReleaseCount => _composer.LinkedReleaseCount;
     public long UnlinkedCreditCount => _composer.UnlinkedCreditCount;
 
-    internal LibraryHandle? Handle { get; set; }
+    internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(handle, dispatcherQueue);
 
-    public ImageSource? Cover => CoverImage.LoadByImageRef(Handle, _composer.Image);
+    public ImageSource? Cover => _cover.Source;
     public string WorkCountText => Loc.Chrome("work.count", "count", Loc.Number(WorkCount));
 }
 
-public sealed class WorkSummary
+public sealed class WorkSummary : INotifyPropertyChanged
 {
     private readonly BridgeWorkSummary _work;
+    private readonly CoverImage.Binding _cover;
 
     public WorkSummary(BridgeWorkSummary work)
     {
         _work = work;
+        _cover = new CoverImage.Binding(work.RepresentativeCover);
+        _cover.SourceChanged += () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Cover)));
     }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public string WorkId => _work.WorkId;
     public string Title => _work.Title;
@@ -79,9 +92,10 @@ public sealed class WorkSummary
     public long LinkedReleaseCount => _work.LinkedReleaseCount;
     public string? RepresentativeReleaseId => _work.RepresentativeReleaseId;
 
-    internal LibraryHandle? Handle { get; set; }
+    internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(handle, dispatcherQueue);
 
-    public ImageSource? Cover => CoverImage.LoadByImageRef(Handle, _work.RepresentativeCover);
+    public ImageSource? Cover => _cover.Source;
 }
 
 public sealed class ComposerWorkGroup
@@ -150,14 +164,19 @@ public sealed class TrackRoleSummary
     public string? SourceCredit => _role.SourceCredit;
 }
 
-public sealed class WorkReleaseSummary
+public sealed class WorkReleaseSummary : INotifyPropertyChanged
 {
     private readonly BridgeWorkReleaseSummary _release;
+    private readonly CoverImage.Binding _cover;
 
     public WorkReleaseSummary(BridgeWorkReleaseSummary release)
     {
         _release = release;
+        _cover = new CoverImage.Binding(release.Cover);
+        _cover.SourceChanged += () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CoverImage)));
     }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public string ReleaseId => _release.ReleaseId;
     public string AlbumId => _release.AlbumId;
@@ -165,9 +184,10 @@ public sealed class WorkReleaseSummary
     public string DisplayName => _release.DisplayName;
     public string? Format => _release.Format;
 
-    internal LibraryHandle? Handle { get; set; }
+    internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(handle, dispatcherQueue);
 
-    public ImageSource? CoverImage => Bae.Windows.CoverImage.LoadByImageRef(Handle, _release.Cover);
+    public ImageSource? CoverImage => _cover.Source;
     public string DisplaySubtitle =>
         string.IsNullOrWhiteSpace(Format)
             ? DisplayName

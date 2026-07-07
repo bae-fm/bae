@@ -17,6 +17,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -28,6 +29,10 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.formatFileSize
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeDownloadOp
@@ -64,6 +69,7 @@ internal fun LibraryBrowser(
     val appError by session.configStore.error.collectAsState()
     val gridState = rememberLazyGridState()
     val appContext = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxSize()) {
         LibraryBrowserChrome(
@@ -82,7 +88,7 @@ internal fun LibraryBrowser(
             composerSortCriterion = composerSortCriterion,
             onComposerSortChange = { composerSortCriterion = it },
             syncing = syncing,
-            onShuffleLibrary = { session.playLibraryShuffledOrReport(appContext) },
+            onShuffleLibrary = { session.playLibraryShuffledOrReport(appContext, coroutineScope) },
             onSettings = onSettings,
         )
         DownloadProgressStrip(session.downloadStore)
@@ -173,12 +179,19 @@ private fun ULong.requireDownloadByteCountInDisplayRange(): Long {
     return toLong()
 }
 
-private fun OpenLibrary.playLibraryShuffledOrReport(appContext: Context) {
-    try {
-        appHandle.playLibraryShuffled()
-    } catch (e: Exception) {
-        logger.error("playLibraryShuffled failed", e)
-        configStore.showError(appContext.getString(R.string.library_load_failed))
+private fun OpenLibrary.playLibraryShuffledOrReport(
+    appContext: Context,
+    coroutineScope: CoroutineScope,
+) {
+    coroutineScope.launch {
+        try {
+            withContext(Dispatchers.IO) {
+                appHandle.playLibraryShuffled()
+            }
+        } catch (e: Exception) {
+            logger.error("playLibraryShuffled failed", e)
+            configStore.showError(appContext.getString(R.string.library_load_failed))
+        }
     }
 }
 
