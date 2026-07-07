@@ -6286,9 +6286,8 @@ public sealed partial class MainWindow : Window
             }
 
             ClearSettingsError();
-            var json = JsonSerializer.Serialize(presets, JsonOptions);
             var (current, error) = await RunForCurrentHandle(
-                handle => NativeBae.SetExportPresets(handle, json));
+                handle => NativeBae.SetExportPresets(handle, presets));
             if (!current)
             {
                 return;

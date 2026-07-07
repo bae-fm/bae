@@ -715,11 +715,9 @@ internal static class NativeBae
     internal static string? SetExportFilenameTemplate(AppHandle handle, string template) =>
         CaptureError(() => handle.SetExportFilenameTemplate(template));
 
-    internal static string? SetExportPresets(AppHandle handle, string presetsJson) =>
+    internal static string? SetExportPresets(AppHandle handle, IEnumerable<ExportPreset> presets) =>
         CaptureError(() => handle.SetExportPresets(
-            (JsonSerializer.Deserialize<ExportPreset[]>(presetsJson, JsonOptions) ?? [])
-            .Select(ExportPresetBridge)
-            .ToArray()));
+            presets.Select(ExportPresetBridge).ToArray()));
 
     internal static string? SetDefaultTrackExportSelection(AppHandle handle, BridgeExportSelection selection) =>
         CaptureError(() => handle.SetDefaultTrackExportSelection(selection));
