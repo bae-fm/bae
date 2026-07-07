@@ -1298,6 +1298,26 @@ async fn find_album_detail_returns_none_when_releases_vanish() {
 }
 
 #[tokio::test]
+async fn resolve_album_detail_errors_when_releases_vanish() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+
+    let err = manager
+        .resolve_album_detail(crate::db::DbAlbumDetail {
+            album,
+            artists: Vec::new(),
+            releases: Vec::new(),
+        })
+        .await
+        .expect_err("empty album detail must return an error");
+
+    assert!(
+        matches!(&err, LibraryError::TrackMapping(message) if message.contains("has no releases")),
+        "empty album detail error should name the missing releases: {err}"
+    );
+}
+
+#[tokio::test]
 async fn find_release_detail_returns_some_for_known_id() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
@@ -1591,6 +1611,88 @@ async fn find_release_detail_returns_none_for_unknown_id() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let detail = manager.find_release_detail("nonexistent-id").await.unwrap();
     assert!(detail.is_none());
+}
+
+#[tokio::test]
+async fn find_release_detail_with_returns_none_for_deleted_release() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+
+    manager.delete_release(&release.id).await.unwrap();
+
+    let detail = crate::library::manager::find_release_detail_with(
+        &manager.database,
+        &manager.handle,
+        true,
+        &release.id,
+    )
+    .await
+    .expect("deleted release lookup must not error");
+
+    assert!(detail.is_none());
+}
+
+#[tokio::test]
+async fn upload_observer_processes_transition_after_deleted_release() {
+    use coven::BlobTransitionObserver;
+
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let deleted_release = create_test_release(&album.id);
+    let remaining_release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager
+        .database
+        .insert_release(&deleted_release)
+        .await
+        .unwrap();
+    manager
+        .database
+        .insert_release(&remaining_release)
+        .await
+        .unwrap();
+
+    manager.delete_release(&deleted_release.id).await.unwrap();
+    let mut events = manager.subscribe_events();
+
+    let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
+        manager.sync.outbox_in_flight(),
+        manager.sync.upload_throughput(),
+        manager.sync.sync_paused(),
+        manager.event_tx.clone(),
+    );
+    observer.set_database(Arc::new(manager.database.clone()));
+    observer.set_handle(manager.handle.clone());
+
+    observer
+        .on_root_made_local("releases", &deleted_release.id)
+        .await;
+    observer
+        .on_root_made_local("releases", &remaining_release.id)
+        .await;
+
+    let mut saw_remaining_update = false;
+    for _ in 0..4 {
+        let event = tokio::time::timeout(std::time::Duration::from_secs(2), events.recv())
+            .await
+            .expect("observer event")
+            .expect("event channel stays open");
+        if matches!(
+            &event,
+            LibraryEvent::ReleaseUpdated { release, .. } if release.summary.id == remaining_release.id
+        ) {
+            saw_remaining_update = true;
+            break;
+        }
+    }
+
+    assert!(
+        saw_remaining_update,
+        "observer must emit the later release transition"
+    );
 }
 
 // ── Storage page tests ───────────────────────────────────────────
