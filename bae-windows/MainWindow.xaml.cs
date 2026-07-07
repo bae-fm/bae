@@ -2735,9 +2735,9 @@ public sealed partial class MainWindow : Window
         }
         var form = new ReleaseEditForm(prefetched.Edit, 520);
 
-        // The cover the user picks; empty means "let the import choose its
-        // default cover" (the source's first cover art, else a folder image).
-        var selectedCoverJson = string.Empty;
+        // No selection means "let the import choose its default cover" (the
+        // source's first cover art, else a folder image).
+        BridgeCoverSelection? selectedCover = null;
         var storageRemote = new CheckBox
         {
             Content = Loc.Chrome("import.storage.managed"),
@@ -2782,7 +2782,7 @@ public sealed partial class MainWindow : Window
             panel.Children.Add(storageRow);
         }
         panel.Children.Add(BuildCoverPicker(
-            prefetched.RemoteCovers, prefetched.LocalArtwork, picked => selectedCoverJson = picked));
+            prefetched.RemoteCovers, prefetched.LocalArtwork, picked => selectedCover = picked));
         panel.Children.Add(form.Panel);
 
         var dialog = new ContentDialog
@@ -2834,7 +2834,7 @@ public sealed partial class MainWindow : Window
             var pin = StoragePinSelected();
             var (importCurrent, error) = await RunForCurrentHandle(
                 handle => NativeBae.ImportCandidate(
-                    handle, candidate.Key, candidate.FolderPath, chosen.ReleaseId, chosen.Source, storageMode, pin, payload, selectedCoverJson));
+                    handle, candidate.Key, candidate.FolderPath, chosen.ReleaseId, chosen.Source, storageMode, pin, payload, selectedCover));
             if (!importCurrent)
             {
                 args.Cancel = true;
@@ -2896,13 +2896,13 @@ public sealed partial class MainWindow : Window
     /// The import confirmation's cover-art picker: a gallery of the chosen
     /// release's remote covers (thumbnails by URL) and the candidate folder's
     /// local artwork (thumbnails by disk path). Clicking a tile selects it,
-    /// highlights it, and reports its cover-selection JSON via
+    /// highlights it, and reports its cover selection via
     /// <paramref name="onPick"/>; nothing is picked by default, so the import
     /// uses its own default cover. Renders inline (not a nested dialog, which
     /// can't open over the confirm dialog).
     /// </summary>
     private static StackPanel BuildCoverPicker(
-        List<BridgeRemoteCover> remoteCovers, List<LocalArtwork> localArtwork, Action<string> onPick)
+        List<BridgeRemoteCover> remoteCovers, List<LocalArtwork> localArtwork, Action<BridgeCoverSelection> onPick)
     {
         var section = new StackPanel { Spacing = 4 };
         section.Children.Add(new TextBlock { Text = Loc.Chrome("cover.section_title") });
@@ -2933,9 +2933,9 @@ public sealed partial class MainWindow : Window
         };
 
         // Highlight only the picked tile: clear every tile's border, then mark
-        // the clicked one. Each tile carries its own cover-selection JSON.
+        // the clicked one. Each tile carries its own cover selection.
         var tiles = new List<Button>();
-        void Select(Button picked, string selectionJson)
+        void Select(Button picked, BridgeCoverSelection selection)
         {
             foreach (var tile in tiles)
             {
@@ -2944,13 +2944,13 @@ public sealed partial class MainWindow : Window
 
             picked.BorderThickness = new Thickness(2);
             picked.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.DeepSkyBlue);
-            onPick(selectionJson);
+            onPick(selection);
         }
 
-        void AddTile(ImageSource? source, string caption, string selectionJson)
+        void AddTile(ImageSource? source, string caption, BridgeCoverSelection selection)
         {
             var tile = CoverTile(source, caption);
-            tile.Click += (_, _) => Select(tile, selectionJson);
+            tile.Click += (_, _) => Select(tile, selection);
             tiles.Add(tile);
             grid.Children.Add(tile);
         }
@@ -2970,7 +2970,7 @@ public sealed partial class MainWindow : Window
                 continue;
             }
 
-            var selection = NativeBae.RemoteCoverSelectionJson(cover);
+            var selection = NativeBae.RemoteCoverSelection(cover);
             AddTile(source, cover.Label, selection);
         }
 
@@ -2986,8 +2986,7 @@ public sealed partial class MainWindow : Window
                 continue;
             }
 
-            var selection = JsonSerializer.Serialize(
-                new { type = "release_image", file_id = art.FileId });
+            var selection = new BridgeCoverSelection.ReleaseImage(art.FileId);
             AddTile(source, System.IO.Path.GetFileName(art.FileId), selection);
         }
 
@@ -4729,11 +4728,11 @@ public sealed partial class MainWindow : Window
 
         // Apply a selection off the UI thread (a remote cover downloads bytes),
         // then close on success or show the error in place.
-        async System.Threading.Tasks.Task Apply(string selectionJson)
+        async System.Threading.Tasks.Task Apply(BridgeCoverSelection selection)
         {
             statusText.Visibility = Visibility.Collapsed;
             var (current, error) = await RunForCurrentHandle(
-                handle => NativeBae.ChangeCover(handle, albumId, releaseId, selectionJson));
+                handle => NativeBae.ChangeCover(handle, albumId, releaseId, selection));
             if (!current)
             {
                 return;
@@ -4750,10 +4749,10 @@ public sealed partial class MainWindow : Window
         }
 
         // A thumbnail tile that applies the selection when clicked.
-        Button Tile(ImageSource? source, string caption, string selectionJson)
+        Button Tile(ImageSource? source, string caption, BridgeCoverSelection selection)
         {
             var button = CoverTile(source, caption);
-            button.Click += async (_, _) => await Apply(selectionJson);
+            button.Click += async (_, _) => await Apply(selection);
             return button;
         }
 
@@ -4775,8 +4774,7 @@ public sealed partial class MainWindow : Window
                 }
                 var source = CoverImage.LoadGalleryBytes(
                     handle, releaseId, new BridgeGallerySource.ReleaseFile(file.Id));
-                var selection = JsonSerializer.Serialize(
-                    new { type = "release_image", file_id = file.Id });
+                var selection = new BridgeCoverSelection.ReleaseImage(file.Id);
                 fileGrid.Children.Add(Tile(source, file.OriginalFilename, selection));
             }
 
@@ -4831,7 +4829,7 @@ public sealed partial class MainWindow : Window
                 foreach (var cover in covers)
                 {
                     var source = new BitmapImage(new Uri(NativeBae.RemoteCoverThumbnailUrl(cover)));
-                    var selection = NativeBae.RemoteCoverSelectionJson(cover);
+                    var selection = NativeBae.RemoteCoverSelection(cover);
                     remoteGrid.Children.Add(Tile(source, cover.Label, selection));
                 }
             }

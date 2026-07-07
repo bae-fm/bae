@@ -627,20 +627,11 @@ internal static class NativeBae
     internal static string RemoteCoverThumbnailUrl(BridgeRemoteCover cover) =>
         CoverImageSourceUrl(cover.CoverChoice.ThumbnailSource);
 
-    internal static string RemoteCoverSelectionJson(BridgeRemoteCover cover)
-    {
-        var selection = cover.CoverChoice.Selection as BridgeCoverSelection.RemoteCover
-            ?? throw new JsonException("remote cover choice did not carry a remote selection");
-        return Json(new
-        {
-            type = "remote_cover",
-            url = selection.Selection.Url,
-            source = MetadataSourceTag(selection.Selection.Source),
-        });
-    }
+    internal static BridgeCoverSelection RemoteCoverSelection(BridgeRemoteCover cover) =>
+        cover.CoverChoice.Selection;
 
-    internal static string? ChangeCover(AppHandle handle, string albumId, string releaseId, string selectionJson) =>
-        CaptureError(() => Await(handle.ChangeCover(albumId, releaseId, CoverSelection(selectionJson))));
+    internal static string? ChangeCover(AppHandle handle, string albumId, string releaseId, BridgeCoverSelection selection) =>
+        CaptureError(() => Await(handle.ChangeCover(albumId, releaseId, selection)));
 
     internal static string? AlbumPageJson(AppHandle handle, ulong offset, ulong limit, string sortField, bool ascending) =>
         CaptureValue(() => Json(Await(handle.GetAlbumPage(SortCriteria(sortField, ascending), offset, limit))));
@@ -851,11 +842,11 @@ internal static class NativeBae
         });
 
     internal static string? ImportCandidate(
-        AppHandle handle, string candidateKey, string folderPath, string chosenReleaseId, BridgeMetadataSource source, string storageMode, bool pin, BridgeRawReleaseEdit userEdit, string selectedCoverJson) =>
+        AppHandle handle, string candidateKey, string folderPath, string chosenReleaseId, BridgeMetadataSource source, string storageMode, bool pin, BridgeRawReleaseEdit userEdit, BridgeCoverSelection? selectedCover) =>
         CaptureError(() => handle.StartImport(
             candidateKey,
             folderPath,
-            CoverSelectionOrNull(selectedCoverJson),
+            selectedCover,
             StorageMode(storageMode),
             pin,
             new BridgeIdentityChoice.Exact(chosenReleaseId, source),
@@ -1016,25 +1007,6 @@ internal static class NativeBae
         return kind == "preset" && root.TryGetProperty("preset_id", out var presetId)
             ? new BridgeExportSelection.Preset(RequiredString(presetId, "preset_id"))
             : new BridgeExportSelection.Original();
-    }
-
-    private static BridgeCoverSelection? CoverSelectionOrNull(string json) =>
-        string.IsNullOrWhiteSpace(json) ? null : CoverSelection(json);
-
-    private static BridgeCoverSelection CoverSelection(string json)
-    {
-        using var doc = JsonDocument.Parse(json);
-        var root = doc.RootElement;
-        var type = root.TryGetProperty("type", out var typeElement)
-            ? typeElement.GetString()
-            : root.TryGetProperty("kind", out var kindElement) ? kindElement.GetString() : null;
-        if (type == "remote_cover")
-        {
-            return new BridgeCoverSelection.RemoteCover(new BridgeRemoteCoverSelection(
-                root.GetProperty("url").GetString() ?? string.Empty,
-                root.TryGetProperty("source", out var source) ? MetadataSource(source.GetString() ?? string.Empty) : BridgeMetadataSource.MusicBrainz));
-        }
-        return new BridgeCoverSelection.ReleaseImage(root.GetProperty("file_id").GetString() ?? string.Empty);
     }
 
     private static Settings Settings(
