@@ -1,38 +1,21 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
 /// <summary>
-/// P/Invoke surface over bae_windows_ffi.dll — the hand-written C ABI that the
-/// Rust crate bae-windows-ffi exposes over bae-core. The handle is opaque
-/// (<see cref="IntPtr"/>); strings the library returns are owned by Rust and must
-/// be released with <see cref="StringFree"/>.
-///
-/// Rust's <c>extern "C"</c> uses the cdecl calling convention, so every entry
-/// point is declared <see cref="CallingConvention.Cdecl"/>. The DLL is resolved
-/// by name from the application directory, so the CI build copies it next to the
-/// WinUI output.
+/// Windows bridge adapter. Methods backed by generated bindings call
+/// <c>BaeBridgeMethods</c>; remaining members expose the JSON/string contract
+/// used by the current Windows view models.
 /// </summary>
 internal static class NativeBae
 {
     private const string Dll = "bae_windows_ffi.dll";
+    private static BridgeDiagnostics? Diagnostics;
 
     /// <summary>One-time startup: register the OS credential store.</summary>
-    [DllImport(Dll, EntryPoint = "bae_startup", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void Startup();
-
-    [DllImport(Dll, EntryPoint = "bae_configure_diagnostics", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ConfigureDiagnosticsPtr(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string? datadogSite,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string? clientToken,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string source,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string service,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string? environment,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string appVersion,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string edition,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string? gitCommit);
+    internal static void Startup() => BaeBridgeMethods.InitKeyring();
 
     internal static string? ConfigureDiagnostics(
         string? datadogSite,
@@ -42,67 +25,60 @@ internal static class NativeBae
         string? environment,
         string appVersion,
         string edition,
-        string? gitCommit) =>
-        ResultMessage(ConfigureDiagnosticsPtr(datadogSite, clientToken, source, service, environment, appVersion, edition, gitCommit));
+        string? gitCommit)
+    {
+        BridgeDiagnosticsConfig config = datadogSite is not null && clientToken is not null
+            ? new BridgeDiagnosticsConfig.Enabled(new BridgeDatadogDiagnosticsConfig(
+                datadogSite,
+                clientToken,
+                source,
+                new BridgeAppDiagnosticMetadata(
+                    service,
+                    environment ?? string.Empty,
+                    appVersion,
+                    edition,
+                    gitCommit ?? string.Empty)))
+            : new BridgeDiagnosticsConfig.Disabled();
 
-    [DllImport(Dll, EntryPoint = "bae_diagnostics_log", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr DiagnosticsLogPtr(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string level,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string target,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string message,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string fieldsJson);
+        return CaptureError(() => Diagnostics = BaeBridgeMethods.ConfigureDiagnostics(config));
+    }
 
     internal static string? DiagnosticsLog(
         string level,
         string target,
         string message,
         IEnumerable<KeyValuePair<string, string>>? fields = null) =>
-        ResultMessage(DiagnosticsLogPtr(level, target, message, DiagnosticFieldsJson(fields)));
-
-    [DllImport(Dll, EntryPoint = "bae_diagnostics_event", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr DiagnosticsEventPtr(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string name,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string fieldsJson);
+        CaptureError(() => Diagnostics?.Log(DiagnosticLevel(level), target, message, DiagnosticFields(fields)));
 
     internal static string? DiagnosticsEvent(
         string name,
         IEnumerable<KeyValuePair<string, string>>? fields = null) =>
-        ResultMessage(DiagnosticsEventPtr(name, DiagnosticFieldsJson(fields)));
+        CaptureError(() => Diagnostics?.Event(name, DiagnosticFields(fields)));
 
-    [DllImport(Dll, EntryPoint = "bae_flush_diagnostics", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr FlushDiagnosticsPtr();
-
-    internal static string? FlushDiagnostics() => ResultMessage(FlushDiagnosticsPtr());
-
-    [DllImport(Dll, EntryPoint = "bae_set_oauth_client_creds", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SetOauthClientCredsPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string credsJson);
+    internal static string? FlushDiagnostics() =>
+        CaptureError(() => Diagnostics?.Flush().GetAwaiter().GetResult());
 
     /// <summary>
     /// Register the OAuth client credentials JSON so coven can build authorization
     /// URLs and refresh tokens. Call once at startup before any OAuth flow. Returns
     /// null on success, else an error message.
     /// </summary>
+    [DllImport(Dll, EntryPoint = "bae_set_oauth_client_creds", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SetOauthClientCredsPtr([MarshalAs(UnmanagedType.LPUTF8Str)] string credsJson);
+
     internal static string? SetOauthClientCreds(string credsJson) =>
         ResultMessage(SetOauthClientCredsPtr(credsJson));
-
-    [DllImport(Dll, EntryPoint = "bae_available_cloud_providers", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr AvailableCloudProvidersPtr();
 
     /// <summary>
     /// The cloud-provider wire tags this build's native library supports. Always
     /// includes <c>"s3"</c>; <c>"google_drive"</c>/<c>"dropbox"</c>/<c>"onedrive"</c>
     /// are present only when bae_windows_ffi.dll was built with the oauth-providers
     /// feature (the baeium build omits them, and with it the OAuth entry points). The
-    /// UI offers only these providers, so it never P/Invokes an OAuth entry point a
-    /// baeium DLL doesn't export. This entry point is always exported. Copies and frees.
+    /// UI offers only these providers, so it never calls an OAuth entry point a
+    /// baeium build doesn't export. This bridge function is always exported.
     /// </summary>
-    internal static string[] AvailableCloudProviders()
-    {
-        var json = CopyAndFree(AvailableCloudProvidersPtr())
-            ?? throw new InvalidOperationException("bae_available_cloud_providers returned null");
-        return JsonSerializer.Deserialize<string[]>(json)
-            ?? throw new InvalidOperationException($"bae_available_cloud_providers returned invalid JSON: {json}");
-    }
+    internal static string[] AvailableCloudProviders() =>
+        BaeBridgeMethods.AvailableCloudProviders().Select(CloudProviderTag).ToArray();
 
     /// <summary>
     /// Whether this build's native library supports any OAuth cloud provider (i.e. it
@@ -111,6 +87,31 @@ internal static class NativeBae
     /// </summary>
     internal static bool SupportsOAuthProviders() =>
         AvailableCloudProviders().Any(provider => provider is not "s3");
+
+    private static BridgeDiagnosticField[] DiagnosticFields(IEnumerable<KeyValuePair<string, string>>? fields) =>
+        (fields ?? []).Select(field => new BridgeDiagnosticField(field.Key, field.Value)).ToArray();
+
+    private static BridgeDiagnosticLevel DiagnosticLevel(string level) =>
+        level switch
+        {
+            "trace" => BridgeDiagnosticLevel.Trace,
+            "debug" => BridgeDiagnosticLevel.Debug,
+            "info" => BridgeDiagnosticLevel.Info,
+            "warn" => BridgeDiagnosticLevel.Warn,
+            "error" => BridgeDiagnosticLevel.Error,
+            _ => throw new ArgumentOutOfRangeException(nameof(level), level, "Unknown diagnostics level"),
+        };
+
+    private static string CloudProviderTag(BridgeCloudProvider provider) =>
+        provider switch
+        {
+            BridgeCloudProvider.S3 => "s3",
+            BridgeCloudProvider.GoogleDrive => "google_drive",
+            BridgeCloudProvider.Dropbox => "dropbox",
+            BridgeCloudProvider.OneDrive => "onedrive",
+            BridgeCloudProvider.CloudKit => "cloudkit",
+            _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unknown cloud provider"),
+        };
 
     // ── Catalog-key selection ────────────────────────────────────────────────
     //
@@ -1077,13 +1078,6 @@ internal static class NativeBae
         IntPtr handle, string candidateKey, string folderPath, string chosenReleaseId, string source, string storageMode, bool pin, string userEditJson, string selectedCoverJson) =>
         ResultMessage(ImportCandidatePtr(handle, candidateKey, folderPath, chosenReleaseId, source, storageMode, pin, userEditJson, selectedCoverJson));
 
-    private static string DiagnosticFieldsJson(IEnumerable<KeyValuePair<string, string>>? fields) =>
-        JsonSerializer.Serialize((fields ?? []).Select(field => new DiagnosticField(field.Key, field.Value)));
-
-    private sealed record DiagnosticField(
-        [property: JsonPropertyName("key")] string Key,
-        [property: JsonPropertyName("value")] string Value);
-
     /// <summary>
     /// Copy a Rust-owned UTF-8 string into managed memory and free the native one,
     /// or return null when the pointer is <see cref="IntPtr.Zero"/>.
@@ -1108,6 +1102,23 @@ internal static class NativeBae
     /// Interpret a command result pointer: null = success, else an owned error
     /// string this copies and frees.
     private static string? ResultMessage(IntPtr ptr) => CopyAndFree(ptr);
+
+    private static string? CaptureError(Action action)
+    {
+        try
+        {
+            action();
+            return null;
+        }
+        catch (BridgeException.Cancelled)
+        {
+            return null;
+        }
+        catch (BridgeException exception)
+        {
+            return exception.Message;
+        }
+    }
 
     /// <summary>
     /// Callback invoked with each UI event's JSON. Fires on a background thread;
