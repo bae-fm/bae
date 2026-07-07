@@ -1,8 +1,9 @@
 name: Windows build
 
 # Builds the native Windows stack for x86_64-pc-windows-msvc: bae-core →
-# bae-bridge (uniffi metadata + bae_bridge.dll) → generated C# bindings, plus
-# the WinUI 3 app compile check. The macOS host can't cross-compile the native
+# bae-bridge (uniffi metadata + bae_bridge.dll/uniffi_bae_bridge.dll) →
+# generated C# bindings, plus the WinUI 3 app compile check. The macOS host
+# can't cross-compile the native
 # deps, so this is the verification loop.
 # The native deps are all prebuilt releases build.rs/CI fetch — no compiling
 # here: ffmpeg via bae-ffmpeg, libdiscid via MusicBrainz's prebuilt.
@@ -83,18 +84,6 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Check C# formatting
-        # dotnet format uses .editorconfig rules. --verify-no-changes exits non-zero
-        # if any file would be reformatted, failing the build.
-        #
-        # Run whitespace only — style and analyzer formatters trigger IDE0051 false
-        # positives for XAML-bound event handlers (dotnet format analyzes C# in
-        # isolation, without the XAML compiler's generated partial classes that
-        # reference those methods). MSBuild with EnforceCodeStyleInBuild=true
-        # (below) enforces all style and dead-code rules after XAML compilation,
-        # where XAML references are visible.
-        run: dotnet format whitespace bae-windows\bae-windows.csproj --verify-no-changes
-
       - name: Install uniffi-bindgen-cs
         run: cargo install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag 'v0.11.0+v0.31.0' uniffi-bindgen-cs --locked
 
@@ -109,14 +98,31 @@ jobs:
       - name: Confirm the bridge DLL was produced
         shell: pwsh
         run: |
-          $dll = "target-windows\x86_64-pc-windows-msvc\debug\bae_bridge.dll"
-          if (Test-Path $dll) { Write-Host "PASS: $dll ($((Get-Item $dll).Length) bytes)" }
-          else { Write-Host "FAIL: $dll not found"; exit 1 }
+          $dlls = @(
+            "target-windows\x86_64-pc-windows-msvc\debug\bae_bridge.dll",
+            "target-windows\x86_64-pc-windows-msvc\debug\uniffi_bae_bridge.dll"
+          )
+          foreach ($dll in $dlls) {
+            if (Test-Path $dll) { Write-Host "PASS: $dll ($((Get-Item $dll).Length) bytes)" }
+            else { Write-Host "FAIL: $dll not found"; exit 1 }
+          }
 
       - name: Build the Windows bridge (full edition, OAuth + desktop)
         # Windows has no cloudkit (Apple-only); full here is OAuth plus desktop.
         shell: bash
         run: BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh
+
+      - name: Check C# formatting
+        # dotnet format uses .editorconfig rules. --verify-no-changes exits non-zero
+        # if any file would be reformatted, failing the build.
+        #
+        # Run whitespace only — style and analyzer formatters trigger IDE0051 false
+        # positives for XAML-bound event handlers (dotnet format analyzes C# in
+        # isolation, without the XAML compiler's generated partial classes that
+        # reference those methods). MSBuild with EnforceCodeStyleInBuild=true
+        # (below) enforces all style and dead-code rules after XAML compilation,
+        # where XAML references are visible.
+        run: dotnet format whitespace bae-windows\bae-windows.csproj --verify-no-changes
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2

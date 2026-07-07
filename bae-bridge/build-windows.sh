@@ -53,6 +53,14 @@ if [[ ! -f "$STATIC_LIB" ]]; then
     exit 1
 fi
 
+BRIDGE_DLL="$CARGO_TARGET_DIR/x86_64-pc-windows-msvc/$CARGO_PROFILE/bae_bridge.dll"
+UNIFFI_BRIDGE_DLL="$CARGO_TARGET_DIR/x86_64-pc-windows-msvc/$CARGO_PROFILE/uniffi_bae_bridge.dll"
+if [[ ! -f "$BRIDGE_DLL" ]]; then
+    echo "Expected DLL not found: $BRIDGE_DLL" >&2
+    exit 1
+fi
+cp "$BRIDGE_DLL" "$UNIFFI_BRIDGE_DLL"
+
 echo "Generating C# bindings into $BAE_BRIDGE_CSHARP_BINDINGS_DIR ..."
 rm -rf "$BAE_BRIDGE_CSHARP_BINDINGS_DIR"
 mkdir -p "$BAE_BRIDGE_CSHARP_BINDINGS_DIR"
@@ -64,5 +72,6 @@ uniffi-bindgen-cs \
 
 echo ""
 echo "Done ($CARGO_PROFILE). Outputs:"
-echo "  $CARGO_TARGET_DIR/x86_64-pc-windows-msvc/$CARGO_PROFILE/bae_bridge.dll"
+echo "  $BRIDGE_DLL"
+echo "  $UNIFFI_BRIDGE_DLL"
 echo "  $BAE_BRIDGE_CSHARP_BINDINGS_DIR/"
