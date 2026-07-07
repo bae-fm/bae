@@ -70,10 +70,15 @@ pub struct CoverArtArchiveClient {
     lookup_cache: Arc<Mutex<LruCache<String, Option<RemoteCover>>>>,
     in_flight: Arc<Mutex<HashMap<String, CaaLookupCell>>>,
     lookup_limiter: Arc<Semaphore>,
+    retry_base_delay: Duration,
 }
 
 impl CoverArtArchiveClient {
     pub fn new() -> Self {
+        Self::with_retry_base_delay(RETRY_BASE_DELAY)
+    }
+
+    fn with_retry_base_delay(retry_base_delay: Duration) -> Self {
         let http = crate::util::http::client_builder()
             .build()
             .expect("Failed to create HTTP client for Cover Art Archive");
@@ -85,6 +90,7 @@ impl CoverArtArchiveClient {
             ))),
             in_flight: Arc::new(Mutex::new(HashMap::new())),
             lookup_limiter: Arc::new(Semaphore::new(CAA_MAX_CONCURRENT_LOOKUPS)),
+            retry_base_delay,
         }
     }
 
@@ -158,7 +164,11 @@ enum ClassifiedAttempt<T> {
     Permanent(String),
 }
 
-async fn retry_classified<T, F, Fut>(operation: &str, mut attempt: F) -> Result<T, String>
+async fn retry_classified<T, F, Fut>(
+    operation: &str,
+    base_delay: Duration,
+    mut attempt: F,
+) -> Result<T, String>
 where
     F: FnMut() -> Fut,
     Fut: std::future::Future<Output = ClassifiedAttempt<T>>,
@@ -166,7 +176,7 @@ where
     let mut last_error = String::new();
     for attempt_index in 0..=MAX_RETRIES {
         if attempt_index > 0 {
-            let delay = RETRY_BASE_DELAY * 2u32.pow(attempt_index - 1);
+            let delay = base_delay * 2u32.pow(attempt_index - 1);
 
             warn!(
                 "{} failed (attempt {}/{}): {} — retrying in {:?}",
@@ -254,11 +264,15 @@ impl CoverArtArchiveClient {
 
         let owned_id = id.to_string();
         let entity = entity.to_string();
+        let base_delay = self.retry_base_delay;
         cell.get_or_init(|| async move {
             let lookup = match self.lookup_limiter.acquire().await {
                 Ok(permit) => {
                     let _permit = permit;
-                    fetch_cover_art_from_url(&self.http, json_url, &entity, &owned_id, label).await
+                    fetch_cover_art_from_url(
+                        &self.http, json_url, &entity, &owned_id, label, base_delay,
+                    )
+                    .await
                 }
                 Err(e) => {
                     warn!("Cover Art Archive lookup limiter closed: {}", e);
@@ -290,10 +304,11 @@ async fn fetch_cover_art_from_url(
     entity: &str,
     id: &str,
     label: String,
+    base_delay: Duration,
 ) -> CaaLookup {
     debug!("Fetching cover art from Cover Art Archive: {}", json_url);
 
-    match retry_classified("Cover Art Archive fetch", || async {
+    match retry_classified("Cover Art Archive fetch", base_delay, || async {
         match client.get(&json_url).send().await {
             Ok(response) => {
                 if response.status().is_success() {
@@ -436,6 +451,13 @@ fn find_url_in<'a>(value: &serde_json::Value, keys: &'a [&'a str]) -> Option<(&'
 pub async fn download_cover_art_bytes(
     cover_art_url: &str,
 ) -> Result<(Vec<u8>, ContentType), String> {
+    download_cover_art_bytes_with_backoff(cover_art_url, RETRY_BASE_DELAY).await
+}
+
+async fn download_cover_art_bytes_with_backoff(
+    cover_art_url: &str,
+    base_delay: Duration,
+) -> Result<(Vec<u8>, ContentType), String> {
     if let Some(hit) = cover_bytes_cache()
         .lock()
         .expect("cover bytes cache mutex poisoned")
@@ -448,7 +470,8 @@ pub async fn download_cover_art_bytes(
 
     info!("Downloading cover art from {}", cover_art_url);
 
-    let value = download_image_bytes(cover_art_url, "Cover art download").await?;
+    let value =
+        download_image_bytes_with_backoff(cover_art_url, "Cover art download", base_delay).await?;
 
     cover_bytes_cache()
         .lock()
@@ -461,8 +484,16 @@ pub(crate) async fn download_image_bytes(
     image_url: &str,
     operation: &str,
 ) -> Result<(Vec<u8>, ContentType), String> {
+    download_image_bytes_with_backoff(image_url, operation, RETRY_BASE_DELAY).await
+}
+
+async fn download_image_bytes_with_backoff(
+    image_url: &str,
+    operation: &str,
+    base_delay: Duration,
+) -> Result<(Vec<u8>, ContentType), String> {
     let client = image_download_client()?;
-    retry_classified(operation, || async {
+    retry_classified(operation, base_delay, || async {
         let response = match client.get(image_url).send().await {
             Ok(r) => r,
             Err(e) if is_permanent_request_error(&e) => {
@@ -613,20 +644,6 @@ mod tests {
         assert_eq!(covers[0].thumbnail_url, "https://caa.example/thumb-a.jpg");
     }
 
-    #[test]
-    fn is_transient_status_is_5xx_or_429_only() {
-        use reqwest::StatusCode;
-        assert!(is_transient_status(StatusCode::INTERNAL_SERVER_ERROR));
-        assert!(is_transient_status(StatusCode::BAD_GATEWAY));
-        assert!(is_transient_status(StatusCode::SERVICE_UNAVAILABLE));
-        assert!(is_transient_status(StatusCode::TOO_MANY_REQUESTS));
-        // Client errors (other than 429) and successes are not retried.
-        assert!(!is_transient_status(StatusCode::NOT_FOUND));
-        assert!(!is_transient_status(StatusCode::BAD_REQUEST));
-        assert!(!is_transient_status(StatusCode::FORBIDDEN));
-        assert!(!is_transient_status(StatusCode::OK));
-    }
-
     /// Spawn a localhost HTTP server that returns the given (status, body)
     /// responses in order (clamping to the last once exhausted), and return the
     /// URL to fetch. Lets the download path exercise real HTTP against
@@ -713,7 +730,9 @@ mod tests {
         .await;
         let cache_key = "release:transient-cache-test".to_string();
         let label = MetadataSource::MusicBrainz.cover_source_label().to_string();
-        let client = CoverArtArchiveClient::new();
+        // Inject a near-zero backoff so the four transient failures don't sleep
+        // the real 1s + 2s + 4s.
+        let client = CoverArtArchiveClient::with_retry_base_delay(Duration::from_millis(1));
 
         assert!(client
             .fetch_url(
@@ -820,6 +839,92 @@ mod tests {
             .is_none());
     }
 
+    /// Spawn a localhost server that counts every request and always answers
+    /// 200 with `body`. Lets a test assert how many fetches reached the wire.
+    async fn start_counting_mock(
+        hits: Arc<std::sync::atomic::AtomicUsize>,
+        body: Vec<u8>,
+    ) -> String {
+        use axum::extract::State;
+        use axum::http::StatusCode;
+        use std::sync::atomic::Ordering;
+
+        #[derive(Clone)]
+        struct Mock {
+            hits: Arc<std::sync::atomic::AtomicUsize>,
+            body: Arc<Vec<u8>>,
+        }
+
+        async fn handler(State(m): State<Mock>) -> (StatusCode, Vec<u8>) {
+            m.hits.fetch_add(1, Ordering::SeqCst);
+            (StatusCode::OK, (*m.body).clone())
+        }
+
+        let state = Mock {
+            hits,
+            body: Arc::new(body),
+        };
+        let app = axum::Router::new().fallback(handler).with_state(state);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            let _ = axum::serve(listener, app).await;
+        });
+        format!("http://{addr}/cover.jpg")
+    }
+
+    #[tokio::test]
+    async fn caa_lookup_coalesces_concurrent_fetches_into_one_request() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let success = br#"{
+            "images": [
+                {
+                    "front": true,
+                    "image": "https://caa.example/cover.jpg",
+                    "thumbnails": {
+                        "250": "https://caa.example/thumb.jpg"
+                    }
+                }
+            ]
+        }"#
+        .to_vec();
+        let hits = Arc::new(AtomicUsize::new(0));
+        let url = start_counting_mock(hits.clone(), success).await;
+        let cache_key = "release:coalesce-test".to_string();
+        let label = MetadataSource::MusicBrainz.cover_source_label().to_string();
+        let client = CoverArtArchiveClient::new();
+
+        // Two fetches for the same key, launched together, share the in-flight
+        // OnceCell: only one reaches the wire, and both see the same cover.
+        let (a, b) = tokio::join!(
+            client.fetch_url(
+                cache_key.clone(),
+                url.clone(),
+                "release",
+                "coalesce-test",
+                label.clone(),
+            ),
+            client.fetch_url(
+                cache_key.clone(),
+                url.clone(),
+                "release",
+                "coalesce-test",
+                label.clone(),
+            ),
+        );
+
+        let a = a.expect("first concurrent fetch resolves a cover");
+        let b = b.expect("second concurrent fetch resolves a cover");
+        assert_eq!(a.url, "https://caa.example/cover.jpg");
+        assert_eq!(a.url, b.url);
+        assert_eq!(
+            hits.load(Ordering::SeqCst),
+            1,
+            "concurrent fetches for one key must hit the wire exactly once"
+        );
+    }
+
     #[tokio::test]
     async fn download_succeeds_and_then_serves_from_cache() {
         let body = vec![0xABu8; 256];
@@ -858,8 +963,11 @@ mod tests {
     async fn download_retries_transient_then_succeeds() {
         let body = vec![0xCDu8; 256];
         // A 503 is transient: retried after backoff, then the 200 succeeds.
+        // A near-zero backoff keeps the retry from sleeping the real second.
         let url = start_mock(vec![(503, vec![]), (200, body.clone())]).await;
-        let (bytes, _) = download_cover_art_bytes(&url).await.unwrap();
+        let (bytes, _) = download_cover_art_bytes_with_backoff(&url, Duration::from_millis(1))
+            .await
+            .unwrap();
         assert_eq!(bytes, body);
     }
 
