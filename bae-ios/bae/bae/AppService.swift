@@ -25,6 +25,7 @@ final class AppService: Observable {
     let configStore: ConfigStore
     let libraryStore = LibraryStore()
     let downloadStore: DownloadStore
+    let outboxStore: OutboxStore
     let projectionRegistry = ProjectionRegistry()
     private var projectionRegistrations: [ProjectionRegistration] = []
 
@@ -37,13 +38,18 @@ final class AppService: Observable {
     let sync: Sync
     let downloads: Downloads
 
-    init(appHandle: AppHandle, config: BridgeConfig) {
+    init(
+        appHandle: AppHandle,
+        config: BridgeConfig,
+        initialOutbox: BridgeOutboxSnapshot
+    ) {
         self.appHandle = appHandle
         configStore = ConfigStore(
             config: Config(bridge: config),
             syncReady: appHandle.isSyncReady()
         )
         downloadStore = DownloadStore(snapshot: appHandle.getDownloadSnapshot())
+        outboxStore = OutboxStore(snapshot: initialOutbox)
         // `prefetchRelease` (desktop import flow) is unavailable on iOS, so
         // build the read services from the iOS-available closures explicitly
         // rather than the `init(handle:)` convenience that wires it.
@@ -116,9 +122,23 @@ final class AppService: Observable {
         projectionRegistrations = [
             projectionRegistry.register(makeConfigProjection()),
             projectionRegistry.register(makeSyncStatusProjection()),
+            projectionRegistry.register(makeOutboxProjection()),
             projectionRegistry.register(makeDownloadProjection()),
             projectionRegistry.register(makeReleaseDetailProjection()),
         ]
+    }
+
+    private func makeOutboxProjection() -> Projection<BridgeOutboxSnapshot> {
+        Projection(
+            domain: .outbox,
+            query: { [appHandle] _ in
+                try await appHandle.getOutboxSnapshot()
+            },
+            apply: { [outboxStore] snapshot in
+                outboxStore.applySnapshot(snapshot)
+            },
+            onError: { [configStore] error in configStore.showError(error) }
+        )
     }
 
     private struct ConfigProjectionValue: Sendable {

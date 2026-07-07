@@ -20381,6 +20381,2489 @@
           }
         }
       }
+    },
+    "Disconnect": {
+      "comment": "Cloud sync: button/confirm action to disconnect the cloud provider",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnect"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desconectar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déconnecter"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trennen"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desconectar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切断"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "断开连接"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قطع الاتصال"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "התנתק"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відключити"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прекъсване на връзката"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rozłącz"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odpojit"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prekini vezu"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결 해제"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中斷連線"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnetti"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantıyı kes"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngắt kết nối"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbinding verbreken"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "डिस्कनेक्ट करें"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সংযোগ বিচ্ছিন্ন করুন"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "துண்டி"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "డిస్‌కనెక్ట్ చేయి"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "जोडणी तोडा"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "منقطع کریں"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "જોડાણ તોડો"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಿ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ബന്ധം വിച്ഛേദിക്കുക"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਡਿਸਕਨੈਕਟ ਕਰੋ"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตัดการเชื่อมต่อ"
+          }
+        }
+      }
+    },
+    "Disconnect sync?": {
+      "comment": "Library settings: title of the disconnect-sync confirmation alert",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnect sync?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Desconectar la sincronización?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déconnecter la synchronisation ?"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync trennen?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desconectar sincronização?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同期を切断しますか？"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "断开同步？"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قطع اتصال المزامنة؟"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לנתק את הסנכרון?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відключити синхронізацію?"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прекъсване на синхронизирането?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rozłączyć synchronizację?"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odpojit synchronizaci?"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prekinuti sinkronizaciju?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화를 연결 해제할까요?"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要中斷同步嗎？"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnettere la sincronizzazione?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşzamanlama bağlantısı kesilsin mi?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngắt kết nối đồng bộ?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisatie ontkoppelen?"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सिंक डिस्कनेक्ट करें?"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সিঙ্ক বিচ্ছিন্ন করবেন?"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ஒத்திசைவைத் துண்டிக்கவா?"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "సింక్‌ను విడదీయాలా?"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "समक्रमण तोडायचे?"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مطابقت پذیری منقطع کریں؟"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "સિંક ડિસ્કનેક્ટ કરવું છે?"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಸಿಂಕ್ ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಬೇಕೇ?"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "സിങ്ക് വിച്ഛേദിക്കണോ?"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਸਿੰਕ ਡਿਸਕਨੈਕਟ ਕਰਨਾ ਹੈ?"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตัดการซิงค์หรือไม่"
+          }
+        }
+      }
+    },
+    "This will stop syncing and remove the cloud provider configuration.": {
+      "comment": "Library settings: disconnect confirmation body (a cloud-only data-loss warning from core may be appended)",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This will stop syncing and remove the cloud provider configuration."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto detendrá la sincronización y quitará la configuración del proveedor de nube."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cela arrêtera la synchronisation et supprimera la configuration du fournisseur cloud."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dadurch wird die Synchronisierung beendet und die Konfiguration des Cloud-Anbieters entfernt."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isso interromperá a sincronização e removerá a configuração do provedor de nuvem."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同期を停止し、クラウドプロバイダの設定を削除します。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这将停止同步并移除云服务提供商配置。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سيؤدي هذا إلى إيقاف المزامنة وإزالة إعدادات مزوّد السحابة."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פעולה זו תפסיק את הסנכרון ותסיר את הגדרת ספק הענן."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Це зупинить синхронізацію та вилучить налаштування хмарного постачальника."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Това ще спре синхронизирането и ще премахне конфигурацията на облачния доставчик."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spowoduje to zatrzymanie synchronizacji i usunięcie konfiguracji dostawcy chmury."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tím se zastaví synchronizace a odebere se konfigurace poskytovatele cloudu."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ovime će se zaustaviti sinkronizacija i ukloniti konfiguracija pružatelja usluge u oblaku."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화를 중지하고 클라우드 제공자 설정을 제거합니다."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這會停止同步並移除雲端提供者設定。"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo interromperà la sincronizzazione e rimuoverà la configurazione del provider cloud."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu, eşzamanlamayı durduracak ve bulut sağlayıcısı yapılandırmasını kaldıracaktır."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thao tác này sẽ dừng đồng bộ và xóa cấu hình nhà cung cấp đám mây."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiermee wordt de synchronisatie gestopt en de configuratie van de cloudprovider verwijderd."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "यह सिंक करना बंद करेगा और क्लाउड प्रदाता कॉन्फ़िगरेशन हटा देगा।"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এটি সিঙ্ক বন্ধ করবে এবং ক্লাউড প্রদানকারীর কনফিগারেশন সরাবে।"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இது ஒத்திசைவை நிறுத்தி, மேக வழங்குநர் அமைப்பை அகற்றும்."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఇది సింక్ చేయడాన్ని ఆపి క్లౌడ్ ప్రదాత కాన్ఫిగరేషన్‌ను తీసివేస్తుంది."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "यामुळे समक्रमण थांबेल आणि क्लाउड पुरवठादाराचे कॉन्फिगरेशन काढले जाईल."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہ مطابقت پذیری روک دے گا اور کلاؤڈ فراہم کنندہ کی ترتیب ہٹا دے گا۔"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "આ સિંક કરવાનું બંધ કરશે અને ક્લાઉડ પ્રદાતાનું કન્ફિગરેશન દૂર કરશે."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಇದು ಸಿಂಕ್ ಮಾಡುವುದನ್ನು ನಿಲ್ಲಿಸಿ ಕ್ಲೌಡ್ ಒದಗಿಸುವವರ ಸಂರಚನೆಯನ್ನು ತೆಗೆದುಹಾಕುತ್ತದೆ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഇത് സിങ്ക് നിർത്തുകയും ക്ലൗഡ് ദാതാവിന്റെ ക്രമീകരണം നീക്കംചെയ്യുകയും ചെയ്യും."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਇਹ ਸਿੰਕ ਕਰਨਾ ਰੋਕ ਦੇਵੇਗਾ ਅਤੇ ਕਲਾਊਡ ਪ੍ਰਦਾਤਾ ਸੰਰਚਨਾ ਹਟਾ ਦੇਵੇਗਾ।"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การดำเนินการนี้จะหยุดการซิงค์และนำการตั้งค่าผู้ให้บริการคลาวด์ออก"
+          }
+        }
+      }
+    },
+    "Couldn't check for cloud-only releases: %@": {
+      "comment": "Library settings: error computing the disconnect warning; %@ is the system error",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't check for cloud-only releases: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo comprobar si hay ediciones solo en la nube: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de vérifier les éditions dans le cloud uniquement : %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach reinen Cloud-Veröffentlichungen konnte nicht gesucht werden: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível verificar lançamentos somente na nuvem: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クラウドのみのリリースを確認できませんでした: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法检查仅云端版本：%@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر التحقق من الإصدارات السحابية فقط: %@"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא ניתן לבדוק מהדורות בענן בלבד: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося перевірити релізи, що зберігаються лише в хмарі: %@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не може да се провери за издания само в облака: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się sprawdzić wydań tylko w chmurze: %@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nelze zjistit vydání pouze v cloudu: %@"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nije moguće provjeriti izdanja samo u oblaku: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클라우드 전용 릴리스를 확인할 수 없음: %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法檢查僅在雲端的發行：%@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile controllare le pubblicazioni solo cloud: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yalnızca buluttaki yayınlar denetlenemedi: %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thể kiểm tra các bản phát hành chỉ trên đám mây: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan niet controleren op releases die alleen in de cloud staan: %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "केवल-क्लाउड रिलीज की जांच नहीं की जा सकी: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শুধু-ক্লাউড রিলিজ পরীক্ষা করা যায়নি: %@"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "மேகத்தில் மட்டும் உள்ள வெளியீடுகளைச் சரிபார்க்க முடியவில்லை: %@"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "క్లౌడ్‌లో మాత్రమే ఉన్న విడుదలల కోసం తనిఖీ చేయలేకపోయింది: %@"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "फक्त क्लाउडवरील प्रकाशने तपासता आली नाहीत: %@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صرف کلاؤڈ اشاعتوں کی جانچ نہیں ہو سکی: %@"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "માત્ર ક્લાઉડ પ્રકાશનો માટે તપાસી શકાયું નહીં: %@"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಕ್ಲೌಡ್‌ನಲ್ಲಷ್ಟೇ ಇರುವ ಬಿಡುಗಡೆಗಳನ್ನು ಪರಿಶೀಲಿಸಲಾಗಲಿಲ್ಲ: %@"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ക്ലൗഡിൽ മാത്രം ഉള്ള പതിപ്പുകൾ പരിശോധിക്കാനായില്ല: %@"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਕੇਵਲ-ਕਲਾਊਡ ਰਿਲੀਜ਼ਾਂ ਦੀ ਜਾਂਚ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕੀ: %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตรวจหารีลีสที่อยู่บนคลาวด์เท่านั้นไม่ได้: %@"
+          }
+        }
+      }
+    },
+    "Failed to disconnect: %@": {
+      "comment": "Library settings: error disconnecting sync; %@ is the system error",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to disconnect: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo desconectar: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de la déconnexion : %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trennen fehlgeschlagen: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falha ao desconectar: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切断に失敗しました: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "断开连接失败：%@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فشل قطع الاتصال: %@"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ההתנתקות נכשלה: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося відключити: %@"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прекъсването на връзката не бе успешно: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się rozłączyć: %@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nepodařilo se odpojit: %@"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prekid veze nije uspio: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결을 해제할 수 없음: %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中斷連線失敗：%@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnessione non riuscita: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantı kesilemedi: %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thể ngắt kết nối: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbinding verbreken mislukt: %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "डिस्कनेक्ट करना विफल: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সংযোগ বিচ্ছিন্ন করতে ব্যর্থ: %@"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "துண்டிக்க முடியவில்லை: %@"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "డిస్‌కనెక్ట్ చేయడంలో విఫలమైంది: %@"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "जोडणी तोडणे अयशस्वी: %@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "منقطع کرنے میں ناکامی: %@"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "જોડાણ તોડવામાં નિષ્ફળ: %@"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಲು ವಿಫಲವಾಯಿತು: %@"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ബന്ധം വിച്ഛേദിക്കാനായില്ല: %@"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਡਿਸਕਨੈਕਟ ਕਰਨ ਵਿੱਚ ਅਸਫਲ: %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตัดการเชื่อมต่อไม่สำเร็จ: %@"
+          }
+        }
+      }
+    },
+    "Provider": {
+      "comment": "Restore screen / cloud sync section: labeled value for the cloud provider",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Provider"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proveedor"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fournisseur"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anbieter"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Provedor"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロバイダ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提供商"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المزوّد"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ספק"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Постачальник"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доставчик"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dostawca"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poskytovatel"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pružatelj usluge"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제공자"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提供者"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Provider"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sağlayıcı"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhà cung cấp"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Provider"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "प्रदाता"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রদানকারী"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "வழங்குநர்"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ప్రొవైడర్"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "प्रदाता"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فراہم کنندہ"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "પ્રદાતા"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಪೂರೈಕೆದಾರ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ദാതാവ്"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਪ੍ਰਦਾਤਾ"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ผู้ให้บริการ"
+          }
+        }
+      }
+    },
+    "Account": {
+      "comment": "Cloud sync section: label for the connected account row",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuenta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compte"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konto"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アカウント"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "账户"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحساب"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חשבון"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обліковий запис"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Акаунт"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konto"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Účet"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Račun"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계정"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "帳號"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesap"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "खाता"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অ্যাকাউন্ট"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "கணக்கு"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఖాతా"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "खाते"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اکاؤنٹ"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "એકાઉન્ટ"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಖಾತೆ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "അക്കൗണ്ട്"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਖਾਤਾ"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บัญชี"
+          }
+        }
+      }
+    },
+    "Bucket": {
+      "comment": "S3 sync: bucket field label / placeholder",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バケット"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "存储桶"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحاوية"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "דלי"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Бакет"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кофа"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zasobnik"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spremnik"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버킷"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "儲存桶"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "बकेट"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বাকেট"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "தொட்டி"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "బకెట్"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "बकेट"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بکٹ"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "બકેટ"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಬಕೆಟ್"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ബക്കറ്റ്"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਬਕਟ"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บัคเก็ต"
+          }
+        }
+      }
+    },
+    "Region": {
+      "comment": "S3 sync: region field label / placeholder",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Region"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Región"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Région"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Region"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Região"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リージョン"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "区域"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المنطقة"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אזור"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Регіон"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Регион"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Region"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oblast"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regija"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지역"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地區"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regione"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bölge"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vùng"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regio"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "क्षेत्र"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অঞ্চল"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "பகுதி"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ప్రాంతం"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "प्रदेश"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خطہ"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "પ્રદેશ"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಪ್ರದೇಶ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "പ്രദേശം"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਖੇਤਰ"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ภูมิภาค"
+          }
+        }
+      }
+    },
+    "Endpoint": {
+      "comment": "S3 sync: label for the endpoint row / placeholder",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Point de terminaison"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpunkt"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エンドポイント"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "端点"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نقطة النهاية"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נקודת קצה"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кінцева точка"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Крайна точка"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Punkt końcowy"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koncový bod"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Krajnja točka"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "엔드포인트"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "端點"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uç nokta"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "एंडपॉइंट"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এন্ডপয়েন্ট"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "முடிவிடம்"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ముగింపు బిందువు"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अंतबिंदू"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختتامی نقطہ"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "અંતબિંદુ"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಅಂತಿಮ ಬಿಂದು"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "എൻഡ്പോയിന്റ്"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਅੰਤ-ਬਿੰਦੂ"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปลายทาง"
+          }
+        }
+      }
+    },
+    "Pause uploads": {
+      "comment": "Cloud sync section: toggle label to pause uploading local changes",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause uploads"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar subidas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suspendre les envois"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uploads pausieren"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar envios"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アップロードを一時停止"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂停上传"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إيقاف التحميلات مؤقتًا"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "השהיית העלאות"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Призупинити вивантаження"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пауза на качванията"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wstrzymaj przesyłanie"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozastavit odesílání"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pauziraj prijenose"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업로드 일시 정지"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暫停上傳"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sospendi caricamenti"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yüklemeleri duraklat"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạm dừng tải lên"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uploads pauzeren"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अपलोड रोकें"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আপলোড বিরতি দিন"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "பதிவேற்றங்களை இடைநிறுத்து"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "అప్‌లోడ్‌లను పాజ్ చేయండి"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अपलोड थांबवा"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اپ لوڈز روکیں"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "અપલોડ થોભાવો"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಅಪ್‌ಲೋಡ್‌ಗಳನ್ನು ವಿರಾಮಗೊಳಿಸಿ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "അപ്‌ലോഡുകൾ താൽക്കാലികമായി നിർത്തുക"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਅੱਪਲੋਡ ਰੋਕੋ"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หยุดการอัปโหลดชั่วคราว"
+          }
+        }
+      }
+    },
+    "While paused, changes wait on this device and upload when you resume.": {
+      "comment": "Cloud sync section: footer explaining the runtime-only pause-uploads toggle",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "While paused, changes wait on this device and upload when you resume."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mientras está en pausa, los cambios esperan en este dispositivo y se suben cuando reanudas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En pause, les modifications restent sur cet appareil et sont envoyées à la reprise."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Während der Pause bleiben Änderungen auf diesem Gerät und werden hochgeladen, sobald du fortsetzt."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Em pausa, as alterações aguardam neste dispositivo e são enviadas quando você retomar."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一時停止中は、変更はこのデバイスで保留され、再開時にアップロードされます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂停期间，更改会保留在此设备上，恢复后再上传。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أثناء الإيقاف المؤقت، تنتظر التغييرات على هذا الجهاز وتُحمّل عند الاستئناف."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בזמן השהיה, השינויים ממתינים במכשיר זה ומועלים כשתמשיך."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Під час призупинення зміни очікують на цьому пристрої й вивантажуються, коли ви відновите."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "По време на пауза промените изчакват на това устройство и се качват, когато възобновите."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podczas wstrzymania zmiany czekają na tym urządzeniu i zostają przesłane po wznowieniu."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Během pozastavení změny čekají v tomto zařízení a odešlou se, až odesílání obnovíte."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dok je pauzirano, promjene čekaju na ovom uređaju i prenose se kada nastavite."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일시 정지된 동안에는 변경 사항이 이 기기에서 대기하다가 다시 시작하면 업로드됩니다."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暫停期間，變更會保留在此裝置上，恢復後再上傳。"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In pausa, le modifiche restano su questo dispositivo e vengono caricate alla ripresa."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duraklatıldığında değişiklikler bu cihazda bekler ve devam ettiğinizde yüklenir."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khi tạm dừng, các thay đổi chờ trên thiết bị này và tải lên khi bạn tiếp tục."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terwijl gepauzeerd wachten wijzigingen op dit apparaat en worden ze geüpload wanneer je hervat."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "रोके जाने पर, बदलाव इस डिवाइस पर प्रतीक्षा करते हैं और फिर से शुरू करने पर अपलोड होते हैं।"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বিরতিতে থাকাকালীন পরিবর্তনগুলি এই ডিভাইসে অপেক্ষা করে এবং আপনি পুনরায় শুরু করলে আপলোড হয়।"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இடைநிறுத்தப்பட்டிருக்கும் போது மாற்றங்கள் இந்தச் சாதனத்தில் காத்திருக்கும், நீங்கள் மீண்டும் தொடங்கும்போது பதிவேற்றப்படும்."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "పాజ్ చేసినప్పుడు మార్పులు ఈ పరికరంలో వేచి ఉంటాయి, మీరు మళ్లీ ప్రారంభించినప్పుడు అప్‌లోడ్ అవుతాయి."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "थांबवलेले असताना बदल या डिव्हाइसवर प्रतीक्षा करतात आणि तुम्ही पुन्हा सुरू केल्यावर अपलोड होतात."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "روکے جانے کے دوران تبدیلیاں اس آلے پر انتظار کرتی ہیں اور دوبارہ شروع کرنے پر اپ لوڈ ہو جاتی ہیں۔"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "થોભાવેલ હોય ત્યારે ફેરફારો આ ઉપકરણ પર રાહ જુએ છે અને તમે ફરી શરૂ કરો ત્યારે અપલોડ થાય છે."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ವಿರಾಮದಲ್ಲಿದ್ದಾಗ ಬದಲಾವಣೆಗಳು ಈ ಸಾಧನದಲ್ಲಿ ಕಾಯುತ್ತವೆ ಮತ್ತು ನೀವು ಪುನರಾರಂಭಿಸಿದಾಗ ಅಪ್‌ಲೋಡ್ ಆಗುತ್ತವೆ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "താൽക്കാലികമായി നിർത്തിയിരിക്കുമ്പോൾ മാറ്റങ്ങൾ ഈ ഉപകരണത്തിൽ കാത്തിരിക്കുകയും നിങ്ങൾ പുനരാരംഭിക്കുമ്പോൾ അപ്‌ലോഡ് ചെയ്യുകയും ചെയ്യും."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਰੋਕੇ ਹੋਣ 'ਤੇ, ਤਬਦੀਲੀਆਂ ਇਸ ਡੀਵਾਈਸ 'ਤੇ ਉਡੀਕਦੀਆਂ ਹਨ ਅਤੇ ਜਦੋਂ ਤੁਸੀਂ ਮੁੜ ਸ਼ੁਰੂ ਕਰਦੇ ਹੋ ਤਾਂ ਅੱਪਲੋਡ ਹੁੰਦੀਆਂ ਹਨ।"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ขณะหยุดชั่วคราว การเปลี่ยนแปลงจะรออยู่บนอุปกรณ์นี้และอัปโหลดเมื่อคุณกลับมาทำงานต่อ"
+          }
+        }
+      }
+    },
+    "To sync this library again, pair this device from another device.": {
+      "comment": "Library settings: disconnect confirmation note — iOS reconnects only by pairing from another device",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To sync this library again, pair this device from another device."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para volver a sincronizar esta biblioteca, empareja este dispositivo desde otro dispositivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour synchroniser à nouveau cette bibliothèque, associez cet appareil depuis un autre appareil."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um diese Bibliothek wieder zu synchronisieren, koppele dieses Gerät von einem anderen Gerät aus."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para sincronizar esta biblioteca novamente, pareie este dispositivo a partir de outro dispositivo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このライブラリを再び同期するには、別のデバイスからこのデバイスをペアリングしてください。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要再次同步此库，请从另一台设备配对此设备。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لمزامنة هذه المكتبة مرة أخرى، اقرن هذا الجهاز من جهاز آخر."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כדי לסנכרן ספרייה זו שוב, התאם מכשיר זה ממכשיר אחר."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Щоб знову синхронізувати цю бібліотеку, спаруйте цей пристрій з іншого пристрою."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За да синхронизирате отново тази библиотека, сдвоете това устройство от друго устройство."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aby ponownie zsynchronizować tę bibliotekę, sparuj to urządzenie z innego urządzenia."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chcete-li tuto knihovnu znovu synchronizovat, spárujte toto zařízení z jiného zařízení."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Da biste ponovno sinkronizirali ovu biblioteku, uparite ovaj uređaj s drugog uređaja."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 라이브러리를 다시 동기화하려면 다른 기기에서 이 기기를 페어링하세요."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "若要再次同步此庫，請從另一台裝置配對此裝置。"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per sincronizzare di nuovo questa libreria, abbina questo dispositivo da un altro dispositivo."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu kitaplığı yeniden eşzamanlamak için bu cihazı başka bir cihazdan eşleştirin."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để đồng bộ lại thư viện này, hãy ghép nối thiết bị này từ một thiết bị khác."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Om deze bibliotheek opnieuw te synchroniseren, koppel dit apparaat vanaf een ander apparaat."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस लाइब्रेरी को फिर से सिंक करने के लिए, इस डिवाइस को किसी अन्य डिवाइस से पेयर करें।"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই লাইব্রেরি আবার সিঙ্ক করতে, অন্য একটি ডিভাইস থেকে এই ডিভাইসটি পেয়ার করুন।"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இந்த லைப்ரரியை மீண்டும் ஒத்திசைக்க, மற்றொரு சாதனத்திலிருந்து இந்தச் சாதனத்தை இணைக்கவும்."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఈ లైబ్రరీని మళ్లీ సింక్ చేయడానికి, మరో పరికరం నుండి ఈ పరికరాన్ని పెయిర్ చేయండి."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ही लायब्ररी पुन्हा समक्रमित करण्यासाठी, दुसऱ्या डिव्हाइसवरून हे डिव्हाइस जोडा."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس لائبریری کو دوبارہ مطابقت پذیر بنانے کے لیے، اس آلے کو کسی دوسرے آلے سے جوڑیں۔"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "આ લાઇબ્રેરી ફરીથી સિંક કરવા માટે, બીજા ઉપકરણથી આ ઉપકરણને જોડો."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಈ ಲೈಬ್ರರಿಯನ್ನು ಮತ್ತೆ ಸಿಂಕ್ ಮಾಡಲು, ಇನ್ನೊಂದು ಸಾಧನದಿಂದ ಈ ಸಾಧನವನ್ನು ಜೋಡಿಸಿ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഈ ലൈബ്രറി വീണ്ടും സിങ്ക് ചെയ്യാൻ, മറ്റൊരു ഉപകരണത്തിൽ നിന്ന് ഈ ഉപകരണം ജോടിയാക്കുക."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਇਸ ਲਾਇਬ੍ਰੇਰੀ ਨੂੰ ਦੁਬਾਰਾ ਸਿੰਕ ਕਰਨ ਲਈ, ਕਿਸੇ ਹੋਰ ਡੀਵਾਈਸ ਤੋਂ ਇਸ ਡੀਵਾਈਸ ਨੂੰ ਪੇਅਰ ਕਰੋ।"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หากต้องการซิงค์ไลบรารีนี้อีกครั้ง ให้จับคู่อุปกรณ์นี้จากอุปกรณ์อื่น"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

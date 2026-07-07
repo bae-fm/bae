@@ -162,7 +162,16 @@ final class AppSessionHolder {
                 }
 
                 let openHandle = liveHandle
-                let service = AppService(appHandle: openHandle, config: config)
+                // Seed the outbox mirror (carries the sync-pause flag) before
+                // building the service, matching macOS. A failed read lands on
+                // `.failed` via the outer catch rather than opening with a
+                // guessed-empty snapshot.
+                let initialOutbox = try await openHandle.getOutboxSnapshot()
+                let service = AppService(
+                    appHandle: openHandle,
+                    config: config,
+                    initialOutbox: initialOutbox
+                )
                 service.wireUp()
                 if openHandle.isSyncReady() {
                     service.sync.storeRestoreCodeInKeychain(

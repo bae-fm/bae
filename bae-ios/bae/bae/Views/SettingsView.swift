@@ -47,32 +47,27 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Sync") {
+                Section {
                     LabeledContent(
                         "Cloud sync",
                         value: configStore.config.sync != nil
                             ? String(localized: "On")
                             : String(localized: "Local only")
                     )
+                    if let syncConfig = configStore.config.sync {
+                        SyncConnectedControls(
+                            config: syncConfig,
+                            sync: sync,
+                            libraryId: configStore.config.libraryId
+                        )
+                    }
+                } header: {
+                    Text("Sync")
+                } footer: {
                     if configStore.config.sync != nil {
-                        if let syncError = configStore.syncError {
-                            LabeledContent(
-                                "Status",
-                                value: String(localized: "Disconnected")
-                            )
-                            Text(syncError.line)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Button("Reconnect") { sync.triggerSync() }
-                        }
-                        else {
-                            LabeledContent(
-                                "Status",
-                                value: configStore.syncReady
-                                    ? String(localized: "Synced")
-                                    : String(localized: "Syncing\u{2026}")
-                            )
-                        }
+                        Text(
+                            "While paused, changes wait on this device and upload when you resume."
+                        )
                     }
                 }
 
@@ -169,5 +164,97 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+}
+
+/// The connected-provider controls in the Sync section: provider details, the
+/// disconnect flow, the live sync status rows, and the upload-pause toggle.
+/// Split into its own view so it can seed the `DisconnectSyncFlow` model as
+/// `@State` from the sync service and library id — values a parent can't read at
+/// `@State` init time because they come from the environment.
+private struct SyncConnectedControls: View {
+    let config: BridgeSyncConfig
+
+    @Environment(ConfigStore.self)
+    private var configStore
+    @Environment(OutboxStore.self)
+    private var outboxStore
+
+    @State
+    private var flow: DisconnectSyncFlow
+
+    private let sync: Sync
+
+    init(config: BridgeSyncConfig, sync: Sync, libraryId: String) {
+        self.config = config
+        self.sync = sync
+        _flow = State(
+            initialValue: DisconnectSyncFlow(
+                warningMessage: sync.disconnectWarningMessage,
+                disconnect: sync.disconnectCloudProvider,
+                deleteRestoreCode: {
+                    KeychainService.deleteRestoreCode(libraryId: libraryId)
+                }
+            )
+        )
+    }
+
+    var body: some View {
+        @Bindable
+        var flow = flow
+        Group {
+            CloudProviderConnectedSection(
+                config: config,
+                onDisconnect: { flow.promptDisconnect() }
+            )
+
+            if let syncError = configStore.syncError {
+                LabeledContent(
+                    "Status",
+                    value: String(localized: "Disconnected")
+                )
+                Text(syncError.line)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("Reconnect") { sync.triggerSync() }
+            }
+            else {
+                LabeledContent(
+                    "Status",
+                    value: configStore.syncReady
+                        ? String(localized: "Synced")
+                        : String(localized: "Syncing\u{2026}")
+                )
+            }
+
+            Toggle(
+                "Pause uploads",
+                isOn: Binding(
+                    get: { outboxStore.snapshot.paused },
+                    set: { paused in
+                        Task { await sync.setSyncPaused(paused) }
+                    }
+                )
+            )
+
+            if let error = flow.error {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .font(.callout)
+            }
+        }
+        .confirmationDialog(
+            "Disconnect sync?",
+            isPresented: $flow.showConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Disconnect", role: .destructive) {
+                Task { await flow.confirm() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(flow.message)
+        }
+        .onDisappear { flow.cancelWarningTask() }
     }
 }
