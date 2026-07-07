@@ -160,11 +160,13 @@ check "cargo deny" cargo deny check
 
 check "cargo doc" env RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
-# ── Rust tests (loc + bridge) ──────────────────────────────────────────────────
+# ── Rust tests (loc + bridge + automation) ─────────────────────────────────────
 section "Rust tests"
 
 check "cargo test (bae-loc)"           cargo test -p bae-loc
 check "cargo test (bae-bridge --lib)"  cargo test -p bae-bridge --lib
+check "cargo test (bae-automation)"    cargo test -p bae-automation
+check "cargo test (bae-mcp)"           cargo test -p bae-mcp
 # Chrome-string orphan gate (the `core.*` keys are gated by loc_key_coverage in
 # the bae-bridge test above). Mirrors CI's "localization + bridge tests"; fails
 # on unreferenced, un-allowlisted catalog keys so dead/renamed keys are caught
