@@ -53,8 +53,6 @@ use crate::library::export::ExportService;
 use crate::library::sync_controller::SyncController;
 use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
-use crate::storage::local::cleanup::{append_pending_deletions, PendingDeletion};
-use crate::storage::local::ReleaseStorageImpl;
 use crate::sync::sync_manager::S3ConfigData;
 use coven::ClockRef;
 #[cfg(any(test, feature = "test-utils"))]
@@ -654,11 +652,6 @@ pub struct LibraryManager {
     /// manager clones; transient (empty after a restart). Export changes no
     /// release state — it only reads and writes to a user directory.
     export_queue: Arc<crate::library::ExportQueue>,
-    /// Test-only injection points for the cloud read/write paths, so tests
-    /// resolve the cloud home and the sync-ready gate without standing up a live
-    /// `SyncManager`.
-    #[cfg(any(test, feature = "test-utils"))]
-    test_overrides: TestOverrides,
 }
 
 pub fn generate_mcp_token() -> String {
@@ -667,19 +660,6 @@ pub fn generate_mcp_token() -> String {
     let mut bytes = [0u8; 32];
     rand::rng().fill_bytes(&mut bytes);
     hex::encode(bytes)
-}
-
-/// Test-only overrides for state that production reads from a live
-/// `SyncManager`. The cloud read/write paths run against a real manager a test
-/// connects via [`LibraryManager::connect_test_cloud_home`], so this holds only
-/// the cleanup-delay knob.
-#[cfg(any(test, feature = "test-utils"))]
-#[derive(Clone, Default)]
-struct TestOverrides {
-    /// Delay before the deferred storage-cleanup drain runs. Production uses
-    /// the fixed `CLEANUP_DELAY`; tests set a near-zero delay so a delete's
-    /// scheduled drain is observable without waiting the production interval.
-    cleanup_delay: Option<std::time::Duration>,
 }
 
 impl std::fmt::Debug for LibraryManager {
@@ -761,8 +741,6 @@ impl LibraryManager {
             transfer_actions: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             export_queue: Arc::new(crate::library::ExportQueue::new()),
-            #[cfg(any(test, feature = "test-utils"))]
-            test_overrides: TestOverrides::default(),
         };
         manager.start_queue_workers();
         Ok(manager)
@@ -814,8 +792,6 @@ impl LibraryManager {
             transfer_actions: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             export_queue: Arc::new(crate::library::ExportQueue::new()),
-            #[cfg(any(test, feature = "test-utils"))]
-            test_overrides: TestOverrides::default(),
         };
         manager.start_queue_workers();
         manager
@@ -864,13 +840,6 @@ impl LibraryManager {
         self.sync.connect_test_cloud_home(cloud_home, cipher).await
     }
 
-    /// Shorten the deferred storage-cleanup delay so a scheduled drain runs
-    /// promptly under test (production waits `CLEANUP_DELAY`).
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn set_cleanup_delay(&mut self, delay: std::time::Duration) {
-        self.test_overrides.cleanup_delay = Some(delay);
-    }
-
     /// Set the cloud home's storage mode in config, so a test can exercise the
     /// browsable read/write paths against an injected cloud home (production sets
     /// this through the cloud-setup wizard). The connected home's cipher must match
@@ -912,18 +881,6 @@ impl LibraryManager {
             .cover_cloud_path_for_storage(storage, release_id, content_type)
             .await
             .expect("compute cover cloud path")
-    }
-
-    /// Spawn the deferred drain of the pending-deletions manifest. Every
-    /// deletion entry point (delete_release/delete_album/unpin/unmanage) routes
-    /// through here so the queued local `storage/` copies are actually removed.
-    fn spawn_cleanup(&self) {
-        #[cfg(any(test, feature = "test-utils"))]
-        if let Some(delay) = self.test_overrides.cleanup_delay {
-            crate::storage::local::cleanup::schedule_cleanup_after(&self.library_dir, delay);
-            return;
-        }
-        crate::storage::local::cleanup::schedule_cleanup(&self.library_dir);
     }
 
     // =========================================================================
@@ -1361,7 +1318,8 @@ impl LibraryManager {
 
     /// Build the database cleanup writes and cache blob refs for a release delete
     /// without mutating durable state. The caller commits `db_cleanup` in the same
-    /// DB transaction as the row deletion, then evicts the cache blobs afterward.
+    /// DB transaction as the row deletion, then asks coven to drop any leftover
+    /// on-device copies.
     async fn release_delete_plan(
         &self,
         release: &DbRelease,

@@ -526,8 +526,7 @@ async fn delete_releases_with_content_hash_removes_only_matching() {
 /// processes the release once its rows are gone).
 #[tokio::test]
 async fn delete_release_tombstones_remote_cloud_blobs() {
-    let (mut manager, _temp_dir) = setup_test_manager().await;
-    manager.set_cleanup_delay(std::time::Duration::ZERO);
+    let (manager, _temp_dir) = setup_test_manager().await;
 
     let album = create_test_album();
     // Two releases so delete_release takes the album-survives branch.
@@ -855,8 +854,7 @@ async fn delete_release_fails_before_rows_are_deleted_when_cover_tombstone_enque
 /// release's cover is tombstoned in the cloud and dropped from the cache.
 #[tokio::test]
 async fn delete_release_removes_its_cover_image() {
-    let (mut manager, _temp_dir) = setup_test_manager().await;
-    manager.set_cleanup_delay(std::time::Duration::ZERO);
+    let (manager, _temp_dir) = setup_test_manager().await;
 
     let album = create_test_album();
     // Two releases so the album survives the single-release delete.

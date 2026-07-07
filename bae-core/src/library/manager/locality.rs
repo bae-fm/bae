@@ -340,9 +340,6 @@ impl LibraryManager {
         let result = self
             .drive_transfer(release_id, ReleaseStorageAction::Unpin, rx)
             .await;
-        if result.is_ok() {
-            self.spawn_cleanup();
-        }
         result
     }
 
@@ -382,9 +379,6 @@ impl LibraryManager {
         let result = self
             .drive_transfer(release_id, ReleaseStorageAction::MakeLocal, rx)
             .await;
-        if result.is_ok() {
-            self.spawn_cleanup();
-        }
         result
     }
 

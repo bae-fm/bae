@@ -713,15 +713,10 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Delete a release and its associated data
-    ///
-    /// This will:
-    /// 1. Queue files for deferred deletion via the pending deletions manifest
-    /// 2. Delete the release from database (cascades to tracks, files, etc.)
-    /// 3. If this was the last release for the album, also delete the album
-    ///
-    /// File cleanup happens asynchronously via the cleanup service, which retries
-    /// on failure. This prevents orphaned cloud objects when deletion fails.
+    /// Delete a release and its associated data. The database rows are removed
+    /// in one cleanup-aware transaction; if this was the last release for the
+    /// album, the album is removed too. coven evicts the blobs named by the
+    /// delete plan after the transaction commits.
     pub async fn delete_release(&self, release_id: &str) -> Result<(), LibraryError> {
         let release = self
             .database
@@ -759,11 +754,6 @@ impl LibraryManager {
             self.emit_album_updated(&album_id).await;
             self.emit_release_removed(&album_id, release_id).await;
         }
-
-        // Drain the local `storage/` copies this release queued for deletion.
-        // Matches delete_album/unpin/unmanage; without it a single-release
-        // delete of a pinned remote release leaks its remote copies on disk.
-        self.spawn_cleanup();
 
         Ok(())
     }

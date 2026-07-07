@@ -91,15 +91,9 @@ impl LibraryManager {
         ))
     }
 
-    /// Delete an album and all its associated data
-    ///
-    /// This will:
-    /// 1. Get all releases for the album
-    /// 2. Queue files for deferred deletion via the pending deletions manifest
-    /// 3. Delete the album from database (cascades to releases and all related data)
-    ///
-    /// File cleanup happens asynchronously via the cleanup service, which retries
-    /// on failure. This prevents orphaned cloud objects when deletion fails.
+    /// Delete an album and all its associated data. The database rows are
+    /// removed in one cleanup-aware transaction, then coven evicts the blobs
+    /// named by the delete plans.
     pub async fn delete_album(&self, album_id: &str) -> Result<(), LibraryError> {
         let releases = self.get_releases_for_album(album_id).await?;
 
@@ -128,8 +122,6 @@ impl LibraryManager {
         }
 
         self.emit_album_removed(album_id, releases.iter().map(|r| r.id.clone()).collect());
-
-        self.spawn_cleanup();
 
         Ok(())
     }

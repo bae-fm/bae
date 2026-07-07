@@ -22,19 +22,6 @@ impl LibraryManager {
             .map(|ext| ext.path))
     }
 
-    pub fn create_release_storage(&self) -> ReleaseStorageImpl {
-        ReleaseStorageImpl::new_local(self.library_dir.clone())
-    }
-
-    pub async fn append_pending_deletions(
-        &self,
-        deletions: &[PendingDeletion],
-    ) -> Result<(), String> {
-        append_pending_deletions(self.library_dir.as_ref(), deletions)
-            .await
-            .map_err(|e| format!("{e}"))
-    }
-
     // =========================================================================
     // Encryption
     // =========================================================================

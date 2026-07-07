@@ -108,9 +108,6 @@ impl LibraryManager {
                     .await;
             }
         }
-        if !replacement_plans.is_empty() {
-            self.spawn_cleanup();
-        }
         Ok(())
     }
 
