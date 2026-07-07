@@ -1,0 +1,40 @@
+---
+title: Synchronisierung
+description: Wie Änderungen zwischen Geräten wandern und wie sie zusammengeführt werden
+---
+
+Die Synchronisierung von bae ist die Synchronisierung von [coven](https://coven.bae.fm): bae deklariert seine Tabellen und Blobs, und coven erledigt den Rest. Diese Seite beschreibt die Mechanik, wie sie für bae gilt; covens eigene Dokumentation behandelt jedes Stück in voller Tiefe.
+
+## Erfassung
+
+coven besitzt die SQLite-Verbindung, daher läuft jeder Schreibvorgang, den bae festschreibt, durch coven. Die Session-Erweiterung von SQLite erfasst exakt, was sich in jeder Transaktion geändert hat; die Änderungen an synchronisierten Tabellen werden zu einem **Changeset**, verschlossen mit dem Mediatheksschlüssel und signiert mit dem Identitätsschlüssel des Geräts. Kein Diffing, keine Dirty-Flags: Erfassung ist eine Eigenschaft der Verbindung, und ein Schreibvorgang kann nicht verpasst werden.
+
+## Ströme
+
+Jedes Gerät hängt seine Changesets an seinen eigenen Strom im Cloud-Zuhause an, fortlaufend nummeriert. Geräte schreiben nie in die Ströme anderer Geräte, daher gibt es keine Schreibkonflikte im Speicher, und jedes Gerät verfolgt pro Peer-Strom einen Cursor. Ein Synchronisierungszyklus pusht den lokalen Postausgang, zieht dann den Strom jedes Peers ab seinem Cursor vorwärts und prüft die Signatur jedes Changesets und die Mitgliedschaft seines Autors, bevor es angewendet wird.
+
+Der Zyklus läuft nach lokalen Änderungen, über einen Leerlauf-Timer mit Wartezeit (bis zu fünf Minuten zwischen Polls) und sofort bei **Jetzt synchronisieren**. Fehler warten und versuchen erneut; die Schleife meldet das Ergebnis jedes Zyklus an die Oberfläche als Status, Fehlertext und Anzahl angewendeter Zeilen.
+
+## Zusammenführen
+
+Dass zwei Geräte dieselbe Mediathek getrennt bearbeiten, ist der Normalfall, nicht die Ausnahme. Wenn ihre Änderungen zusammentreffen:
+
+- Änderungen an **verschiedenen Zeilen oder verschiedenen Spalten** werden beide angewendet. Das Jahr eines Releases auf dem Laptop und sein Label auf dem Desktop zu bearbeiten ergibt beides.
+- Änderungen an **derselben Spalte derselben Zeile** werden durch die `_updated_at`-Hybrid-Logical-Clock der Zeile geordnet: Die spätere Änderung gewinnt, deterministisch und auf jedem Gerät gleich.
+- **Löschungen gewinnen** gegen gleichzeitige Änderungen: Ein auf einem Gerät gelöschtes Release bleibt gelöscht, selbst wenn ein anderes Gerät es im selben Intervall bearbeitet hat.
+
+Es gibt keine Konfliktoberfläche, weil es keinen ungelösten Zustand gibt: Jedes Gerät gelangt aus jeder Anwendungsreihenfolge zum selben Ergebnis.
+
+## Bootstrap
+
+Ein Gerät, das beitritt oder wiederherstellt, spielt die Historie nicht von Anfang an ab. Es lädt einen **Snapshot**, ein vollständiges SQLite-Image, das regelmäßig ins Cloud-Zuhause veröffentlicht wird, und wendet dann nur die Changesets an, die jeder Strom danach gesammelt hat. Snapshot-Metadaten erfassen die Schemaversion und die Cursor pro Strom, die er verkörpert.
+
+## Schemaversionen
+
+Das Schema von bae migriert über eine nummerierte Leiter, und die oberste Sprosse der Leiter wird auf jedes Changeset gestempelt, das das Gerät schreibt. Ein Gerät, das ein Changeset aus einem neueren Schema zieht als dem eigenen, parkt diesen Strom und wendet nichts danach an, bis die App aktualisiert wird; nichts geht verloren und nichts wird falsch angewendet. Die Datenbankdatei selbst weigert sich, unter einem Binary zu öffnen, das älter ist als ihr Schema.
+
+Gröber als die Schemaversion ist die **Kompatibilitätsära**: die gepinnte coven-Revision, die in jedes Binary eingebaut ist. Zwei Builds synchronisieren nur innerhalb einer Ära; ein Bruch im Wire-Format von coven ist eine neue Ära und eine Hauptversionsanhebung über jede App hinweg. Vor 1.0 ist jeder Build Ära null, und Formate ändern sich ohne Migration.
+
+## Was der Anbieter sieht
+
+In einem undurchsichtigen Zuhause speichert der Anbieter verschlüsselte Changesets, verschlüsselte Blobs und signierte Mitgliedschaftsdatensätze; er kann Objekte zählen und Größen und Zeitpunkte beobachten, aber nichts davon lesen. Jedes Objekt, das ein Gerät zieht, wird geprüft, Signatur und Mitgliedschaft, bevor irgendetwas die Datenbank berührt: Der Speicher ist ein passiver, nicht vertrauenswürdiger Briefkasten. Siehe [Verschlüsselung](/de/reference/encryption) und [Identität und Mitgliedschaft](/de/reference/membership).

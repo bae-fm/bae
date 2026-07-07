@@ -1,0 +1,41 @@
+---
+title: Architektur
+description: Native Apps auf einem Rust-Kern, auf coven
+---
+
+bae ist ein Rust-Kern mit vier nativen Apps. Alles, was das Produkt definiert, das Mediatheksmodell, Import, Wiedergabe, Synchronisierung und Verschlüsselung, lebt in Rust und verhält sich auf jeder Plattform gleich; jede App ist eine dünne native Oberfläche darüber.
+
+## Die Schichten
+
+- **`bae-core`**: das Produkt. Mediatheks- und Metadatenmodell, Import- und Identifizierungspipelines, die FFmpeg-Wiedergabe-Engine, Lautheitsanalyse, Export und die Integration mit coven darunter. Import und Identifizierung werden nur auf dem Desktop kompiliert; mobile Builds sind Synchronisierungs- und Wiedergabeclients.
+- **[coven](https://coven.bae.fm)**: die Datenschicht, eine getrennte Bibliothek. coven besitzt die SQLite-Verbindung, erfasst jede Änderung, die bae festschreibt, und synchronisiert diese Änderungen Ende-zu-Ende-verschlüsselt über den Cloud-Speicher des Benutzers. Es besitzt außerdem Blob-Speicher (Audio-Bytes, Artwork), den lokalen Cache, Identitätsschlüssel und Mitgliedschaft. bae pinnt eine genaue coven-Revision und stempelt sie in jedes Binary; sie definiert die Synchronisierungskompatibilitätsgeneration zwischen Builds.
+- **`bae-bridge`**: die UniFFI-Grenze. Bridge-Typen werden einmal in Rust definiert und zur Build-Zeit nach Swift und Kotlin generiert.
+- **Die Apps**: SwiftUI auf macOS und iOS, Jetpack Compose auf Android und eine native Windows-App. Jede implementiert außerdem die Plattformteile, die der Kern anfordert: Audioausgabe, Artwork-Texterkennung, Mediensteuerung, Schlüsselbundzugriff, Absturzberichte.
+
+Neben den Apps: `bae-mcp` (der MCP-Server), `bae-cli` (Befehlszeile) und `bae-automation` (die gemeinsame Werkzeugsicht, die beide nutzen).
+
+## Eine Mediathek auf der Festplatte
+
+Eine Mediathek lebt unter `~/.bae/libraries/<library-id>/` (auf Mobilgeräten ein Plattform-Datenverzeichnis):
+
+```
+~/.bae/libraries/<id>/
+  library.db        # SQLite: catalog, credits, playback specs
+  config.yaml       # device-local settings, never synced
+  storage/
+    local/          # blobs this device owns (covers, artist images)
+    cache/          # evictable copies of cloud blobs
+    pinned/         # pinned-for-offline copies, never evicted
+```
+
+Die Datenbank wird nur über coven geöffnet, das seine eigenen Buchhaltungstabellen (Synchronisierungscursor, Postausgang, Blob-Status) neben das Schema von bae legt und die Migrationen von bae ausführt. Nicht verwaltet importierte Audiodateien liegen gar nicht unter `~/.bae`: Die Datenbank verweist auf sie an den Pfaden, von denen sie importiert wurden.
+
+Geheimnisse leben nie in diesen Dateien. Identitätsschlüssel, der Verschlüsselungsschlüssel der Mediathek, Cloud-Zugangsdaten und API-Tokens liegen im OS-Schlüsselbund (Keychain auf Apple-Plattformen, synchronisiert über iCloud-Schlüsselbund; anderswo die Plattformentsprechungen).
+
+## Editionen
+
+Auf jeder Plattform gibt es zwei Editionen zur Build-Zeit. **bae** kompiliert die OAuth-Anbieter (Google Drive, Dropbox, OneDrive), CloudKit und Telemetrie ein. **baeium** kompiliert all das heraus: nur S3-kompatibler Speicher und keine Telemetrie, nichts Proprietäres im Abhängigkeitsbaum. Die Editionen sind dieselbe Quelle und derselbe Kern; ein Feature-Flag entscheidet die Anbieterliste und die Diagnoseanbindung.
+
+## Versionierung
+
+Apps versionieren pro Plattform als `MAJOR.MINOR`. Die Hauptversion ist die Kompatibilitätsära, geteilt von jeder App: Geräte mit derselben Hauptversion können eine Mediathek synchronisieren. Sie steigt nur, wenn ein Wire- oder On-Disk-Format bricht, meistens die gepinnte coven-Revision. Nebenversionsnummern zählen Releases pro App und sind plattformübergreifend nicht vergleichbar.

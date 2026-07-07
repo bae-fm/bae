@@ -1,0 +1,34 @@
+---
+title: Wiedergabe-Engine
+description: Dekodierung, lückenlose Wiedergabe, Pregaps und Lautheit, genau
+---
+
+Der Vertrag der Wiedergabe-Engine ist Treue zur Quelle: die ursprünglichen Bytes des Benutzers dekodieren, mit der eigenen Rate der Quelle, mit intakter Struktur des Releases. Diese Seite ist die Spezifikation dahinter.
+
+## Dekodierung
+
+Alle Dekodierung ist FFmpeg, im Prozess, auf jeder Plattform: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack und DSD sind das, was der Import akzeptiert, und was FFmpeg aus den Bytes meldet, nicht die Dateiendung, ist der erfasste Codec. Samples kommen als 32-Bit-Float für die Ausgabestufe heraus; Sampleformat-Konvertierung ist die einzige Konvertierung, die ausgeführt wird.
+
+Die Ausgabe ist die native Audio-API der Plattform (Core Audio über cpal auf Desktop und iOS, AAudio auf Android). Der Ausgabestream wird auf die **Abtastrate und Kanalanzahl der Quelle** konfiguriert: Eine 96-kHz-Datei spielt mit 96 kHz. Es gibt keine Resampling-Stufe. Das Standardausgabegerät wird bei jedem Stream-Aufbau aufgelöst, sodass die Wiedergabe den Gerätewechseln des Systems folgt. Auf Android können hardwareunterstützte Codecs FFmpeg für ausgelagerte Dekodierung vollständig umgehen.
+
+## Streaming-Lesevorgänge
+
+Wiedergabe braucht keine ganzen Dateien. Audio wird über einen Sparse-Puffer gelesen, der Bytebereiche bei Bedarf holt, aus einer lokalen Datei, dem Cache oder der Cloud, und Suchen bildet das Ziel-Sample auf eine Byteposition ab, sodass ein Sprung in einen nicht geholten Bereich von dort holt. Ein Fetch-Arbiter priorisiert die Lesevorgänge des spielenden Tracks gegenüber dem Vorladen, sodass ein kommender Track den aktuellen nie verzögert.
+
+## Tracks als Fenster
+
+Ein Track ist keine Datei; er ist eine geordnete Liste von Sample-Fenstern über eine oder mehrere Dateien, beim Import aus dem CUE-Sheet oder der eigenen Ausdehnung der Datei gebaut. Diese eine Darstellung trägt jede Disc-Form: eine Datei pro Track, eine ganze Disc in einem Image, ein Pregap am Ende einer Datei und am Anfang einer anderen sowie verlustbehaftete Rips, die eine Datei pro Track schneiden.
+
+Pregap-Fenster sind als solche markiert. Die Wiedergabe tritt bei einem Track mit Pregap in dessen Pregap ein (Index 00, verstecktes Track-Audio eingeschlossen), während die Uhr Trackzeit zeigt: Die Position bleibt bis zum eigentlichen Trackbeginn bei null, und die angezeigte Dauer schließt den Pregap aus, passend zum Verhalten eines CD-Players.
+
+## Lückenlos
+
+Der nächste Track wird geöffnet und gepuffert, während der aktuelle läuft. Wenn beide Abtastrate und Kanalanzahl teilen, verkettet die Engine sie innerhalb des laufenden Audio-Callbacks: Der Stream stoppt nie, und die Grenze ist samplegenau. Wenn Formate abweichen, wird der Stream neu aufgebaut; das ist der Fall, in dem ein Formatwechsel eine Grenze ohnehin hörbar macht.
+
+## Lautheit
+
+Der Import misst integrierte Lautheit (EBU R128) und True Peak pro Track und pro Album während der Dekodierprüfung. Replay Gain wird zur Wiedergabezeit aus diesen Messungen abgeleitet, nie in Dateien eingebrannt: Ziel −18 LUFS, begrenzt, damit True Peak nicht clippt, pro Track oder pro Album angewendet, mit sauberem Wechsel an lückenlosen Grenzen. Der Modus wird derzeit ohne Einstellungsoberfläche ausgeliefert und ist standardmäßig aus; er kann in der Konfigurationsdatei der Mediathek gesetzt werden.
+
+## Seitenpausen
+
+Tracklisten tragen ihre Seiten- und Disc-Struktur, und die Engine kann an einer Seitengrenze halten und eine Aufforderung zum Fortsetzen anzeigen, wenn der Benutzer Pause zwischen Seiten aktiviert. Das Halten ist ein Zustand des Wiedergabedienstes, keine dekodierte Stille, daher erfolgt das Fortsetzen sofort.

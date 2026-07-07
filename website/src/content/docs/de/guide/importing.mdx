@@ -1,0 +1,64 @@
+---
+title: Importieren
+description: Ordne deine Ordner echten Releases zu
+---
+
+Ein Ordner mit Rips weiß fast nichts über sich selbst. Das Release, von dem er stammt, die Pressung, das Label, die Mitwirkenden, wo Track 12 tatsächlich endet: All das lebt in Datenbanken wie MusicBrainz und Discogs, nicht in deinen Dateinamen. Importieren ist, wie bae beides verbindet: Du zeigst auf deine Musik, bae findet heraus, welches Release jeder Ordner ist, und die Mediathek erfasst den Ordner als dieses Release.
+
+Importieren geschieht auf dem Desktop (macOS, Windows). Deine Dateien werden gelesen, nie verändert: bae verschiebt, benennt, taggt oder kodiert nichts neu. Siehe [Speicher und offline](/de/guide/storage), um zu erfahren, wo Dateien nach dem Import liegen.
+
+## Überwachte Ordner
+
+Wechsle zum Bereich **Import** und füge einen Ordner hinzu: Wähle ihn aus, ziehe ihn in das Fenster oder drücke <kbd>⌘I</kbd>. bae überwacht den Ordner ab dann. Neue Musik, die darin abgelegt wird, erscheint von selbst als neuer Kandidat; du scannst nicht von Hand neu. Ordner, die noch heruntergeladen werden, werden ignoriert, bis sie fertig sind.
+
+Ein Scan erkennt Releases in den Formen, die Rips tatsächlich haben:
+
+| Layout | So sieht es aus |
+|--------|-----------------|
+| Datei pro Track | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE + Image | `album.cue` + `album.flac`, eine Datei für die ganze Disc |
+| Mehrere Discs | `CD1/`, `CD2/`-Unterordner, darin eine der beiden Formen |
+| Sammlungen | ein Ordner aus Ordnern, jeder ein eigenes Release |
+
+bae importiert die Formate, die es abspielt: FLAC, MP3, APE, ALAC und AAC in `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack und DSD (`.dsf`/`.dff`). Artwork und Dokumente (CUE-Sheets, Rip-Logs, Textdateien) im Ordner werden erkannt und mit dem Release behalten.
+
+## Ein Release identifizieren
+
+Wähle einen Kandidaten aus, und bae beginnt, ihn zu identifizieren. Statt aus Tags zu raten, liest es die Belege im Ordner und schlägt jedes Stück nach:
+
+- **Disc ID.** Ein Fingerabdruck des exakten Tracklayouts der CD, berechnet aus dem Rip-Log oder dem CUE-Sheet. Wenn sie passt, identifiziert sie die genaue CD-Ausgabe.
+- **Barcode.** Von Cover-Scans im Ordner per Texterkennung gelesen oder aus dem CUE-Sheet.
+- **Katalognummern und Text.** Katalognummern, die auf Artwork sowie in Datei- und Ordnernamen gefunden werden, zum Eingrenzen der Ergebnisse.
+
+Die Signale werden gleichzeitig gegen MusicBrainz und Discogs nachgeschlagen, und die Ergebnisse werden gegengeprüft. Jedes Signal erscheint als Abzeichen über den Ergebnissen: Du siehst, was gefunden wurde, woher es kam (mit der Maus darüber: Disc-TOC, CUE-Sheet, Cover-Scan, Ordnername), und kannst einzelne Signale ausschalten, wenn eines in die Irre führt.
+
+Drei Ergebnisse:
+
+- **Gefunden.** Die Belege stimmen in einer Release-Gruppe überein. Du wählst die genaue Pressung aus deren Liste.
+- **Konflikt.** Zwei Signale zeigen auf verschiedene Releases, etwa wenn Disc ID und Barcode nicht übereinstimmen. bae zeigt beide Seiten, und du wählst, welchem du vertraust, oder ignorierst ein Signal.
+- **Nichts gefunden.** Suche von Hand: Künstler und Album, Katalognummer oder Barcode, in einer der beiden Datenbanken. Aus dem Artwork erkannter Text wird als Autovervollständigung angeboten.
+
+Du kannst die Identifizierung auch **überspringen** und als unbekanntes Release importieren. bae fällt dann für Namen auf die eingebetteten Tags deiner Dateien zurück, und du kannst später neu identifizieren, wenn das Release in einer Datenbank existiert oder du bessere Belege hast.
+
+## Exakt oder ungefähr
+
+Wenn du einen Treffer auswählst, prüft bae ihn gegen deine Dateien und markiert eine abweichende Trackanzahl. Dann legst du fest, was der Treffer ist:
+
+- **Exakt**: Deine Dateien sind diese Pressung.
+- **Nur Metadaten**: richtiges Album, aber nicht zwingend genau diese Pressung. bae nutzt die Metadaten und merkt sich, dass die Pressung ungefähr ist.
+
+Wenn das Release bereits in deiner Mediathek ist oder eine andere Pressung desselben Albums dort ist, sagt bae dir das, bevor du ein Duplikat importierst.
+
+## Bestätigen und importieren
+
+Der Bestätigungsbereich zeigt alles, was der Import schreiben wird:
+
+- **Cover.** Aus dem Artwork der Datenbanken, Bildern in deinem Ordner oder in den Dateien eingebettetem Artwork gewählt. Du kannst es später ändern.
+- **Metadaten.** Album, Künstler, Jahr, Label, Katalognummer, Land, Barcode und jeder Track: alles direkt hier bearbeitbar, bevor etwas gespeichert wird.
+- **Speicher.** Wenn ein Cloud-Zuhause verbunden ist, wähle, ob bae die Dateien in deiner Cloud verwalten soll und ob zusätzlich eine lokale Kopie behalten werden soll. Siehe [Speicher und offline](/de/guide/storage).
+
+Der Import läuft im Hintergrund: bae prüft, dass jeder Track sauber dekodiert, misst die Lautheit für das Album und jeden Track, speichert das Release und startet bei verwalteten Importen den Upload. Die Kandidatenliste geht zum nächsten Ordner weiter, und das Release ist sofort abspielbar.
+
+## Datenquellen
+
+**MusicBrainz** braucht kein Konto und keinen Schlüssel. **Discogs** erfordert dein eigenes kostenloses API-Token; füge es in den Einstellungen ein, und bae sagt dir, wenn es nicht mehr funktioniert. Ohne Token sind Discogs-Suche und Metadaten aus Discogs nicht verfügbar, und alles andere funktioniert. Beide Dienste haben Ratenlimits; bae taktet seine Anfragen, um innerhalb der Grenzen zu bleiben.

@@ -1,0 +1,41 @@
+---
+title: Wiedergabe
+description: Ursprüngliche Qualität und die Details, mit denen Releases gemacht wurden
+---
+
+Platten wurden mit einer Struktur gemacht, die Dateiplayer oft glätten: Seiten, die enden, verstecktes Audio vor Track eins, Stücke, die ineinanderlaufen. bae behält die Wiedergabedetails eines Releases und spielt sie so ab, wie das Release gemeint war, aus deinen Originaldateien, unverändert.
+
+## Ursprüngliche Qualität
+
+Die Wiedergabe dekodiert deine Dateien so, wie sie importiert wurden. Es gibt kein Transcoding, kein Neuschreiben der Lautheit, kein erneutes Server-Encoding; das Audiogerät wird mit der eigenen Abtastrate der Datei angesteuert. Was du gerippt hast, wird abgespielt. Jedes Format, das bae importiert, spielt es ab: FLAC, MP3, APE, ALAC, AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack, DSD.
+
+## Lückenlos
+
+Alben, die als ein durchgehendes Stück gemischt wurden, spielen auch so. Der nächste Track wird vorbereitet, während der aktuelle läuft, und wenn beide ein Format teilen, stoppt das Audio an der Grenze nie: keine Lücke, kein Klick.
+
+## CD-Pregaps
+
+CDs können Audio in der Lücke vor dem Start eines Tracks verstecken, auch vor Track eins, der klassische Hidden-Track-Trick. Wenn ein Release aus einem CUE-Sheet-Rip importiert wird, weiß bae, wo jeder Pregap liegt, und spielt sie ab: Die Zeitanzeige des Tracks beginnt bei null dort, wo der eigentliche Track beginnt, und das versteckte Audio davor spielt in der Lücke, genau wie auf der CD. Exporte können Pregaps behalten, verwerfen oder erneut anhängen; siehe [Exportieren](/de/guide/exporting).
+
+## Seitenwechsel
+
+Vinyl- und Kassetten-Releases haben Seiten, und manche Platten nutzen die Pause dazwischen absichtlich. Aktiviere **Pause zwischen Seiten** in den Wiedergabeeinstellungen, und bae pausiert die Wiedergabe an jeder Seitengrenze und fordert dich zum Fortsetzen auf: das Umdrehen ohne Umdrehen. Tracklisten gruppieren nach Seite und Disc, sodass die Struktur beim Durchsuchen sichtbar ist.
+
+## Die Warteschlange
+
+Wiedergabe hat immer einen Kontext: das Release, das du gestartet hast, oder die ganze Mediathek, wenn du sie gemischt hast. Die Warteschlange zeigt zwei Bahnen:
+
+- **Als Nächstes**: Tracks, die du von Hand eingereiht hast, werden zuerst gespielt. Ziehe Tracks hinein, ordne sie neu, entferne sie.
+- **Wiedergabe aus**: der Rest des Kontexts, mit eigenem Schalter zum Mischen.
+
+**Als Nächstes spielen** und **Zur Warteschlange hinzufügen** gibt es auf jedem Track und Album. Wiederholen wechselt zwischen aus, Kontext wiederholen und einen Track wiederholen.
+
+## Bedienelemente
+
+Wiedergabe/Pause mit <kbd>Space</kbd>, nächster und vorheriger Track über die Tastatur, die Positionsleiste zum Suchen. bae integriert sich ins System: Medientasten, Control Center auf Apple-Plattformen, Medienbenachrichtigungen auf Android, Sperrbildschirmsteuerung auf dem Telefon, mit Artwork und Trackinfo überall dort, wo das System sie anzeigt.
+
+Beim Beenden kann die Desktop-App speichern, was gerade lief, einschließlich Warteschlange und Position, und es beim nächsten Start wieder aufnehmen: **Beim Start wiederherstellen** in den Wiedergabeeinstellungen.
+
+## Offline
+
+Ein Release spielt überall dort, wo seine Bytes erreichbar sind: Lokale Dateien spielen direkt, in der Cloud verwaltete Releases streamen beim Abspielen, und gepinnte Releases sind immer auf dem Gerät. Siehe [Speicher und offline](/de/guide/storage).

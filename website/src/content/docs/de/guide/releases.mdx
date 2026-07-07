@@ -1,0 +1,39 @@
+---
+title: Releases und Metadaten
+description: Eine releasegenaue Mediathek und wie sie richtig bleibt
+---
+
+Die meisten Musik-Apps modellieren „ein Album“: ein Titel, ein Cover, eine Trackliste. Echte Sammlungen funktionieren nicht so. Du besitzt vielleicht die ursprüngliche CD, das Remaster und eine Vinyl-Pressung derselben Platte, und sie unterscheiden sich in Tracklisten, Laufzeiten, Artwork und Mitwirkenden. bae modelliert **Releases**: Jeder Import ist eine bestimmte Pressung, und Pressungen desselben Albums werden zusammengefasst.
+
+## Alben gruppieren Releases
+
+In der Mediathek ist ein Album mit mehreren Pressungen ein Eintrag. Die Albumseite zeigt eine Release-Auswahl; jedes Release behält seine eigene Trackliste, sein Cover, Jahr, Label, seine Katalognummer und Mitwirkenden. Ein Release ist das **primäre**: das, das Albumraster und Wiedergabe standardmäßig verwenden. Lege im Albummenü ein beliebiges Release als primär fest und wähle jederzeit ein anderes Release zum Hören; bae merkt sich deine Auswahl pro Album.
+
+## Was ein Release weiß
+
+Identifizierte Releases tragen das Wissen der Datenbanken, nicht nur Tracknamen:
+
+- Pressungsdetails: Label, Katalognummer, Barcode, Land, Format, Jahr.
+- Mitwirkende: Ausführende, Produzenten, Ingenieure, pro Release und pro Track.
+- Klassische Struktur: Komponisten, Werke und ihre Teile, verknüpft mit den Aufnahmen davon. Die Komponistenansicht der Mediathek wird daraus gebaut; siehe [Durchsuchen und Suche](/de/guide/browsing).
+- Identität: welcher MusicBrainz- oder Discogs-Eintrag dies ist und ob der Treffer exakt oder ungefähr ist.
+
+Die rohen Quelldatensätze werden ebenfalls behalten, damit das Release später neu interpretiert werden kann, ohne die Datenbanken erneut zu fragen.
+
+## Bearbeiten
+
+Metadaten gehören dir zum Korrigieren. **Metadaten bearbeiten** auf einem Release öffnet dasselbe Formular, das die Importbestätigung nutzt: Albumtitel und Künstler, Pressungsdetails sowie Titel, Künstler und Nummerierung jedes Tracks. **Auf Quelle zurücksetzen** kehrt zu dem zurück, was die Datenbank sagte.
+
+Änderungen leben nur in der Datenbank von bae. Die eingebetteten Tags deiner Dateien werden nie neu geschrieben; die Dateien bleiben Byte für Byte so, wie sie importiert wurden.
+
+## Neu identifizieren
+
+Wenn ein Release als unbekannt importiert wurde, der falschen Pressung zugeordnet wurde oder die Datenbank seitdem besser geworden ist, führt **Neu identifizieren** den Identifizierungsablauf erneut auf dem vorhandenen Release aus: dieselben Signale, dieselben Suchwerkzeuge. Nachdem der neue Treffer festgeschrieben ist, fragt bae, ob die Metadaten aus der neuen Quelle aktualisiert werden sollen (wobei deine Änderungen überschrieben werden) oder ob behalten wird, was du hast.
+
+## Cover
+
+Jedes Release hat ein Anzeigecover. **Cover ändern** bietet das Artwork der Datenbanken und die Bilddateien, die mit dem Release kamen. bae behält eine eigene Kopie des gewählten Covers in Anzeigegröße, sodass der ursprüngliche Scan in deinem Ordner unberührt bleibt. Tippe irgendwo auf ein Cover, um die vollständige Galerie der Bilder eines Releases zu öffnen.
+
+## Löschen
+
+Das Löschen eines Releases entfernt es aus der Mediathek und bei verwalteten Releases aus deinem Cloud-Zuhause. Dateien, die nicht verwaltet an Ort und Stelle importiert wurden, werden nie gelöscht: bae vergisst sie nur.

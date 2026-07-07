@@ -1,0 +1,44 @@
+---
+title: Erste Schritte
+description: Erstelle eine Mediathek, importiere dein erstes Album und spiele es ab
+---
+
+bae ist ein Zuhause für die Alben, die du besitzt. Du baust die Mediathek auf deinem Desktop auf, und sie folgt dir auf jedes Gerät: synchronisiert über Cloud-Speicher, den du bereits hast, verschlüsselt, sodass nur deine Geräte sie lesen können.
+
+Die Desktop-Apps (macOS, Windows) sind das vollständige Werkzeug: Sie erstellen Mediatheken, importieren Musik und bearbeiten Metadaten. Die Telefon-Apps (iOS, Android) sind Player: Sie treten einer Mediathek bei, die dein Desktop erstellt hat, und durchsuchen, laden und spielen sie dann ab.
+
+## Eine Mediathek erstellen
+
+Öffne bae auf deinem Desktop. Wenn sich auf dem Rechner keine Mediathek befindet, bietet der Begrüßungsbildschirm drei Auswahlmöglichkeiten:
+
+- **Neue Mediathek erstellen**, wenn dies dein erstes Gerät ist.
+- **Einer Mediathek beitreten**, wenn ein anderes Gerät bereits eine hat und dessen Besitzer dich bestätigt. Siehe [Geräte und Mitglieder](/de/guide/devices).
+- **Aus Cloud wiederherstellen**, wenn dies deine eigene Mediathek ist und du ihren Wiederherstellungscode hast. Siehe [Geräte und Mitglieder](/de/guide/devices#wiederherstellungscodes).
+
+Erstelle eine. Eine Mediathek beginnt lokal: Alles liegt auf diesem Rechner, nichts braucht ein Konto, und keine Cloud ist beteiligt, bis du eine verbindest.
+
+## Dein erstes Album importieren
+
+1. Wechsle in der Titelleiste zum Bereich **Import**.
+2. Füge einen Musikordner hinzu. Du kannst ihn auswählen, in das Fenster ziehen oder <kbd>⌘I</kbd> drücken.
+3. bae scannt den Ordner und listet die Releases auf, die es findet. Wähle eines aus.
+4. bae identifiziert es über MusicBrainz und Discogs und zeigt den Treffer. Bestätige die Pressung, wähle ein Cover, passe Details an.
+5. Klicke auf **Importieren**.
+
+Deine Dateien werden nicht verschoben, kopiert oder neu geschrieben. bae katalogisiert sie dort, wo sie sind. Der vollständige Ablauf, einschließlich dessen, was zu tun ist, wenn die Identifizierung Hilfe braucht, steht unter [Importieren](/de/guide/importing).
+
+## Abspielen
+
+Zurück im Bereich **Mediathek** steht das Album im Raster. Klicke darauf, drücke Wiedergabe. Die Wiedergabe nutzt deine Originaldateien in ihrer ursprünglichen Qualität. [Wiedergabe](/de/guide/playback) behandelt Warteschlange, Mischen und Wiederholen sowie die Details, die bae erhält: CD-Pregaps, Vinyl-Seitenwechsel, lückenlose Alben.
+
+## Überallhin mitnehmen
+
+Wenn du die Mediathek auf mehr als einem Gerät haben willst, verbinde ein Cloud-Zuhause: dein eigenes Google Drive, Dropbox, OneDrive, iCloud oder einen beliebigen S3-kompatiblen Bucket. Alles, was bae dort ablegt, wird vor dem Upload verschlüsselt; der Anbieter speichert es, kann es aber nicht lesen.
+
+- [Synchronisierung](/de/guide/sync): Verbinde ein Cloud-Zuhause und wähle, was es speichert.
+- [Geräte und Mitglieder](/de/guide/devices): Füge dein Telefon oder einen anderen Desktop hinzu.
+- [Speicher und offline](/de/guide/storage): Behalte Musik auf dem Gerät oder streame sie aus deiner Cloud und pinne, was du offline brauchst.
+
+## Wo Dinge liegen
+
+Jede Mediathek speichert ihre Datenbank und Einstellungen auf dem Desktop unter `~/.bae/libraries/`. Deine Audiodateien bleiben dort, von wo du sie importiert hast, außer du weist bae an, sie in deiner Cloud zu verwalten. Schlüssel und Zugangsdaten liegen im Schlüsselbund des Betriebssystems, nicht in Dateien.

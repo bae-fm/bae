@@ -1,0 +1,35 @@
+---
+title: Identität und Mitgliedschaft
+description: Schlüssel als Identitäten, Beitrittsaustausch, Rollen und Widerruf
+---
+
+Es gibt nirgendwo in bae ein Kontosystem. Die Identität eines Geräts ist ein Ed25519-Schlüsselpaar, das es für sich selbst erzeugt und im OS-Schlüsselbund behält; der öffentliche Schlüssel *ist* die Identität. Wer zu einer Mediathek gehört, ist eine Menge signierter Datensätze im Cloud-Zuhause, prüfbar von jedem, der sie hält, von keinem Server ausgegeben. Die Mechanik gehört zu [coven](https://coven.bae.fm); diese Seite beschreibt, wie bae sie nutzt.
+
+## Mitgliedschaftsdatensätze
+
+Jeder Besitzer schreibt einen append-only Strom signierter Mitgliedschaftseinträge in das Cloud-Zuhause: Dieser Schlüssel wurde mit dieser Rolle hinzugefügt, dieser Schlüssel wurde entfernt. Jeder Eintrag verweist auf den vorherigen, und jeder Besitzer signiert einen Kopf, der die Spitze seines Stroms erklärt, sodass ein Anbieter, der Datensätze fallen lässt oder umordnet, erkannt statt geglaubt wird. Was die Mediathek akzeptiert, ist die Vereinigung aller verifizierten Besitzerströme.
+
+Bei jedem Pull wird der Autor jedes Changesets gegen diesen Datensatz geprüft: signiert von einem aktuellen Mitglied, mit einer Rolle, die schreiben darf. Changesets von entfernten Geräten, von nie hinzugefügten Schlüsseln oder mit ungültigen Signaturen werden nicht angewendet. Der Anbieter speichert die Datensätze, kann sie aber nicht fälschen; nur Inhaber von Besitzerschlüsseln können die Mitgliedschaft ändern.
+
+## Rollen
+
+**Besitzer** und **Mitglied** lesen und schreiben beide die Mediathek; Besitzer bestätigen und entfernen zusätzlich Geräte. Das Gründungsgerät von bae ist ein Besitzer, und jedes Gerät, das es bestätigt, tritt als Mitglied bei. (Eine dritte Rolle existiert in der zugrunde liegenden Mechanik, ein Nur-Lese-Follower, den bae derzeit nicht zuweist.)
+
+## Der Beitrittsaustausch
+
+Ein Gerät hinzuzufügen ist ein Austausch aus zwei Codes mit ausdrücklicher menschlicher Prüfung in der Mitte:
+
+1. Das beitretende Gerät erzeugt sein Schlüsselpaar und zeigt eine **Beitrittsanfrage**: seinen öffentlichen Schlüssel, einen kurzen Fingerabdruck davon und (bei OAuth-Anbietern) das Cloud-Konto, für das der Ordner freigegeben werden soll.
+2. Ein Besitzer dekodiert die Anfrage, und die zwei Bildschirme zeigen denselben Fingerabdruck. Der Mensch prüft, dass sie übereinstimmen; dieser Schritt verhindert einen ausgetauschten Schlüssel.
+3. Die Bestätigung tut drei Dinge zugleich: Sie gewährt dem Konto des Neuankömmlings Zugriff auf das Cloud-Zuhause (Ordnerfreigabe bei Verbraucher-Clouds, eingebettete Zugangsdaten bei S3, eine CloudKit-Freigabe bei iCloud), verschließt den Mediatheksschlüssel für den öffentlichen Schlüssel des Neuankömmlings und signiert einen Mitgliedschaftseintrag, der ihn hinzufügt. All das wird in einen **Einladungscode** gepackt.
+4. Das beitretende Gerät verbraucht die Einladung, öffnet den Schlüssel, baut sich aus dem neuesten Snapshot auf und synchronisiert.
+
+Die Einladung ist für den anfragenden Schlüssel verschlossen: Sie abzufangen gewährt nichts.
+
+## Widerruf
+
+Das Entfernen eines Mitglieds hängt eine signierte Entfernung an und rotiert den Mediatheksschlüssel zu einer neuen Generation, die der entfernte Schlüssel nie erhält (siehe [Verschlüsselung](/de/reference/encryption#generationen)). Bei Speicher, der Zugriff widerrufen kann, wird der Zugriff ebenfalls entzogen. Was bereits auf das entfernte Gerät synchronisiert wurde, bleibt dort; Daten lassen sich nicht zurückholen. Alles nach der Rotation liegt außerhalb seiner Reichweite.
+
+## Wiederherstellungscodes
+
+Ein Wiederherstellungscode umgeht die Mitgliedschaft absichtlich: Er ist die Koordinaten des Cloud-Zuhauses plus Mediatheksschlüssel in einer Bearer-Zeichenfolge, um deine eigene Mediathek ohne verbleibendes bestätigendes Gerät wiederherzustellen. Er wird bei Bedarf erzeugt, auf Apple-Plattformen automatisch im iCloud-Schlüsselbund gespeichert und ist genau so sensibel wie die Mediathek selbst.

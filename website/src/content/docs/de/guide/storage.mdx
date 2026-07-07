@@ -1,0 +1,36 @@
+---
+title: Speicher und offline
+description: Wo deine Musik liegt und was ohne Netzwerk spielt
+---
+
+Deine Dateien bleiben deine. bae verschiebt, benennt oder schreibt sie nie neu; die Frage, die Speicher beantwortet, lautet nur, wo die *abspielbare Kopie* jedes Releases liegt: auf dem Gerät, in deiner Cloud oder an beiden Orten.
+
+## Nicht verwaltet und verwaltet
+
+Jedes Release ist eines von beiden, beim Import gewählt und jederzeit änderbar:
+
+- **Nicht verwaltet**: bae katalogisiert deine Dateien dort, wo sie sind, und spielt sie von dort ab. Nichts wird kopiert. Das Release existiert im Katalog auf jedem synchronisierten Gerät, aber sein Audio liegt nur auf dem Rechner, der es importiert hat.
+- **Verwaltet**: Die Dateien werden verschlüsselt und ins Cloud-Zuhause hochgeladen. Jetzt kann jedes Gerät das Release abspielen, es bei Bedarf streamen oder für offline herunterladen. Deine Originaldateien bleiben durch den Upload unberührt; ob du sie lokal weiterverwendest, entscheidest du (**Lokale Kopie behalten** beim Import pinnt sie).
+
+Der Wechsel zwischen beiden ist eine Aktion auf Release-Ebene: **Verwalten** lädt ein nicht verwaltetes Release hoch; **Lokal machen** lädt die Dateien eines verwalteten Releases in einen Ordner deiner Wahl herunter, und sie gehören dir wieder als normale Dateien.
+
+## Streaming und Cache
+
+Verwaltete Releases spielen überall, sofern das Netzwerk es zulässt: Die Wiedergabe streamt die Datei aus deiner Cloud, und die Bytes werden in einem lokalen Cache behalten, sodass das nächste Abspielen sofort und ohne Netzwerk erfolgt. Der Cache verwaltet sich innerhalb eines Budgets (20 GB für Audio auf jedem Gerät) und entfernt, was du nicht abgespielt hast, wenn der Platz knapp wird. Cover und Künstlerbilder werden getrennt gecacht, sodass ein großes Album dein Artwork nicht verdrängen kann.
+
+## Für offline pinnen
+
+Ein Release zu pinnen lädt es vollständig herunter und behält es: Gepinnte Musik wird nie aus dem Cache entfernt und spielt immer offline. Pinne aus dem Speicherbereich des Releases oder dem Speichermanager; Entpinnen gibt die Dateien in den normalen Cache zurück, wo sie abspielbar bleiben, aber wieder freigegeben werden können. Auf dem Telefon zeigen gepinnte Downloads ihren Fortschritt direkt in der Mediathek.
+
+## Der Speichermanager
+
+Der Speichermanager des Desktops (<kbd>⌘0</kbd>) zeigt das ganze Bild in einem Fenster:
+
+- Jedes Release mit Größe und Status: nicht verwaltet, verwaltet, wird hochgeladen. Filtern, sortieren, mehrere auswählen, auf alle gleichzeitig handeln.
+- **Downloads**: laufende gepinnte Downloads, pausierbar, wiederholbar.
+- **Exporte**: die Exportwarteschlange. Siehe [Exportieren](/de/guide/exporting).
+- **Uploads**: der Synchronisierungs-Postausgang mit Fortschritt pro Release, Durchsatz und verbleibender Zeit, ausstehenden Löschungen, Pause und Fortsetzen.
+
+## Löschen
+
+Das Löschen eines verwalteten Releases entfernt es aus der Mediathek und dem Cloud-Zuhause. Das Löschen eines nicht verwalteten Releases entfernt nur den Katalogeintrag: bae löscht nie Dateien, die es nicht dort abgelegt hat.

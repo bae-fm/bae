@@ -1,0 +1,43 @@
+---
+title: Import-Pipeline
+description: Scannen, Belege, Abgleich und die atomare Festschreibung
+---
+
+Import verwandelt einen Ordner aus Dateien in einen releasegenauen Katalogeintrag, ohne ein Byte der Dateien zu verändern. Diese Seite ist die Pipeline hinter dem Ablauf aus der [Anleitung](/de/guide/importing).
+
+## Scannen
+
+Überwachte Ordner werden über Dateisystemereignisse der Plattform beobachtet, entprellt und bei Änderungen erneut gescannt; Scans werden mit der vorhandenen Kandidatenliste abgeglichen, statt von vorne zu beginnen. Der Scanner klassifiziert einen Ordner als ein Release (Audio direkt darin oder discförmige Unterordner wie `CD1`/`CD2`) oder steigt als Sammlung rekursiv hinein. Dateien werden nach Endung als Audio, Artwork und Dokumente klassifiziert, dann wird Audio geprüft: Der relevante Codec ist der, den FFmpeg in den Bytes findet, nicht die Dateiendung. Ordner mit Markern für teilweise Downloads werden ausgeschlossen, bis der Download fertig ist.
+
+Ein CUE-Sheet verwandelt ein Audio-Image in eine Trackliste. Der Parser behandelt Pregaps und Postgaps, Performer und ISRCs pro Track sowie Ein-Datei-Images und CUE-Layouts mit einer Datei pro Track. Trackgrenzen werden von CUE-Frames (1/75 Sekunde) in exakte Samplepositionen umgerechnet, aus denen später die Byte- und Sample-Fenster werden, die die Wiedergabe nutzt.
+
+## Belege, nicht Tags
+
+Die Identifizierung liest drei Arten von Belegen in einem Durchgang aus dem Ordner:
+
+- eine **Disc ID**, der MusicBrainz-Fingerabdruck des exakten Tracklayouts einer CD, berechnet aus einem Rip-Log oder aus dem CUE-Sheet;
+- **Barcodes**, aus Artwork-Scans durch das Vision-Framework der Plattform dekodiert und aus CUE-Katalogfeldern gelesen;
+- **Text**: Katalognummern und freier Text aus Artwork-OCR, Ordner- und Dateinamen sowie Textdateien im Rip.
+
+Eingebettete Audiotags sind absichtlich keine Belege: Sie beschreiben, was ein Tagger glaubte, nicht was die Pressung ist. (Sie liefern die Start-Metadaten, wenn der Benutzer ein Release als unbekannt importiert.)
+
+Disc ID und Barcode werden gleichzeitig nachgeschlagen, die Disc ID gegen MusicBrainz, der Barcode zugleich gegen MusicBrainz und Discogs, und die Ergebnisse werden abgeglichen: Ergebnisse, die in einer Release-Gruppe übereinstimmen, laufen zusammen, Katalognummerntreffer grenzen die Pressungsliste ein, und Uneinigkeit zwischen Signalen wird dem Benutzer als ausdrücklicher Konflikt gezeigt statt als stille beste Vermutung. Jedes Ergebnis trägt seine Herkunft (gefunden per Disc ID, per Barcode, Katalogtreffer), damit die Oberfläche sagen kann, warum eine Zeile angeboten wird.
+
+## Quellen
+
+MusicBrainz wird anonym mit einem strikten Takt von einer Anfrage pro Sekunde abgefragt. Discogs authentifiziert sich mit dem persönlichen Token des Benutzers aus dem Schlüsselbund, getaktet und innerhalb seiner Ratenlimits erneut versucht, und ein abgelehntes Token wird als solches gemeldet, damit die Oberfläche es anzeigen kann, statt Suchvorgänge still scheitern zu lassen. Antworten werden pro Sitzung gecacht, und das rohe JSON der Quelle, die gewinnt, wird in der Datenbank für spätere Neuinterpretation archiviert.
+
+## Festschreiben
+
+Die Bestätigung eines Imports läuft in dieser Reihenfolge:
+
+1. **Dekodierprüfung**: Jeder Track wird von Anfang bis Ende dekodiert; ein Rip, der nicht vollständig dekodiert werden kann, lässt den Import fehlschlagen, bevor etwas geschrieben wird (ein Konfigurationsflag kann dies deaktivieren).
+2. **Lautheitsanalyse**: Integrierte Lautheit und True Peak werden pro Track und pro Album während desselben Dekodierdurchgangs gemessen und für Replay-Gain-Nutzung gespeichert.
+3. **Cover-Auswahl**: Das gewählte Artwork (remote, Ordnerbild oder eingebettet) wird zu einem Anzeige-Thumbnail neu gerendert; das Original wird unter den Dateien des Releases behalten, wenn es aus dem Ordner kam.
+4. **Atomarer Schreibvorgang**: Release, Tracks, Mitwirkende, Identitäten, Formate, Segmente, Dateien und Cover werden in einer Transaktion festgeschrieben. Es gibt keinen halb importierten Zustand.
+
+Das Release landet mit Verweisen auf die Dateien des Benutzers an Ort und Stelle. Wenn der Benutzer cloudverwaltet gewählt hat, geschieht der Upload nach dem Festschreiben als Speicherübergang, und die ursprünglichen Bytes der Dateien bleiben währenddessen die Quelle der Wahrheit; nichts, was der Benutzer bae gegeben hat, wird je gelöscht oder verändert.
+
+## Rips erkennen
+
+Jedes Release erfasst einen Inhalts-Hash über die Struktur seines importierten Ordners (relative Pfade und Größen, unabhängig vom Ort). Re-Scans nutzen ihn, um Ordner zu markieren, die bereits in der Mediathek sind, und Re-Importe desselben Rips finden und ersetzen ihr vorheriges Release, statt es zu duplizieren.

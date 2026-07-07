@@ -1,0 +1,43 @@
+---
+title: Geräte und Mitglieder
+description: Füge dein Telefon hinzu, bestätige ein Gerät, stelle deine Mediathek wieder her
+---
+
+Es gibt kein bae-Konto. Die Identität eines Geräts ist ein Schlüsselpaar, das es für sich selbst erzeugt und im Schlüsselbund des Betriebssystems behält; die Mediathek erkennt Geräte an ihren Schlüsseln. Ein Gerät hinzuzufügen bedeutet, dass ein vorhandenes Gerät kryptografisch für ein neues bürgt, ohne jemanden dazwischen.
+
+Zwei verschiedene Türen für zwei verschiedene Situationen:
+
+- **Beitreten**: Ein neues Gerät wird von einem Gerät bestätigt, das die Mediathek bereits hat. Nutze dies, um dein Telefon oder das Gerät einer anderen Person hinzuzufügen.
+- **Wiederherstellen**: Dein eigenes neues oder neu installiertes Gerät stellt die Mediathek direkt aus dem Cloud-Zuhause mit einem Wiederherstellungscode wieder her. Ohne bestätigendes Gerät.
+
+## Ein Gerät hinzufügen
+
+Wähle auf dem neuen Gerät **Einer Mediathek beitreten**. Es zeigt einen kurzen Code, auch als QR-Code: die Beitrittsanfrage mit dem öffentlichen Schlüssel des Geräts und einem Fingerabdruck, den du vorlesen kannst.
+
+Auf einem Gerät, das die Mediathek bereits hat, öffnet ein Besitzer Einstellungen, Geräte, **Gerät hinzufügen** und scannt diese Anfrage oder fügt sie ein. bae zeigt den Fingerabdruck des beitretenden Geräts; bestätige, dass er zu dem passt, was das neue Gerät anzeigt. Die Bestätigung erzeugt einen Einladungscode: Gib ihn an das neue Gerät zurück (QR-Code scannen oder einfügen), und das neue Gerät lädt die Mediathek herunter und beginnt zu synchronisieren.
+
+Hinter dem Austausch: Das bestätigende Gerät gewährt dem Neuankömmling Zugriff auf das Cloud-Zuhause (Verbraucher-Clouds geben den Ordner für das Konto des Neuankömmlings frei; S3-Einladungen enthalten Zugangsdaten) und verschließt den Verschlüsselungsschlüssel der Mediathek für den öffentlichen Schlüssel des Neuankömmlings. Die Einladung ist für jedes andere Gerät nutzlos. Details unter [Identität und Mitgliedschaft](/de/reference/membership).
+
+## Mitglieder und Rollen
+
+Einstellungen, Geräte listet jedes Mitglied auf: Fingerabdruck, Rolle und welches davon dieses Gerät ist. Das Gründungsgerät ist ein **Besitzer**; Geräte, die es bestätigt, treten als **Mitglieder** bei. Beide lesen und schreiben die Mediathek; nur Besitzer bestätigen und entfernen Geräte.
+
+## Ein Gerät entfernen
+
+Besitzer können jedes Mitglied entfernen. Das Entfernen schließt nicht nur die Tür: Der Verschlüsselungsschlüssel der Mediathek wird rotiert, und das entfernte Gerät erhält den neuen Schlüssel nie. Was es bereits kopiert hat, behält es; Daten lassen sich nicht zurückholen. Alles, was die Mediathek ab diesem Zeitpunkt schreibt, ist für es unlesbar.
+
+## Wiederherstellungscodes
+
+Ein Wiederherstellungscode ist ein Bearer-Geheimnis für deine eigene Mediathek: Koordinaten des Cloud-Zuhauses plus Verschlüsselungsschlüssel in einer Zeichenfolge. **Wiederherstellungscode anzeigen** in den Einstellungen zeigt ihn an; speichere ihn an einem sicheren Ort, etwa in einem Passwortmanager. Auf einem neuen Gerät baut **Aus Cloud wiederherstellen** mit dem Code die Mediathek wieder auf, ohne bestätigendes Gerät.
+
+Auf Apple-Plattformen wird der Code außerdem automatisch im iCloud-Schlüsselbund abgelegt, sodass ein neuer Mac oder ein neues iPhone, das mit deiner Apple-ID angemeldet ist, mit einem Tippen wiederherstellen kann.
+
+Wer den Code hat, hat die Mediathek. Behandle ihn also wie den Schlüssel, der er ist.
+
+## Sperren
+
+**Mediathek sperren** entfernt den Verschlüsselungsschlüssel aus dem Schlüsselbund des Geräts. Die Mediathek bleibt auf der Festplatte, unlesbar, bis jemand den Schlüssel erneut eingibt; bae prüft ihn vor der Annahme gegen einen gespeicherten Fingerabdruck. Nutze das für einen Laptop, der das Haus verlässt.
+
+## Auf dem Telefon
+
+iOS und Android treten genau so bei und stellen genau so wieder her; das ist ihr ganzer Einstieg. Ein Telefon kann auch seine Kopie der Mediathek entfernen (Einstellungen, von diesem Gerät entfernen), was lokale Dateien löscht und in der Cloud nichts berührt.

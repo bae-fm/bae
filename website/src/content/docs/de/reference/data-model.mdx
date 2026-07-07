@@ -1,0 +1,43 @@
+---
+title: Datenmodell
+description: Das Schema, was synchronisiert wird und was auf dem Gerät bleibt
+---
+
+Der Katalog von bae ist gewöhnliches SQLite, Tabelle für Tabelle bei [coven](https://coven.bae.fm) deklariert: Synchronisierte Tabellen tragen eine Konfliktuhr und reisen zu jedem Gerät; nicht deklarierte Tabellen verlassen das Gerät nie. Diese Trennung ist die tragende Entscheidung des Datenmodells, daher ist diese Seite darum aufgebaut.
+
+## Der Kataloggraph
+
+Das synchronisierte Herz des Schemas:
+
+- **`artists`**, **`albums`**, **`works`**: die Gruppierungsschicht. Ein Album sammelt seine Releases und zeigt auf ein primäres; Werke bilden einen Eltern-Kind-Graphen für klassische Struktur.
+- **`releases`**: die zentrale Entität, eine Zeile pro Pressung. Trägt die Pressungsdaten (Label, Katalognummer, Barcode, Land, Format, Jahr), die Metadatenquelle, einen Inhalts-Hash des importierten Ordners und gemessene Albumlautheit.
+- **`release_identities`**: was ein Release *ist*, pro Quelle. Keine Zeilen bedeutet unbekannt; eine MusicBrainz- oder Discogs-Zeile mit Release-ID bedeutet exakt; ohne eine, ungefähr. Ein Release kann Identitäten in beiden Quellen zugleich halten.
+- **`tracks`** mit **`track_artists`**, plus **`release_artist_roles`** und **`track_artist_roles`**: Tracklisten und Mitwirkende, jede Mitwirkung mit ihrer Quelle markiert.
+- **`track_works`**, **`work_parts`**, **`work_artists`**: Aufnahmen, die mit den Werken verknüpft sind, die sie aufführen.
+- **`audio_formats`** und **`audio_format_segments`**: die Wiedergabespezifikationen. Pro Track: Codec, Abtastrate, Bittiefe, Kanäle, gemessene Lautheit und Spitze sowie Pregap-Längen. Segmente bilden einen Track auf geordnete Byte- und Sample-Fenster seiner Quelldateien ab; so kann der Track eines CUE-Rips, einschließlich Pregap, Bereiche einer großen Datei oder mehrerer Dateien überspannen.
+- **`release_files`**, **`covers`**, **`artist_images`**: Blob-tragende Tabellen. Zeilen sind Katalogeinträge; die Bytes leben in der Blob-Schicht von coven (siehe unten).
+
+## Synchronisiert, gated, lokal
+
+All das synchronisiert, aber nicht bedingungslos. `releases` ist als gated root auf seiner Spalte `remote` deklariert: Eine Release-Zeile und ihr ganzer Teilbaum (Tracks, Dateien, Mitwirkende, Formate, Cover) synchronisieren nur, während `remote` wahr ist, also während das Release cloudverwaltet ist. Ein Release auf verwaltet zu setzen veröffentlicht den Teilbaum; ein nicht verwaltetes Release bleibt vollständig auf dem importierenden Gerät, obwohl sein Schema synchronisiert ist. Die Vorfahrentabellen (`artists`, `albums`, `works`) synchronisieren nur, während ein synchronisiertes Release noch auf sie verweist, sodass ein Gerät nie einen Künstler ohne etwas darunter erhält.
+
+Vollständig lokale Tabellen, nie bei coven deklariert:
+
+- **`playback_state`**: aktueller Track, Position, Warteschlange, Lautstärke, Mischen und Wiederholen. Wiedergabe ist eine Gerätetatsache.
+- **`imports`**: Nachverfolgung von Importvorgängen.
+- **`release_metadata`**: archiviertes rohes JSON aus MusicBrainz und Discogs, für spätere Neuinterpretation behalten.
+- **`attribution_names`**: Anzeigenamen für Mitgliedsschlüssel.
+
+Jede synchronisierte Tabelle trägt eine `_updated_at`-Hybrid-Logical-Clock-Spalte, das Register, nach dem covens Feld-für-Feld-Zusammenführung gleichzeitige Änderungen ordnet; ein Test erzwingt, dass die synchronisierte Menge und die Uhr tragende Menge exakt gleich sind.
+
+## Blobs
+
+Audio und Bilder gehen durch covens Blob-Schicht in drei Namensräumen, jeder mit eigenem Geräte-Cache-Budget: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+
+Release-Dateien werden vom Benutzer bereitgestellt und bei Bedarf gecacht: Bei einem nicht verwalteten Release ist der Blob eine externe Referenz auf die Datei des Benutzers an ihrem ursprünglichen Pfad; bei einem verwalteten ist es ein hochgeladenes Objekt, das beim ersten Lesen in den Cache geholt wird. Cover und Künstlerbilder werden vom Host bereitgestellt und früh gecacht: bae erzeugt die Bytes (Cover werden als JPEG-Thumbnails mit höchstens 600 px Breite neu gerendert), und jedes Gerät holt sie beim Pull, damit Raster lokal rendern.
+
+In einem undurchsichtigen Zuhause werden Blobs unter bedeutungslosen Inhaltsschlüsseln hochgeladen. In einem durchsuchbaren Zuhause erfasst jede Blob-Zeile einen lesbaren Cloud-Pfad (`{artist}/{album}/{filename}` für Audio, `{album}/{release}/cover.{ext}` für Cover), der einmal beim Upload berechnet wird, sodass eine spätere Umbenennung das Objekt nie verschiebt.
+
+## Identität eines Rips
+
+`releases.content_hash` ist ein SHA-256 über die Dateistruktur des importierten Ordners (relative Pfade und Größen), unabhängig davon, wo der Ordner auf der Festplatte liegt. So erkennt bae einen bereits importierten Rip, wenn er erneut in einem überwachten Ordner auftaucht, und so finden Re-Importe das Release, das sie ersetzen sollen.

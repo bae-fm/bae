@@ -1,0 +1,37 @@
+---
+title: Cloud-Speicher
+description: Anbieter, Authentifizierung und die Form des Cloud-Zuhauses
+---
+
+Das Cloud-Zuhause ist ein Ort in Speicher, den der Benutzer bereits besitzt. Jeder Anbieter wird über dieselbe Speicherschnittstelle in [coven](https://coven.bae.fm) gesteuert; was sich je Anbieter unterscheidet, sind Authentifizierung und wie einem zweiten Gerät Zugriff gewährt wird.
+
+## Anbieter
+
+| Anbieter | Auth | Zugriff für ein neues Gerät |
+|---|---|---|
+| S3-kompatibel | Access key + secret | Zugangsdaten in der Einladung eingebettet |
+| Google Drive | OAuth (PKCE) | Ordner für das Konto des Beitretenden freigegeben |
+| Dropbox | OAuth (PKCE) | Ordner für das Konto des Beitretenden freigegeben |
+| OneDrive | OAuth (PKCE) | Ordner für das Konto des Beitretenden freigegeben |
+| iCloud (CloudKit) | Apple-ID, keine Anmeldung | CloudKit-Freigabe vom Beitretenden angenommen |
+
+S3-kompatibel umfasst AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO und alles andere, das die API spricht; Bucket, Region, Endpoint und Schlüsselpräfix sind konfigurierbar, und der Bucket wird geprüft, bevor die Konfiguration gespeichert wird, damit ein Tippfehler bei der Einrichtung fehlschlägt, nicht bei der ersten Synchronisierung. Die OAuth-Anbieter existieren nur in der vollständigen **bae**-Edition; **baeium**-Builds kompilieren sie heraus.
+
+## OAuth
+
+Die Anmeldung ist ein Authorization-Code-Ablauf mit PKCE als Public Client. Auf dem Desktop landet die Umleitung auf einem Loopback-Server, der für den einen Callback an einen lokalen Port gebunden ist; auf Mobilgeräten fängt die App stattdessen eine Umleitung mit eigenem Schema ab. bae fordert den engsten Scope an, den der Anbieter für die Aufgabe anbietet; bei Google Drive ist das nur Zugriff auf Dateien, die die App selbst erstellt. Tokens werden im OS-Schlüsselbund gespeichert, mit dem Refresh Grant des Anbieters erneuert, und ein abgelehnter Refresh erscheint als Aufforderung zum erneuten Verbinden statt als stille Wiederholungsschleife.
+
+CloudKit braucht gar keinen Ablauf: Der CloudKit-Treiber der Plattform, in der App implementiert und an den Kern übergeben, arbeitet als die angemeldete Apple-ID.
+
+## Das Layout des Zuhauses
+
+Im Zuhause legt coven Änderungsstromsätze pro Gerät, Snapshot-Generationen, Mitgliedschaftsdatensätze und Blob-Namensräume an. bae steuert drei Blob-Namensräume bei: `release_files`, `covers` und `artist_images`.
+
+Wie Objekte benannt werden, hängt vom Speichermodus des Zuhauses ab, der bei der Erstellung festgelegt wird:
+
+- **Undurchsichtig**: Objekte werden verschlüsselt und unter inhaltsabgeleiteten Schlüsseln gespeichert, die nichts verraten. Dies ist der Modus, der der Kryptografie vollständig vertraut; siehe [Verschlüsselung](/de/reference/encryption).
+- **Durchsuchbar**: Objekte sind Klartext an lesbaren Pfaden, die pro Blob beim Upload erfasst werden: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Der Bucket ist zugleich ein nutzbarer Dateibaum; der Tausch ist: keine Verschlüsselung und keine Mitgliedschaft, daher können durchsuchbare Zuhause nicht mit anderen Personen geteilt werden.
+
+## Verhalten in echten Netzwerken
+
+Lesevorgänge für die Wiedergabe verwenden Bereiche: Der Player streamt die Byte-Fenster, die er braucht, statt ganzer Dateien. Uploads oberhalb einer Größenschwelle werden mehrteilig, wo der Anbieter es unterstützt. Ratenlimits und vorübergehende Anbieterfehler werden mit exponentieller Wartezeit erneut versucht, unter Beachtung von Retry-After, wenn vorhanden; abgelaufene OAuth-Tokens werden an Ort und Stelle erneuert. Der Synchronisierungs-Postausgang überlebt Neustarts: Ein Upload, der durch das Beenden der App unterbrochen wurde, wird fortgesetzt, statt neu zu beginnen.

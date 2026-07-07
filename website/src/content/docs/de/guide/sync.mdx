@@ -1,0 +1,43 @@
+---
+title: Synchronisierung
+description: Deine ganze Mediathek auf jedem Gerät, über deine eigene Cloud
+---
+
+Synchronisierung bedeutet oft den Server einer anderen Person: ein Konto, ein Abo, ein Unternehmen, das deine Mediathek lesen kann. bae synchronisiert über **deine** Cloud, Speicher, den du bereits hast, und betreibt überhaupt keinen Server. Deine Geräte schreiben verschlüsselte Änderungen in diesen Speicher und lesen die der anderen; der Anbieter hält die Bytes und kann sie nicht lesen.
+
+Eine Mediathek, jedes Gerät, und das einzige beteiligte Konto ist eines, das du bereits besitzt.
+
+## Das Cloud-Zuhause
+
+Das Cloud-Zuhause einer Mediathek ist ein Ort in deinem Speicher: ein Ordner in Google Drive, Dropbox oder OneDrive, dein iCloud oder ein beliebiger S3-kompatibler Bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Es enthält alles, was die Mediathek synchronisiert: Katalogänderungen, Artwork und das Audio von Releases, die du bae verwalten lässt.
+
+Richte es in den Einstellungen unter Synchronisierung ein:
+
+1. Wähle einen Anbieter. Verbraucher-Clouds melden sich über die eigene Anmeldeseite des Anbieters an; von deinem Konto wird außer den ausgegebenen Tokens nichts gespeichert. iCloud verwendet deine Apple-ID direkt. S3 nimmt Bucket, Region, Endpoint und Schlüssel, die vor dem Speichern geprüft werden.
+2. Wähle, wie das Zuhause Objekte speichert (siehe unten).
+3. bae beginnt zu synchronisieren.
+
+Eine Mediathek ohne Cloud-Zuhause ist für sich vollständig. Nur lokal ist ein Modus, keine Einschränkung, und das Trennen des Cloud-Zuhauses kehrt dorthin zurück.
+
+## Undurchsichtig oder durchsuchbar
+
+Bei der Einrichtung wählst du, was der Anbieter sehen darf, und die Wahl ist für dieses Zuhause dauerhaft:
+
+- **Undurchsichtig** (Standard): Jedes Objekt wird vor dem Upload auf deinem Gerät verschlüsselt und unter bedeutungslosen Namen gespeichert. Der Anbieter oder jemand, der Zugriff auf den Bucket erhält, sieht Geheimtext. Dies ist der Modus, den die Seite [Verschlüsselung](/de/reference/encryption) beschreibt, und der einzige Modus, der das Hinzufügen anderer Geräte und Mitglieder unterstützt.
+- **Durchsuchbar**: Objekte werden unverschlüsselt mit echten Dateinamen gespeichert, in Ordnern, die nach Künstler und Album benannt sind. Du kannst den Bucket mit jedem Werkzeug öffnen und deine Dateien direkt kopieren oder abspielen. Nichts ist verschlüsselt, daher ist die eigene Zugriffskontrolle des Buckets der einzige Schutz, und das Zuhause kann nicht geteilt werden.
+
+## Was synchronisiert wird
+
+- Der Katalog: Alben, Releases, Tracks, Mitwirkende, Werke, Identitäten, Änderungen. Jedes Gerät erhält alles davon.
+- Artwork: Cover und Künstlerbilder, früh geladen, damit Raster überall gerendert werden.
+- Audio: nur für Releases, die du in der Cloud verwalten lässt. Nicht verwaltete Releases bleiben rein lokal; Katalogeinträge sind auf anderen Geräten enthalten, aber Bytes nur dort, wo du sie importiert hast.
+
+Gerätebezogener Zustand synchronisiert nicht: Wiedergabeposition, Lautstärke, Warteschlange und Geräteeinstellungen bleiben auf dem Gerät.
+
+## Wann synchronisiert wird
+
+Synchronisierung läuft von selbst: nach Änderungen, nach einem Timer und bei Bedarf mit **Jetzt synchronisieren**. Änderungen landen unter normalen Bedingungen Sekunden später als kleine Änderungen auf anderen Geräten. Wenn zwei Geräte gleichzeitig bearbeiten, gewinnen beide dort, wo sie nicht kollidieren: bae führt gleichzeitige Änderungen Feld für Feld zusammen, und ein gelöschtes Release bleibt gelöscht, auch wenn es im selben Moment anderswo bearbeitet wurde. Du wirst nie aufgefordert, einen Konflikt aufzulösen.
+
+## Wenn es fehlschlägt
+
+Synchronisierungsfehler unterbrechen die Mediathek nicht; du kannst lokal weiter durchsuchen, abspielen und importieren, während bae mit Wartezeit erneut versucht. Die Statuszeile zeigt Synchronisierung und letzte Synchronisierungszeit; ein Fehler zeigt ein Banner mit dem Fehler, und Uploads können im [Speichermanager](/de/guide/storage#der-speichermanager) pausiert, erneut versucht und geprüft werden. Wenn die Anmeldung des Cloud-Zuhauses abläuft, fordert bae dich zum erneuten Verbinden auf.
