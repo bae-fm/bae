@@ -1,0 +1,43 @@
+---
+title: 数据模型
+description: schema、同步什么，以及什么留在设备上
+---
+
+bae 的目录是普通 SQLite，逐表声明给 [coven](https://coven.bae.fm)：同步表带冲突时钟，并传到每台设备；未声明表永远不离开设备。这个划分是数据模型中最承重的决定，因此本页围绕它组织。
+
+## 目录图
+
+schema 的同步核心：
+
+- **`artists`**、**`albums`**、**`works`**：分组层。专辑聚合自己的发行，并指向一个 primary；works 为古典结构形成父/子图。
+- **`releases`**：中心实体，每次压制一行。携带压制事实（厂牌、目录号、条码、国家或地区、格式、年份）、元数据来源、导入文件夹的 content hash，以及测量得出的专辑响度。
+- **`release_identities`**：一个发行按来源看*是什么*。没有行意味着未知；带 release ID 的 MusicBrainz 或 Discogs 行意味着精确；没有 release ID 则为近似。一个发行可以同时持有两个来源的 identities。
+- **`tracks`** 与 **`track_artists`**，以及 **`release_artist_roles`** 和 **`track_artist_roles`**：曲目列表和署名，每个署名都标记来源。
+- **`track_works`**、**`work_parts`**、**`work_artists`**：录音链接到它们演奏的作品。
+- **`audio_formats`** 和 **`audio_format_segments`**：播放规格。按曲目记录 codec、采样率、位深、声道、测量响度和峰值，以及 pregap 长度。segments 把曲目映射到其来源文件的有序字节窗口和采样窗口，这就是 CUE 抓轨中的曲目（包括 pregap）可以跨越一个大文件或多个文件区域的方式。
+- **`release_files`**、**`covers`**、**`artist_images`**：带 blob 的表。行是目录项；字节存在 coven 的 blob 层中（见下文）。
+
+## 同步、受门控、本地
+
+以上全部同步，但不是无条件同步。`releases` 以其 `remote` 列声明为 gated root：release 行及其整棵子树（tracks、files、credits、formats、cover）只在 `remote` 为 true 时同步，也就是该发行由云端托管时。把发行切换为托管会发布子树；非托管发行即使 schema 是同步的，也会完全留在导入设备上。祖先表（`artists`、`albums`、`works`）只在仍有某个已同步发行引用它们时同步，因此设备永远不会收到下面没有内容的艺人。
+
+完全本地、从不声明给 coven 的表：
+
+- **`playback_state`**：当前曲目、位置、队列、音量、随机和重复。播放是设备事实。
+- **`imports`**：导入操作跟踪。
+- **`release_metadata`**：从 MusicBrainz 和 Discogs 归档的原始 JSON，用于以后重新解释。
+- **`attribution_names`**：成员密钥的显示名称。
+
+每个同步表都带 `_updated_at` hybrid-logical-clock 列，这是 coven 的逐字段合并用来排序并发编辑的 register；测试会保证同步表集合与带 clock 的表集合完全相等。
+
+## Blob
+
+音频和图像通过 coven 的 blob 层进入三个 namespace，每个 namespace 有自己的设备缓存预算：`release_files`（20 GiB）、`covers`（512 MiB）、`artist_images`（256 MiB）。
+
+发行文件由用户提供并惰性缓存：对于非托管发行，blob 是指向用户文件原始路径的外部引用；对于托管发行，它是上传对象，第一次读取时取入缓存。封面和艺人图像由主机提供并主动缓存：bae 生成字节（封面会重新渲染为最宽 600px 的 JPEG 缩略图），每台设备 pull 时都会获取它们，因此网格能在本地渲染。
+
+在不透明主目录中，blob 以上无意义的 content keys 上传。在可浏览主目录中，每个 blob 行记录一个可读云路径（音频用 `{artist}/{album}/{filename}`，封面用 `{album}/{release}/cover.{ext}`），在上传时计算一次，因此之后重命名不会移动对象。
+
+## 抓轨的身份
+
+`releases.content_hash` 是导入文件夹文件结构（相对路径和大小）的 SHA-256，与文件夹位于磁盘哪里无关。这是 bae 在监视文件夹中再次看到已导入抓轨时识别它的方式，也是重新导入找到应替换发行的方式。

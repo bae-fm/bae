@@ -1,0 +1,55 @@
+---
+title: 安装
+description: 在每个平台下载并安装 bae 或 baeium
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## 两个版本
+
+每个平台都提供两个版本，来自同一份源代码：
+
+- **bae**，完整应用：S3、Google Drive、Dropbox、OneDrive 和 iCloud 同步。
+- **baeium**，不含专有部分：仅支持 S3-compatible storage，无 OAuth providers，无 iCloud/CloudKit，无 telemetry。
+
+它们可以并排安装，各自拥有自己的资料库和自己的（通过 iCloud Keychain 同步的）密钥。下面选择你需要的版本。
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">下载 macOS 版 bae</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">下载 macOS 版 baeium</DownloadButton>
+
+1. 打开下载的 `.dmg`
+2. 将应用拖到 Applications 文件夹
+3. 从 Applications 打开它
+
+两个版本都会通过各自的 Sparkle feed 自动更新。
+
+## iOS
+
+iOS 构建是**用于侧载的未签名 `.ipa` 文件**。使用 [AltStore](https://altstore.io) 或 [Sideloadly](https://sideloadly.io) 安装，或在 Xcode 中用你自己的 Apple ID 重新签名（免费 Apple ID 可用于 baeium）。App Store 分发尚未设置。
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">下载 iOS 版 bae</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">下载 iOS 版 baeium</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">下载 Android 版 bae</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">下载 Android 版 baeium</DownloadButton>
+
+出现提示时，允许从你的浏览器/文件安装，然后打开 `.apk`。
+
+## Windows
+
+Windows 构建是未打包应用的**未签名** zip。解压并运行 `bae.exe` / `baeium.exe`。SmartScreen 可能会在首次启动时警告。
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">下载 Windows 版 bae</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">下载 Windows 版 baeium</DownloadButton>
+
+## Linux
+
+即将推出。
+
+## 从源码构建
+
+构建 baeium 不需要任何专有内容。每个平台的自行构建说明见 [repository README](https://github.com/bae-fm/bae#building-baeium-yourself)，包括免费 provisioning 下的 iOS。
