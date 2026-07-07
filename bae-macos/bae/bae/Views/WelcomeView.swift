@@ -236,9 +236,11 @@ extension WelcomeView {
             Spacer()
         }
         .padding()
-        .onAppear {
-            loadLocalLibraries()
-            checkKeychainForRestoreCodes()
+        .task {
+            await loadLocalLibraries()
+        }
+        .task {
+            await checkKeychainForRestoreCodes()
         }
         .onDisappear { restoreTask?.cancel() }
     }
@@ -416,9 +418,15 @@ extension WelcomeView {
         Result { try decodeRestoreCode(code: raw) }
     }
 
-    private func loadLocalLibraries() {
+    private func loadLocalLibraries() async {
         do {
-            localLibraries = try discoverLibraries()
+            let discovered = try await DetachedWork.run {
+                try discoverLibraries()
+            }
+            try Task.checkCancellation()
+            localLibraries = discovered
+        }
+        catch is CancellationError {
         }
         catch {
             logger.warning(
@@ -428,21 +436,36 @@ extension WelcomeView {
         }
     }
 
-    private func checkKeychainForRestoreCodes() {
-        let stored = KeychainService.fetchAllRestoreCodes()
-        var decoded: [(code: String, info: BridgeRestoreCodeInfo)] = []
-        for entry in stored {
-            do {
-                let info = try decodeRestoreCode(code: entry.code)
-                decoded.append((code: entry.code, info: info))
+    private func checkKeychainForRestoreCodes() async {
+        do {
+            let decoded = try await DetachedWork.run {
+                let stored = KeychainService.fetchAllRestoreCodes()
+                var decoded: [(code: String, info: BridgeRestoreCodeInfo)] =
+                    []
+                for entry in stored {
+                    do {
+                        let info = try decodeRestoreCode(code: entry.code)
+                        decoded.append((code: entry.code, info: info))
+                    }
+                    catch {
+                        logger.warning(
+                            "Skipping unreadable keychain restore entry: \(error.localizedDescription)"
+                        )
+                    }
+                }
+                return decoded
             }
-            catch {
-                logger.warning(
-                    "Skipping unreadable keychain restore entry: \(error.localizedDescription)"
-                )
-            }
+            try Task.checkCancellation()
+            keychainEntries = decoded
         }
-        keychainEntries = decoded
+        catch is CancellationError {
+        }
+        catch {
+            logger.warning(
+                "Skipping keychain restore lookup: \(error.localizedDescription)"
+            )
+            keychainEntries = []
+        }
     }
 }
 
