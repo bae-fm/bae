@@ -17,6 +17,8 @@ import fm.bae.app.playback.PlaybackPosition
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
@@ -78,6 +80,7 @@ internal class PlaybackProgressView(
 
     private var isDragging = false
     private var position: Flow<PlaybackPosition>? = null
+    private var positionScope: CoroutineScope? = null
     private var positionJob: Job? = null
 
     init {
@@ -113,15 +116,18 @@ internal class PlaybackProgressView(
             return
         }
         this.position = position
-        positionJob?.cancel()
+        positionScope?.cancel()
+        val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
+        positionScope = scope
         positionJob =
-            CoroutineScope(Dispatchers.Main.immediate).launch {
+            scope.launch {
                 position.collect { setPosition(it) }
             }
     }
 
     override fun onDetachedFromWindow() {
-        positionJob?.cancel()
+        positionScope?.cancel()
+        positionScope = null
         positionJob = null
         position = null
         super.onDetachedFromWindow()
