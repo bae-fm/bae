@@ -56,38 +56,6 @@ public sealed class DiagnosticError
 }
 
 /// <summary>
-/// Why playback couldn't start or continue, mirroring the FFI's
-/// <c>FfiPlaybackErrorReason</c> (and the bridge's
-/// <c>BridgePlaybackErrorReason</c>). The two actionable cloud-only cases are
-/// keyed; every in-core failure rides in <see cref="Error"/> and renders
-/// through the diagnostic-error path.
-/// </summary>
-public sealed class PlaybackErrorReason
-{
-    /// <summary>"sync_disconnected" / "upload_pending" / "diagnostic".</summary>
-    public string Kind { get; set; } = "diagnostic";
-
-    /// <summary>The structured diagnostic for the "diagnostic" case.</summary>
-    public DiagnosticError? Error { get; set; }
-
-    /// <summary>The localized line for this reason: the actionable line for the
-    /// keyed cases, else the diagnostic error's generic line.</summary>
-    [JsonIgnore]
-    public string LocalizedLine
-    {
-        get
-        {
-            var key = NativeBae.PlaybackErrorReasonKey(Kind);
-            if (key is not null)
-            {
-                return Loc.Core(key);
-            }
-            return Error?.LocalizedLine ?? Loc.Core("core.error.category.internal");
-        }
-    }
-}
-
-/// <summary>
 /// A metadata-lookup failure, mirroring the FFI's <c>FfiLookupFailure</c> (and
 /// the bridge's <c>BridgeLookupFailure</c>). The UI resolves a localized line
 /// per variant and renders <c>provider</c>'s status as the message argument;

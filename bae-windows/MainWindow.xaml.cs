@@ -1632,7 +1632,7 @@ public sealed partial class MainWindow : Window
 
     // Fires on a background thread; hop to the UI thread before touching WinUI.
     private void OnNativeEvent(int generation, BridgeUiEvent evt) =>
-        DispatcherQueue.TryEnqueue(() => HandleEvent(generation, NativeBae.ToBaeEvent(evt)));
+        DispatcherQueue.TryEnqueue(() => HandleEvent(generation, evt));
 
     // Render the toolbar sync indicator from the accumulated state: an active error
     // wins, then an in-progress pass, then the last successful sync time; blank when
@@ -1744,37 +1744,37 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private bool PlaybackPositionTargetsCurrentTrack(BaeEvent evt)
+    private bool PlaybackPositionTargetsCurrentTrack(string? trackId)
     {
-        if (evt.TrackId is null)
+        if (trackId is null)
         {
             BaeDiagnostics.Logger.Warning("Ignoring playback position with no track id.");
             return false;
         }
-        if (_nowPlaying?.TrackId is { } currentTrackId && currentTrackId != evt.TrackId)
+        if (_nowPlaying?.TrackId is { } currentTrackId && currentTrackId != trackId)
         {
             BaeDiagnostics.Logger.Warning(
-                $"Ignoring playback position for stale track {evt.TrackId}; current track is {currentTrackId}.");
+                $"Ignoring playback position for stale track {trackId}; current track is {currentTrackId}.");
             return false;
         }
         return true;
     }
 
-    private void RenderPlaybackProgress(BaeEvent evt)
+    private void RenderPlaybackProgress(string trackId, ulong positionMs, ulong durationMs, double progress)
     {
-        if (!PlaybackPositionTargetsCurrentTrack(evt))
+        if (!PlaybackPositionTargetsCurrentTrack(trackId))
         {
             return;
         }
         var snapshot = new PlaybackPositionSnapshot(
-            evt.DurationMs,
-            evt.PositionMs,
-            evt.Progress);
+            durationMs,
+            positionMs,
+            progress);
         var projection = _nowPlaying?.Position?.Projection;
 
         if (projection is not null)
         {
-            if (projection.TrackId == evt.TrackId)
+            if (projection.TrackId == trackId)
             {
                 RenderSeekPosition(
                     projection.Progress,
@@ -1784,67 +1784,82 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        ApplyPlaybackPositionSnapshot(evt, null);
+        ApplyPlaybackPositionSnapshot(trackId, durationMs, positionMs, progress, null);
     }
 
-    private void RenderPlaybackSeeked(BaeEvent evt)
+    private void RenderPlaybackSeeked(string trackId, ulong positionMs, ulong durationMs, double progress)
     {
-        if (!PlaybackPositionTargetsCurrentTrack(evt))
+        if (!PlaybackPositionTargetsCurrentTrack(trackId))
         {
             return;
         }
-        ApplyPlaybackPositionSnapshot(evt, null);
+        ApplyPlaybackPositionSnapshot(trackId, durationMs, positionMs, progress, null);
     }
 
-    private void ApplyPlaybackPositionSnapshot(BaeEvent evt, SeekProjection? projection)
+    private void ApplyPlaybackPositionSnapshot(
+        string trackId,
+        ulong durationMs,
+        ulong positionMs,
+        double progress,
+        SeekProjection? projection)
     {
         var snapshot = new PlaybackPositionSnapshot(
-            evt.DurationMs,
-            evt.PositionMs,
-            evt.Progress);
+            durationMs,
+            positionMs,
+            progress);
         _nowPlaying = _nowPlaying is { } nowPlaying
             ? nowPlaying with { Position = new PlaybackPositionState(snapshot, projection) }
-            : new NowPlayingState(null, evt.TrackId, new PlaybackPositionState(snapshot, projection));
+            : new NowPlayingState(null, trackId, new PlaybackPositionState(snapshot, projection));
 
         if (!_userSeeking)
         {
-            NpProgress.Value = evt.Progress;
+            NpProgress.Value = progress;
         }
-        NpElapsed.Text = DurationLabel(evt.PositionMs);
-        NpRemaining.Text = DurationLabel(RemainingDurationMs(evt.PositionMs, evt.DurationMs));
+        NpElapsed.Text = DurationLabel(positionMs);
+        NpRemaining.Text = DurationLabel(RemainingDurationMs(positionMs, durationMs));
     }
 
-    private void HandleEvent(int generation, BaeEvent evt)
+    private void HandleEvent(int generation, BridgeUiEvent evt)
     {
         if (generation != _sessionGeneration || CurrentHandleOrNull() == null)
         {
             return;
         }
 
-        switch (evt.Type)
+        switch (evt)
         {
-            case "PlaybackPlaying":
-            case "PlaybackPaused":
+            case BridgeUiEvent.PlaybackPlaying playing:
                 NowPlayingBar.Visibility = Visibility.Visible;
-                var positionState = _nowPlaying is { } nowPlaying && nowPlaying.TrackId == evt.TrackId
+                var positionState = _nowPlaying is { } nowPlaying && nowPlaying.TrackId == playing.TrackId
                     ? nowPlaying.Position
                     : null;
-                _nowPlaying = new NowPlayingState(evt.AlbumId, evt.TrackId, positionState);
-                NpTitle.Text = evt.TrackTitle ?? string.Empty;
-                NpArtist.Text = evt.Artist ?? string.Empty;
-                NpPlayPause.Content = evt.Type == "PlaybackPlaying" ? "⏸" : "▶";
-                NpCover.Source = CoverImage.LoadImage(CurrentHandleOrNull(), evt.CoverImageId);
+                _nowPlaying = new NowPlayingState(playing.AlbumId, playing.TrackId, positionState);
+                NpTitle.Text = playing.TrackTitle;
+                NpArtist.Text = playing.ArtistNames;
+                NpPlayPause.Content = "⏸";
+                NpCover.Source = CoverImage.LoadImage(CurrentHandleOrNull(), playing.CoverImageId);
                 // Audio is flowing: drop the buffering spinner, restore the
                 // play/pause control.
                 NpLoading.IsActive = false;
                 NpLoading.Visibility = Visibility.Collapsed;
                 NpPlayPause.Visibility = Visibility.Visible;
-                if (evt.Type == "PlaybackPaused")
-                {
-                    _ = ShowSidePauseDialog(evt.PauseReason);
-                }
                 break;
-            case "PlaybackStopped":
+            case BridgeUiEvent.PlaybackPaused paused:
+                NowPlayingBar.Visibility = Visibility.Visible;
+                var pausedPositionState = _nowPlaying is { } pausedNowPlaying && pausedNowPlaying.TrackId == paused.TrackId
+                    ? pausedNowPlaying.Position
+                    : null;
+                _nowPlaying = new NowPlayingState(paused.AlbumId, paused.TrackId, pausedPositionState);
+                NpTitle.Text = paused.TrackTitle;
+                NpArtist.Text = paused.ArtistNames;
+                NpPlayPause.Content = "▶";
+                NpCover.Source = CoverImage.LoadImage(CurrentHandleOrNull(), paused.CoverImageId);
+                NpLoading.IsActive = false;
+                NpLoading.Visibility = Visibility.Collapsed;
+                NpPlayPause.Visibility = Visibility.Visible;
+                _ = ShowSidePauseDialog(paused.Reason);
+                break;
+            case BridgeUiEvent.PlaybackStopped:
                 NowPlayingBar.Visibility = Visibility.Collapsed;
                 _userSeeking = false;
                 _nowPlaying = null;
@@ -1852,79 +1867,81 @@ public sealed partial class MainWindow : Window
                 NpLoading.Visibility = Visibility.Collapsed;
                 NpPlayPause.Visibility = Visibility.Visible;
                 break;
-            case "PlaybackProgress":
-                RenderPlaybackProgress(evt);
+            case BridgeUiEvent.PlaybackProgress progress:
+                RenderPlaybackProgress(progress.TrackId, progress.PositionMs, progress.DurationMs, progress.Progress);
                 break;
-            case "PlaybackSeeked":
-                RenderPlaybackSeeked(evt);
+            case BridgeUiEvent.PlaybackSeeked seeked:
+                RenderPlaybackSeeked(seeked.TrackId, seeked.PositionMs, seeked.DurationMs, seeked.Progress);
                 break;
-            case "VolumeChanged":
+            case BridgeUiEvent.VolumeChanged volume:
                 _suppressVolume = true;
-                NpVolume.Value = evt.Volume;
+                NpVolume.Value = volume.Volume;
                 _suppressVolume = false;
                 break;
-            case "MuteChanged":
-                NpMute.Content = evt.IsMuted ? "🔇" : "🔊";
+            case BridgeUiEvent.MuteChanged mute:
+                NpMute.Content = mute.IsMuted ? "🔇" : "🔊";
                 break;
-            case "RepeatModeChanged":
-                NpRepeat.Content = evt.Mode switch
+            case BridgeUiEvent.RepeatModeChanged repeat:
+                NpRepeat.Content = repeat.Mode switch
                 {
-                    "track" => "🔂",
-                    "context" => "🔁",
+                    BridgeRepeatMode.Track => "🔂",
+                    BridgeRepeatMode.Context => "🔁",
                     _ => "↻",
                 };
                 break;
-            case "PreviewProgress":
+            case BridgeUiEvent.PreviewProgress previewProgress:
                 if (_previewElapsed is not null)
                 {
-                    var elapsed = evt.ElapsedLabel;
+                    var elapsed = DurationLabel(previewProgress.PositionMs);
                     _previewElapsed.Text = _previewDurationLabel is null
                         ? elapsed
                         : $"{elapsed} / {_previewDurationLabel}";
                 }
                 break;
-            case "PreviewPlaying":
+            case BridgeUiEvent.PreviewPlaying preview:
                 // Total duration arrives once when preview starts; the next
                 // PreviewProgress tick renders it alongside the elapsed position.
-                _previewDurationLabel = evt.DurationLabel;
+                _previewDurationLabel = DurationLabel(preview.DurationMs);
                 break;
-            case "PreviewIdle":
+            case BridgeUiEvent.PreviewPaused preview:
+                _previewDurationLabel = DurationLabel(preview.DurationMs);
+                break;
+            case BridgeUiEvent.PreviewIdle:
                 _previewDurationLabel = null;
                 if (_previewElapsed is not null)
                 {
                     _previewElapsed.Text = string.Empty;
                 }
                 break;
-            case "Invalidated":
-                HandleInvalidation(evt.Invalidation);
+            case BridgeUiEvent.Invalidated invalidated:
+                HandleInvalidation(invalidated.Invalidation);
                 break;
-            case "PlaybackError":
+            case BridgeUiEvent.PlaybackError playbackError:
                 Banner.Severity = InfoBarSeverity.Error;
                 Banner.Title = Loc.Chrome("error.playback_title");
                 // The structured reason resolves its own localized line (the
                 // actionable cloud-only cases, or a diagnostic's generic line).
-                Banner.Message = evt.Reason?.LocalizedLine ?? Loc.Core("core.error.category.internal");
+                Banner.Message = PlaybackErrorLine(playbackError.Reason);
                 Banner.ActionButton = null;
                 Banner.IsOpen = true;
                 break;
-            case "Error":
+            case BridgeUiEvent.Error error:
                 Banner.Severity = InfoBarSeverity.Error;
                 Banner.Title = Loc.Chrome("error.title");
-                Banner.Message = evt.Error?.LocalizedLine ?? Loc.Core("core.error.category.internal");
+                Banner.Message = NativeBae.ToDiagnosticError(error.ErrorValue).LocalizedLine;
                 Banner.ActionButton = null;
                 Banner.IsOpen = true;
                 break;
-            case "ErrorCleared":
+            case BridgeUiEvent.ErrorCleared:
                 Banner.IsOpen = false;
                 break;
-            case "PlaybackLoading":
+            case BridgeUiEvent.PlaybackLoading loading:
                 // Core is preparing or buffering the track (initial load, or a
                 // seek to a position not yet downloaded). Show the bar with a
                 // spinner over the transport; the prior track's title/cover stay
                 // until PlaybackPlaying lands (on a fresh play they fill then).
-                if (evt.TrackId is not null
-                    && _nowPlaying is { } loadingState
-                    && evt.TrackId != loadingState.TrackId)
+                if (_nowPlaying is { } loadingState
+                    && loading.TrackId != loadingState.TrackId)
                 {
                     _nowPlaying = loadingState with { Position = null };
                 }
@@ -1933,70 +1950,74 @@ public sealed partial class MainWindow : Window
                 NpLoading.IsActive = true;
                 NpLoading.Visibility = Visibility.Visible;
                 break;
-            case "QueueUpdated":
-                _queueManual = evt.Manual ?? new List<BridgeQueueEntry>();
-                _queueContext = evt.Context;
-                NpPrev.IsEnabled = evt.HasPrevious;
-                NpNext.IsEnabled = evt.HasNext;
+            case BridgeUiEvent.QueueUpdated queue:
+                _queueManual = queue.Snapshot.Manual.ToList();
+                _queueContext = queue.Snapshot.Context;
+                NpPrev.IsEnabled = queue.Snapshot.HasPrevious;
+                NpNext.IsEnabled = queue.Snapshot.HasNext;
                 break;
-            case "QueueItemsAdded":
-                if (evt.Count is int added && added > 0)
+            case BridgeUiEvent.QueueItemsAdded added:
+                if (added.Count > 0)
                 {
-                    FlashQueueAddBadge(added);
+                    FlashQueueAddBadge(checked((int)added.Count));
                 }
                 break;
-            case "CandidateImportLoudnessProgress":
-                // The long-pole loudness pass: replace the candidate's status
-                // with a live "Measuring loudness — N/M" line per track. The
-                // row is replaced in place (UpdateCandidate raises Replace), so
-                // the list isn't re-rendered.
-                UpdateCandidate(evt.Key, null, Loc.Core(
+            case BridgeUiEvent.CandidateImportLoudnessProgress loudness:
+                // Replace the candidate status with a live per-track loudness line.
+                UpdateCandidate(loudness.Key, null, Loc.Core(
                     "ui.import.loudness_progress",
                     new Dictionary<string, object?>
                     {
-                        ["done"] = evt.TracksDone,
-                        ["total"] = evt.TracksTotal,
+                        ["done"] = loudness.TracksDone,
+                        ["total"] = loudness.TracksTotal,
                     }));
                 break;
         }
     }
 
-    private void HandleInvalidation(BaeInvalidation? invalidation)
+    private static string PlaybackErrorLine(BridgePlaybackErrorReason reason)
     {
-        if (invalidation is null)
+        var key = NativeBae.PlaybackErrorReasonKey(reason);
+        if (key is not null)
         {
-            BaeDiagnostics.Logger.Warning("Ignoring invalidation event with no invalidation payload.");
-            return;
+            return Loc.Core(key);
         }
 
-        switch (invalidation.Kind)
+        return reason is BridgePlaybackErrorReason.Diagnostic diagnostic
+            ? NativeBae.ToDiagnosticError(diagnostic.Error).LocalizedLine
+            : Loc.Core("core.error.category.internal");
+    }
+
+    private void HandleInvalidation(BridgeInvalidation invalidation)
+    {
+        switch (invalidation)
         {
-            case "album_list":
-            case "composer_list":
+            case BridgeInvalidation.AlbumList:
+            case BridgeInvalidation.ComposerList:
                 if (string.IsNullOrEmpty(SearchBox.Text))
                 {
                     LoadCurrentBrowserMode();
                 }
                 break;
-            case "album":
-            case "release":
+            case BridgeInvalidation.Album:
+            case BridgeInvalidation.Release:
                 _refreshStorageRows?.Invoke();
                 break;
-            case "config":
+            case BridgeInvalidation.Config:
                 _refreshSettings?.Invoke();
                 break;
-            case "sync_status":
+            case BridgeInvalidation.SyncStatus:
                 RefreshSyncStatus();
                 break;
-            case "outbox":
+            case BridgeInvalidation.Outbox:
                 _refreshOutbox?.Invoke();
                 break;
-            case "download_queue":
+            case BridgeInvalidation.DownloadQueue:
                 _refreshDownloads?.Invoke();
                 break;
-            case "import_candidate_list":
-            case "import_candidate":
-            case "watched_folders":
+            case BridgeInvalidation.ImportCandidateList:
+            case BridgeInvalidation.ImportCandidate:
+            case BridgeInvalidation.WatchedFolders:
                 RefreshImportCandidates();
                 break;
         }
@@ -3217,13 +3238,15 @@ public sealed partial class MainWindow : Window
         return list;
     }
 
-    private async System.Threading.Tasks.Task ShowSidePauseDialog(PlaybackPauseReason? reason)
+    private async System.Threading.Tasks.Task ShowSidePauseDialog(BridgePlaybackPauseReason reason)
     {
-        if (reason?.AlertTitle is not { } title || reason.AlertMessage is not { } message)
+        if (reason is not BridgePlaybackPauseReason.SideEnded side)
         {
             return;
         }
 
+        var title = Loc.Core(side.Prompt.TitleKey, "letter", side.Prompt.SideLetter);
+        var message = Loc.Core(side.Prompt.MessageKey);
         var dialog = new ContentDialog
         {
             Title = title,

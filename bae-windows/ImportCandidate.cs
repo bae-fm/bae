@@ -99,3 +99,24 @@ public sealed class ImportCandidateRowStatus
         }
     }
 }
+
+public sealed class ImportStep
+{
+    public string Kind { get; set; } = string.Empty;
+    public string? StepTag { get; set; }
+    public string? Phase { get; set; }
+
+    public string LocalizedLabel
+    {
+        get
+        {
+            var key = Kind switch
+            {
+                "preparing" when StepTag is not null => NativeBae.PrepareStepKey(StepTag),
+                "running" when Phase is not null => NativeBae.ImportPhaseKey(Phase),
+                _ => null,
+            };
+            return key is null ? string.Empty : Loc.Core(key);
+        }
+    }
+}
