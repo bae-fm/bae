@@ -579,8 +579,11 @@ mod tests {
         let bus = UiEventBus::new();
         let mut ui_rx = bus.subscribe();
         let (library_tx, library_rx) = broadcast::channel(1);
-        bus.wire_library_events(library_rx, runtime.handle());
 
+        // Overflow the capacity-1 channel before wiring the consumer, so the
+        // receiver is already lagged when the forward task takes its first
+        // recv. Wiring first would race: a promptly-scheduled task can drain
+        // the first send before the second lands, and no lag ever happens.
         library_tx
             .send(LibraryEvent::TracksDeleted {
                 track_ids: vec!["track-1".to_string()],
@@ -592,6 +595,8 @@ mod tests {
             })
             .unwrap();
         drop(library_tx);
+
+        bus.wire_library_events(library_rx, runtime.handle());
 
         let expected = [
             Invalidation::AlbumList,
