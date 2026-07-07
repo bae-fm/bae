@@ -228,9 +228,9 @@ pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError
 /// This requires the futures to be `Send` + `'static`. They are: coven's pull
 /// path carries the database handle as a `Send`-able `SendDbPtr`, so no
 /// non-`Send` `*mut sqlite3` is held across the download await.
-fn on_worker<T, Fut>(make_fut: impl FnOnce() -> Fut) -> T
+fn on_worker<T, Fut>(make_fut: impl FnOnce() -> Fut) -> Result<T, BridgeError>
 where
-    Fut: std::future::Future<Output = T> + Send + 'static,
+    Fut: std::future::Future<Output = Result<T, BridgeError>> + Send + 'static,
     T: Send + 'static,
 {
     static RT: std::sync::OnceLock<tokio::runtime::Runtime> = std::sync::OnceLock::new();
@@ -242,8 +242,12 @@ where
             .build()
             .expect("build onboarding runtime")
     });
-    rt.block_on(rt.spawn(make_fut()))
-        .expect("onboarding worker task panicked")
+    match rt.block_on(rt.spawn(make_fut())) {
+        Ok(result) => result,
+        Err(join_err) => Err(BridgeError::internal(format!(
+            "onboarding worker task panicked: {join_err}"
+        ))),
+    }
 }
 
 /// Restore a library from cloud storage using the provided encryption key.
@@ -745,8 +749,8 @@ pub fn oauth_complete(
             clock.as_ref(),
         )
         .await
-    })
-    .map_err(|e| BridgeError::config(format!("OAuth token exchange failed: {e}")))?;
+        .map_err(|e| BridgeError::config(format!("OAuth token exchange failed: {e}")))
+    })?;
     serde_json::to_string(&tokens)
         .map_err(|e| BridgeError::internal(format!("Failed to serialize tokens: {e}")))
 }
@@ -791,4 +795,26 @@ pub fn unlock_library(library_id: String, key_hex: String) -> Result<(), BridgeE
 #[uniffi::export]
 pub fn validate_restore_config(fields: crate::types::BridgeRestoreFormFields) -> bool {
     fields.is_valid()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::BridgeErrorCategory;
+
+    #[test]
+    fn on_worker_returns_bridge_error_for_panicked_task() {
+        let result: Result<(), BridgeError> = on_worker(|| async {
+            panic!("onboarding test panic");
+        });
+
+        let error = result.expect_err("worker panic should become a bridge error");
+        match error {
+            BridgeError::Diagnostic { category, detail } => {
+                assert_eq!(category, BridgeErrorCategory::Internal);
+                assert!(detail.contains("onboarding worker task panicked"));
+            }
+            other => panic!("expected diagnostic bridge error, got {other:?}"),
+        }
+    }
 }
