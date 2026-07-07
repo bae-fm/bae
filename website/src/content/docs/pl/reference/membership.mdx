@@ -1,0 +1,35 @@
+---
+title: Tożsamość i członkostwo
+description: Klucze jako tożsamości, uzgodnienie dołączenia, role i odwołanie
+---
+
+Nigdzie w bae nie ma systemu kont. Tożsamością urządzenia jest para kluczy Ed25519, którą urządzenie generuje dla siebie i trzyma w pęku kluczy systemu operacyjnego; klucz publiczny *jest* tożsamością. To, kto należy do biblioteki, jest zestawem podpisanych rekordów w domu w chmurze, weryfikowalnych przez każdego, kto je ma, niewydawanych przez żaden serwer. Mechanizm należy do [coven](https://coven.bae.fm); ta strona opisuje, jak używa go bae.
+
+## Rekordy członkostwa
+
+Każdy owner zapisuje w domu w chmurze dopisywany strumień podpisanych wpisów członkostwa: ten klucz został dodany z tą rolą, ten klucz został usunięty. Każdy wpis łączy się z poprzednim, a każdy owner podpisuje głowę deklarującą koniec swojego strumienia, więc dostawca, który upuszcza albo przestawia rekordy, zostaje wykryty, a nie uznany. Biblioteka akceptuje sumę każdego zweryfikowanego strumienia ownera.
+
+Przy każdym pobraniu autor każdego zestawu zmian jest sprawdzany względem tego rekordu: podpisany przez obecnego członka, z rolą, która może pisać. Zestawy zmian z usuniętych urządzeń, z kluczy nigdy niedodanych albo z nieprawidłowymi podpisami nie są stosowane. Dostawca przechowuje rekordy, ale nie może ich podrobić; tylko posiadacze kluczy owner mogą zmieniać członkostwo.
+
+## Role
+
+**Owner** i **Member** czytają i zapisują bibliotekę; owners dodatkowo zatwierdzają i usuwają urządzenia. Urządzenie zakładające bae jest ownerem, a każde zatwierdzone przez nie urządzenie dołącza jako member. (W mechanizmie pod spodem istnieje trzecia rola, obserwator tylko do odczytu, której bae obecnie nie przydziela.)
+
+## Uzgodnienie dołączenia
+
+Dodanie urządzenia to wymiana dwóch kodów z jawną weryfikacją przez człowieka pośrodku:
+
+1. Dołączające urządzenie generuje parę kluczy i pokazuje **join request**: swój klucz publiczny, krótki odcisk klucza i (dla dostawców OAuth) konto chmury, któremu trzeba udostępnić folder.
+2. Owner dekoduje prośbę, a dwa ekrany pokazują ten sam odcisk. Człowiek sprawdza, że pasują; to ten krok pokonuje podmieniony klucz.
+3. Zatwierdzenie robi trzy rzeczy naraz: nadaje kontu nowego urządzenia dostęp do domu w chmurze (udostępnienie folderu w chmurach konsumenckich, osadzone dane dostępowe w S3, udział CloudKit w iCloud), zamyka klucz biblioteki dla klucza publicznego nowego urządzenia i podpisuje wpis członkostwa dodający je. Wszystko jest spakowane w **invite code**.
+4. Dołączające urządzenie zużywa zaproszenie, otwiera klucz, uruchamia się z najnowszej migawki i synchronizuje.
+
+Zaproszenie jest zamknięte dla żądającego klucza: jego przechwycenie niczego nie daje.
+
+## Odwołanie
+
+Usunięcie członka dopisuje podpisane usunięcie i obraca klucz biblioteki do nowej generacji, której usunięty klucz nigdy nie otrzymuje (zobacz [Szyfrowanie](/pl/reference/encryption#generacje)). W przechowywaniu, które potrafi odebrać dostęp, dostęp też jest cofany. To, co już zsynchronizowało się na usunięte urządzenie, zostaje z nim; danych nie da się cofnąć po wysłaniu. Wszystko po obrocie klucza jest poza jego zasięgiem.
+
+## Kody odzyskiwania
+
+Kod odzyskiwania celowo omija członkostwo: to współrzędne domu w chmurze plus klucz biblioteki w jednym ciągu bearer, do odzyskania własnej biblioteki bez żyjącego urządzenia zatwierdzającego. Jest generowany na żądanie, automatycznie przechowywany w iCloud Keychain na platformach Apple i jest dokładnie tak wrażliwy jak sama biblioteka.

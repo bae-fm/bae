@@ -1,0 +1,40 @@
+---
+title: Synchronizacja
+description: Jak zmiany przechodzą między urządzeniami i jak się łączą
+---
+
+Synchronizacja bae jest synchronizacją [coven](https://coven.bae.fm): bae deklaruje swoje tabele i bloby, a coven robi resztę. Ta strona opisuje mechanikę w zastosowaniu do bae; własna dokumentacja coven opisuje każdy element pełniej.
+
+## Przechwytywanie
+
+coven posiada połączenie SQLite, więc każdy zapis zatwierdzony przez bae przechodzi przez niego. Rozszerzenie sesji SQLite zapisuje dokładnie to, co zmieniło się w każdej transakcji; zmiany w synchronizowanych tabelach stają się **zestawem zmian**, zamkniętym kluczem biblioteki i podpisanym kluczem tożsamości urządzenia. Bez porównywania różnic, bez flag zabrudzenia: przechwytywanie jest właściwością połączenia, a zapis nie może zostać przeoczony.
+
+## Strumienie
+
+Każde urządzenie dopisuje swoje zestawy zmian do własnego strumienia w domu w chmurze, numerowane kolejno. Urządzenia nigdy nie piszą do strumieni innych urządzeń, więc nie ma konfliktów zapisu w przechowywaniu, a każde urządzenie śledzi kursor per strumień innego urządzenia. Cykl synchronizacji wypycha lokalną skrzynkę wysyłania, potem pobiera każdy strumień innego urządzenia od jego kursora naprzód, weryfikując podpis każdego zestawu zmian i członkostwo autora przed zastosowaniem.
+
+Cykl uruchamia się po lokalnych zmianach, na timerze bezczynności z wydłużanym odstępem (do pięciu minut między odpytywaniami) i natychmiast przez **Sync Now**. Błędy wydłużają odstęp i są ponawiane; pętla zgłasza wynik każdego cyklu do interfejsu jako status, tekst błędu i liczbę zastosowanych wierszy.
+
+## Scalanie
+
+Dwa urządzenia edytujące tę samą bibliotekę osobno są normalnym przypadkiem, nie wyjątkiem. Gdy ich zmiany się spotykają:
+
+- Edycje **różnych wierszy albo różnych kolumn** stosują się obie. Edycja roku wydania na laptopie i jego wytwórni na desktopie daje oba wyniki.
+- Edycje **tej samej kolumny tego samego wiersza** są porządkowane według hybrydowego zegara logicznego `_updated_at` wiersza: późniejsza edycja wygrywa, deterministycznie i identycznie na każdym urządzeniu.
+- **Usunięcia wygrywają** z równoległymi edycjami: wydanie usunięte na jednym urządzeniu zostaje usunięte, nawet jeśli inne urządzenie edytowało je w tym samym przedziale.
+
+Nie ma interfejsu konfliktów, bo nie ma nierozwiązanego stanu: każde urządzenie dochodzi do tego samego wyniku przy dowolnej kolejności stosowania.
+
+## Bootstrap
+
+Urządzenie dołączające albo odzyskujące bibliotekę nie odtwarza historii od początku. Pobiera **migawkę**, pełny obraz SQLite publikowany okresowo do domu w chmurze, a potem stosuje tylko zestawy zmian, które każdy strumień zgromadził po niej. Metadane migawki zapisują wersję schematu i kursory per strumień, które migawka zawiera.
+
+## Wersje schematu
+
+Schemat bae migruje przez numerowaną drabinę, a najwyższy szczebel tej drabiny jest zapisany w każdym zestawie zmian, który pisze urządzenie. Urządzenie, które pobierze zestaw zmian z nowszego schematu niż własny, odkłada ten strumień bez stosowania niczego za nim, dopóki aplikacja nie zostanie zaktualizowana; nic nie ginie i nic nie stosuje się błędnie. Sam plik bazy danych odmawia otwarcia pod binarium starszym niż jego schemat.
+
+Grubszą jednostką niż wersja schematu jest **era zgodności**: przypięta rewizja coven wbudowana w każde binarium. Dwie kompilacje synchronizują się tylko w ramach jednej ery; niezgodna zmiana formatu przewodowego coven jest nową erą i podbiciem wersji major w każdej aplikacji. Przed 1.0 każda kompilacja jest w erze zero, a formaty zmieniają się bez migracji.
+
+## Co widzi dostawca
+
+W nieprzezroczystym domu dostawca przechowuje zaszyfrowane zestawy zmian, zaszyfrowane bloby i podpisane rekordy członkostwa; może liczyć obiekty oraz obserwować rozmiary i czasy, a nie może odczytać żadnej treści. Każdy obiekt pobierany przez urządzenie jest weryfikowany, podpis i członkostwo, zanim cokolwiek dotknie bazy danych: przechowywanie jest pasywną, niezaufaną skrzynką. Zobacz [Szyfrowanie](/pl/reference/encryption) i [Tożsamość i członkostwo](/pl/reference/membership).

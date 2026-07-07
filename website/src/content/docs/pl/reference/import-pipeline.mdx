@@ -1,0 +1,43 @@
+---
+title: Potok importu
+description: Skanowanie, dowody, triangulacja i atomowy zapis
+---
+
+Import zmienia folder plików we wpis katalogu wierny wydaniu bez modyfikowania choćby bajtu plików. Ta strona opisuje potok stojący za przepływem z [przewodnika użytkownika](/pl/guide/importing).
+
+## Skanowanie
+
+Obserwowane foldery są monitorowane przez zdarzenia systemu plików platformy, odszumiane i ponownie skanowane po zmianie; skany uzgadniają się z istniejącą listą kandydatów zamiast zaczynać od zera. Skaner klasyfikuje folder jako jedno wydanie (audio bezpośrednio wewnątrz albo podfoldery w kształcie płyt, takie jak `CD1`/`CD2`) albo wchodzi do niego rekurencyjnie jako kolekcji. Pliki są klasyfikowane według rozszerzenia jako audio, grafiki i dokumenty, a potem audio jest sondowane: liczy się kodek znaleziony przez FFmpeg w bajtach, nie rozszerzenie pliku. Foldery zawierające znaczniki częściowego pobierania są wykluczane do zakończenia pobierania.
+
+Arkusz CUE zamienia jeden obraz audio w listę utworów. Parser obsługuje pregapy i postgapy, wykonawców i ISRC per utwór oraz układy CUE z obrazem jednoplikowym i z jednym plikiem na utwór. Granice utworów są konwertowane z ramek CUE (1/75 sekundy) na dokładne pozycje próbek, które później stają się oknami bajtów i próbek używanymi przez odtwarzanie.
+
+## Dowody, nie tagi
+
+Identyfikacja czyta z folderu trzy rodzaje dowodów w jednym przebiegu:
+
+- **Disc ID**, odcisk MusicBrainz dokładnego układu utworów CD, wyliczony z logu ripu albo z arkusza CUE;
+- **kody kreskowe**, dekodowane ze skanów grafik przez framework widzenia platformy i czytane z pól katalogowych CUE;
+- **tekst**: numery katalogowe i swobodny tekst z OCR grafik, nazw folderów i plików oraz plików tekstowych w ripie.
+
+Osadzone tagi audio celowo nie są dowodem: opisują to, w co wierzył program tagujący, nie to, czym jest tłoczenie. (Zasilają metadane zapasowe, gdy użytkownik importuje wydanie jako nieznane.)
+
+Disc ID i kod kreskowy są wyszukiwane równolegle, Disc ID w MusicBrainz, kod kreskowy w MusicBrainz i Discogs naraz, a wyniki są triangulowane: wyniki zgadzające się co do grupy wydań zbiegają się, dopasowania numerów katalogowych zawężają listę tłoczeń, a niezgoda między sygnałami jest pokazywana użytkownikowi jako jawny konflikt zamiast cichego najlepszego zgadnięcia. Każdy wynik niesie pochodzenie (znaleziony przez Disc ID, przez kod kreskowy, dopasowanie katalogowe), żeby interfejs mógł powiedzieć, dlaczego wiersz jest proponowany.
+
+## Źródła
+
+MusicBrainz jest odpytywany anonimowo w ścisłym tempie jednego żądania na sekundę. Discogs uwierzytelnia się osobistym tokenem użytkownika z pęku kluczy, mieści się w limitach i ponawia w ich ramach, a odrzucony token jest zgłaszany jako taki, żeby interfejs mógł go oznaczyć zamiast po cichu psuć wyszukiwania. Odpowiedzi są cache'owane per sesja, a surowy JSON źródła, które wygrało, jest archiwizowany w bazie danych do przyszłej ponownej interpretacji.
+
+## Zapis
+
+Potwierdzenie importu uruchamia po kolei:
+
+1. **Weryfikację dekodowania**: każdy utwór jest dekodowany od początku do końca; rip, którego nie da się w pełni zdekodować, przerywa import, zanim cokolwiek zostanie zapisane (flaga konfiguracji może to wyłączyć).
+2. **Analizę głośności**: zintegrowana głośność i true peak są mierzone dla utworu i dla albumu podczas tego samego przebiegu dekodowania, przechowywane do użycia przez replay gain.
+3. **Wybór okładki**: wybrana grafika (zdalna, obraz z folderu albo osadzona) jest ponownie renderowana do miniatury wyświetlania; oryginał zostaje wśród plików wydania, jeśli pochodził z folderu.
+4. **Atomowy zapis**: wydanie, utwory, przypisania, tożsamości, formaty, segmenty, pliki i okładka zapisują się w jednej transakcji. Nie istnieje stan częściowo zaimportowany.
+
+Wydanie trafia do biblioteki, wskazując pliki użytkownika na miejscu. Jeśli użytkownik wybrał zarządzanie w chmurze, wysyłanie odbywa się po zapisie jako przejście przechowywania, a oryginalne bajty plików pozostają źródłem prawdy przez cały czas; nic, co użytkownik dał bae, nie jest nigdy usuwane ani zmieniane.
+
+## Rozpoznawanie ripów
+
+Każde wydanie zapisuje hash treści struktury importowanego folderu (ścieżki względne i rozmiary, niezależne od lokalizacji). Ponowne skany używają go, aby oznaczyć foldery już obecne w bibliotece, a ponowne importy tego samego ripu znajdują i zastępują wcześniejsze wydanie zamiast je duplikować.

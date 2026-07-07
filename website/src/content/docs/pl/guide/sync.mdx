@@ -1,0 +1,43 @@
+---
+title: Synchronizacja
+description: Cała biblioteka na każdym urządzeniu przez Twoją własną chmurę
+---
+
+Synchronizacja zwykle oznacza cudzy serwer: konto, abonament, firmę, która może odczytać Twoją bibliotekę. bae synchronizuje przez **Twoją** chmurę, czyli przechowywanie, które już masz, i nie uruchamia żadnego serwera. Twoje urządzenia zapisują zaszyfrowane zmiany w tym przechowywaniu i czytają zmiany innych urządzeń; dostawca trzyma bajty i nie może ich odczytać.
+
+Jedna biblioteka, każde urządzenie, a jedyne konto to takie, które już posiadasz.
+
+## Dom w chmurze
+
+Dom w chmurze biblioteki to jedno miejsce w Twoim przechowywaniu: folder w Google Drive, Dropbox albo OneDrive, Twój iCloud albo dowolny bucket zgodny z S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Trzyma wszystko, co biblioteka synchronizuje: zmiany katalogu, grafiki i audio wydań, którymi bae ma zarządzać.
+
+Skonfiguruj go w Settings, w sekcji Sync:
+
+1. Wybierz dostawcę. Chmury konsumenckie logują przez własną stronę logowania dostawcy; poza wydanymi tokenami nic o Twoim koncie nie jest przechowywane. iCloud używa Twojego Apple ID bez zmian. S3 przyjmuje bucket, region, endpoint i klucze, sprawdzane przed zapisaniem, żeby literówka zatrzymała konfigurację, a nie pierwszą synchronizację.
+2. Wybierz, jak dom przechowuje obiekty (zobacz niżej).
+3. bae zaczyna synchronizować.
+
+Biblioteka bez domu w chmurze jest kompletna sama w sobie. Tryb tylko lokalny jest trybem, nie ograniczeniem, a odłączenie domu w chmurze wraca właśnie do niego.
+
+## Nieprzezroczysty albo przeglądalny
+
+Podczas konfiguracji wybierasz, co dostawca może zobaczyć, a wybór jest trwały dla tego domu:
+
+- **Nieprzezroczysty** (domyślny): każdy obiekt jest szyfrowany na Twoim urządzeniu przed wysłaniem i przechowywany pod nic nieznaczącymi nazwami. Dostawca albo ktokolwiek, kto dostanie się do bucketa, widzi szyfrogram. To tryb opisany na stronie [szyfrowania](/pl/reference/encryption) i jedyny tryb obsługujący dodawanie innych urządzeń i członków.
+- **Przeglądalny**: obiekty są przechowywane jawnie, z prawdziwymi nazwami plików, w folderach nazwanych według wykonawcy i albumu. Możesz otworzyć bucket dowolnym narzędziem i bezpośrednio skopiować albo odtworzyć pliki. Nic nie jest szyfrowane, więc jedyną ochroną jest kontrola dostępu samego bucketa, a domu nie można udostępniać.
+
+## Co się synchronizuje
+
+- Katalog: albumy, wydania, utwory, przypisania, dzieła, tożsamości, edycje. Każde urządzenie dostaje całość.
+- Grafiki: okładki i obrazy wykonawców, pobierane z wyprzedzeniem, żeby siatki renderowały się wszędzie.
+- Audio: tylko dla wydań, które wybrano do zarządzania w chmurze. Niezarządzane wydania zostają czysto lokalne, ich wpisy katalogu są na innych urządzeniach, ale bajty tylko tam, gdzie je zaimportowano.
+
+Stan per urządzenie nie synchronizuje się: pozycja odtwarzania, głośność, kolejka i ustawienia urządzenia zostają na urządzeniu.
+
+## Kiedy synchronizuje
+
+Synchronizacja działa sama: po zmianach, według timera i na żądanie przez **Sync Now**. Edycje trafiają na inne urządzenia jako drobne zmiany, w normalnych warunkach kilka sekund później. Gdy dwa urządzenia edytują jednocześnie, oba wygrywają tam, gdzie nie dotykają tego samego pola: bae scala równoległe edycje pole po polu, a usunięte wydanie pozostaje usunięte, nawet jeśli w tej samej chwili zostało gdzie indziej edytowane. Nic nigdy nie prosi Cię o rozwiązywanie konfliktu.
+
+## Gdy się nie powiedzie
+
+Błędy synchronizacji nie przerywają biblioteki; nadal przeglądasz, odtwarzasz i importujesz lokalnie, gdy bae ponawia z wydłużanym odstępem. Pasek stanu pokazuje synchronizowanie i czas ostatniej synchronizacji; błąd pokazuje baner z komunikatem, a wysyłanie można pauzować, ponawiać i sprawdzać w [Storage Manager](/pl/guide/storage#storage-manager). Jeśli logowanie do domu w chmurze wygaśnie, bae poprosi o ponowne połączenie.

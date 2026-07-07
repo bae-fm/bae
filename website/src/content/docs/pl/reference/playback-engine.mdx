@@ -1,0 +1,34 @@
+---
+title: Silnik odtwarzania
+description: Dekodowanie, odtwarzanie bez przerw, pregapy i głośność, dokładnie
+---
+
+Kontraktem silnika odtwarzania jest wierność źródłu: dekodować oryginalne bajty użytkownika, w częstotliwości samego źródła, z nienaruszoną strukturą wydania. Ta strona jest specyfikacją za tym kontraktem.
+
+## Dekodowanie
+
+Całe dekodowanie to FFmpeg, w procesie, na każdej platformie: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack i DSD są tym, co przyjmuje import, a kodekiem zapisanym w danych jest to, co FFmpeg zgłosi z bajtów, nie z rozszerzenia pliku. Próbki wychodzą jako 32-bitowe float dla etapu wyjścia; konwersja formatu próbek jest jedyną wykonywaną konwersją.
+
+Wyjście to natywne API audio platformy (Core Audio przez cpal na desktopie i iOS, AAudio na Androidzie). Strumień wyjściowy jest konfigurowany do **częstotliwości próbkowania i liczby kanałów źródła**: plik 96 kHz gra jako 96 kHz. Nie ma etapu resamplingu. Domyślne urządzenie wyjściowe jest rozwiązywane przy każdym budowaniu strumienia, więc odtwarzanie podąża za przełączeniami urządzeń w systemie. Na Androidzie kodeki obsługiwane sprzętowo mogą całkowicie ominąć FFmpeg dla dekodowania odciążonego.
+
+## Odczyty streamingowe
+
+Odtwarzanie nie potrzebuje całych plików. Audio jest czytane przez rzadki bufor, który pobiera zakresy bajtów na żądanie, z lokalnego pliku, cache albo chmury, a przewijanie mapuje docelową próbkę na pozycję bajtu, więc przewinięcie do niepobranego regionu pobiera od tego miejsca. Arbiter pobierania daje priorytet odczytom grającego utworu nad wstępnym ładowaniem, więc nadchodzący utwór nigdy nie opóźnia bieżącego.
+
+## Utwory jako okna
+
+Utwór nie jest plikiem; jest uporządkowaną listą okien próbek nad jednym albo wieloma plikami, zbudowaną przy imporcie z arkusza CUE albo własnego zakresu pliku. Ta jedna reprezentacja niesie każdy kształt płyty: plik na utwór, całą płytę w jednym obrazie, pregap żyjący na końcu jednego pliku i początku drugiego oraz stratne ripy pocięte po jednym pliku na utwór.
+
+Okna pregapów są tak oznaczone. Odtwarzanie wchodzi w utwór od jego pregapu, gdy go ma (index 00, z ukrytym audio utworu), podczas gdy zegar pokazuje czas utworu: pozycja jest przycięta do zera do początku właściwego utworu, a wyświetlany czas trwania wyklucza pregap, zgodnie z zachowaniem odtwarzacza CD.
+
+## Bez przerw
+
+Następny utwór jest otwierany i buforowany, gdy bieżący gra. Gdy oba mają tę samą częstotliwość próbkowania i liczbę kanałów, silnik łączy je wewnątrz aktywnego callbacku audio: strumień nigdy się nie zatrzymuje, a granica jest dokładna co do próbki. Gdy formaty się różnią, strumień jest budowany ponownie, czyli w przypadku, w którym zmiana formatu i tak czyni granicę słyszalną.
+
+## Głośność
+
+Import mierzy zintegrowaną głośność (EBU R128) i true peak, dla utworu i dla albumu, podczas przebiegu weryfikacji dekodowania. Replay gain jest wyprowadzany z tych pomiarów w czasie odtwarzania, nigdy zapisywany do plików: cel −18 LUFS, ograniczony tak, żeby true peak nie obcinał, stosowany dla utworu albo dla albumu, przełączający się czysto na granicach bez przerw. Tryb jest obecnie dostarczany bez interfejsu ustawień i domyślnie wyłączony; można go ustawić w pliku konfiguracji biblioteki.
+
+## Pauzy między stronami
+
+Listy utworów niosą strukturę stron i płyt, a silnik może zatrzymać się na granicy strony i pokazać prośbę o kontynuowanie, gdy użytkownik włączy pauzę między stronami. Zatrzymanie jest stanem usługi odtwarzania, nie zdekodowaną ciszą, więc wznowienie jest natychmiastowe.

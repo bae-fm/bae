@@ -1,0 +1,44 @@
+---
+title: Pierwsze kroki
+description: Utwórz bibliotekę, zaimportuj pierwszy album i odtwórz go
+---
+
+bae jest miejscem na albumy, które posiadasz. Budujesz bibliotekę na komputerze, a ona trafia na każde urządzenie: synchronizowana przez chmurę, którą już masz, i zaszyfrowana tak, że odczytać ją mogą tylko Twoje urządzenia.
+
+Aplikacje desktopowe (macOS, Windows) są pełnym narzędziem: tworzą biblioteki, importują muzykę i edytują metadane. Aplikacje telefoniczne (iOS, Android) są odtwarzaczami: dołączają do biblioteki utworzonej na komputerze, a potem przeglądają, pobierają i odtwarzają.
+
+## Utwórz bibliotekę
+
+Otwórz bae na komputerze. Gdy na maszynie nie ma biblioteki, ekran powitalny oferuje trzy wybory:
+
+- **Create a new library**, jeśli to Twoje pierwsze urządzenie.
+- **Join a library**, jeśli inne urządzenie już ją ma, a jego właściciel Cię zatwierdzi. Zobacz [Urządzenia i członkowie](/pl/guide/devices).
+- **Restore from cloud**, jeśli to Twoja własna biblioteka i masz jej kod odzyskiwania. Zobacz [Urządzenia i członkowie](/pl/guide/devices#kody-odzyskiwania).
+
+Utwórz jedną. Biblioteka zaczyna lokalnie: wszystko mieszka na tej maszynie, konto nie jest potrzebne i żadna chmura nie bierze udziału, dopóki jej nie podłączysz.
+
+## Zaimportuj pierwszy album
+
+1. Przełącz się do sekcji **Import** na pasku tytułu.
+2. Dodaj folder z muzyką. Możesz go wybrać, przeciągnąć na okno albo nacisnąć <kbd>⌘I</kbd>.
+3. bae skanuje folder i wypisuje znalezione wydania. Wybierz jedno.
+4. bae identyfikuje je względem MusicBrainz i Discogs oraz pokazuje dopasowanie. Potwierdź tłoczenie, wybierz okładkę, popraw szczegóły.
+5. Kliknij **Import**.
+
+Twoje pliki nie są przenoszone, kopiowane ani przepisywane. bae kataloguje je tam, gdzie są. Pełny przepływ, w tym co zrobić, gdy identyfikacja potrzebuje pomocy, opisuje [Import](/pl/guide/importing).
+
+## Odtwórz
+
+Po powrocie do sekcji **Library** album jest w siatce. Kliknij go i naciśnij odtwarzanie. Odtwarzanie używa oryginalnych plików w ich oryginalnej jakości. [Odtwarzanie](/pl/guide/playback) opisuje kolejkę, odtwarzanie losowe i powtarzanie oraz szczegóły zachowywane przez bae: pregapy CD, przerwy między stronami winyla, albumy bez przerw.
+
+## Zabierz bibliotekę wszędzie
+
+Gdy chcesz mieć bibliotekę na więcej niż jednym urządzeniu, podłącz dom w chmurze: własny Google Drive, Dropbox, OneDrive, iCloud albo dowolny bucket zgodny z S3. Wszystko, co bae tam zapisuje, jest szyfrowane przed wysłaniem; dostawca przechowuje dane, ale nie może ich odczytać.
+
+- [Synchronizacja](/pl/guide/sync): podłącz dom w chmurze i wybierz, co przechowuje.
+- [Urządzenia i członkowie](/pl/guide/devices): dodaj telefon albo inny komputer.
+- [Przechowywanie i offline](/pl/guide/storage): trzymaj muzykę na urządzeniu albo streamuj ją ze swojej chmury i przypinaj to, czego potrzebujesz offline.
+
+## Gdzie mieszkają rzeczy
+
+Każda biblioteka trzyma swoją bazę danych i ustawienia pod `~/.bae/libraries/` na komputerze. Audio zostaje tam, skąd je zaimportowano, chyba że poprosisz bae, aby zarządzało nim w Twojej chmurze. Klucze i dane uwierzytelniające mieszkają w pęku kluczy systemu operacyjnego, nie w plikach.

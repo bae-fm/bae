@@ -1,0 +1,41 @@
+---
+title: Odtwarzanie
+description: Oryginalna jakość i szczegóły, z którymi wydania powstały
+---
+
+Nagrania powstawały ze strukturą, którą odtwarzacze plików często spłaszczają: strony, które się kończą, ukryte audio przed pierwszym utworem, utwory przechodzące jeden w drugi. bae zachowuje szczegóły odtwarzania wydania i odtwarza je tak, jak przewidywało wydanie, z Twoich oryginalnych plików, bez zmian.
+
+## Oryginalna jakość
+
+Odtwarzanie dekoduje pliki tak, jak zostały zaimportowane. Nie ma transkodowania, przepisywania głośności ani ponownego kodowania na serwerze; urządzenie audio pracuje z częstotliwością próbkowania samego pliku. Gra to, co zostało zripowane. Każdy format importowany przez bae jest odtwarzany: FLAC, MP3, APE, ALAC, AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack, DSD.
+
+## Bez przerw
+
+Albumy zmiksowane jako jedna ciągła całość odtwarzają się właśnie tak. Następny utwór jest przygotowywany podczas odtwarzania bieżącego, a gdy oba mają wspólny format, audio nigdy nie zatrzymuje się na granicy: bez przerwy, bez kliknięcia.
+
+## Pregapy CD
+
+CD mogą ukrywać audio w przerwie przed początkiem utworu, także przed pierwszym utworem, czyli klasyczny sposób na ukryty utwór. Gdy wydanie jest importowane z ripu z arkuszem CUE, bae wie, gdzie jest każdy pregap, i je odtwarza: wyświetlanie czasu utworu zaczyna się od zera tam, gdzie zaczyna się właściwy utwór, a ukryte audio przed nim gra w przerwie, dokładnie jak na CD. Eksporty mogą zachować, pominąć albo ponownie dołączyć pregapy; zobacz [Eksport](/pl/guide/exporting).
+
+## Przerwy między stronami
+
+Wydania winylowe i kasetowe mają strony, a niektóre nagrania używają pauzy między nimi celowo. Włącz **Pause between sides** w ustawieniach Playback, a bae wstrzyma odtwarzanie na każdej granicy strony i poprosi o kontynuowanie, czyli przewrócenie bez przewracania. Listy utworów grupują według strony i płyty, więc struktura jest widoczna podczas przeglądania.
+
+## Kolejka
+
+Odtwarzanie zawsze ma kontekst: wydanie, od którego zaczęto, albo całą bibliotekę, jeśli ją wymieszano. Kolejka pokazuje dwie ścieżki:
+
+- **Up Next**: utwory dodane ręcznie do kolejki, odtwarzane jako pierwsze. Przeciągaj utwory, zmieniaj kolejność, usuwaj je.
+- **Playing from**: reszta kontekstu, z własnym przełącznikiem losowania.
+
+**Play Next** i **Add to Queue** są przy każdym utworze i albumie. Powtarzanie przechodzi między wyłączonym, powtarzaniem kontekstu i powtarzaniem jednego utworu.
+
+## Sterowanie
+
+Odtwarzanie/pauza na <kbd>Space</kbd>, następny i poprzedni z klawiatury, suwak do przewijania. bae integruje się z systemem: klawisze multimedialne, Control Center na platformach Apple, powiadomienia multimedialne na Androidzie, sterowanie na ekranie blokady telefonu, z okładką i informacjami o utworze wszędzie tam, gdzie pokazuje je system.
+
+Przy zamykaniu aplikacja desktopowa może zapisać to, co było odtwarzane, razem z kolejką i pozycją, i podjąć odtwarzanie przy następnym uruchomieniu: **Restore on launch** w ustawieniach Playback.
+
+## Offline
+
+Wydanie gra wszędzie tam, gdzie można sięgnąć po jego bajty: lokalne pliki grają bezpośrednio, wydania zarządzane w chmurze streamują się podczas odtwarzania, a przypięte wydania są zawsze na urządzeniu. Zobacz [Przechowywanie i offline](/pl/guide/storage).

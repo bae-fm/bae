@@ -1,0 +1,43 @@
+---
+title: Urządzenia i członkowie
+description: Dodaj telefon, zatwierdź urządzenie, odzyskaj bibliotekę
+---
+
+Nie ma konta bae. Tożsamością urządzenia jest para kluczy, którą urządzenie generuje dla siebie i trzyma w pęku kluczy systemu operacyjnego; biblioteka rozpoznaje urządzenia po ich kluczach. Dodanie urządzenia oznacza, że istniejące urządzenie poświadcza kryptograficznie nowe urządzenie, bez żadnego pośrednika.
+
+Dwie różne drogi, dla dwóch różnych sytuacji:
+
+- **Joining**: nowe urządzenie jest zatwierdzane przez urządzenie, które już ma bibliotekę. Użyj tego, aby dodać telefon albo urządzenie innej osoby.
+- **Restoring**: Twoje nowe albo ponownie zainstalowane urządzenie odzyskuje bibliotekę bezpośrednio z domu w chmurze, używając kodu odzyskiwania. Bez urządzenia zatwierdzającego.
+
+## Dodawanie urządzenia
+
+Na nowym urządzeniu wybierz **Join a library**. Pokazuje ono krótki kod, również jako QR: prośbę o dołączenie, zawierającą klucz publiczny urządzenia i odcisk, który można odczytać na głos.
+
+Na urządzeniu, które już ma bibliotekę, właściciel otwiera Settings, Devices, **Add a device** i skanuje albo wkleja tę prośbę. bae pokazuje odcisk dołączającego urządzenia; potwierdź, że pasuje do tego, co pokazuje nowe urządzenie. Zatwierdzenie tworzy kod zaproszenia: przekaż go z powrotem nowemu urządzeniu (zeskanuj QR albo wklej), a nowe urządzenie pobierze bibliotekę i zacznie synchronizować.
+
+Za tym uzgodnieniem stoi to: urządzenie zatwierdzające nadaje nowemu urządzeniu dostęp do domu w chmurze (chmury konsumenckie udostępniają folder kontu nowego urządzenia; zaproszenia S3 zawierają dane dostępowe) i zamyka klucz szyfrowania biblioteki dla klucza publicznego nowego urządzenia. Zaproszenie jest bezużyteczne dla każdego innego urządzenia. Szczegóły są w [Tożsamość i członkostwo](/pl/reference/membership).
+
+## Członkowie i role
+
+Settings, Devices pokazuje każdego członka: odcisk, rolę i informację, które urządzenie jest tym urządzeniem. Urządzenie zakładające jest **owner**; zatwierdzone przez nie urządzenia dołączają jako **members**. Obie role czytają i zapisują bibliotekę; tylko owners zatwierdzają i usuwają urządzenia.
+
+## Usuwanie urządzenia
+
+Owners mogą usunąć dowolnego member. Usunięcie nie tylko zamyka drzwi: klucz szyfrowania biblioteki jest obracany, a usunięte urządzenie nigdy nie otrzymuje nowego klucza. To, co już skopiowało, zostaje u niego; danych nie da się cofnąć po wysłaniu, ale wszystko, co biblioteka zapisze od tego momentu, jest dla niego nieczytelne.
+
+## Kody odzyskiwania
+
+Kod odzyskiwania jest sekretem bearer dla Twojej własnej biblioteki: współrzędne domu w chmurze oraz klucz szyfrowania w jednym ciągu. **Show recovery code** w Settings wyświetla go; przechowuj go w bezpiecznym miejscu, na przykład w menedżerze haseł. Na nowym urządzeniu **Restore from cloud** z tym kodem odbudowuje bibliotekę bez urządzenia zatwierdzającego.
+
+Na platformach Apple kod jest też automatycznie trzymany w iCloud Keychain, więc nowy Mac albo iPhone zalogowany do Twojego Apple ID może odtworzyć bibliotekę jednym stuknięciem.
+
+Każdy, kto ma kod, ma bibliotekę, więc traktuj go jak klucz, którym jest.
+
+## Blokowanie
+
+**Lock Library** usuwa klucz szyfrowania z pęku kluczy urządzenia. Biblioteka zostaje na dysku, nieczytelna, dopóki ktoś ponownie nie wprowadzi klucza; bae sprawdza go względem zapisanego odcisku, zanim go przyjmie. Użyj tego na laptopie wynoszonym z domu.
+
+## Na telefonie
+
+iOS i Android dołączają i odzyskują bibliotekę dokładnie w ten sposób; to cały ich proces pierwszego uruchomienia. Telefon może też usunąć swoją kopię biblioteki (Settings, remove from this device), co usuwa lokalne pliki i nie zmienia niczego w chmurze.

@@ -1,0 +1,28 @@
+---
+title: Szyfrowanie
+description: Czym jest klucz biblioteki, gdzie mieszka i jaki szyfrogram trzyma dostawca
+---
+
+Wszystko, co bae umieszcza w nieprzezroczystym domu w chmurze, jest szyfrowane przed opuszczeniem urządzenia. bae nie implementuje własnej kryptografii: cały schemat należy do [coven](https://coven.bae.fm), a ta strona opisuje, jak bae go używa. Domy przeglądalne rezygnują z tego wszystkiego; nic poniżej ich nie dotyczy.
+
+## Klucz biblioteki
+
+Nieprzezroczysta biblioteka ma jeden sekret główny: losowy klucz 256-bitowy utworzony przy tworzeniu domu. Żyje w pęku kluczy systemu operacyjnego, nigdy w pliku; na platformach Apple wpis pęku kluczy synchronizuje się przez iCloud Keychain. Konfiguracja bae przechowuje tylko odcisk klucza, wystarczający, by przy odblokowaniu odróżnić zły klucz od właściwego bez trzymania sekretu.
+
+Klucz podróżuje między urządzeniami na dwa sposoby, oba opisane w [Tożsamość i członkostwo](/pl/reference/membership): zamknięty dla klucza publicznego zatwierdzonego urządzenia podczas zaproszenia oraz przenoszony w kodzie odzyskiwania.
+
+## Generacje
+
+Klucz biblioteki jest naprawdę pękiem kluczy ponumerowanych generacji. Usunięcie członka dopisuje nową generację, której usunięty członek nigdy nie otrzymuje: wszystko zapisane później używa nowej generacji i jest dla niego nieczytelne, a pozostali członkowie zachowują każdą generację i mogą czytać całą historię. Każdy zamknięty obiekt zapisuje jawnie, która generacja go otwiera.
+
+## Co jest zamykane
+
+Każdy obiekt w domu: zestawy zmian, migawki, bloby audio, grafiki, rekordy członkostwa, obiekty kontrolne. Obiekty są zamykane XChaCha20-Poly1305 w kawałkach po 64 KB, każdy kawałek uwierzytelniony i związany z kontekstem: zamknięty obiekt odszyfruje się tylko jako ten obiekt, którym miał być, dla tej biblioteki, przy tym kluczu. Kawałkowanie jest powodem, dla którego streaming działa: odtwarzacz może odszyfrować dokładnie te zakresy bajtów, które pobiera.
+
+## Co widzi dostawca
+
+Liczbę obiektów, rozmiary obiektów, momenty wysyłania i wzorce dostępu. Nie nazwy, nie metadane, nie audio, nie grafiki, nie członkostwo. Nie ma odzyskiwania po stronie serwera: użytkownik, który straci każde urządzenie i każdą kopię klucza, stracił szyfrogram biblioteki na zawsze, zgodnie z projektem.
+
+## Odblokowanie i blokada
+
+Otwarcie biblioteki czyta klucz z pęku kluczy. Jeśli biblioteka oczekuje klucza, a pęk kluczy go nie ma, bae traktuje bibliotekę jako zablokowaną: prosi o klucz przed otwarciem, sprawdza wpis względem zapisanego odcisku i dopiero potem zapisuje go z powrotem do pęku kluczy. Zablokowanie biblioteki celowo usuwa klucz z pęku kluczy; nic w domu w chmurze nie może być czytane ani zapisywane, dopóki klucz nie zostanie ponownie wprowadzony.

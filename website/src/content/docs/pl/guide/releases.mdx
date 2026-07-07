@@ -1,0 +1,39 @@
+---
+title: Wydania i metadane
+description: Biblioteka wierna wydaniom i sposób utrzymywania jej danych
+---
+
+Większość aplikacji muzycznych modeluje „album”: jeden tytuł, jedną okładkę, jedną listę utworów. Rzeczywiste kolekcje tak nie działają. Możesz mieć oryginalne CD, remaster i tłoczenie winylowe tego samego nagrania, a różnią się listami utworów, czasami, grafiką i przypisaniami. bae modeluje **wydania**: każdy import jest konkretnym tłoczeniem, a tłoczenia tego samego albumu są grupowane razem.
+
+## Albumy grupują wydania
+
+W bibliotece album z kilkoma tłoczeniami jest jednym wpisem. Strona albumu pokazuje wybór wydania; każde wydanie zachowuje własną listę utworów, okładkę, rok, wytwórnię, numer katalogowy i przypisania. Jedno wydanie jest **primary**: tego domyślnie używa siatka albumów i odtwarzanie. Ustaw dowolne wydanie jako primary z menu albumu i w każdej chwili wybierz inne wydanie do słuchania; bae pamięta wybór dla każdego albumu.
+
+## Co wie wydanie
+
+Zidentyfikowane wydania niosą wiedzę z baz danych, nie tylko nazwy utworów:
+
+- Szczegóły tłoczenia: wytwórnia, numer katalogowy, kod kreskowy, kraj, format, rok.
+- Przypisania: wykonawcy, producenci, realizatorzy, dla wydania i dla utworów.
+- Struktura klasyczna: kompozytorzy, dzieła i ich części, połączone z nagraniami tych dzieł. Z tego powstaje widok kompozytorów w bibliotece; zobacz [Przeglądanie i wyszukiwanie](/pl/guide/browsing).
+- Tożsamość: który wpis MusicBrainz albo Discogs to jest oraz czy dopasowanie jest dokładne, czy przybliżone.
+
+Surowe rekordy źródłowe też są zachowywane, więc wydanie można później ponownie zinterpretować bez ponownego pytania baz.
+
+## Edycja
+
+Metadane należą do Ciebie i możesz je poprawiać. **Edit metadata** przy dowolnym wydaniu otwiera ten sam formularz, którego używa potwierdzenie importu: tytuł albumu i wykonawca, szczegóły tłoczenia oraz tytuł, wykonawca i numeracja każdego utworu. **Reset to source** wraca do tego, co podała baza.
+
+Edycje żyją tylko w bazie danych bae. Osadzone tagi Twoich plików nigdy nie są przepisywane; pliki zostają bajt w bajt takie, jak przy imporcie.
+
+## Ponowna identyfikacja
+
+Jeśli wydanie zostało zaimportowane jako nieznane, dopasowane do złego tłoczenia albo baza danych od tego czasu się poprawiła, **Re-identify** uruchamia przepływ identyfikacji ponownie na istniejącym wydaniu: te same sygnały, te same narzędzia wyszukiwania. Po zapisaniu nowego dopasowania bae pyta, czy odświeżyć metadane z nowego źródła (nadpisując Twoje edycje), czy zachować to, co masz.
+
+## Okładki
+
+Każde wydanie ma jedną okładkę wyświetlaną. **Change cover** oferuje grafiki z baz danych i pliki obrazów, które przyszły z wydaniem. bae trzyma własną kopię wybranej okładki, w rozmiarze do wyświetlania, więc oryginalny skan w folderze zostaje nietknięty. Stuknij okładkę gdziekolwiek, aby otworzyć pełną galerię obrazów wydania.
+
+## Usuwanie
+
+Usunięcie wydania usuwa je z biblioteki, a w przypadku wydań zarządzanych także z domu w chmurze. Pliki zaimportowane na miejscu, niezarządzane, nigdy nie są usuwane: bae tylko o nich zapomina.

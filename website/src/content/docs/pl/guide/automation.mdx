@@ -1,0 +1,16 @@
+---
+title: Automatyzacja
+description: Steruj biblioteką z agentów, skryptów i wiersza poleceń
+---
+
+Biblioteką może sterować oprogramowanie uruchamiane przez Ciebie: agenty AI przez MCP oraz skrypty przez narzędzie wiersza poleceń. Oba udostępniają te same operacje, których używa interfejs: wyszukiwanie, szczegóły wydań, import, działania na przechowywaniu i stan odtwarzania.
+
+## Serwer MCP
+
+Włącz serwer MCP w Settings, Automation. Udostępnia Model Context Protocol przez HTTP na lokalnym porcie (domyślnie 47777), więc klienci MCP, tacy jak Claude, mogą przeglądać bibliotekę, wyszukiwać wydania i wykonywać na nich działania. Dostęp wymaga tokenu bearer: skopiuj go z tego samego panelu ustawień i obróć go tam, gdy chcesz odciąć wszystko, co go miało.
+
+Serwer jest domyślnie wyłączony i działa tylko wtedy, gdy działa aplikacja.
+
+## Wiersz poleceń
+
+CLI `bae` wykonuje te same operacje z terminala: JSON na wejściu, JSON na wyjściu, w formie odpowiedniej dla skryptów. Może też działać jako klient MCP, łącząc serwer aplikacji desktopowej ze stdio dla narzędzi, które oczekują lokalnego procesu MCP.

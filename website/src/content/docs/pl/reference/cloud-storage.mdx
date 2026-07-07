@@ -1,0 +1,37 @@
+---
+title: Przechowywanie w chmurze
+description: Dostawcy, uwierzytelnianie i kształt domu w chmurze
+---
+
+Dom w chmurze to jedno miejsce w przechowywaniu, które użytkownik już posiada. Każdy dostawca działa przez ten sam interfejs przechowywania w [coven](https://coven.bae.fm); różnią się uwierzytelnianiem i sposobem nadania dostępu drugiemu urządzeniu.
+
+## Dostawcy
+
+| Dostawca | Uwierzytelnianie | Dostęp dla nowego urządzenia |
+|---|---|---|
+| Zgodny z S3 | Access key + secret | Dane dostępowe osadzone w zaproszeniu |
+| Google Drive | OAuth (PKCE) | Folder udostępniony kontu dołączającego |
+| Dropbox | OAuth (PKCE) | Folder udostępniony kontu dołączającego |
+| OneDrive | OAuth (PKCE) | Folder udostępniony kontu dołączającego |
+| iCloud (CloudKit) | Apple ID, bez logowania | Udział CloudKit przyjęty przez dołączającego |
+
+Zgodność z S3 obejmuje AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO i wszystko inne, co mówi tym API; bucket, region, endpoint i prefiks klucza są konfigurowalne, a bucket jest sprawdzany przed zapisaniem konfiguracji, żeby literówka zatrzymała konfigurację, a nie pierwszą synchronizację. Dostawcy OAuth istnieją tylko w pełnej edycji **bae**; kompilacje **baeium** kompilują je poza aplikacją.
+
+## OAuth
+
+Logowanie jest przepływem authorization-code z PKCE, jako klient publiczny. Na desktopie przekierowanie trafia na serwer loopback podpięty do lokalnego portu dla jednego wywołania zwrotnego; na mobile aplikacja przechwytuje zamiast tego przekierowanie z własnym schematem. bae prosi o najwęższy zakres, jaki dostawca oferuje dla zadania; w Google Drive jest to dostęp tylko do plików tworzonych przez samą aplikację. Tokeny są przechowywane w pęku kluczy systemu operacyjnego, odświeżane grantem odświeżania dostawcy, a odrzucone odświeżenie pojawia się jako prośba o ponowne połączenie, nie jako cicha pętla ponowień.
+
+CloudKit nie potrzebuje żadnego przepływu: platformowy sterownik CloudKit, zaimplementowany w aplikacji i przekazany rdzeniowi, działa jako zalogowany Apple ID.
+
+## Układ domu
+
+Wewnątrz domu coven układa strumienie zestawów zmian per urządzenie, generacje migawek, rekordy członkostwa i przestrzenie nazw blobów. bae dodaje trzy przestrzenie nazw blobów: `release_files`, `covers` i `artist_images`.
+
+Sposób kluczowania obiektów zależy od trybu przechowywania domu, ustalonego przy tworzeniu:
+
+- **Nieprzezroczysty**: obiekty są szyfrowane i przechowywane pod kluczami pochodzącymi z treści, które niczego nie ujawniają. To tryb pełnego zaufania do kryptografii; zobacz [Szyfrowanie](/pl/reference/encryption).
+- **Przeglądalny**: obiekty są tekstem jawnym pod czytelnymi ścieżkami zapisanymi per blob przy wysyłaniu: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Bucket jest jednocześnie używalnym drzewem plików; skutkiem ubocznym jest brak szyfrowania i brak członkostwa, więc przeglądalnych domów nie można udostępniać innym osobom.
+
+## Zachowanie w rzeczywistych sieciach
+
+Odczyty do odtwarzania są zakresowe: odtwarzacz streamuje potrzebne okna bajtów zamiast całych plików. Wysyłania powyżej progu rozmiaru używają multipart tam, gdzie dostawca to obsługuje. Limity żądań i przejściowe błędy dostawcy są ponawiane z wykładniczym odstępem, z uszanowaniem `retry-after`, gdy dostawca je poda; wygasłe tokeny OAuth odświeżają się w miejscu. Skrzynka wysyłania synchronizacji przetrwa restart: wysyłanie przerwane przez zamknięcie aplikacji wznawia się zamiast zaczynać od początku.

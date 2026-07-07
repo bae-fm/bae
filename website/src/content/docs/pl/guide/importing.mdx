@@ -1,0 +1,64 @@
+---
+title: Import
+description: Dopasuj foldery do rzeczywistych wydań
+---
+
+Folder z ripami wie o sobie prawie nic. Wydanie, z którego pochodzi, tłoczenie, wytwórnia, przypisania, miejsce, w którym naprawdę kończy się dwunasty utwór: to wszystko żyje w bazach takich jak MusicBrainz i Discogs, nie w nazwach plików. Import jest sposobem, w jaki bae łączy te dwie strony: wskazujesz muzykę, ono ustala, którym wydaniem jest każdy folder, a biblioteka zapisuje folder jako to wydanie.
+
+Import odbywa się na komputerze (macOS, Windows). Twoje pliki są czytane, nigdy zmieniane: bae niczego nie przenosi, nie zmienia nazw, nie przepisuje tagów ani nie koduje ponownie. Zobacz [Przechowywanie i offline](/pl/guide/storage), aby dowiedzieć się, gdzie pliki mieszkają po imporcie.
+
+## Obserwowane foldery
+
+Przełącz się do sekcji **Import** i dodaj folder: wybierz go, przeciągnij na okno albo naciśnij <kbd>⌘I</kbd>. Od tego momentu bae obserwuje folder. Nowa muzyka wrzucona do niego pojawia się sama jako nowy kandydat; nie skanujesz ponownie ręcznie. Foldery, które nadal się pobierają, są ignorowane do zakończenia pobierania.
+
+Skan rozpoznaje wydania w kształtach, jakie ripy rzeczywiście przyjmują:
+
+| Układ | Jak wygląda |
+|--------|-------------------|
+| Plik na utwór | `01 - Utwór.flac`, `02 - Utwór.flac`, ... |
+| CUE + obraz | `album.cue` + `album.flac`, jeden plik dla całej płyty |
+| Wiele płyt | podfoldery `CD1/`, `CD2/`, wewnątrz dowolny z tych kształtów |
+| Kolekcje | folder folderów, każdy jako własne wydanie |
+
+bae importuje formaty, które odtwarza: FLAC, MP3, APE, ALAC i AAC w `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack oraz DSD (`.dsf`/`.dff`). Grafiki i dokumenty (arkusze CUE, logi ripu, pliki tekstowe) w folderze są rozpoznawane i trzymane z wydaniem.
+
+## Identyfikacja wydania
+
+Wybierz kandydata, a bae zacznie go identyfikować. Zamiast zgadywać z tagów, czyta dowody w folderze i wyszukuje każdy z nich:
+
+- **Disc ID.** Odcisk dokładnego układu utworów CD, wyliczony z logu ripu albo arkusza CUE. Gdy pasuje, identyfikuje dokładne wydanie CD.
+- **Kod kreskowy.** Odczytany ze skanów okładek w folderze przez rozpoznawanie tekstu albo z arkusza CUE.
+- **Numery katalogowe i tekst.** Numery katalogowe znalezione na grafikach oraz w nazwach plików i folderów, używane do zawężania wyników.
+
+Sygnały są jednocześnie wyszukiwane w MusicBrainz i Discogs, a wyniki są porównywane. Każdy sygnał pojawia się jako znacznik nad wynikami: możesz zobaczyć, co znaleziono, skąd pochodzi (najedź, aby zobaczyć źródło: spis treści płyty, arkusz CUE, skan okładki, nazwa folderu), i wyłączyć pojedyncze sygnały, jeśli któryś wprowadza w błąd.
+
+Trzy wyniki:
+
+- **Found.** Dowody zgadzają się na jedną grupę wydań. Wybierasz dokładne tłoczenie z jej listy.
+- **Conflict.** Dwa sygnały wskazują różne wydania, na przykład Disc ID i kod kreskowy się nie zgadzają. bae pokazuje obie strony, a Ty wybierasz, której zaufać, albo ignorujesz sygnał.
+- **Nothing found.** Szukaj ręcznie: wykonawca i album, numer katalogowy albo kod kreskowy, w jednej z baz. Tekst rozpoznany z grafiki jest proponowany jako autouzupełnianie.
+
+Możesz też **skip identifying** i zaimportować jako nieznane wydanie. bae wtedy wraca do osadzonych tagów plików dla nazw, a Ty możesz zidentyfikować wydanie później, gdy będzie już istnieć w bazie albo będziesz mieć lepsze dowody.
+
+## Dokładne albo przybliżone
+
+Gdy wybierzesz dopasowanie, bae sprawdza je względem Twoich plików i oznacza niezgodność liczby utworów. Potem określasz, czym jest dopasowanie:
+
+- **Exact**: Twoje pliki są tym tłoczeniem.
+- **Metadata only**: właściwy album, ale niekoniecznie to dokładne tłoczenie. bae używa metadanych i pamięta, że tłoczenie jest przybliżone.
+
+Jeśli wydanie jest już w bibliotece albo jest w niej inne tłoczenie tego samego albumu, bae powie Ci o tym przed importem duplikatu.
+
+## Potwierdzenie i import
+
+Panel potwierdzenia pokazuje wszystko, co import zapisze:
+
+- **Okładka.** Wybrana z grafik baz danych, obrazów w Twoim folderze albo grafiki osadzonej w plikach. Możesz ją później zmienić.
+- **Metadane.** Album, wykonawca, rok, wytwórnia, numer katalogowy, kraj, kod kreskowy i każdy utwór: wszystko edytowalne tutaj, zanim cokolwiek zostanie zapisane.
+- **Przechowywanie.** Jeśli podłączono dom w chmurze, wybierz, czy bae ma zarządzać plikami w Twojej chmurze i czy zachować też lokalną kopię. Zobacz [Przechowywanie i offline](/pl/guide/storage).
+
+Import działa w tle: bae sprawdza, że każdy utwór dekoduje się do końca, mierzy głośność albumu i każdego utworu, zapisuje wydanie, a przy importach zarządzanych zaczyna wysyłanie. Lista kandydatów przechodzi do następnego folderu, a wydanie można odtwarzać od razu.
+
+## Źródła danych
+
+**MusicBrainz** nie wymaga konta ani klucza. **Discogs** wymaga Twojego własnego darmowego tokenu API; wklej go w Settings, a bae powie Ci, jeśli przestanie działać. Bez tokenu wyszukiwanie Discogs i metadane pochodzące z Discogs są niedostępne, a wszystko inne działa. Obie usługi mają limity żądań; bae rozkłada żądania tak, aby mieścić się w limitach.

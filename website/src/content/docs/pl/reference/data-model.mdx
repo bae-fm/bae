@@ -1,0 +1,43 @@
+---
+title: Model danych
+description: Schemat, co się synchronizuje i co zostaje na urządzeniu
+---
+
+Katalog bae to zwykłe SQLite, deklarowane do [coven](https://coven.bae.fm) tabela po tabeli: synchronizowane tabele niosą zegar konfliktów i podróżują na każde urządzenie; tabele niedeklarowane nigdy nie opuszczają urządzenia. Ten podział jest najważniejszą decyzją modelu danych, więc ta strona jest zorganizowana wokół niego.
+
+## Graf katalogu
+
+Synchronizowane serce schematu:
+
+- **`artists`**, **`albums`**, **`works`**: warstwa grupowania. Album agreguje swoje wydania i wskazuje podstawowe; dzieła tworzą graf rodzic/dziecko dla struktury klasycznej.
+- **`releases`**: główna encja, jeden wiersz na tłoczenie. Niesie fakty o tłoczeniu (wytwórnia, numer katalogowy, kod kreskowy, kraj, format, rok), źródło metadanych, hash treści importowanego folderu i zmierzoną głośność albumu.
+- **`release_identities`**: czym wydanie *jest*, per źródło. Brak wierszy oznacza nieznane; wiersz MusicBrainz albo Discogs z identyfikatorem wydania oznacza dokładne; bez niego przybliżone. Wydanie może mieć tożsamości w obu źródłach naraz.
+- **`tracks`** z **`track_artists`**, plus **`release_artist_roles`** i **`track_artist_roles`**: listy utworów i przypisania, każde przypisanie oznaczone źródłem.
+- **`track_works`**, **`work_parts`**, **`work_artists`**: nagrania połączone z dziełami, które wykonują.
+- **`audio_formats`** i **`audio_format_segments`**: specyfikacje odtwarzania. Per utwór: kodek, częstotliwość próbkowania, głębia bitowa, kanały, zmierzona głośność i szczyt oraz długości pregapów. Segmenty mapują utwór na uporządkowane okna bajtów i próbek jego plików źródłowych; tak utwór z ripu CUE, włącznie z pregapem, może obejmować regiony jednego dużego pliku albo kilku plików.
+- **`release_files`**, **`covers`**, **`artist_images`**: tabele niosące bloby. Wiersze są wpisami katalogu; bajty żyją w warstwie blobów coven (zobacz niżej).
+
+## Synchronizowane, bramkowane, lokalne
+
+Wszystko powyżej synchronizuje się, ale nie bezwarunkowo. `releases` jest zadeklarowane jako bramkowany korzeń na kolumnie `remote`: wiersz wydania i całe jego poddrzewo (utwory, pliki, przypisania, formaty, okładka) synchronizują się tylko, gdy `remote` jest true, czyli gdy wydanie jest zarządzane w chmurze. Przełączenie wydania na zarządzane publikuje poddrzewo; niezarządzane wydanie zostaje w całości na urządzeniu importującym, chociaż jego schemat jest synchronizowany. Tabele przodków (`artists`, `albums`, `works`) synchronizują się tylko, gdy jakieś synchronizowane wydanie nadal je wskazuje, więc urządzenie nigdy nie dostaje wykonawcy bez niczego pod nim.
+
+Tabele w pełni lokalne, nigdy niedeklarowane do coven:
+
+- **`playback_state`**: bieżący utwór, pozycja, kolejka, głośność, losowanie i powtarzanie. Odtwarzanie jest faktem urządzenia.
+- **`imports`**: śledzenie operacji importu.
+- **`release_metadata`**: zarchiwizowany surowy JSON z MusicBrainz i Discogs, zachowany do przyszłej ponownej interpretacji.
+- **`attribution_names`**: nazwy wyświetlane dla kluczy członków.
+
+Każda synchronizowana tabela niesie kolumnę `_updated_at` z hybrydowym zegarem logicznym, rejestr, według którego coven porządkuje równoległe edycje pole po polu; test wymusza, że zestaw synchronizowany i zestaw niosący zegar są dokładnie równe.
+
+## Bloby
+
+Audio i obrazy przechodzą przez warstwę blobów coven w trzech przestrzeniach nazw, każda z własnym limitem cache urządzenia: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+
+Pliki wydań pochodzą od użytkownika i są cache'owane leniwie: dla niezarządzanego wydania blob jest zewnętrznym odwołaniem do pliku użytkownika pod jego oryginalną ścieżką; dla zarządzanego jest wysłanym obiektem pobieranym do cache przy pierwszym odczycie. Okładki i obrazy wykonawców pochodzą od hosta i są cache'owane z wyprzedzeniem: bae tworzy bajty (okładki są ponownie renderowane jako miniatury JPEG o szerokości najwyżej 600px), a każde urządzenie pobiera je przy ściąganiu zmian, żeby siatki renderowały się lokalnie.
+
+W nieprzezroczystym domu bloby są wysyłane pod nic nieznaczącymi kluczami treści. W przeglądalnym domu każdy wiersz bloba zapisuje czytelną ścieżkę w chmurze (`{artist}/{album}/{filename}` dla audio, `{album}/{release}/cover.{ext}` dla okładek), wyliczoną raz przy wysyłaniu, więc późniejsza zmiana nazwy nigdy nie przenosi obiektu.
+
+## Tożsamość ripu
+
+`releases.content_hash` to SHA-256 złożony ze struktury plików importowanego folderu (ścieżki względne i rozmiary), niezależny od miejsca folderu na dysku. Tak bae rozpoznaje już zaimportowany rip, gdy ponownie pojawia się w obserwowanym folderze, i tak ponowne importy znajdują wydanie, które powinny zastąpić.

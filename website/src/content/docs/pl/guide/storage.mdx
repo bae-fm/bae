@@ -1,0 +1,36 @@
+---
+title: Przechowywanie i offline
+description: Gdzie mieszka muzyka i co gra bez sieci
+---
+
+Twoje pliki zostają Twoje. bae nigdy ich nie przenosi, nie zmienia nazw ani nie przepisuje; pytanie, na które odpowiada przechowywanie, brzmi tylko: gdzie mieszka *kopia do odtwarzania* każdego wydania: na urządzeniu, w Twojej chmurze albo w obu miejscach.
+
+## Niezarządzane i zarządzane
+
+Każde wydanie jest jednym albo drugim, wybranym przy imporcie i możliwym do zmiany w dowolnej chwili:
+
+- **Niezarządzane**: bae kataloguje Twoje pliki tam, gdzie są, i odtwarza je stamtąd. Nic nie jest kopiowane. Wydanie istnieje w katalogu na każdym synchronizowanym urządzeniu, ale jego audio mieszka tylko na maszynie, która je zaimportowała.
+- **Zarządzane**: pliki są szyfrowane i wysyłane do domu w chmurze. Teraz każde urządzenie może odtwarzać wydanie, streamując je na żądanie albo pobierając offline. Wysyłanie nie dotyka oryginalnych plików; to, czy nadal używać ich lokalnie, zależy od Ciebie (**Keep local copy** przy imporcie przypina je).
+
+Przejście między tymi stanami jest działaniem na poziomie wydania: **Manage** wysyła niezarządzane wydanie; **Make local** pobiera pliki zarządzanego wydania do wybranego folderu i znów są Twoimi zwykłymi plikami.
+
+## Streaming i cache
+
+Zarządzane wydania grają wszędzie, jeśli pozwala sieć: odtwarzanie streamuje plik z Twojej chmury, a bajty są trzymane w lokalnym cache, aby następne odtworzenie było natychmiastowe i nie pobierało danych. Cache zarządza sobą w ramach limitu (20 GB na audio na każdym urządzeniu), usuwając to, czego nie odtwarzasz, gdy zaczyna brakować miejsca. Okładki i obrazy wykonawców są cache'owane osobno, więc duży album nie wypchnie grafik.
+
+## Przypinanie offline
+
+Przypięcie wydania pobiera je całe i trzyma: przypięta muzyka nigdy nie jest usuwana z cache i zawsze gra offline. Przypnij z panelu przechowywania wydania albo ze Storage Manager; odpięcie zwraca pliki do zwykłego cache, gdzie pozostają odtwarzalne, ale mogą zostać zwolnione. Na telefonie postęp przypiętych pobrań widać bezpośrednio w bibliotece.
+
+## Storage Manager
+
+Desktopowy Storage Manager (<kbd>⌘0</kbd>) pokazuje cały obraz w jednym oknie:
+
+- Każde wydanie z rozmiarem i stanem: niezarządzane, zarządzane, wysyłane. Filtruj, sortuj, wybieraj wiele pozycji i działaj na wszystkich naraz.
+- **Downloads**: trwające pobrania przypięć, możliwe do pauzowania i ponawiania.
+- **Exports**: kolejka eksportu. Zobacz [Eksport](/pl/guide/exporting).
+- **Uploads**: skrzynka wysyłania synchronizacji, z postępem dla wydania, przepustowością i pozostałym czasem, oczekującymi usunięciami, pauzą i wznowieniem.
+
+## Usuwanie
+
+Usunięcie zarządzanego wydania usuwa je z biblioteki i domu w chmurze. Usunięcie niezarządzanego wydania usuwa tylko wpis w katalogu: bae nigdy nie usuwa plików, których samo tam nie umieściło.
