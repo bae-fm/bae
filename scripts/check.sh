@@ -259,9 +259,12 @@ check "actionlint" env SHELLCHECK_OPTS="--severity=error" actionlint
 
 # ── bae-core tests ────────────────────────────────────────────────────────────
 section "bae-core tests"
+# Default parallelism, matching CI: suites that share process-global state
+# (the import integration caches) serialize themselves with #[serial]; the
+# CPU test runs alone below because it reads process-wide getrusage.
 check "cargo test (bae-core)" \
   cargo test -p bae-core --features bae-core/test-utils \
-    -- --test-threads=1 --skip test_playback_cpu
+    -- --skip test_playback_cpu
 check "cargo test (bae-core playback CPU, release)" \
   cargo test -p bae-core --release --features bae-core/test-utils \
     --test test_playback_cpu
