@@ -1,4 +1,122 @@
 use super::*;
+use crate::playback::audio_output::{
+    audio_event_channel, AudioError, AudioEvent, AudioEventSender, AudioState,
+};
+use tempfile::TempDir;
+
+struct TestAudioStream;
+
+impl AudioStream for TestAudioStream {
+    fn play(&self) -> Result<(), AudioError> {
+        Ok(())
+    }
+}
+
+struct TestAudioOutput {
+    state: std::sync::Mutex<AudioState>,
+    volume: std::sync::Mutex<f32>,
+}
+
+impl TestAudioOutput {
+    fn new() -> Self {
+        Self {
+            state: std::sync::Mutex::new(AudioState::Playing),
+            volume: std::sync::Mutex::new(1.0),
+        }
+    }
+}
+
+impl AudioOutput for TestAudioOutput {
+    fn create_stream(
+        &mut self,
+        _source: Arc<Mutex<source::PlaybackSource>>,
+        _source_sample_rate: u32,
+        _source_channels: u32,
+        _audio_events: AudioEventSender,
+        _position_update_interval_ms: u32,
+    ) -> Result<Box<dyn AudioStream>, AudioError> {
+        Ok(Box::new(TestAudioStream))
+    }
+
+    fn set_state(&self, state: AudioState) {
+        *self.state.lock().unwrap() = state;
+    }
+
+    fn get_state(&self) -> AudioState {
+        *self.state.lock().unwrap()
+    }
+
+    fn set_volume(&self, volume: f32) {
+        *self.volume.lock().unwrap() = volume;
+    }
+
+    fn get_volume(&self) -> f32 {
+        *self.volume.lock().unwrap()
+    }
+}
+
+async fn test_library_manager() -> (TempDir, LibraryManager) {
+    let home = TempDir::new().unwrap();
+    let db_path = home.path().join("playback-service-test.db");
+    let database =
+        crate::db::Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
+            .await
+            .unwrap();
+    let library_id = "playback-service-test".to_string();
+    let config = crate::config::Config::with_defaults(
+        library_id.clone(),
+        "test-device".to_string(),
+        coven::LibraryDir::new(home.path().join("library")),
+        "Test Library".to_string(),
+    );
+    crate::config::install_test_keyring();
+    let manager = LibraryManager::new(
+        database,
+        Arc::new(crate::config::ConfigHandle::new(config)),
+        crate::keys::KeyService::new(library_id),
+        Arc::new(coven::SystemClock),
+        Arc::new(coven::UuidProvider),
+        tokio::runtime::Handle::current(),
+    );
+    (home, manager)
+}
+
+async fn test_playback_service() -> (
+    TempDir,
+    PlaybackService,
+    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
+) {
+    let (home, library_manager) = test_library_manager().await;
+    let queue_ids = library_manager.ids().clone();
+    let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
+    let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
+    let preview = PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50);
+    let service = PlaybackService {
+        library_manager,
+        command_tx,
+        command_rx,
+        progress_tx,
+        playback_queue: PlaybackQueue::new(queue_ids),
+        current_position_shared: Arc::new(std::sync::Mutex::new(None)),
+        audio_output: Box::new(TestAudioOutput::new()),
+        stream: None,
+        current_prepared: None,
+        current_playback_source: None,
+        current_decoder_handle: None,
+        current_audio_events: None,
+        preloaded_next: None,
+        preview,
+        main_was_playing_before_preview: false,
+        is_muted: false,
+        pre_mute_volume: 1.0,
+        position_update_interval_ms: 50,
+        shared_file_buffers: HashMap::new(),
+        last_position_display: Arc::new(std::sync::Mutex::new(None)),
+        pending_side_pause: None,
+        fetch_arbiter: FetchArbiter::new(),
+    };
+    (home, service, progress_rx)
+}
 
 fn test_track_info(track_id: &str) -> PlaybackTrackInfo {
     PlaybackTrackInfo {
@@ -121,6 +239,70 @@ fn clear_preloaded_next_removes_staged_source() {
     assert!(preloaded.is_none());
     assert!(!gapless.lock().unwrap().has_next());
     assert!(buffer.is_cancelled());
+}
+
+#[tokio::test]
+async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    service.playback_queue.play_release(
+        ContextSource::Release("release-id".to_string()),
+        vec!["finished-track".to_string(), "incoming-track".to_string()],
+        ContextStart::Index(0),
+    );
+
+    let finished_buffer = create_sparse_buffer(1_024);
+    let incoming_buffer = create_sparse_buffer(1_024);
+    service.current_prepared = Some(test_prepared_track(
+        "finished-track",
+        finished_buffer.clone(),
+        false,
+    ));
+    service.current_playback_source = {
+        let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
+        Some(Arc::new(Mutex::new(source::PlaybackSource::new(
+            source,
+            test_track_fmt("finished-track"),
+        ))))
+    };
+    service.current_position_shared =
+        Arc::new(std::sync::Mutex::new(Some(std::time::Duration::ZERO)));
+    service.preloaded_next = Some(PreloadedNext {
+        prepared: test_prepared_track("incoming-track", incoming_buffer, false),
+        decoder_handle: finished_decoder_handle(),
+        source: PreloadedNextSource::Staged,
+    });
+
+    let (mut audio_tx, audio_rx) = audio_event_channel();
+    audio_tx.push_required(AudioEvent::TrackCrossing(TrackCrossing {
+        finished_fmt: Arc::new(test_track_fmt("finished-track")),
+        decode_error_count: 0,
+        samples_decoded: 44_100,
+        incoming_fmt: Arc::new(test_track_fmt("incoming-track")),
+    }));
+    service.current_audio_events = Some(audio_rx);
+
+    service.seek(std::time::Duration::ZERO).await;
+
+    assert_eq!(
+        service
+            .current_prepared
+            .as_ref()
+            .unwrap()
+            .track_info
+            .track_id,
+        "incoming-track"
+    );
+    let mut saw_incoming_seek = false;
+    while let Ok(progress) = progress_rx.try_recv() {
+        if let PlaybackProgress::Seeked { track_id, .. } = progress {
+            saw_incoming_seek = track_id == "incoming-track";
+        }
+    }
+    assert!(
+        saw_incoming_seek,
+        "seek should emit for the crossed-into track"
+    );
+    assert!(finished_buffer.is_cancelled());
 }
 
 #[test]

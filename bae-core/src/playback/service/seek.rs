@@ -7,6 +7,7 @@ impl PlaybackService {
             error!("Cannot seek: no streaming source active");
             return;
         }
+        self.drain_current_audio_events().await;
 
         let current_prepared = match self.current_prepared.as_mut() {
             Some(prepared) => prepared,
