@@ -454,6 +454,161 @@ async fn collect_scan_events(
     ScanBatch { added, removed }
 }
 
+/// Collect every scan event that arrives within a fixed window. Used by the
+/// watcher-handle tests below, which assert a specific event variant fired
+/// (`WatchedFoldersChanged`, `CandidateSkipChanged`) after a handle call.
+async fn drain_scan_events(
+    rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
+    window: std::time::Duration,
+) -> Vec<ScanEvent> {
+    let deadline = tokio::time::Instant::now() + window;
+    let mut events = Vec::new();
+    while tokio::time::Instant::now() < deadline {
+        match tokio::time::timeout(std::time::Duration::from_millis(50), rx.recv()).await {
+            Ok(Some(event)) => events.push(event),
+            Ok(None) => break,
+            Err(_) => {}
+        }
+    }
+    events
+}
+
+/// `remove_watched_folder` drops the folder from the persisted list, drops its
+/// candidates from the reducer, and broadcasts the shortened list (plus sending
+/// the watcher an `Unwatch`). Exercises the handle's remove path and
+/// `watched_folders` accessor.
+#[tokio::test]
+#[serial]
+async fn remove_watched_folder_drops_folder_and_candidates() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+
+    let collection = f.temp_path().join("Collection");
+    let album = collection.join("Artist - Album");
+    fs::create_dir_all(&album).unwrap();
+    generate_album_files(&album, &["01 Track.flac"]);
+    let album_key = album.to_string_lossy().into_owned();
+    let collection_key = collection.to_string_lossy().into_owned();
+
+    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    f.handle.add_watched_folder(collection_key.clone()).unwrap();
+
+    let batch = collect_scan_events(&mut scan_rx).await;
+    assert!(
+        batch.added.contains(&album_key),
+        "initial scan should surface the album candidate"
+    );
+    assert_eq!(
+        f.handle
+            .watched_folders()
+            .iter()
+            .map(|w| w.path.clone())
+            .collect::<Vec<_>>(),
+        vec![collection_key.clone()],
+    );
+    assert!(
+        !f.handle
+            .get_import_candidates()
+            .folder_candidates
+            .is_empty(),
+        "the reducer holds the scanned candidate"
+    );
+
+    f.handle
+        .remove_watched_folder(collection_key.clone())
+        .unwrap();
+
+    // The list accessor and the reducer both reflect the removal synchronously.
+    assert!(
+        f.handle.watched_folders().is_empty(),
+        "removed folder is gone from the persisted list"
+    );
+    assert!(
+        f.handle
+            .get_import_candidates()
+            .folder_candidates
+            .is_empty(),
+        "the reducer dropped the removed folder's candidates"
+    );
+
+    // The shortened (now empty) list is broadcast.
+    let events = drain_scan_events(&mut scan_rx, std::time::Duration::from_secs(2)).await;
+    assert!(
+        events.iter().any(|event| matches!(
+            event,
+            ScanEvent::WatchedFoldersChanged { folders } if folders.is_empty()
+        )),
+        "remove should broadcast the shortened folder list, got {events:?}",
+    );
+}
+
+/// `set_candidate_skipped` flips the reducer's skip flag and broadcasts
+/// `CandidateSkipChanged`; a no-op request (already in the target state) changes
+/// nothing and emits nothing.
+#[tokio::test]
+#[serial]
+async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+
+    let collection = f.temp_path().join("Collection");
+    let album = collection.join("Artist - Album");
+    fs::create_dir_all(&album).unwrap();
+    generate_album_files(&album, &["01 Track.flac"]);
+    let album_key = album.to_string_lossy().into_owned();
+
+    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    f.handle
+        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .unwrap();
+    let batch = collect_scan_events(&mut scan_rx).await;
+    assert!(batch.added.contains(&album_key));
+
+    let skipped_of = |f: &ImportFixture| {
+        f.handle
+            .get_import_candidates()
+            .folder_candidates
+            .iter()
+            .find(|c| c.candidate.path == album)
+            .expect("candidate present")
+            .candidate
+            .skipped
+    };
+    assert!(!skipped_of(&f), "candidate starts unskipped");
+
+    f.handle
+        .set_candidate_skipped(album_key.clone(), true)
+        .unwrap();
+    assert!(skipped_of(&f), "skip flag flips in the reducer");
+    let events = drain_scan_events(&mut scan_rx, std::time::Duration::from_secs(1)).await;
+    assert!(
+        events.iter().any(|event| matches!(
+            event,
+            ScanEvent::CandidateSkipChanged { candidate_key, skipped }
+                if candidate_key == &album_key && *skipped
+        )),
+        "skip should broadcast CandidateSkipChanged, got {events:?}",
+    );
+
+    // A redundant skip=true request is a no-op: no event, flag unchanged.
+    f.handle
+        .set_candidate_skipped(album_key.clone(), true)
+        .unwrap();
+    assert!(skipped_of(&f));
+    let events = drain_scan_events(&mut scan_rx, std::time::Duration::from_millis(300)).await;
+    assert!(
+        !events
+            .iter()
+            .any(|event| matches!(event, ScanEvent::CandidateSkipChanged { .. })),
+        "a redundant skip must not re-broadcast, got {events:?}",
+    );
+
+    f.handle
+        .set_candidate_skipped(album_key.clone(), false)
+        .unwrap();
+    assert!(!skipped_of(&f), "unskip flips the flag back");
+}
+
 /// 3. Local folder import: album, release, tracks all in DB, files stay in place.
 #[tokio::test]
 #[serial]
