@@ -236,13 +236,9 @@ async fn test_cue_flac_records_track_positions() {
 async fn test_cue_flac_playback_uses_track_positions() {
     use bae_core::audio_codec::decode_audio;
 
-    let mut fixture = match CueFlacCaptureFixture::new().await {
-        Ok(f) => f,
-        Err(e) => {
-            info!("Failed to set up CUE/FLAC capture fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = CueFlacCaptureFixture::new()
+        .await
+        .unwrap_or_else(|e| panic!("failed to set up CUE/FLAC capture fixture: {e}"));
 
     let track_id = fixture.track_ids[1].clone();
 

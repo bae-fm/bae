@@ -526,13 +526,9 @@ impl CueApeTestFixture {
 async fn test_cue_ape_playback_uses_track_positions() {
     use bae_core::audio_codec::decode_audio;
 
-    let mut fixture = match CueApeTestFixture::with_capture().await {
-        Ok(f) => f,
-        Err(e) => {
-            info!("Failed to set up CUE/APE fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = CueApeTestFixture::with_capture()
+        .await
+        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
     let track_id = fixture.track_ids[1].clone();
 
@@ -644,13 +640,9 @@ async fn test_cue_ape_playback_uses_track_positions() {
 async fn test_cue_ape_playback_no_decode_errors() {
     use bae_core::audio_codec::decode_audio;
 
-    let mut fixture = match CueApeTestFixture::with_capture().await {
-        Ok(f) => f,
-        Err(e) => {
-            info!("Failed to set up CUE/APE fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = CueApeTestFixture::with_capture()
+        .await
+        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
     let track_id = fixture.track_ids[0].clone();
 
@@ -762,13 +754,9 @@ async fn test_cue_ape_playback_no_decode_errors() {
 async fn test_cue_ape_seek() {
     use bae_core::audio_codec::decode_audio;
 
-    let mut fixture = match CueApeTestFixture::with_capture().await {
-        Ok(f) => f,
-        Err(e) => {
-            info!("Failed to set up CUE/APE fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = CueApeTestFixture::with_capture()
+        .await
+        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
     let track_id = fixture.track_ids[1].clone();
 
@@ -920,13 +908,9 @@ async fn test_cue_ape_seek() {
 /// gated `Seeked` behind a fixed wait, so it never produced the Loading event.
 #[tokio::test]
 async fn test_cue_ape_seek_emits_loading_then_seeked() {
-    let mut fixture = match CueApeTestFixture::with_capture().await {
-        Ok(f) => f,
-        Err(e) => {
-            info!("Failed to set up CUE/APE fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = CueApeTestFixture::with_capture()
+        .await
+        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
     let track_id = fixture.track_ids[1].clone();
     fixture.playback_handle.play(track_id.clone());
@@ -990,13 +974,9 @@ async fn test_cue_ape_seek_emits_loading_then_seeked() {
 /// plays through without a rebuild.
 #[tokio::test]
 async fn test_cue_ape_gapless_preserved_across_seek() {
-    let mut fixture = match CueApeTestFixture::with_capture().await {
-        Ok(f) => f,
-        Err(e) => {
-            info!("Failed to set up CUE/APE fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = CueApeTestFixture::with_capture()
+        .await
+        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
     let track1_id = fixture.track_ids[0].clone();
     let track2_id = fixture.track_ids[1].clone();
@@ -1074,13 +1054,9 @@ async fn test_cue_ape_gapless_preserved_across_seek() {
 async fn test_cue_ape_auto_advance_no_replay() {
     use bae_core::audio_codec::decode_audio;
 
-    let mut fixture = match CueApeTestFixture::with_capture().await {
-        Ok(f) => f,
-        Err(e) => {
-            info!("Failed to set up CUE/APE fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = CueApeTestFixture::with_capture()
+        .await
+        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
     let track1_id = fixture.track_ids[0].clone();
     let track2_id = fixture.track_ids[1].clone();
@@ -1266,13 +1242,9 @@ async fn test_cue_ape_auto_advance_no_replay() {
 async fn test_cue_ape_next_track() {
     use bae_core::audio_codec::decode_audio;
 
-    let mut fixture = match CueApeTestFixture::with_capture().await {
-        Ok(f) => f,
-        Err(e) => {
-            info!("Failed to set up CUE/APE fixture: {}", e);
-            return;
-        }
-    };
+    let mut fixture = CueApeTestFixture::with_capture()
+        .await
+        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
     let track1_id = fixture.track_ids[0].clone();
     let track2_id = fixture.track_ids[1].clone();
