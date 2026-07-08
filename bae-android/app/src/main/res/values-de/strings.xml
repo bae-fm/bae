@@ -182,4 +182,8 @@
         <item quantity="one">%1$d Datei</item>
         <item quantity="other">%1$d Dateien</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">%d Titel zur Warteschlange hinzugefügt</item>
+        <item quantity="other">%d Titel zur Warteschlange hinzugefügt</item>
+    </plurals>
 </resources>

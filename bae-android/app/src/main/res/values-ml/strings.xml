@@ -182,4 +182,8 @@
         <item quantity="one">%1$d ഫയൽ</item>
         <item quantity="other">%1$d ഫയലുകൾ</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">%d ട്രാക്ക് ക്യൂവിലേക്ക് ചേർത്തു</item>
+        <item quantity="other">%d ട്രാക്കുകൾ ക്യൂവിലേക്ക് ചേർത്തു</item>
+    </plurals>
 </resources>

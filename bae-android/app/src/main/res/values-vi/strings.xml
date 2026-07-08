@@ -181,4 +181,7 @@
     <plurals name="download_file_count">
         <item quantity="other">%1$d tệp</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="other">Đã thêm %d bản nhạc vào hàng đợi</item>
+    </plurals>
 </resources>

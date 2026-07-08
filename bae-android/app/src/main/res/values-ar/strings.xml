@@ -186,4 +186,12 @@
         <item quantity="many">%1$d ملفًا</item>
         <item quantity="other">%1$d ملف</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="zero">تمت إضافة %d مقطع إلى قائمة الانتظار</item>
+        <item quantity="one">تمت إضافة مقطع واحد إلى قائمة الانتظار</item>
+        <item quantity="two">تمت إضافة مقطعين إلى قائمة الانتظار</item>
+        <item quantity="few">تمت إضافة %d مقاطع إلى قائمة الانتظار</item>
+        <item quantity="many">تمت إضافة %d مقطعًا إلى قائمة الانتظار</item>
+        <item quantity="other">تمت إضافة %d مقطع إلى قائمة الانتظار</item>
+    </plurals>
 </resources>

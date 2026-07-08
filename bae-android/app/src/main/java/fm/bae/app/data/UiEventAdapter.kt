@@ -141,6 +141,10 @@ object UiEventAdapter {
                 player.onMuteChanged(event.isMuted)
             }
 
+            is BridgeUiEvent.QueueItemsAdded -> {
+                player.onQueueItemsAdded(event.count.toInt())
+            }
+
             else -> {
                 return false
             }
@@ -171,7 +175,6 @@ object UiEventAdapter {
 
     private fun ignoreObsoleteEvent(event: BridgeUiEvent) {
         when (event) {
-            is BridgeUiEvent.QueueItemsAdded,
             BridgeUiEvent.PreviewIdle,
             is BridgeUiEvent.PreviewPlaying,
             is BridgeUiEvent.PreviewPaused,
@@ -195,6 +198,7 @@ object UiEventAdapter {
             is BridgeUiEvent.QueueUpdated,
             is BridgeUiEvent.VolumeChanged,
             is BridgeUiEvent.MuteChanged,
+            is BridgeUiEvent.QueueItemsAdded,
             is BridgeUiEvent.Error,
             BridgeUiEvent.ErrorCleared,
             -> {

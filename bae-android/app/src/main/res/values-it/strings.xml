@@ -183,4 +183,8 @@
         <item quantity="many">%1$d file</item>
         <item quantity="other">%1$d file</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">%d brano aggiunto alla coda</item>
+        <item quantity="other">%d brani aggiunti alla coda</item>
+    </plurals>
 </resources>

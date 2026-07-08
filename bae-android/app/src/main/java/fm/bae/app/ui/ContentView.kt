@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,7 +25,12 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.OAuthLinker
+import fm.bae.app.OpenLibrary
+import fm.bae.app.R
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeLibrary
 
 /**
  * App root. Drives the [AppScreen] lifecycle: discover an existing library and
@@ -115,7 +122,7 @@ private fun AppScreenRouter(
         }
 
         is AppScreen.LibraryOpen -> {
-            LibraryScreen(
+            LibraryOpenScreen(
                 session = current.session,
                 libraries = AppSessionHolder.libraries,
                 onSwitchLibrary = { library ->
@@ -130,6 +137,44 @@ private fun AppScreenRouter(
         is AppScreen.Failed -> {
             FailedScreen(message = current.message)
         }
+    }
+}
+
+/**
+ * The unlocked library UI plus the app-level snackbar host. Play Next / Add to
+ * Queue confirm here with a transient "+N added" snackbar, surfaced wherever the
+ * action was triggered — the now-playing bar that carries the queue button is
+ * hidden while nothing plays, so a badge there would give no feedback when
+ * building a queue from an idle state. collectLatest replaces a still-showing
+ * confirmation with the newer count rather than queuing them.
+ */
+@Composable
+private fun LibraryOpenScreen(
+    session: OpenLibrary,
+    libraries: StateFlow<List<BridgeLibrary>>,
+    onSwitchLibrary: (BridgeLibrary) -> Unit,
+    onLeaveLibrary: () -> Unit,
+) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val appContext = LocalContext.current
+    LaunchedEffect(session.playback, snackbarHostState) {
+        session.playback.queueItemsAdded.collectLatest { count ->
+            snackbarHostState.showSnackbar(
+                appContext.resources.getQuantityString(R.plurals.queue_items_added, count, count),
+            )
+        }
+    }
+    Box(modifier = Modifier.fillMaxSize()) {
+        LibraryScreen(
+            session = session,
+            libraries = libraries,
+            onSwitchLibrary = onSwitchLibrary,
+            onLeaveLibrary = onLeaveLibrary,
+        )
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 }
 

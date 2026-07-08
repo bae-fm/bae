@@ -183,4 +183,9 @@
         <item quantity="two">שני קבצים</item>
         <item quantity="other">%1$d קבצים</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">נוספה רצועה אחת לתור</item>
+        <item quantity="two">נוספו שתי רצועות לתור</item>
+        <item quantity="other">נוספו %d רצועות לתור</item>
+    </plurals>
 </resources>

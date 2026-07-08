@@ -182,4 +182,8 @@
         <item quantity="one">%1$d ਫ਼ਾਈਲ</item>
         <item quantity="other">%1$d ਫ਼ਾਈਲਾਂ</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">ਕਤਾਰ ਵਿੱਚ %d ਟ੍ਰੈਕ ਸ਼ਾਮਲ ਕੀਤਾ</item>
+        <item quantity="other">ਕਤਾਰ ਵਿੱਚ %d ਟ੍ਰੈਕ ਸ਼ਾਮਲ ਕੀਤੇ</item>
+    </plurals>
 </resources>

@@ -182,4 +182,8 @@
         <item quantity="one">%1$d கோப்பு</item>
         <item quantity="other">%1$d கோப்புகள்</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">%d ட்ராக் வரிசையில் சேர்க்கப்பட்டது</item>
+        <item quantity="other">%d ட்ராக்குகள் வரிசையில் சேர்க்கப்பட்டன</item>
+    </plurals>
 </resources>

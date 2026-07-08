@@ -184,4 +184,10 @@
         <item quantity="many">%1$d файлів</item>
         <item quantity="other">%1$d файлу</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">Додано %d трек до черги</item>
+        <item quantity="few">Додано %d треки до черги</item>
+        <item quantity="many">Додано %d треків до черги</item>
+        <item quantity="other">Додано %d трека до черги</item>
+    </plurals>
 </resources>

@@ -182,4 +182,8 @@
         <item quantity="one">%1$d ಫೈಲ್</item>
         <item quantity="other">%1$d ಫೈಲ್‌ಗಳು</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">%d ಟ್ರ್ಯಾಕ್ ಅನ್ನು ಸರತಿಗೆ ಸೇರಿಸಲಾಗಿದೆ</item>
+        <item quantity="other">%d ಟ್ರ್ಯಾಕ್‌ಗಳನ್ನು ಸರತಿಗೆ ಸೇರಿಸಲಾಗಿದೆ</item>
+    </plurals>
 </resources>

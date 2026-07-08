@@ -69,6 +69,11 @@
     <string name="queue_drag_to_reorder">Drag to reorder</string>
     <string name="queue_shuffle_on">Shuffle</string>
     <string name="queue_shuffle_off">Turn off shuffle</string>
+    <!-- Transient confirmation after Play Next / Add to Queue. %d = number of tracks added. -->
+    <plurals name="queue_items_added">
+        <item quantity="one">Added %d track to queue</item>
+        <item quantity="other">Added %d tracks to queue</item>
+    </plurals>
 
     <!-- Search results -->
     <string name="search_failed">Search failed</string>

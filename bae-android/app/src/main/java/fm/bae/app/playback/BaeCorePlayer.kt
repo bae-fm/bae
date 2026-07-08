@@ -22,8 +22,12 @@ import fm.bae.app.formatRemainingMs
 import fm.bae.app.runLoggedBridgeCommand
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandle
@@ -137,6 +141,8 @@ interface PlaybackEventSink {
     fun onVolumeChanged(volume: Float)
 
     fun onMuteChanged(isMuted: Boolean)
+
+    fun onQueueItemsAdded(count: Int)
 }
 
 private const val TAG = "bae.BaeCorePlayer"
@@ -619,6 +625,19 @@ class BaeCorePlayer(
     private val _isMuted = MutableStateFlow(false)
     val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
 
+    // One-shot "+N added to queue" confirmations for the in-app root to surface
+    // (a snackbar). A transient event, not projection state: replay = 0 so a
+    // collector that resubscribes after the add — a recomposition, a screen
+    // change — never re-shows a stale confirmation. Rapid adds drop the oldest
+    // rather than backlog.
+    private val _queueItemsAdded =
+        MutableSharedFlow<Int>(
+            replay = 0,
+            extraBufferCapacity = 8,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
+    val queueItemsAdded: SharedFlow<Int> = _queueItemsAdded.asSharedFlow()
+
     /** Latest progress fields from `PlaybackProgress`, for the Compose bar. */
     private var progress: Double = 0.0
     private val effectivePositionMs: Long
@@ -861,6 +880,10 @@ class BaeCorePlayer(
 
     override fun onMuteChanged(isMuted: Boolean) {
         _isMuted.value = isMuted
+    }
+
+    override fun onQueueItemsAdded(count: Int) {
+        _queueItemsAdded.tryEmit(count)
     }
 
     /**

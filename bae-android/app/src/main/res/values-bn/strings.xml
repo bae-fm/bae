@@ -182,4 +182,8 @@
         <item quantity="one">%1$dটি ফাইল</item>
         <item quantity="other">%1$dটি ফাইল</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">সারিতে %dটি ট্র্যাক যোগ করা হয়েছে</item>
+        <item quantity="other">সারিতে %dটি ট্র্যাক যোগ করা হয়েছে</item>
+    </plurals>
 </resources>

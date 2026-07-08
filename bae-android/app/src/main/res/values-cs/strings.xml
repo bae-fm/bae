@@ -184,4 +184,10 @@
         <item quantity="many">%1$d souboru</item>
         <item quantity="other">%1$d souborů</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">Do fronty přidána %d skladba</item>
+        <item quantity="few">Do fronty přidány %d skladby</item>
+        <item quantity="many">Do fronty přidáno %d skladby</item>
+        <item quantity="other">Do fronty přidáno %d skladeb</item>
+    </plurals>
 </resources>

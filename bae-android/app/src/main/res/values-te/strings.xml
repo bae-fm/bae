@@ -182,4 +182,8 @@
         <item quantity="one">%1$d ఫైల్</item>
         <item quantity="other">%1$d ఫైళ్లు</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">%d ట్రాక్‌ను క్యూకి జోడించారు</item>
+        <item quantity="other">%d ట్రాక్‌లను క్యూకి జోడించారు</item>
+    </plurals>
 </resources>

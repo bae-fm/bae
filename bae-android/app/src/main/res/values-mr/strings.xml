@@ -182,4 +182,8 @@
         <item quantity="one">%1$d फाइल</item>
         <item quantity="other">%1$d फायली</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">%d ट्रॅक रांगेत जोडला</item>
+        <item quantity="other">%d ट्रॅक रांगेत जोडले</item>
+    </plurals>
 </resources>

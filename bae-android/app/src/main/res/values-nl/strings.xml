@@ -182,4 +182,8 @@
         <item quantity="one">%1$d bestand</item>
         <item quantity="other">%1$d bestanden</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">%d nummer toegevoegd aan de wachtrij</item>
+        <item quantity="other">%d nummers toegevoegd aan de wachtrij</item>
+    </plurals>
 </resources>

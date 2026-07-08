@@ -18,6 +18,11 @@ complexity:
     ignoreAnnotated: ["Composable"]
   TooManyFunctions:
     ignoreOverridden: true
+    # PlaybackEventSink enumerates the playback UI events the adapter forwards to
+    # the player; it is a one-to-one mapping of core's event set, not a
+    # god-interface, and grows as core adds events. The default cap of 11 forces
+    # an artificial split of that cohesive list.
+    thresholdInInterfaces: 20
 
 naming:
   # Jetpack Compose @Composable functions use PascalCase by convention

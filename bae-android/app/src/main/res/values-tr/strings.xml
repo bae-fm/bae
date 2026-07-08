@@ -182,4 +182,8 @@
         <item quantity="one">%1$d dosya</item>
         <item quantity="other">%1$d dosya</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">Kuyruğa %d parça eklendi</item>
+        <item quantity="other">Kuyruğa %d parça eklendi</item>
+    </plurals>
 </resources>

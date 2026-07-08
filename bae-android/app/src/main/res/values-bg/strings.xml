@@ -182,4 +182,8 @@
         <item quantity="one">%1$d файл</item>
         <item quantity="other">%1$d файла</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">Добавена %d песен в опашката</item>
+        <item quantity="other">Добавени %d песни в опашката</item>
+    </plurals>
 </resources>

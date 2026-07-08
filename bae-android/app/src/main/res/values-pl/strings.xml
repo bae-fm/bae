@@ -184,4 +184,10 @@
         <item quantity="many">%1$d plików</item>
         <item quantity="other">%1$d pliku</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">Dodano %d utwór do kolejki</item>
+        <item quantity="few">Dodano %d utwory do kolejki</item>
+        <item quantity="many">Dodano %d utworów do kolejki</item>
+        <item quantity="other">Dodano %d utworu do kolejki</item>
+    </plurals>
 </resources>

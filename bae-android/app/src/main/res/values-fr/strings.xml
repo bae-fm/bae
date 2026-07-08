@@ -183,4 +183,8 @@
         <item quantity="many">%1$d fichiers</item>
         <item quantity="other">%1$d fichiers</item>
     </plurals>
+    <plurals name="queue_items_added">
+        <item quantity="one">%d piste ajoutée à la file d\'attente</item>
+        <item quantity="other">%d pistes ajoutées à la file d\'attente</item>
+    </plurals>
 </resources>
