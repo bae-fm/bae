@@ -331,7 +331,14 @@ impl DiagnosticsWorker {
     }
 
     async fn run(mut self) {
-        let mut flush_interval = tokio::time::interval(FLUSH_INTERVAL);
+        // `interval`'s first tick completes immediately; start the schedule one
+        // period out so the worker flushes *every* FLUSH_INTERVAL rather than
+        // also once at startup. The immediate tick could race an explicit
+        // flush(): landing between an enqueued event and the flush message, it
+        // consumed the transport response the flush was owed and swallowed the
+        // error the caller expected to see.
+        let mut flush_interval =
+            tokio::time::interval_at(tokio::time::Instant::now() + FLUSH_INTERVAL, FLUSH_INTERVAL);
         loop {
             tokio::select! {
                 Some(message) = self.rx.recv() => {
