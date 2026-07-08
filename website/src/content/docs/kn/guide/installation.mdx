@@ -1,0 +1,55 @@
+---
+title: ಸ್ಥಾಪನೆ
+description: ಪ್ರತಿಯೊಂದು ವೇದಿಕೆಯಲ್ಲಿ bae ಅಥವಾ baeium ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ ಸ್ಥಾಪಿಸಿ
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## ಎರಡು ಆವೃತ್ತಿಗಳು
+
+ಪ್ರತಿಯೊಂದು ವೇದಿಕೆ ಒಂದೇ ಮೂಲದಿಂದ ಕಟ್ಟಿದ ಎರಡು ಆವೃತ್ತಿಗಳಲ್ಲಿ ಬರುತ್ತದೆ:
+
+- **bae**, ಪೂರ್ಣ ಆಪ್: S3, Google Drive, Dropbox, OneDrive, ಮತ್ತು iCloud ಸಮನ್ವಯ.
+- **baeium**, proprietary ಭಾಗಗಳಿಲ್ಲ: S3-compatible ಸಂಗ್ರಹ ಮಾತ್ರ, OAuth ಒದಗಿಸುವವರು ಇಲ್ಲ, iCloud/CloudKit ಇಲ್ಲ, telemetry ಇಲ್ಲ.
+
+ಇವು ಒಂದರ ಪಕ್ಕದಲ್ಲಿ ಮತ್ತೊಂದು ಸ್ಥಾಪನೆಯಾಗುತ್ತವೆ, ಪ್ರತಿಯೊಂದಕ್ಕೂ ತನ್ನದೇ ಗ್ರಂಥಾಲಯ ಮತ್ತು ತನ್ನದೇ (iCloud-Keychain ಮೂಲಕ ಸಮನ್ವಯಗೊಂಡ) ಕೀಗಳು. ಕೆಳಗಿನಿಂದ ನಿಮಗೆ ಬೇಕಾದುದನ್ನು ಆರಿಸಿ.
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">Download bae for macOS</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">Download baeium for macOS</DownloadButton>
+
+1. ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ `.dmg` ತೆರೆಯಿರಿ
+2. ಆಪ್ ಅನ್ನು ನಿಮ್ಮ Applications ಕಡತಕೋಶಕ್ಕೆ ಎಳೆಯಿರಿ
+3. Applications ನಿಂದ ಅದನ್ನು ತೆರೆಯಿರಿ
+
+ಎರಡೂ ಆವೃತ್ತಿಗಳು ತಮ್ಮದೇ Sparkle feed ಮೂಲಕ ಸ್ವಯಂ-ನವೀಕರಿಸುತ್ತವೆ.
+
+## iOS
+
+iOS builds sideloading ಗಾಗಿ **unsigned `.ipa` ಕಡತಗಳು**. [AltStore](https://altstore.io) ಅಥವಾ [Sideloadly](https://sideloadly.io) ಬಳಸಿ ಸ್ಥಾಪಿಸಿ, ಅಥವಾ ನಿಮ್ಮದೇ Apple ID ಬಳಸಿ Xcode ನಲ್ಲಿ ಮತ್ತೆ sign ಮಾಡಿ (ಉಚಿತ Apple ID baeium ಗೆ ಕೆಲಸ ಮಾಡುತ್ತದೆ). App Store distribution ಇನ್ನೂ ಸಿದ್ಧಪಡಿಸಲಾಗಿಲ್ಲ.
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">Download bae for iOS</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">Download baeium for iOS</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">Download bae for Android</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">Download baeium for Android</DownloadButton>
+
+ಸೂಚನೆ ಬಂದಾಗ ನಿಮ್ಮ bಸಾಲುಗಳುer/ಕಡತಗಳು ನಿಂದ ಸ್ಥಾಪಿಸುವುದನ್ನು ಅನುಮತಿಸಿ, ನಂತರ `.apk` ತೆರೆಯಿರಿ.
+
+## Windows
+
+Windows builds ಪ್ಯಾಕೇಜ್ ಮಾಡದ ಆಪ್‌ನ **unsigned** zip ಕಡತಗಳು. Extract ಮಾಡಿ `bae.exe` / `baeium.exe` ಚಲಾಯಿಸಿ. ಮೊದಲ ಆರಂಭದಲ್ಲಿ SmartScreen ಎಚ್ಚರಿಸಬಹುದು.
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">Download bae for Windows</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">Download baeium for Windows</DownloadButton>
+
+## Linux
+
+ಬರುತ್ತಿದೆ.
+
+## ಮೂಲದಿಂದ ಕಟ್ಟುವುದು
+
+baeium ಕಟ್ಟಲು proprietary ಏನೂ ಬೇಕಿಲ್ಲ. ಉಚಿತ provisioning ಅಡಿಯಲ್ಲಿ iOS ಸೇರಿ ಪ್ರತಿ-ವೇದಿಕೆಯ ಸ್ವಯಂ-ಕಟ್ಟುವ ಸೂಚನೆಗಳಿಗೆ [repository README](https://github.com/bae-fm/bae#building-baeium-yourself) ನೋಡಿ.

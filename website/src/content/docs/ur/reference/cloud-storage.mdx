@@ -1,0 +1,37 @@
+---
+title: کلاؤڈ ذخیرہ گاہ
+description: فراہم کنندگان، تصدیق، اور کلاؤڈ گھر کی شکل
+---
+
+کلاؤڈ گھر صارف کے پہلے سے ملکیتی ذخیرہ میں ایک جگہ ہے۔ ہر فراہم کنندہ [coven](https://coven.bae.fm) میں اسی ذخیرہ interface سے چلتا ہے؛ فراہم کنندہ کے لحاظ سے فرق تصدیق اور یہ ہے کہ دوسرے آلے کو رسائی کیسے ملتی ہے۔
+
+## فراہم کنندگان
+
+| فراہم کنندہ | Auth | Access for a new آلہ |
+|---|---|---|
+| S3-compatible | Access کلید + secret | Credentials embedded in the invite |
+| Google Drive | OAuth (PKCE) | پوشہ shared to the joiner's اکاؤنٹ |
+| Dropbox | OAuth (PKCE) | پوشہ shared to the joiner's اکاؤنٹ |
+| OneDrive | OAuth (PKCE) | پوشہ shared to the joiner's اکاؤنٹ |
+| iCloud (CloudKit) | Apple ID, no sign-in | CloudKit share accepted by the joiner |
+
+S3-compatible میں AWS، Backblaze B2، Cloudflare R2، Wasabi، MinIO، اور API بولنے والی ہر چیز آتی ہے؛ bucket، region، endpoint، اور کلید prefix قابل ترتیب ہیں، اور config محفوظ ہونے سے پہلے bucket جانچا جاتا ہے تاکہ typo setup پر ناکام ہو، پہلی ہم آہنگی پر نہیں۔ OAuth فراہم کنندگان صرف پوری **bae** edition میں موجود ہیں؛ **baeium** builds انہیں compile out کرتی ہیں۔
+
+## OAuth
+
+Sign-in PKCE کے ساتھ authorization-code flow ہے، عوامی کلائنٹ کے طور پر۔ Desktop پر redirect ایک loopback server پر آتا ہے جو ایک callback کے لیے مقامی port سے بندھا ہوتا ہے؛ mobile پر ایپ custom-scheme redirect پکڑتی ہے۔ bae کام کے لیے فراہم کنندہ کی پیش کردہ سب سے تنگ scope مانگتا ہے، Google Drive پر یہ صرف ان فائلوں تک رسائی ہے جو ایپ خود بناتی ہے۔ Tokens OS کلید خانہ میں محفوظ ہوتے ہیں، فراہم کنندہ کے refresh grant سے تازہ ہوتے ہیں، اور رد refresh خاموش دوبارہ کوشش کے دور کے بجائے reconnect اشارہ کے طور پر سامنے لانا ہوتا ہے۔
+
+CloudKit کو flow کی ضرورت نہیں: ایپ میں بنا ہوا اور مرکز کو دیا گیا پلیٹ فارم کا CloudKit driver signed-in Apple ID کے طور پر کام کرتا ہے۔
+
+## گھر کی ترتیب
+
+گھر کے اندر، coven ہر آلے کے تبدیلی سیٹ بہاؤ، نقل تصویر نسلیں، رکنیت ریکارڈ، اور blob namespaces ترتیب دیتا ہے۔ bae تین blob namespaces دیتا ہے: `release_files`، `covers`، اور `artist_images`۔
+
+اشیا کیسے keyed ہوتے ہیں یہ گھر کے ذخیرہ حالت پر depend کرتا ہے، جو creation پر fixed ہے:
+
+- **Opaque**: اشیا رمز بند ہوتی ہیں اور مواد سے نکلی کلیدوں کے تحت محفوظ ہوتی ہیں جو کچھ ظاہر نہیں کرتیں۔ یہ رمز نگاری پر مکمل بھروسا والی حالت ہے؛ [Encryption](/ur/reference/encryption) دیکھیں۔
+- **Browsable**: اشیا صاف متن ہیں، پڑھنے کے قابل راستے پر جو اپ لوڈ وقت پر ہر blob کے لیے ریکارڈ ہوتے ہیں: `release_files/{artist}/{album}/{filename}`، `covers/{album}/{release}/cover.{ext}`، `artist_images/{artist}/artist.{ext}`۔ Bucket قابل استعمال فائل درخت بھی بن جاتا ہے؛ بدل رکنیت اور رمز بندی کا نہ ہونا ہے، اس لیے browsable homes دوسرے لوگوں کو بانٹے نہیں جا سکتے۔
+
+## حقیقی نیٹ ورک کے تحت برتاؤ
+
+پلے بیک کی پڑھائیاں حد بند ہیں: player پوری فائلوں کے بجائے صرف بائٹ کھڑکیاں بہاتا ہے جن کی اسے ضرورت ہوتی ہے۔ Size threshold سے اوپر اپ لوڈز وہاں multipart ہوتے ہیں جہاں فراہم کنندہ حمایت کرتا ہے۔ شرح بندی اور عارضی فراہم کنندہ خرابیاں exponential backoff کے ساتھ دوبارہ آزمائی جاتی ہیں، فراہم کنندہ کے دیے ہوئے retry-after کا لحاظ کرتے ہوئے؛ مدت ختم OAuth tokens جگہ پر تازہ ہوتے ہیں۔ ہم آہنگی outbox دوبارہ شروع ہونے سے بچتا ہے: ایپ quit کرنے سے رکا ہوا اپ لوڈ restart کے بجائے resume ہوتا ہے۔

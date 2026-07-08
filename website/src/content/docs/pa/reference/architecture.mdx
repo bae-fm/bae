@@ -1,0 +1,41 @@
+---
+title: ਬਣਤਰ
+description: coven ਉੱਤੇ, ਇੱਕ Rust core ਉੱਤੇ ਸਥਾਨਕ apps
+---
+
+bae ਚਾਰ ਸਥਾਨਕ apps ਪਹਿਨਿਆ ਇੱਕ Rust core ਹੈ। ਉਤਪਾਦ ਨੂੰ ਪਰਿਭਾਸ਼ਤ ਕਰਨ ਵਾਲੀ ਹਰ ਚੀਜ਼, ਸੰਗ੍ਰਹਿ ਮਾਡਲ, ਆਯਾਤ, ਸੁਣਾਈ, ਸਮਕਾਲੀਕਰਨ, ਇਨਕ੍ਰਿਪਸ਼ਨ, Rust ਵਿੱਚ ਰਹਿੰਦੀ ਹੈ ਅਤੇ ਹਰ ਪਲੇਟਫਾਰਮ ਉੱਤੇ ਇੱਕੋ ਵਰਤਾਅ ਕਰਦੀ ਹੈ; ਹਰ app ਇਸ ਉੱਤੇ ਪਤਲਾ ਸਥਾਨਕ UI ਹੈ।
+
+## ਪਰਤਾਂ
+
+- **`bae-core`**: ਉਤਪਾਦ। ਸੰਗ੍ਰਹਿ ਅਤੇ ਮੈਟਾਡੇਟਾ ਮਾਡਲ, ਆਯਾਤ ਅਤੇ ਪਛਾਣ ਪ੍ਰਵਾਹ, FFmpeg ਸੁਣਾਈ ਯੰਤਰ, loudness ਵਿਸ਼ਲੇਸ਼ਣ, ਨਿਰਯਾਤ, ਅਤੇ ਹੇਠਲੇ coven ਨਾਲ ਜੋੜ। ਆਯਾਤ ਅਤੇ ਪਛਾਣ ਸਿਰਫ਼ ਡੈਸਕਟਾਪ ਉੱਤੇ ਕੰਪਾਇਲ ਹੁੰਦੇ ਹਨ; ਮੋਬਾਈਲ ਬਣਾਵਟਾਂ ਸਮਕਾਲੀਕਰਨ ਅਤੇ ਸੁਣਾਈ ਕਲਾਇੰਟ ਹਨ।
+- **[coven](https://coven.bae.fm)**: ਡਾਟਾ ਪਰਤ, ਵੱਖਰੀ ਸੰਗ੍ਰਹਿ। coven SQLite connection ਆਪਣਾ ਰੱਖਦਾ ਹੈ, bae ਵੱਲੋਂ commit ਕੀਤਾ ਹਰ ਬਦਲਾਅ ਫੜਨਾ ਕਰਦਾ ਹੈ, ਅਤੇ ਉਹ ਬਦਲਾਅ ਵਰਤੋਂਕਾਰ ਦੇ ਕਲਾਉਡ ਭੰਡਾਰਣ ਰਾਹੀਂ end-to-end encrypted ਸਮਕਾਲੀਕਰਿਤ ਕਰਦਾ ਹੈ। ਇਹ ਬਲੌਬ ਭੰਡਾਰਣ (ਸ਼ਬਦ bytes, ਕਲਾ), ਸਥਾਨਕ ਅਸਥਾਈ ਭੰਡਾਰ, ਪਛਾਣ ਕੁੰਜੀਆਂ, ਅਤੇ ਮੈਂਬਰਤਾ ਵੀ ਆਪਣਾ ਰੱਖਦਾ ਹੈ। bae ਇੱਕ ਸਹੀ coven ਸੰਸ਼ੋਧਨ pin ਕਰਦਾ ਹੈ ਅਤੇ ਹਰ ਬਾਈਨਰੀ ਵਿੱਚ stamp ਕਰਦਾ ਹੈ; ਇਹ ਬਣਾਵਟਾਂ ਵਿਚਕਾਰ ਸਮਕਾਲੀਕਰਨ-ਅਨੁਕੂਲਤਾ ਪੀੜ੍ਹੀ ਪਰਿਭਾਸ਼ਤ ਕਰਦਾ ਹੈ।
+- **`bae-bridge`**: UniFFI ਹੱਦ। Bridge types Rust ਵਿੱਚ ਇੱਕ ਵਾਰ ਪਰਿਭਾਸ਼ਤ ਹੁੰਦੇ ਹਨ ਅਤੇ ਬਣਾਵਟ time ਉੱਤੇ Swift ਅਤੇ Kotlin ਵਿੱਚ ਬਣਾਇਆ ਹੁੰਦੇ ਹਨ।
+- **ਐਪਾਂ**: macOS ਅਤੇ iOS ਉੱਤੇ SwiftUI, Android ਉੱਤੇ Jetpack Compose, ਅਤੇ ਸਥਾਨਕ Windows app। ਹਰ ਇੱਕ ਉਹ platform pieces ਵੀ ਲਾਗੂ ਕਰਦਾ ਹੈ ਜੋ core ਮੰਗਦਾ ਹੈ: ਸ਼ਬਦ ਬਾਹਰਲਾ ਸ਼ਬਦ, ਕਲਾ ਲਿਖਤ recognition, media controls, keychain access, crash reporting।
+
+ਐਪਾਂ ਦੇ ਨਾਲ: `bae-mcp` (MCP server), `bae-cli` (command line), ਅਤੇ `bae-automation` (ਦੋਹਾਂ ਵੱਲੋਂ ਵਰਤੀ ਸਾਂਝਾ tool layer)।
+
+## ਡਿਸਕ ਉੱਤੇ ਇੱਕ ਸੰਗ੍ਰਹਿ
+
+ਸੰਗ੍ਰਹਿ `~/.bae/libraries/<library-id>/` ਉੱਤੇ ਰਹਿੰਦਾ ਹੈ (ਮੋਬਾਈਲ ਉੱਤੇ platform data directory):
+
+```
+~/.bae/libraries/<id>/
+  library.db        # SQLite: catalog, credits, playback specs
+  config.yaml       # device-local settings, never synced
+  storage/
+    local/          # blobs this device owns (covers, artist images)
+    cache/          # evictable copies of cloud blobs
+    pinned/         # pinned-for-offline copies, never evicted
+```
+
+ਡਾਟਾਬੇਸ ਸਿਰਫ਼ coven ਰਾਹੀਂ ਖੁਲ੍ਹਦਾ ਹੈ, ਜੋ ਆਪਣੇ ਹਿਸਾਬੀ ਟੇਬਲਾਂ (ਸਮਕਾਲੀਕਰਨ ਸੂਚਕ, ਬਾਹਰ-ਡੱਬਾ, ਬਲੌਬ ਹਾਲਤ) ਨੂੰ bae ਦੇ ਸਕੀਮਾ ਨਾਲ ਲਗਾ ਕੇ ਪਰਤ ਬਣਾਉਂਦਾ ਹੈ ਅਤੇ bae ਦੇ migrations ਚਲਾਉਂਦਾ ਹੈ। ਨਾ-ਸੰਭਾਲੀਆਂ ਆਯਾਤ ਕੀਤੀਆਂ ਸ਼ਬਦ ਫਾਈਲਾਂ `~/.bae` ਹੇਠਾਂ ਕਦੇ ਨਹੀਂ ਹੁੰਦੀਆਂ: ਡਾਟਾਬੇਸ ਉਨ੍ਹਾਂ ਮਾਰਗ ਨੂੰ reference ਕਰਦਾ ਹੈ ਜਿੱਥੇ ਉਹ ਆਯਾਤ ਕੀਤੀਆਂ ਗਈਆਂ।
+
+ਰਾਜ਼ ਕਦੇ ਇਨ੍ਹਾਂ ਫਾਈਲਾਂ ਵਿੱਚ ਨਹੀਂ ਰਹਿੰਦੇ। ਪਛਾਣ ਕੁੰਜੀਆਂ, ਸੰਗ੍ਰਹਿ encryption ਕੁੰਜੀ, ਕਲਾਉਡ ਯੋਗਤਾਵਾਂ, ਅਤੇ API ਟੋਕਨ OS keyring ਵਿੱਚ ਰਹਿੰਦੇ ਹਨ (Apple platforms ਉੱਤੇ Keychain, iCloud Keychain ਰਾਹੀਂ ਸਮਕਾਲੀਕਰਿਤ; ਹੋਰ ਥਾਵਾਂ ਉੱਤੇ platform equivalents)।
+
+## ਸੰਸਕਰਣ
+
+ਹਰ ਪਲੇਟਫਾਰਮ ਉੱਤੇ ਦੋ ਬਣਾਵਟ-time ਸੰਸਕਰਣ ਹਨ। **bae** OAuth ਦਾਤੇ (Google Drive, Dropbox, OneDrive), CloudKit, ਅਤੇ ਟੈਲੀਮੀਟਰੀ ਕੰਪਾਇਲ ਕਰਦਾ ਹੈ। **baeium** ਇਹ ਸਭ ਕੰਪਾਇਲ out ਕਰਦਾ ਹੈ: ਸਿਰਫ਼ S3-compatible ਭੰਡਾਰਣ, ਅਤੇ ਕੋਈ ਟੈਲੀਮੀਟਰੀ ਨਹੀਂ, ਨਿਰਭਰਤਾ tree ਵਿੱਚ proprietary ਕੁਝ ਨਹੀਂ। ਸੰਸਕਰਣ ਇੱਕੋ ਸਰੋਤ ਅਤੇ ਇੱਕੋ core ਹਨ; ਵਿਸ਼ੇਸ਼ਤਾ ਝੰਡਾ ਦਾਤਾ list ਅਤੇ ਜਾਂਚਾਂ ਜੋੜ ਫੈਸਲਾ ਕਰਦਾ ਹੈ।
+
+## ਵਰਜਨਿੰਗ
+
+Apps ਹਰ ਪਲੇਟਫਾਰਮ ਲਈ `MAJOR.MINOR` ਵਜੋਂ ਵਰਜਨ ਹੁੰਦੇ ਹਨ। ਮੁੱਖ ਅਨੁਕੂਲਤਾ ਯੁੱਗ ਹੈ, ਹਰ app ਵੱਲੋਂ ਸਾਂਝਾ: ਇੱਕੋ ਮੁੱਖ ਉੱਤੇ ਯੰਤਰ ਸੰਗ੍ਰਹਿ ਸਮਕਾਲੀਕਰਿਤ ਕਰ ਸਕਦੇ ਹਨ। ਇਹ ਸਿਰਫ਼ ਜਦੋਂ ਵਾਇਰ ਜਾਂ on-ਡਿਸਕ ਫਾਰਮੈਟ ਟੁੱਟੇ ਤਾਂ ਵਧਦਾ ਹੈ, ਅਕਸਰ pin ਕੀਤਾ coven ਸੰਸ਼ੋਧਨ ਕਰਕੇ। Minors ਹਰ app ਲਈ ਰਿਲੀਜ਼ਾਂ ਗਿਣਦੇ ਹਨ ਅਤੇ platforms ਵਿਚਕਾਰ ਤੁਲਨਾਯੋਗ ਨਹੀਂ।

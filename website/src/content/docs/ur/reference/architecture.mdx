@@ -1,0 +1,41 @@
+---
+title: ساخت
+description: coven پر ایک Rust مرکز کے اوپر مقامی ایپیں
+---
+
+bae ایک Rust مرکز ہے جس پر چار مقامی ایپیں ہیں۔ مصنوعات، لائبریری نمونہ، درآمد، پلے بیک، ہم آہنگی، اور رمز بندی کو متعین کرنے والی ہر چیز Rust میں رہتی ہے اور ہر پلیٹ فارم پر یکساں برتاؤ کرتی ہے؛ ہر ایپ اس کے اوپر ایک پتلا مقامی UI ہے۔
+
+## پرتیں
+
+- **`bae-core`**: مصنوعات۔ لائبریری اور میٹا معلومات کا نمونہ، درآمد اور شناخت کے راستے، FFmpeg پلے بیک انجن، آواز کی بلندی کا تجزیہ، برآمد، اور نیچے coven کے ساتھ جوڑ۔ درآمد اور شناخت صرف ڈیسک ٹاپ پر compile ہوتے ہیں؛ mobile builds ہم آہنگی اور پلے بیک کلائنٹ ہیں۔
+- **[coven](https://coven.bae.fm)**: ڈیٹا پرت، الگ لائبریری۔ coven SQLite connection رکھتا ہے، bae کی محفوظ کی گئی ہر تبدیلی پکڑتا ہے، اور ان تبدیلیوں کو صارف کی کلاؤڈ ذخیرہ گاہ کے ذریعے end-to-end encrypted ہم آہنگ کرتا ہے۔ یہ blob ذخیرہ (آواز بائٹس، artwork)، مقامی کیش، شناختی کلیدیں، اور رکنیت بھی رکھتا ہے۔ bae coven کی ایک عین revision pin کرتا ہے اور اسے ہر binary میں stamp کرتا ہے؛ یہی builds کے بیچ ہم آہنگی مطابقت کی نسل متعین کرتا ہے۔
+- **`bae-bridge`**: UniFFI حد۔ Bridge types Rust میں ایک بار بنتے ہیں اور build time پر Swift اور Kotlin میں generated ہوتے ہیں۔
+- **ایپیں**: macOS اور iOS پر SwiftUI، Android پر Jetpack Compose، اور مقامی Windows app۔ ہر ایپ وہ پلیٹ فارم حصے بھی بناتی ہے جو مرکز مانگتا ہے: آواز خروج، artwork text recognition، media controls، keychain access، crash reporting۔
+
+ایپوں کے ساتھ: `bae-mcp` (MCP سرور)، `bae-cli` (کمانڈ لائن)، اور `bae-automation` (مشترک tool layer جو دونوں استعمال کرتے ہیں)۔
+
+## Disk پر ایک لائبریری
+
+لائبریری `~/.bae/libraries/<library-id>/` پر رہتی ہے (mobile پر پلیٹ فارم data directory):
+
+```
+~/.bae/libraries/<id>/
+  library.db        # SQLite: catalog, credits, playback specs
+  config.yaml       # device-local settings, never synced
+  storage/
+    local/          # blobs this device owns (covers, artist images)
+    cache/          # evictable copies of cloud blobs
+    pinned/         # pinned-for-offline copies, never evicted
+```
+
+Database صرف coven کے ذریعے کھلتی ہے، جو اپنی حسابی جدولیں (ہم آہنگی cursors، outbox، blob حالت) کو bae کے خاکہ کے ساتھ رکھتا ہے اور bae کی migrations چلاتا ہے۔ غیر منظم درآمد شدہ صوتی فائلیں `~/.bae` کے تحت بالکل نہیں ہوتیں: database انہیں ان راستوں پر حوالہ دیتی ہے جہاں سے وہ درآمد ہوئی تھیں۔
+
+راز کبھی ان فائلوں میں نہیں رہتے۔ شناخت کلیدیں، لائبریری رمز بندی کی کلید، کلاؤڈ credentials، اور API tokens OS keyring میں رہتے ہیں (Apple پلیٹ فارم پر Keychain، iCloud Keychain کے ذریعے ہم آہنگ؛ دوسرے پلیٹ فارم پر ان کے برابر نظام)۔
+
+## Editions
+
+ہر پلیٹ فارم پر دو build-time editions ہیں۔ **bae** OAuth فراہم کنندگان (Google Drive، Dropbox، OneDrive)، CloudKit، اور telemetry compile کرتا ہے۔ **baeium** یہ سب compile out کرتا ہے: صرف S3-compatible ذخیرہ، اور telemetry نہیں، dependency tree میں کوئی ملکیتی چیز نہیں۔ Editions ایک ہی ماخذ اور ایک ہی core ہیں؛ feature flag فراہم کنندہ list اور diagnostics wiring decide کرتا ہے۔
+
+## Versioning
+
+ایپیں فی پلیٹ فارم `MAJOR.MINOR` کے طور پر version ہوتی ہیں۔ major compatibility era ہے، ہر ایپ میں shared: same major والی آلات لائبریری ہم آہنگی کر سکتی ہیں۔ یہ صرف تب bump ہوتا ہے جب wire یا on-disk شکل break ہو، اکثر pinned coven revision کی وجہ سے۔ Minors فی ایپ اجرا تعداد کرتے ہیں اور پلیٹ فارم کے across comparable نہیں۔

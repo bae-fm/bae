@@ -1,0 +1,55 @@
+---
+title: تنصیب
+description: ہر پلیٹ فارم پر bae یا baeium ڈاؤن لوڈ اور نصب کریں
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## دو editions
+
+ہر پلیٹ فارم دو editions میں آتا ہے، ایک ہی ماخذ سے بنا ہوا:
+
+- **bae**، پوری ایپ: S3، Google Drive، Dropbox، OneDrive، اور iCloud ہم آہنگی۔
+- **baeium**، ملکیتی حصوں کے بغیر: صرف S3-compatible ذخیرہ، OAuth فراہم کنندگان نہیں، iCloud/CloudKit نہیں، telemetry نہیں۔
+
+یہ ساتھ ساتھ نصب ہوتے ہیں، ہر ایک اپنی لائبریری اور اپنی (iCloud-Keychain-synced) کلیدوں کے ساتھ۔ نیچے جو چاہیں چنیں۔
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">Download bae for macOS</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">Download baeium for macOS</DownloadButton>
+
+1. ڈاؤن لوڈ شدہ `.dmg` کھولیں
+2. ایپ کو اپنے Applications پوشہ میں کھینچ کر ڈالیں
+3. اسے Applications سے کھولیں
+
+دونوں editions اپنی Sparkle feed کے ذریعے خودکار طور پر تازہ ہوتی ہیں۔
+
+## iOS
+
+iOS نسخے بیرونی تنصیب کے لیے **unsigned `.ipa` فائلیں** ہیں۔ [AltStore](https://altstore.io) یا [Sideloadly](https://sideloadly.io) سے نصب کریں، یا اپنے Apple ID کے ساتھ Xcode میں دوبارہ sign کریں (مفت Apple ID baeium کے لیے کام کرتا ہے)۔ App Store سے تقسیم ابھی قائم نہیں۔
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">Download bae for iOS</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">Download baeium for iOS</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">Download bae for Android</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">Download baeium for Android</DownloadButton>
+
+اشارہ آنے پر اپنے browser/فائلیں سے نصب کرنا فعال کریں، پھر `.apk` کھولیں۔
+
+## Windows
+
+Windows نسخے unpackaged ایپ کی **unsigned** zips ہیں۔ کھولیں اور `bae.exe` / `baeium.exe` چلائیں۔ پہلی launch پر SmartScreen خبردار کر سکتا ہے۔
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">Download bae for Windows</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">Download baeium for Windows</DownloadButton>
+
+## Linux
+
+جلد آئے گا۔
+
+## ماخذ سے بنائیں
+
+baeium بنانے کے لیے کسی ملکیتی چیز کی ضرورت نہیں۔ ہر پلیٹ فارم پر خود بنانے کی ہدایات کے لیے [repository README](https://github.com/bae-fm/bae#building-baeium-yourself) دیکھیں، مفت provisioning کے تحت iOS سمیت۔
