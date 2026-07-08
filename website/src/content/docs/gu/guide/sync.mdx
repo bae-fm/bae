@@ -1,0 +1,43 @@
+---
+title: Sync
+description: તમારી આખી library દરેક device પર, તમારા પોતાના cloud મારફતે
+---
+
+Sync નો અર્થ ઘણી વાર બીજા કોઈનો server થાય છે: account, subscription, એવી company જે તમારી library વાંચી શકે. bae **તમારા** cloud મારફતે sync કરે છે, તમારી પાસે પહેલેથી હોય તે storage, અને કોઈ server ચલાવતું નથી. તમારા devices encrypted changes તે storage માં write કરે છે અને એકબીજાના read કરે છે; provider bytes રાખે છે અને તેમને વાંચી શકતો નથી.
+
+એક library, દરેક device, અને સામેલ એકમાત્ર account તે છે જે તમારું પહેલેથી છે.
+
+## Cloud home
+
+Library નું cloud home તમારા storage માં એક location છે: તમારી Google Drive, Dropbox, અથવા OneDrive માં folder, તમારું iCloud, અથવા કોઈ પણ S3-compatible bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). તે library sync કરે તે બધું રાખે છે: catalog changes, artwork, અને જે releases તમે bae ને manage કરવા દો તેનું audio.
+
+Settings માં, Sync હેઠળ તેને set up કરો:
+
+1. Provider પસંદ કરો. Consumer clouds provider ના પોતાના login page થી sign in કરે છે; account વિશે tokens સિવાય કશું store થતું નથી. iCloud તમારું Apple ID જેમ છે તેમ વાપરે છે. S3 bucket, region, endpoint, અને keys લે છે, save થાય તે પહેલાં check થાય છે.
+2. Home objects કેવી રીતે store કરે તે પસંદ કરો (નીચે જુઓ).
+3. bae syncing શરૂ કરે છે.
+
+Cloud home વગરની library પોતાની રીતે complete છે. Local-only mode છે, limitation નહીં, અને cloud home disconnect કરવાથી તે પાછું આવે છે.
+
+## Opaque અથવા browsable
+
+Setup વખતે provider ને શું દેખાશે તે તમે પસંદ કરો છો, અને તે પસંદગી એ home માટે permanent છે:
+
+- **Opaque** (default): દરેક object upload પહેલાં તમારા device પર encrypted થાય છે અને અર્થહીન names હેઠળ stored થાય છે. Provider, અથવા bucket માં પ્રવેશ મેળવનાર કોઈ પણ, ciphertext જુએ છે. આ [encryption](/gu/reference/encryption) page વર્ણવે છે તે mode છે, અને બીજા devices અને members ઉમેરવાનું support કરતો એકમાત્ર mode છે.
+- **Browsable**: objects real filenames સાથે clear માં stored થાય છે, artist અને album ના names વાળા folders માં. તમે કોઈ પણ tool થી bucket ખોલી શકો છો અને તમારી files સીધી copy અથવા play કરી શકો છો. કશું encrypted નથી, એટલે bucket નું પોતાનું access control જ protection છે, અને home share કરી શકાતું નથી.
+
+## શું sync થાય છે
+
+- Catalog: albums, releases, tracks, credits, works, identities, edits. દરેક device ને બધું મળે છે.
+- Artwork: covers અને artist images, eagerly fetched જેથી grids everywhere render થાય.
+- Audio: ફક્ત તે releases માટે જેને તમે cloud માં manage કરવા પસંદ કર્યા. Unmanaged releases purely local રહે છે, catalog entries બીજા devices પર include થાય છે પણ bytes ફક્ત જ્યાં import કર્યા ત્યાં.
+
+Per-device state sync થતી નથી: playback position, volume, queue, અને device settings device પર રહે છે.
+
+## ક્યારે sync થાય છે
+
+Sync પોતાની રીતે ચાલે છે: changes પછી, timer પર, અને demand પર **Sync Now** સાથે. Edits normal conditions હેઠળ seconds પછી બીજા devices પર small changes તરીકે land થાય છે. એક જ સમયે edit કરતાં બે devices જ્યાં collide નથી કરતા ત્યાં બંને win કરે છે: bae concurrent edits ને field by field merge કરે છે, અને deleted release એ જ ક્ષણે બીજે edit થયો હોય તો પણ deleted જ રહે છે. Conflict resolve કરવા માટે કશું તમને ક્યારેય પૂછતું નથી.
+
+## નિષ્ફળ જાય ત્યારે
+
+Sync failures library ને interrupt કરતી નથી; bae backoff સાથે retry કરે છે ત્યારે તમે locally browse, play અને import ચાલુ રાખો છો. Status line syncing અને last-synced time બતાવે છે; failure banner માં error બતાવે છે, અને uploads [Storage Manager](/gu/guide/storage#the-storage-manager) માં pause, retry અને inspect થઈ શકે છે. Cloud home નું sign-in expire થાય તો bae reconnect કરવા કહે છે.

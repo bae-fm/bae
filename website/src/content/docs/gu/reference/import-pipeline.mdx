@@ -1,0 +1,43 @@
+---
+title: Import pipeline
+description: Scanning, evidence, triangulation, અને atomic commit
+---
+
+Import files ના folder ને files નો એક byte પણ બદલ્યા વગર release-accurate catalog entry માં ફેરવે છે. આ page [use guide](/gu/guide/importing) માં વર્ણવેલા flow પાછળની pipeline છે.
+
+## Scanning
+
+Watched folders platform ના file-system events દ્વારા monitored છે, debounced છે, અને change પર re-scanned છે; scans existing candidate list સામે reconcile કરે છે, ફરી શરૂઆતથી નહીં. Scanner folder ને એક release તરીકે classify કરે છે (audio સીધું અંદર, અથવા `CD1`/`CD2` જેવા disc-shaped subfolders), અથવા collection તરીકે તેમાં recurse કરે છે. Files extension પ્રમાણે audio, artwork અને documents માં classify થાય છે, પછી audio probed થાય છે: મહત્વનો codec એ છે જે FFmpeg bytes માં શોધે છે, file extension નહીં. Partial-download markers ધરાવતા folders download પૂરું થાય ત્યાં સુધી excluded છે.
+
+CUE sheet એક audio image ને track list માં ફેરવે છે. Parser pregaps અને postgaps, per-track performers અને ISRCs, અને single-file images તથા one-file-per-track CUE layouts બંને handle કરે છે. Track boundaries CUE frames (second નો 1/75th) માંથી exact sample positions માં convert થાય છે, જે પછી playback વાપરે તે byte અને sample windows બને છે.
+
+## Evidence, tags નહીં
+
+Identification folder માંથી એક pass માં ત્રણ પ્રકારનું evidence વાંચે છે:
+
+- **disc ID**, CD ના exact track layout નો MusicBrainz fingerprint, rip log અથવા CUE sheet પરથી computed;
+- **barcodes**, platform ના vision framework દ્વારા artwork scans માંથી decoded અને CUE catalog fields માંથી read;
+- **text**: artwork OCR, folder અને file names, અને rip માંની text files માંથી catalog numbers અને free text.
+
+Embedded audio tags ઇરાદાપૂર્વક evidence નથી: તેઓ tagger એ શું માન્યું તે કહે છે, pressing શું છે તે નહીં. (User unknown release તરીકે import કરે ત્યારે fallback metadata માટે seed આપે છે.)
+
+Disc ID અને barcode concurrently lookup થાય છે, disc ID MusicBrainz સામે, barcode MusicBrainz અને Discogs સામે એકસાથે, અને results triangulated થાય છે: release group પર agree કરતાં results converge થાય છે, catalog-number matches pressing list narrow કરે છે, અને signals વચ્ચે disagreement silent best guess કરતાં user માટે explicit conflict તરીકે surface થાય છે. દરેક result provenance ધરાવે છે (disc ID થી found, barcode થી, catalog match) જેથી UI કહી શકે કે row શા માટે offered છે.
+
+## Sources
+
+MusicBrainz strict one-request-per-second pace સાથે anonymously queried છે. Discogs user ના keyring માંથી personal token સાથે authenticate કરે છે, તેના rate limits અંદર paced અને retried છે, અને rejected token તે તરીકે reported થાય છે જેથી UI તેને flag કરી શકે, searches શાંતિથી fail નહીં થાય. Responses per session cached છે, અને જે source wins કરે તેનું raw JSON future re-interpretation માટે database માં archived છે.
+
+## Commit
+
+Import confirm કરવાથી, ક્રમમાં:
+
+1. **Decode verification**: દરેક track end to end decoded થાય છે; સંપૂર્ણ decode ન થઈ શકે તે rip કશું write થાય પહેલાં import fail કરે છે (config flag આ disable કરી શકે છે).
+2. **Loudness analysis**: integrated loudness અને true peak એ જ decode pass દરમિયાન per track અને per album માપાય છે, replay-gain use માટે stored.
+3. **Cover selection**: પસંદ કરેલું art (remote, folder image, અથવા embedded) display thumbnail માં re-render થાય છે; original release ની files વચ્ચે રાખવામાં આવે છે જો તે folder માંથી આવ્યું હોય.
+4. **Atomic write**: release, tracks, credits, identities, formats, segments, files, અને cover એક transaction માં commit થાય છે. Half-imported state નથી.
+
+Release user ની files ને in place reference કરીને lands થાય છે. User એ cloud-managed પસંદ કર્યું હોય તો upload commit પછી storage transition તરીકે થાય છે, અને files ના original bytes આખો સમય source of truth રહે છે; user એ bae ને આપેલું કશું delete અથવા alter થતું નથી.
+
+## Rips ઓળખવા
+
+દરેક release તેના imported folder ની structure (relative paths અને sizes, location-independent) ઉપર content hash record કરે છે. Re-scans તે વાપરી folders ને already in library તરીકે mark કરે છે, અને એ જ rip ના re-imports duplicate કરતાં prior release શોધી replace કરે છે.

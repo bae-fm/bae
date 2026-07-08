@@ -1,0 +1,40 @@
+---
+title: Sync
+description: Changes devices વચ્ચે કેવી રીતે જાય છે, અને કેવી રીતે merge થાય છે
+---
+
+bae નું sync [coven](https://coven.bae.fm) નું sync છે: bae પોતાની tables અને blobs declare કરે છે, અને coven બાકીનું કરે છે. આ page bae પર લાગુ પડે તે mechanics છે; coven ના પોતાના docs દરેક ભાગ વધારે ઊંડાઈમાં આવરે છે.
+
+## Capture
+
+coven SQLite connection own કરે છે, તેથી bae commit કરે તે દરેક write તેના મારફતે જાય છે. SQLite નું session extension દરેક transaction માં શું બદલાયું તે exactly record કરે છે; synced tables ના changes **changeset** બને છે, library key સાથે sealed અને device ની identity key સાથે signed. Diffing નહીં, dirty flags નહીં: capture connection ની property છે, અને write miss થઈ શકતું નથી.
+
+## Streams
+
+દરેક device cloud home માં પોતાના stream પર પોતાના changesets append કરે છે, sequentially numbered. Devices એકબીજાના streams માં ક્યારેય write કરતા નથી, તેથી storage માં write conflicts નથી, અને દરેક device દરેક peer stream માટે cursor track કરે છે. Sync cycle local outbox push કરે છે, પછી દરેક peer ના stream ને તેના cursor થી આગળ pull કરે છે, દરેક changeset ની signature અને author ની membership apply કરતાં પહેલાં verify કરે છે.
+
+Cycle local changes પછી, backoff ધરાવતા idle timer પર (polls વચ્ચે પાંચ minutes સુધી), અને **Sync Now** પર તરત ચાલે છે. Failures back off અને retry કરે છે; loop દરેક cycle નું outcome UI ને status, error text, અને applied rows ની સંખ્યા તરીકે report કરે છે.
+
+## Merge
+
+બે devices અલગ હોય ત્યારે એ જ library edit કરે તે normal case છે, exception નહીં. તેમના changes મળે ત્યારે:
+
+- **જુદા rows અથવા જુદા columns** પર edits બંને apply થાય છે. Laptop પર release નું year edit કરવું અને desktop પર તેનું label edit કરવું બંને yields કરે છે.
+- **એ જ row ના એ જ column** પર edits row ના `_updated_at` hybrid logical clock દ્વારા ordered છે: later edit wins, deterministically અને દરેક device પર identically.
+- **Deletes win** concurrent edits ઉપર: એક device પર deleted release એ જ interval માં બીજાએ edit કર્યો હોય તો પણ deleted રહે છે.
+
+Conflict UI નથી કારણ કે unresolved state નથી: દરેક device કોઈ પણ application order માંથી એ જ result પર converges થાય છે.
+
+## Bootstrap
+
+Joining અથવા restoring device history શરૂઆતથી replay કરતું નથી. તે **snapshot**, cloud home પર periodically published full SQLite image, download કરે છે, પછી દરેક stream એ તેના પછી accumulate કરેલા changesets જ apply કરે છે. Snapshot metadata schema version અને તે embody કરે તે per-stream cursors record કરે છે.
+
+## Schema versions
+
+bae નું schema numbered ladder મારફતે migrates થાય છે, અને ladder નું top rung device લખે તે દરેક changeset પર stamped છે. પોતાથી newer schema માંથી changeset pull કરતું device app update થાય ત્યાં સુધી તે stream park કરે છે, તેની past કશું apply કરતું નથી; કશું lost નથી અને કશું misapplies નથી. Database file પોતે તેના schema કરતાં older binary હેઠળ open થવાનો ઇનકાર કરે છે.
+
+Schema version કરતાં coarser **compatibility era** છે: દરેક binary માં baked pinned coven revision. બે builds ફક્ત એક era અંદર sync કરે છે; coven wire-format break એ new era અને દરેક app પર major version bump છે. Pre-1.0, દરેક build era zero છે અને formats migration વગર બદલાય છે.
+
+## Provider શું જુએ છે
+
+Opaque home પર provider ciphertext changesets, ciphertext blobs, અને signed membership records store કરે છે; તે objects count કરી શકે છે અને sizes તથા timing observe કરી શકે છે, પણ તેમાંથી કશું read કરી શકતું નથી. Device pull કરે તે દરેક object database ને સ્પર્શે તે પહેલાં verified છે, signature અને membership: storage dumb, untrusted mailbox છે. [Encryption](/gu/reference/encryption) અને [Identity અને membership](/gu/reference/membership) જુઓ.

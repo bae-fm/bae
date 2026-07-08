@@ -1,0 +1,39 @@
+---
+title: Releases અને metadata
+description: Release-accurate library, અને તેને સાચું રાખવાની રીત
+---
+
+મોટાભાગની music apps "album" model કરે છે: એક title, એક cover, એક track list. વાસ્તવિક collections આ રીતે કામ કરતી નથી. તમારી પાસે એ જ record નો original CD, remaster, અને vinyl pressing હોઈ શકે છે, અને તેમની track lists, timings, artwork અને credits જુદા હોય છે. bae **releases** model કરે છે: દરેક import ચોક્કસ pressing છે, અને એ જ album ના pressings સાથે group થાય છે.
+
+## Albums releases group કરે છે
+
+Library માં, અનેક pressings ધરાવતો album એક entry છે. Album page release picker બતાવે છે; દરેક release પોતાની track list, cover, year, label, catalog number, અને credits રાખે છે. એક release **primary** છે: album grid અને playback default જે વાપરે છે તે. Album menu માંથી કોઈ પણ release ને primary set કરો, અને સાંભળવા માટે ક્યારે પણ જુદો release પસંદ કરો; bae દરેક album માટે તમારી પસંદગી યાદ રાખે છે.
+
+## Release શું જાણે છે
+
+Identified releases databases નું જ્ઞાન ધરાવે છે, ફક્ત track names નહીં:
+
+- Pressing details: label, catalog number, barcode, country, format, year.
+- Credits: performers, producers, engineers, per release અને per track.
+- Classical structure: composers, works, અને તેમના parts, તેમની recordings સાથે linked. Library નું composer view આમાંથી બને છે; [Browsing અને search](/gu/guide/browsing) જુઓ.
+- Identity: આ કઈ MusicBrainz અથવા Discogs entry છે, અને match exact છે કે approximate.
+
+Raw source records પણ રાખવામાં આવે છે, જેથી release ને databases ને ફરી પૂછ્યા વગર પછી re-interpret કરી શકાય.
+
+## Editing
+
+Metadata સુધારવાનું તમારા હાથમાં છે. કોઈ પણ release પર **Edit metadata** import confirmation વાપરે છે તે જ form ખોલે છે: album title અને artist, pressing details, અને દરેક track નું title, artist, અને numbering. **Reset to source** database એ જે કહ્યું હતું ત્યાં પાછું લાવે છે.
+
+Edits ફક્ત bae ના database માં રહે છે. તમારી files ના embedded tags ક્યારેય rewrite થતા નથી; files import થયા તેમ byte-for-byte રહે છે.
+
+## Re-identify
+
+જો release unknown તરીકે import થયો હોય, ખોટા pressing સાથે matched હોય, અથવા database ત્યારથી સુધર્યું હોય, તો **Re-identify** existing release પર identification flow ફરી ચલાવે છે: એ જ signals, એ જ search tools. New match commit થયા પછી, bae પૂછે છે કે new source માંથી metadata refresh કરવું (તમારા edits overwrite કરીને) કે જે છે તે રાખવું.
+
+## Covers
+
+દરેક release પાસે એક display cover હોય છે. **Change cover** databases નું artwork અને release સાથે આવેલી image files આપે છે. bae પસંદ કરેલા cover ની display માટે sized પોતાની copy રાખે છે, તેથી તમારા folder નો original scan untouched રહે છે. Release ની images ની full gallery ખોલવા cover ક્યાંય tap કરો.
+
+## Deleting
+
+Release delete કરવાથી તે library માંથી દૂર થાય છે અને managed releases માટે તમારા cloud home માંથી પણ. In place import થયેલી unmanaged files ક્યારેય delete થતી નથી: bae ફક્ત તેમને ભૂલી જાય છે.

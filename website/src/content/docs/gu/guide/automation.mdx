@@ -1,0 +1,16 @@
+---
+title: ઑટોમેશન
+description: એજન્ટો, સ્ક્રિપ્ટો અને command line પરથી લાઇબ્રેરી ચલાવો
+---
+
+તમે ચલાવતા સોફ્ટવેરથી લાઇબ્રેરી ચલાવી શકાય છે: MCP મારફતે AI એજન્ટો, અને command-line tool મારફતે સ્ક્રિપ્ટો. બંને UI વાપરે છે તે જ કામગીરી ખુલ્લી કરે છે: શોધ, release વિગતો, imports, storage ક્રિયાઓ, playback સ્થિતિ.
+
+## MCP server
+
+Settings, Automation માં MCP server ચાલુ કરો. તે સ્થાનિક port પર HTTP મારફતે Model Context Protocol આપે છે (default 47777), જેથી Claude જેવા MCP clients તમારી લાઇબ્રેરી browse કરી શકે, releases શોધી શકે અને તેમના પર ક્રિયા કરી શકે. પ્રવેશ માટે bearer token જોઈએ: એ જ settings pane માંથી તેને copy કરો, અને જેના પાસે તે હતો તે બધાનો પ્રવેશ બંધ કરવો હોય ત્યારે ત્યાંથી rotate કરો.
+
+Server default રીતે બંધ હોય છે અને app ચાલે ત્યારે જ ચાલે છે.
+
+## Command line
+
+`bae` CLI terminal માંથી એ જ કામગીરી ચલાવે છે: JSON અંદર, JSON બહાર, scripts માટે યોગ્ય. તે MCP client તરીકે પણ કામ કરી શકે છે, desktop ના server ને stdio પર એવા tools માટે જોડે છે જે સ્થાનિક MCP process અપેક્ષા રાખે છે.

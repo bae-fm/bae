@@ -1,0 +1,34 @@
+---
+title: Playback engine
+description: Decoding, gapless, pregaps, અને loudness, ચોક્કસ રીતે
+---
+
+Playback engine નો contract source પ્રત્યે fidelity છે: user ના original bytes decode કરવી, source ના પોતાના rate પર, release ની structure intact રાખીને. આ page તેની પાછળનું specification છે.
+
+## Decoding
+
+બધું decoding FFmpeg છે, in-process, દરેક platform પર: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack, અને DSD import સ્વીકારતું બધું છે, અને FFmpeg bytes માંથી જે report કરે છે તે codec of record છે, file extension નહીં. Samples output stage માટે 32-bit float તરીકે બહાર આવે છે; sample format conversion એકમાત્ર conversion છે.
+
+Output platform ની native audio API છે (desktop અને iOS પર cpal મારફતે Core Audio, Android પર AAudio). Output stream **source ના sample rate અને channel count** પર configured છે: 96 kHz file 96 kHz પર વાગે છે. Resampling stage નથી. Default output device દરેક stream build પર resolved છે, તેથી playback system ના device switches ને follows કરે છે. Android પર, hardware-supported codecs offloaded decoding માટે FFmpeg ને સંપૂર્ણ bypass કરી શકે છે.
+
+## Streaming reads
+
+Playback ને whole files જોઈએ નહીં. Audio sparse buffer મારફતે read થાય છે જે demand પર byte ranges fetch કરે છે, local file, cache, અથવા cloud માંથી, અને seeking target sample ને byte position પર map કરે છે જેથી unfetched region માં seek ત્યાંથી fetch કરે. Fetch arbiter playing track ના reads ને preloading ઉપર priority આપે છે, તેથી upcoming track current one ને delay કરતું નથી.
+
+## Tracks windows તરીકે
+
+Track file નથી; તે import વખતે CUE sheet અથવા file ના પોતાના extent પરથી બનેલી એક અથવા વધુ files ઉપર sample windows ની ordered list છે. આ એક representation દરેક disc shape રાખે છે: file per track, એક image માં whole disc, એક file ના end અને બીજીના start પર જીવતો pregap, અને lossy rips cut one file per track.
+
+Pregap windows તે રીતે marked છે. Playback track માં તેના pregap પરથી enters કરે છે જ્યારે તે હોય (index 00, hidden-track audio included) જ્યારે clock track time બતાવે છે: position track proper શરૂ થાય ત્યાં સુધી zero પર clamps થાય છે, અને displayed duration pregap exclude કરે છે, CD player ના behavior જેવું.
+
+## Gapless
+
+Current track વાગે ત્યારે next track opened અને buffered થાય છે. બંને sample rate અને channel count share કરે ત્યારે, engine live audio callback અંદર તેમને chain કરે છે: stream ક્યારેય અટકતો નથી, અને boundary sample-exact છે. Formats differ કરે ત્યારે stream rebuilt થાય છે, જે તે case છે જ્યાં format change boundary audible બનાવે જ છે.
+
+## Loudness
+
+Import decode-verification pass દરમિયાન integrated loudness (EBU R128) અને true peak, per track અને per album, માપે છે. Replay gain play time પર આ measurements થી derived છે, files માં ક્યારેય baked નથી: target -18 LUFS, true peak clip ન થાય ત્યાં સુધી capped, per track અથવા per album applied, gapless boundaries પર cleanly switching. Mode હાલમાં settings UI વગર ships થાય છે અને default off છે; તેને library ના config file માં set કરી શકાય છે.
+
+## Side pauses
+
+Track lists તેમની side અને disc structure રાખે છે, અને user pause-between-sides enable કરે ત્યારે engine side boundary પર hold કરી શકે છે, continue prompt surface કરીને. Hold playback-service state છે, decoded silence નહીં, તેથી resume તરત થાય છે.

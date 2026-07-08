@@ -1,0 +1,43 @@
+---
+title: Devices અને members
+description: તમારો phone ઉમેરો, device approve કરો, લાઇબ્રેરી recover કરો
+---
+
+bae account નથી. Device ની ઓળખ તે પોતે બનાવતી key pair છે અને operating system ના keyring માં રાખે છે; લાઇબ્રેરી devices ને તેમની keys દ્વારા ઓળખે છે. Device ઉમેરવાનું અર્થ છે existing device નવા device માટે cryptographically ખાતરી આપે, વચ્ચે કોઈ વગર.
+
+બે જુદા દરવાજા, બે જુદી પરિસ્થિતિઓ માટે:
+
+- **Joining**: નવું device એવી device દ્વારા approve થાય છે જેના પાસે પહેલેથી લાઇબ્રેરી છે. તમારો phone અથવા બીજી વ્યક્તિનું device ઉમેરવા માટે આ વાપરો.
+- **Restoring**: તમારું પોતાનું નવું અથવા ફરી install કરેલું device recovery code વાપરીને cloud home માંથી સીધી લાઇબ્રેરી recover કરે છે. Approver સામેલ નથી.
+
+## Device ઉમેરવું
+
+નવા device પર, **Join a library** પસંદ કરો. તે ટૂંકો code બતાવે છે, QR તરીકે પણ: join request, જેમાં device ની public key અને તમે જોરથી વાંચી શકો એવો fingerprint હોય છે.
+
+જે device પાસે પહેલેથી લાઇબ્રેરી છે તેના પર owner Settings, Devices, **Add a device** ખોલે છે, અને તે request scan અથવા paste કરે છે. bae જોડાતા device નો fingerprint બતાવે છે; તે નવા device પર દેખાતા fingerprint સાથે મેળ ખાય છે તેની ખાતરી કરો. Approve કરવાથી invite code બને છે: તે નવા device ને આપો (QR scan કરો અથવા paste કરો), અને નવું device લાઇબ્રેરી download કરે છે અને syncing શરૂ કરે છે.
+
+Handshake પાછળ: approving device નવા device ને cloud home નો access આપે છે (consumer clouds folder ને નવા device ના account સાથે share કરે છે; S3 invites credentials embed કરે છે) અને લાઇબ્રેરીની encryption key ને નવા device ની public key માટે seal કરે છે. Invite બીજા કોઈ device માટે બેકાર છે. વિગતો [Identity અને membership](/gu/reference/membership) માં છે.
+
+## Members અને roles
+
+Settings, Devices દરેક member બતાવે છે: fingerprint, role, અને આ device કયું છે. Founding device **owner** છે; તે approve કરે તે devices **members** તરીકે જોડાય છે. બંને લાઇબ્રેરી read અને write કરે છે; ફક્ત owners devices approve અને remove કરે છે.
+
+## Device દૂર કરવું
+
+Owners કોઈ પણ member દૂર કરી શકે છે. Removal ફક્ત દરવાજો બંધ કરતું નથી: લાઇબ્રેરીની encryption key rotate થાય છે, અને દૂર કરાયેલ device ને નવી key ક્યારેય મળતી નથી. તેણે જે પહેલેથી copy કર્યું છે તે તેના પાસે રહે છે, data પાછો ખેંચી શકાતો નથી, પરંતુ તે પછીથી લાઇબ્રેરી જે બધું writes કરે છે તે તેને વાંચી શકાતું નથી.
+
+## Recovery codes
+
+Recovery code તમારી પોતાની લાઇબ્રેરી માટે bearer secret છે: cloud home coordinates અને encryption key, એક string માં. Settings માં **Show recovery code** તે બતાવે છે; password manager જેવી સલામત જગ્યાએ તેને રાખો. નવા device પર, code સાથે **Restore from cloud** લાઇબ્રેરી ફરી બનાવે છે, approver જરૂરી નથી.
+
+Apple platforms પર code આપમેળે iCloud Keychain માં પણ રાખવામાં આવે છે, એટલે તમારા Apple ID માં signed in નવો Mac અથવા iPhone એક tap થી restore કરી શકે છે.
+
+જેના પાસે code છે તેના પાસે લાઇબ્રેરી છે, તેથી તેને જે key છે તેમ જ વાપરો.
+
+## Locking
+
+**Lock Library** device ના keyring માંથી encryption key દૂર કરે છે. લાઇબ્રેરી disk પર રહે છે, વાંચી ન શકાય તેવી, જ્યાં સુધી કોઈ key ફરી દાખલ ન કરે; bae તેને સ્વીકારતા પહેલાં stored fingerprint સામે check કરે છે. ઘર બહાર જતું laptop હોય ત્યારે આ વાપરો.
+
+## Phone પર
+
+iOS અને Android આ જ રીતે join અને restore કરે છે; આ તેમનું આખું onboarding છે. Phone પોતાની લાઇબ્રેરી copy પણ દૂર કરી શકે છે (Settings, remove from this device), જે local files delete કરે છે અને cloud માં કશું સ્પર્શતું નથી.

@@ -1,0 +1,44 @@
+---
+title: શરૂઆત
+description: લાઇબ્રેરી બનાવો, તમારો પહેલો album import કરો અને વગાડો
+---
+
+bae તમારી માલિકીના albums માટે ઘર છે. તમે desktop પર લાઇબ્રેરી બનાવો છો, અને તે દરેક device પર તમારી સાથે રહે છે: તમારી પાસે પહેલેથી હોય તે cloud storage મારફતે synced, encrypted જેથી ફક્ત તમારા devices તેને વાંચી શકે.
+
+Desktop apps (macOS, Windows) સંપૂર્ણ tool છે: તે libraries બનાવે છે, music import કરે છે, અને metadata edit કરે છે. Phone apps (iOS, Android) players છે: તે તમારા desktop એ બનાવેલી લાઇબ્રેરીમાં join કરે છે, પછી browse, download અને play કરે છે.
+
+## લાઇબ્રેરી બનાવો
+
+તમારા desktop પર bae ખોલો. Machine પર કોઈ library ન હોય ત્યારે welcome screen ત્રણ પસંદગીઓ આપે છે:
+
+- **Create a new library**, જો આ તમારું પહેલું device છે.
+- **Join a library**, જો બીજા device પાસે પહેલેથી એક છે અને તેનો owner તમને approve કરશે. [Devices અને members](/gu/guide/devices) જુઓ.
+- **Restore from cloud**, જો આ તમારી પોતાની library છે અને તમારી પાસે તેનો recovery code છે. [Devices અને members](/gu/guide/devices#recovery-codes) જુઓ.
+
+એક બનાવો. Library local થી શરૂ થાય છે: બધું આ machine પર રહે છે, account ની જરૂર નથી, અને તમે connect ન કરો ત્યાં સુધી cloud સામેલ નથી.
+
+## તમારો પહેલો album import કરો
+
+1. Title bar માં **Import** section પર switch કરો.
+2. Music નો folder ઉમેરો. તમે તેને પસંદ કરી શકો છો, window પર drag કરી શકો છો, અથવા <kbd>⌘I</kbd> દબાવી શકો છો.
+3. bae folder scan કરે છે અને તેને મળેલા releases સૂચિબદ્ધ કરે છે. એક પસંદ કરો.
+4. bae તેને MusicBrainz અને Discogs સામે ઓળખે છે અને match બતાવે છે. Pressing confirm કરો, cover પસંદ કરો, વિગતો adjust કરો.
+5. **Import** click કરો.
+
+તમારી files move, copy અથવા rewrite થતી નથી. bae જ્યાં છે ત્યાં જ તેમને catalog કરે છે. Identification ને મદદ જોઈએ ત્યારે શું કરવું તે સહિત આખો flow [Importing](/gu/guide/importing) માં છે.
+
+## વગાડો
+
+**Library** section માં પાછા જઈએ તો album grid માં છે. તેને click કરો, play દબાવો. Playback તમારી original files તેમની original quality પર વાપરે છે. [Playback](/gu/guide/playback) queue, shuffle અને repeat, અને bae સાચવે છે તે વિગતો આવરે છે: CD pregaps, vinyl side breaks, gapless albums.
+
+## બધે સાથે લો
+
+જ્યારે લાઇબ્રેરી એકથી વધુ device પર જોઈએ, ત્યારે cloud home connect કરો: તમારી પોતાની Google Drive, Dropbox, OneDrive, iCloud, અથવા કોઈ પણ S3-compatible bucket. bae ત્યાં મૂકે તે બધું upload પહેલાં encrypted હોય છે; provider તેને store કરે છે પરંતુ વાંચી શકતો નથી.
+
+- [Sync](/gu/guide/sync): cloud home connect કરો અને તે શું store કરે તે પસંદ કરો.
+- [Devices અને members](/gu/guide/devices): તમારો phone અથવા બીજું desktop ઉમેરો.
+- [Storage અને offline](/gu/guide/storage): music device પર રાખો, અથવા તમારા cloud માંથી stream કરો અને offline માટે જે જોઈએ તે pin કરો.
+
+## વસ્તુઓ ક્યાં રહે છે
+
+દરેક library desktop પર `~/.bae/libraries/` નીચે પોતાનો database અને settings રાખે છે. તમારું audio જ્યાંથી import કર્યું છે ત્યાં જ રહે છે, જ્યાં સુધી તમે bae ને તેને તમારા cloud માં manage કરવા ન કહો. Keys અને credentials operating system ના keyring માં રહે છે, files માં નહીં.

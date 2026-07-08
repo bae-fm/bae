@@ -1,0 +1,43 @@
+---
+title: Data model
+description: Schema, શું sync થાય છે, અને device પર શું રહે છે
+---
+
+bae નો catalog સામાન્ય SQLite છે, [coven](https://coven.bae.fm) ને table by table declared: synced tables conflict clock ધરાવે છે અને દરેક device પર જાય છે; undeclared tables device છોડતા નથી. આ split data model નો સૌથી load-bearing નિર્ણય છે, તેથી આ page તેની આસપાસ organized છે.
+
+## Catalog graph
+
+Schema નું synced heart:
+
+- **`artists`**, **`albums`**, **`works`**: grouping layer. Album તેના releases aggregate કરે છે અને primary one તરફ points કરે છે; works classical structure માટે parent/child graph બનાવે છે.
+- **`releases`**: central entity, દરેક pressing માટે એક row. Pressing facts (label, catalog number, barcode, country, format, year), metadata source, imported folder નો content hash, અને measured album loudness રાખે છે.
+- **`release_identities`**: source પ્રમાણે release *શું છે*. Rows ન હોય એટલે unknown; release ID સાથે MusicBrainz અથવા Discogs row એટલે exact; તેની વગર approximate. Release બંને sources માં identities એકસાથે રાખી શકે છે.
+- **`tracks`** સાથે **`track_artists`**, ઉપરાંત **`release_artist_roles`** અને **`track_artist_roles`**: track lists અને credits, દરેક credit તેના source સાથે tagged.
+- **`track_works`**, **`work_parts`**, **`work_artists`**: recordings તેઓ perform કરે તે works સાથે linked.
+- **`audio_formats`** અને **`audio_format_segments`**: playback specs. Per track: codec, sample rate, bit depth, channels, measured loudness અને peak, અને pregap lengths. Segments track ને તેના source files ના ordered byte અને sample windows પર map કરે છે, તેથી CUE rip નો track, pregap સહિત, એક મોટી file ના regions અથવા અનેક files માં span કરી શકે છે.
+- **`release_files`**, **`covers`**, **`artist_images`**: blob-bearing tables. Rows catalog entries છે; bytes coven ના blob layer માં રહે છે (નીચે જુઓ).
+
+## Synced, gated, local
+
+ઉપરનું બધું sync થાય છે, પરંતુ unconditional નહીં. `releases` તેના `remote` column પર gated root તરીકે declared છે: release row અને તેની આખી subtree (tracks, files, credits, formats, cover) ફક્ત `remote` true હોય ત્યારે sync થાય છે, એટલે release cloud-managed હોય ત્યારે. Release ને managed કરવાથી subtree publish થાય છે; unmanaged release importing device પર જ રહે છે, ભલે તેનું schema synced હોય. Ancestor tables (`artists`, `albums`, `works`) ત્યારે જ sync થાય છે જ્યારે કોઈ synced release હજી તેમને reference કરે છે, એટલે device ક્યારેય એવો artist receive કરતું નથી જેના નીચે કશું નથી.
+
+સંપૂર્ણ local tables, coven ને ક્યારેય declared નહીં:
+
+- **`playback_state`**: current track, position, queue, volume, shuffle અને repeat. Playback device fact છે.
+- **`imports`**: import operation tracking.
+- **`release_metadata`**: MusicBrainz અને Discogs માંથી archived raw JSON, future re-interpretation માટે kept.
+- **`attribution_names`**: member keys માટે display names.
+
+દરેક synced table `_updated_at` hybrid-logical-clock column ધરાવે છે, register જેનાથી coven concurrent edits ને field-by-field merge order કરે છે; test enforce કરે છે કે synced set અને clock-carrying set exactly equal છે.
+
+## Blobs
+
+Audio અને images coven ના blob layer મારફતે ત્રણ namespaces માં જાય છે, દરેક પોતાના device cache budget સાથે: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+
+Release files user-provided છે અને lazily cached છે: unmanaged release માટે blob user ની file ના original path પર external reference છે; managed માટે તે uploaded object છે જે first read પર cache માં fetched થાય છે. Covers અને artist images host-provided છે અને eagerly cached છે: bae bytes બનાવે છે (covers મહત્તમ 600px wide JPEG thumbnails તરીકે re-render થાય છે), અને દરેક device pull પર તેમને fetch કરે છે જેથી grids locally render થાય.
+
+Opaque home પર, blobs meaningless content keys હેઠળ upload થાય છે. Browsable home પર દરેક blob row readable cloud path record કરે છે (audio માટે `{artist}/{album}/{filename}`, covers માટે `{album}/{release}/cover.{ext}`), upload વખતે એક વાર computed જેથી પછીનું rename object move ન કરે.
+
+## Rip ની identity
+
+`releases.content_hash` imported folder ની file structure (relative paths અને sizes) પર SHA-256 છે, folder disk પર ક્યાં છે તેના પર independent. Watched folder માં એ rip ફરી દેખાય ત્યારે bae already-imported rip ઓળખે છે, અને re-imports તે release શોધે છે જેને replace કરવી જોઈએ.

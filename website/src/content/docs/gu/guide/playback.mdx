@@ -1,0 +1,41 @@
+---
+title: Playback
+description: Original quality અને releases બનાવતી વખતે રહેલી વિગતો
+---
+
+Records એવી રચના સાથે બનાવાયા હતા જેને file players ઘણી વાર flatten કરે છે: પૂરી થતી sides, track one પહેલાં hidden audio, એકબીજામાં વહેતા songs. bae release ની playback details સાચવે છે અને release જે રીતે ઈચ્છતો હતો તે રીતે, તમારી original files માંથી, untouched, વગાડે છે.
+
+## Original quality
+
+Playback તમારી files import થયેલી છે તેમ decode કરે છે. Transcoding નથી, loudness rewrite નથી, server re-encode નથી; audio device file ના પોતાના sample rate પર ચાલે છે. તમે જે rip કર્યું તે જ વાગે છે. bae જે દરેક format import કરે છે તે વગાડે છે: FLAC, MP3, APE, ALAC, AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack, DSD.
+
+## Gapless
+
+એક continuous piece તરીકે mixed albums એ જ રીતે વાગે છે. Current track વાગે ત્યારે next track prepare થાય છે, અને બંને format share કરે ત્યારે boundary પર audio ક્યારેય અટકતું નથી: gap નહીં, click નહીં.
+
+## CD pregaps
+
+CDs track શરૂ થાય તે પહેલાંના gap માં audio છુપાવી શકે છે, track one પહેલાં પણ, classic hidden-track trick. Release CUE-sheet rip માંથી import થાય ત્યારે bae જાણે છે કે દરેક pregap ક્યાં છે અને તેમને વગાડે છે: track proper જ્યાં શરૂ થાય ત્યાં track નું time display zero થી શરૂ થાય છે, અને તેના પહેલાંનું hidden audio gap માં વાગે છે, CD જેવી જ રીતે. Exports pregaps રાખી, drop કરી, અથવા ફરી attach કરી શકે છે; [Exporting](/gu/guide/exporting) જુઓ.
+
+## Side breaks
+
+Vinyl અને cassette releases માં sides હોય છે, અને કેટલાક records તેમના વચ્ચેની pause ઇરાદાપૂર્વક વાપરે છે. Playback settings માં **Pause between sides** ચાલુ કરો અને bae દરેક side boundary પર playback pause કરે છે, તમને continue કરવા prompt કરે છે, flipping વગરનું flip. Track lists side અને disc પ્રમાણે group થાય છે, જેથી browse કરતી વખતે structure દેખાય છે.
+
+## Queue
+
+Playback પાસે હંમેશા context હોય છે: તમે શરૂ કરેલો release, અથવા તમે shuffle કર્યું હોય તો આખી library. Queue બે lanes બતાવે છે:
+
+- **Up Next**: તમે હાથથી queued કરેલા tracks, પહેલા વાગે છે. Tracks drag કરો, reorder કરો, remove કરો.
+- **Playing from**: બાકીનું context, તેની પોતાની shuffle toggle સાથે.
+
+**Play Next** અને **Add to Queue** દરેક track અને album પર છે. Repeat off, context repeat, અને one track repeat વચ્ચે cycle કરે છે.
+
+## Controls
+
+<kbd>Space</kbd> પર play/pause, keyboard થી next અને previous, seek કરવા scrubber. bae system સાથે integrate કરે છે: media keys, Apple platforms પર Control Center, Android પર media notifications, phone પર lock-screen controls, જ્યાં system બતાવે ત્યાં artwork અને track info સાથે.
+
+Quit પર desktop app શું વાગતું હતું તે save કરી શકે છે, queue અને position સહિત, અને next launch પર તેને pick up કરી શકે છે: Playback settings માં **Restore on launch**.
+
+## Offline
+
+Release જ્યાં તેના bytes પહોંચી શકે ત્યાં વાગે છે: local files સીધી વાગે છે, cloud-managed releases વાગે ત્યારે stream થાય છે, અને pinned releases હંમેશા device પર હોય છે. [Storage અને offline](/gu/guide/storage) જુઓ.

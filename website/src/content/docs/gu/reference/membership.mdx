@@ -1,0 +1,35 @@
+---
+title: Identity અને membership
+description: Identities તરીકે keys, join handshake, roles, અને revocation
+---
+
+bae માં ક્યાંય account system નથી. Device ની identity Ed25519 keypair છે જે તે પોતે generate કરે છે અને OS keyring માં રાખે છે; public key જ identity છે. Library માં કોણ છે તે cloud home માં signed records નો set છે, જેને જે પાસે records હોય તે verify કરી શકે છે, કોઈ server દ્વારા issued નથી. Machinery [coven](https://coven.bae.fm) ની છે; આ page bae તેને કેવી રીતે વાપરે છે તે છે.
+
+## Membership records
+
+દરેક owner cloud home માં signed membership entries નો append-only stream write કરે છે: આ key આ role સાથે added હતી, આ key removed હતી. દરેક entry previous one સાથે link કરે છે, અને દરેક owner પોતાનો stream tip declare કરતી head sign કરે છે, તેથી provider records drop અથવા reorder કરે તો તે detected થાય છે, believed નહીં. Library જે accept કરે છે તે દરેક owner ના verified stream નો union છે.
+
+દરેક pull પર, દરેક changeset નો author આ record સામે checked છે: current member દ્વારા signed, અને write કરી શકે તે role સાથે. Removed devices, ક્યારેય added ન થયેલી keys, અથવા invalid signatures ધરાવતા changesets apply થતા નથી. Provider records store કરે છે પરંતુ forge કરી શકતો નથી; ફક્ત owner keys ધરાવતા લોકો membership બદલી શકે છે.
+
+## Roles
+
+**Owner** અને **Member** બંને library read અને write કરે છે; owners વધારામાં devices approve અને remove કરે છે. bae નું founding device owner છે અને તે approve કરે તે દરેક device member તરીકે જોડાય છે. (Underlying machinery માં ત્રીજો role છે, read-only follower, જે bae હાલમાં assign કરતું નથી.)
+
+## Join handshake
+
+Device ઉમેરવું વચ્ચે explicit human verification સાથે two-code exchange છે:
+
+1. Joining device પોતાની keypair generate કરે છે અને **join request** બતાવે છે: તેની public key, તેનો short fingerprint, અને (OAuth providers માટે) folder share કરવાનું cloud account.
+2. Owner request decode કરે છે, અને બે screens એ જ fingerprint બતાવે છે. Human check કરે છે કે તેઓ match કરે; આ step swapped key ને હરાવે છે.
+3. Approval એકસાથે ત્રણ કામ કરે છે: newcomer ના account ને cloud home access આપે છે (consumer clouds પર folder share, S3 પર embedded credentials, iCloud પર CloudKit share), library key ને newcomer ની public key માટે seal કરે છે, અને તેને add કરતી membership entry sign કરે છે. આ બધું **invite code** માં packed છે.
+4. Joining device invite consume કરે છે, key unseal કરે છે, latest snapshot માંથી bootstrap કરે છે, અને sync કરે છે.
+
+Invite requesting key માટે sealed છે: તેને intercept કરવાથી કશું મળતું નથી.
+
+## Revocation
+
+Member દૂર કરવાથી signed removal append થાય છે અને library key નવી generation પર rotate થાય છે જે removed key ને ક્યારેય મળતી નથી ([Encryption](/gu/reference/encryption#generations) જુઓ). Access revoke કરી શકે તે storage પર access પણ withdrawn થાય છે. Removed device પર જે already synced હતું તે તેની પાસે રહે છે; data પાછો મોકલ્યા વિના કાઢી શકાતો નથી. Rotation પછીનું બધું તેની પહોંચ બહાર છે.
+
+## Recovery codes
+
+Recovery code membership ને ઇરાદાપૂર્વક bypass કરે છે: તે cloud home coordinates અને library key, એક bearer string માં, surviving approver વગર તમારી પોતાની library restore કરવા માટે. તે demand પર generated છે, Apple platforms પર iCloud Keychain માં automatically stored છે, અને library જેટલું જ sensitive છે.

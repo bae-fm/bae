@@ -1,0 +1,25 @@
+---
+title: Exporting
+description: તમને જોઈએ તે સ્વરૂપમાં music બહાર લો
+---
+
+Lock-in ન હોવું બંને દિશામાં કામ કરે છે: bae તમારી files અંદર આવતી વખતે બદલતું નથી, અને બહાર જતી વખતે તેમને અટકાવતું નથી. Unmanaged releases પહેલેથી જ તમારા folders માં files છે. Managed releases કોઈ પણ સમયે byte-for-byte ફરી local બનાવી શકાય છે. અને જ્યારે તમને *જુદું* સ્વરૂપ જોઈએ, phone માટે યોગ્ય encode, burn-ready image, ત્યારે exporting originals ને સ્પર્શ્યા વગર તે બનાવે છે.
+
+## બે exports
+
+- **Track export**: track પર right-click કરો, **Save As**, format પસંદ કરો, પૂરું.
+- **Release export**: album menu અથવા Storage Manager માંથી, આખો release folder માં export કરે છે. Progress, pause અને retry સાથે queue પર ચાલે છે.
+
+Original files જેવી છે તેવી export થાય છે. બાકીની બધું બહાર જતાં encode થાય છે.
+
+## Presets
+
+Export formats એ presets છે જે તમે Settings માં એક વાર define કરો છો: FLAC, MP3, Opus, WAV, અથવા AIFF, codec ના parameters સાથે (lossless formats માટે bit depth, lossy માટે bitrate) અને title, artist, album, year અને track number જેવા tokens થી બનેલું filename template. Tracks માટે default preset અને releases માટે એક preset set કરો, અને release exports હંમેશા destination પૂછે કે હંમેશા fixed folder વાપરે તે પસંદ કરો.
+
+## Exports માં pregaps
+
+Pregaps ધરાવતા CD rips બહાર જતાં સાચો પ્રશ્ન ઊભો કરે છે: hidden audio ક્યાં જાય? દરેક preset policy પસંદ કરે છે:
+
+- **Append to the previous track**, સામાન્ય convention, સાથે પસંદગી કે track one પહેલાં છુપાયેલ audio track one ની શરૂઆતમાં રાખવો કે drop કરવો.
+- **Exclude** pregaps સંપૂર્ણપણે: clean track boundaries, hidden audio છોડાયેલ.
+- **Single file with CUE**: disc એક audio file તરીકે અને CUE sheet સાથે, original layout સચોટ રીતે સાચવીને.

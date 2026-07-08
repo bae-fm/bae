@@ -1,0 +1,28 @@
+---
+title: Encryption
+description: Library key શું છે, ક્યાં રહે છે, અને provider પાસે કયું ciphertext હોય છે
+---
+
+Opaque cloud home માં bae મૂકે તે બધું device છોડે તે પહેલાં encrypted થાય છે. bae પોતાનું cryptography implement કરતું નથી: આખી scheme [coven](https://coven.bae.fm) ની છે, અને આ page વર્ણવે છે કે bae તેને કેવી રીતે વાપરે છે. Browsable homes આ બધામાંથી opt out કરે છે; નીચેનું તેમને લાગુ પડતું નથી.
+
+## Library key
+
+Opaque library પાસે એક root secret હોય છે: home બનાવતી વખતે minted random 256-bit key. તે OS keyring માં રહે છે, file માં ક્યારેય નહીં; Apple platforms પર keyring entry iCloud Keychain મારફતે sync થાય છે. bae નું config ફક્ત key નો fingerprint store કરે છે, unlock સમયે secret રાખ્યા વગર wrong key ને right key થી અલગ પાડવા પૂરતું.
+
+Key devices વચ્ચે બે રીતે જાય છે, બંને [Identity અને membership](/gu/reference/membership) માં વર્ણવેલી: invite દરમિયાન approved device ની public key માટે sealed, અને recovery code અંદર carried.
+
+## Generations
+
+Library key ખરેખર numbered generations ની keyring છે. Member દૂર કરવાથી નવી generation append થાય છે જે removed member ને ક્યારેય મળતી નથી: પછીથી લખાયેલું બધું new generation વાપરે છે અને તેમને unreadable છે, જ્યારે surviving members દરેક generation રાખે છે અને આખો history વાંચી શકે છે. દરેક sealed object clear માં record કરે છે કે કઈ generation તેને opens કરે છે.
+
+## શું sealed થાય છે
+
+Home માં દરેક object: changesets, snapshots, audio blobs, artwork, membership records, control objects. Objects XChaCha20-Poly1305 થી 64 KB chunks માં sealed છે, દરેક chunk authenticated, અને પોતાના context સાથે bound: sealed object ફક્ત જે object તરીકે લખાયું હતું તે તરીકે, આ library માટે, આ key પર decrypt થાય છે. Chunking કારણે streaming કામ કરે છે, player fetch કરે તે byte ranges જ decrypt કરી શકે છે.
+
+## Provider શું જોઈ શકે
+
+Object count, object sizes, upload timing, અને access patterns. Names નહીં, metadata નહીં, audio નહીં, artwork નહીં, membership નહીં. Server-side recovery નથી: user દરેક device અને key ની દરેક copy ગુમાવે તો library નું ciphertext સદાકાળ ગુમાવ્યું, અને design એમ જ છે.
+
+## Unlock અને lock
+
+Library ખોલવાથી keyring માંથી key read થાય છે. જો library key અપેક્ષા રાખે છે અને keyring પાસે નથી, તો bae library ને locked માને છે: તે ખોલતા પહેલાં key માગે છે, તેને keyring માં પાછી save કરતાં પહેલાં stored fingerprint સામે validate કરે છે. Library lock કરવાથી keyring માંથી key ઇરાદાપૂર્વક દૂર થાય છે; ફરી દાખલ ન થાય ત્યાં સુધી cloud home માં કશું read અથવા write થઈ શકતું નથી.

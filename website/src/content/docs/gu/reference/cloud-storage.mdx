@@ -1,0 +1,37 @@
+---
+title: Cloud storage
+description: Providers, authentication, અને cloud home નું સ્વરૂપ
+---
+
+Cloud home એ user પાસે પહેલેથી હોય તે storage માં એક location છે. દરેક provider [coven](https://coven.bae.fm) માં એ જ storage interface મારફતે ચાલે છે; provider પ્રમાણે જે જુદું છે તે authentication અને second device ને access કેવી રીતે મળે છે.
+
+## Providers
+
+| Provider | Auth | નવા device માટે access |
+|---|---|---|
+| S3-compatible | Access key + secret | Invite માં embedded credentials |
+| Google Drive | OAuth (PKCE) | Folder joiner ના account સાથે shared |
+| Dropbox | OAuth (PKCE) | Folder joiner ના account સાથે shared |
+| OneDrive | OAuth (PKCE) | Folder joiner ના account સાથે shared |
+| iCloud (CloudKit) | Apple ID, sign-in નહીં | Joiner દ્વારા accepted CloudKit share |
+
+S3-compatible માં AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, અને API બોલતું બીજું બધું આવે છે; bucket, region, endpoint, અને key prefix configurable છે, અને config save થાય તે પહેલાં bucket probe થાય છે જેથી typo setup વખતે fail થાય, પહેલી sync વખતે નહીં. OAuth providers ફક્ત full **bae** edition માં છે; **baeium** builds તેમને compile out કરે છે.
+
+## OAuth
+
+Sign-in public client તરીકે PKCE સાથે authorization-code flow છે. Desktop પર redirect એક callback માટે local port સાથે bound loopback server પર lands થાય છે; mobile પર app તેના બદલે custom-scheme redirect capture કરે છે. bae કામ માટે provider આપે તે narrowest scope માગે છે, Google Drive પર તે ફક્ત app પોતે બનાવે તે files નો access છે. Tokens OS keyring માં stored છે, provider ના refresh grant થી refreshed થાય છે, અને rejected refresh silent retry loop કરતાં reconnect prompt તરીકે surface થાય છે.
+
+CloudKit ને flow જોઈએ નહીં: app માં implemented અને core ને આપેલો platform નો CloudKit driver signed-in Apple ID તરીકે operate કરે છે.
+
+## Home layout
+
+Home અંદર, coven per-device changeset streams, snapshot generations, membership records, અને blob namespaces layout કરે છે. bae ત્રણ blob namespaces આપે છે: `release_files`, `covers`, અને `artist_images`.
+
+Objects કેવી રીતે keyed થાય છે તે home ના storage mode પર depend કરે છે, creation વખતે fixed:
+
+- **Opaque**: objects encrypted થાય છે અને content-derived keys હેઠળ stored થાય છે જે કશું reveal કરતા નથી. આ full-trust-in-cryptography mode છે; [Encryption](/gu/reference/encryption) જુઓ.
+- **Browsable**: objects upload time પર per blob recorded readable paths પર plaintext છે: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Bucket usable file tree પણ બને છે; tradeoff encryption અને membership ન હોવાનો છે, એટલે browsable homes બીજા લોકોને share કરી શકાતા નથી.
+
+## વાસ્તવિક networks હેઠળ behavior
+
+Playback માટે reads ranged છે: player whole files કરતાં તેને જોઈએ તે byte windows stream કરે છે. Provider support કરે ત્યાં size threshold ઉપર uploads multipart થાય છે. Rate limiting અને transient provider errors exponential backoff સાથે retry થાય છે, provider retry-after આપે ત્યારે તેનું માન રાખીને; expired OAuth tokens in place refresh થાય છે. Sync outbox restarts survive કરે છે: app quit થતા interrupted upload ફરી શરૂ થાય છે, શરૂઆતથી નહીં.
