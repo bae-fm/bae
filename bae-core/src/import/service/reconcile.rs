@@ -65,7 +65,7 @@ impl ImportService {
         identity_choice: &crate::import::IdentityChoice,
         user_edit: Option<crate::import::ReleaseUserEdit>,
         replacement_release_ids: &[String],
-    ) -> Result<PreparedMetadata, String> {
+    ) -> Result<PreparedMetadata, crate::import::ImportError> {
         let library_manager = &self.library_manager;
 
         let crate::import::ParsedAlbum {
@@ -141,15 +141,9 @@ impl ImportService {
             source_path,
             library_manager.clock().now(),
         );
-        library_manager
-            .insert_import(&db_import)
-            .await
-            .map_err(|e| format!("Failed to create import record: {}", e))?;
+        library_manager.insert_import(&db_import).await?;
 
-        let resolved = library_manager
-            .resolve_artists_for_import(&artists)
-            .await
-            .map_err(|e| format!("Failed to resolve artists: {e}"))?;
+        let resolved = library_manager.resolve_artists_for_import(&artists).await?;
 
         let artist_id_map: HashMap<String, String> = artists
             .iter()
@@ -159,11 +153,11 @@ impl ImportService {
 
         let remapped_primary_artist_id = artist_id_map
             .get(&db_album.artist_id)
-            .ok_or_else(|| {
-                format!(
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!(
                     "Primary artist ID {} not found in artist map",
                     db_album.artist_id
-                )
+                ),
             })?
             .clone();
         db_album.artist_id = remapped_primary_artist_id;
@@ -198,7 +192,7 @@ impl ImportService {
 
         let discogs_client = library_manager
             .discogs_client()
-            .map_err(|e| format!("Failed to read Discogs key: {e}"))?;
+            .map_err(|detail| crate::import::ImportError::Config { detail })?;
         let artist_images = if let Some(ref discogs_client) = discogs_client {
             fetch_artist_images(library_manager, discogs_client, &artists, &artist_id_map).await
         } else {

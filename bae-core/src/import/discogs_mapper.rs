@@ -6,7 +6,7 @@ use super::ParsedAlbum;
 use crate::db::{is_various_artists, Pressing, ReleaseMetadataSource};
 use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist};
 use crate::import::types::ReleaseIdentity;
-use crate::import::MetadataSource;
+use crate::import::{ImportError, MetadataSource};
 use crate::musicbrainz::MbReleaseResponse;
 use coven::Clock;
 use coven::IdProvider;
@@ -79,17 +79,18 @@ pub fn map_discogs_to_db(
     mb_xref: Option<&MbReleaseResponse>,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, String> {
+) -> Result<ParsedAlbum, ImportError> {
     // Release artists → the artist pool. With no artists list, fall back to
     // the artist half of the "Artist - Album" title split.
     let mut release_refs: Vec<ArtistRef> = if release.artists.is_empty() {
         let artist_name = crate::discogs::split_title(&release.title)
             .and_then(|(artist, _)| artist)
-            .ok_or_else(|| {
-                format!(
+            .ok_or_else(|| ImportError::SourceData {
+                metadata_source: MetadataSource::Discogs,
+                detail: format!(
                     "Discogs release {} has no release artist in artists list or title",
                     release.id
-                )
+                ),
             })?
             .to_string();
         vec![ArtistRef {
@@ -182,7 +183,10 @@ pub fn map_discogs_to_db(
         let rg = mb
             .release_group
             .as_ref()
-            .ok_or_else(|| format!("MusicBrainz release {} missing release_group", mb.id))?;
+            .ok_or_else(|| ImportError::SourceData {
+                metadata_source: MetadataSource::MusicBrainz,
+                detail: format!("MusicBrainz release {} missing release_group", mb.id),
+            })?;
         identities.push(ReleaseIdentity {
             source: MetadataSource::MusicBrainz,
             source_group_id: rg.id.clone(),
@@ -470,7 +474,7 @@ mod tests {
         release: &DiscogsRelease,
         master_year: Option<u32>,
         mb_xref: Option<&MbReleaseResponse>,
-    ) -> Result<ParsedAlbum, String> {
+    ) -> Result<ParsedAlbum, ImportError> {
         let clock = FixedClock(
             chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
                 .unwrap()
@@ -558,7 +562,7 @@ mod tests {
                 .expect_err(&format!("expected error for unattributed title {title:?}"));
 
             assert!(
-                err.contains("has no release artist"),
+                matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no release artist")),
                 "unexpected error message for {title:?}: {err}"
             );
         }
@@ -973,7 +977,7 @@ mod tests {
             .expect_err("expected missing MB release group to return an error");
 
         assert!(
-            err.contains("missing release_group"),
+            matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("missing release_group")),
             "unexpected error message: {err}"
         );
     }

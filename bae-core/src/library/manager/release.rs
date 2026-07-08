@@ -48,7 +48,7 @@ impl LibraryManager {
     pub async fn find_existing_album_for_import(
         &self,
         identities: &[crate::import::ReleaseIdentity],
-    ) -> Result<Option<String>, String> {
+    ) -> Result<Option<String>, crate::import::ImportError> {
         self.find_existing_album_for_import_excluding(identities, &[])
             .await
     }
@@ -57,7 +57,7 @@ impl LibraryManager {
         &self,
         identities: &[crate::import::ReleaseIdentity],
         excluded_release_ids: &[String],
-    ) -> Result<Option<String>, String> {
+    ) -> Result<Option<String>, crate::import::ImportError> {
         if identities.is_empty() {
             return Ok(None);
         }
@@ -68,12 +68,11 @@ impl LibraryManager {
             .database
             .find_album_by_identity_release_excluding(identities, excluded_release_ids)
             .await
-            .map_err(|e| format!("Database error: {e}"))?
+            .map_err(|e| crate::import::ImportError::Db(LibraryError::Database(e)))?
         {
-            return Err(format!(
-                "This release is already in your library as \"{}\"",
-                existing.title,
-            ));
+            return Err(crate::import::ImportError::AlreadyInLibrary {
+                album_title: existing.title,
+            });
         }
 
         // 2. Cross-source merge: any group identity matching a row already
@@ -82,7 +81,7 @@ impl LibraryManager {
             .database
             .find_album_by_identity_group_excluding_many(identities, excluded_release_ids)
             .await
-            .map_err(|e| format!("Database error: {e}"))?;
+            .map_err(|e| crate::import::ImportError::Db(LibraryError::Database(e)))?;
 
         Ok(album_id)
     }
@@ -238,9 +237,7 @@ impl LibraryManager {
 
         let (new_identities, metadata_pointer, metadata_pairs) = match &identity_choice {
             IdentityChoice::Exact { release_ref } | IdentityChoice::Approximate { release_ref } => {
-                let prepared = crate::import::service::prepare_release(self, release_ref)
-                    .await
-                    .map_err(LibraryError::Import)?;
+                let prepared = crate::import::service::prepare_release(self, release_ref).await?;
 
                 // Source pressing track count must match the local
                 // release's row count. The folder-import path enforces
@@ -856,7 +853,7 @@ async fn project_musicbrainz_from_cache(
         clock,
         ids,
     )
-    .map_err(LibraryError::Import)
+    .map_err(LibraryError::from)
 }
 
 /// Project cached Discogs `release_metadata` rows back into a
@@ -914,7 +911,7 @@ async fn project_discogs_from_cache(
         clock,
         ids,
     )
-    .map_err(LibraryError::Import)
+    .map_err(LibraryError::from)
 }
 
 /// Project the embedded tags of a release's local audio files into a
@@ -968,7 +965,7 @@ async fn project_file_tags(
     })
     .await
     .map_err(|e| LibraryError::Import(format!("file-tag mapping task failed: {e}")))?
-    .map_err(LibraryError::Import)
+    .map_err(LibraryError::from)
 }
 
 /// The cover [`ImageRef`] for one release from its `covers` row's `_updated_at`,

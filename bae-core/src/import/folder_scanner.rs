@@ -11,7 +11,6 @@ use crate::cue_flac::CueFlacProcessor;
 use crate::util::content_type_hint::ContentTypeHint;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::fmt;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -290,9 +289,15 @@ pub struct FileTree {
     dirs: BTreeMap<PathBuf, DirEntry>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum FolderScanError {
-    Io { path: PathBuf, source: io::Error },
+    #[error("{}: {source}", path.display())]
+    Io {
+        path: PathBuf,
+        #[source]
+        source: io::Error,
+    },
+    #[error("{0}")]
     Other(String),
 }
 
@@ -304,17 +309,6 @@ impl FolderScanError {
         }
     }
 }
-
-impl fmt::Display for FolderScanError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Io { path, source } => write!(f, "{}: {source}", path.display()),
-            Self::Other(message) => f.write_str(message),
-        }
-    }
-}
-
-impl std::error::Error for FolderScanError {}
 
 #[derive(Debug, Default)]
 struct DirEntry {
@@ -498,10 +492,10 @@ enum CueCodecLabel {
 /// all). A readable file whose codec bae can't play (`Ok(Unsupported)`) or that
 /// FFmpeg can't probe (`Ok(Unprobeable)`) is not an error — each surfaces its
 /// folder as an invalid candidate without aborting the whole watched-root walk.
-fn cue_pair_codec_label(path: &Path) -> Result<CueCodecLabel, String> {
-    let path_str = path
-        .to_str()
-        .ok_or_else(|| format!("CUE audio path is not UTF-8: {}", path.display()))?;
+fn cue_pair_codec_label(path: &Path) -> Result<CueCodecLabel, FolderScanError> {
+    let path_str = path.to_str().ok_or_else(|| {
+        FolderScanError::Other(format!("CUE audio path is not UTF-8: {}", path.display()))
+    })?;
     let Some(probe) = crate::audio_codec::probe_audio_from_path(path_str) else {
         return Ok(CueCodecLabel::Unprobeable);
     };
@@ -746,8 +740,17 @@ struct DetectedCueAudioPair {
 }
 
 /// Shorthand for a failed-validation leaf carrying `reason`.
-fn invalid(reason: InvalidReason) -> Result<CategorizeOutcome, String> {
+fn invalid(reason: InvalidReason) -> Result<CategorizeOutcome, FolderScanError> {
     Ok(CategorizeOutcome::Invalid(reason))
+}
+
+/// The directory holding a CUE sheet, where its `FILE` references resolve. A
+/// CUE path with no parent is a filesystem impossibility for a scanned file,
+/// so it's a hard scan error, not an invalid-candidate reason.
+fn cue_parent_dir(cue_path: &Path) -> Result<&Path, FolderScanError> {
+    cue_path
+        .parent()
+        .ok_or_else(|| FolderScanError::Other(format!("CUE file has no parent: {:?}", cue_path)))
 }
 
 /// Categorize files from a FileTree for a given release root.
@@ -760,7 +763,7 @@ fn categorize_files_from_tree(
     tree: &FileTree,
     release_root: &Path,
     fs_root: &Path,
-) -> Result<CategorizeOutcome, String> {
+) -> Result<CategorizeOutcome, FolderScanError> {
     let mut all_audio: Vec<ScannedFile> = Vec::new();
     let mut all_cue: Vec<ScannedFile> = Vec::new();
     let mut artwork: Vec<ScannedFile> = Vec::new();
@@ -787,8 +790,11 @@ fn categorize_files_from_tree(
             // I/O fault (file vanished, permissions, flaky network mount) —
             // surface it rather than mis-label a system error as corruption
             // and silently drop the whole release.
-            let valid = file_validation::is_valid_audio(&absolute_path)
-                .map_err(|e| format!("Failed to validate audio file {absolute_path:?}: {e}"))?;
+            let valid = file_validation::is_valid_audio(&absolute_path).map_err(|e| {
+                FolderScanError::Other(format!(
+                    "Failed to validate audio file {absolute_path:?}: {e}"
+                ))
+            })?;
             if entry.size == 0 || !valid {
                 info!("Invalid candidate: corrupt or zero-byte audio file {relative_path}");
                 return invalid(InvalidReason::CorruptAudioFile {
@@ -810,8 +816,11 @@ fn categorize_files_from_tree(
         } else if is_image_file(&entry.path) {
             // As with audio: Ok(false) is corruption (skip), Err is a real
             // I/O fault that must surface rather than drop the release.
-            let valid = file_validation::is_valid_image(&absolute_path)
-                .map_err(|e| format!("Failed to validate image file {absolute_path:?}: {e}"))?;
+            let valid = file_validation::is_valid_image(&absolute_path).map_err(|e| {
+                FolderScanError::Other(format!(
+                    "Failed to validate image file {absolute_path:?}: {e}"
+                ))
+            })?;
             if entry.size == 0 || !valid {
                 info!("Invalid candidate: corrupt or zero-byte image {relative_path}");
                 return invalid(InvalidReason::CorruptImage {
@@ -868,10 +877,7 @@ fn categorize_files_from_tree(
             if file_references.is_empty() {
                 return Ok(None);
             }
-            let cue_dir = cue
-                .path
-                .parent()
-                .ok_or_else(|| format!("CUE file has no parent: {:?}", cue.path))?;
+            let cue_dir = cue_parent_dir(&cue.path)?;
             let first_audio_path = cue_dir.join(file_references[0]);
             Ok(audio_by_path
                 .get(&first_audio_path)
@@ -880,7 +886,7 @@ fn categorize_files_from_tree(
                     audio_index: *audio_index,
                 }))
         })
-        .collect::<Result<Vec<_>, String>>()?
+        .collect::<Result<Vec<_>, FolderScanError>>()?
         .into_iter()
         .flatten()
         .collect();
@@ -925,16 +931,15 @@ fn categorize_files_from_tree(
                 .remove(&cue_file.path)
                 .expect("detected CUE pair has a parsed CUE sheet");
 
-            let cue_dir = cue_file
-                .path
-                .parent()
-                .ok_or_else(|| format!("CUE file has no parent: {:?}", cue_file.path))?;
+            let cue_dir = cue_parent_dir(&cue_file.path)?;
             let mut audio_files = Vec::new();
             let mut seen = HashSet::new();
             for reference in cue_sheet.audio_file_references() {
                 let audio_path = cue_dir.join(reference);
                 let audio_index = audio_by_path.get(&audio_path).ok_or_else(|| {
-                    format!("CUE reference missing after validation: {reference}")
+                    FolderScanError::Other(format!(
+                        "CUE reference missing after validation: {reference}"
+                    ))
                 })?;
                 if seen.insert(*audio_index) {
                     audio_files.push(all_audio[*audio_index].clone());
@@ -1047,7 +1052,7 @@ fn scan_tree_recursive<F>(
     dir: &Path,
     fs_root: &Path,
     on_item: &mut F,
-) -> Result<(), String>
+) -> Result<(), FolderScanError>
 where
     F: FnMut(RawScanItem),
 {
@@ -1152,7 +1157,6 @@ where
             }));
         }
     })
-    .map_err(FolderScanError::Other)
 }
 
 /// Collect all files from a release directory and categorize them.
@@ -1160,13 +1164,15 @@ where
 /// This collects files recursively within a single release, preserving relative paths,
 /// and categorizes them into audio (CUE/FLAC pairs or track files), artwork, and documents.
 /// Unrecognized file types are ignored.
-pub fn collect_release_candidate_files(release_root: &Path) -> Result<CategorizedFiles, String> {
-    let tree = FileTree::from_filesystem(release_root).map_err(|e| e.to_string())?;
-    // An invalid folder can't be imported: surface its reason as the error so
-    // the import-commit caller fails with why the folder is unusable.
+pub fn collect_release_candidate_files(
+    release_root: &Path,
+) -> Result<CategorizedFiles, crate::import::ImportError> {
+    let tree = FileTree::from_filesystem(release_root)?;
+    // An invalid folder can't be imported: surface its typed reason so the
+    // import-commit caller fails with why the folder is unusable.
     match categorize_files_from_tree(&tree, &PathBuf::new(), release_root)? {
         CategorizeOutcome::Valid(files) => Ok(files),
-        CategorizeOutcome::Invalid(reason) => Err(reason.to_string()),
+        CategorizeOutcome::Invalid(reason) => Err(reason.into()),
     }
 }
 

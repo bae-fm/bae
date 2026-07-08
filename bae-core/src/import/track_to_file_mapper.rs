@@ -4,6 +4,7 @@ use crate::import::folder_scanner::{
     AudioContent, CategorizedFiles, ScannedCueFlacPair, ScannedFile,
 };
 use crate::import::types::{CueAnalyzedAudioFile, CueAudioAnalysis, CueFlacAnalysis, TrackFile};
+use crate::import::ImportError;
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
@@ -21,7 +22,7 @@ use tracing::{debug, info, warn};
 pub fn map_tracks_to_files(
     tracks: Vec<DbTrack>,
     files: &CategorizedFiles,
-) -> Result<Vec<TrackFile>, String> {
+) -> Result<Vec<TrackFile>, ImportError> {
     info!("Mapping {} tracks using scan output", tracks.len());
     match &files.audio {
         AudioContent::CueFlacPairs { pairs, .. } => map_tracks_to_cue_flacs(tracks, pairs),
@@ -34,9 +35,11 @@ pub fn map_tracks_to_files(
 fn map_tracks_to_cue_flacs(
     tracks: Vec<DbTrack>,
     pairs: &[ScannedCueFlacPair],
-) -> Result<Vec<TrackFile>, String> {
+) -> Result<Vec<TrackFile>, ImportError> {
     if pairs.is_empty() {
-        return Err("CUE/FLAC import has no pairs".to_string());
+        return Err(ImportError::TrackMapping {
+            detail: "CUE/FLAC import has no pairs".to_string(),
+        });
     }
 
     // Natural-sort pairs by relative path: CD1, CD2, ... CD10, and Side A,
@@ -50,11 +53,13 @@ fn map_tracks_to_cue_flacs(
     let per_pair_counts: Vec<usize> = sheets.iter().map(|s| s.playable_track_count()).collect();
     let total_cue_tracks: usize = per_pair_counts.iter().sum();
     if total_cue_tracks != tracks.len() {
-        return Err(format!(
-            "Track count mismatch: CUE pairs contain {} tracks in total but release has {} tracks",
-            total_cue_tracks,
-            tracks.len(),
-        ));
+        return Err(ImportError::TrackMapping {
+            detail: format!(
+                "Track count mismatch: CUE pairs contain {} tracks in total but release has {} tracks",
+                total_cue_tracks,
+                tracks.len(),
+            ),
+        });
     }
 
     let mut track_files = Vec::with_capacity(tracks.len());
@@ -78,7 +83,7 @@ fn map_tracks_to_cue_flacs(
 fn map_tracks_to_cue_flac(
     pair: &ScannedCueFlacPair,
     tracks: Vec<DbTrack>,
-) -> Result<Vec<TrackFile>, String> {
+) -> Result<Vec<TrackFile>, ImportError> {
     let cue_sheet = pair.cue_sheet.clone();
     debug!(
         "Processing CUE/FLAC pair: {} + {} ({} tracks)",
@@ -87,10 +92,12 @@ fn map_tracks_to_cue_flac(
         cue_sheet.playable_track_count()
     );
     if cue_sheet.playable_track_count() == 0 {
-        return Err(format!(
-            "CUE sheet '{}' contains no playable audio tracks. Check CUE file format.",
-            pair.cue_file.path.display(),
-        ));
+        return Err(ImportError::TrackMapping {
+            detail: format!(
+                "CUE sheet '{}' contains no playable audio tracks. Check CUE file format.",
+                pair.cue_file.path.display(),
+            ),
+        });
     }
     // Caller pre-sliced `tracks` to match the CUE's track count, so the
     // zip-by-index below is always exact.
@@ -104,7 +111,9 @@ fn map_tracks_to_cue_flac(
         .cue_file
         .path
         .parent()
-        .ok_or_else(|| format!("CUE file has no parent: {:?}", pair.cue_file.path))?;
+        .ok_or_else(|| ImportError::TrackMapping {
+            detail: format!("CUE file has no parent: {:?}", pair.cue_file.path),
+        })?;
     let mut analyzed_files = Vec::new();
     for file_reference in cue_sheet.audio_file_references() {
         let path = cue_dir.join(file_reference);
@@ -162,7 +171,7 @@ fn main_file_analysis<'a>(
         .map(|file| &file.analysis)
 }
 
-fn ensure_cue_segment_formats_match(files: &[CueAnalyzedAudioFile]) -> Result<(), String> {
+fn ensure_cue_segment_formats_match(files: &[CueAnalyzedAudioFile]) -> Result<(), ImportError> {
     let Some(first) = files.first() else {
         return Ok(());
     };
@@ -174,7 +183,9 @@ fn ensure_cue_segment_formats_match(files: &[CueAnalyzedAudioFile]) -> Result<()
             || probe.bits_per_sample != baseline.bits_per_sample
             || probe.channels != baseline.channels
         {
-            return Err("CUE references audio files with incompatible formats".to_string());
+            return Err(ImportError::TrackMapping {
+                detail: "CUE references audio files with incompatible formats".to_string(),
+            });
         }
     }
     Ok(())
@@ -196,12 +207,19 @@ fn extract_duration_from_file(file_path: &std::path::Path) -> Option<i64> {
 }
 
 /// Probe a CUE-backed container through FFmpeg.
-pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<CueAudioAnalysis, String> {
+pub(crate) fn analyze_cue_audio(
+    audio_path: &std::path::Path,
+) -> Result<CueAudioAnalysis, ImportError> {
     let path_str = audio_path
         .to_str()
-        .ok_or_else(|| format!("Non-UTF-8 audio path: {:?}", audio_path))?;
-    let probe = crate::audio_codec::probe_audio_from_path(path_str)
-        .ok_or_else(|| format!("Failed to probe CUE audio file: {:?}", audio_path))?;
+        .ok_or_else(|| ImportError::TrackMapping {
+            detail: format!("Non-UTF-8 audio path: {:?}", audio_path),
+        })?;
+    let probe = crate::audio_codec::probe_audio_from_path(path_str).ok_or_else(|| {
+        ImportError::TrackMapping {
+            detail: format!("Failed to probe CUE audio file: {:?}", audio_path),
+        }
+    })?;
     match probe.content_type {
         crate::util::content_type::ContentType::Flac
         | crate::util::content_type::ContentType::Ape
@@ -209,27 +227,33 @@ pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<CueAudio
         | crate::util::content_type::ContentType::Pcm
         | crate::util::content_type::ContentType::WavPack
         | crate::util::content_type::ContentType::Dsd => Ok(CueAudioAnalysis { probe }),
-        other => Err(format!(
-            "CUE audio expects FLAC, APE, ALAC, PCM, WavPack, or DSD, got {} in {:?}",
-            other.display_name(),
-            audio_path
-        )),
+        other => Err(ImportError::TrackMapping {
+            detail: format!(
+                "CUE audio expects FLAC, APE, ALAC, PCM, WavPack, or DSD, got {} in {:?}",
+                other.display_name(),
+                audio_path
+            ),
+        }),
     }
 }
 
 fn map_tracks_to_individual_files(
     tracks: Vec<DbTrack>,
     audio_files: &[ScannedFile],
-) -> Result<Vec<TrackFile>, String> {
+) -> Result<Vec<TrackFile>, ImportError> {
     if audio_files.is_empty() {
-        return Err("No audio files found in discovered files".to_string());
+        return Err(ImportError::TrackMapping {
+            detail: "No audio files found in discovered files".to_string(),
+        });
     }
     if audio_files.len() != tracks.len() {
-        return Err(format!(
-            "Track count mismatch: found {} audio files but have {} tracks",
-            audio_files.len(),
-            tracks.len(),
-        ));
+        return Err(ImportError::TrackMapping {
+            detail: format!(
+                "Track count mismatch: found {} audio files but have {} tracks",
+                audio_files.len(),
+                tracks.len(),
+            ),
+        });
     }
     // Audio order within a release is already the scan's natural sort
     // (relative_path). The mapper preserves that order when zipping to
@@ -414,8 +438,10 @@ mod tests {
         let tracks = create_test_tracks(2);
         let files = categorized_track_files(Vec::new(), "FLAC");
         let result = map_tracks_to_files(tracks, &files);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("No audio files found"));
+        assert!(matches!(
+            result.unwrap_err(),
+            ImportError::TrackMapping { detail } if detail.contains("No audio files found")
+        ));
     }
     #[test]
     fn test_map_tracks_to_files_more_tracks_than_files() {
@@ -425,8 +451,10 @@ mod tests {
             "FLAC",
         );
         let result = map_tracks_to_files(tracks, &files);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Track count mismatch"));
+        assert!(matches!(
+            result.unwrap_err(),
+            ImportError::TrackMapping { detail } if detail.contains("Track count mismatch")
+        ));
     }
     #[test]
     fn test_map_tracks_to_files_more_files_than_tracks() {
@@ -441,8 +469,10 @@ mod tests {
             "FLAC",
         );
         let result = map_tracks_to_files(tracks, &files);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Track count mismatch"));
+        assert!(matches!(
+            result.unwrap_err(),
+            ImportError::TrackMapping { detail } if detail.contains("Track count mismatch")
+        ));
     }
     #[test]
     fn test_map_tracks_to_files_multi_disc_cue_flac() {
@@ -617,7 +647,10 @@ mod tests {
             ];
             let err = ensure_cue_segment_formats_match(&files)
                 .expect_err("divergent container formats must be rejected");
-            assert!(err.contains("incompatible formats"), "got: {err}");
+            assert!(
+                matches!(&err, ImportError::TrackMapping { detail } if detail.contains("incompatible formats")),
+                "got: {err}"
+            );
         }
     }
 

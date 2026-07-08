@@ -5,6 +5,7 @@ pub mod cover_art;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod discid;
 pub mod discogs_mapper;
+mod error;
 pub mod file_tag_mapper;
 mod file_validation;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -73,6 +74,7 @@ pub struct ParsedAlbum {
     pub identities: Vec<crate::import::types::ReleaseIdentity>,
 }
 
+pub use error::ImportError;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use folder_registry::{ImportFolderRegistry, WatchedFolder};
 pub use folder_scanner::{

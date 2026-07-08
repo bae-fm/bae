@@ -563,13 +563,15 @@ pub fn remap_artist_links<T: Clone>(
     label: &str,
     artist_id: impl Fn(&T) -> &str,
     assign_artist_id: impl Fn(&mut T, String),
-) -> Result<Vec<T>, String> {
+) -> Result<Vec<T>, crate::import::ImportError> {
     links
         .iter()
         .map(|link| {
             let parsed_artist_id = artist_id(link);
             let actual_id = artist_id_map.get(parsed_artist_id).ok_or_else(|| {
-                format!("{label} artist ID {parsed_artist_id} not found in artist map")
+                crate::import::ImportError::Internal {
+                    detail: format!("{label} artist ID {parsed_artist_id} not found in artist map"),
+                }
             })?;
             let mut remapped = link.clone();
             assign_artist_id(&mut remapped, actual_id.clone());
@@ -586,7 +588,7 @@ pub fn remap_artist_links<T: Clone>(
 pub fn remap_track_artists(
     track_artists: &[crate::db::DbTrackArtist],
     artist_id_map: &HashMap<String, String>,
-) -> Result<Vec<crate::db::DbTrackArtist>, String> {
+) -> Result<Vec<crate::db::DbTrackArtist>, crate::import::ImportError> {
     remap_artist_links(
         track_artists,
         artist_id_map,
@@ -600,7 +602,7 @@ pub fn remap_track_artists(
 pub fn remap_album_artists(
     album_artists: &[crate::db::DbAlbumArtist],
     artist_id_map: &HashMap<String, String>,
-) -> Result<Vec<crate::db::DbAlbumArtist>, String> {
+) -> Result<Vec<crate::db::DbAlbumArtist>, crate::import::ImportError> {
     remap_artist_links(
         album_artists,
         artist_id_map,

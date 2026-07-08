@@ -24,7 +24,8 @@ pub async fn lookup_barcode(
             ..Default::default()
         },
     )
-    .await?;
+    .await
+    .map_err(|e| e.to_string())?;
 
     let discogs = discogs_barcode_lookup(discogs_client, barcode).await;
 

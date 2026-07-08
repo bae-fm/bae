@@ -511,7 +511,6 @@ pub enum ImportProgress {
         album_id: String,
     },
     Failed {
-        id: String,
         error: String,
         import_id: String,
     },

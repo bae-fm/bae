@@ -111,6 +111,17 @@ pub enum LibraryError {
     Playback(String),
 }
 
+impl From<crate::import::ImportError> for LibraryError {
+    /// The re-identify / reset-from-source paths run import mappers but report
+    /// through `LibraryError`; a mapper failure becomes an `Import` error with
+    /// the typed error's Display as the message. (`ImportError` carries
+    /// `Db(#[from] LibraryError)` for the other direction — the two are
+    /// distinct conversions.)
+    fn from(value: crate::import::ImportError) -> Self {
+        LibraryError::Import(value.to_string())
+    }
+}
+
 /// Current sync status for query callers. Event subscribers receive the same
 /// fields as transition events; this snapshot is the current value.
 #[derive(Debug, Clone)]

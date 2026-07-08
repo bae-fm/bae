@@ -94,10 +94,15 @@ impl ImportFolderRegistry {
         }
     }
 
-    fn save(&self, library_dir: &LibraryDir) -> Result<(), String> {
+    fn save(&self, library_dir: &LibraryDir) -> Result<(), crate::import::ImportError> {
         let path = Self::file_path(library_dir);
-        let yaml = serde_yaml::to_string(self).map_err(|e| e.to_string())?;
-        std::fs::write(&path, yaml).map_err(|e| format!("writing {}: {e}", path.display()))
+        let yaml =
+            serde_yaml::to_string(self).map_err(|e| crate::import::ImportError::Registry {
+                detail: e.to_string(),
+            })?;
+        std::fs::write(&path, yaml).map_err(|e| crate::import::ImportError::Registry {
+            detail: format!("writing {}: {e}", path.display()),
+        })
     }
 
     /// The watched folders, in add order, as the list the UI renders as group
@@ -113,7 +118,11 @@ impl ImportFolderRegistry {
     /// Add `path` if not already watched, persisting on change. Returns `true`
     /// when it was newly added (the caller then scans it), `false` if it was
     /// already present.
-    pub fn add(&mut self, library_dir: &LibraryDir, path: String) -> Result<bool, String> {
+    pub fn add(
+        &mut self,
+        library_dir: &LibraryDir,
+        path: String,
+    ) -> Result<bool, crate::import::ImportError> {
         if self.folders.contains(&path) {
             return Ok(false);
         }
@@ -123,7 +132,11 @@ impl ImportFolderRegistry {
     }
 
     /// Remove `path`, persisting on change. Returns `true` when it was present.
-    pub fn remove(&mut self, library_dir: &LibraryDir, path: &str) -> Result<bool, String> {
+    pub fn remove(
+        &mut self,
+        library_dir: &LibraryDir,
+        path: &str,
+    ) -> Result<bool, crate::import::ImportError> {
         let before = self.folders.len();
         self.folders.retain(|p| p != path);
         if self.folders.len() == before {
@@ -146,7 +159,7 @@ impl ImportFolderRegistry {
         library_dir: &LibraryDir,
         path: String,
         skipped: bool,
-    ) -> Result<bool, String> {
+    ) -> Result<bool, crate::import::ImportError> {
         let changed = if skipped {
             if self.skipped.contains(&path) {
                 false

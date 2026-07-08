@@ -23,7 +23,10 @@ impl SubscriptionFilter {
                 ImportProgress::Progress { id, .. } => id == release_id,
                 ImportProgress::Complete { id, .. } => id == release_id,
                 ImportProgress::RemoteUploadQueued { id, .. } => id == release_id,
-                ImportProgress::Failed { id, .. } => id == release_id,
+                // A failed import has no release row (it never reached the
+                // atomic finalize), so a release-filtered subscriber never
+                // sees Failed.
+                ImportProgress::Failed { .. } => false,
             },
             SubscriptionFilter::Import { import_id } => match progress {
                 ImportProgress::Preparing { import_id: iid, .. } => iid == import_id,
@@ -154,6 +157,12 @@ mod tests {
             album_title: "Test".to_string(),
             artist_name: "Artist".to_string(),
         },),);
+        // A failed import has no release row, so a release-filtered
+        // subscriber never sees Failed.
+        assert!(!filter.matches(&ImportProgress::Failed {
+            error: "error".to_string(),
+            import_id: "import-1".to_string(),
+        },),);
     }
     #[test]
     fn test_import_filter_matches_preparing_events() {
@@ -205,7 +214,6 @@ mod tests {
             album_id: "album-1".to_string(),
         },),);
         assert!(filter.matches(&ImportProgress::Failed {
-            id: "release-1".to_string(),
             error: "error".to_string(),
             import_id: "import-1".to_string(),
         },),);
@@ -252,7 +260,6 @@ mod tests {
             album_id: "album-1".to_string(),
         },),);
         assert!(filter.matches(&ImportProgress::Failed {
-            id: "release-1".to_string(),
             error: "error".to_string(),
             import_id: "import-4".to_string(),
         },),);

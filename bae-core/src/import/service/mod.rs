@@ -425,12 +425,16 @@ impl ImportService {
 
         if let Err(e) = result {
             error!("Import failed: {}", e);
+            // The typed error becomes a user-facing string only here, at the
+            // pipeline's terminal consumer. The variant Displays embed their
+            // `#[from]` source messages, so `to_string()` carries the chain.
+            let error = e.to_string();
 
             // No release to mark failed -- if import fails before the atomic
             // finalize, there's no release in the DB. Update the import record.
             if let Err(db_err) = self
                 .library_manager
-                .update_import_error(&import_id, &e)
+                .update_import_error(&import_id, &error)
                 .await
             {
                 error!("Failed to update import error: {}", db_err);
@@ -440,11 +444,7 @@ impl ImportService {
                 &self.event_tx,
                 crate::import::handle::ImportEvent::ImportProgress {
                     candidate_key,
-                    progress: ImportProgress::Failed {
-                        id: import_id.clone(),
-                        error: e,
-                        import_id,
-                    },
+                    progress: ImportProgress::Failed { error, import_id },
                 },
             );
         }
@@ -470,7 +470,7 @@ impl ImportService {
         pin: bool,
         identity_choice: crate::import::IdentityChoice,
         user_edit: Option<crate::import::ReleaseUserEdit>,
-    ) -> Result<(), String> {
+    ) -> Result<(), crate::import::ImportError> {
         let library_manager = &self.library_manager;
 
         let import_start = std::time::Instant::now();
@@ -487,15 +487,16 @@ impl ImportService {
             crate::import::folder_scanner::collect_release_candidate_files(&folder_buf)
         })
         .await
-        .map_err(|e| format!("Folder scan task failed: {e}"))??;
+        .map_err(|e| crate::import::ImportError::Internal {
+            detail: format!("Folder scan task failed: {e}"),
+        })??;
 
         // Content fingerprint of the folder tree. Used below to overwrite a
         // prior import of the same files, then stamped onto the new release row.
         let content_hash = categorized.content_hash();
         let replacement_plans = library_manager
             .import_replacement_plans_for_content_hash(&content_hash)
-            .await
-            .map_err(|e| format!("Failed to prepare prior import replacement: {e}"))?;
+            .await?;
         let replacement_release_ids: Vec<String> = replacement_plans
             .iter()
             .map(|plan| plan.db_delete.release_id.clone())
@@ -542,7 +543,9 @@ impl ImportService {
                     )
                 })
                 .await
-                .map_err(|e| format!("unknown-seed mapping task failed: {e}"))??;
+                .map_err(|e| crate::import::ImportError::Internal {
+                    detail: format!("unknown-seed mapping task failed: {e}"),
+                })??;
                 (parsed, Vec::new())
             }
         };
@@ -554,7 +557,9 @@ impl ImportService {
                 &import_id,
                 folder
                     .to_str()
-                    .ok_or_else(|| format!("Non-UTF-8 folder path: {:?}", folder))?,
+                    .ok_or_else(|| crate::import::ImportError::Internal {
+                        detail: format!("Non-UTF-8 folder path: {:?}", folder),
+                    })?,
                 &identity_choice,
                 user_edit,
                 &replacement_release_ids,
@@ -597,24 +602,25 @@ impl ImportService {
         // at cover-select time; if so this is a cache hit. The download
         // function returns the content type from the HTTP response,
         // so no magic-byte sniffing is required here.
-        let remote_cover_data =
-            if let Some(CoverSelection::Remote(ref url, source)) = selected_cover {
-                emit_preparing(PrepareStep::WritingCoverArt);
-                let (bytes, content_type) =
-                    crate::import::cover_art::download_cover_art_bytes(url).await?;
-                if matches!(
-                    content_type,
-                    crate::util::content_type::ContentType::OctetStream
-                ) {
-                    return Err(
-                        "Cover bytes aren't a recognized image format (PNG/JPEG/GIF/WebP/BMP)"
-                            .to_string(),
-                    );
-                }
-                Some((bytes, content_type, url.clone(), source))
-            } else {
-                None
-            };
+        let remote_cover_data = if let Some(CoverSelection::Remote(ref url, source)) =
+            selected_cover
+        {
+            emit_preparing(PrepareStep::WritingCoverArt);
+            let (bytes, content_type) =
+                crate::import::cover_art::download_cover_art_bytes(url).await?;
+            if matches!(
+                content_type,
+                crate::util::content_type::ContentType::OctetStream
+            ) {
+                return Err(crate::import::ImportError::CoverArt {
+                    detail: "Cover bytes aren't a recognized image format (PNG/JPEG/GIF/WebP/BMP)"
+                        .to_string(),
+                });
+            }
+            Some((bytes, content_type, url.clone(), source))
+        } else {
+            None
+        };
 
         step_times.push(("write_cover_art", last_step_start.elapsed()));
         last_step_start = std::time::Instant::now();
@@ -655,7 +661,9 @@ impl ImportService {
                 crate::import::file_tag_mapper::read_embedded_cover(&audio_paths)
             })
             .await
-            .map_err(|e| format!("embedded-cover read task failed: {e}"))??
+            .map_err(|e| crate::import::ImportError::Internal {
+                detail: format!("embedded-cover read task failed: {e}"),
+            })??
         } else {
             None
         };
@@ -806,7 +814,7 @@ impl ImportService {
         embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
         db_metadata: &[DbReleaseMetadata],
         replacement_plans: &[crate::library::manager::ImportReplacementPlan],
-    ) -> Result<(), String> {
+    ) -> Result<(), crate::import::ImportError> {
         let library_manager = &self.library_manager;
         let total_files = discovered_files.len();
         let PreparedMetadata {
@@ -863,20 +871,26 @@ impl ImportService {
         let local_root = {
             let mut ancestor: Option<&Path> = None;
             for file in discovered_files.iter() {
-                let parent = file
-                    .path
-                    .parent()
-                    .ok_or_else(|| format!("File has no parent: {:?}", file.path))?;
+                let parent =
+                    file.path
+                        .parent()
+                        .ok_or_else(|| crate::import::ImportError::Internal {
+                            detail: format!("File has no parent: {:?}", file.path),
+                        })?;
                 ancestor = Some(match ancestor {
                     None => parent,
                     Some(a) => common_ancestor(a, parent),
                 });
             }
-            ancestor.ok_or_else(|| "No files to determine local path".to_string())?
+            ancestor.ok_or_else(|| crate::import::ImportError::Internal {
+                detail: "No files to determine local path".to_string(),
+            })?
         };
         let local_path = local_root
             .to_str()
-            .ok_or_else(|| format!("Cannot convert path to string: {:?}", local_root))?
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("Cannot convert path to string: {:?}", local_root),
+            })?
             .to_string();
 
         // Per-track progress jumps to 100% immediately — files are referenced in
@@ -959,11 +973,9 @@ impl ImportService {
             if self.library_manager.get_config().verify_decode_on_import
                 && !loudness.broken.is_empty()
             {
-                return Err(format!(
-                    "decode verification failed for {} track(s): {}",
-                    loudness.broken.len(),
-                    loudness.broken.join("; ")
-                ));
+                return Err(crate::import::ImportError::DecodeVerification {
+                    broken: loudness.broken,
+                });
             }
         }
 
@@ -1003,7 +1015,8 @@ impl ImportService {
         // `finalize_import_atomic` derives from it must say JPEG too.
         let cover_winner = match cover_winner {
             Some((mut image, bytes)) => {
-                let bytes = crate::util::cover::resize_cover(&bytes)?;
+                let bytes = crate::util::cover::resize_cover(&bytes)
+                    .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
                 image.content_type = crate::util::content_type::ContentType::Jpeg;
                 image.file_size = bytes.len() as i64;
                 Some((image, bytes))
@@ -1061,8 +1074,7 @@ impl ImportService {
                 &local_path,
                 replacement_plans,
             )
-            .await
-            .map_err(|e| format!("Failed to finalize import: {}", e))?;
+            .await?;
 
         // A Remote import transitions to the cloud in the background — the same
         // flow the "Make Remote" action runs: coven uploads each file from its
@@ -1083,11 +1095,15 @@ impl ImportService {
                     .fail_import_and_delete_release(import_id, &db_release.id, &remote_error)
                     .await
                 {
-                    return Err(format!(
-                        "{remote_error}; removing release and marking import failed failed: {import_error}"
-                    ));
+                    return Err(crate::import::ImportError::Internal {
+                        detail: format!(
+                            "{remote_error}; removing release and marking import failed failed: {import_error}"
+                        ),
+                    });
                 }
-                return Err(remote_error);
+                return Err(crate::import::ImportError::Db(
+                    crate::library::LibraryError::Storage(remote_error),
+                ));
             }
         }
 
@@ -1220,18 +1236,20 @@ fn apply_user_edit_to_seed(
     track_artists: &mut Vec<crate::db::DbTrackArtist>,
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
-) -> Result<(), String> {
+) -> Result<(), crate::import::ImportError> {
     use crate::db::{DbAlbumArtist, DbArtist, DbTrackArtist};
 
     if edit.album_artist_names.is_empty() {
-        return Err("Album must have at least one artist".to_string());
+        return Err(crate::import::EditValidationError::NoAlbumArtist.into());
     }
     if edit.tracks.len() != db_tracks.len() {
-        return Err(format!(
-            "Track count mismatch: seed has {} tracks, edit supplies {}",
-            db_tracks.len(),
-            edit.tracks.len()
-        ));
+        return Err(crate::import::ImportError::Internal {
+            detail: format!(
+                "Track count mismatch: seed has {} tracks, edit supplies {}",
+                db_tracks.len(),
+                edit.tracks.len()
+            ),
+        });
     }
 
     let now = clock.now();
@@ -1267,7 +1285,9 @@ fn apply_user_edit_to_seed(
             .iter()
             .find(|a| a.id == db_album.artist_id)
             .map(|a| a.name.clone())
-            .ok_or_else(|| "primary album artist missing from artists vec".to_string())?;
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: "primary album artist missing from artists vec".to_string(),
+            })?;
         names.push(primary);
         let mut junction = album_artists.clone();
         junction.sort_by_key(|aa| aa.position);
@@ -1276,8 +1296,8 @@ fn apply_user_edit_to_seed(
                 .iter()
                 .find(|a| a.id == aa.artist_id)
                 .map(|a| a.name.clone())
-                .ok_or_else(|| {
-                    format!("album_artist references missing artist {}", aa.artist_id)
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!("album_artist references missing artist {}", aa.artist_id),
                 })?;
             names.push(name);
         }
@@ -1336,8 +1356,8 @@ fn apply_user_edit_to_seed(
                     .iter()
                     .find(|a| a.id == ta.artist_id)
                     .map(|a| a.name.clone())
-                    .ok_or_else(|| {
-                        format!("track_artist references missing artist {}", ta.artist_id)
+                    .ok_or_else(|| crate::import::ImportError::Internal {
+                        detail: format!("track_artist references missing artist {}", ta.artist_id),
                     })
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -1401,12 +1421,12 @@ pub(crate) fn common_ancestor<'a>(a: &'a Path, b: &Path) -> &'a Path {
 pub(crate) async fn prepare_release(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,
-) -> Result<crate::import::folder_scanner::PreparedRelease, String> {
+) -> Result<crate::import::folder_scanner::PreparedRelease, crate::import::ImportError> {
     match release_ref.source {
         MetadataSource::MusicBrainz => {
             let discogs_client = library_manager
                 .discogs_client()
-                .map_err(|e| format!("Failed to read Discogs key: {e}"))?;
+                .map_err(|detail| crate::import::ImportError::Config { detail })?;
             crate::import::search::commit_mb_release(
                 library_manager,
                 &release_ref.id,
@@ -1417,8 +1437,8 @@ pub(crate) async fn prepare_release(
         MetadataSource::Discogs => {
             let client = library_manager
                 .discogs_client()
-                .map_err(|e| format!("Failed to read Discogs key: {e}"))?
-                .ok_or_else(|| "Discogs API key not configured".to_string())?;
+                .map_err(|detail| crate::import::ImportError::Config { detail })?
+                .ok_or(crate::import::ImportError::DiscogsNotConfigured)?;
             crate::import::search::commit_discogs_release(
                 &client,
                 &release_ref.id,
@@ -1426,7 +1446,6 @@ pub(crate) async fn prepare_release(
                 library_manager.ids().as_ref(),
             )
             .await
-            .map_err(|e| format!("Failed to fetch Discogs release: {e}"))
         }
     }
 }

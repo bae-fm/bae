@@ -166,7 +166,7 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
         .unwrap_err();
 
     assert!(
-        err.contains("Selected cover") && err.contains("not found"),
+        matches!(&err, crate::import::ImportError::CoverArt { detail } if detail.contains("Selected cover") && detail.contains("not found")),
         "got: {err}"
     );
 }
@@ -180,7 +180,7 @@ async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
         .unwrap_err();
 
     assert!(
-        err.contains("Selected cover") && err.contains("not found"),
+        matches!(&err, crate::import::ImportError::CoverArt { detail } if detail.contains("Selected cover") && detail.contains("not found")),
         "got: {err}"
     );
 }
@@ -212,7 +212,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
 
     let err = result.unwrap_err();
     assert!(
-        err.contains("Selected cover cover.bmp not found"),
+        matches!(&err, crate::import::ImportError::CoverArt { detail } if detail.contains("Selected cover cover.bmp not found")),
         "got: {err}"
     );
 }
@@ -297,7 +297,10 @@ async fn unreadable_selected_cover_is_an_error() {
 
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o600)).unwrap();
     let err = result.unwrap_err();
-    assert!(err.contains("Failed to read cover art"), "got: {err}");
+    assert!(
+        matches!(&err, crate::import::ImportError::CoverArt { detail } if detail.contains("Failed to read cover art")),
+        "got: {err}"
+    );
 }
 
 async fn rescan_seeded_root(
@@ -756,7 +759,10 @@ fn user_edit_track_count_mismatch_is_an_error() {
         &SequentialIdProvider::new("seed"),
     )
     .unwrap_err();
-    assert!(err.contains("Track count mismatch"), "got: {err}");
+    assert!(
+        matches!(&err, crate::import::ImportError::Internal { detail } if detail.contains("Track count mismatch")),
+        "got: {err}"
+    );
 }
 
 /// Source-id linkage on artist rows (e.g. `musicbrainz_artist_id`)

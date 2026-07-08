@@ -364,12 +364,8 @@ async fn test_exact_release_duplicate_rejected() {
 
     let err = result.expect_err("duplicate import should be rejected");
     assert!(
-        err.contains("already in your library"),
-        "Expected duplicate error, got: {err}",
-    );
-    assert!(
-        err.contains("Album Title"),
-        "Expected album title in error, got: {err}",
+        matches!(&err, crate::import::ImportError::AlreadyInLibrary { album_title } if album_title == "Album Title"),
+        "Expected duplicate error naming the album, got: {err}",
     );
 
     // Discogs side mirrors the same logic.
@@ -761,7 +757,7 @@ fn remap_track_artists_errors_on_unmapped_id() {
     let err = remap_track_artists(std::slice::from_ref(&ta), &std::collections::HashMap::new())
         .unwrap_err();
     assert!(
-        err.contains("orphan-track-artist"),
+        matches!(&err, crate::import::ImportError::Internal { detail } if detail.contains("orphan-track-artist")),
         "error should name the unmapped id: {err}"
     );
 }
@@ -785,7 +781,7 @@ fn remap_album_artists_errors_on_unmapped_id() {
     let err = remap_album_artists(std::slice::from_ref(&aa), &std::collections::HashMap::new())
         .unwrap_err();
     assert!(
-        err.contains("orphan-album-artist"),
+        matches!(&err, crate::import::ImportError::Internal { detail } if detail.contains("orphan-album-artist")),
         "error should name the unmapped id: {err}"
     );
 }

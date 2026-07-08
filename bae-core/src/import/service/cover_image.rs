@@ -21,8 +21,9 @@ impl ImportService {
         release_id: &str,
         discovered_files: &[DiscoveredFile],
         selected_cover_path: Option<&str>,
-    ) -> Result<Option<(crate::db::DbLibraryImage, Vec<u8>)>, String> {
+    ) -> Result<Option<(crate::db::DbLibraryImage, Vec<u8>)>, crate::import::ImportError> {
         use crate::db::{DbLibraryImage, LibraryImageType};
+        use crate::import::ImportError;
 
         let mut image_files: Vec<(&DiscoveredFile, &str)> = Vec::new();
         for f in discovered_files {
@@ -36,11 +37,11 @@ impl ImportService {
                 image_files
                     .iter()
                     .find(|(f, _)| f.relative_path == selected_path)
-                    .ok_or_else(|| {
-                        format!(
+                    .ok_or_else(|| ImportError::CoverArt {
+                        detail: format!(
                             "Selected cover {} not found among discovered images",
                             selected_path
-                        )
+                        ),
                     })?,
             )
         } else {
@@ -58,11 +59,11 @@ impl ImportService {
 
         // Read the cover bytes from the user's folder; the caller stores them in
         // coven's local store and writes the row.
-        let bytes = std::fs::read(&cover_file.path).map_err(|e| {
-            format!(
+        let bytes = std::fs::read(&cover_file.path).map_err(|e| ImportError::CoverArt {
+            detail: format!(
                 "Failed to read cover art {}: {e}",
                 cover_file.path.display()
-            )
+            ),
         })?;
 
         let now = self.library_manager.clock().now();

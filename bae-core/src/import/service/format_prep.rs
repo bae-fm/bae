@@ -11,6 +11,7 @@ use tracing::warn;
 
 use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole};
 use crate::import::types::{CueAudioAnalysis, CueFlacAnalysis, TrackFile};
+use crate::import::ImportError;
 use crate::util::content_type::ContentType;
 use crate::util::content_type_hint::ContentTypeHint;
 
@@ -35,23 +36,43 @@ fn admitted_audio_content_type(content_type: &ContentType) -> bool {
 fn ensure_probe_audio_format(
     path: &Path,
     probe: &crate::audio_codec::ProbeResult,
-) -> Result<(), String> {
+) -> Result<(), ImportError> {
     if probe.sample_rate == 0 || probe.channels == 0 {
-        return Err(format!(
-            "unusable audio format in {}: sample_rate={}, channels={}",
-            path.display(),
-            probe.sample_rate,
-            probe.channels
-        ));
+        return Err(ImportError::TrackMapping {
+            detail: format!(
+                "unusable audio format in {}: sample_rate={}, channels={}",
+                path.display(),
+                probe.sample_rate,
+                probe.channels
+            ),
+        });
     }
     if !admitted_audio_content_type(&probe.content_type) {
-        return Err(format!(
-            "Unsupported audio codec {} in {}",
-            probe.content_type.display_name(),
-            path.display()
-        ));
+        return Err(ImportError::TrackMapping {
+            detail: format!(
+                "Unsupported audio codec {} in {}",
+                probe.content_type.display_name(),
+                path.display()
+            ),
+        });
     }
     Ok(())
+}
+
+/// Probe a file's audio format and validate it's admissible, returning the
+/// probe. The typed `TrackMapping` failure names a non-UTF-8 path, an
+/// unprobeable file, or an unusable/unsupported codec.
+fn probe_and_validate_audio(path: &Path) -> Result<crate::audio_codec::ProbeResult, ImportError> {
+    let path_str = path.to_str().ok_or_else(|| ImportError::TrackMapping {
+        detail: format!("Invalid path: {}", path.display()),
+    })?;
+    let probe = crate::audio_codec::probe_audio_from_path(path_str).ok_or_else(|| {
+        ImportError::TrackMapping {
+            detail: format!("Failed to probe audio file: {}", path.display()),
+        }
+    })?;
+    ensure_probe_audio_format(path, &probe)?;
+    Ok(probe)
 }
 
 /// Resolve the probe-verified `ContentType` for a discovered file.
@@ -62,21 +83,17 @@ fn ensure_probe_audio_format(
 /// that's an honest mapping for images (an extension on image bytes predicts
 /// the codec), text, and PDF. Anything the hint can't classify becomes
 /// `OctetStream`, which flows through the DB as-is.
-pub(super) fn resolve_file_content_type(path: &Path) -> Result<ContentType, String> {
-    let ext = path
-        .extension()
-        .and_then(|e| e.to_str())
-        .ok_or_else(|| format!("File has no extension: {:?}", path))?;
+pub(super) fn resolve_file_content_type(path: &Path) -> Result<ContentType, ImportError> {
+    let ext =
+        path.extension()
+            .and_then(|e| e.to_str())
+            .ok_or_else(|| ImportError::TrackMapping {
+                detail: format!("File has no extension: {:?}", path),
+            })?;
     let hint = ContentTypeHint::from_extension(ext);
 
     if hint.is_audio() {
-        let path_str = path
-            .to_str()
-            .ok_or_else(|| format!("Invalid path: {}", path.display()))?;
-        let probe = crate::audio_codec::probe_audio_from_path(path_str)
-            .ok_or_else(|| format!("Failed to probe audio file: {}", path.display()))?;
-        ensure_probe_audio_format(path, &probe)?;
-        return Ok(probe.content_type);
+        return Ok(probe_and_validate_audio(path)?.content_type);
     }
 
     Ok(match hint {
@@ -101,36 +118,42 @@ struct BuiltAudioFormat {
 fn cue_track_by_playable_index(
     cue_pair: &CueFlacAnalysis,
     cue_index: usize,
-) -> Result<&crate::cue_flac::CueTrack, String> {
+) -> Result<&crate::cue_flac::CueTrack, ImportError> {
     cue_pair
         .cue_sheet
         .playable_tracks()
         .nth(cue_index)
-        .ok_or_else(|| format!("CUE playable track index {cue_index} out of bounds"))
+        .ok_or_else(|| ImportError::TrackMapping {
+            detail: format!("CUE playable track index {cue_index} out of bounds"),
+        })
 }
 
 fn cue_file_analysis<'a>(
     cue_pair: &'a CueFlacAnalysis,
     file_reference: &str,
-) -> Result<&'a CueAudioAnalysis, String> {
+) -> Result<&'a CueAudioAnalysis, ImportError> {
     cue_pair
         .audio_files
         .iter()
         .find(|file| file.file_reference == file_reference)
         .map(|file| &file.analysis)
-        .ok_or_else(|| format!("CUE references unprobed audio file: {file_reference}"))
+        .ok_or_else(|| ImportError::Internal {
+            detail: format!("CUE references unprobed audio file: {file_reference}"),
+        })
 }
 
 fn cue_file_path<'a>(
     cue_pair: &'a CueFlacAnalysis,
     file_reference: &str,
-) -> Result<&'a Path, String> {
+) -> Result<&'a Path, ImportError> {
     cue_pair
         .audio_files
         .iter()
         .find(|file| file.file_reference == file_reference)
         .map(|file| file.path.as_path())
-        .ok_or_else(|| format!("CUE references unmapped audio file: {file_reference}"))
+        .ok_or_else(|| ImportError::Internal {
+            detail: format!("CUE references unmapped audio file: {file_reference}"),
+        })
 }
 
 /// Build track-level audio format metadata for a CUE-backed track.
@@ -140,7 +163,7 @@ fn cue_backed_audio_format(
     cue_index: usize,
     id: String,
     now: chrono::DateTime<chrono::Utc>,
-) -> Result<DbAudioFormat, String> {
+) -> Result<DbAudioFormat, ImportError> {
     let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
     let cue_path = cue_file_path(cue_pair, &cue_track.file_reference)?;
 
@@ -187,13 +210,8 @@ fn standalone_probed_audio_format(
     file_path: &Path,
     id: String,
     now: chrono::DateTime<chrono::Utc>,
-) -> Result<crate::db::DbAudioFormat, String> {
-    let path_str = file_path
-        .to_str()
-        .ok_or_else(|| format!("Invalid path: {}", file_path.display()))?;
-    let probe = crate::audio_codec::probe_audio_from_path(path_str)
-        .ok_or_else(|| format!("Failed to probe audio file: {}", file_path.display()))?;
-    ensure_probe_audio_format(file_path, &probe)?;
+) -> Result<crate::db::DbAudioFormat, ImportError> {
+    let probe = probe_and_validate_audio(file_path)?;
 
     // A per-track file is its own whole-file source; the sample window lives in
     // its `audio_format_segments` row.
@@ -221,7 +239,7 @@ struct CueAnalysisFormat {
 fn cue_analysis_format(
     analysis: &CueAudioAnalysis,
     path: &Path,
-) -> Result<CueAnalysisFormat, String> {
+) -> Result<CueAnalysisFormat, ImportError> {
     let probe = &analysis.probe;
     ensure_probe_audio_format(path, probe)?;
     Ok(CueAnalysisFormat {
@@ -340,7 +358,7 @@ impl ImportService {
         byte_landings_by_file: &HashMap<PathBuf, Option<HashMap<u64, u64>>>,
         ids: &dyn coven::IdProvider,
         now: chrono::DateTime<chrono::Utc>,
-    ) -> Result<Vec<DbAudioSegment>, String> {
+    ) -> Result<Vec<DbAudioSegment>, ImportError> {
         let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
         let main_path = cue_file_path(cue_pair, &cue_track.file_reference)?;
         let fmt = cue_analysis_format(
@@ -352,9 +370,14 @@ impl ImportService {
 
         if let crate::cue_flac::CuePregap::Audio(index) = &cue_track.pregap {
             let pregap_path = cue_file_path(cue_pair, &index.file_reference)?;
-            let pregap_file_id = file_ids.get(pregap_path).ok_or_else(|| {
-                format!("No DbFile registered for CUE pregap source {pregap_path:?}")
-            })?;
+            let pregap_file_id =
+                file_ids
+                    .get(pregap_path)
+                    .ok_or_else(|| ImportError::Internal {
+                        detail: format!(
+                            "No DbFile registered for CUE pregap source {pregap_path:?}"
+                        ),
+                    })?;
             let start_sample = index.frames * sample_rate / 75;
             let end_frames = if index.file_reference == cue_track.file_reference {
                 Some(cue_track.start_cue_frames)
@@ -383,7 +406,9 @@ impl ImportService {
 
         let main_file_id = file_ids
             .get(main_path)
-            .ok_or_else(|| format!("No DbFile registered for CUE source {main_path:?}"))?;
+            .ok_or_else(|| ImportError::Internal {
+                detail: format!("No DbFile registered for CUE source {main_path:?}"),
+            })?;
         let start_sample = cue_track.start_cue_frames * sample_rate / 75;
         let end_sample = cue_segment_end_frames(cue_pair, cue_index, &cue_track.file_reference)
             .map(|frames| frames * sample_rate / 75);
@@ -413,7 +438,7 @@ impl ImportService {
         file_ids: &HashMap<PathBuf, String>,
         clock: &dyn coven::Clock,
         ids: &dyn coven::IdProvider,
-    ) -> Result<BuiltAudioFormats, String> {
+    ) -> Result<BuiltAudioFormats, ImportError> {
         let now = clock.now();
         let mut audio_formats = Vec::with_capacity(tracks_to_files.len());
         let mut audio_segments = Vec::new();
@@ -457,9 +482,11 @@ impl ImportService {
                     db_track,
                     file_path,
                 } => {
-                    let file_id = file_ids.get(file_path).ok_or_else(|| {
-                        format!("No DbFile registered for track source {file_path:?}")
-                    })?;
+                    let file_id = file_ids
+                        .get(file_path)
+                        .ok_or_else(|| ImportError::Internal {
+                            detail: format!("No DbFile registered for track source {file_path:?}"),
+                        })?;
                     let af =
                         standalone_probed_audio_format(&db_track.id, file_path, ids.new_id(), now)?;
                     let segment = Self::audio_segment(
@@ -549,7 +576,10 @@ mod tests {
     #[test]
     fn resolve_file_content_type_errors_without_extension() {
         let error = resolve_file_content_type(Path::new("/x/README")).unwrap_err();
-        assert!(error.contains("no extension"), "got: {error}");
+        assert!(
+            matches!(&error, ImportError::TrackMapping { detail } if detail.contains("no extension")),
+            "got: {error}"
+        );
     }
 
     fn test_clock() -> coven::FixedClock {
@@ -759,7 +789,10 @@ FILE "Test Album.ape" WAVE
         let error = ensure_probe_audio_format(path, &probe_result(44_100, 0))
             .expect_err("zero channels should be rejected");
 
-        assert!(error.contains("unusable audio format"));
+        assert!(matches!(
+            &error,
+            ImportError::TrackMapping { detail } if detail.contains("unusable audio format")
+        ));
     }
 
     #[test]
@@ -769,7 +802,10 @@ FILE "Test Album.ape" WAVE
         let error = ensure_probe_audio_format(path, &probe_result(0, 2))
             .expect_err("zero sample rate should be rejected");
 
-        assert!(error.contains("unusable audio format"));
+        assert!(matches!(
+            &error,
+            ImportError::TrackMapping { detail } if detail.contains("unusable audio format")
+        ));
     }
 
     #[test]
@@ -808,7 +844,10 @@ FILE "test.flac" WAVE
             cue_backed_audio_format("track-id", &cue_pair, 0, "audio-format-id".to_string(), now)
                 .expect_err("zero-channel CUE audio format should fail");
 
-        assert!(error.contains("unusable audio format"));
+        assert!(matches!(
+            &error,
+            ImportError::TrackMapping { detail } if detail.contains("unusable audio format")
+        ));
     }
 
     #[test]

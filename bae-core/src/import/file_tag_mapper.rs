@@ -27,6 +27,7 @@ use super::ParsedAlbum;
 use crate::cue_flac::CueSheet;
 use crate::db::{Pressing, ReleaseMetadataSource};
 use crate::import::folder_scanner::{AudioContent, CategorizedFiles};
+use crate::import::ImportError;
 use crate::util::content_type::ContentType;
 use coven::Clock;
 use coven::IdProvider;
@@ -74,9 +75,11 @@ pub fn map_file_tags_to_db(
     folder_name: Option<&str>,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, String> {
+) -> Result<ParsedAlbum, ImportError> {
     if audio_files.is_empty() {
-        return Err("file-tag seeding requires at least one audio file".to_string());
+        return Err(ImportError::FileTags {
+            detail: "file-tag seeding requires at least one audio file".to_string(),
+        });
     }
 
     let extracted: Vec<FileTags> = audio_files
@@ -250,7 +253,7 @@ pub fn map_unknown_candidate_to_db(
     folder_name: Option<&str>,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, String> {
+) -> Result<ParsedAlbum, ImportError> {
     match &categorized.audio {
         AudioContent::CueFlacPairs { pairs, .. } => {
             let mut sorted = pairs.iter().collect::<Vec<_>>();
@@ -285,9 +288,11 @@ pub fn map_cue_sheets_to_db(
     folder_name: Option<&str>,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, String> {
+) -> Result<ParsedAlbum, ImportError> {
     if sheets.is_empty() {
-        return Err("CUE seeding requires at least one sheet".to_string());
+        return Err(ImportError::FileTags {
+            detail: "CUE seeding requires at least one sheet".to_string(),
+        });
     }
 
     // Album title: a sheet TITLE if any carries one, else the rip's folder
@@ -386,24 +391,28 @@ fn probe_content_type(path: &Path) -> Option<ContentType> {
 /// read.
 pub fn read_embedded_cover(
     audio_files: &[PathBuf],
-) -> Result<Option<(Vec<u8>, ContentType)>, String> {
+) -> Result<Option<(Vec<u8>, ContentType)>, ImportError> {
     for path in audio_files {
         let probe = match Probe::open(path) {
             Ok(probe) => probe,
             Err(e) => {
-                return Err(format!(
-                    "failed to open {} for embedded cover read: {e}",
-                    path.display()
-                ));
+                return Err(ImportError::FileTags {
+                    detail: format!(
+                        "failed to open {} for embedded cover read: {e}",
+                        path.display()
+                    ),
+                });
             }
         };
         let tagged = match probe.read() {
             Ok(tagged) => tagged,
             Err(e) => {
-                return Err(format!(
-                    "failed to read embedded cover tags from {}: {e}",
-                    path.display()
-                ));
+                return Err(ImportError::FileTags {
+                    detail: format!(
+                        "failed to read embedded cover tags from {}: {e}",
+                        path.display()
+                    ),
+                });
             }
         };
         let Some(tag) = tagged.primary_tag().or_else(|| tagged.first_tag()) else {
@@ -453,12 +462,13 @@ fn image_content_type(mime: &lofty::picture::MimeType) -> Option<ContentType> {
 }
 
 /// Extract embedded tag values from a single audio file.
-fn read_tags(path: &Path) -> Result<FileTags, String> {
-    let probe =
-        Probe::open(path).map_err(|e| format!("failed to open {}: {}", path.display(), e))?;
-    let tagged = probe
-        .read()
-        .map_err(|e| format!("failed to read tags from {}: {}", path.display(), e))?;
+fn read_tags(path: &Path) -> Result<FileTags, ImportError> {
+    let probe = Probe::open(path).map_err(|e| ImportError::FileTags {
+        detail: format!("failed to open {}: {}", path.display(), e),
+    })?;
+    let tagged = probe.read().map_err(|e| ImportError::FileTags {
+        detail: format!("failed to read tags from {}: {}", path.display(), e),
+    })?;
 
     let content_type = probe_content_type(path);
 
@@ -552,14 +562,14 @@ mod tests {
 
     /// Run the mapper with deterministic fakes. Exercises the real
     /// `map_file_tags_to_db`; only the clock/id inputs are faked.
-    fn map_tags(audio_files: &[PathBuf]) -> Result<ParsedAlbum, String> {
+    fn map_tags(audio_files: &[PathBuf]) -> Result<ParsedAlbum, ImportError> {
         map_tags_with_folder(audio_files, None)
     }
 
     fn map_tags_with_folder(
         audio_files: &[PathBuf],
         folder_name: Option<&str>,
-    ) -> Result<ParsedAlbum, String> {
+    ) -> Result<ParsedAlbum, ImportError> {
         let clock = FixedClock(
             chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
                 .unwrap()
@@ -726,7 +736,10 @@ mod tests {
         let ids = SequentialIdProvider::new("cue");
         let err = map_cue_sheets_to_db(&[], &[], Some("Folder"), &clock, &ids)
             .expect_err("expected empty sheets to error");
-        assert!(err.contains("at least one sheet"), "got: {err}");
+        assert!(
+            matches!(&err, ImportError::FileTags { detail } if detail.contains("at least one sheet")),
+            "got: {err}"
+        );
     }
 
     /// Copy a fixture into `dest_dir/{name}` and stamp it with the given
@@ -1223,7 +1236,10 @@ mod tests {
     #[test]
     fn empty_input_returns_error() {
         let err = map_tags(&[]).unwrap_err();
-        assert!(err.contains("at least one"), "got: {err}");
+        assert!(
+            matches!(&err, ImportError::FileTags { detail } if detail.contains("at least one")),
+            "got: {err}"
+        );
     }
 
     /// Title falls back to the filename stem when the TITLE tag is
@@ -1506,9 +1522,10 @@ mod tests {
         let err = read_embedded_cover(std::slice::from_ref(&missing)).unwrap_err();
 
         assert!(
-            err.contains("failed to open")
-                && err.contains("for embedded cover read")
-                && err.contains(&missing.display().to_string()),
+            matches!(&err, ImportError::FileTags { detail }
+                if detail.contains("failed to open")
+                    && detail.contains("for embedded cover read")
+                    && detail.contains(&missing.display().to_string())),
             "expected embedded-cover open error, got {err:?}"
         );
     }
@@ -1523,8 +1540,9 @@ mod tests {
         let err = read_embedded_cover(std::slice::from_ref(&path)).unwrap_err();
 
         assert!(
-            err.contains("failed to read embedded cover tags")
-                && err.contains(&path.display().to_string()),
+            matches!(&err, ImportError::FileTags { detail }
+                if detail.contains("failed to read embedded cover tags")
+                    && detail.contains(&path.display().to_string())),
             "expected embedded-cover tag-read error, got {err:?}"
         );
     }
@@ -1656,6 +1674,9 @@ mod tests {
             .join("placeholder-dsd.dsf");
         let err = map_tags_with_folder(&[path], Some("Album Title"))
             .expect_err("lofty does not read DSF tags");
-        assert!(err.contains("failed to read tags"), "{err}");
+        assert!(
+            matches!(&err, ImportError::FileTags { detail } if detail.contains("failed to read tags")),
+            "{err}"
+        );
     }
 }

@@ -5,7 +5,11 @@ impl ImportServiceHandle {
     /// and broadcasting it so the import view re-tabs the row (New ↔ Skipped).
     /// A no-op request (already in the requested state) persists nothing and
     /// emits no event.
-    pub fn set_candidate_skipped(&self, path: String, skipped: bool) -> Result<(), String> {
+    pub fn set_candidate_skipped(
+        &self,
+        path: String,
+        skipped: bool,
+    ) -> Result<(), crate::import::ImportError> {
         let library_dir = self.library_manager.library_dir();
         let mut registry = self.folder_registry.lock().unwrap();
         let changed = registry.set_skipped(&library_dir, path.clone(), skipped)?;

@@ -212,6 +212,29 @@ fn test_collect_release_candidate_files_skips_hidden_and_bae() {
     assert!(files.documents.is_empty());
 }
 
+/// A folder whose only audio is a zero-byte file can't be imported:
+/// `collect_release_candidate_files` surfaces the typed
+/// `ImportError::InvalidFolder` (carrying the scanner's `InvalidReason`)
+/// rather than a stringly error, so the commit caller can distinguish an
+/// unimportable folder from an I/O fault.
+#[test]
+fn collect_release_candidate_files_on_invalid_folder_yields_invalid_folder() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    // Zero-byte audio is corruption, not an I/O fault.
+    std::fs::write(root.join("track.flac"), []).unwrap();
+
+    let err = collect_release_candidate_files(root)
+        .expect_err("zero-byte audio makes the folder unimportable");
+    assert!(
+        matches!(
+            err,
+            crate::import::ImportError::InvalidFolder(InvalidReason::CorruptAudioFile { .. })
+        ),
+        "got: {err:?}"
+    );
+}
+
 #[cfg(unix)]
 #[test]
 fn unreadable_child_directory_fails_scan() {

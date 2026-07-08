@@ -86,20 +86,20 @@ impl ImportServiceHandle {
     /// back through the import command, but a session-wide LRU cache
     /// in `cover_art` keeps the URL's bytes warm so the commit
     /// worker's later download is a cache hit, not a re-fetch.
-    pub async fn fetch_cover_bytes(&self, url: String) -> Result<Vec<u8>, String> {
+    pub async fn fetch_cover_bytes(
+        &self,
+        url: String,
+    ) -> Result<Vec<u8>, crate::import::ImportError> {
         let (bytes, _content_type) =
             crate::import::cover_art::download_cover_art_bytes(&url).await?;
         Ok(bytes)
     }
 
-    fn discogs_client(&self) -> Result<DiscogsClient, String> {
+    fn discogs_client(&self) -> Result<DiscogsClient, crate::import::ImportError> {
         self.library_manager
-            .discogs_client()?
-            .ok_or_else(|| "Discogs API key not configured".to_string())
-    }
-
-    fn discogs_search_error(e: crate::discogs::client::DiscogsError) -> String {
-        format!("Discogs search failed: {e}")
+            .discogs_client()
+            .map_err(|detail| crate::import::ImportError::Config { detail })?
+            .ok_or(crate::import::ImportError::DiscogsNotConfigured)
     }
 
     /// Search for releases, check library status, and bundle the results into
@@ -107,7 +107,7 @@ impl ImportServiceHandle {
     pub async fn search_with_status(
         &self,
         query: SearchQuery,
-    ) -> Result<GroupedSearchResults, String> {
+    ) -> Result<GroupedSearchResults, crate::import::ImportError> {
         use crate::db::LibraryCheck;
 
         let results = match query.into_provider_params() {
@@ -116,9 +116,7 @@ impl ImportServiceHandle {
             }
             ProviderSearchParams::Discogs(params) => {
                 let client = self.discogs_client()?;
-                crate::import::search::search_discogs(&client, params)
-                    .await
-                    .map_err(Self::discogs_search_error)?
+                crate::import::search::search_discogs(&client, params).await?
             }
         };
 
@@ -127,8 +125,7 @@ impl ImportServiceHandle {
         let statuses = self
             .library_manager
             .check_releases_in_library(&checks)
-            .await
-            .map_err(|e| format!("Failed to check library status: {e}"))?;
+            .await?;
 
         let status_map: HashMap<String, crate::db::LibraryStatus> = statuses
             .into_iter()
@@ -141,10 +138,11 @@ impl ImportServiceHandle {
         // would silently misclassify a real failure.
         let mut statuses = Vec::with_capacity(results.len());
         for r in &results {
-            let status = status_map
-                .get(&r.release_id)
-                .cloned()
-                .ok_or_else(|| format!("library status missing for release {}", r.release_id))?;
+            let status = status_map.get(&r.release_id).cloned().ok_or_else(|| {
+                crate::import::ImportError::Internal {
+                    detail: format!("library status missing for release {}", r.release_id),
+                }
+            })?;
             statuses.push(status);
         }
 
@@ -161,14 +159,14 @@ impl ImportServiceHandle {
         album: String,
         year: Option<String>,
         label: Option<String>,
-    ) -> Result<Vec<crate::import::search::MetadataResult>, String> {
+    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
         let client = self.discogs_client()?;
         crate::import::search::search_discogs(
             &client,
             discogs_general_params(artist, album, year, label),
         )
         .await
-        .map_err(Self::discogs_search_error)
+        .map_err(Into::into)
     }
 
     pub async fn search_musicbrainz(
@@ -177,7 +175,7 @@ impl ImportServiceHandle {
         album: String,
         year: Option<String>,
         label: Option<String>,
-    ) -> Result<Vec<crate::import::search::MetadataResult>, String> {
+    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
         crate::import::search::search_mb(
             &self.cover_art_archive,
             mb_general_params(artist, album, year, label),
@@ -201,12 +199,11 @@ impl ImportServiceHandle {
     pub async fn fetch_remote_covers(
         &self,
         release_id: &str,
-    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, String> {
+    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
         let identities = self
             .library_manager
             .get_release_identities(release_id)
-            .await
-            .map_err(|e| format!("{e}"))?;
+            .await?;
 
         let mut covers = Vec::new();
 
@@ -284,7 +281,7 @@ impl ImportServiceHandle {
         &self,
         release_id: &str,
         source: MetadataSource,
-    ) -> Result<crate::import::search::ImportSearchReleaseDetail, String> {
+    ) -> Result<crate::import::search::ImportSearchReleaseDetail, crate::import::ImportError> {
         match source {
             MetadataSource::MusicBrainz => {
                 crate::import::search::prefetch_mb_release(&self.cover_art_archive, release_id)

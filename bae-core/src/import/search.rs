@@ -11,6 +11,7 @@ use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::import::cover_art::{CoverArtArchiveClient, RemoteCover};
 use crate::import::parse_year;
 use crate::import::types::MetadataSource;
+use crate::import::ImportError;
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use crate::retry::retry_with_backoff;
 use crate::signals::LookupFailure;
@@ -220,12 +221,11 @@ async fn musicbrainz_releases_to_metadata(
 pub async fn search_mb(
     cover_art_archive: &CoverArtArchiveClient,
     params: ReleaseSearchParams,
-) -> Result<Vec<MetadataResult>, String> {
+) -> Result<Vec<MetadataResult>, ImportError> {
     let releases = retry_with_backoff(3, "MusicBrainz search", || {
         musicbrainz::search_releases_with_params(&params)
     })
-    .await
-    .map_err(|e| format!("MusicBrainz search failed: {e}"))?;
+    .await?;
 
     Ok(musicbrainz_releases_to_metadata(cover_art_archive, releases).await)
 }
@@ -324,7 +324,7 @@ fn build_mb_detail(
     release_id: &str,
     mb_response: &crate::musicbrainz::MbReleaseResponse,
     cover_art: Vec<RemoteCover>,
-) -> Result<ImportSearchReleaseDetail, String> {
+) -> Result<ImportSearchReleaseDetail, ImportError> {
     let year = parse_year(mb_response.date.as_deref());
 
     let mut side_base: u32 = 0;
@@ -393,7 +393,7 @@ fn build_mb_detail(
 pub async fn prefetch_mb_release(
     cover_art_archive: &CoverArtArchiveClient,
     release_id: &str,
-) -> Result<ImportSearchReleaseDetail, String> {
+) -> Result<ImportSearchReleaseDetail, ImportError> {
     let (response, _, _) = crate::import::musicbrainz_mapper::fetch_mb_response(release_id).await?;
     let release_group_id = response.release_group.as_ref().map(|rg| rg.id.as_str());
     let cover_art = cover_art_archive
@@ -410,7 +410,7 @@ pub async fn commit_mb_release(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
     discogs_client: Option<&DiscogsClient>,
-) -> Result<crate::import::folder_scanner::PreparedRelease, String> {
+) -> Result<crate::import::folder_scanner::PreparedRelease, ImportError> {
     let (response, external_urls, mut metadata_pairs) =
         crate::import::musicbrainz_mapper::fetch_mb_response(release_id).await?;
     let discogs_release = if let Some(client) = discogs_client {
@@ -518,11 +518,9 @@ fn build_discogs_detail(release: &crate::discogs::DiscogsRelease) -> ImportSearc
 pub async fn prefetch_discogs_release(
     client: &DiscogsClient,
     release_id: &str,
-) -> Result<ImportSearchReleaseDetail, String> {
+) -> Result<ImportSearchReleaseDetail, ImportError> {
     let (discogs_release, _master_year, _metadata_pairs) =
-        crate::import::commit::fetch_discogs_release(client, release_id)
-            .await
-            .map_err(|e| e.to_string())?;
+        crate::import::commit::fetch_discogs_release(client, release_id).await?;
     Ok(build_discogs_detail(&discogs_release))
 }
 
@@ -535,11 +533,9 @@ pub async fn commit_discogs_release(
     release_id: &str,
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
-) -> Result<crate::import::folder_scanner::PreparedRelease, String> {
+) -> Result<crate::import::folder_scanner::PreparedRelease, ImportError> {
     let (parsed, metadata_pairs) =
-        crate::import::commit::fetch_and_map_discogs(client, release_id, clock, ids)
-            .await
-            .map_err(|e| e.to_string())?;
+        crate::import::commit::fetch_and_map_discogs(client, release_id, clock, ids).await?;
     Ok(crate::import::folder_scanner::PreparedRelease {
         source: MetadataSource::Discogs,
         release_id: release_id.to_string(),
@@ -744,7 +740,11 @@ mod tests {
 
         let err = build_mb_detail("mb-release-1", &response, vec![])
             .expect_err("expected error for vinyl track without side letter");
-        assert!(err.contains("no side letter"), "unexpected error: {}", err);
+        assert!(
+            matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("no side letter")),
+            "unexpected error: {}",
+            err
+        );
     }
 
     /// Assert the commit plane and the editor-seed plane assign identical

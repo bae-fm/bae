@@ -6,7 +6,6 @@
 
 use tracing::warn;
 
-use crate::discogs::client::DiscogsError;
 use crate::discogs::DiscogsClient;
 use crate::musicbrainz;
 use coven::Clock;
@@ -14,24 +13,7 @@ use coven::IdProvider;
 
 use super::discogs_mapper;
 use super::types::MetadataSource;
-use super::ParsedAlbum;
-
-/// Error from import commit operations.
-/// Preserves the typed `DiscogsError` through `?` rather than flattening to a
-/// string.
-#[derive(Debug, thiserror::Error)]
-pub enum CommitError {
-    #[error("{0}")]
-    Discogs(#[from] DiscogsError),
-    #[error("{0}")]
-    Other(String),
-}
-
-impl From<String> for CommitError {
-    fn from(s: String) -> Self {
-        CommitError::Other(s)
-    }
-}
+use super::{ImportError, ParsedAlbum};
 
 /// Fetch a Discogs release plus its master, without any MB cross-ref.
 /// Pure Discogs: no MB API calls. Returns the parsed release, the master
@@ -50,7 +32,7 @@ pub async fn fetch_discogs_release(
         Option<u32>,
         Vec<(String, String)>,
     ),
-    CommitError,
+    ImportError,
 > {
     let (discogs_release, raw_json) = client.get_release(release_id).await?;
 
@@ -83,7 +65,7 @@ pub async fn fetch_and_map_discogs(
     release_id: &str,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
-) -> Result<(ParsedAlbum, Vec<(String, String)>), CommitError> {
+) -> Result<(ParsedAlbum, Vec<(String, String)>), ImportError> {
     let (discogs_release, master_year, mut metadata) =
         fetch_discogs_release(client, release_id).await?;
     let mb_xref = match musicbrainz::fetch_mb_xref(release_id).await {
@@ -99,7 +81,6 @@ pub async fn fetch_and_map_discogs(
         mb_xref.as_ref(),
         clock,
         ids,
-    )
-    .map_err(|e| format!("Failed to map release: {e}"))?;
+    )?;
     Ok((parsed, metadata))
 }

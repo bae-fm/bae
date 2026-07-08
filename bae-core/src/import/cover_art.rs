@@ -1,4 +1,4 @@
-use crate::import::MetadataSource;
+use crate::import::{ImportError, MetadataSource};
 use crate::network::upgrade_to_https;
 use crate::util::content_type::ContentType;
 use lru::LruCache;
@@ -52,7 +52,10 @@ fn cover_bytes_cache() -> &'static Mutex<LruCache<String, CoverCacheValue>> {
     })
 }
 
-fn image_download_client() -> Result<reqwest::Client, String> {
+fn image_download_client() -> Result<reqwest::Client, ImportError> {
+    // The build error is cached as a String because `reqwest::Client`'s builder
+    // error is not `Clone` and the cell is cloned on every read; the typed
+    // `CoverArt` wrapper is applied at each call.
     static CLIENT: OnceLock<Result<reqwest::Client, String>> = OnceLock::new();
     CLIENT
         .get_or_init(|| {
@@ -61,6 +64,7 @@ fn image_download_client() -> Result<reqwest::Client, String> {
                 .map_err(|e| format!("Failed to create HTTP client: {}", e))
         })
         .clone()
+        .map_err(|detail| ImportError::CoverArt { detail })
 }
 
 /// Cover Art Archive lookup client for release/release-group cover selection.
@@ -158,22 +162,23 @@ fn is_transient_status(status: reqwest::StatusCode) -> bool {
     status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS
 }
 
-enum ClassifiedAttempt<T> {
+enum ClassifiedAttempt<T, E> {
     Done(T),
-    Retry(String),
-    Permanent(String),
+    Retry(E),
+    Permanent(E),
 }
 
-async fn retry_classified<T, F, Fut>(
+async fn retry_classified<T, E, F, Fut>(
     operation: &str,
     base_delay: Duration,
     mut attempt: F,
-) -> Result<T, String>
+) -> Result<T, E>
 where
+    E: std::fmt::Display,
     F: FnMut() -> Fut,
-    Fut: std::future::Future<Output = ClassifiedAttempt<T>>,
+    Fut: std::future::Future<Output = ClassifiedAttempt<T, E>>,
 {
-    let mut last_error = String::new();
+    let mut last_error: Option<E> = None;
     for attempt_index in 0..=MAX_RETRIES {
         if attempt_index > 0 {
             let delay = base_delay * 2u32.pow(attempt_index - 1);
@@ -183,7 +188,9 @@ where
                 operation,
                 attempt_index,
                 MAX_RETRIES + 1,
-                last_error,
+                last_error
+                    .as_ref()
+                    .expect("a retry set last_error before this attempt"),
                 delay
             );
 
@@ -194,11 +201,12 @@ where
             ClassifiedAttempt::Done(value) => return Ok(value),
             ClassifiedAttempt::Permanent(error) => return Err(error),
             ClassifiedAttempt::Retry(error) => {
-                last_error = error;
+                last_error = Some(error);
             }
         }
     }
 
+    let last_error = last_error.expect("the retry loop ran at least once and never succeeded");
     warn!(
         "{} failed after {} attempts: {}",
         operation,
@@ -450,14 +458,14 @@ fn find_url_in<'a>(value: &serde_json::Value, keys: &'a [&'a str]) -> Option<(&'
 /// session.
 pub async fn download_cover_art_bytes(
     cover_art_url: &str,
-) -> Result<(Vec<u8>, ContentType), String> {
+) -> Result<(Vec<u8>, ContentType), ImportError> {
     download_cover_art_bytes_with_backoff(cover_art_url, RETRY_BASE_DELAY).await
 }
 
 async fn download_cover_art_bytes_with_backoff(
     cover_art_url: &str,
     base_delay: Duration,
-) -> Result<(Vec<u8>, ContentType), String> {
+) -> Result<(Vec<u8>, ContentType), ImportError> {
     if let Some(hit) = cover_bytes_cache()
         .lock()
         .expect("cover bytes cache mutex poisoned")
@@ -483,7 +491,7 @@ async fn download_cover_art_bytes_with_backoff(
 pub(crate) async fn download_image_bytes(
     image_url: &str,
     operation: &str,
-) -> Result<(Vec<u8>, ContentType), String> {
+) -> Result<(Vec<u8>, ContentType), ImportError> {
     download_image_bytes_with_backoff(image_url, operation, RETRY_BASE_DELAY).await
 }
 
@@ -491,7 +499,7 @@ async fn download_image_bytes_with_backoff(
     image_url: &str,
     operation: &str,
     base_delay: Duration,
-) -> Result<(Vec<u8>, ContentType), String> {
+) -> Result<(Vec<u8>, ContentType), ImportError> {
     let client = image_download_client()?;
     retry_classified(operation, base_delay, || async {
         let response = match client.get(image_url).send().await {
@@ -501,10 +509,14 @@ async fn download_image_bytes_with_backoff(
                 // redirect-loop bottoming out — same failure every
                 // attempt. Don't burn 1+2+4s of backoff on a
                 // deterministic error.
-                return ClassifiedAttempt::Permanent(format!("Failed to fetch image: {}", e));
+                return ClassifiedAttempt::Permanent(ImportError::CoverArt {
+                    detail: format!("Failed to fetch image: {}", e),
+                });
             }
             Err(e) => {
-                return ClassifiedAttempt::Retry(format!("Failed to fetch image: {}", e));
+                return ClassifiedAttempt::Retry(ImportError::CoverArt {
+                    detail: format!("Failed to fetch image: {}", e),
+                });
             }
         };
 
@@ -514,16 +526,14 @@ async fn download_image_bytes_with_backoff(
                 Err(e) => ClassifiedAttempt::Permanent(e),
             }
         } else if is_transient_status(response.status()) {
-            ClassifiedAttempt::Retry(format!(
-                "Image download failed with status {}",
-                response.status()
-            ))
+            ClassifiedAttempt::Retry(ImportError::CoverArt {
+                detail: format!("Image download failed with status {}", response.status()),
+            })
         } else {
             // Non-transient error — don't retry
-            ClassifiedAttempt::Permanent(format!(
-                "Image download failed with status {}",
-                response.status()
-            ))
+            ClassifiedAttempt::Permanent(ImportError::CoverArt {
+                detail: format!("Image download failed with status {}", response.status()),
+            })
         }
     })
     .await
@@ -540,15 +550,19 @@ fn is_permanent_request_error(e: &reqwest::Error) -> bool {
 async fn read_image_response(
     response: reqwest::Response,
     image_url: &str,
-) -> Result<(Vec<u8>, ContentType), String> {
+) -> Result<(Vec<u8>, ContentType), ImportError> {
     let content_type =
         super::image_response::image_content_type_from_response(response.headers(), image_url);
 
     let bytes = crate::util::http::read_body_capped(response, crate::util::http::MAX_IMAGE_BYTES)
         .await
-        .map_err(|e| format!("Failed to read image response: {}", e))?;
+        .map_err(|e| ImportError::CoverArt {
+            detail: format!("Failed to read image response: {}", e),
+        })?;
     if bytes.len() < 100 {
-        return Err("Downloaded file too small to be a valid image".to_string());
+        return Err(ImportError::CoverArt {
+            detail: "Downloaded file too small to be a valid image".to_string(),
+        });
     }
 
     info!("Downloaded cover art ({} bytes)", bytes.len());
@@ -943,7 +957,10 @@ mod tests {
     async fn download_rejects_too_small_response() {
         let url = start_mock(vec![(200, vec![0u8; 50])]).await; // under the 100-byte floor
         let err = download_cover_art_bytes(&url).await.unwrap_err();
-        assert!(err.contains("too small"), "got: {err}");
+        assert!(
+            matches!(&err, ImportError::CoverArt { detail } if detail.contains("too small")),
+            "got: {err}"
+        );
     }
 
     #[tokio::test]
@@ -956,7 +973,10 @@ mod tests {
         .await
         .expect("oversized response should fail before reading the body");
         let err = result.unwrap_err();
-        assert!(err.contains("too large"), "got: {err}");
+        assert!(
+            matches!(&err, ImportError::CoverArt { detail } if detail.contains("too large")),
+            "got: {err}"
+        );
     }
 
     #[tokio::test]

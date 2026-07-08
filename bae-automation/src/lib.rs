@@ -11,8 +11,8 @@ use bae_core::import::release_group::ReleaseGroup;
 use bae_core::import::search::{ImportSearchReleaseDetail, MetadataResult, ReleaseTrack};
 use bae_core::import::{
     shape_user_edit_from_search_detail, CoverSelection, GroupedSearchResults, IdentityChoice,
-    ImportEvent, ImportProgress, MetadataRef, MetadataSource, PressingEdit, ScanEvent, SearchQuery,
-    StorageMode, TrackUserEdit,
+    ImportError, ImportEvent, ImportProgress, MetadataRef, MetadataSource, PressingEdit, ScanEvent,
+    SearchQuery, StorageMode, TrackUserEdit,
 };
 use bae_core::library::{AppServices, LibraryError};
 use schemars::JsonSchema;
@@ -366,7 +366,6 @@ pub enum AutomationImportProgress {
         album_id: String,
     },
     Failed {
-        id: String,
         error: String,
         import_id: String,
     },
@@ -687,6 +686,15 @@ impl From<LibraryError> for AutomationError {
     }
 }
 
+impl From<ImportError> for AutomationError {
+    /// The automation surface reports import failures as an opaque `import`
+    /// error with the typed error's Display as the message — the same
+    /// stringification every import call site used before, now in one place.
+    fn from(value: ImportError) -> Self {
+        Self::Import(value.to_string())
+    }
+}
+
 struct AutomationState {
     candidates: RwLock<HashMap<String, AutomationCandidate>>,
     event_indexing: RwLock<AutomationEventIndexing>,
@@ -942,10 +950,7 @@ impl Automation {
         &self,
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
-        self.services
-            .import()
-            .add_watched_folder(path)
-            .map_err(AutomationError::import)?;
+        self.services.import().add_watched_folder(path)?;
         Ok(self.watched_folders())
     }
 
@@ -953,10 +958,7 @@ impl Automation {
         &self,
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
-        self.services
-            .import()
-            .remove_watched_folder(path)
-            .map_err(AutomationError::import)?;
+        self.services.import().remove_watched_folder(path)?;
         Ok(self.watched_folders())
     }
 
@@ -966,17 +968,11 @@ impl Automation {
     ) -> Result<AutomationScanResult, AutomationError> {
         match wait {
             ScanWait::NoWait => {
-                self.services
-                    .import()
-                    .scan_watched_folders()
-                    .map_err(AutomationError::import)?;
+                self.services.import().scan_watched_folders()?;
             }
             ScanWait::UntilFinished { timeout_ms } => {
                 let mut rx = self.services.import().subscribe_folder_scan_events();
-                self.services
-                    .import()
-                    .scan_watched_folders()
-                    .map_err(AutomationError::import)?;
+                self.services.import().scan_watched_folders()?;
                 let wait_for_finish = async {
                     while let Some(event) = rx.recv().await {
                         match event {
@@ -1033,8 +1029,8 @@ impl Automation {
     ) -> Result<(), AutomationError> {
         self.services
             .import()
-            .set_candidate_skipped(candidate_key, skipped)
-            .map_err(AutomationError::import)
+            .set_candidate_skipped(candidate_key, skipped)?;
+        Ok(())
     }
 
     pub async fn search_imports(
@@ -1045,8 +1041,7 @@ impl Automation {
             .services
             .import()
             .search_with_status(search_query(query))
-            .await
-            .map_err(AutomationError::import)?;
+            .await?;
         Ok(automation_search_results(results))
     }
 
@@ -1055,24 +1050,24 @@ impl Automation {
         source: AutomationMetadataSource,
         release_id: String,
     ) -> Result<AutomationReleaseDetail, AutomationError> {
-        self.services
+        let detail = self
+            .services
             .import()
             .prefetch_release(&release_id, source.into())
-            .await
-            .map(automation_release_detail)
-            .map_err(AutomationError::import)
+            .await?;
+        Ok(automation_release_detail(detail))
     }
 
     pub async fn preview_file_tags(
         &self,
         folder: String,
     ) -> Result<AutomationReleaseUserEdit, AutomationError> {
-        self.services
+        let edit = self
+            .services
             .import()
             .preview_file_tags_for_folder(PathBuf::from(folder))
-            .await
-            .map(automation_release_user_edit)
-            .map_err(AutomationError::import)
+            .await?;
+        Ok(automation_release_user_edit(edit))
     }
 
     pub async fn shape_release_edit(
@@ -1091,19 +1086,15 @@ impl Automation {
         &self,
         request: AutomationStartImport,
     ) -> Result<AutomationImportStarted, AutomationError> {
-        let import_id = self
-            .services
-            .import()
-            .start_import(
-                &request.candidate_key,
-                PathBuf::from(request.folder),
-                request.selected_cover.map(cover_selection),
-                storage_mode(request.storage_mode),
-                request.pin,
-                identity_choice(request.identity_choice),
-                request.user_edit.map(release_user_edit),
-            )
-            .map_err(AutomationError::import)?;
+        let import_id = self.services.import().start_import(
+            &request.candidate_key,
+            PathBuf::from(request.folder),
+            request.selected_cover.map(cover_selection),
+            storage_mode(request.storage_mode),
+            request.pin,
+            identity_choice(request.identity_choice),
+            request.user_edit.map(release_user_edit),
+        )?;
         Ok(AutomationImportStarted { import_id })
     }
 
@@ -1959,15 +1950,9 @@ fn automation_import_progress(progress: ImportProgress) -> AutomationImportProgr
             import_id,
             album_id,
         },
-        ImportProgress::Failed {
-            id,
-            error,
-            import_id,
-        } => AutomationImportProgress::Failed {
-            id,
-            error,
-            import_id,
-        },
+        ImportProgress::Failed { error, import_id } => {
+            AutomationImportProgress::Failed { error, import_id }
+        }
     }
 }
 

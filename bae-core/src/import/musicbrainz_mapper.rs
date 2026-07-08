@@ -21,7 +21,7 @@ use super::assemble::{
 use super::ParsedAlbum;
 use crate::db::{is_various_artists, Pressing, ReleaseMetadataSource};
 use crate::import::types::ReleaseIdentity;
-use crate::import::MetadataSource;
+use crate::import::{ImportError, MetadataSource};
 use crate::musicbrainz::{
     fetch_release_group_json, ExternalUrls, MbArtistRef, MbMedium, MbRelation, MbReleaseResponse,
     MbWork,
@@ -159,13 +159,12 @@ fn mb_work_ref(work: &MbWork, converted: &mut HashSet<String>) -> WorkGraphRef {
 /// prefetch's API discogs-free; only commit composes both.
 pub async fn fetch_mb_response(
     release_id: &str,
-) -> Result<(MbReleaseResponse, ExternalUrls, Vec<(String, String)>), String> {
+) -> Result<(MbReleaseResponse, ExternalUrls, Vec<(String, String)>), ImportError> {
     let (response, external_urls, raw_json) =
         crate::retry::retry_with_backoff(3, "MusicBrainz release fetch", || {
             crate::musicbrainz::lookup_release_by_id(release_id)
         })
-        .await
-        .map_err(|e| format!("Failed to fetch MusicBrainz release: {}", e))?;
+        .await?;
 
     let mut metadata_pairs = vec![(MetadataSource::MusicBrainz.as_str().to_string(), raw_json)];
 
@@ -207,12 +206,18 @@ pub(crate) struct MediumSides {
 /// Errors when the medium has no tracks, or when a multi-side track has no
 /// leading side letter: there is no correct side for it, and silently bucketing
 /// it onto side 0 would corrupt the numbering.
-pub(crate) fn medium_sides(release_id: &str, medium: &MbMedium) -> Result<MediumSides, String> {
+pub(crate) fn medium_sides(
+    release_id: &str,
+    medium: &MbMedium,
+) -> Result<MediumSides, ImportError> {
     if medium.tracks.is_empty() {
-        return Err(format!(
-            "MusicBrainz release {} has a medium with no tracks",
-            release_id
-        ));
+        return Err(ImportError::SourceData {
+            metadata_source: MetadataSource::MusicBrainz,
+            detail: format!(
+                "MusicBrainz release {} has a medium with no tracks",
+                release_id
+            ),
+        });
     }
 
     let is_multi_side = medium
@@ -245,13 +250,14 @@ pub(crate) fn medium_sides(release_id: &str, medium: &MbMedium) -> Result<Medium
             .as_deref()
             .and_then(|n| n.chars().next())
             .filter(|c| c.is_ascii_alphabetic())
-            .ok_or_else(|| {
-                format!(
+            .ok_or_else(|| ImportError::SourceData {
+                metadata_source: MetadataSource::MusicBrainz,
+                detail: format!(
                     "MusicBrainz multi-side medium track has no side letter: \
                      number={:?}, title={:?}",
                     track.number,
                     track.recording.as_ref().and_then(|r| r.title.as_ref()),
-                )
+                ),
             })?;
         offsets.push((side_letter.to_ascii_uppercase() as u32) - base_letter);
     }
@@ -276,7 +282,7 @@ pub fn map_mb_response_to_db(
     discogs_release: Option<crate::discogs::DiscogsRelease>,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, String> {
+) -> Result<ParsedAlbum, ImportError> {
     // Release-level artist credits → `ArtistRef`s, keeping the credit-name
     // preference and the Discogs cross-ref `discogs_artist_id` name-match
     // enrichment.
@@ -284,10 +290,13 @@ pub fn map_mb_response_to_db(
     for credit in &response.artist_credit {
         if let Some(artist_obj) = &credit.artist {
             let artist_name = mb_artist_name(artist_obj, Some(&credit.name)).ok_or_else(|| {
-                format!(
-                    "MusicBrainz release {} artist credit {:?} has no artist name",
-                    response.id, artist_obj.id
-                )
+                ImportError::SourceData {
+                    metadata_source: MetadataSource::MusicBrainz,
+                    detail: format!(
+                        "MusicBrainz release {} artist credit {:?} has no artist name",
+                        response.id, artist_obj.id
+                    ),
+                }
             })?;
             let discogs_artist_id = discogs_release.as_ref().and_then(|dr| {
                 dr.artists
@@ -307,7 +316,10 @@ pub fn map_mb_response_to_db(
         let artist_name = response
             .artist_credit
             .first()
-            .ok_or_else(|| format!("MusicBrainz release {} has no artist credits", response.id))?
+            .ok_or_else(|| ImportError::SourceData {
+                metadata_source: MetadataSource::MusicBrainz,
+                detail: format!("MusicBrainz release {} has no artist credits", response.id),
+            })?
             .name
             .clone();
         release_refs.push(ArtistRef {
@@ -325,10 +337,14 @@ pub fn map_mb_response_to_db(
     // master attach to this album. Both are Exact: the user committed
     // against the MB pressing, and the cross-link names a specific
     // Discogs pressing.
-    let mb_release_group = response
-        .release_group
-        .as_ref()
-        .ok_or_else(|| format!("MusicBrainz release {} missing release_group", response.id))?;
+    let mb_release_group =
+        response
+            .release_group
+            .as_ref()
+            .ok_or_else(|| ImportError::SourceData {
+                metadata_source: MetadataSource::MusicBrainz,
+                detail: format!("MusicBrainz release {} missing release_group", response.id),
+            })?;
     let mut identities = vec![ReleaseIdentity {
         source: MetadataSource::MusicBrainz,
         source_group_id: mb_release_group.id.clone(),
@@ -400,11 +416,12 @@ pub fn map_mb_response_to_db(
                 .and_then(|r| r.title.as_deref())
                 .or(track.title.as_deref())
                 .filter(|title| !title.trim().is_empty())
-                .ok_or_else(|| {
-                    format!(
+                .ok_or_else(|| ImportError::SourceData {
+                    metadata_source: MetadataSource::MusicBrainz,
+                    detail: format!(
                         "MusicBrainz release {} track {:?} has no track title",
                         response.id, track.number
-                    )
+                    ),
                 })?
                 .to_string();
 
@@ -535,7 +552,7 @@ mod tests {
         response: &MbReleaseResponse,
         master_year: Option<u32>,
         discogs_release: Option<crate::discogs::DiscogsRelease>,
-    ) -> Result<ParsedAlbum, String> {
+    ) -> Result<ParsedAlbum, ImportError> {
         let clock = FixedClock(
             chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
                 .unwrap()
@@ -744,7 +761,7 @@ mod tests {
         let err = map(&response, Some(2024), None)
             .expect_err("expected error for vinyl track without side letter");
         assert!(
-            err.contains("no side letter"),
+            matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("no side letter")),
             "unexpected error message: {}",
             err
         );
@@ -765,7 +782,7 @@ mod tests {
         let err = map(&response, Some(2024), None)
             .expect_err("expected error for vinyl track with numeric-only number");
         assert!(
-            err.contains("no side letter"),
+            matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("no side letter")),
             "unexpected error message: {}",
             err
         );
@@ -779,8 +796,10 @@ mod tests {
         }]);
 
         let result = map(&response, Some(2024), None);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("no tracks"));
+        assert!(matches!(
+            result.unwrap_err(),
+            ImportError::SourceData { detail, .. } if detail.contains("no tracks")
+        ));
     }
 
     #[test]
@@ -830,7 +849,7 @@ mod tests {
             .expect_err("expected missing MusicBrainz track title to return an error");
 
         assert!(
-            err.contains("has no track title"),
+            matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no track title")),
             "unexpected error message: {err}"
         );
     }
@@ -914,7 +933,7 @@ mod tests {
             .expect_err("expected missing artist credits to return an error");
 
         assert!(
-            err.contains("has no artist credits"),
+            matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no artist credits")),
             "unexpected error message: {err}"
         );
     }
@@ -931,7 +950,7 @@ mod tests {
             .expect_err("expected missing release group to return an error");
 
         assert!(
-            err.contains("missing release_group"),
+            matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("missing release_group")),
             "unexpected error message: {err}"
         );
     }
