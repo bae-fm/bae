@@ -1,0 +1,43 @@
+---
+title: Sync
+description: Je hele bibliotheek op elk apparaat, via je eigen cloud
+---
+
+Synchroniseren betekent meestal de server van iemand anders: een account, een abonnement, een bedrijf dat je bibliotheek kan lezen. bae synchroniseert via **jouw** cloud, opslag die je al hebt, en draait helemaal geen server. Je apparaten schrijven versleutelde wijzigingen naar die opslag en lezen elkaars wijzigingen; de provider bewaart de bytes en kan ze niet lezen.
+
+Een bibliotheek, elk apparaat, en het enige betrokken account is er een dat je al bezit.
+
+## De cloud-home
+
+De cloud-home van een bibliotheek is een locatie in je opslag: een map in je Google Drive, Dropbox of OneDrive, je iCloud, of een S3-compatible bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Hij bevat alles wat de bibliotheek synchroniseert: cataloguswijzigingen, artwork, en de audio van releases die je door bae laat beheren.
+
+Stel hem in via Settings, onder Sync:
+
+1. Kies een provider. Consumentenclouds loggen in met de eigen loginpagina van de provider; er wordt niets over je account bewaard behalve de tokens die de provider afgeeft. iCloud gebruikt je Apple ID zoals die is. S3 vraagt bucket, regio, endpoint en sleutels, en controleert die voordat ze worden opgeslagen.
+2. Kies hoe de home objecten bewaart (zie hieronder).
+3. bae begint te synchroniseren.
+
+Een bibliotheek zonder cloud-home is op zichzelf volledig. Alleen lokaal is een modus, geen beperking, en het loskoppelen van de cloud-home keert daarnaar terug.
+
+## Ondoorzichtig of doorbladerbaar
+
+Bij het instellen kies je wat de provider mag zien, en de keuze is permanent voor die home:
+
+- **Opaque** (standaard): elk object wordt op je apparaat versleuteld voor upload en onder betekenisloze namen bewaard. De provider, of iemand die in de bucket komt, ziet ciphertext. Dit is de modus die de pagina [encryptie](/nl/reference/encryption) beschrijft, en de enige modus die het toevoegen van andere apparaten en leden ondersteunt.
+- **Browsable**: objecten worden onversleuteld bewaard met echte bestandsnamen, in mappen genoemd naar artiest en album. Je kunt de bucket met elk gereedschap openen en je bestanden rechtstreeks kopieren of afspelen. Niets is versleuteld, dus de eigen toegangscontrole van de bucket is de enige bescherming, en de home kan niet worden gedeeld.
+
+## Wat synchroniseert
+
+- De catalogus: albums, releases, tracks, credits, werken, identiteiten, bewerkingen. Elk apparaat krijgt alles.
+- Artwork: hoezen en artiestafbeeldingen, vroeg opgehaald zodat rasters overal renderen.
+- Audio: alleen voor releases die je in de cloud laat beheren. Onbeheerde releases blijven puur lokaal, met catalogusvermeldingen op andere apparaten maar bytes alleen waar je ze hebt geimporteerd.
+
+Apparaatgebonden status synchroniseert niet: afspeelpositie, volume, wachtrij en apparaatinstellingen blijven op het apparaat.
+
+## Wanneer het synchroniseert
+
+Sync draait vanzelf: na wijzigingen, op een timer, en op verzoek met **Sync Now**. Bewerkingen landen onder normale omstandigheden seconden later als kleine wijzigingen op andere apparaten. Twee apparaten die tegelijk bewerken winnen allebei waar ze niet botsen: bae voegt gelijktijdige bewerkingen veld voor veld samen, en een verwijderde release blijft verwijderd zelfs als hij op hetzelfde moment elders werd bewerkt. Niets vraagt je ooit een conflict op te lossen.
+
+## Wanneer het faalt
+
+Syncfouten onderbreken de bibliotheek niet; je blijft lokaal bladeren, afspelen en importeren terwijl bae opnieuw probeert met backoff. De statusregel toont synchroniseren en laatst gesynchroniseerde tijd; een fout toont een banner met de fout, en uploads kunnen worden gepauzeerd, opnieuw geprobeerd en bekeken in de [opslagbeheerder](/nl/guide/storage#de-opslagbeheerder). Als de login van de cloud-home verloopt, vraagt bae je opnieuw te koppelen.

@@ -1,0 +1,35 @@
+---
+title: Identiteit en lidmaatschap
+description: Sleutels als identiteiten, de toetredingshanddruk, rollen en intrekking
+---
+
+Er is nergens in bae een accountsysteem. De identiteit van een apparaat is een Ed25519-sleutelpaar dat het zelf genereert en in de OS-sleutelbos bewaart; de publieke sleutel *is* de identiteit. Wie bij een bibliotheek hoort is een set ondertekende records in de cloud-home, verifieerbaar door iedereen die ze heeft, uitgegeven door geen enkele server. De machine is van [coven](https://coven.bae.fm); deze pagina beschrijft hoe bae hem gebruikt.
+
+## Lidmaatschapsrecords
+
+Elke eigenaar schrijft een append-only stream van ondertekende lidmaatschapsvermeldingen naar de cloud-home: deze sleutel is met deze rol toegevoegd, deze sleutel is verwijderd. Elke vermelding linkt naar de vorige, en elke eigenaar ondertekent een head die de tip van zijn stream verklaart, zodat een provider die records laat vallen of herschikt wordt gedetecteerd in plaats van geloofd. Wat de bibliotheek accepteert is de unie van elke geverifieerde stream van elke eigenaar.
+
+Bij elke pull wordt de auteur van elke changeset tegen dit record gecontroleerd: ondertekend door een huidig lid, met een rol die mag schrijven. Changesets van verwijderde apparaten, van sleutels die nooit zijn toegevoegd, of met ongeldige handtekeningen worden niet toegepast. De provider bewaart de records maar kan ze niet vervalsen; alleen houders van eigenaarssleutels kunnen lidmaatschap wijzigen.
+
+## Rollen
+
+**Eigenaar** en **Lid** lezen en schrijven allebei de bibliotheek; eigenaren keuren daarnaast apparaten goed en verwijderen ze. Het eerste apparaat van bae is een eigenaar en elk apparaat dat het goedkeurt treedt toe als lid. (Er bestaat een derde rol in de onderliggende machine, een alleen-lezen-volger, die bae momenteel niet toekent.)
+
+## De toetredingshanddruk
+
+Een apparaat toevoegen is een uitwisseling met twee codes en expliciete menselijke verificatie in het midden:
+
+1. Het toetredende apparaat genereert zijn sleutelpaar en toont een **join request**: zijn publieke sleutel, een korte vingerafdruk daarvan, en (voor OAuth-providers) het cloudaccount waarmee de map moet worden gedeeld.
+2. Een eigenaar decodeert het verzoek, en de twee schermen tonen dezelfde vingerafdruk. De mens controleert dat ze overeenkomen; dit is de stap die een verwisselde sleutel verslaat.
+3. Goedkeuring doet drie dingen tegelijk: geeft het account van de nieuwkomer toegang tot de cloud-home (mapshare op consumentenclouds, ingesloten inloggegevens op S3, een CloudKit-share op iCloud), sluit de bibliotheeksleutel af voor de publieke sleutel van de nieuwkomer, en ondertekent een lidmaatschapsvermelding die hem toevoegt. Alles wordt verpakt in een **invite code**.
+4. Het toetredende apparaat gebruikt de uitnodiging, opent de sleutel, bootstrapt vanaf de laatste snapshot en synchroniseert.
+
+De uitnodiging is afgesloten voor de verzoekende sleutel: onderscheppen geeft niets.
+
+## Intrekking
+
+Een lid verwijderen voegt een ondertekende verwijdering toe en roteert de bibliotheeksleutel naar een nieuwe generatie die de verwijderde sleutel nooit ontvangt (zie [Encryptie](/nl/reference/encryption#generaties)). Op opslag die toegang kan intrekken, wordt toegang ook ingetrokken. Wat al naar het verwijderde apparaat was gesynchroniseerd blijft daar; data kan niet worden teruggestuurd. Alles na de rotatie ligt buiten bereik.
+
+## Herstelcodes
+
+Een herstelcode omzeilt lidmaatschap bewust: het zijn de coordinaten van de cloud-home plus de bibliotheeksleutel, in een tekenreeks die toegang geeft, voor het herstellen van je eigen bibliotheek zonder overlevende goedkeurder. Hij wordt op verzoek gegenereerd, automatisch in iCloud Keychain bewaard op Apple-platforms, en is precies zo gevoelig als de bibliotheek zelf.

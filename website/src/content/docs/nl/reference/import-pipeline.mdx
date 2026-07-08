@@ -1,0 +1,43 @@
+---
+title: Importpijplijn
+description: Scannen, bewijs, driehoekscontrole en de atomaire commit
+---
+
+Import maakt van een map met bestanden een release-accurate catalogusvermelding zonder een byte van de bestanden te wijzigen. Deze pagina is de pijplijn achter de stroom die in de [gebruiksgids](/nl/guide/importing) wordt beschreven.
+
+## Scannen
+
+Bewaakte mappen worden gemonitord via de bestandssysteemevents van het platform, gedebounced, en bij wijziging opnieuw gescand; scans stemmen af met de bestaande kandidatenlijst in plaats van opnieuw te beginnen. De scanner classificeert een map als een release (audio direct erin, of discvormige submappen zoals `CD1`/`CD2`), of gaat erin verder als verzameling. Bestanden worden op extensie geclassificeerd als audio, artwork en documenten, daarna wordt audio geprobed: de codec die telt is degene die FFmpeg in de bytes vindt, niet de bestandsextensie. Mappen met markeringen voor gedeeltelijke downloads worden uitgesloten totdat de download klaar is.
+
+Een CUE-sheet maakt van een audio-image een tracklijst. De parser behandelt pregaps en postgaps, performers en ISRCs per track, en zowel images met een bestand als CUE-indelingen met een bestand per track. Trackgrenzen worden van CUE-frames (1/75e seconde) naar exacte sampleposities geconverteerd, die later de byte- en samplevensters worden die afspelen gebruikt.
+
+## Bewijs, geen tags
+
+Identificatie leest drie soorten bewijs uit de map in een pass:
+
+- een **disc ID**, de MusicBrainz-vingerafdruk van de exacte trackindeling van een CD, berekend uit een riplog of uit de CUE-sheet;
+- **barcodes**, gedecodeerd uit artworkscans door het vision-framework van het platform en gelezen uit CUE-catalogusvelden;
+- **tekst**: catalogusnummers en vrije tekst uit artwork-OCR, map- en bestandsnamen, en tekstbestanden in de rip.
+
+Ingesloten audiotags zijn bewust geen bewijs: ze beschrijven wat een tagger geloofde, niet wat de persing is. (Ze vullen de fallbackmetadata wanneer de gebruiker een release als onbekend importeert.)
+
+Disc ID en barcode worden gelijktijdig opgezocht, de disc ID in MusicBrainz, de barcode tegelijk in MusicBrainz en Discogs, en de resultaten worden driehoekig gecontroleerd: resultaten die het eens zijn over een releasegroep komen samen, catalogusnummermatches beperken de persingslijst, en onenigheid tussen signalen verschijnt als een expliciet conflict voor de gebruiker in plaats van een stille beste gok. Elk resultaat draagt zijn herkomst (gevonden via disc ID, via barcode, catalogusmatch) zodat de UI kan zeggen waarom een rij wordt aangeboden.
+
+## Bronnen
+
+MusicBrainz wordt anoniem bevraagd met een strak tempo van een verzoek per seconde. Discogs authenticeert met de persoonlijke token van de gebruiker uit de sleutelbos, gedoseerd en opnieuw geprobeerd binnen zijn rate limits, en een geweigerde token wordt als zodanig gerapporteerd zodat de UI hem kan markeren in plaats van zoekopdrachten stil te laten falen. Antwoorden worden per sessie gecachet, en de ruwe JSON van welke bron ook wint wordt in de database gearchiveerd voor latere herinterpretatie.
+
+## Commit
+
+Een import bevestigen draait, op volgorde:
+
+1. **Decodecontrole**: elke track wordt van begin tot eind gedecodeerd; een rip die niet volledig kan decoderen faalt de import voordat iets wordt geschreven (een config flag kan dit uitschakelen).
+2. **Loudnessanalyse**: integrated loudness en true peak worden per track en per album gemeten tijdens dezelfde decodepass, opgeslagen voor replay-gain-gebruik.
+3. **Hoesselectie**: de gekozen art (remote, mapafbeelding, of ingesloten) wordt opnieuw gerenderd naar een displaythumbnail; het origineel wordt bij de bestanden van de release bewaard als het uit de map kwam.
+4. **Atomaire write**: de release, tracks, credits, identities, formats, segments, files en cover committen in een transactie. Er is geen half-geimporteerde toestand.
+
+De release landt met verwijzingen naar de bestanden van de gebruiker op hun plek. Als de gebruiker cloud-beheerd heeft gekozen, gebeurt de upload na de commit als opslagovergang, en blijven de oorspronkelijke bytes van de bestanden de bron van waarheid; niets wat de gebruiker aan bae gaf wordt ooit verwijderd of gewijzigd.
+
+## Rips herkennen
+
+Elke release registreert een contenthash over de structuur van zijn geimporteerde map (relatieve paden en groottes, onafhankelijk van locatie). Re-scans gebruiken die om mappen te markeren die al in de bibliotheek staan, en re-imports van dezelfde rip vinden en vervangen hun eerdere release in plaats van hem te dupliceren.

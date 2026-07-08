@@ -1,0 +1,41 @@
+---
+title: Afspelen
+description: Oorspronkelijke kwaliteit, en de details waarmee releases zijn gemaakt
+---
+
+Platen zijn gemaakt met structuur die bestandsspelers vaak plat maken: kanten die eindigen, verborgen audio voor track een, nummers die in elkaar overlopen. bae bewaart de afspeeldetails van een release en speelt ze af zoals de release bedoeld was, vanuit je oorspronkelijke bestanden, onaangeraakt.
+
+## Oorspronkelijke kwaliteit
+
+Afspelen decodeert je bestanden zoals ze zijn geimporteerd. Er is geen transcodering, geen loudness-herschrijving, geen server-hercodering; het audioapparaat wordt aangestuurd op de eigen sample rate van het bestand. Wat je hebt geript is wat speelt. Elk formaat dat bae importeert speelt het af: FLAC, MP3, APE, ALAC, AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack, DSD.
+
+## Gapless
+
+Albums die als een doorlopend geheel zijn gemixt spelen zo af. De volgende track wordt voorbereid terwijl de huidige speelt, en wanneer de twee hetzelfde formaat delen stopt de audio nooit op de grens: geen gat, geen klik.
+
+## CD-pregaps
+
+CD's kunnen audio verbergen in het gat voordat een track begint, ook voor track een, de klassieke verborgen-tracktruc. Wanneer een release uit een CUE-sheet-rip wordt geimporteerd, weet bae waar elke pregap zit en speelt ze af: de tijdweergave van de track begint op nul waar de eigenlijke track begint, en de verborgen audio ervoor speelt in het gat, precies zoals de CD deed. Exporten kunnen pregaps bewaren, weglaten of opnieuw vastmaken; zie [Exporteren](/nl/guide/exporting).
+
+## Kantwissels
+
+Vinyl- en cassettereleases hebben kanten, en sommige platen gebruiken de pauze ertussen bewust. Zet **Pause between sides** aan in Playback settings en bae pauzeert afspelen bij elke kantgrens, met een prompt om door te gaan, het omdraaien zonder het omdraaien. Tracklijsten groeperen op kant en disc, zodat de structuur zichtbaar is terwijl je bladert.
+
+## De wachtrij
+
+Afspelen heeft altijd een context: de release die je startte, of de hele bibliotheek als je die hebt geshuffled. De wachtrij toont twee banen:
+
+- **Up Next**: tracks die je met de hand in de wachtrij hebt gezet, eerst afgespeeld. Sleep tracks erin, herschik ze, verwijder ze.
+- **Playing from**: de rest van de context, met zijn eigen shuffle-schakelaar.
+
+**Play Next** en **Add to Queue** staan op elke track en elk album. Repeat wisselt tussen uit, de context herhalen, en een track herhalen.
+
+## Bediening
+
+Play/pause met <kbd>Space</kbd>, volgende en vorige vanaf het toetsenbord, de scrubber om te zoeken. bae integreert met het systeem: mediatoetsen, Control Center op Apple-platforms, medianotificaties op Android, lock-screen controls op de telefoon, met artwork en trackinfo overal waar het systeem ze toont.
+
+Bij afsluiten kan de desktopapp bewaren wat speelde, inclusief wachtrij en positie, en dat bij de volgende start oppakken: **Restore on launch** in Playback settings.
+
+## Offline
+
+Een release speelt af waar zijn bytes bereikbaar zijn: lokale bestanden spelen rechtstreeks, cloud-beheerde releases streamen terwijl ze spelen, en gepinde releases staan altijd op het apparaat. Zie [Opslag en offline](/nl/guide/storage).

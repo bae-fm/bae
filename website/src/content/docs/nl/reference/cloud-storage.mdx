@@ -1,0 +1,37 @@
+---
+title: Cloudopslag
+description: Providers, authenticatie en de vorm van de cloud-home
+---
+
+De cloud-home is een locatie in opslag die de gebruiker al bezit. Elke provider wordt aangestuurd via dezelfde opslaginterface in [coven](https://coven.bae.fm); wat per provider verschilt is authenticatie en hoe een tweede apparaat toegang krijgt.
+
+## Providers
+
+| Provider | Auth | Toegang voor een nieuw apparaat |
+|---|---|---|
+| S3-compatible | Access key + secret | Inloggegevens in de uitnodiging |
+| Google Drive | OAuth (PKCE) | Map gedeeld met het account van de toetreder |
+| Dropbox | OAuth (PKCE) | Map gedeeld met het account van de toetreder |
+| OneDrive | OAuth (PKCE) | Map gedeeld met het account van de toetreder |
+| iCloud (CloudKit) | Apple ID, geen login | CloudKit-share geaccepteerd door de toetreder |
+
+S3-compatible omvat AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, en alles wat verder de API spreekt; bucket, regio, endpoint en key prefix zijn configureerbaar, en de bucket wordt getest voordat de configuratie wordt opgeslagen zodat een typefout bij het instellen faalt, niet bij de eerste sync. De OAuth-providers bestaan alleen in de volledige **bae**-editie; **baeium**-builds compileren ze eruit.
+
+## OAuth
+
+Inloggen is een authorization-code-flow met PKCE, als public client. Op desktop komt de redirect binnen op een loopback-server die voor die ene callback aan een lokale poort bindt; op mobiel vangt de app in plaats daarvan een custom-scheme redirect af. bae vraagt de smalste scope die de provider voor de taak aanbiedt, op Google Drive is dat alleen toegang tot bestanden die de app zelf maakt. Tokens worden in de OS-sleutelbos bewaard, ververst met de refresh grant van de provider, en een geweigerde refresh verschijnt als een reconnect-prompt in plaats van een stille retry-loop.
+
+CloudKit heeft helemaal geen flow nodig: de CloudKit-driver van het platform, geimplementeerd in de app en aan de core gegeven, werkt als de ingelogde Apple ID.
+
+## De indeling van de home
+
+Binnen de home legt coven per-apparaat changeset-streams, snapshotgeneraties, lidmaatschapsrecords en blob-namespaces neer. bae draagt drie blob-namespaces bij: `release_files`, `covers` en `artist_images`.
+
+Hoe objecten worden gesleuteld hangt af van de opslagmodus van de home, vastgelegd bij aanmaak:
+
+- **Opaque**: objecten worden versleuteld en onder uit content afgeleide sleutels bewaard die niets prijsgeven. Dit is de modus die volledig op cryptografie vertrouwt; zie [Encryptie](/nl/reference/encryption).
+- **Browsable**: objecten zijn plaintext op leesbare paden die per blob bij upload worden vastgelegd: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. De bucket is ook een bruikbare bestandsboom; de afweging is geen encryptie en geen lidmaatschap, dus browsable homes kunnen niet met andere mensen worden gedeeld.
+
+## Gedrag op echte netwerken
+
+Leesacties voor afspelen gebruiken bereiken: de speler streamt de bytevensters die hij nodig heeft in plaats van hele bestanden. Uploadtaken boven een groottedrempel worden multipart uitgevoerd waar de provider dat ondersteunt. Snelheidsbeperking en tijdelijke providerfouten proberen opnieuw met exponentiele backoff, met respect voor retry-after wanneer die wordt gegeven; verlopen OAuth-tokens worden ter plekke ververst. De sync-outbox overleeft herstarts: een upload die door afsluiten van de app wordt onderbroken gaat verder in plaats van opnieuw te beginnen.

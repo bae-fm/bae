@@ -1,0 +1,44 @@
+---
+title: Aan de slag
+description: Maak een bibliotheek, importeer je eerste album en speel het af
+---
+
+bae is een plek voor de albums die je bezit. Je bouwt de bibliotheek op je desktop, en hij volgt je naar elk apparaat: gesynchroniseerd via cloudopslag die je al hebt, versleuteld zodat alleen je apparaten hem kunnen lezen.
+
+De desktopapps (macOS, Windows) zijn het volledige gereedschap: ze maken bibliotheken, importeren muziek en bewerken metadata. De telefoonapps (iOS, Android) zijn spelers: ze treden toe tot een bibliotheek die je desktop heeft gemaakt, en bladeren, downloaden en spelen daarna.
+
+## Maak een bibliotheek
+
+Open bae op je desktop. Zonder bibliotheek op de machine biedt het welkomstscherm drie keuzes:
+
+- **Create a new library**, als dit je eerste apparaat is.
+- **Join a library**, als een ander apparaat er al een heeft en de eigenaar jou zal goedkeuren. Zie [Apparaten en leden](/nl/guide/devices).
+- **Restore from cloud**, als dit je eigen bibliotheek is en je de herstelcode hebt. Zie [Apparaten en leden](/nl/guide/devices#herstelcodes).
+
+Maak er een. Een bibliotheek begint lokaal: alles staat op deze machine, niets heeft een account nodig, en er is geen cloud betrokken totdat je er een koppelt.
+
+## Importeer je eerste album
+
+1. Schakel naar de sectie **Import** in de titelbalk.
+2. Voeg een map met muziek toe. Je kunt hem kiezen, naar het venster slepen, of op <kbd>⌘I</kbd> drukken.
+3. bae scant de map en toont de releases die het vindt. Selecteer er een.
+4. bae identificeert hem met MusicBrainz en Discogs en toont de match. Bevestig de persing, kies een hoes, pas details aan.
+5. Klik op **Import**.
+
+Je bestanden worden niet verplaatst, gekopieerd of herschreven. bae catalogiseert ze waar ze staan. De volledige stroom, inclusief wat je doet wanneer identificatie hulp nodig heeft, staat in [Importeren](/nl/guide/importing).
+
+## Speel het af
+
+Terug in de sectie **Library** staat het album in het raster. Klik erop, druk op afspelen. Afspelen gebruikt je oorspronkelijke bestanden, in hun oorspronkelijke kwaliteit. [Afspelen](/nl/guide/playback) behandelt de wachtrij, shuffle en repeat, en de details die bae bewaart: CD-pregaps, vinyl-kantwissels, gapless albums.
+
+## Neem het overal mee
+
+Wanneer je de bibliotheek op meer dan een apparaat wilt, koppel je een cloud-home: je eigen Google Drive, Dropbox, OneDrive, iCloud, of een S3-compatible bucket. Alles wat bae daar neerzet wordt voor upload versleuteld; de provider bewaart het maar kan het niet lezen.
+
+- [Sync](/nl/guide/sync): koppel een cloud-home en kies wat die bewaart.
+- [Apparaten en leden](/nl/guide/devices): voeg je telefoon of een andere desktop toe.
+- [Opslag en offline](/nl/guide/storage): bewaar muziek op het apparaat, of stream hem uit je cloud en pin wat je offline nodig hebt.
+
+## Waar dingen staan
+
+Elke bibliotheek bewaart zijn database en instellingen op desktop onder `~/.bae/libraries/`. Je audio blijft waar je hem vandaan hebt geimporteerd, tenzij je bae vraagt hem in je cloud te beheren. Sleutels en inloggegevens staan in de sleutelbos van het besturingssysteem, niet in bestanden.

@@ -1,0 +1,28 @@
+---
+title: Encryptie
+description: Wat de bibliotheeksleutel is, waar hij staat, en welke ciphertext de provider bewaart
+---
+
+Alles wat bae in een opaque cloud-home zet wordt versleuteld voordat het het apparaat verlaat. bae implementeert geen eigen cryptografie: het hele schema is van [coven](https://coven.bae.fm), en deze pagina beschrijft hoe bae het draagt. Browsable homes kiezen dit allemaal niet; niets hieronder geldt voor ze.
+
+## De bibliotheeksleutel
+
+Een opaque bibliotheek heeft een rootgeheim: een willekeurige 256-bit sleutel die wordt gemaakt wanneer de home wordt aangemaakt. Hij staat in de OS-sleutelbos, nooit in een bestand; op Apple-platforms synchroniseert de sleutelbosvermelding via iCloud Keychain. De configuratie van bae bewaart alleen een vingerafdruk van de sleutel, genoeg om bij ontgrendelen een verkeerde sleutel van een juiste te onderscheiden zonder het geheim vast te houden.
+
+De sleutel reist op twee manieren tussen apparaten, beide beschreven in [Identiteit en lidmaatschap](/nl/reference/membership): afgesloten voor de publieke sleutel van een goedgekeurd apparaat tijdens een uitnodiging, en gedragen in een herstelcode.
+
+## Generaties
+
+De bibliotheeksleutel is eigenlijk een sleutelbos met genummerde generaties. Een lid verwijderen voegt een nieuwe generatie toe die het verwijderde lid nooit ontvangt: alles wat daarna wordt geschreven gebruikt de nieuwe generatie en is onleesbaar voor dat lid, terwijl overblijvende leden elke generatie behouden en de hele geschiedenis kunnen lezen. Elk afgesloten object vermeldt, in plaintext, welke generatie het opent.
+
+## Wat wordt afgesloten
+
+Elk object in de home: changesets, snapshots, audioblobs, artwork, lidmaatschapsrecords, control objects. Objecten worden afgesloten met XChaCha20-Poly1305 in chunks van 64 KB, elke chunk geauthenticeerd, en gebonden aan hun context: een afgesloten object ontsleutelt alleen als het object dat het moest zijn, voor deze bibliotheek, met deze sleutel. Chunking is waarom streamen werkt: de speler kan precies de byte-ranges ontsleutelen die hij ophaalt.
+
+## Wat de provider kan zien
+
+Aantal objecten, objectgroottes, uploadtiming en toegangspatronen. Geen namen, geen metadata, geen audio, geen artwork, geen lidmaatschap. Er is geen server-side herstel: een gebruiker die elk apparaat en elke kopie van de sleutel verliest, is de ciphertext van de bibliotheek voorgoed kwijt, wat het ontwerp doet wat het moet doen.
+
+## Ontgrendelen en vergrendelen
+
+Een bibliotheek openen leest de sleutel uit de sleutelbos. Als de bibliotheek een sleutel verwacht en de sleutelbos hem niet heeft, behandelt bae de bibliotheek als vergrendeld: het vraagt om de sleutel voordat het opent, valideert de invoer tegen de opgeslagen vingerafdruk, en bewaart hem daarna terug in de sleutelbos. Een bibliotheek vergrendelen verwijdert de sleutel bewust uit de sleutelbos; niets in de cloud-home kan worden gelezen of geschreven totdat hij opnieuw wordt ingevoerd.

@@ -1,0 +1,40 @@
+---
+title: Sync
+description: Hoe wijzigingen tussen apparaten bewegen, en hoe ze samenkomen
+---
+
+De sync van bae is de sync van [coven](https://coven.bae.fm): bae declareert zijn tabellen en blobs, en coven doet de rest. Deze pagina beschrijft de werking zoals die voor bae geldt; de eigen docs van coven behandelen elk onderdeel volledig.
+
+## Vastleggen
+
+coven bezit de SQLite-verbinding, dus elke write die bae commit gaat erdoorheen. De session extension van SQLite registreert exact wat in elke transactie is gewijzigd; de wijzigingen aan gesynchroniseerde tabellen worden een **changeset**, afgesloten met de bibliotheeksleutel en ondertekend met de identiteitssleutel van het apparaat. Geen diffs, geen dirty flags: vastleggen is een eigenschap van de verbinding, en een write kan niet worden gemist.
+
+## Streams
+
+Elk apparaat voegt zijn changesets toe aan zijn eigen stream in de cloud-home, opeenvolgend genummerd. Apparaten schrijven nooit naar elkaars streams, dus er zijn geen schrijfconflicten in opslag, en elk apparaat houdt een cursor bij per peer-stream. Een synccyclus pusht de lokale outbox, trekt daarna elke peer-stream vanaf zijn cursor vooruit, verifieert de handtekening van elke changeset en het lidmaatschap van de auteur voordat hij hem toepast.
+
+De cyclus draait na lokale wijzigingen, op een idle timer met backoff (tot vijf minuten tussen polls), en direct bij **Sync Now**. Fouten backoffen en proberen opnieuw; de loop rapporteert de uitkomst van elke cyclus aan de UI als status, fouttekst, en het aantal toegepaste rijen.
+
+## Samenvoegen
+
+Twee apparaten die dezelfde bibliotheek bewerken terwijl ze gescheiden zijn, is normaal. Wanneer hun wijzigingen elkaar ontmoeten:
+
+- Bewerkingen aan **verschillende rijen of verschillende kolommen** passen allebei toe. Het jaar van een release op de laptop bewerken en het label op de desktop levert allebei op.
+- Bewerkingen aan **dezelfde kolom van dezelfde rij** worden geordend door de hybrid logical clock `_updated_at` van de rij: de latere bewerking wint, deterministisch en identiek op elk apparaat.
+- **Verwijderingen winnen** van gelijktijdige bewerkingen: een release die op een apparaat is verwijderd blijft verwijderd, zelfs als een ander apparaat hem in hetzelfde interval bewerkte.
+
+Er is geen conflict-UI omdat er geen onopgeloste status is: elk apparaat komt tot hetzelfde resultaat vanuit elke toepassingsvolgorde.
+
+## Bootstrap
+
+Een apparaat dat toetreedt of herstelt speelt de geschiedenis niet vanaf het begin af. Het downloadt een **snapshot**, een volledige SQLite-image die periodiek naar de cloud-home wordt gepubliceerd, en past daarna alleen de changesets toe die elke stream daarna heeft verzameld. Snapshotmetadata vermeldt de schemaversie en de per-stream cursors die erin zitten.
+
+## Schemaversies
+
+Het schema van bae migreert via een genummerde ladder, en de bovenste sport van die ladder wordt op elke changeset gestempeld die het apparaat schrijft. Een apparaat dat een changeset uit een nieuwer schema trekt dan zijn eigen schema parkeert die stream, zonder iets erna toe te passen, totdat de app wordt bijgewerkt; niets raakt kwijt en niets wordt verkeerd toegepast. Het databasebestand zelf weigert te openen onder een binary die ouder is dan zijn schema.
+
+Grofmaziger dan de schemaversie is het **compatibiliteitstijdperk**: de gepinde coven-revisie die in elke binary zit. Twee builds synchroniseren alleen binnen een tijdperk; een breuk in het wire-format van coven is een nieuw tijdperk en een major-versieverhoging over elke app. Voor 1.0 is elke build tijdperk nul en veranderen formaten zonder migratie.
+
+## Wat de provider ziet
+
+Op een opaque home bewaart de provider ciphertext-changesets, ciphertext-blobs en ondertekende lidmaatschapsrecords; hij kan objecten tellen en groottes en timing observeren, en niets ervan lezen. Elk object dat een apparaat ophaalt wordt geverifieerd, handtekening en lidmaatschap, voordat iets de database raakt: de opslag is een domme, onvertrouwde mailbox. Zie [Encryptie](/nl/reference/encryption) en [Identiteit en lidmaatschap](/nl/reference/membership).

@@ -1,0 +1,34 @@
+---
+title: Afspeelengine
+description: Decoderen, gapless, pregaps en loudness, precies
+---
+
+Het contract van de afspeelengine is trouw aan de bron: decodeer de oorspronkelijke bytes van de gebruiker, op de eigen rate van de bron, met de structuur van de release intact. Deze pagina is de specificatie daarachter.
+
+## Decoderen
+
+Alle decodering is FFmpeg, in-process, op elk platform: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack en DSD zijn wat import accepteert, en wat FFmpeg uit de bytes rapporteert, niet de bestandsextensie, is de vastgelegde codec. Samples komen eruit als 32-bit float voor de outputstage; sampleformatconversie is de enige conversie die wordt uitgevoerd.
+
+Output is de native audio-API van het platform (Core Audio via cpal op desktop en iOS, AAudio op Android). De outputstream wordt geconfigureerd op de **sample rate en kanaaltelling van de bron**: een 96 kHz-bestand speelt op 96 kHz. Er is geen resamplingstage. Het standaardoutputapparaat wordt bij elke streamopbouw opgelost, zodat afspelen de apparaatwissels van het systeem volgt. Op Android kunnen hardware-ondersteunde codecs FFmpeg volledig overslaan voor offloaded decoding.
+
+## Streamende reads
+
+Afspelen heeft geen hele bestanden nodig. Audio wordt gelezen via een sparse buffer die byte-ranges op verzoek ophaalt, uit een lokaal bestand, de cache of de cloud, en seeken mapt de doelsample naar een bytepositie zodat een seek naar een niet-opgehaald gebied daarvandaan ophaalt. Een fetch arbiter geeft de reads van de spelende track voorrang boven preloading, zodat een komende track de huidige nooit vertraagt.
+
+## Tracks als vensters
+
+Een track is geen bestand; het is een geordende lijst samplevensters over een of meer bestanden, bij import gebouwd uit de CUE-sheet of de eigen extent van het bestand. Deze ene representatie draagt elke discvorm: een bestand per track, een hele disc in een image, een pregap die aan het eind van een bestand en het begin van een ander leeft, en lossy rips die een bestand per track knippen.
+
+Pregapvensters worden als zodanig gemarkeerd. Afspelen begint een track bij zijn pregap wanneer hij er een heeft (index 00, verborgen-trackaudio inbegrepen) terwijl de klok tracktijd toont: positie klemt op nul totdat de eigenlijke track begint, en de getoonde duur sluit de pregap uit, passend bij het gedrag van een CD-speler.
+
+## Gapless
+
+De volgende track wordt geopend en gebufferd terwijl de huidige speelt. Wanneer de twee sample rate en kanaaltelling delen, ketent de engine ze binnen de live audio callback: de stream stopt nooit, en de grens is sample-exact. Wanneer formaten verschillen wordt de stream opnieuw opgebouwd, wat de situatie is waarin een formaatwijziging een grens toch hoorbaar maakt.
+
+## Loudness
+
+Import meet integrated loudness (EBU R128) en true peak, per track en per album, tijdens de decodecontrolepass. Replay gain wordt tijdens afspelen uit die metingen afgeleid, nooit in bestanden ingebakken: target -18 LUFS, begrensd zodat true peak niet kan clippen, toegepast per track of per album, wisselend zonder breuk bij gapless grenzen. De modus wordt momenteel geleverd zonder settings-UI en staat standaard uit; hij kan in het configbestand van de bibliotheek worden gezet.
+
+## Kantpauzes
+
+Tracklijsten dragen hun kant- en discstructuur, en de engine kan vasthouden op een kantgrens, met een prompt om door te gaan, wanneer de gebruiker pause-between-sides inschakelt. De hold is een afspeelservicestatus, geen gedecodeerde stilte, dus hervatten is direct.

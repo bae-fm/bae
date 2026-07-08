@@ -1,0 +1,36 @@
+---
+title: Opslag en offline
+description: Waar je muziek staat, en wat zonder netwerk afspeelt
+---
+
+Je bestanden blijven van jou. bae verplaatst, hernoemt of herschrijft ze nooit; de vraag die opslag beantwoordt is alleen waar de *afspeelbare kopie* van elke release staat: op het apparaat, in je cloud, of beide.
+
+## Onbeheerd en beheerd
+
+Elke release is een van beide, gekozen bij import en op elk moment te wijzigen:
+
+- **Onbeheerd**: bae catalogiseert je bestanden waar ze staan en speelt ze daarvandaan af. Niets wordt gekopieerd. De release bestaat in de catalogus op elk gesynchroniseerd apparaat, maar zijn audio staat alleen op de machine die hem heeft geimporteerd.
+- **Beheerd**: de bestanden worden versleuteld en geupload naar de cloud-home. Nu kan elk apparaat de release afspelen, streamend op verzoek of gedownload voor offline. Je oorspronkelijke bestanden worden door de upload niet aangeraakt; of je ze lokaal blijft gebruiken is jouw keuze (**Keep local copy** bij import pint ze).
+
+Tussen de twee bewegen is een actie op releaseniveau: **Manage** uploadt een onbeheerde release; **Make local** downloadt de bestanden van een beheerde release naar een map die jij kiest, en ze zijn weer van jou als gewone bestanden.
+
+## Streamen en de cache
+
+Beheerde releases spelen overal af waar het netwerk het toestaat: afspelen streamt het bestand uit je cloud, en de bytes worden in een lokale cache bewaard zodat de volgende keer afspelen meteen en zonder netwerkverkeer kan. De cache beheert zichzelf binnen een budget (20 GB voor audio op elk apparaat), en verwijdert wat je niet hebt afgespeeld wanneer ruimte schaars wordt. Hoezen en artiestafbeeldingen worden apart gecachet, zodat een groot album je artwork niet kan verdringen.
+
+## Pinnen voor offline
+
+Een release pinnen downloadt alles en bewaart het: gepinde muziek wordt nooit verwijderd en speelt altijd offline af. Pin vanuit het opslagblad van de release of de opslagbeheerder; losmaken zet de bestanden terug in de normale cache, waar ze afspeelbaar blijven maar kunnen worden teruggewonnen. Op de telefoon tonen gepinde downloads hun voortgang direct in de bibliotheek.
+
+## De opslagbeheerder
+
+De opslagbeheerder van de desktop (<kbd>⌘0</kbd>) is het hele beeld in een venster:
+
+- Elke release met grootte en status: onbeheerd, beheerd, aan het uploaden. Filter, sorteer, selecteer veel tegelijk, handel op allemaal tegelijk.
+- **Downloadtaken**: lopende pin-downloads, te pauzeren en opnieuw te proberen.
+- **Exporttaken**: de exportwachtrij. Zie [Exporteren](/nl/guide/exporting).
+- **Uploadtaken**: de sync-outbox, met voortgang per release, doorvoer en resterende tijd, wachtende verwijderingen, pauzeren en hervatten.
+
+## Verwijderen
+
+Een beheerde release verwijderen haalt hem uit de bibliotheek en de cloud-home. Een onbeheerde release verwijderen haalt alleen de catalogusvermelding weg: bae verwijdert nooit bestanden die het daar niet zelf heeft neergezet.

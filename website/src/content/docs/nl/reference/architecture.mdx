@@ -1,0 +1,41 @@
+---
+title: Architectuur
+description: Native apps op een Rust-core, op coven
+---
+
+bae is een Rust-core met vier native apps eromheen. Alles wat het product definieert, het bibliotheekmodel, import, afspelen, sync, encryptie, leeft in Rust en gedraagt zich identiek op elk platform; elke app is een dunne native UI erbovenop.
+
+## De lagen
+
+- **`bae-core`**: het product. Bibliotheek- en metadatamodel, de import- en identificatiepijplijnen, de FFmpeg-afspeelengine, loudnessanalyse, export, en de integratie met coven eronder. Import en identificatie compileren alleen op desktop; mobiele builds zijn sync- en afspeelclients.
+- **[coven](https://coven.bae.fm)**: de datalaag, een aparte library. coven bezit de SQLite-verbinding, legt elke wijziging vast die bae commit, en synchroniseert die wijzigingen end-to-end versleuteld via de cloudopslag van de gebruiker. Het bezit ook blobopslag (audiobytes, artwork), de lokale cache, identiteitssleutels en lidmaatschap. bae pint een exacte coven-revisie en stempelt die in elke binary; die definieert de sync-compatibiliteitsgeneratie tussen builds.
+- **`bae-bridge`**: de UniFFI-grens. Bridge-types worden een keer in Rust gedefinieerd en tijdens build naar Swift en Kotlin gegenereerd.
+- **De apps**: SwiftUI op macOS en iOS, Jetpack Compose op Android, en een native Windows-app. Elk implementeert ook de platformdelen waar de core om vraagt: audio-output, tekstherkenning voor artwork, mediabediening, sleutelbostoegang, crashrapportage.
+
+Naast de apps: `bae-mcp` (de MCP-server), `bae-cli` (opdrachtregel), en `bae-automation` (de gedeelde toollaag die beide gebruiken).
+
+## Een bibliotheek op schijf
+
+Een bibliotheek staat op `~/.bae/libraries/<library-id>/` (een platformdatamap op mobiel):
+
+```
+~/.bae/libraries/<id>/
+  library.db        # SQLite: catalogus, credits, afspeelspecificaties
+  config.yaml       # apparaatlokale instellingen, nooit gesynchroniseerd
+  storage/
+    local/          # blobs die dit apparaat bezit (hoezen, artiestafbeeldingen)
+    cache/          # verwijderbare kopieen van cloudblobs
+    pinned/         # offline gepinde kopieen, nooit verwijderd
+```
+
+De database wordt alleen via coven geopend, dat zijn eigen boekhoudtabellen (sync-cursors, outbox, blobstatus) naast het schema van bae legt en de migraties van bae draait. Audiobestanden die onbeheerd zijn geimporteerd staan helemaal niet onder `~/.bae`: de database verwijst ernaar op de paden waar ze zijn geimporteerd.
+
+Geheimen leven nooit in deze bestanden. Identiteitssleutels, de bibliotheek-encryptiesleutel, cloud-inloggegevens en API-tokens staan in de OS-sleutelbos (Keychain op Apple-platforms, gesynchroniseerd via iCloud Keychain; de platformequivalenten elders).
+
+## Edities
+
+Op elk platform bestaan twee edities die bij buildtijd worden gekozen. **bae** compileert de OAuth-providers (Google Drive, Dropbox, OneDrive), CloudKit en telemetrie in. **baeium** compileert dat allemaal eruit: alleen S3-compatible opslag, en geen telemetrie, niets proprietairs in de dependency tree. De edities zijn dezelfde bron en dezelfde core; een feature flag bepaalt de providerlijst en de diagnostiekbedrading.
+
+## Versionering
+
+Apps versioneren als `MAJOR.MINOR` per platform. De major is het compatibiliteitstijdperk, gedeeld door elke app: apparaten op dezelfde major kunnen een bibliotheek synchroniseren. Hij verhoogt alleen wanneer een wire- of on-disk formaat breekt, meestal de gepinde coven-revisie. Minors tellen releases per app en zijn niet vergelijkbaar tussen platforms.

@@ -1,0 +1,64 @@
+---
+title: Importeren
+description: Koppel je mappen aan echte releases
+---
+
+Een map met rips weet bijna niets over zichzelf. De release waar hij vandaan komt, de persing, het label, de credits, waar track 12 echt eindigt: dat staat allemaal in databases zoals MusicBrainz en Discogs, niet in je bestandsnamen. Importeren is hoe bae de twee verbindt: je wijst naar je muziek, bae zoekt uit welke release elke map is, en de bibliotheek legt de map vast als die release.
+
+Importeren gebeurt op desktop (macOS, Windows). Je bestanden worden gelezen, nooit gewijzigd: bae verplaatst, hernoemt, hertagt of hercodeert niets. Zie [Opslag en offline](/nl/guide/storage) voor waar bestanden na import staan.
+
+## Bewaakte mappen
+
+Schakel naar de sectie **Import** en voeg een map toe: kies hem, sleep hem naar het venster, of druk op <kbd>⌘I</kbd>. bae bewaakt de map vanaf dat moment. Nieuwe muziek die erin wordt gezet verschijnt vanzelf als nieuwe kandidaat; je scant niet opnieuw met de hand. Mappen die nog downloaden worden genegeerd totdat ze klaar zijn.
+
+Een scan herkent releases in de vormen die rips echt hebben:
+
+| Indeling | Hoe het eruitziet |
+|--------|-------------------|
+| Bestand per track | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE + image | `album.cue` + `album.flac`, een bestand voor de hele disc |
+| Meerdere discs | submappen `CD1/`, `CD2/`, met beide vormen erin mogelijk |
+| Verzamelingen | een map met mappen, elk zijn eigen release |
+
+bae importeert de formaten die het afspeelt: FLAC, MP3, APE, ALAC en AAC in `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack en DSD (`.dsf`/`.dff`). Artwork en documenten (CUE-sheets, riplogs, tekstbestanden) in de map worden herkend en bij de release bewaard.
+
+## Een release identificeren
+
+Selecteer een kandidaat en bae begint hem te identificeren. In plaats van uit tags te raden, leest het het bewijs in de map en zoekt elk stuk op:
+
+- **Disc ID.** Een vingerafdruk van de exacte trackindeling van de CD, berekend uit de riplog of de CUE-sheet. Als hij matcht, identificeert hij de precieze CD-editie.
+- **Barcode.** Gelezen uit hoes-scans in de map met tekstherkenning, of uit de CUE-sheet.
+- **Catalogusnummers en tekst.** Catalogusnummers gevonden op artwork en in bestands- en mapnamen, gebruikt om resultaten te beperken.
+
+De signalen worden tegelijk opgezocht in MusicBrainz en Discogs, en de resultaten worden tegen elkaar gecontroleerd. Elk signaal verschijnt als een badge boven de resultaten: je kunt zien wat is gevonden, waar het vandaan kwam (hover voor de oorsprong: disc-TOC, CUE-sheet, hoes-scan, mapnaam), en individuele signalen uitzetten als er een misleidend is.
+
+Drie uitkomsten:
+
+- **Gevonden.** Het bewijs wijst naar een releasegroep. Je kiest de exacte persing uit de lijst.
+- **Conflict.** Twee signalen wijzen naar verschillende releases, bijvoorbeeld de disc ID en de barcode zijn het oneens. bae toont beide kanten en jij kiest welk signaal je vertrouwt, of negeert een signaal.
+- **Niets gevonden.** Zoek met de hand: artiest en album, catalogusnummer, of barcode, in een van beide databases. Tekst die uit het artwork is herkend wordt als autocomplete aangeboden.
+
+Je kunt ook **skip identifying** en importeren als onbekende release. bae valt dan terug op de ingesloten tags van je bestanden voor namen, en je kunt later opnieuw identificeren, wanneer de release in een database staat of je beter bewijs hebt.
+
+## Exact of bij benadering
+
+Wanneer je een match selecteert, controleert bae die tegen je bestanden en markeert een afwijkend aantal tracks. Daarna verklaar je wat de match is:
+
+- **Exact**: je bestanden zijn deze persing.
+- **Alleen metadata**: het juiste album, maar niet noodzakelijk deze exacte persing. bae gebruikt de metadata en onthoudt dat de persing bij benadering is.
+
+Als de release al in je bibliotheek staat, of een andere persing van hetzelfde album, vertelt bae dat voordat je een duplicaat importeert.
+
+## Bevestigen en importeren
+
+Het bevestigingspaneel toont alles wat de import zal schrijven:
+
+- **Hoes.** Gekozen uit de art van de databases, afbeeldingen in je map, of art ingesloten in de bestanden. Je kunt hem later wijzigen.
+- **Metadata.** Album, artiest, jaar, label, catalogusnummer, land, barcode, en elke track: allemaal hier bewerkbaar voordat iets wordt opgeslagen.
+- **Opslag.** Als een cloud-home is gekoppeld, kies je of bae de bestanden in je cloud moet beheren, en of ook een lokale kopie moet worden bewaard. Zie [Opslag en offline](/nl/guide/storage).
+
+Importeren draait op de achtergrond: bae controleert dat elke track correct decodeert, meet loudness voor het album en elke track, slaat de release op, en start voor beheerde imports de upload. De kandidatenlijst gaat verder naar de volgende map, en de release is meteen afspeelbaar.
+
+## Databronnen
+
+**MusicBrainz** heeft geen account en geen sleutel nodig. **Discogs** vereist je eigen gratis API-token; plak die in Settings, en bae vertelt je als hij niet meer werkt. Zonder token zijn zoeken in Discogs en metadata uit Discogs niet beschikbaar, en al het andere werkt. Beide diensten hebben rate limits; bae doseert zijn verzoeken om binnen de limieten te blijven.

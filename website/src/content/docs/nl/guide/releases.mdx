@@ -1,0 +1,39 @@
+---
+title: Releases en metadata
+description: Een release-accurate bibliotheek, en hoe je die juist houdt
+---
+
+De meeste muziekapps modelleren "een album": een titel, een hoes, een tracklijst. Echte verzamelingen werken niet zo. Je kunt de oorspronkelijke CD, de remaster en een vinylpersing van dezelfde plaat bezitten, en ze verschillen in tracklijsten, tijden, artwork en credits. bae modelleert **releases**: elke import is een specifieke persing, en persingen van hetzelfde album worden gegroepeerd.
+
+## Albums groeperen releases
+
+In de bibliotheek is een album met meerdere persingen een item. De albumpagina toont een releasekiezer; elke release bewaart zijn eigen tracklijst, hoes, jaar, label, catalogusnummer en credits. Een release is de **primaire**: degene die het albumraster en afspelen standaard gebruiken. Stel vanuit het albummenu elke release als primair in, en kies op elk moment een andere release om te luisteren; bae onthoudt je keuze per album.
+
+## Wat een release weet
+
+Geidentificeerde releases dragen de kennis van de databases, niet alleen tracknamen:
+
+- Persingsdetails: label, catalogusnummer, barcode, land, formaat, jaar.
+- Credits: uitvoerenden, producers, technici, per release en per track.
+- Klassieke structuur: componisten, werken en hun delen, gekoppeld aan de opnamen ervan. De componistenweergave van de bibliotheek wordt hieruit gebouwd; zie [Bladeren en zoeken](/nl/guide/browsing).
+- Identiteit: welke MusicBrainz- of Discogs-vermelding dit is, en of de match exact of bij benadering is.
+
+De ruwe bronrecords worden ook bewaard, zodat de release later opnieuw kan worden geinterpreteerd zonder de databases opnieuw te vragen.
+
+## Bewerken
+
+Metadata is van jou om te corrigeren. **Edit metadata** op een release opent hetzelfde formulier dat de importbevestiging gebruikt: albumtitel en artiest, persingsdetails, en titel, artiest en nummering van elke track. **Reset to source** keert terug naar wat de database zei.
+
+Bewerkingen leven alleen in de database van bae. De ingesloten tags van je bestanden worden nooit herschreven; de bestanden blijven byte voor byte zoals geimporteerd.
+
+## Opnieuw identificeren
+
+Als een release als onbekend is geimporteerd, aan de verkeerde persing is gekoppeld, of de database sindsdien is verbeterd, draait **Re-identify** de identificatiestroom opnieuw op de bestaande release: dezelfde signalen, dezelfde zoekhulpmiddelen. Nadat de nieuwe match is vastgelegd, vraagt bae of de metadata uit de nieuwe bron moet worden ververst (waarbij je bewerkingen worden overschreven) of dat je wilt houden wat je hebt.
+
+## Hoezen
+
+Elke release heeft een displayhoes. **Change cover** biedt het artwork van de databases en de afbeeldingsbestanden die met de release kwamen. bae bewaart zijn eigen kopie van de gekozen hoes, op displayformaat, zodat de oorspronkelijke scan in je map onaangeraakt blijft. Tik ergens op een hoes om de volledige galerij met afbeeldingen van een release te openen.
+
+## Verwijderen
+
+Een release verwijderen haalt hem uit de bibliotheek en, voor beheerde releases, uit je cloud-home. Bestanden die ter plekke en onbeheerd zijn geimporteerd worden nooit verwijderd: bae vergeet ze alleen.

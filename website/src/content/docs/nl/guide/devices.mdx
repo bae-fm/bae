@@ -1,0 +1,43 @@
+---
+title: Apparaten en leden
+description: Voeg je telefoon toe, keur een apparaat goed, herstel je bibliotheek
+---
+
+Er is geen bae-account. De identiteit van een apparaat is een sleutelpaar dat het zelf genereert en in de sleutelbos van het besturingssysteem bewaart; de bibliotheek herkent apparaten aan hun sleutels. Een apparaat toevoegen betekent dat een bestaand apparaat cryptografisch instaat voor een nieuw apparaat, zonder iemand ertussen.
+
+Twee verschillende ingangen, voor twee verschillende situaties:
+
+- **Toetreden**: een nieuw apparaat wordt goedgekeurd door een apparaat dat de bibliotheek al heeft. Gebruik dit om je telefoon of het apparaat van iemand anders toe te voegen.
+- **Herstellen**: je eigen nieuwe of opnieuw geinstalleerde apparaat herstelt de bibliotheek rechtstreeks uit de cloud-home, met een herstelcode. Geen goedkeurder nodig.
+
+## Een apparaat toevoegen
+
+Kies op het nieuwe apparaat **Join a library**. Het toont een korte code, ook als QR: het toetredingsverzoek, met de publieke sleutel van het apparaat en een vingerafdruk die je hardop kunt voorlezen.
+
+Op een apparaat dat de bibliotheek al heeft, opent een eigenaar Settings, Devices, **Add a device**, en scant of plakt dat verzoek. bae toont de vingerafdruk van het toetredende apparaat; bevestig dat die overeenkomt met wat het nieuwe apparaat toont. Goedkeuren maakt een uitnodigingscode: geef die terug aan het nieuwe apparaat (scan de QR of plak hem), en het nieuwe apparaat downloadt de bibliotheek en begint te synchroniseren.
+
+Achter de handdruk: het goedkeurende apparaat geeft de nieuwkomer toegang tot de cloud-home (consumentenclouds delen de map met het account van de nieuwkomer; S3-uitnodigingen bevatten inloggegevens) en sluit de encryptiesleutel van de bibliotheek af voor de publieke sleutel van de nieuwkomer. De uitnodiging is nutteloos voor elk ander apparaat. Details staan in [Identiteit en lidmaatschap](/nl/reference/membership).
+
+## Leden en rollen
+
+Settings, Devices toont elk lid: vingerafdruk, rol, en welk lid dit apparaat is. Het eerste apparaat is een **eigenaar**; apparaten die het goedkeurt treden toe als **leden**. Beide lezen en schrijven de bibliotheek; alleen eigenaren keuren apparaten goed en verwijderen ze.
+
+## Een apparaat verwijderen
+
+Eigenaren kunnen elk lid verwijderen. Verwijderen sluit niet alleen de deur: de encryptiesleutel van de bibliotheek wordt geroteerd, en het verwijderde apparaat ontvangt de nieuwe sleutel nooit. Wat het al heeft gekopieerd houdt het, data kan niet worden teruggestuurd, maar alles wat de bibliotheek vanaf dat moment schrijft is onleesbaar voor dat apparaat.
+
+## Herstelcodes
+
+Een herstelcode is een dragergeheim voor je eigen bibliotheek: cloud-home-coordinaten plus de encryptiesleutel, in een string. **Show recovery code** in Settings toont hem; bewaar hem ergens veilig, zoals in een wachtwoordbeheerder. Op een nieuw apparaat bouwt **Restore from cloud** met de code de bibliotheek opnieuw op, zonder goedkeurder.
+
+Op Apple-platforms wordt de code ook automatisch in iCloud Keychain bewaard, zodat een nieuwe Mac of iPhone die met je Apple ID is ingelogd met een tik kan herstellen.
+
+Iedereen die de code heeft, heeft de bibliotheek, dus behandel hem als de sleutel die hij is.
+
+## Vergrendelen
+
+**Lock Library** verwijdert de encryptiesleutel uit de sleutelbos van het apparaat. De bibliotheek blijft op schijf staan, onleesbaar, totdat iemand de sleutel opnieuw invoert; bae controleert die tegen een opgeslagen vingerafdruk voordat hij wordt geaccepteerd. Gebruik dit voor een laptop die het huis uit gaat.
+
+## Op de telefoon
+
+iOS en Android treden precies zo toe en herstellen precies zo; dat is hun hele onboarding. Een telefoon kan ook zijn kopie van de bibliotheek verwijderen (Settings, remove from this device), wat lokale bestanden verwijdert en niets in de cloud aanraakt.
