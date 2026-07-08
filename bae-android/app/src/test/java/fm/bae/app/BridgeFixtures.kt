@@ -199,7 +199,6 @@ object BridgeFixtures {
                     bytesTotal = 0uL,
                     activity = null,
                 ),
-            activeBytesTotal = 0uL,
             pendingDeletes = 0u,
             paused = paused,
             throughputBps = 0uL,
