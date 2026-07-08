@@ -1,0 +1,55 @@
+---
+title: ఇన్‌స్టాలేషన్
+description: ప్రతి వేదిక లో bae లేదా baeium ను డౌన్‌లోడ్ చేసి install చేయండి
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## రెండు editions
+
+ప్రతి వేదిక ఒకే మూలం నుంచి నిర్మించిన రెండు editions లో వస్తుంది:
+
+- **bae**, పూర్తి app: S3, Google Drive, Dropbox, OneDrive, మరియు iCloud సమకాలీకరణ.
+- **baeium**, proprietary భాగాలు లేకుండా: S3-compatible నిల్వ మాత్రమే, OAuth providers లేవు, iCloud/CloudKit లేదు, telemetry లేదు.
+
+అవి పక్కపక్కనే install అవుతాయి, ప్రతి దానికి తన లైబ్రరీ, తన (iCloud-Keychain-synced) కీలు ఉంటాయి. కింద మీకు నచ్చినదాన్ని ఎంచుకోండి.
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">Download bae for macOS</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">Download baeium for macOS</DownloadButton>
+
+1. Download చేసిన `.dmg` తెరవండి
+2. App ను మీ Applications ఫోల్డర్ కు drag చేయండి
+3. Applications నుంచి దాన్ని తెరవండి
+
+రెండు editions తమ తమ Sparkle feed ద్వారా auto-update అవుతాయి.
+
+## iOS
+
+iOS builds sideloading కోసం **unsigned `.ipa` ఫైళ్లు**. [AltStore](https://altstore.io) లేదా [Sideloadly](https://sideloadly.io) తో install చేయండి, లేదా మీ స్వంత Apple ID తో Xcode లో re-sign చేయండి (ఉచిత Apple ID baeium కు పనిచేస్తుంది). App Store distribution ఇంకా setup కాలేదు.
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">Download bae for iOS</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">Download baeium for iOS</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">Download bae for Android</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">Download baeium for Android</DownloadButton>
+
+Prompt వచ్చినప్పుడు మీ browser/ఫైళ్లు నుంచి install చేయడానికి అనుమతించండి, తర్వాత `.apk` తెరవండి.
+
+## Windows
+
+Windows builds unpackaged app యొక్క **unsigned** zips. Extract చేసి `bae.exe` / `baeium.exe` నడపండి. SmartScreen మొదటి launch లో హెచ్చరిక చూపవచ్చు.
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">Download bae for Windows</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">Download baeium for Windows</DownloadButton>
+
+## Linux
+
+త్వరలో వస్తుంది.
+
+## Source నుంచి build చేయడం
+
+baeium build చేయడానికి proprietary ఏదీ అవసరం లేదు. Free provisioning లో iOS సహా ప్రతి వేదిక స్వయంగా build చేసే సూచనలకు [repository README](https://github.com/bae-fm/bae#building-baeium-yourself) చూడండి.

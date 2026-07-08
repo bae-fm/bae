@@ -1,0 +1,35 @@
+---
+title: గుర్తింపు మరియు సభ్యత్వం
+description: Keys అంటే identities, join handshake, roles, revocation
+---
+
+bae లో ఖాతా system ఎక్కడా లేదు. Device identity అనేది అది తనకోసం సృష్టించి OS keyring లో ఉంచుకునే Ed25519 keypair; public కీ నే identity. Library కి ఎవరు చెందుతారో క్లౌడ్ home లోని signed records set, అవి ఉన్న ఎవరైనా verify చేయగలరు, server ఏదీ issue చేయదు. Machinery [coven](https://coven.bae.fm) దే; bae దాన్ని ఎలా వాడుతుందో ఈ పేజీ.
+
+## Membership records
+
+ప్రతి యజమాని క్లౌడ్ home లో append-only signed membership entries stream రాస్తాడు: ఈ కీ ఈ role తో added, ఈ కీ removed. ప్రతి entry మునుపటి దానికి link అవుతుంది, ప్రతి యజమాని తన stream tip ను ప్రకటించే head కు sign చేస్తాడు, కాబట్టి records drop లేదా reorder చేసే provider నమ్మబడకుండా detect అవుతుంది. Library అంగీకరించేది ప్రతి యజమాని verified stream యొక్క union.
+
+ప్రతి pull లో, ప్రతి changeset author ఈ record తో check అవుతుంది: ప్రస్తుత సభ్యుడు చేత signed అయిందా, write చేయగల role ఉందా. Removed పరికరాలు నుంచి, ఎప్పుడూ added కాని కీలు నుంచి, లేదా invalid signatures తో వచ్చిన changesets apply కావు. Provider records ఉంచుతుంది కానీ forge చేయలేడు; యజమాని కీలు కలిగినవారే membership మార్చగలరు.
+
+## Roles
+
+**Owner** మరియు **Member** రెండూ లైబ్రరీ చదువుతాయి, రాస్తాయి; owners అదనంగా పరికరాలు approve మరియు remove చేస్తారు. bae founding పరికరం యజమాని, అది approve చేసే ప్రతి పరికరం సభ్యుడు గా చేరుతుంది. (Underlying machinery లో మూడో role, read-only follower, ఉంది; bae ప్రస్తుతం దాన్ని assign చేయదు.)
+
+## Join handshake
+
+Device జోడించడం మధ్యలో స్పష్టమైన మానవ verification ఉన్న two-code exchange:
+
+1. Joining పరికరం తన keypair సృష్టించి **join request** చూపిస్తుంది: public కీ, దాని short fingerprint, మరియు (OAuth providers కోసం) ఫోల్డర్ share చేయాల్సిన క్లౌడ్ ఖాతా.
+2. Owner request డీకోడ్ చేస్తాడు, రెండు screens ఒకే fingerprint చూపిస్తాయి. Human అవి match అవుతాయో check చేస్తాడు; swapped కీ ను ఓడించే step ఇదే.
+3. Approval ఒకేసారి మూడు పనులు చేస్తుంది: newcomer ఖాతా కు క్లౌడ్ home access ఇస్తుంది (consumer clouds లో ఫోల్డర్ share, S3 లో embedded credentials, iCloud లో CloudKit share), లైబ్రరీ కీ ను newcomer public కీ కు seal చేస్తుంది, దాన్ని add చేసే membership entry కి sign చేస్తుంది. ఇవన్నీ **invite code** లో pack అవుతాయి.
+4. Joining పరికరం invite ను consume చేసి, కీ unseal చేసి, latest snapshot నుంచి bootstrap అయి సమకాలీకరణ అవుతుంది.
+
+Invite requesting కీ కు sealed: దాన్ని intercept చేసినా ఏమీ దక్కదు.
+
+## Revocation
+
+Member తొలగించడం signed removal append చేసి, removed కీ ఎప్పుడూ పొందని కొత్త generation కు లైబ్రరీ కీ rotate చేస్తుంది ([గుప్తీకరణ](/te/reference/encryption#తరాలు) చూడండి). Access revoke చేయగల నిల్వ పై, access కూడా వెనక్కి తీసుకుంటుంది. Removed పరికరం కు ఇప్పటికే synced అయినది దాని దగ్గరే ఉంటుంది; డేటా unsend చేయలేము. Rotation తర్వాతి ప్రతిదీ దాని reach బయట ఉంటుంది.
+
+## Recovery codes
+
+Recovery code ఉద్దేశపూర్వకంగా membership ను bypass చేస్తుంది: surviving approver లేకుండా మీ స్వంత లైబ్రరీ ని restore చేసేందుకు క్లౌడ్ home coordinates తో పాటు లైబ్రరీ కీ ఉన్న ఒక bearer string. అది demand పై generated అవుతుంది, Apple platforms లో iCloud Keychain లో automatically stored అవుతుంది, లైబ్రరీ తానే ఎంత sensitive అయితే ఇదీ అంతే.

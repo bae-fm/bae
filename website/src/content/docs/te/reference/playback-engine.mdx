@@ -1,0 +1,34 @@
+---
+title: వినిపింపు engine
+description: Decoding, gapless, pregaps, loudness, ఖచ్చితంగా
+---
+
+ప్లేబ్యాక్ యంత్రం ఒప్పందం మూలం కు fidelity: వాడుకరి అసలు బైట్లు ను మూలం rate లో డీకోడ్ చేయడం, విడుదల నిర్మాణం చెదరకుండా గా ఉంచడం. దాని వెనుక specification ఈ పేజీ.
+
+## Decoding
+
+Decoding అంతా FFmpeg, in-process, ప్రతి వేదిక మీద: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack, DSD దిగుమతి అంగీకరించే ఆకృతులు, బైట్లు నుంచి FFmpeg report చేసేదే codec of record, ఫైల్ extension కాదు. Output దశ కోసం నమూనాలు 32-bit float గా వస్తాయి; నమూనా ఆకృతి మార్పు ఒక్కటే జరిగే మార్పు.
+
+Output వేదిక native audio API (desktop మరియు iOS లో cpal ద్వారా Core Audio, Android లో AAudio). Output stream **మూలం నమూనా rate మరియు channel count** కు configure అవుతుంది: 96 kHz ఫైల్ 96 kHz గానే వినిపిస్తుంది. Resampling దశ లేదు. Default అవుట్‌పుట్ పరికరం ప్రతి stream build వద్ద resolve అవుతుంది, కాబట్టి playback system పరికరం switches ను అనుసరిస్తుంది. Android లో hardware-supported codecs offloaded డీకోడింగ్ కోసం FFmpeg ను పూర్తిగా bypass చేయగలవు.
+
+## Streaming reads
+
+Playback కు మొత్తం ఫైళ్లు అవసరం లేదు. Audio స్థానిక ఫైల్, క్యాష్, లేదా క్లౌడ్ నుంచి demand పై బైట్ ranges fetch చేసే sparse buffer ద్వారా చదవబడుతుంది, seeking లక్ష్యం నమూనా ను బైట్ స్థానం కు map చేస్తుంది కాబట్టి unfetched region లో seek చేస్తే అక్కడి నుంచే fetch అవుతుంది. Fetch arbiter playing ట్రాక్ reads కు preloading కంటే priority ఇస్తుంది, కాబట్టి upcoming ట్రాక్ ప్రస్తుత one ను delay చేయదు.
+
+## Tracks as విండోలు
+
+Track ఫైల్ కాదు; దిగుమతి సమయంలో CUE sheet లేదా ఫైల్ extent నుంచి నిర్మించబడిన, ఒకటి లేదా ఎక్కువ ఫైళ్లు మీద ordered నమూనా విండోలు list. ఈ ఒక్క representation ప్రతి disc shape ను మోస్తుంది: ట్రాక్కు ఒక ఫైల్, మొత్తం disc ఒక image లో, ఒక ఫైల్ చివర మరియు మరో ఫైల్ మొదట ఉన్న pregap, lossy rips లో ట్రాక్కు ఒక ఫైల్.
+
+Pregap విండోలు అలా marked. Track కు pregap ఉంటే playback దానిలోనే ప్రవేశిస్తుంది (index 00, hidden-ట్రాక్ audio included), clock ట్రాక్ time చూపుతూనే ఉంటుంది: ట్రాక్ proper మొదలయ్యే వరకు స్థానం zero కు clamp అవుతుంది, displayed duration pregap ను మినహాయిస్తుంది, CD player behavior కు సరిపోతుంది.
+
+## Gapless
+
+Current ట్రాక్ వినిపిస్తున్నప్పుడే తదుపరి ట్రాక్ open మరియు buffer అవుతుంది. రెండింటి నమూనా rate మరియు channel count ఒకటే అయితే, engine వాటిని live audio callback లో chain చేస్తుంది: stream ఆగదు, సరిహద్దు నమూనా-exact. Formats వేరైతే stream rebuild అవుతుంది, ఆకృతి change వల్ల సరిహద్దు వినిపించే case అదే.
+
+## Loudness
+
+Import డీకోడ్-verification pass లో ప్రతి ట్రాక్ మరియు ఆల్బమ్ కు integrated loudness (EBU R128), true peak కొలుస్తుంది. Replay gain ఆ measurements నుంచి play time లో derive అవుతుంది, ఫైళ్లు లో bake కాదు: లక్ష్యం −18 LUFS, true peak clip కాకుండా capped, ట్రాక్ ప్రకారం లేదా ఆల్బమ్ ప్రకారం applied, gapless సరిహద్దులు వద్ద clean గా switch అవుతుంది. Mode ప్రస్తుతం సెట్టింగులు UI లేకుండా ships అవుతుంది మరియు డిఫాల్ట్ off; లైబ్రరీ config ఫైల్ లో set చేయవచ్చు.
+
+## Side pauses
+
+Track lists side మరియు disc నిర్మాణం మోస్తాయి, వాడుకరి pause-between-sides enable చేస్తే engine side సరిహద్దు వద్ద hold చేసి continue prompt చూపించగలదు. Hold playback-service state, డీకోడ్ silence కాదు, కాబట్టి resume వెంటనే జరుగుతుంది.

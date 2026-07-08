@@ -1,0 +1,37 @@
+---
+title: మేఘ నిల్వ
+description: సేవలు, ధృవీకరణ, మేఘ నిల్వ ఇంటి ఆకారం
+---
+
+మేఘ నిల్వ ఇల్లు అంటే వినియోగదారు ఇప్పటికే కలిగిన నిల్వలోని ఒక స్థానం. ప్రతి సేవ [coven](https://coven.bae.fm) లోని అదే నిల్వ interface ద్వారా నడుస్తుంది; సేవనిబట్టి మారేది ధృవీకరణ మరియు రెండో పరికరానికి ప్రాప్యత ఎలా ఇవ్వబడుతుందన్నది.
+
+## సేవలు
+
+| సేవ | ధృవీకరణ | కొత్త పరికరానికి ప్రాప్యత |
+|---|---|---|
+| S3-compatible | Access కీ + secret | Credentials invite లో embed అవుతాయి |
+| Google Drive | OAuth (PKCE) | సంచయం చేరేవారి ఖాతాకు share అవుతుంది |
+| Dropbox | OAuth (PKCE) | సంచయం చేరేవారి ఖాతాకు share అవుతుంది |
+| OneDrive | OAuth (PKCE) | సంచయం చేరేవారి ఖాతాకు share అవుతుంది |
+| iCloud (CloudKit) | Apple ID, sign-in లేదు | CloudKit share చేరేవారు అంగీకరిస్తారు |
+
+S3-compatible అంటే AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, API మాట్లాడే మిగతావన్నీ; bucket, region, endpoint, కీ prefix configure చేయవచ్చు, config save కాకముందే bucket probe అవుతుంది కాబట్టి typo మొదటి సమకాలీకరణ వద్ద కాదు setup దగ్గరే fail అవుతుంది. OAuth providers పూర్తి **bae** edition లో మాత్రమే ఉంటాయి; **baeium** builds వాటిని compile చేయవు.
+
+## OAuth
+
+Sign-in PKCE తో authorization-code flow, public client గా. Desktop లో redirect ఒక్క callback కోసం స్థానిక port కు bound అయిన loopback server మీద landing అవుతుంది; mobile లో app custom-scheme redirect ను capture చేస్తుంది. bae పనికి provider ఇచ్చే అత్యల్ప scope నే అడుగుతుంది, Google Drive లో అది app సృష్టించిన ఫైల్లకే access. Tokens OS keyring లో నిల్వ అవుతాయి, provider refresh grant తో refresh అవుతాయి, rejected refresh silent retry loop కాకుండా reconnect prompt గా బయటపడుతుంది.
+
+CloudKit కు flow అవసరం లేదు: app అమలు చేసి core కు ఇచ్చే వేదిక CloudKit driver signed-in Apple ID గా పనిచేస్తుంది.
+
+## ఇంటి అమరిక
+
+ఇంటి లోపల, coven ప్రతి పరికరపు మార్పుల ప్రవాహాలు, snapshot generations, సభ్యత్వ నమోదులు, blob namespaces అమర్చుతుంది. bae మూడు blob namespaces ఇస్తుంది: `release_files`, `covers`, మరియు `artist_images`.
+
+Objects ఎలా keyed అవుతాయో ఇంటి నిల్వ విధానంపై ఆధారపడుతుంది, సృష్టించినప్పుడు స్థిరం:
+
+- **Opaque**: objects గుప్తీకరించబడి ఏమీ చెప్పని content-derived కీలు కింద నిల్వ అవుతాయి. ఇది cryptography మీద ఆధారపడే విధానం; [గుప్తీకరణ](/te/reference/encryption) చూడండి.
+- **Browsable**: objects పంపే సమయంలో ప్రతి blob కు నమోదు చేసిన చదవదగిన paths వద్ద plaintext గా ఉంటాయి: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Bucket వాడదగిన దస్త్ర వృక్షంలా కూడా పనిచేస్తుంది; దాని ప్రతిఫలం గుప్తీకరణ లేదు, సభ్యత్వం లేదు, కాబట్టి browsable ఇళ్లు ఇతరులతో పంచుకోలేరు.
+
+## నిజమైన networks లో ప్రవర్తన
+
+వినిపింపు చదవడాలు rangeలుగా ఉంటాయి: వినిపింపు యంత్రం మొత్తం దస్త్రాలు కాకుండా అవసరమైన బైట్ భాగాలను ప్రవాహంగా తెస్తుంది. సేవ మద్దతిస్తే పరిమాణ హద్దు దాటిన పంపింపులు multipart అవుతాయి. రేటు పరిమితులు మరియు తాత్కాలిక సేవ లోపాలు exponential backoff తో మళ్లీ ప్రయత్నిస్తాయి, సేవ ఇచ్చిన retry-after ఉంటే పాటిస్తాయి; గడువు ముగిసిన OAuth టోకెన్లు అక్కడికక్కడే refresh అవుతాయి. సమకాలీకరణ బయటకు పంపే వరుస పునఃప్రారంభాలను తట్టుకుంటుంది: యాప్ quit కావడం వల్ల మధ్యలో ఆగిన పంపింపు మొదటి నుంచి కాకుండా కొనసాగుతుంది.

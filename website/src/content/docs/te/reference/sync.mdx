@@ -1,0 +1,40 @@
+---
+title: సమకాలీకరణ
+description: Changes పరికరాలు మధ్య ఎలా కదులుతాయి, ఎలా merge అవుతాయి
+---
+
+bae సమకాలీకరణ అనేది [coven](https://coven.bae.fm) సమకాలీకరణ: bae తన పట్టికలు మరియు blobs ను declare చేస్తుంది, మిగతాది coven చేస్తుంది. ఈ పేజీ అవి bae కు ఎలా వర్తిస్తాయో mechanics; coven సొంత docs ప్రతి భాగాన్ని పూర్తిగా వివరిస్తాయి.
+
+## Capture
+
+coven SQLite connection ను owns చేస్తుంది, కాబట్టి bae commit చేసే ప్రతి write దాని గుండా వెళ్తుంది. SQLite session extension ప్రతి transaction లో ఏమి మారిందో ఖచ్చితంగా record చేస్తుంది; synced పట్టికలు changes **changeset** అవుతాయి, లైబ్రరీ కీ తో sealed, పరికరం identity కీ తో signed. Diffing లేదు, dirty flags లేవు: capture connection యొక్క property, write miss కావడం సాధ్యం కాదు.
+
+## Streams
+
+ప్రతి పరికరం క్లౌడ్ home లో తన సొంత stream కు changesets append చేస్తుంది, sequential numbering తో. Devices ఒకదానిది మరొకటి streams కు రాయవు, కాబట్టి నిల్వ లో write conflicts ఉండవు, ప్రతి పరికరం peer stream కు cursor ట్రాక్ చేస్తుంది. Sync cycle స్థానిక outbox ను push చేసి, తర్వాత ప్రతి peer stream ను తన cursor నుంచి ముందుకు pull చేస్తుంది, apply చేసే ముందు ప్రతి changeset signature మరియు author membership verify చేస్తుంది.
+
+Cycle స్థానిక changes తర్వాత, backoff ఉన్న idle timer పై (polls మధ్య ఐదు నిమిషాల వరకు), మరియు **Sync Now** పై వెంటనే నడుస్తుంది. Failures back off మరియు retry అవుతాయి; loop ప్రతి cycle outcome ను UI కు status, error text, applied వరుసలు సంఖ్యగా reports చేస్తుంది.
+
+## Merge
+
+రెండు పరికరాలు ఒకే లైబ్రరీని వేరువేరుగా edit చేయడం సాధారణ case, exception కాదు. వాటి changes కలిసినప్పుడు:
+
+- **వేరు వరుసలు లేదా వేరు columns** పై edits రెండూ apply అవుతాయి. Laptop లో విడుదల year edit చేసి desktop లో label edit చేస్తే రెండూ ఉంటాయి.
+- **అదే వరుస లో అదే column** పై edits వరుస `_updated_at` hybrid logical clock ద్వారా ordered అవుతాయి: later edit wins, deterministic గా ప్రతి పరికరం లో ఒకేలా.
+- **Deletes win** concurrent edits మీద: ఒక పరికరం లో deleted విడుదల అదే interval లో మరో పరికరం edit చేసినా deleted గానే ఉంటుంది.
+
+Conflict UI లేదు, ఎందుకంటే unresolved state లేదు: ఏ application order నుంచైనా ప్రతి పరికరం ఒకే result కు converge అవుతుంది.
+
+## Bootstrap
+
+చేరుతున్న లేదా restore అవుతున్న పరికరం history ను మొదటి నుంచి replay చేయదు. అది క్లౌడ్ home కు periodically published అయ్యే పూర్తి SQLite image అయిన **snapshot** డౌన్‌లోడ్ చేస్తుంది, తర్వాత ప్రతి stream దాని తర్వాత కూడబెట్టిన changesets మాత్రమే apply చేస్తుంది. Snapshot మెటాడేటా schema version మరియు అది embodied చేసే per-stream cursors record చేస్తుంది.
+
+## Schema versions
+
+bae schema numbered ladder ద్వారా migrate అవుతుంది, పరికరం రాసే ప్రతి changeset పై ladder top rung stamped ఉంటుంది. తనకన్నా newer schema నుంచి changeset pull చేసే పరికరం ఆ stream ను parks చేస్తుంది, app update అయ్యే వరకు దాని తర్వాత ఏదీ apply చేయదు; ఏదీ పోదు, తప్పుగా apply కాదు. Database ఫైల్ తన schema కన్నా పాత binary కింద open అవ్వడానికి నిరాకరిస్తుంది.
+
+Schema version కంటే coarser **compatibility era**: ప్రతి binary లో baked pinned coven revision. రెండు builds ఒక era లోనే సమకాలీకరణ అవుతాయి; coven wire-ఆకృతి break కొత్త era మరియు ప్రతి app లో major version bump. Pre-1.0 లో ప్రతి build era zero, ఆకృతులు migration లేకుండా మారుతాయి.
+
+## Provider ఏమి చూస్తుంది
+
+Opaque home పై provider ciphertext changesets, ciphertext blobs, signed membership records నిల్వ చేస్తుంది; objects లెక్కించగలదు, sizes మరియు timing గమనించగలదు, వాటిలో ఏదీ చదవదు. Device pull చేసే ప్రతి object డేటాబేస్ ను తాకే ముందు signature మరియు membership తో verify అవుతుంది: నిల్వ dumb, untrusted mailbox. [గుప్తీకరణ](/te/reference/encryption) మరియు [గుర్తింపు మరియు సభ్యత్వం](/te/reference/membership) చూడండి.

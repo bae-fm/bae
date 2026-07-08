@@ -1,0 +1,28 @@
+---
+title: గుప్తీకరణ
+description: Library కీ ఏమిటి, అది ఎక్కడ ఉంటుంది, provider దగ్గర ఏ ciphertext ఉంటుంది
+---
+
+Opaque క్లౌడ్ home లో bae పెట్టే ప్రతిదీ పరికరం ను విడిచే ముందు encrypted అవుతుంది. bae తన సొంత cryptography అమలు చేయదు: మొత్తం scheme [coven](https://coven.bae.fm) దే, bae దాన్ని ఎలా వాడుతుందో ఈ పేజీ వివరిస్తుంది. Browsable homes ఇవన్నీ వాడవు; కిందివి వాటికి వర్తించవు.
+
+## Library కీ
+
+Opaque లైబ్రరీ కు ఒక root secret ఉంటుంది: home సృష్టించినప్పుడు mint చేసే random 256-bit కీ. అది OS keyring లో ఉంటుంది, ఫైల్ లో ఎప్పుడూ కాదు; Apple platforms లో keyring entry iCloud Keychain ద్వారా సమకాలీకరణ అవుతుంది. bae config కీ fingerprint మాత్రమే నిల్వ చేస్తుంది, secret పట్టుకోకుండా unlock సమయంలో wrong కీ ని right కీ నుంచి వేరు చేయడానికి చాలు.
+
+Key పరికరాలు మధ్య రెండు మార్గాల్లో ప్రయాణిస్తుంది, రెండూ [గుర్తింపు మరియు సభ్యత్వం](/te/reference/membership) లో వివరించబడ్డాయి: invite సమయంలో approved పరికరం public కీ కు sealed గా, recovery code లో మోసుకెళ్లబడుతూ.
+
+## తరాలు
+
+Library కీ అసలు numbered generations ఉన్న keyring. Member ను తొలగిస్తే removed సభ్యుడు ఎప్పుడూ పొందని కొత్త generation append అవుతుంది: ఆ తర్వాత రాయబడే ప్రతిదీ కొత్త generation వాడుతుంది, వారికి unreadable అవుతుంది; మిగిలిన సభ్యులు ప్రతి generation ఉంచుకుని మొత్తం history చదవగలరు. ప్రతి sealed object దాన్ని తెరుచే generation ఏదో clear లో record చేస్తుంది.
+
+## ఏమి seal అవుతుంది
+
+Home లోని ప్రతి object: changesets, snapshots, audio blobs, చిత్రకళ, membership records, control objects. Objects XChaCha20-Poly1305 తో 64 KB chunks లో seal అవుతాయి, ప్రతి chunk authenticated, తన context కు bound: sealed object ఈ లైబ్రరీ కి, ఈ కీ వద్ద, అది ఏ object గా రాయబడిందో అదే రూపంలో మాత్రమే decrypt అవుతుంది. Streaming పనిచేయడానికి chunking కారణం, player fetch చేసే బైట్ ranges నే decrypt చేయగలదు.
+
+## Provider ఏమి చూడగలదు
+
+Object count, object sizes, అప్‌లోడ్ timing, access patterns. Names కాదు, మెటాడేటా కాదు, audio కాదు, చిత్రకళ కాదు, membership కాదు. Server-side recovery లేదు: ప్రతి పరికరం, కీ ప్రతి copy కోల్పోయిన వాడుకరి లైబ్రరీ ciphertext ను శాశ్వతంగా కోల్పోతాడు, ఇది design ఉద్దేశించినట్టే.
+
+## Unlock మరియు lock
+
+Library తెరవడం keyring నుంచి కీ చదువుతుంది. Library కీ ఆశిస్తే, keyring లో లేకపోతే, bae లైబ్రరీ ని locked గా చూస్తుంది: తెరవడానికి ముందు కీ అడుగుతుంది, keyring లో తిరిగి save చేయడానికి ముందు stored fingerprint తో entry validate చేస్తుంది. Library lock చేయడం keyring నుంచి కీ ని ఉద్దేశపూర్వకంగా తొలగిస్తుంది; మళ్లీ నమోదు చేసే వరకు క్లౌడ్ home లో ఏదీ చదవలేరు, రాయలేరు.

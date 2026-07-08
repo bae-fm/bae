@@ -1,0 +1,43 @@
+---
+title: దిగుమతి pipeline
+description: Scanning, evidence, triangulation, atomic commit
+---
+
+Import ఒక ఫోల్డర్ ఫైల్లను, ఫైల్ల ఒక్క బైట్ కూడా మార్చకుండా విడుదల-accurate catalog entry గా మార్చుతుంది. [వాడుక మార్గదర్శి](/te/guide/importing) లో వివరించిన flow వెనుక pipeline ఇదే.
+
+## Scanning
+
+Watched ఫోల్డర్లు వేదిక ఫైల్-system events ద్వారా monitored అవుతాయి, debounce అవుతాయి, change పై re-scan అవుతాయి; scans మళ్లీ మొదలుపెట్టకుండా existing candidate list తో reconcile అవుతాయి. Scanner ఫోల్డర్ ను ఒక విడుదల గా classify చేస్తుంది (audio నేరుగా లోపల, లేదా `CD1`/`CD2` వంటి disc-shaped subfolders), లేదా collection గా దాంట్లోకి recurse అవుతుంది. Files extension ద్వారా audio, చిత్రకళ, documents గా classify అవుతాయి, తర్వాత audio probe అవుతుంది: ముఖ్యం ఫైల్ extension కాదు, బైట్లు లో FFmpeg కనుగొనే codec. Partial-డౌన్‌లోడ్ markers ఉన్న ఫోల్డర్లు డౌన్‌లోడ్ పూర్తి అయ్యే వరకు excluded.
+
+CUE sheet ఒక audio image ను ట్రాక్ list గా మార్చుతుంది. Parser pregaps మరియు postgaps, per-ట్రాక్ performers మరియు ISRCs, single-ఫైల్ images మరియు one-ఫైల్-per-ట్రాక్ CUE layouts రెండింటినీ handle చేస్తుంది. Track సరిహద్దులు CUE frames (సెకనుకు 1/75) నుంచి ఖచ్చితమైన నమూనా స్థానాలు కు మారుతాయి, తర్వాత playback వాడే బైట్ మరియు నమూనా విండోలు అవుతాయి.
+
+## Evidence, tags కాదు
+
+Identification ఫోల్డర్ నుంచి మూడు రకాల evidence ను ఒక pass లో చదువుతుంది:
+
+- **disc ID**, CD యొక్క ఖచ్చితమైన ట్రాక్ layout కు MusicBrainz fingerprint, rip log లేదా CUE sheet నుంచి compute అవుతుంది;
+- **barcodes**, చిత్రకళ scans నుంచి వేదిక vision framework ద్వారా డీకోడ్ అవుతాయి, CUE catalog క్షేత్రాలు నుంచి చదవబడతాయి;
+- **text**: చిత్రకళ OCR నుంచి catalog numbers మరియు free text, ఫోల్డర్ మరియు ఫైల్ names, rip లోని text ఫైళ్లు.
+
+Embedded audio tags ను ఉద్దేశపూర్వకంగా evidence గా చూడరు: అవి tagger నమ్మినదాన్ని వివరిస్తాయి, ప్రెస్సింగ్ ఏమిటో కాదు. (User unknown విడుదల గా దిగుమతి చేసినప్పుడు fallback మెటాడేటా ను అవే seed చేస్తాయి.)
+
+Disc ID మరియు barcode concurrently looked up అవుతాయి, disc ID MusicBrainz లో, barcode MusicBrainz మరియు Discogs రెండింటిలో ఒకేసారి, తర్వాత results triangulate అవుతాయి: ఒక విడుదల group మీద agree అయ్యే results converge అవుతాయి, catalog-number matches ప్రెస్సింగ్ list ను కుదిస్తాయి, signals మధ్య disagreement silent best guess కాకుండా వాడుకరి కు explicit conflict గా కనిపిస్తుంది. ప్రతి result తన provenance మోస్తుంది (disc ID ద్వారా దొరికింది, barcode ద్వారా, catalog match), కాబట్టి UI వరుస ఎందుకు ఇవ్వబడిందో చెప్పగలదు.
+
+## Sources
+
+MusicBrainz anonymous గా strict one-request-per-second pace తో query అవుతుంది. Discogs వాడుకరి personal టోకెన్ తో keyring నుంచి authenticate అవుతుంది, తన rate limits లో pace మరియు retry అవుతుంది, rejected టోకెన్ అలానే report అవుతుంది కాబట్టి UI searches నిశ్శబ్దంగా fail కాకుండా flag చేయగలదు. Responses per session క్యాష్ అవుతాయి, గెలిచిన మూలం raw JSON భవిష్యత్తులో మళ్లీ అర్థం చేసుకోవడానికి డేటాబేస్ లో archive అవుతుంది.
+
+## Commit
+
+Import confirm చేస్తే, క్రమంగా ఇవి నడుస్తాయి:
+
+1. **Decode verification**: ప్రతి ట్రాక్ end to end డీకోడ్ అవుతుంది; పూర్తిగా డీకోడ్ కాని rip ఏదీ రాయడానికి ముందు దిగుమతి fail చేస్తుంది (config flag దీన్ని disable చేయగలదు).
+2. **శబ్దస్థాయి విశ్లేషణ**: అదే డీకోడ్ pass లో ప్రతి ట్రాక్ మరియు ఆల్బమ్ కు integrated loudness, true peak కొలుస్తుంది, replay-gain కోసం store చేస్తుంది.
+3. **Cover selection**: ఎంచుకున్న art (remote, ఫోల్డర్ image, లేదా embedded) display thumbnail గా re-render అవుతుంది; అది ఫోల్డర్ నుంచి వచ్చినదైతే అసలు విడుదల ఫైల్లలో ఉంచబడుతుంది.
+4. **అణు వ్రాత**: విడుదల, ట్రాక్‌లు, credits, identities, ఆకృతులు, segments, ఫైళ్లు, కవర్ ఒక transaction లో commit అవుతాయి. Half-imported state ఉండదు.
+
+Release వాడుకరి ఫైల్లను ఉన్నచోట reference చేస్తూ lands అవుతుంది. User క్లౌడ్-managed ఎంచుకుంటే, అప్‌లోడ్ commit తర్వాత నిల్వ transition గా జరుగుతుంది, ఫైల్ల అసలు బైట్లు అంతా మూలం of truth గానే ఉంటాయి; వాడుకరి bae కు ఇచ్చినదేదీ ఎప్పుడూ delete లేదా alter కాదు.
+
+## Rips గుర్తించడం
+
+ప్రతి విడుదల తన imported ఫోల్డర్ నిర్మాణం (relative paths మరియు sizes, location-independent) మీద content hash record చేస్తుంది. Re-scans దాన్ని వాడి ఇప్పటికే లైబ్రరీ లో ఉన్న ఫోల్డర్లు ను mark చేస్తాయి, అదే rip re-imports పూర్వ విడుదల ను duplicate చేయకుండా find and replace చేస్తాయి.

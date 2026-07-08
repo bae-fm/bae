@@ -1,0 +1,41 @@
+---
+title: నిర్మాణం
+description: coven మీద, ఒక Rust మధ్యభాగంతో స్థానిక యాప్‌లు
+---
+
+bae అంటే నాలుగు స్థానిక యాప్‌లు ధరించిన ఒక Rust మధ్యభాగం. ఉత్పత్తిని నిర్వచించే ప్రతిదీ, గ్రంథాలయ నమూనా, దిగుమతి, వినిపింపు, సమకాలీకరణ, గుప్తీకరణ, Rust లోనే ఉంటుంది మరియు ప్రతి వేదికపై ఒకేలా ప్రవర్తిస్తుంది; ప్రతి యాప్ దాని మీద పలుచని స్థానిక వాడుక తెర.
+
+## పొరలు
+
+- **`bae-core`**: ఉత్పత్తి. గ్రంథాలయం మరియు వివరాల నమూనా, దిగుమతి మరియు గుర్తింపు ప్రవాహాలు, FFmpeg వినిపింపు యంత్రం, శబ్ద తీవ్రత కొలత, ఎగుమతి, దాని కింద coven తో కలయిక. దిగుమతి మరియు గుర్తింపు డెస్క్‌టాప్‌లో మాత్రమే నిర్మించబడతాయి; మొబైల్ నిర్మాణాలు సమకాలీకరణ మరియు వినిపింపు క్లయింట్లు.
+- **[coven](https://coven.bae.fm)**: డేటా పొర, వేరే గ్రంథాలయం. coven SQLite connection ను కలిగి ఉంటుంది, bae commit చేసే ప్రతి మార్పును పట్టుకుంటుంది, ఆ మార్పులను వినియోగదారి మేఘ నిల్వ ద్వారా end-to-end encrypted గా సమకాలీకరిస్తుంది. Blob నిల్వ (శబ్ద బైట్లు, చిత్రకళ), స్థానిక తాత్కాలిక నిల్వ, గుర్తింపు కీలు, సభ్యత్వం కూడా దానిదే. bae ఖచ్చితమైన coven revision ను pin చేసి ప్రతి binary లో stamp చేస్తుంది; నిర్మాణాల మధ్య సమకాలీకరణ-సరిపోలిక generation ను అది నిర్వచిస్తుంది.
+- **`bae-bridge`**: UniFFI సరిహద్దు. Bridge రకాలు Rust లో ఒక్కసారి నిర్వచించబడి నిర్మాణ సమయంలో Swift మరియు Kotlin కు generated అవుతాయి.
+- **యాప్‌లు**: macOS మరియు iOS లో SwiftUI, Android లో Jetpack Compose, స్థానిక Windows యాప్. మధ్యభాగం అడిగే వేదిక భాగాలను కూడా ప్రతి యాప్ అమలు చేస్తుంది: శబ్ద అవుట్‌పుట్, చిత్రకళ text recognition, media controls, keychain access, crash reporting.
+
+యాప్‌లతో పాటు: `bae-mcp` (MCP server), `bae-cli` (ఆజ్ఞా వరుస), మరియు `bae-automation` (రెండూ వాడే పంచుకున్న సాధన పొర).
+
+## డిస్క్ మీద ఒక గ్రంథాలయం
+
+గ్రంథాలయం `~/.bae/libraries/<లైబ్రరీ-id>/` వద్ద ఉంటుంది (మొబైల్‌లో వేదిక డేటా సంచయం):
+
+```
+~/.bae/libraries/<id>/
+  లైబ్రరీ.db        # SQLite: catalog, credits, playback specs
+  config.yaml       # పరికరం-స్థానిక సెట్టింగులు, never synced
+  నిల్వ/
+    స్థానిక/          # blobs this పరికరం owns (కవర్లు, కళాకారుడు images)
+    క్యాష్/          # evictable copies of క్లౌడ్ blobs
+    pinned/         # pinned-for-offline copies, never evicted
+```
+
+డేటాబేసు coven ద్వారానే తెరవబడుతుంది; అది bae schema పక్కన తన bookkeeping పట్టికలు (సమకాలీకరణ cursors, outbox, blob state) వేస్తుంది మరియు bae migrations నడుపుతుంది. Unmanaged గా దిగుమతి చేసిన శబ్ద దస్త్రాలు అసలు `~/.bae` కింద ఉండవు: డేటాబేసు అవి దిగుమతి చేసిన paths నే చూపిస్తుంది.
+
+రహస్యాలు ఈ దస్త్రాల్లో ఎప్పుడూ ఉండవు. గుర్తింపు కీలు, గ్రంథాలయ encryption కీ, మేఘ నిల్వ credentials, API టోకెన్లు OS keyring లో ఉంటాయి (Apple వేదికలపై Keychain, iCloud Keychain ద్వారా సమకాలీకరించబడుతుంది; మిగతా చోట వేదిక సమానాలు).
+
+## Editions
+
+ప్రతి వేదికలో రెండు నిర్మాణ editions ఉన్నాయి. **bae** OAuth providers (Google Drive, Dropbox, OneDrive), CloudKit, telemetry ను కలుపుతుంది. **baeium** వాటన్నింటిని బయట ఉంచుతుంది: S3-compatible నిల్వ మాత్రమే, telemetry లేదు, dependency tree లో proprietary ఏదీ లేదు. Editions ఒకే మూలం, ఒకే core; feature flag provider list మరియు diagnostics wiring ను నిర్ణయిస్తుంది.
+
+## సంచికలు
+
+యాప్‌లు ప్రతి వేదికకు `MAJOR.MINOR` గా సంచికలు పొందుతాయి. Major అంటే సరిపోలిక కాలం, ప్రతి యాప్ పంచుకునేది: అదే major లో ఉన్న పరికరాలు గ్రంథాలయాన్ని సమకాలీకరించగలవు. Wire లేదా on-disk ఆకృతి విరిగినప్పుడే అది పెరుగుతుంది, ఎక్కువగా pinned coven revision వల్ల. Minor సంఖ్యలు యాప్‌కు సంబంధించిన విడుదలలను లెక్కిస్తాయి, వేదికల మధ్య పోల్చదగినవి కావు.
