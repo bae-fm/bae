@@ -1,0 +1,44 @@
+---
+title: Başlarken
+description: Bir kitaplık oluşturun, ilk albümünüzü içe aktarın ve çalın
+---
+
+bae sahip olduğunuz albümler için bir evdir. Kitaplığı masaüstünüzde kurarsınız ve o her aygıtınıza gelir: zaten sahip olduğunuz bulut depolama üzerinden eşzamanlanır, yalnızca aygıtlarınız okuyabilsin diye şifrelenir.
+
+Masaüstü uygulamaları (macOS, Windows) tam araçtır: kitaplık oluşturur, müzik içe aktarır ve üst verileri düzenler. Telefon uygulamaları (iOS, Android) çalardır: masaüstünüzün oluşturduğu bir kitaplığa katılır, sonra göz atar, indirir ve çalar.
+
+## Kitaplık oluşturma
+
+Masaüstünüzde bae'i açın. Makinede kitaplık yoksa karşılama ekranı üç seçenek sunar:
+
+- **Create a new library**, bu ilk aygıtınızsa.
+- **Join a library**, başka bir aygıtta zaten kitaplık varsa ve owner sizi onaylayacaksa. [Aygıtlar ve üyeler](/tr/guide/devices) bölümüne bakın.
+- **Restore from cloud**, bu sizin kitaplığınızsa ve kurtarma kodunuz varsa. [Aygıtlar ve üyeler](/tr/guide/devices#kurtarma-kodları) bölümüne bakın.
+
+Birini oluşturun. Kitaplık yerel başlar: her şey bu makinede yaşar, hesap gerekmez ve siz birini bağlayana kadar bulut işin içinde değildir.
+
+## İlk albümünüzü içe aktarma
+
+1. Başlık çubuğunda **Import** bölümüne geçin.
+2. Bir müzik klasörü ekleyin. Seçebilir, pencereye sürükleyebilir veya <kbd>⌘I</kbd> tuşlarına basabilirsiniz.
+3. bae klasörü tarar ve bulduğu sürümleri listeler. Birini seçin.
+4. bae onu MusicBrainz ve Discogs'a göre tanımlar ve eşleşmeyi gösterir. Baskıyı onaylayın, bir kapak seçin, ayrıntıları ayarlayın.
+5. **Import** düğmesine tıklayın.
+
+Dosyalarınız taşınmaz, kopyalanmaz veya yeniden yazılmaz. bae onları bulundukları yerde kataloğa alır. Tanımlamanın yardıma ihtiyaç duyduğu durumlar dahil tam akış [İçe aktarma](/tr/guide/importing) bölümündedir.
+
+## Çalma
+
+**Library** bölümüne döndüğünüzde albüm ızgaradadır. Tıklayın, çalmayı başlatın. Çalma özgün dosyalarınızı özgün kaliteleriyle kullanır. [Çalma](/tr/guide/playback) kuyruk, karıştırma ve yineleme ile bae'in koruduğu ayrıntıları kapsar: CD pregap'leri, plak yüzü araları, boşluksuz albümler.
+
+## Her yere götürme
+
+Kitaplığı birden fazla aygıtta istediğinizde bir bulut evi bağlayın: kendi Google Drive, Dropbox, OneDrive, iCloud hesabınız veya S3 uyumlu herhangi bir bucket. bae'in oraya koyduğu her şey yüklenmeden önce şifrelenir; sağlayıcı saklar ama okuyamaz.
+
+- [Eşzamanlama](/tr/guide/sync): bir bulut evi bağlayın ve ne saklayacağını seçin.
+- [Aygıtlar ve üyeler](/tr/guide/devices): telefonunuzu veya başka bir masaüstünü ekleyin.
+- [Depolama ve çevrimdışı](/tr/guide/storage): müziği aygıtta tutun veya bulutunuzdan akıtıp çevrimdışı gerekenleri sabitleyin.
+
+## Öğelerin bulunduğu yer
+
+Her kitaplık masaüstünde veritabanını ve ayarlarını `~/.bae/libraries/` altında tutar. Siz bae'den bulutunuzda yönetmesini istemedikçe ses dosyalarınız içe aktardığınız yerde kalır. Anahtarlar ve kimlik bilgileri dosyalarda değil, işletim sisteminin anahtarlığında yaşar.

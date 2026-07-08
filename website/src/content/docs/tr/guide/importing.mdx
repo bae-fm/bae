@@ -1,0 +1,64 @@
+---
+title: İçe aktarma
+description: Klasörlerinizi gerçek sürümlerle eşleştirin
+---
+
+Rip klasörü kendi hakkında çok az şey bilir. Geldiği sürüm, baskı, plak şirketi, krediler, 12. parçanın gerçekte nerede bittiği: bunların hepsi dosya adlarınızda değil MusicBrainz ve Discogs gibi veritabanlarında yaşar. İçe aktarma, bae'in ikisini bağlama yoludur: müziğinizi gösterirsiniz, her klasörün hangi sürüm olduğunu çözer ve kitaplık klasörü o sürüm olarak kaydeder.
+
+İçe aktarma masaüstünde gerçekleşir (macOS, Windows). Dosyalarınız okunur, asla değiştirilmez: bae hiçbir şeyi taşımaz, yeniden adlandırmaz, yeniden etiketlemez veya yeniden kodlamaz. İçe aktarmadan sonra dosyaların nerede yaşadığı için [Depolama ve çevrimdışı](/tr/guide/storage) bölümüne bakın.
+
+## İzlenen klasörler
+
+**Import** bölümüne geçin ve bir klasör ekleyin: seçin, pencereye sürükleyin veya <kbd>⌘I</kbd> tuşlarına basın. bae bundan sonra klasörü izler. İçine bırakılan yeni müzik kendiliğinden yeni adaylar olarak görünür; elle yeniden tarama yapmazsınız. Hâlâ indirilen klasörler bitene kadar yok sayılır.
+
+Tarama, rip'lerin gerçekte aldığı biçimlerde sürümleri tanır:
+
+| Yerleşim | Nasıl görünür |
+|--------|-------------------|
+| Parça başına dosya | `01 - Parça.flac`, `02 - Parça.flac`, ... |
+| CUE + imaj | `album.cue` + `album.flac`, bütün disk için tek dosya |
+| Çoklu disk | `CD1/`, `CD2/` alt klasörleri, içinde iki biçimden biri |
+| Koleksiyonlar | klasörlerden oluşan klasör, her biri kendi sürümü |
+
+bae çaldığı biçimleri içe aktarır: FLAC, MP3, APE, `.m4a` içinde ALAC ve AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack ve DSD (`.dsf`/`.dff`). Klasördeki görseller ve belgeler (CUE sayfaları, rip günlükleri, metin dosyaları) tanınır ve sürümle birlikte tutulur.
+
+## Sürüm tanımlama
+
+Bir aday seçin; bae onu tanımlamaya başlar. Etiketlerden tahmin etmek yerine klasördeki kanıtı okur ve her parçayı arar:
+
+- **Disc ID.** CD'nin tam parça yerleşiminin parmak izi; rip günlüğünden veya CUE sayfasından hesaplanır. Eşleştiğinde kesin CD edisyonunu tanımlar.
+- **Barcode.** Klasördeki kapak taramalarından metin tanıma ile veya CUE sayfasından okunur.
+- **Catalog numbers and text.** Görsellerde, dosya ve klasör adlarında bulunan katalog numaraları, sonuçları daraltmak için kullanılır.
+
+Sinyaller aynı anda MusicBrainz ve Discogs'a karşı aranır ve sonuçlar çapraz denetlenir. Her sinyal sonuçların üstünde bir rozet olarak görünür: ne bulunduğunu, nereden geldiğini (kaynak için üzerine gelin: disc TOC, CUE sheet, cover scan, folder name) görebilir ve yanıltıcıysa tek tek sinyalleri kapatabilirsiniz.
+
+Üç sonuç vardır:
+
+- **Bulundu.** Kanıt bir sürüm grubunda birleşir. Listedeki kesin baskıyı seçersiniz.
+- **Çakışma.** İki sinyal farklı sürümleri gösterir; örneğin disc ID ve barcode uyuşmaz. bae iki tarafı da gösterir; hangisine güveneceğinizi seçer veya bir sinyali yok sayarsınız.
+- **Hiçbir şey bulunamadı.** Elle arayın: sanatçı ve albüm, katalog numarası veya barcode; iki veritabanından birine karşı. Görselden tanınan metin otomatik tamamlama olarak sunulur.
+
+Ayrıca **skip identifying** seçip bilinmeyen sürüm olarak içe aktarabilirsiniz. bae bu durumda adlar için dosyalarınızın gömülü etiketlerine döner; sürüm bir veritabanında bulunduğunda veya daha iyi kanıtınız olduğunda sonra yeniden tanımlayabilirsiniz.
+
+## Kesin veya yaklaşık
+
+Bir eşleşme seçtiğinizde bae onu dosyalarınıza göre denetler ve parça sayısı uyuşmazlığını işaretler. Sonra eşleşmenin ne olduğunu siz belirtirsiniz:
+
+- **Exact**: dosyalarınız bu baskıdır.
+- **Yalnızca üst veri**: doğru albüm, ancak mutlaka bu kesin baskı değil. bae üst veriyi kullanır ve baskının yaklaşık olduğunu hatırlar.
+
+Sürüm zaten kitaplığınızdaysa veya aynı albümün başka bir baskısı varsa bae kopya içe aktarmadan önce bunu söyler.
+
+## Onaylama ve içe aktarma
+
+Onay bölmesi içe aktarmanın yazacağı her şeyi gösterir:
+
+- **Cover.** Veritabanlarındaki görsellerden, klasörünüzdeki görüntülerden veya dosyalara gömülü görselden seçilir. Sonra değiştirebilirsiniz.
+- **Metadata.** Albüm, sanatçı, yıl, plak şirketi, katalog numarası, ülke, barcode ve her parça: herhangi bir şey kaydedilmeden önce burada düzenlenebilir.
+- **Storage.** Bulut evi bağlıysa bae'in dosyaları bulutunuzda yönetip yönetmeyeceğini ve ayrıca yerel bir kopya tutup tutmayacağını seçin. [Depolama ve çevrimdışı](/tr/guide/storage) bölümüne bakın.
+
+İçe aktarma arka planda çalışır: bae her parçanın sorunsuz çözüldüğünü doğrular, albüm ve her parça için ses düzeyi ölçer, sürümü kaydeder ve yönetilen içe aktarmalarda yüklemeyi başlatır. Aday listesi sonraki klasöre geçer ve sürüm hemen çalınabilir.
+
+## Veri kaynakları
+
+**MusicBrainz** hesap ve anahtar istemez. **Discogs** sizin ücretsiz API token'ınızı gerektirir; Settings içine yapıştırın, çalışmayı bırakırsa bae bunu söyler. Token olmadan Discogs araması ve Discogs kaynaklı üst veri kullanılamaz; diğer her şey çalışır. İki hizmette de hız sınırı vardır; bae isteklerini sınırların içinde kalacak biçimde aralıklı gönderir.

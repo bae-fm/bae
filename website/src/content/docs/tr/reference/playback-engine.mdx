@@ -1,0 +1,34 @@
+---
+title: Çalma motoru
+description: Çözme, boşluksuz çalma, pregap'ler ve ses düzeyi, kesin biçimde
+---
+
+Çalma motorunun sözleşmesi kaynağa sadakattir: kullanıcının özgün baytlarını, kaynağın kendi hızında, sürümün yapısı korunmuş olarak çözmek. Bu sayfa bunun arkasındaki belirtimdir.
+
+## Çözme
+
+Bütün çözme işlemleri her platformda süreç içinde FFmpeg'dir: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack ve DSD içe aktarmanın kabul ettikleridir; kayıtlı codec, dosya uzantısı değil FFmpeg'in baytlardan bildirdiğidir. Örnekler çıkış aşaması için 32 bit float olarak çıkar; yapılan tek dönüşüm örnek biçimi dönüşümüdür.
+
+Çıkış platformun yerel ses API'sidir (masaüstünde ve iOS'ta cpal üzerinden Core Audio, Android'de AAudio). Çıkış akışı **kaynağın örnekleme hızı ve kanal sayısı** ile yapılandırılır: 96 kHz dosya 96 kHz çalar. Resampling aşaması yoktur. Varsayılan çıkış aygıtı her akış kurulumunda çözülür, böylece çalma sistemin aygıt değişikliklerini izler. Android'de donanım destekli codec'ler offloaded decoding için FFmpeg'i bütünüyle atlayabilir.
+
+## Akış okumaları
+
+Çalma tüm dosyalara ihtiyaç duymaz. Ses, yerel dosyadan, önbellekten veya buluttan istek üzerine bayt aralıkları alan seyrek bir tampon üzerinden okunur; konum değiştirme hedef örneği bayt konumuna eşler, böylece alınmamış bir bölgeye atlama oradan alır. Bir alma yöneticisi çalan parçanın okumalarını ön yüklemeye göre önceliklendirir, böylece yaklaşan parça geçerli parçayı geciktirmez.
+
+## Pencere olarak parçalar
+
+Parça dosya değildir; CUE sayfasından veya dosyanın kendi kapsamından içe aktarmada kurulan, bir veya daha fazla dosya üzerindeki sıralı örnek pencereleri listesidir. Bu tek temsil her disk biçimini taşır: parça başına dosya, tek imajda bütün disk, bir dosyanın sonu ile başka bir dosyanın başında yaşayan pregap ve parça başına bir dosyaya kesilmiş kayıplı rip'ler.
+
+Pregap pencereleri böyle işaretlenir. Çalma, pregap'i olan bir parçaya pregap'inden girer (index 00, gizli parça sesi dahil) ve saat parça süresini gösterir: konum asıl parça başlayana kadar sıfıra kenetlenir, gösterilen süre pregap'i dışarıda bırakır; CD çaların davranışıyla eşleşir.
+
+## Boşluksuz
+
+Geçerli parça çalarken sonraki parça açılır ve tamponlanır. İkisi örnekleme hızı ve kanal sayısını paylaştığında motor onları canlı ses callback'i içinde zincirler: akış hiç durmaz ve sınır örnek düzeyinde kesindir. Biçimler farklıysa akış yeniden kurulur; biçim değişikliğinin sınırı zaten duyulur kıldığı durum budur.
+
+## Ses düzeyi
+
+İçe aktarma, decode-verification geçişinde parça başına ve albüm başına integrated loudness (EBU R128) ve true peak ölçer. Replay gain bu ölçümlerden çalma zamanında türetilir, dosyalara asla işlenmez: hedef −18 LUFS, true peak kırpılmayacak biçimde sınırlı, parça başına veya albüm başına uygulanır, boşluksuz sınırlarda düzgün geçer. Mod şu anda settings UI olmadan gelir ve varsayılan olarak kapalıdır; kitaplığın config dosyasında ayarlanabilir.
+
+## Yüz duraklamaları
+
+Parça listeleri yüz ve disk yapılarını taşır; kullanıcı pause-between-sides etkinleştirdiğinde motor bir yüz sınırında bekleyip devam istemi gösterebilir. Bekleme, çözümlenmiş sessizlik değil playback-service durumudur; bu yüzden sürdürme anında olur.

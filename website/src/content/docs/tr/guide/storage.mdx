@@ -1,0 +1,36 @@
+---
+title: Depolama ve çevrimdışı
+description: Müziğinizin yaşadığı yer ve ağ olmadan neyin çaldığı
+---
+
+Dosyalarınız sizin kalır. bae onları asla taşımaz, yeniden adlandırmaz veya yeniden yazmaz; depolamanın yanıtladığı soru yalnızca her sürümün *çalınabilir kopyasının* nerede yaşadığıdır: aygıtta, bulutunuzda veya ikisinde.
+
+## Yönetilmeyen ve yönetilen
+
+Her sürüm ikisinden biridir; içe aktarmada seçilir ve her zaman değiştirilebilir:
+
+- **Unmanaged**: bae dosyalarınızı bulundukları yerde kataloğa alır ve oradan çalar. Hiçbir şey kopyalanmaz. Sürüm her eşzamanlanan aygıtta katalogda bulunur, ancak sesi yalnızca onu içe aktaran makinede yaşar.
+- **Managed**: dosyalar şifrelenir ve bulut evine yüklenir. Artık her aygıt sürümü çalabilir; isteğe bağlı akıtarak veya çevrimdışı için indirerek. Özgün dosyalarınız yüklemeden etkilenmez; yerel olarak kullanmayı sürdürüp sürdürmemek size kalır (içe aktarmadaki **Keep local copy** onları sabitler).
+
+İkisi arasında geçiş sürüm düzeyi bir işlemdir: **Manage** yönetilmeyen bir sürümü yükler; **Make local** yönetilen bir sürümün dosyalarını seçtiğiniz klasöre indirir ve düz dosyalar olarak yeniden sizin olur.
+
+## Akış ve önbellek
+
+Yönetilen sürümler ağ izin verdiği sürece her yerde çalar: çalma dosyayı bulutunuzdan akıtır ve baytlar yerel önbellekte tutulur, böylece sonraki çalma beklemeden ve ağ kullanmadan olur. Önbellek kendini bir sınır içinde yönetir (her aygıtta ses için 20 GB); yer azaldığında çalmadıklarınızı çıkarır. Kapaklar ve sanatçı görselleri ayrı önbelleğe alınır, böylece büyük bir albüm görsellerinizi dışarı itemez.
+
+## Çevrimdışı için sabitleme
+
+Bir sürümü sabitlemek tamamını indirir ve tutar: sabitlenmiş müzik çıkarılmaz ve her zaman çevrimdışı çalar. Sürümün depolama sayfasından veya depolama yöneticisinden sabitleyin; sabitlemeyi kaldırmak dosyaları normal önbelleğe döndürür, orada çalınabilir ama geri kazanılabilir kalırlar. Telefonda sabitlenmiş indirmeler ilerlemelerini doğrudan kitaplıkta gösterir.
+
+## Depolama Yöneticisi
+
+Masaüstündeki depolama yöneticisi (<kbd>⌘0</kbd>) bütün resmi tek pencerede gösterir:
+
+- Her sürüm, boyutu ve durumu: yönetilmeyen, yönetilen, yükleniyor. Filtreleyin, sıralayın, çoğunu seçin, hepsine aynı anda işlem yapın.
+- **İndirmeler**: sürmekte olan sabitleme indirmeleri; duraklatılabilir, yeniden denenebilir.
+- **Dışa aktarmalar**: dışa aktarma kuyruğu. [Dışa aktarma](/tr/guide/exporting) bölümüne bakın.
+- **Yüklemeler**: sürüm başına ilerleme, aktarım hızı ve kalan süre, bekleyen silmeler, duraklatma ve sürdürmeyle eşzamanlama giden kutusu.
+
+## Silme
+
+Yönetilen bir sürümü silmek onu kitaplıktan ve bulut evinden kaldırır. Yönetilmeyen bir sürümü silmek yalnızca katalog girdisini kaldırır: bae oraya kendisinin koymadığı dosyaları asla silmez.

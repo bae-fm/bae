@@ -1,0 +1,28 @@
+---
+title: Şifreleme
+description: Kitaplık anahtarının ne olduğu, nerede yaşadığı ve sağlayıcının hangi şifreli metni tuttuğu
+---
+
+bae'in opaque bulut evine koyduğu her şey aygıttan çıkmadan önce şifrelenir. bae kendi kriptografisini uygulamaz: düzenin tamamı [coven](https://coven.bae.fm)'e aittir ve bu sayfa bae'in onu nasıl kullandığını açıklar. Browsable evler bunların hepsinden çıkar; aşağıdakiler onlara uygulanmaz.
+
+## Kitaplık anahtarı
+
+Opaque kitaplığın tek kök sırrı vardır: ev oluşturulduğunda üretilen rastgele 256 bit anahtar. OS keyring içinde yaşar, asla dosyada değil; Apple platformlarında keyring girdisi iCloud Keychain üzerinden eşzamanlanır. bae'in yapılandırması anahtarın yalnızca parmak izini saklar; bu, kilit açmada yanlış anahtarı doğru olandan ayırmaya yeter ve sırrı tutmaz.
+
+Anahtar aygıtlar arasında iki yolla taşınır; ikisi de [Kimlik ve üyelik](/tr/reference/membership) bölümünde anlatılır: davet sırasında onaylanmış bir aygıtın genel anahtarına mühürlenerek ve kurtarma kodunun içinde taşınarak.
+
+## Kuşaklar
+
+Kitaplık anahtarı aslında numaralı kuşaklardan oluşan bir anahtarlıktır. Bir member kaldırmak, kaldırılan member'ın asla almadığı yeni bir kuşak ekler: sonrasında yazılan her şey yeni kuşağı kullanır ve onun için okunamaz olur; kalan members her kuşağı tutar ve tüm geçmişi okuyabilir. Her mühürlü nesne, onu hangi kuşağın açtığını açıkta kaydeder.
+
+## Ne mühürlenir
+
+Evdeki her nesne: changeset'ler, snapshot'lar, ses blob'ları, görseller, üyelik kayıtları, denetim nesneleri. Nesneler XChaCha20-Poly1305 ile 64 KB parçalar halinde mühürlenir; her parça doğrulanır ve bağlamına bağlanır: mühürlü nesne yalnızca yazılmak istendiği nesne olarak, bu kitaplık için, bu anahtarda çözülür. Parçalama akışın çalışmasının nedenidir; çalar tam olarak aldığı bayt aralıklarını çözebilir.
+
+## Sağlayıcı ne görebilir
+
+Nesne sayısı, nesne boyutları, yükleme zamanlaması ve erişim desenleri. Adlar değil, üst veri değil, ses değil, görsel değil, üyelik değil. Sunucu taraflı kurtarma yoktur: bütün aygıtlarını ve anahtarın her kopyasını kaybeden kullanıcı kitaplığın şifreli metnini sonsuza dek kaybetmiştir; tasarımın amaçladığı budur.
+
+## Kilit açma ve kilitleme
+
+Bir kitaplığı açmak anahtarı keyring'den okur. Kitaplık anahtar bekliyorsa ve keyring'de yoksa bae kitaplığı kilitli sayar: açmadan önce anahtarı ister, geri keyring'e kaydetmeden önce girdiyi saklanan parmak izine göre doğrular. Kitaplığı kilitlemek anahtarı bilerek keyring'den kaldırır; tekrar girilene kadar bulut evindeki hiçbir şey okunamaz veya yazılamaz.

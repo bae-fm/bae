@@ -1,0 +1,43 @@
+---
+title: İçe aktarma boru hattı
+description: Tarama, kanıt, üçgenleme ve atomik kayıt
+---
+
+İçe aktarma, dosya klasörünü dosyaların tek baytını değiştirmeden sürüme uygun bir katalog girdisine dönüştürür. Bu sayfa, [kullanım kılavuzunda](/tr/guide/importing) anlatılan akışın arkasındaki boru hattıdır.
+
+## Tarama
+
+İzlenen klasörler platformun dosya sistemi olaylarıyla izlenir, olaylar sakinleştirilir ve değişiklikte yeniden taranır; taramalar baştan başlamak yerine mevcut aday listesiyle uzlaştırılır. Tarayıcı bir klasörü tek sürüm olarak sınıflandırır (ses doğrudan içindeyse veya `CD1`/`CD2` gibi disk biçimli alt klasörler varsa) ya da koleksiyon olarak içine iner. Dosyalar uzantıya göre ses, görsel ve belge olarak sınıflandırılır; sonra ses yoklanır: önemli olan codec, dosya uzantısı değil FFmpeg'in baytlarda bulduğudur. Kısmi indirme işaretleri içeren klasörler indirme bitene kadar dışarıda bırakılır.
+
+Bir CUE sayfası tek bir ses imajını parça listesine dönüştürür. Ayrıştırıcı pregap'leri ve postgap'leri, parça başına performers ve ISRC'leri, hem tek dosyalı imajları hem de parça başına tek dosya CUE yerleşimlerini işler. Parça sınırları CUE frame'lerinden (saniyenin 1/75'i) kesin örnek konumlarına dönüştürülür; bunlar daha sonra çalmanın kullandığı bayt ve örnek pencereleri olur.
+
+## Etiket değil kanıt
+
+Tanımlama klasörden üç tür kanıtı tek geçişte okur:
+
+- **disc ID**, CD'nin tam parça yerleşiminin MusicBrainz parmak izi; rip günlüğünden veya CUE sayfasından hesaplanır;
+- **barcodes**, platformun görüntü sistemiyle görsel taramalardan çözülür ve CUE catalog alanlarından okunur;
+- **text**: görsel OCR'ından katalog numaraları ve serbest metin, klasör ve dosya adları, rip içindeki metin dosyaları.
+
+Gömülü ses etiketleri bilinçli olarak kanıt değildir: baskının ne olduğunu değil, etiketleyenin neye inandığını anlatır. (Kullanıcı bir sürümü bilinmeyen olarak içe aktardığında yedek üst veriyi bunlar başlatır.)
+
+Disc ID ve barcode eşzamanlı aranır; disc ID MusicBrainz'e karşı, barcode MusicBrainz ve Discogs'a aynı anda karşı. Sonuçlar üçgenlenir: bir sürüm grubunda anlaşan sonuçlar birleşir, katalog numarası eşleşmeleri baskı listesini daraltır ve sinyaller arasındaki uyuşmazlık sessiz en iyi tahmin yerine kullanıcıya açık çakışma olarak gösterilir. Her sonuç kökenini taşır (disc ID ile bulundu, barcode ile bulundu, catalog match), böylece UI bir satırın neden sunulduğunu söyleyebilir.
+
+## Kaynaklar
+
+MusicBrainz anonim olarak, saniyede bir istek temposuyla sorgulanır. Discogs, kullanıcının keyring'deki kişisel token'ıyla kimlik doğrular; hız sınırları içinde aralıklı gönderilir ve yeniden denenir. Reddedilen token bu şekilde bildirilir, böylece UI aramaları sessizce başarısız kılmak yerine işaretleyebilir. Yanıtlar oturum başına önbelleğe alınır ve kazanan kaynağın ham JSON'u gelecekte yeniden yorumlama için veritabanına arşivlenir.
+
+## Kayıt
+
+Bir içe aktarmayı onaylamak sırayla şunları çalıştırır:
+
+1. **Decode verification**: her parça baştan sona çözülür; bütünüyle çözülemeyen rip, herhangi bir şey yazılmadan önce içe aktarmayı başarısız kılar (bir config flag bunu kapatabilir).
+2. **Ses düzeyi analizi**: bütünleşik ses düzeyi ve gerçek tepe, aynı çözme geçişinde parça başına ve albüm başına ölçülür; replay-gain kullanımı için saklanır.
+3. **Cover selection**: seçilen görsel (uzak, klasör görüntüsü veya gömülü) görüntüleme küçük resmine yeniden çizilir; klasörden geldiyse özgünü sürümün dosyaları arasında tutulur.
+4. **Atomik yazma**: sürüm, parçalar, katkılar, kimlikler, biçimler, kesitler, dosyalar ve kapak tek işlemde kaydedilir. Yarı içe aktarılmış durum yoktur.
+
+Sürüm, kullanıcının dosyalarına yerinde başvurarak kaydedilir. Kullanıcı cloud-managed seçtiyse yükleme kayıttan sonra depolama geçişi olarak gerçekleşir ve dosyaların özgün baytları baştan sona doğruluk kaynağı olarak kalır; kullanıcının bae'e verdiği hiçbir şey silinmez veya değiştirilmez.
+
+## Rip'leri tanıma
+
+Her sürüm, içe aktarılan klasör yapısı üzerinden (göreli yollar ve boyutlar, konumdan bağımsız) bir content hash kaydeder. Yeniden taramalar bunu kitaplıktaki klasörleri işaretlemek için kullanır; aynı rip'in yeniden içe aktarmaları da kopyalamak yerine önceki sürümü bulup değiştirir.

@@ -1,0 +1,43 @@
+---
+title: Veri modeli
+description: Şema, neyin eşzamanlandığı ve neyin aygıtta kaldığı
+---
+
+bae'in kataloğu sıradan SQLite'tır; [coven](https://coven.bae.fm)'e tablo tablo bildirilir: eşzamanlanan tablolar bir çakışma saati taşır ve her aygıta gider; bildirilmemiş tablolar aygıttan hiç ayrılmaz. Ayrım veri modelinin en çok yük taşıyan kararıdır, bu yüzden bu sayfa onun etrafında düzenlenmiştir.
+
+## Katalog grafiği
+
+Şemanın eşzamanlanan kalbi:
+
+- **`artists`**, **`albums`**, **`works`**: gruplama katmanı. Albüm sürümlerini toplar ve bir primary sürümü gösterir; works klasik yapı için parent/child grafiği oluşturur.
+- **`releases`**: merkez varlık, baskı başına bir satır. Baskı gerçeklerini (label, catalog number, barcode, country, format, year), üst veri kaynağını, içe aktarılan klasörün content hash'ini ve ölçülen albüm ses düzeyini taşır.
+- **`release_identities`**: bir sürümün kaynak başına *ne olduğu*. Satır yoksa bilinmeyen demektir; release ID içeren MusicBrainz veya Discogs satırı kesin, içermeyen yaklaşık demektir. Bir sürüm iki kaynakta aynı anda kimlik tutabilir.
+- **`tracks`** ile **`track_artists`**, ayrıca **`release_artist_roles`** ve **`track_artist_roles`**: parça listeleri ve krediler; her kredi kaynağıyla etiketlenir.
+- **`track_works`**, **`work_parts`**, **`work_artists`**: icra ettikleri eserlere bağlı kayıtlar.
+- **`audio_formats`** ve **`audio_format_segments`**: çalma özellikleri. Parça başına: codec, örnekleme hızı, bit derinliği, kanallar, ölçülen ses düzeyi ve tepe, pregap uzunlukları. Segmentler bir parçayı kaynak dosyalarının sıralı bayt ve örnek pencerelerine eşler; bu sayede bir CUE rip'inin parçası, pregap dahil, büyük bir dosyanın veya birkaç dosyanın bölgelerine yayılabilir.
+- **`release_files`**, **`covers`**, **`artist_images`**: blob taşıyan tablolar. Satırlar katalog girdileridir; baytlar coven'in blob katmanında yaşar (aşağıya bakın).
+
+## Eşzamanlanan, kapılı, yerel
+
+Yukarıdakilerin hepsi eşzamanlanır, ancak koşulsuz değil. `releases`, `remote` sütununda gated root olarak bildirilir: bir release satırı ve bütün alt ağacı (tracks, files, credits, formats, cover) yalnızca `remote` true iken, yani sürüm bulutta yönetilirken eşzamanlanır. Bir sürümü managed yapmak alt ağacı yayımlar; unmanaged bir sürüm, şeması eşzamanlanan olsa bile bütünüyle içe aktaran aygıtta kalır. Ata tablolar (`artists`, `albums`, `works`) yalnızca eşzamanlanan bir sürüm hâlâ onlara başvururken eşzamanlanır, böylece bir aygıt altında hiçbir şey olmayan bir sanatçı almaz.
+
+Tamamen yerel tablolar, coven'e asla bildirilmez:
+
+- **`playback_state`**: geçerli parça, konum, kuyruk, ses seviyesi, shuffle ve repeat. Çalma bir aygıt gerçeğidir.
+- **`imports`**: içe aktarma işlemi takibi.
+- **`release_metadata`**: MusicBrainz ve Discogs'tan arşivlenmiş ham JSON; gelecekte yeniden yorumlama için tutulur.
+- **`attribution_names`**: üye anahtarları için görüntü adları.
+
+Her eşzamanlanan tablo bir `_updated_at` hybrid-logical-clock sütunu taşır; coven'in alan alan birleştirmesi eşzamanlı düzenlemeleri bu register ile sıralar. Bir test, eşzamanlanan küme ile saat taşıyan kümenin tam olarak eşit olduğunu denetler.
+
+## Blob'lar
+
+Ses ve görseller coven'in blob katmanından üç ad alanında geçer; her birinin kendi aygıt önbellek sınırı vardır: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+
+Sürüm dosyaları kullanıcı tarafından sağlanır ve tembel önbelleğe alınır: unmanaged sürümde blob, kullanıcının özgün yolundaki dosyasına dış başvurudur; managed sürümde ilk okumada önbelleğe alınan yüklenmiş nesnedir. Kapaklar ve sanatçı görselleri host tarafından sağlanır ve istekle önbelleğe alınır: bae baytları üretir (kapaklar en fazla 600px geniş JPEG küçük resimler olarak yeniden çizilir) ve her aygıt çekme sırasında alır, böylece ızgaralar yerel çizilir.
+
+Opaque evde blob'lar anlamsız içerik anahtarları altında yüklenir. Browsable evde her blob satırı okunabilir bir bulut yolu kaydeder (ses için `{artist}/{album}/{filename}`, kapaklar için `{album}/{release}/cover.{ext}`); bu yol yükleme sırasında bir kez hesaplanır, böylece sonraki yeniden adlandırma nesneyi taşımaz.
+
+## Bir rip'in kimliği
+
+`releases.content_hash`, içe aktarılan klasörün dosya yapısı (göreli yollar ve boyutlar) üzerinden, klasörün diskte nerede olduğundan bağımsız bir SHA-256'dır. bae'in izlenen klasörde yeniden görünen zaten içe aktarılmış bir rip'i tanıma yolu budur; yeniden içe aktarmaların değiştirmesi gereken sürümü bulma yolu da budur.

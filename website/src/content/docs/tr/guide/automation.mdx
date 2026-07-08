@@ -1,0 +1,16 @@
+---
+title: Otomasyon
+description: Kitaplığı aracı uygulamalardan, betiklerden ve komut satırından yönetin
+---
+
+Kitaplık, çalıştırdığınız yazılımlar tarafından yönetilebilir: MCP üzerinden AI aracıları ve komut satırı aracı üzerinden betikler. İkisi de arayüzün kullandığı aynı işlemleri açar: arama, sürüm ayrıntıları, içe aktarmalar, depolama işlemleri ve çalma durumu.
+
+## MCP sunucusu
+
+MCP sunucusunu Settings, Automation bölümünden açın. Model Context Protocol'ü HTTP üzerinden yerel bir bağlantı noktasında sunar (varsayılan 47777), böylece Claude gibi MCP istemcileri kitaplığınıza göz atabilir, sürümleri arayabilir ve üzerlerinde işlem yapabilir. Erişim bir bearer token gerektirir: aynı ayarlar bölmesinden kopyalayın ve ona sahip olan her şeyin erişimini kesmek istediğinizde oradan döndürün.
+
+Sunucu varsayılan olarak kapalıdır ve yalnızca uygulama çalışırken çalışır.
+
+## Komut satırı
+
+`bae` CLI aynı işlemleri terminalden yürütür: JSON girer, JSON çıkar; betikler için uygundur. Ayrıca MCP istemcisi gibi davranarak masaüstünün sunucusunu yerel MCP süreci bekleyen araçlar için stdio'ya bağlayabilir.

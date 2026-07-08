@@ -1,0 +1,35 @@
+---
+title: Kimlik ve üyelik
+description: Kimlik olarak anahtarlar, katılma el sıkışması, roller ve geri alma
+---
+
+bae içinde hiçbir yerde hesap sistemi yoktur. Bir aygıtın kimliği, kendisi için ürettiği ve OS keyring içinde tuttuğu bir Ed25519 keypair'dir; public key kimliğin kendisidir. Bir kitaplığa kimlerin ait olduğu, bulut evindeki imzalı kayıt kümesidir; onları elinde tutan herkes doğrulayabilir ve hiçbir sunucu tarafından verilmez. Mekanizma [coven](https://coven.bae.fm)'indir; bu sayfa bae'in onu nasıl kullandığını anlatır.
+
+## Üyelik kayıtları
+
+Her owner bulut evine yalnızca eklenen imzalı üyelik girdilerinden oluşan bir akış yazar: bu anahtar bu rolle eklendi, bu anahtar kaldırıldı. Her girdi öncekine bağlanır ve her owner akışının ucunu bildiren bir head imzalar; böylece kayıtları düşüren veya yeniden sıralayan sağlayıcıya inanmak yerine durum saptanır. Kitaplığın kabul ettiği şey, her owner'ın doğrulanmış akışının birleşimidir.
+
+Her çekmede, her changeset'in yazarı bu kayda göre denetlenir: güncel member tarafından imzalanmış mı, yazabilecek role sahip mi. Kaldırılmış aygıtlardan, hiç eklenmemiş anahtarlardan veya geçersiz imzalarla gelen changeset'ler uygulanmaz. Sağlayıcı kayıtları saklar ama sahtesini üretemez; yalnızca owner anahtarlarını elinde tutanlar üyeliği değiştirebilir.
+
+## Roller
+
+**Owner** ve **Member** kitaplığı hem okur hem yazar; owners ayrıca aygıtları onaylar ve kaldırır. bae'in kurucu aygıtı owner'dır ve onun onayladığı her aygıt member olarak katılır. (Alttaki mekanizmada üçüncü bir rol, salt okunur follower, vardır; bae şu anda bunu atamaz.)
+
+## Katılma el sıkışması
+
+Aygıt ekleme, ortasında açık insan doğrulaması bulunan iki kodlu değiş tokuştur:
+
+1. Katılan aygıt keypair üretir ve bir **join request** gösterir: public key'i, onun kısa parmak izi ve (OAuth sağlayıcıları için) klasörün paylaşılacağı bulut hesabı.
+2. Bir owner isteği çözer ve iki ekran aynı parmak izini gösterir. İnsan eşleştiklerini denetler; değiştirilen anahtarı boşa çıkaran adım budur.
+3. Onay aynı anda üç şey yapar: yeni gelenin hesabına bulut evine erişim verir (tüketici bulutlarında klasör paylaşımı, S3'te gömülü kimlik bilgileri, iCloud'da CloudKit paylaşımı), kitaplık anahtarını yeni gelenin public key'ine mühürler ve onu ekleyen bir üyelik girdisi imzalar. Hepsi bir **invite code** içine paketlenir.
+4. Katılan aygıt daveti tüketir, anahtarı açar, en son snapshot'tan başlar ve eşzamanlar.
+
+Davet isteyen anahtara mühürlenmiştir: ele geçirmek hiçbir şey kazandırmaz.
+
+## Geri alma
+
+Bir member'ı kaldırmak imzalı kaldırma ekler ve kitaplık anahtarını, kaldırılan anahtarın asla almadığı yeni bir kuşağa döndürür ([Şifreleme](/tr/reference/encryption#kuşaklar) bölümüne bakın). Erişimi geri alabilen depolamada erişim de çekilir. Kaldırılan aygıta daha önce eşzamanlanan şey onda kalır; veri geri gönderilemez. Döndürmeden sonraki her şey onun erişiminin dışındadır.
+
+## Kurtarma kodları
+
+Kurtarma kodu üyeliği bilerek atlar: hayatta kalan onaylayıcı olmadan kendi kitaplığınızı geri yüklemek için bulut evi koordinatları ve kitaplık anahtarını tek bearer dizgesinde taşır. İstek üzerine üretilir, Apple platformlarında iCloud Keychain içinde otomatik saklanır ve kitaplığın kendisi kadar hassastır.

@@ -1,0 +1,39 @@
+---
+title: Sürümler ve üst veri
+description: Sürüme uygun bir kitaplık ve onu doğru tutma yolu
+---
+
+Çoğu müzik uygulaması "albüm"ü modeller: tek başlık, tek kapak, tek parça listesi. Gerçek koleksiyonlar böyle işlemez. Aynı kaydın özgün CD'sine, remaster'ına ve plak baskısına sahip olabilirsiniz; parça listeleri, süreleri, görselleri ve kredileri farklıdır. bae **sürümleri** modeller: her içe aktarma belirli bir baskıdır ve aynı albümün baskıları birlikte gruplanır.
+
+## Albümler sürümleri gruplar
+
+Kitaplıkta, birkaç baskısı olan bir albüm tek girdidir. Albüm sayfası bir sürüm seçici gösterir; her sürüm kendi parça listesini, kapağını, yılını, plak şirketini, katalog numarasını ve kredilerini tutar. Bir sürüm **primary**'dir: albüm ızgarasının ve çalmanın varsayılan kullandığı sürüm. Albüm menüsünden herhangi bir sürümü primary yapın ve dinlemek için istediğiniz zaman başka bir sürüm seçin; bae seçiminizi albüm başına hatırlar.
+
+## Bir sürüm ne bilir
+
+Tanımlanmış sürümler, yalnızca parça adlarını değil veritabanlarının bilgisini taşır:
+
+- Baskı ayrıntıları: plak şirketi, katalog numarası, barcode, ülke, biçim, yıl.
+- Krediler: icracılar, prodüktörler, mühendisler; sürüm başına ve parça başına.
+- Klasik yapı: besteciler, eserler ve bölümleri; bunların kayıtlarına bağlı olarak. Kitaplığın besteci görünümü bundan kurulur; [Göz atma ve arama](/tr/guide/browsing) bölümüne bakın.
+- Kimlik: bunun hangi MusicBrainz veya Discogs girdisi olduğu ve eşleşmenin kesin mi yaklaşık mı olduğu.
+
+Ham kaynak kayıtları da tutulur, böylece sürüm daha sonra veritabanlarına yeniden sormadan yeniden yorumlanabilir.
+
+## Düzenleme
+
+Üst veri sizin düzeltebileceğiniz veridir. Herhangi bir sürümde **Edit metadata**, içe aktarma onayının kullandığı aynı formu açar: albüm başlığı ve sanatçısı, baskı ayrıntıları ve her parçanın başlığı, sanatçısı ve numaralandırması. **Reset to source**, veritabanının söylediğine geri döner.
+
+Düzenlemeler yalnızca bae'in veritabanında yaşar. Dosyalarınızın gömülü etiketleri asla yeniden yazılmaz; dosyalar içe aktarıldıkları baytlarla kalır.
+
+## Yeniden tanımlama
+
+Bir sürüm bilinmeyen olarak içe aktarıldıysa, yanlış baskıyla eşleştirildiyse veya veritabanı daha sonra iyileştiyse **Re-identify** mevcut sürüm üzerinde tanımlama akışını yeniden çalıştırır: aynı sinyaller, aynı arama araçları. Yeni eşleşme kaydedildikten sonra bae üst veriyi yeni kaynaktan yenilemeyi mi (düzenlemelerinizin üzerine yazar) yoksa elinizdekini korumayı mı istediğinizi sorar.
+
+## Kapaklar
+
+Her sürümün bir görüntüleme kapağı vardır. **Change cover**, veritabanlarının görsellerini ve sürümle gelen görüntü dosyalarını sunar. bae seçilen kapağın görüntüleme için boyutlandırılmış kendi kopyasını tutar, böylece klasörünüzdeki özgün tarama dokunulmadan kalır. Bir sürümün görsellerinin tam galerisini açmak için herhangi bir yerde kapağa dokunun.
+
+## Silme
+
+Bir sürümü silmek onu kitaplıktan ve yönetilen sürümlerde bulut evinizden kaldırır. Yerinde içe aktarılmış, yönetilmeyen dosyalar asla silinmez: bae yalnızca onları unutur.

@@ -1,0 +1,43 @@
+---
+title: Eşzamanlama
+description: Kendi bulutunuz üzerinden bütün kitaplığınız her aygıtta
+---
+
+Eşzamanlama genellikle başka birinin sunucusu demektir: bir hesap, abonelik, kitaplığınızı okuyabilen bir şirket. bae **sizin** bulutunuz üzerinden, zaten sahip olduğunuz depolamayı kullanarak eşzamanlar ve hiç sunucu çalıştırmaz. Aygıtlarınız şifrelenmiş değişiklikleri o depolamaya yazar ve birbirininkileri okur; sağlayıcı baytları tutar ama okuyamaz.
+
+Tek kitaplık, her aygıt ve işin içindeki tek hesap zaten size ait olan hesaptır.
+
+## Bulut evi
+
+Bir kitaplığın bulut evi depolamanızdaki tek konumdur: Google Drive, Dropbox veya OneDrive içinde bir klasör, iCloud'unuz ya da S3 uyumlu herhangi bir bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Kitaplığın eşzamanladığı her şeyi tutar: katalog değişiklikleri, görseller ve bae'in yönetmesine izin verdiğiniz sürümlerin sesi.
+
+Settings içinde Sync altında kurun:
+
+1. Bir sağlayıcı seçin. Tüketici bulutları sağlayıcının kendi giriş sayfasıyla giriş yapar; hesabınız hakkında verilen token'lar dışında hiçbir şey saklanmaz. iCloud Apple ID'nizi olduğu gibi kullanır. S3 bucket, region, endpoint ve keys alır; kaydedilmeden önce denetlenir.
+2. Evin nesneleri nasıl saklayacağını seçin (aşağıya bakın).
+3. bae eşzamanlamaya başlar.
+
+Bulut evi olmayan bir kitaplık kendi başına tamdır. Yalnızca yerel çalışma bir moddur, sınırlama değildir; bulut evinin bağlantısını kesmek ona geri döndürür.
+
+## Opak veya göz atılabilir
+
+Kurulumda sağlayıcının ne göreceğini seçersiniz ve seçim o ev için kalıcıdır:
+
+- **Opaque** (varsayılan): her nesne yüklenmeden önce aygıtınızda şifrelenir ve anlamsız adlar altında saklanır. Sağlayıcı veya bucket'a giren herhangi biri şifreli metin görür. [Şifreleme](/tr/reference/encryption) sayfasının anlattığı mod budur ve başka aygıtlar ile üyeler eklemeyi destekleyen tek moddur.
+- **Browsable**: nesneler gerçek dosya adlarıyla, sanatçı ve albüm adına göre klasörlerde düz metin olarak saklanır. Bucket'ı herhangi bir araçla açıp dosyalarınızı doğrudan kopyalayabilir veya çalabilirsiniz. Hiçbir şey şifrelenmediği için tek koruma bucket'ın kendi erişim denetimidir ve ev paylaşılamaz.
+
+## Ne eşzamanlanır
+
+- Katalog: albümler, sürümler, parçalar, krediler, eserler, kimlikler, düzenlemeler. Her aygıt tamamını alır.
+- Görseller: kapaklar ve sanatçı görselleri, ızgaralar her yerde çizilebilsin diye istekle alınır.
+- Ses: yalnızca bulutta yönetmeyi seçtiğiniz sürümler için. Yönetilmeyen sürümler bütünüyle yerel kalır; katalog girdileri diğer aygıtlara dahil edilir ama baytlar yalnızca içe aktardığınız yerdedir.
+
+Aygıta özgü durum eşzamanlanmaz: çalma konumu, ses seviyesi, kuyruk ve aygıt ayarları aygıtta kalır.
+
+## Ne zaman eşzamanlanır
+
+Eşzamanlama kendi başına çalışır: değişikliklerden sonra, zamanlayıcıyla ve **Sync Now** ile isteğe bağlı. Düzenlemeler olağan koşullarda saniyeler sonra diğer aygıtlara küçük değişiklikler olarak ulaşır. Aynı anda düzenleme yapan iki aygıt çakışmadıkları yerde birlikte kazanır: bae eşzamanlı düzenlemeleri alan alan birleştirir ve silinen bir sürüm aynı anda başka yerde düzenlenmiş olsa bile silinmiş kalır. Hiçbir zaman sizden çakışma çözmeniz istenmez.
+
+## Başarısız olduğunda
+
+Eşzamanlama hataları kitaplığı kesintiye uğratmaz; bae geri çekilmeyle yeniden denerken yerel olarak göz atmayı, çalmayı ve içe aktarmayı sürdürürsünüz. Durum satırı eşzamanlamayı ve son eşzamanlama zamanını gösterir; hata bir şerit içinde hatayı gösterir, yüklemeler [depolama yöneticisinde](/tr/guide/storage#depolama-yöneticisi) duraklatılabilir, yeniden denenebilir ve incelenebilir. Bulut evinin oturumu sona ererse bae yeniden bağlanmanızı ister.

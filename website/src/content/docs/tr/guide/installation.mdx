@@ -1,0 +1,55 @@
+---
+title: Kurulum
+description: Her platformda bae veya baeium indirin ve kurun
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## İki edisyon
+
+Her platform, aynı kaynaktan oluşturulan iki edisyonla gelir:
+
+- **bae**, tam uygulama: S3, Google Drive, Dropbox, OneDrive ve iCloud eşzamanlaması.
+- **baeium**, özel sahipli parça yok: yalnızca S3 uyumlu depolama, OAuth sağlayıcıları yok, iCloud/CloudKit yok, telemetri yok.
+
+Yan yana kurulur; her birinin kendi kitaplığı ve kendi (iCloud Keychain ile eşzamanlanan) anahtarları vardır. Aşağıdan istediğinizi seçin.
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">macOS için bae indir</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">macOS için baeium indir</DownloadButton>
+
+1. İndirilen `.dmg` dosyasını açın
+2. Uygulamayı Applications klasörünüze sürükleyin
+3. Applications içinden açın
+
+İki edisyon da kendi Sparkle akışı üzerinden otomatik güncellenir.
+
+## iOS
+
+iOS derlemeleri **sideloading için imzasız `.ipa` dosyalarıdır**. [AltStore](https://altstore.io) veya [Sideloadly](https://sideloadly.io) ile kurun ya da kendi Apple ID'nizle Xcode'da yeniden imzalayın (ücretsiz Apple ID baeium için çalışır). App Store dağıtımı henüz kurulmamıştır.
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">iOS için bae indir</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">iOS için baeium indir</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">Android için bae indir</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">Android için baeium indir</DownloadButton>
+
+İstendiğinde tarayıcınızdan/dosyalarınızdan kurmayı etkinleştirin, sonra `.apk` dosyasını açın.
+
+## Windows
+
+Windows derlemeleri paketlenmemiş uygulamanın **imzasız** zip dosyalarıdır. Çıkarın ve `bae.exe` / `baeium.exe` çalıştırın. SmartScreen ilk açılışta uyarabilir.
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">Windows için bae indir</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">Windows için baeium indir</DownloadButton>
+
+## Linux
+
+Yakında.
+
+## Kaynaktan derleme
+
+baeium derlemek için özel sahipli hiçbir şeye ihtiyaç duymaz. Ücretsiz provisioning altında iOS dahil platform başına kendi derleme yönergeleri için [depo README'sine](https://github.com/bae-fm/bae#building-baeium-yourself) bakın.

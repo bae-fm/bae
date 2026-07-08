@@ -1,0 +1,41 @@
+---
+title: Mimari
+description: coven üzerinde tek Rust çekirdeği ve yerel uygulamalar
+---
+
+bae, dört yerel uygulama taşıyan tek bir Rust çekirdeğidir. Ürünü, kitaplık modelini, içe aktarmayı, çalmayı, eşzamanlamayı ve şifrelemeyi tanımlayan her şey Rust içinde yaşar ve her platformda aynı davranır; her uygulama bunun üzerinde ince bir yerel UI'dır.
+
+## Katmanlar
+
+- **`bae-core`**: ürün. Kitaplık ve üst veri modeli, içe aktarma ve tanımlama boru hatları, FFmpeg çalma motoru, ses düzeyi analizi, dışa aktarma ve altındaki coven ile bütünleşme. İçe aktarma ve tanımlama yalnızca masaüstünde derlenir; mobil derlemeler eşzamanlama ve çalma istemcileridir.
+- **[coven](https://coven.bae.fm)**: veri katmanı, ayrı bir kitaplık. coven SQLite bağlantısının sahibidir, bae'in kaydettiği her değişikliği yakalar ve bu değişiklikleri kullanıcının bulut depolaması üzerinden uçtan uca şifreli biçimde eşzamanlar. Blob depolamasına da sahiptir (ses baytları, görseller), yerel önbelleğe, kimlik anahtarlarına ve üyeliğe de. bae kesin bir coven revizyonunu sabitler ve bunu her ikiliye işler; derlemeler arasındaki eşzamanlama uyumluluk kuşağını tanımlar.
+- **`bae-bridge`**: UniFFI sınırı. Köprü tipleri Rust içinde bir kez tanımlanır ve derleme zamanında Swift ile Kotlin'e üretilir.
+- **Uygulamalar**: macOS ve iOS'ta SwiftUI, Android'de Jetpack Compose ve yerel bir Windows uygulaması. Her biri çekirdeğin istediği platform parçalarını da uygular: ses çıkışı, görsel metin tanıma, medya denetimleri, anahtarlık erişimi, çökme raporlama.
+
+Uygulamaların yanında: `bae-mcp` (MCP sunucusu), `bae-cli` (komut satırı) ve `bae-automation` (ikisinin de kullandığı ortak araç katmanı).
+
+## Diskte tek kitaplık
+
+Bir kitaplık `~/.bae/libraries/<library-id>/` konumunda yaşar (mobilde platform veri dizini):
+
+```
+~/.bae/libraries/<id>/
+  library.db        # SQLite: katalog, krediler, çalma özellikleri
+  config.yaml       # aygıta yerel ayarlar, asla eşzamanlanmaz
+  storage/
+    local/          # bu aygıtın sahip olduğu blob'lar (kapaklar, sanatçı görselleri)
+    cache/          # bulut blob'larının çıkarılabilir kopyaları
+    pinned/         # çevrimdışı için sabitlenmiş kopyalar, asla çıkarılmaz
+```
+
+Veritabanı yalnızca coven üzerinden açılır; coven kendi muhasebe tablolarını (eşzamanlama imleçleri, giden kutusu, blob durumu) bae'in şemasının yanına katmanlar ve bae'in geçişlerini çalıştırır. Yönetilmeyen olarak içe aktarılan ses dosyaları `~/.bae` altında değildir: veritabanı onları içe aktarıldıkları yollardan başvurur.
+
+Gizli değerler bu dosyalarda asla yaşamaz. Kimlik anahtarları, kitaplık şifreleme anahtarı, bulut kimlik bilgileri ve API token'ları OS keyring içinde yaşar (Apple platformlarında Keychain, iCloud Keychain üzerinden eşzamanlanır; başka yerlerde platform eşdeğerleri).
+
+## Edisyonlar
+
+Her platformda derleme zamanı iki edisyon vardır. **bae** OAuth sağlayıcılarını (Google Drive, Dropbox, OneDrive), CloudKit'i ve telemetriyi derlemeye dahil eder. **baeium** bunların hepsini dışarıda derler: yalnızca S3 uyumlu depolama, telemetri yok ve bağımlılık ağacında özel sahipli hiçbir şey yok. Edisyonlar aynı kaynak ve aynı çekirdektir; sağlayıcı listesini ve tanılama bağlantısını bir feature flag belirler.
+
+## Sürümleme
+
+Uygulamalar platform başına `MAJOR.MINOR` olarak sürümlenir. Major, her uygulamanın paylaştığı uyumluluk çağıdır: aynı major üzerindeki aygıtlar bir kitaplığı eşzamanlayabilir. Yalnızca kablo veya disk biçimi bozulduğunda artar; çoğu zaman sabitlenen coven revizyonudur. Minor'lar uygulama başına sürümleri sayar ve platformlar arasında karşılaştırılabilir değildir.

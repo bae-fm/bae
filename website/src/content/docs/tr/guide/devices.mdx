@@ -1,0 +1,43 @@
+---
+title: Aygıtlar ve üyeler
+description: Telefonunuzu ekleyin, bir aygıtı onaylayın, kitaplığınızı kurtarın
+---
+
+bae hesabı yoktur. Bir aygıtın kimliği, kendisi için ürettiği ve işletim sisteminin anahtarlığında tuttuğu bir anahtar çiftidir; kitaplık aygıtları anahtarlarıyla tanır. Bir aygıt eklemek, mevcut bir aygıtın yeni aygıt için kriptografik olarak kefil olması demektir; arada kimse yoktur.
+
+İki ayrı durum için iki ayrı kapı vardır:
+
+- **Joining**: yeni bir aygıt, kitaplığa zaten sahip olan bir aygıt tarafından onaylanır. Telefonunuzu veya başka birinin aygıtını eklemek için bunu kullanın.
+- **Restoring**: size ait yeni veya yeniden kurulmuş bir aygıt, kurtarma kodu kullanarak kitaplığı doğrudan bulut evinden kurtarır. Onaylayan gerekmez.
+
+## Aygıt ekleme
+
+Yeni aygıtta **Join a library** seçin. Kısa bir kod ve QR olarak aynı kod gösterilir: aygıtın genel anahtarını ve sesli okuyabileceğiniz bir parmak izini taşıyan katılma isteği.
+
+Kitaplığa zaten sahip olan bir aygıtta, bir owner Settings, Devices, **Add a device** bölümünü açar ve bu isteği tarar veya yapıştırır. bae katılan aygıtın parmak izini gösterir; yeni aygıtta görünenle eşleştiğini onaylayın. Onaylama bir davet kodu üretir: bunu yeni aygıta geri verin (QR'ı taratın veya yapıştırın), yeni aygıt kitaplığı indirir ve eşzamanlamaya başlar.
+
+El sıkışmanın arkasında: onaylayan aygıt yeni gelen aygıta bulut evine erişim verir (tüketici bulutları klasörü yeni gelenin hesabıyla paylaşır; S3 davetleri kimlik bilgilerini içerir) ve kitaplığın şifreleme anahtarını yeni gelenin genel anahtarı için mühürler. Davet başka hiçbir aygıtta işe yaramaz. Ayrıntılar [Kimlik ve üyelik](/tr/reference/membership) bölümünde.
+
+## Üyeler ve roller
+
+Settings, Devices her üyeyi listeler: parmak izi, rol ve hangisinin bu aygıt olduğu. Kurucu aygıt bir **owner**'dır; onun onayladığı aygıtlar **members** olarak katılır. İkisi de kitaplığı okur ve yazar; yalnızca owners aygıt onaylar ve kaldırır.
+
+## Aygıt kaldırma
+
+Owners herhangi bir member'ı kaldırabilir. Kaldırma yalnızca kapıyı kapatmaz: kitaplığın şifreleme anahtarı döndürülür ve kaldırılan aygıt yeni anahtarı asla almaz. Daha önce kopyaladığını elinde tutar; veriyi geri göndermek mümkün değildir, ancak kitaplığın o noktadan sonra yazdığı her şey onun için okunamaz olur.
+
+## Kurtarma kodları
+
+Kurtarma kodu, kendi kitaplığınız için taşıyıcı sırdır: bulut evi koordinatları ve şifreleme anahtarı tek bir dizgededir. Settings içindeki **Show recovery code** bunu gösterir; parola yöneticisi gibi güvenli bir yerde saklayın. Yeni bir aygıtta, kodla **Restore from cloud** kitaplığı yeniden kurar; onaylayan gerekmez.
+
+Apple platformlarında kod otomatik olarak iCloud Keychain içinde de tutulur, bu yüzden Apple ID'nizle giriş yapmış yeni bir Mac veya iPhone tek dokunuşla geri yükleyebilir.
+
+Kodu elinde tutan kişi kitaplığı elinde tutar; ona anahtar gibi davranın.
+
+## Kilitleme
+
+**Lock Library**, şifreleme anahtarını aygıtın anahtarlığından kaldırır. Kitaplık diskte kalır, ancak biri anahtarı yeniden girene kadar okunamaz; bae kabul etmeden önce bunu kayıtlı bir parmak izine göre denetler. Evden çıkan bir dizüstü bilgisayar için kullanın.
+
+## Telefonda
+
+iOS ve Android tam olarak bu yolla katılır ve geri yükler; başlangıç akışları budur. Bir telefon ayrıca kitaplık kopyasını kaldırabilir (Settings, remove from this device); bu yerel dosyaları siler ve bulutta hiçbir şeye dokunmaz.

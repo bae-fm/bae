@@ -1,0 +1,37 @@
+---
+title: Bulut depolama
+description: Sağlayıcılar, kimlik doğrulama ve bulut evinin biçimi
+---
+
+Bulut evi, kullanıcının zaten sahip olduğu depolamadaki tek konumdur. Her sağlayıcı [coven](https://coven.bae.fm) içindeki aynı depolama arayüzü üzerinden çalıştırılır; sağlayıcıya göre değişen şey kimlik doğrulama ve ikinci bir aygıta erişimin nasıl verildiğidir.
+
+## Sağlayıcılar
+
+| Sağlayıcı | Auth | Yeni aygıt için erişim |
+|---|---|---|
+| S3 uyumlu | Access key + secret | Kimlik bilgileri davetin içine gömülür |
+| Google Drive | OAuth (PKCE) | Klasör katılanın hesabıyla paylaşılır |
+| Dropbox | OAuth (PKCE) | Klasör katılanın hesabıyla paylaşılır |
+| OneDrive | OAuth (PKCE) | Klasör katılanın hesabıyla paylaşılır |
+| iCloud (CloudKit) | Apple ID, giriş yok | CloudKit paylaşımı katılan tarafından kabul edilir |
+
+S3 uyumlu; AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO ve API'yi konuşan başka her şeyi kapsar. Bucket, region, endpoint ve key prefix yapılandırılabilir; bucket yapılandırma kaydedilmeden önce yoklanır, böylece yazım hatası ilk eşzamanlamada değil kurulumda başarısız olur. OAuth sağlayıcıları yalnızca tam **bae** edisyonunda vardır; **baeium** derlemeleri onları dışarıda derler.
+
+## OAuth
+
+Giriş, public client olarak PKCE'li authorization-code akışıdır. Masaüstünde yönlendirme tek callback için yerel bir bağlantı noktasına bağlı loopback sunucusuna gelir; mobilde uygulama bunun yerine custom-scheme yönlendirmesini yakalar. bae iş için sağlayıcının sunduğu en dar kapsamı ister; Google Drive'da bu yalnızca uygulamanın kendi oluşturduğu dosyalara erişimdir. Token'lar OS keyring içinde saklanır, sağlayıcının refresh grant'iyle yenilenir ve reddedilen yenileme sessiz yeniden deneme döngüsü yerine yeniden bağlanma istemi olarak görünür.
+
+CloudKit hiç akış gerektirmez: uygulamada uygulanıp çekirdeğe verilen platformun CloudKit sürücüsü, giriş yapılmış Apple ID olarak çalışır.
+
+## Evin yerleşimi
+
+Evin içinde coven aygıt başına changeset akışları, snapshot kuşakları, üyelik kayıtları ve blob ad alanları yerleştirir. bae üç blob ad alanı ekler: `release_files`, `covers` ve `artist_images`.
+
+Nesnelerin nasıl anahtarlanacağı, ev oluşturulurken sabitlenen depolama moduna bağlıdır:
+
+- **Opaque**: nesneler şifrelenir ve hiçbir şey açığa çıkarmayan içerikten türetilmiş anahtarlar altında saklanır. Bu, kriptografiye tam güven modudur; [Şifreleme](/tr/reference/encryption) bölümüne bakın.
+- **Browsable**: nesneler yükleme zamanında blob başına kaydedilen okunabilir yollarda düz metindir: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Bucket kullanılabilir bir dosya ağacı gibi de çalışır; bedeli şifreleme ve üyelik olmamasıdır, bu yüzden browsable evler başka kişilerle paylaşılamaz.
+
+## Gerçek ağlarda davranış
+
+Çalma için okumalar aralıklıdır: çalar dosyaların tamamı yerine ihtiyaç duyduğu bayt pencerelerini akıtır. Eşik üstü yüklemeler sağlayıcının desteklediği yerde multipart gider. Hız sınırlama ve geçici sağlayıcı hataları exponential backoff ile, verildiğinde sağlayıcının retry-after değerine uyarak yeniden denenir; süresi dolan OAuth token'ları yerinde yenilenir. Eşzamanlama giden kutusu yeniden başlatmalardan sağ çıkar: uygulamadan çıkılarak kesilen yükleme baştan başlamak yerine sürer.
