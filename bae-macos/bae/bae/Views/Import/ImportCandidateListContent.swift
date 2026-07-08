@@ -450,9 +450,7 @@ struct CandidateRow: View {
             case .complete(_, let releaseId):
                 // Imported, but the cloud upload may still be draining — show
                 // the transfer until the release's queue empties.
-                if let progress = outboxStore.progress(forRelease: releaseId),
-                    !progress.isIdle
-                {
+                if outboxStore.progress(forRelease: releaseId) != nil {
                     icon("icloud.and.arrow.up", .secondary)
                 }
                 else {

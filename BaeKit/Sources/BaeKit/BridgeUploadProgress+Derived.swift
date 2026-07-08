@@ -1,13 +1,6 @@
 import Foundation
 
 extension BridgeUploadProgress {
-    /// True when this slice of the queue holds no queued, active, or failed
-    /// work. Files already shipped (`done`) don't count — a fully-uploaded
-    /// release is idle even while its done row lingers in the queue pane.
-    public var isIdle: Bool {
-        queued == 0 && active == 0 && failed == 0
-    }
-
     /// Total queued + active + failed (i.e. anything not yet shipped). Drives
     /// the storage row's "Uploading (N)" badge.
     public var pending: UInt32 {
@@ -23,15 +16,13 @@ extension BridgeUploadProgress {
         return Double(bytesDone) / Double(bytesTotal)
     }
 
-    /// Byte progress for a queue row: "45.2 MB of 103.1 MB" while work
-    /// remains, or just the total once everything shipped.
+    /// Byte progress for a queue row: "45.2 MB of 103.1 MB", cumulative over
+    /// the queue burst.
     public var bytesText: String {
-        let total = Int64(bytesTotal).formatted(.byteCount(style: .file))
-        guard !isIdle else { return total }
-        return String(
+        String(
             format: QueueSummary.message("core.outbox.bytes_progress"),
             Int64(bytesDone).formatted(.byteCount(style: .file)),
-            total
+            Int64(bytesTotal).formatted(.byteCount(style: .file))
         )
     }
 }

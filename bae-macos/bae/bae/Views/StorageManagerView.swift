@@ -765,9 +765,6 @@ private struct OutboxReleaseRow: View {
                 systemImage: "exclamationmark.triangle.fill"
             )
             .foregroundStyle(.red)
-        case .done:
-            Label("Done", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
         case .none:
             EmptyView()
         }
@@ -793,7 +790,7 @@ private struct OutboxFileRow: View {
 
             Spacer()
 
-            if file.activity == .uploading {
+            if file.state == .uploading {
                 ProgressView(value: fraction)
                     .progressViewStyle(.linear)
                     .frame(width: 140)
@@ -812,7 +809,7 @@ private struct OutboxFileRow: View {
 
     @ViewBuilder
     private var stateIcon: some View {
-        switch file.activity {
+        switch file.state {
         case .queued:
             Image(systemName: "clock")
                 .foregroundStyle(.secondary)
@@ -844,7 +841,7 @@ private struct OutboxFileRow: View {
     /// "6.2 MB of 12.4 MB" while transferring; just the size otherwise.
     private var bytesText: String {
         let total = Int64(file.bytesTotal).formatted(.byteCount(style: .file))
-        guard file.activity == .uploading else { return total }
+        guard file.state == .uploading else { return total }
         return String(
             format: QueueSummary.message("core.outbox.bytes_progress"),
             Int64(file.bytesDone).formatted(.byteCount(style: .file)),

@@ -538,7 +538,7 @@ internal sealed class StorageDialog
                         FontSize = 12,
                         TextWrapping = TextWrapping.Wrap,
                     });
-                    if (file.Activity == BridgeUploadActivity.Uploading && file.BytesTotal > 0)
+                    if (file.State == BridgeUploadFileState.Uploading && file.BytesTotal > 0)
                     {
                         fileColumn.Children.Add(new ProgressBar
                         {
@@ -552,12 +552,12 @@ internal sealed class StorageDialog
 
                     var state = new TextBlock
                     {
-                        Text = FileStateLabel(file.Activity),
+                        Text = FileStateLabel(file.State),
                         FontSize = 12,
                         Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
                         VerticalAlignment = VerticalAlignment.Center,
                     };
-                    if (file.Activity == BridgeUploadActivity.Retrying && file.LastError is string lastError)
+                    if (file.State == BridgeUploadFileState.Retrying && file.LastError is string lastError)
                     {
                         ToolTipService.SetToolTip(state, lastError);
                     }
@@ -792,8 +792,9 @@ internal sealed class StorageDialog
     }
 
     // A release group's aggregate badge, mirroring the macOS queue pane: the
-    // dominant activity plus the unshipped file count, or "Done" once every
-    // file shipped. Empty for a group core would never emit (no activity).
+    // dominant activity plus the unshipped file count. Finished releases
+    // aren't rendered, so there is no terminal badge. Empty for a group core
+    // would never emit (no activity).
     private static string UploadBadgeLabel(BridgeUploadProgress progress)
     {
         var pending = progress.Queued + progress.Active + progress.Failed;
@@ -802,34 +803,30 @@ internal sealed class StorageDialog
             BridgeUploadActivity.Uploading => Loc.Chrome("outbox.badge.uploading", "count", pending),
             BridgeUploadActivity.Queued => Loc.Chrome("outbox.badge.queued", "count", pending),
             BridgeUploadActivity.Retrying => Loc.Chrome("outbox.badge.retrying", "count", pending),
-            BridgeUploadActivity.Done => Loc.Chrome("outbox.state.done"),
             _ => string.Empty,
         };
     }
 
-    // A release group's byte progress: "45.2 MB of 103.1 MB" while work
-    // remains, or just the total once everything shipped. Cumulative over the
-    // queue burst, matching the bar beside it.
+    // A release group's byte progress: "45.2 MB of 103.1 MB", cumulative over
+    // the queue burst, matching the bar beside it.
     private static string UploadBytesLabel(BridgeUploadProgress progress)
     {
-        var total = Loc.Bytes(checked((long)progress.BytesTotal));
-        if (progress.Queued + progress.Active + progress.Failed == 0) return total;
         return Loc.Core(
             "core.outbox.bytes_progress",
             new Dictionary<string, object?>
             {
                 ["done"] = Loc.Bytes(checked((long)progress.BytesDone)),
-                ["total"] = total,
+                ["total"] = Loc.Bytes(checked((long)progress.BytesTotal)),
             });
     }
 
-    private static string FileStateLabel(BridgeUploadActivity activity) => activity switch
+    private static string FileStateLabel(BridgeUploadFileState state) => state switch
     {
-        BridgeUploadActivity.Uploading => Loc.Chrome("outbox.state.uploading"),
-        BridgeUploadActivity.Queued => Loc.Chrome("outbox.state.queued"),
-        BridgeUploadActivity.Retrying => Loc.Chrome("outbox.state.retrying"),
-        BridgeUploadActivity.Done => Loc.Chrome("outbox.state.done"),
-        _ => throw new ArgumentOutOfRangeException(nameof(activity), activity, "Unknown upload activity"),
+        BridgeUploadFileState.Uploading => Loc.Chrome("outbox.state.uploading"),
+        BridgeUploadFileState.Queued => Loc.Chrome("outbox.state.queued"),
+        BridgeUploadFileState.Retrying => Loc.Chrome("outbox.state.retrying"),
+        BridgeUploadFileState.Done => Loc.Chrome("outbox.state.done"),
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown upload file state"),
     };
 
     // A file's byte text: "6.2 MB of 12.4 MB" while transferring; just the
@@ -837,7 +834,7 @@ internal sealed class StorageDialog
     private static string FileBytesLabel(BridgeUploadFileOp file)
     {
         var total = Loc.Bytes(checked((long)file.BytesTotal));
-        if (file.Activity != BridgeUploadActivity.Uploading) return total;
+        if (file.State != BridgeUploadFileState.Uploading) return total;
         return Loc.Core(
             "core.outbox.bytes_progress",
             new Dictionary<string, object?>

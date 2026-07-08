@@ -30,7 +30,16 @@ struct OutboxStoreHasPendingCloudWorkTests {
                 BridgeUploadReleaseGroup(
                     releaseId: "release-a",
                     displayTitle: "Release A",
-                    fileCount: 3,
+                    files: [
+                        BridgeUploadFileOp(
+                            fileId: "file-1",
+                            displayName: "01 Track Title.flac",
+                            bytesDone: 0,
+                            bytesTotal: 1000,
+                            state: .queued,
+                            lastError: nil
+                        )
+                    ],
                     progress: OutboxStore.emptySnapshot.total
                 )
             ]

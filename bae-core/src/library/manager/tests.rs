@@ -1696,6 +1696,38 @@ async fn upload_observer_processes_transition_after_deleted_release() {
     );
 }
 
+/// A non-release root (covers, artist images) completing its make-remote must
+/// still push a fresh outbox snapshot: such a root often commits last in a
+/// burst, and without this emission the queue pane freezes on the previous
+/// snapshot instead of clearing.
+#[tokio::test]
+async fn non_release_root_completion_emits_outbox_changed() {
+    use coven::BlobTransitionObserver;
+
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let mut events = manager.subscribe_events();
+
+    let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
+        manager.sync.outbox_in_flight(),
+        manager.sync.upload_sessions(),
+        manager.sync.upload_throughput(),
+        manager.sync.sync_paused(),
+        manager.event_tx.clone(),
+    );
+    observer.set_database(Arc::new(manager.database.clone()));
+
+    observer.on_root_made_remote("covers", "cover-1").await;
+
+    let event = tokio::time::timeout(std::time::Duration::from_secs(2), events.recv())
+        .await
+        .expect("covers-root completion must emit an outbox snapshot")
+        .expect("event channel stays open");
+    assert!(
+        matches!(event, LibraryEvent::OutboxChanged { .. }),
+        "expected OutboxChanged, got {event:?}",
+    );
+}
+
 // ── Storage page tests ───────────────────────────────────────────
 
 /// Insert N albums each with one release; return `(albums, releases)`.
@@ -2637,16 +2669,15 @@ async fn observer_progress_advances_snapshot_bytes_done() {
     // non-zero before the file even finishes.
     assert!(manager.sync.upload_throughput().bytes_per_sec() > 0);
 
-    // Completion clears the in-flight entry and tallies the file as done;
-    // the row's still in the DB (this test drives only the observer, not
-    // coven's removal), but the snapshot keeps reporting the file as shipped
-    // with its bytes in the cumulative progress.
+    // Completion clears the in-flight entry and tallies the file as done; the
+    // row's still in the DB (this test drives only the observer, not coven's
+    // removal), but with its only file shipped the release has nothing left
+    // to render — the group leaves the snapshot.
     observer.on_blob_uploaded(&file.id).await;
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.total.active, 0);
-    assert_eq!(snap.upload_groups[0].progress.queued, 0);
-    assert_eq!(snap.upload_groups[0].progress.done, 1);
-    assert_eq!(snap.upload_groups[0].progress.bytes_done, 1000);
+    assert_eq!(snap.total.queued, 0);
+    assert!(snap.upload_groups.is_empty());
 }
 
 /// A file that finished uploading but whose outbox row hasn't been removed yet
@@ -2692,8 +2723,8 @@ async fn completed_upload_with_lingering_row_is_not_queued() {
     observer.on_blob_uploaded(&file.id).await;
 
     // The outbox row is still present — only coven's commit removes it — but
-    // the upload finished: nothing queued, nothing active, nothing failed,
-    // and the completed bytes stay in the release's cumulative progress.
+    // the upload finished: nothing pending anywhere, and the release (its
+    // only file shipped) is no longer rendered at all.
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(
         snap.total.queued, 0,
@@ -2701,8 +2732,7 @@ async fn completed_upload_with_lingering_row_is_not_queued() {
     );
     assert_eq!(snap.total.active, 0);
     assert_eq!(snap.total.failed, 0);
-    assert_eq!(snap.total.bytes_done, 1000);
-    assert_eq!(snap.total.bytes_total, 1000);
+    assert!(snap.upload_groups.is_empty());
 }
 
 /// Insert a remote, not-pinned release with one file and return its id.

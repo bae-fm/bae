@@ -62,14 +62,15 @@ pub struct DeleteOp {
 /// The dominant activity of a slice of the upload queue (a release's uploads,
 /// or the whole queue), for the storage-row badge. A slice with any file
 /// uploading reads as `Uploading`; with none uploading but some failed and
-/// awaiting retry, `Retrying`; with work still waiting, `Queued`; with every
-/// file shipped, `Done`.
+/// awaiting retry, `Retrying`; otherwise `Queued`. There is no terminal
+/// variant: a release with nothing left to ship stops being rendered at all
+/// (its group leaves the snapshot and its storage row falls back to the
+/// resting state).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UploadActivity {
     Uploading,
     Retrying,
     Queued,
-    Done,
 }
 
 /// Upload progress as the UI cares about it: per-state counts plus
@@ -89,9 +90,16 @@ pub struct UploadProgress {
 }
 
 impl UploadProgress {
+    /// True when this slice still has unshipped work — queued, in flight, or
+    /// failed awaiting retry. Completed files don't count: a slice that's all
+    /// done has nothing left to render or wait for.
+    pub fn has_pending(&self) -> bool {
+        self.queued > 0 || self.active > 0 || self.failed > 0
+    }
+
     /// The badge activity for this slice: active uploads outrank failures
-    /// awaiting retry, which outrank items still only queued, which outrank
-    /// fully-shipped work. `None` when the slice holds nothing at all.
+    /// awaiting retry, which outrank items still only queued. `None` when
+    /// nothing is pending.
     pub fn activity(&self) -> Option<UploadActivity> {
         if self.active > 0 {
             Some(UploadActivity::Uploading)
@@ -99,8 +107,6 @@ impl UploadProgress {
             Some(UploadActivity::Retrying)
         } else if self.queued > 0 {
             Some(UploadActivity::Queued)
-        } else if self.done > 0 {
-            Some(UploadActivity::Done)
         } else {
             None
         }
@@ -164,10 +170,9 @@ pub struct UploadReleaseGroup {
 /// upload-related the UI renders.
 #[derive(Debug, Clone, Default)]
 pub struct OutboxSnapshot {
-    /// Uploads grouped by release — the rows the queue pane renders. Groups
-    /// whose files all completed stay listed (as done rows) until the whole
-    /// queue drains, so the master bar and the pane tell one coherent story
-    /// over the burst.
+    /// Uploads grouped by release — the rows the queue pane renders. Only
+    /// groups with unshipped work appear: a release whose files all completed
+    /// leaves the snapshot (and the pane hides once nothing pending remains).
     pub upload_groups: Vec<UploadReleaseGroup>,
     pub deletes: Vec<DeleteOp>,
     /// Sum across all uploads — drives the queue counts, ETA, the master
@@ -343,44 +348,30 @@ pub(crate) async fn build_outbox_snapshot(
         }
     }
 
-    // Resolve titles the rows didn't supply: a group whose files all completed
-    // has no rows left to carry the album title, so look it up by release id.
-    let unresolved: Vec<String> = groups
-        .iter()
-        .filter(|g| g.display_title.is_none())
-        .filter_map(|g| g.release_id.clone())
-        .collect();
-    let titles = if unresolved.is_empty() {
-        HashMap::new()
-    } else {
-        db.album_titles_for_releases(&unresolved).await?
-    };
-
     let upload_groups: Vec<UploadReleaseGroup> = groups
         .into_iter()
+        // A release with nothing left to ship stops being rendered: its group
+        // leaves the snapshot, its storage row falls back to the resting
+        // state, and the pane hides once no group (or delete) remains. The
+        // tally that fed its done files is dropped by the observer when the
+        // root completes; the idle clear above is the backstop.
+        .filter(|group| group.progress.has_pending())
         .map(|group| {
-            let display_title = group
-                .display_title
-                .or_else(|| {
-                    group
-                        .release_id
-                        .as_ref()
-                        .and_then(|id| titles.get(id).cloned())
-                })
-                .unwrap_or_else(|| {
-                    // No album to name the group by (the orphaned bucket, or a
-                    // release deleted mid-upload): label it by its first file,
-                    // matching the per-file orphan labelling above.
-                    debug!(
-                        release_id = ?group.release_id,
-                        "outbox upload group has no album title; labelling by file name"
-                    );
-                    group
-                        .files
-                        .first()
-                        .map(|f| f.display_name.clone())
-                        .unwrap_or_default()
-                });
+            // Every rendered group has at least one pending row, so the album
+            // title normally arrives via the row join; the fallback labels the
+            // orphaned bucket (no backing release) by its first file, matching
+            // the per-file orphan labelling above.
+            let display_title = group.display_title.unwrap_or_else(|| {
+                debug!(
+                    release_id = ?group.release_id,
+                    "outbox upload group has no album title; labelling by file name"
+                );
+                group
+                    .files
+                    .first()
+                    .map(|f| f.display_name.clone())
+                    .unwrap_or_default()
+            });
             UploadReleaseGroup {
                 release_id: group.release_id,
                 display_title,
@@ -447,7 +438,7 @@ mod tests {
     }
 
     #[test]
-    fn activity_ranks_active_over_failed_over_queued_over_done() {
+    fn activity_ranks_active_over_failed_over_queued() {
         assert_eq!(progress(0, 0, 0, 0).activity(), None);
         assert_eq!(
             progress(3, 0, 0, 0).activity(),
@@ -467,8 +458,9 @@ mod tests {
             progress(5, 1, 2, 0).activity(),
             Some(UploadActivity::Uploading)
         );
-        // Fully-shipped work reads as done; any pending work outranks it.
-        assert_eq!(progress(0, 0, 0, 4).activity(), Some(UploadActivity::Done));
+        // Completed files never produce a badge of their own: a slice that's
+        // all done is idle (the group stops being rendered entirely).
+        assert_eq!(progress(0, 0, 0, 4).activity(), None);
         assert_eq!(
             progress(1, 0, 0, 4).activity(),
             Some(UploadActivity::Queued)
@@ -648,11 +640,11 @@ mod tests {
         assert_eq!(group.progress.bytes_total, 1100);
     }
 
-    /// A release whose rows all drained stays visible as a done group (title
-    /// re-resolved from the release) until the queue idles, so the master bar
-    /// stays cumulative over the whole burst.
+    /// A release with nothing left to ship stops being rendered: its group
+    /// leaves the snapshot while other releases keep uploading, and the totals
+    /// cover only the work still on screen.
     #[tokio::test]
-    async fn fully_done_group_stays_listed_while_queue_busy() {
+    async fn fully_done_group_is_dropped_while_queue_busy() {
         let (db, small, large, _tmp) = seed_two_queued_uploads().await;
 
         // Both of rel-1's files completed and their rows are gone; a second
@@ -687,18 +679,15 @@ mod tests {
         }
         let snapshot = build(&db, &HashMap::new(), &sessions).await;
 
-        assert_eq!(snapshot.upload_groups.len(), 2);
-        let done_group = &snapshot.upload_groups[0];
-        assert_eq!(done_group.release_id.as_deref(), Some("rel-1"));
-        // No rows left to carry the title; the batch lookup resolves it.
-        assert_eq!(done_group.display_title, "Album Title");
-        assert_eq!(done_group.progress.activity(), Some(UploadActivity::Done));
-        assert_eq!(done_group.progress.done, 2);
-        assert_eq!(done_group.progress.bytes_done, 1100);
-        // The master totals span the finished release and the busy one.
-        assert_eq!(snapshot.total.bytes_total, 1600);
-        assert_eq!(snapshot.total.bytes_done, 1100);
+        assert_eq!(snapshot.upload_groups.len(), 1);
+        let group = &snapshot.upload_groups[0];
+        assert_eq!(group.release_id.as_deref(), Some("rel-2"));
+        assert_eq!(snapshot.total.bytes_total, 500);
         assert_eq!(snapshot.total.queued, 1);
+        assert!(
+            !snapshot.per_release_progress().contains_key("rel-1"),
+            "a finished release must fall back to its resting storage badge"
+        );
     }
 
     /// An idle queue ends the burst: the tallies clear and the snapshot is

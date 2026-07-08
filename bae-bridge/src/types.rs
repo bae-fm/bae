@@ -1663,13 +1663,24 @@ pub enum BridgeUiEvent {
 }
 
 /// The dominant activity of a slice of the upload queue (a release's uploads,
-/// a single file, or the whole queue), for the storage-row badge and the
-/// queue pane's per-file state. Mirror of bae-core's `UploadActivity`.
+/// or the whole queue), for the storage-row badge. Mirror of bae-core's
+/// `UploadActivity`. No terminal variant: a release with nothing left to ship
+/// stops being rendered at all.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadActivity {
     Uploading,
     Retrying,
     Queued,
+}
+
+/// One file's state in the queue pane's per-file rows. Unlike the slice badge,
+/// a file inside a still-uploading release does render as `Done` — the row
+/// shows which files already shipped while the rest transfer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeUploadFileState {
+    Queued,
+    Uploading,
+    Retrying,
     Done,
 }
 
@@ -1685,19 +1696,18 @@ pub struct BridgeDeleteOp {
 /// Per-state counts, byte progress, and a derived badge `activity`. Used
 /// per-release (the storage-row badge reads `activity`; storage-action gates
 /// read the counts) and as the overall total (queue counts, ETA, summary band).
-/// Files completed during the current queue burst count in `done`,
-/// `bytes_done`, and `bytes_total`, so the fractions are cumulative.
+/// Files completed during the current queue burst count in `bytes_done` and
+/// `bytes_total`, so the fractions are cumulative over the burst.
 #[derive(Debug, Clone, Default, uniffi::Record)]
 pub struct BridgeUploadProgress {
     pub queued: u32,
     pub active: u32,
     pub failed: u32,
-    pub done: u32,
     pub bytes_done: u64,
     pub bytes_total: u64,
     /// The badge activity for this slice; `None` when idle. Per-release entries
-    /// are never idle, so theirs is always set; the overall total's is `None`
-    /// only when the whole queue is empty.
+    /// always have pending work (finished releases aren't rendered), so theirs
+    /// is always set.
     pub activity: Option<BridgeUploadActivity>,
 }
 
@@ -1815,7 +1825,7 @@ pub enum BridgeExportLocation {
 
 /// One file in a release's upload group: what the queue pane's per-file rows
 /// render. Mirror of bae-core's `UploadFileOp`, with the state flattened into
-/// `activity` + `bytes_done` + `last_error` so the UI doesn't switch on
+/// `state` + `bytes_done` + `last_error` so the UI doesn't switch on
 /// associated data: `bytes_done` is the live count while `Uploading`, equal to
 /// `bytes_total` when `Done`, and 0 otherwise; `last_error` is set only when
 /// `Retrying`.
@@ -1827,7 +1837,7 @@ pub struct BridgeUploadFileOp {
     pub display_name: String,
     pub bytes_done: u64,
     pub bytes_total: u64,
-    pub activity: BridgeUploadActivity,
+    pub state: BridgeUploadFileState,
     pub last_error: Option<String>,
 }
 

@@ -1259,15 +1259,13 @@ private struct StorageStatusBand: View {
     @Environment(OutboxStore.self)
     private var outboxStore
 
-    /// Outbox progress for this release, if any work is in flight. Drives the
-    /// "uploading…" indicator and suppresses transfer actions — acting
+    /// Outbox progress for this release, if any work is in flight (releases
+    /// with nothing left to ship are absent from the per-release map). Drives
+    /// the "uploading…" indicator and suppresses transfer actions — acting
     /// mid-upload races the observer that completes the unmanaged → managed
     /// step.
     private var uploadProgress: BridgeUploadProgress? {
-        guard let p = outboxStore.progress(forRelease: release.summary.id),
-            !p.isIdle
-        else { return nil }
-        return p
+        outboxStore.progress(forRelease: release.summary.id)
     }
 
     var body: some View {

@@ -275,31 +275,36 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
         self.sync_paused.load(std::sync::atomic::Ordering::SeqCst)
     }
 
-    /// coven finished making a release Remote (every blob uploaded, gate flipped,
-    /// source files dropped): emit `ReleaseUpdated` so the UI's storage state
-    /// flips, and refresh the outbox snapshot now that the queue is empty.
+    /// coven finished making a root Remote (every blob uploaded, gate flipped,
+    /// source files dropped). For a release, emit `ReleaseUpdated` so the UI's
+    /// storage state flips and drop its completed-upload tally (its queue rows
+    /// are gone, so nothing renders for it anymore). For *every* root, refresh
+    /// the outbox snapshot: a covers / artist-images root often commits last in
+    /// a burst, and skipping its emission would leave the queue pane frozen on
+    /// the previous snapshot instead of clearing.
     async fn on_root_made_remote(&self, root_table: &str, root_id: &str) {
-        if root_table != "releases" {
-            // bae declares only `releases` as a gated root, so any other root is
-            // unexpected — name it rather than silently dropping the completion.
-            debug!("on_root_made_remote for non-release root {root_table:?}/{root_id}; ignoring");
-            return;
+        if root_table == "releases" {
+            if let Err(e) = self.db().complete_import_for_release(root_id).await {
+                warn!("on_root_made_remote: marking import complete for {root_id}: {e}");
+            }
+            self.emit_release_updated(root_id).await;
+            self.sessions.clear_group(Some(root_id));
+        } else {
+            debug!("on_root_made_remote for non-release root {root_table:?}/{root_id}");
         }
-        if let Err(e) = self.db().complete_import_for_release(root_id).await {
-            warn!("on_root_made_remote: marking import complete for {root_id}: {e}");
-        }
-        self.emit_release_updated(root_id).await;
         self.emit_outbox_changed().await;
     }
 
-    /// coven finished making a release Local (blobs materialized to local files,
-    /// gate retracted, cloud blobs queued for tombstoning): emit `ReleaseUpdated`.
+    /// coven finished making a root Local (blobs materialized to local files,
+    /// gate retracted, cloud blobs queued for tombstoning): emit
+    /// `ReleaseUpdated` for a release, and refresh the outbox snapshot for
+    /// every root — the retraction changed the queue either way.
     async fn on_root_made_local(&self, root_table: &str, root_id: &str) {
-        if root_table != "releases" {
-            debug!("on_root_made_local for non-release root {root_table:?}/{root_id}; ignoring");
-            return;
+        if root_table == "releases" {
+            self.emit_release_updated(root_id).await;
+        } else {
+            debug!("on_root_made_local for non-release root {root_table:?}/{root_id}");
         }
-        self.emit_release_updated(root_id).await;
         self.emit_outbox_changed().await;
     }
 }

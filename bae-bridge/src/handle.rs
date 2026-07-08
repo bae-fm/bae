@@ -1604,7 +1604,7 @@ impl crate::types::BridgeUploadReleaseGroup {
 }
 
 impl crate::types::BridgeUploadFileOp {
-    /// Flatten core's per-file `UploadState` into `activity` + `bytes_done` +
+    /// Flatten core's per-file `UploadState` into `state` + `bytes_done` +
     /// `last_error`, so the UI reads plain fields instead of switching on
     /// associated data.
     fn from_core(f: bae_core::library::UploadFileOp) -> Self {
@@ -1615,26 +1615,26 @@ impl crate::types::BridgeUploadFileOp {
             bytes_total,
             state,
         } = f;
-        let (activity, bytes_done, last_error) = match state {
-            UploadState::Queued => (crate::types::BridgeUploadActivity::Queued, 0, None),
+        let (state, bytes_done, last_error) = match state {
+            UploadState::Queued => (crate::types::BridgeUploadFileState::Queued, 0, None),
             UploadState::Active { bytes_done } => (
-                crate::types::BridgeUploadActivity::Uploading,
+                crate::types::BridgeUploadFileState::Uploading,
                 bytes_done,
                 None,
             ),
             UploadState::Failed { last_error } => (
-                crate::types::BridgeUploadActivity::Retrying,
+                crate::types::BridgeUploadFileState::Retrying,
                 0,
                 Some(last_error),
             ),
-            UploadState::Done => (crate::types::BridgeUploadActivity::Done, bytes_total, None),
+            UploadState::Done => (crate::types::BridgeUploadFileState::Done, bytes_total, None),
         };
         Self {
             file_id,
             display_name,
             bytes_done,
             bytes_total,
-            activity,
+            state,
             last_error,
         }
     }
@@ -1713,7 +1713,10 @@ impl crate::types::BridgeUploadProgress {
             queued,
             active,
             failed,
-            done,
+            // Completed files feed the cumulative byte fractions; the count
+            // itself has no UI consumer (finished releases aren't rendered,
+            // and pending groups list their done files individually).
+            done: _,
             bytes_done,
             bytes_total,
         } = p;
@@ -1721,7 +1724,6 @@ impl crate::types::BridgeUploadProgress {
             queued,
             active,
             failed,
-            done,
             bytes_done,
             bytes_total,
             activity,
@@ -1737,7 +1739,6 @@ impl crate::types::BridgeUploadActivity {
             UploadActivity::Uploading => BridgeUploadActivity::Uploading,
             UploadActivity::Retrying => BridgeUploadActivity::Retrying,
             UploadActivity::Queued => BridgeUploadActivity::Queued,
-            UploadActivity::Done => BridgeUploadActivity::Done,
         }
     }
 }
@@ -3245,7 +3246,7 @@ mod tests {
     /// failure message lands in `last_error` under `Retrying`.
     #[test]
     fn upload_file_op_flattens_state_into_fields() {
-        use crate::types::BridgeUploadActivity;
+        use crate::types::BridgeUploadFileState;
         use bae_core::library::{UploadFileOp, UploadState};
 
         let convert = |state: UploadState| {
@@ -3258,21 +3259,21 @@ mod tests {
         };
 
         let queued = convert(UploadState::Queued);
-        assert_eq!(queued.activity, BridgeUploadActivity::Queued);
+        assert_eq!(queued.state, BridgeUploadFileState::Queued);
         assert_eq!((queued.bytes_done, queued.last_error), (0, None));
 
         let active = convert(UploadState::Active { bytes_done: 400 });
-        assert_eq!(active.activity, BridgeUploadActivity::Uploading);
+        assert_eq!(active.state, BridgeUploadFileState::Uploading);
         assert_eq!(active.bytes_done, 400);
 
         let failed = convert(UploadState::Failed {
             last_error: "cloud write failed".into(),
         });
-        assert_eq!(failed.activity, BridgeUploadActivity::Retrying);
+        assert_eq!(failed.state, BridgeUploadFileState::Retrying);
         assert_eq!(failed.last_error.as_deref(), Some("cloud write failed"));
 
         let done = convert(UploadState::Done);
-        assert_eq!(done.activity, BridgeUploadActivity::Done);
+        assert_eq!(done.state, BridgeUploadFileState::Done);
         assert_eq!(done.bytes_done, 1000);
     }
 

@@ -79,11 +79,10 @@ struct ImportConfirmationView<
     /// durably queued — this surfaces the remaining transfer instead of
     /// presenting a cloud-only import as fully landed.
     private var uploadProgress: BridgeUploadProgress? {
-        guard case .complete(_, let releaseId) = importStatus,
-            let progress = outboxStore.progress(forRelease: releaseId),
-            !progress.isIdle
-        else { return nil }
-        return progress
+        guard case .complete(_, let releaseId) = importStatus else {
+            return nil
+        }
+        return outboxStore.progress(forRelease: releaseId)
     }
 
     /// `Import` stays disabled when the editor is in an invalid state
