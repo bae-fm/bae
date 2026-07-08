@@ -430,8 +430,9 @@ extension BaeApp {
 
 // MARK: - AppDelegate
 
+@MainActor
 @Observable
-final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     var appService: AppService?
     private let mediaControlService = MediaControlService()
     var uiStore = UiStore()
@@ -458,10 +459,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     var renameLibrarySheet: RenameLibrarySheetState?
     /// Drives the Lock Library confirmation alert.
     var confirmLockLibrary: Bool = false
-    /// The in-flight library open, owned so a superseding open (a fast switch)
-    /// can cancel it before it lands a stale library on `screen`/`appService`.
+    /// The platform-shared open sequence. The factory reads `uiStore` fresh at
+    /// build time (a close replaces it) and threads in the shared
+    /// `mediaControlService`; the opener owns the supersede-cancel slot and maps
+    /// each open to an `Outcome` this delegate lands on `screen`/`appService`.
     @ObservationIgnored
-    private var openTask: Task<Void, Never>?
+    private lazy var opener = LibrarySessionOpener<AppHandle, AppService>(
+        makeHandle: {
+            try initApp(libraryId: $0, positionUpdateIntervalMs: 200)
+        },
+        makeService: { [weak self] handle, config, initialOutbox in
+            guard let self else {
+                preconditionFailure("AppDelegate outlives its opener")
+            }
+            return self.makeService(
+                handle: handle,
+                uiStore: self.uiStore,
+                config: config,
+                initialOutbox: initialOutbox
+            )
+        }
+    )
     /// In-flight library-list reload, cancelled when a newer one supersedes it.
     @ObservationIgnored
     private var reloadTask: Task<Void, Never>?
@@ -525,67 +543,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     func openLocalLibrary(id libraryId: String) {
         loadError = nil
         screen = .loading
-        let store = uiStore
-        // Cancel any open still in flight: a fast library switch starts a new
-        // open before the previous `initApp` returns, and the superseded one
-        // must not land its (now stale) library on `screen`/`appService`.
-        openTask?.cancel()
-        openTask = Task { @MainActor in
-            do {
-                let handle = try await openHandle(libraryId: libraryId)
-                // A newer open may have superseded this one while `initApp`
-                // ran; bail before touching screen/appService so the stale open
-                // can't clobber the current one. `handle` drops here.
-                try Task.checkCancellation()
-                let cfg = handle.getConfig()
-                if needsUnlock(handle: handle, config: cfg) {
-                    screen = .unlock(
-                        libraryId: libraryId,
-                        libraryName: cfg.libraryName,
-                        fingerprint: cfg.encryptionKeyFingerprint,
-                    )
-                    return
-                }
-                let initialOutbox: BridgeOutboxSnapshot
-                do {
-                    initialOutbox = try await handle.getOutboxSnapshot()
-                }
-                catch {
-                    await failOpenBeforeService(handle: handle, error: error)
-                    return
-                }
-                let service = makeService(
-                    handle: handle,
-                    uiStore: store,
-                    config: cfg,
-                    initialOutbox: initialOutbox
-                )
-                if handle.isSyncReady() {
-                    service.sync.storeRestoreCodeInKeychain(
-                        libraryId: cfg.libraryId,
-                        onError: { [store] in store.showError($0) }
-                    )
-                }
+        opener.open(libraryId: libraryId) { [weak self] outcome in
+            guard let self else { return }
+            switch outcome {
+            case .opened(let service):
                 self.appService = service
                 self.screen = .library
                 self.reloadLibraries()
                 self.hasShell = true
                 self.showAddLibrarySheet = false
-            }
-            catch is CancellationError {
+            case .needsUnlock(let config):
+                self.screen = .unlock(
+                    libraryId: libraryId,
+                    libraryName: config.libraryName,
+                    fingerprint: config.encryptionKeyFingerprint,
+                )
+            case .superseded:
                 // Superseded by a newer open (or a close); that call owns
                 // screen/appService.
                 logger.debug(
                     "Library open superseded before it could land; skipping"
                 )
-            }
-            catch {
+            case .failed(let error):
                 self.loadError = error.localizedDescription
-                // A bootstrap open (first launch, or reopening from the
-                // welcome chooser after a close) that fails must return to
-                // the welcome so the user can retry or pick another, rather
-                // than strand on the loading spinner. A switch failure keeps
-                // the shell mounted and its own state.
+                // A bootstrap open (first launch, or reopening from the welcome
+                // chooser after a close) that fails must return to the welcome
+                // so the user can retry or pick another, rather than strand on
+                // the loading spinner. A switch failure keeps the shell mounted
+                // and its own state.
                 if !self.hasShell {
                     self.screen = .welcome
                 }
@@ -593,27 +578,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
         }
     }
 
-    private func openHandle(libraryId: String) async throws -> AppHandle {
-        try await DetachedWork.run {
-            try initApp(
-                libraryId: libraryId,
-                positionUpdateIntervalMs: 200,
-            )
-        }
-    }
-
-    private func needsUnlock(handle: AppHandle, config: BridgeConfig) -> Bool {
-        config.encryptionKeyStored && !handle.hasEncryptionKey()
-    }
-
-    private func failOpenBeforeService(handle: AppHandle, error: Error) async {
-        logger.error("Failed to seed outbox snapshot: \(error)")
-        loadError = error.localizedDescription
-        screen = .welcome
-        await handle.shutdown()
-    }
-
-    @MainActor
     private func makeService(
         handle: AppHandle,
         uiStore: UiStore,
@@ -637,13 +601,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     /// and replaces `uiStore` so the next library opens with fresh navigation
     /// state. Flipping `hasShell` back to false routes the window from the
     /// main content back to the bootstrap `WelcomeView`.
-    @MainActor
     func closeLibrary() {
         guard let service = appService else { return }
         // Cancel any open still in flight so a parked `initApp` can't resume past
         // its post-await cancellation check and write `.library`/`appService`
         // back after the close.
-        openTask?.cancel()
+        opener.cancel()
         renameTask?.cancel()
         lockTask?.cancel()
         forgetTask?.cancel()

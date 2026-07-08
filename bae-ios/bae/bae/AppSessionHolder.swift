@@ -53,8 +53,28 @@ final class AppSessionHolder {
         library.id == activeLibraryId
     }
 
+    /// The platform-shared open sequence. iOS builds the service with no
+    /// `mediaControlService` / `uiStore` to inject, so the factory just
+    /// constructs and wires the service; the opener owns the supersede-cancel
+    /// slot and maps each open to an `Outcome` this holder lands on `screen`.
     @ObservationIgnored
-    private var openTask: Task<Void, Never>?
+    private let opener = LibrarySessionOpener<AppHandle, AppService>(
+        makeHandle: {
+            try initApp(
+                libraryId: $0,
+                positionUpdateIntervalMs: positionUpdateIntervalMs
+            )
+        },
+        makeService: { handle, config, initialOutbox in
+            let service = AppService(
+                appHandle: handle,
+                config: config,
+                initialOutbox: initialOutbox
+            )
+            service.wireUp()
+            return service
+        }
+    )
 
     /// On launch: open the first discovered library, or onboard if none exist.
     func start() {
@@ -121,87 +141,26 @@ final class AppSessionHolder {
         start()
     }
 
-    /// Open `library`: run `initApp` off-main, gate on the encryption key, and
-    /// on the happy path build + wire the `AppService` and store the restore
-    /// code once sync is ready. The CloudKit driver is installed once at app
-    /// startup, so no per-open registration is needed here.
+    /// Open `library` through the shared opener and land the outcome on
+    /// `screen`. The CloudKit driver is installed once at app startup, so no
+    /// per-open registration is needed here.
     func openLibrary(_ library: BridgeLibrary) {
         screen = .loading
-        openTask?.cancel()
-        openTask = Task {
-            do {
-                // Optional so the encryption-key gate can drop the handle
-                // before showing Unlock: the Swift uniffi binding has no
-                // `close()` (unlike Kotlin's `AutoCloseable`), so releasing the
-                // only strong reference is the teardown — ARC runs the Rust
-                // destructor, freeing the tokio runtime + DB before an unlock
-                // retry spins a second `initApp` on the same library.
-                var handle: AppHandle? =
-                    try await Task.detached {
-                        try initApp(
-                            libraryId: library.id,
-                            positionUpdateIntervalMs: positionUpdateIntervalMs
-                        )
-                    }
-                    .value
-                // A newer openLibrary may have superseded us while initApp ran
-                // (cancelling this task). Bail before touching screen/appService
-                // so the stale open can't clobber the current one; `handle` drops
-                // here, freeing the core it just built.
-                try Task.checkCancellation()
-                guard let liveHandle = handle else { return }
-                let config = liveHandle.getConfig()
-
-                if config.encryptionKeyStored, !liveHandle.hasEncryptionKey() {
-                    handle = nil
-                    let lockedLibrary = LockedLibrary(
-                        library: library,
-                        config: config
-                    )
-                    screen = .unlock(lockedLibrary)
-                    return
-                }
-
-                let openHandle = liveHandle
-                // Seed the outbox mirror (carries the sync-pause flag) before
-                // building the service. A failed read tears the just-opened core
-                // down before surfacing, rather than opening with a guessed-empty
-                // snapshot or leaving a half-open core behind.
-                let initialOutbox: BridgeOutboxSnapshot
-                do {
-                    initialOutbox = try await openHandle.getOutboxSnapshot()
-                }
-                catch {
-                    await openHandle.shutdown()
-                    screen = .failed(message: error.localizedDescription)
-                    return
-                }
-                let service = AppService(
-                    appHandle: openHandle,
-                    config: config,
-                    initialOutbox: initialOutbox
+        opener.open(libraryId: library.id) { [weak self] outcome in
+            guard let self else { return }
+            switch outcome {
+            case .opened(let service):
+                self.appService = service
+                self.screen = .library(service)
+            case .needsUnlock(let config):
+                self.screen = .unlock(
+                    LockedLibrary(library: library, config: config)
                 )
-                service.wireUp()
-                if openHandle.isSyncReady() {
-                    service.sync.storeRestoreCodeInKeychain(
-                        libraryId: config.libraryId,
-                        onError: { message in
-                            Task { @MainActor in
-                                service.configStore.showError(message)
-                            }
-                        }
-                    )
-                }
-                // The sync loop runs its own first cycle shortly after
-                // bootstrap; opening a library doesn't trigger one.
-                appService = service
-                screen = .library(service)
-            }
-            catch is CancellationError {
-                // Superseded by a newer openLibrary; that call owns `screen`.
-            }
-            catch {
-                screen = .failed(message: error.localizedDescription)
+            case .superseded:
+                // A newer open owns `screen`; leave it alone.
+                break
+            case .failed(let error):
+                self.screen = .failed(message: error.localizedDescription)
             }
         }
     }
