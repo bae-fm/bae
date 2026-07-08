@@ -1,0 +1,35 @@
+---
+title: Identitet i članstvo
+description: Ključevi kao identiteti, rukovanje pridruživanja, uloge i opoziv
+---
+
+Nigdje u bae ne postoji sustav računa. Identitet uređaja je Ed25519 par ključeva koji sam generira i čuva u privjesku ključeva OS-a; javni ključ *jest* identitet. Tko pripada biblioteci skup je potpisanih zapisa u mjestu u oblaku, provjerljiv svakome tko ih drži, bez poslužitelja koji ih izdaje. Mehanizam pripada [coven](https://coven.bae.fm)-u; ova stranica opisuje kako ga bae koristi.
+
+## Zapisi članstva
+
+Svaki vlasnik piše samo-dodavajući tok potpisanih zapisa članstva u mjesto u oblaku: ovaj je ključ dodan s ovom ulogom, ovaj je ključ uklonjen. Svaki zapis povezuje se s prethodnim, a svaki vlasnik potpisuje glavu koja objavljuje vrh njegova toka, pa se pružatelj koji ispusti ili presloži zapise otkriva umjesto da mu se vjeruje. Biblioteka prihvaća uniju svakog provjerenog toka vlasnika.
+
+Pri svakom povlačenju autor svakog skupa promjena provjerava se prema tom zapisu: potpisan trenutačnim članom, s ulogom koja smije pisati. Skupovi promjena s uklonjenih uređaja, ključeva koji nikad nisu dodani ili s nevažećim potpisima ne primjenjuju se. Pružatelj sprema zapise, ali ih ne može krivotvoriti; samo držatelji vlasničkih ključeva mogu mijenjati članstvo.
+
+## Uloge
+
+**Owner** i **Member** oboje čitaju i pišu biblioteku; vlasnici dodatno odobravaju i uklanjaju uređaje. Osnivački uređaj bae je vlasnik, a svaki uređaj koji odobri pridružuje se kao član. (Treća uloga postoji u temeljnome mehanizmu, sljedbenik samo za čitanje, koju bae trenutačno ne dodjeljuje.)
+
+## Rukovanje pridruživanja
+
+Dodavanje uređaja razmjena je dva koda s izričitom ljudskom provjerom u sredini:
+
+1. Uređaj koji se pridružuje generira svoj par ključeva i prikazuje **join request**: svoj javni ključ, kratak njegov otisak i (za OAuth pružatelje) račun u oblaku s kojim treba podijeliti mapu.
+2. Vlasnik dekodira zahtjev, a dva zaslona prikazuju isti otisak. Čovjek provjerava da se podudaraju; to je korak koji zaustavlja zamijenjeni ključ.
+3. Odobrenje odjednom radi tri stvari: daje računu novog člana pristup mjestu u oblaku (dijeljenje mape na potrošačkim oblacima, ugrađene vjerodajnice na S3, CloudKit dijeljenje na iCloudu), zapečaćuje ključ biblioteke za javni ključ novog člana i potpisuje zapis članstva koji ga dodaje. Sve se pakira u **invite code**.
+4. Uređaj koji se pridružuje troši pozivnicu, otpečaćuje ključ, pokreće se iz najnovije snimke i sinkronizira.
+
+Pozivnica je zapečaćena za ključ koji je zatražio: presretanje ne daje ništa.
+
+## Opoziv
+
+Uklanjanje člana dodaje potpisano uklanjanje i rotira ključ biblioteke na novu generaciju koju uklonjeni ključ nikad ne prima (vidi [Šifriranje](/hr/reference/encryption#generacije)). Na pohrani koja može opozvati pristup, pristup se također povlači. Ono što je već sinkronizirano na uklonjeni uređaj ostaje kod njega; podaci se ne mogu poslati natrag. Sve nakon rotacije izvan je njegova dosega.
+
+## Kodovi za oporavak
+
+Kod za oporavak namjerno zaobilazi članstvo: to su koordinate mjesta u oblaku plus ključ biblioteke, u jednom bearer nizu, za obnovu vlastite biblioteke bez preživjelog odobravatelja. Generira se na zahtjev, automatski sprema u iCloud Keychain na Apple platformama i jednako je osjetljiv kao sama biblioteka.

@@ -1,0 +1,43 @@
+---
+title: Cjevovod uvoza
+description: Skeniranje, dokazi, usporedba signala i atomski zapis
+---
+
+Uvoz pretvara mapu datoteka u kataloški unos točan po izdanju bez mijenjanja ijednog bajta datoteka. Ova je stranica cjevovod iza tijeka opisanog u [korisničkom vodiču](/hr/guide/importing).
+
+## Skeniranje
+
+Nadzirane mape prate se događajima datotečnog sustava platforme, uz smirivanje naleta, i ponovno se skeniraju pri promjeni; skeniranja usklađuju postojeći popis kandidata umjesto da kreću ispočetka. Skener klasificira mapu kao jedno izdanje (zvuk izravno unutra ili podmape oblikovane kao diskovi poput `CD1`/`CD2`) ili rekurzivno ulazi u nju kao zbirku. Datoteke se po nastavku klasificiraju u zvuk, grafiku i dokumente, zatim se zvuk ispituje: kodek koji je bitan jest onaj koji FFmpeg pronađe u bajtovima, ne datotečni nastavak. Mape s oznakama djelomičnog preuzimanja isključuju se dok preuzimanje ne završi.
+
+CUE list pretvara jednu zvučnu sliku u popis pjesama. Parser obrađuje pregapove i postgapove, izvođače i ISRC-ove po pjesmi te i slike u jednoj datoteci i CUE rasporede s jednom datotekom po pjesmi. Granice pjesama pretvaraju se iz CUE okvira (1/75 sekunde) u točne položaje uzoraka, koji poslije postaju prozori bajtova i uzoraka koje reprodukcija koristi.
+
+## Dokazi, ne oznake
+
+Identifikacija čita tri vrste dokaza iz mape u jednom prolazu:
+
+- **Disc ID**, MusicBrainz otisak točnog rasporeda pjesama CD-a, izračunat iz zapisnika ripanja ili iz CUE lista;
+- **barkodovi**, dekodirani sa skenova grafike okvirom za vid platforme i pročitani iz CUE catalog polja;
+- **tekst**: kataloški brojevi i slobodni tekst iz OCR-a grafike, imena mapa i datoteka te tekstne datoteke u ripu.
+
+Ugrađene audio oznake namjerno nisu dokaz: opisuju što je program za označavanje vjerovao, ne što tiskanje jest. (One pune rezervne metapodatke kad korisnik uvozi izdanje kao nepoznato.)
+
+Disc ID i barkod traže se istodobno, Disc ID prema MusicBrainzu, barkod prema MusicBrainzu i Discogsu odjednom, a rezultati se uspoređuju: rezultati koji se slažu oko grupe izdanja približavaju se, podudaranja kataloškog broja sužavaju popis tiskanja, a neslaganje signala prikazuje se korisniku kao izričit sukob umjesto tihog najboljeg pogađanja. Svaki rezultat nosi svoje podrijetlo (pronađen po Disc ID-u, po barkodu, kataloškom podudaranju) kako bi sučelje moglo reći zašto se red nudi.
+
+## Izvori
+
+MusicBrainz se upituje anonimno uz strogi ritam jednog zahtjeva u sekundi. Discogs se autentificira korisnikovim osobnim tokenom iz privjeska ključeva, tempira i ponovno pokušava unutar svojih ograničenja učestalosti, a odbijeni token prijavljuje se kao takav kako bi ga sučelje moglo označiti umjesto tihog pada pretraživanja. Odgovori se predmemoriraju po sesiji, a sirovi JSON bilo kojeg izvora koji pobijedi arhivira se u bazi podataka za buduće ponovno tumačenje.
+
+## Zapis
+
+Potvrda uvoza izvodi, redom:
+
+1. **Provjera dekodiranja**: svaka se pjesma dekodira od početka do kraja; rip koji se ne može potpuno dekodirati ruši uvoz prije ikakvog pisanja (konfiguracijska zastavica to može isključiti).
+2. **Analiza glasnoće**: integrirana glasnoća i true peak mjere se po pjesmi i po albumu tijekom istog prolaza dekodiranja, spremaju se za upotrebu replay gaina.
+3. **Odabir omota**: odabrana grafika (udaljena, slika iz mape ili ugrađena) ponovno se renderira u prikaznu sličicu; izvornik se čuva među datotekama izdanja ako je došao iz mape.
+4. **Atomski zapis**: izdanje, pjesme, zasluge, identiteti, formati, segmenti, datoteke i omot zapisuju se u jednoj transakciji. Ne postoji napola uvezeno stanje.
+
+Izdanje se upisuje s referencom na korisnikove datoteke na mjestu. Ako je korisnik odabrao upravljanje u oblaku, prijenos se događa nakon zapisa kao prijelaz pohrane, a izvorni bajtovi datoteka ostaju izvor istine cijelo vrijeme; ništa što je korisnik dao bae nikad se ne briše ni mijenja.
+
+## Prepoznavanje ripova
+
+Svako izdanje bilježi hash sadržaja preko strukture svoje uvezene mape (relativni putovi i veličine, neovisno o lokaciji). Ponovna skeniranja koriste ga za označavanje mapa koje su već u biblioteci, a ponovni uvozi istog ripa pronalaze i zamjenjuju svoje prethodno izdanje umjesto dupliciranja.

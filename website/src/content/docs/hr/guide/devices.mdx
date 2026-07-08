@@ -1,0 +1,43 @@
+---
+title: Uređaji i članovi
+description: Dodajte telefon, odobrite uređaj, oporavite biblioteku
+---
+
+Ne postoji bae račun. Identitet uređaja jest par ključeva koji sam generira i čuva u privjesku ključeva operacijskog sustava; biblioteka prepoznaje uređaje po njihovim ključevima. Dodavanje uređaja znači da postojeći uređaj kriptografski jamči za novi, bez posrednika.
+
+Dvoja različita vrata, za dvije različite situacije:
+
+- **Pridruživanje**: novi uređaj odobrava uređaj koji već ima biblioteku. Koristite to za dodavanje telefona ili uređaja druge osobe.
+- **Obnova**: vaš vlastiti novi ili ponovno instalirani uređaj obnavlja biblioteku izravno iz mjesta u oblaku, pomoću koda za oporavak. Nema odobravatelja.
+
+## Dodavanje uređaja
+
+Na novom uređaju odaberite **Join a library**. Prikazuje kratak kod, također kao QR: zahtjev za pridruživanje, s javnim ključem uređaja i otiskom koji možete pročitati naglas.
+
+Na uređaju koji već ima biblioteku vlasnik otvara Settings, Devices, **Add a device** i skenira ili lijepi taj zahtjev. bae prikazuje otisak uređaja koji se pridružuje; potvrdite da se podudara s onim što prikazuje novi uređaj. Odobrenje proizvodi pozivni kod: vratite ga novom uređaju (skenirajte QR ili ga zalijepite), a novi uređaj preuzima biblioteku i počinje sinkronizirati.
+
+Iza rukovanja: uređaj koji odobrava daje novom članu pristup mjestu u oblaku (potrošački oblaci dijele mapu s računom novog člana; S3 pozivnice ugrađuju vjerodajnice) i zapečaćuje ključ šifriranja biblioteke za javni ključ novog člana. Pozivnica je beskorisna za bilo koji drugi uređaj. Pojedinosti su u [Identitetu i članstvu](/hr/reference/membership).
+
+## Članovi i uloge
+
+Settings, Devices navodi svakog člana: otisak, ulogu i koji je ovaj uređaj. Osnivački uređaj je **owner**; uređaji koje odobri pridružuju se kao **members**. Oboje čitaju i pišu biblioteku; samo vlasnici odobravaju i uklanjaju uređaje.
+
+## Uklanjanje uređaja
+
+Vlasnici mogu ukloniti bilo kojeg člana. Uklanjanje ne zatvara samo vrata: ključ šifriranja biblioteke rotira se, a uklonjeni uređaj nikad ne prima novi ključ. Ono što je već kopirao zadržava, podaci se ne mogu opozvati, ali sve što biblioteka od tog trenutka napiše za njega je nečitljivo.
+
+## Kodovi za oporavak
+
+Kod za oporavak bearer je tajna za vašu vlastitu biblioteku: koordinate mjesta u oblaku plus ključ šifriranja, u jednom nizu. **Show recovery code** u Settings ga prikazuje; spremite ga na sigurno mjesto, poput upravitelja lozinki. Na novom uređaju **Restore from cloud** s kodom ponovno izgrađuje biblioteku, bez odobravatelja.
+
+Na Apple platformama kod se automatski čuva i u iCloud Keychainu, pa se novi Mac ili iPhone prijavljen u vaš Apple ID može obnoviti jednim dodirom.
+
+Tko god drži kod drži biblioteku, pa ga tretirajte kao ključ koji jest.
+
+## Zaključavanje
+
+**Lock Library** uklanja ključ šifriranja iz privjeska ključeva uređaja. Biblioteka ostaje na disku, nečitljiva, dok netko ponovno ne unese ključ; bae ga provjerava prema spremljenom otisku prije prihvaćanja. Koristite to za prijenosno računalo koje izlazi iz kuće.
+
+## Na telefonu
+
+iOS i Android pridružuju se i obnavljaju upravo ovako; to je cijeli njihov početni tijek. Telefon može ukloniti i svoju kopiju biblioteke (Settings, remove from this device), što briše lokalne datoteke i ne dira ništa u oblaku.

@@ -1,0 +1,16 @@
+---
+title: Automatizacija
+description: Upravljajte bibliotekom iz agenata, skripti i naredbenog retka
+---
+
+Bibliotekom može upravljati softver koji pokrećete: AI agenti preko MCP-a i skripte preko alata naredbenog retka. Oboje izlaže iste radnje koje koristi sučelje: pretraživanje, pojedinosti izdanja, uvoze, radnje pohrane i stanje reprodukcije.
+
+## MCP poslužitelj
+
+Uključite MCP poslužitelj u Settings, Automation. Poslužuje Model Context Protocol preko HTTP-a na lokalnom portu (zadano 47777), pa MCP klijenti poput Claudea mogu pregledavati vašu biblioteku, tražiti izdanja i djelovati na njima. Pristup zahtijeva bearer token: kopirajte ga iz istog okna postavki i ondje ga rotirajte kad god želite prekinuti pristup svemu što ga je imalo.
+
+Poslužitelj je zadano isključen i radi samo dok radi aplikacija.
+
+## Naredbeni redak
+
+CLI `bae` upravlja istim radnjama iz terminala: JSON unutra, JSON van, prikladno za skripte. Može djelovati i kao MCP klijent, premošćujući poslužitelj desktopa na stdio za alate koji očekuju lokalni MCP proces.

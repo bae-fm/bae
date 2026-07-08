@@ -1,0 +1,28 @@
+---
+title: Šifriranje
+description: Što je ključ biblioteke, gdje živi i koji šifrirani tekst drži pružatelj
+---
+
+Sve što bae stavi u neprozirno mjesto u oblaku šifrira se prije nego što napusti uređaj. bae ne implementira vlastitu kriptografiju: cijela shema pripada [coven](https://coven.bae.fm)-u, a ova stranica opisuje kako je bae koristi. Pregledljiva mjesta odustaju od svega toga; ništa dolje ne odnosi se na njih.
+
+## Ključ biblioteke
+
+Neprozirna biblioteka ima jednu korijensku tajnu: nasumični 256-bitni ključ stvoren kad se mjesto napravi. Živi u privjesku ključeva OS-a, nikad u datoteci; na Apple platformama unos privjeska ključeva sinkronizira se kroz iCloud Keychain. Konfiguracija bae sprema samo otisak ključa, dovoljan da pri otključavanju razlikuje pogrešan ključ od pravog bez držanja tajne.
+
+Ključ putuje između uređaja na dva načina, oba opisana u [Identitetu i članstvu](/hr/reference/membership): zapečaćen za javni ključ odobrenog uređaja tijekom pozivnice i nošen unutar koda za oporavak.
+
+## Generacije
+
+Ključ biblioteke zapravo je privjesak numeriranih generacija. Uklanjanje člana dodaje novu generaciju koju uklonjeni član nikad ne prima: sve zapisano poslije koristi novu generaciju i za njega je nečitljivo, dok preživjeli članovi zadržavaju svaku generaciju i mogu čitati cijelu povijest. Svaki zapečaćeni objekt jasno bilježi koja ga generacija otvara.
+
+## Što se pečati
+
+Svaki objekt u mjestu: skupovi promjena, snimke, zvučni binarni objekti, grafika, zapisi članstva, kontrolni objekti. Objekti se pečate s XChaCha20-Poly1305 u blokovima od 64 KB, svaki blok autentificiran i vezan za svoj kontekst: zapečaćeni objekt dešifrira se samo kao objekt za koji je napisan, za ovu biblioteku, na ovom ključu. Blokovi su razlog zašto strujanje radi, reproduktor može dešifrirati točno raspone bajtova koje dohvaća.
+
+## Što pružatelj može vidjeti
+
+Broj objekata, veličine objekata, vrijeme prijenosa i obrasce pristupa. Ne nazive, ne metapodatke, ne zvuk, ne grafiku, ne članstvo. Nema oporavka na strani poslužitelja: korisnik koji izgubi svaki uređaj i svaku kopiju ključa zauvijek je izgubio šifrirani tekst biblioteke, što je namjerno ponašanje.
+
+## Otključavanje i zaključavanje
+
+Otvaranje biblioteke čita ključ iz privjeska ključeva. Ako biblioteka očekuje ključ, a privjesak ga nema, bae tretira biblioteku kao zaključanu: traži ključ prije otvaranja, provjerava unos prema spremljenom otisku prije spremanja natrag u privjesak ključeva. Zaključavanje biblioteke namjerno uklanja ključ iz privjeska ključeva; ništa u mjestu u oblaku ne može se čitati ni pisati dok se ponovno ne unese.

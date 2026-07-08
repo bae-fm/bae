@@ -1,0 +1,34 @@
+---
+title: Reprodukcijski mehanizam
+description: Dekodiranje, reprodukcija bez praznina, pregapovi i glasnoća, točno
+---
+
+Ugovor reprodukcijskog mehanizma jest vjernost izvoru: dekodirati korisnikove izvorne bajtove, na vlastitoj frekvenciji izvora, s netaknutom strukturom izdanja. Ova je stranica specifikacija iza toga.
+
+## Dekodiranje
+
+Sve dekodiranje je FFmpeg, u procesu, na svakoj platformi: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack i DSD ono su što uvoz prihvaća, a kodek zapisa jest ono što FFmpeg prijavi iz bajtova, ne iz datotečnog nastavka. Uzorci izlaze kao 32-bitni float za izlazni stupanj; pretvorba formata uzorka jedina je pretvorba koja se izvodi.
+
+Izlaz je nativni zvučni API platforme (Core Audio preko cpal na desktopu i iOS-u, AAudio na Androidu). Izlazni tok konfigurira se na **frekvenciju uzorkovanja i broj kanala izvora**: datoteka od 96 kHz reproducira se na 96 kHz. Nema stupnja ponovnog uzorkovanja. Zadani izlazni uređaj razrješava se pri svakoj izgradnji toka, pa reprodukcija prati sistemske promjene uređaja. Na Androidu hardverski podržani kodeci mogu potpuno zaobići FFmpeg za dekodiranje prepušteno hardveru.
+
+## Strujna čitanja
+
+Reprodukcija ne treba cijele datoteke. Zvuk se čita kroz rijedak međuspremnik koji dohvaća raspone bajtova na zahtjev, iz lokalne datoteke, predmemorije ili oblaka, a traženje preslikava ciljani uzorak na položaj bajta tako da traženje u nedohvaćeno područje dohvaća odande. Arbitrar dohvaćanja daje prednost čitanjima pjesme koja svira pred unaprijed učitavanjem, pa nadolazeća pjesma nikad ne odgađa trenutačnu.
+
+## Pjesme kao prozori
+
+Pjesma nije datoteka; ona je uređeni popis prozora uzoraka preko jedne ili više datoteka, izgrađen pri uvozu iz CUE lista ili vlastitog raspona datoteke. Taj jedan prikaz nosi svaki oblik diska: datoteku po pjesmi, cijeli disk u jednoj slici, pregap koji živi na kraju jedne datoteke i početku druge, i ripove s gubitkom izrezane po jednu datoteku po pjesmi.
+
+Prozori pregapa označeni su kao takvi. Reprodukcija ulazi u pjesmu u njezinu pregapu kad ga ima (index 00, uključen skriveni zvuk), dok sat prikazuje vrijeme pjesme: položaj se steže na nulu dok prava pjesma ne počne, a prikazano trajanje isključuje pregap, odgovarajući ponašanju CD playera.
+
+## Bez praznina
+
+Sljedeća pjesma otvara se i puni u međuspremnik dok se trenutačna reproducira. Kad dvije dijele frekvenciju uzorkovanja i broj kanala, mehanizam ih povezuje unutar žive audio povratne funkcije: tok se nikad ne zaustavlja, a granica je točna po uzorku. Kad se formati razlikuju, tok se ponovno gradi, što je slučaj u kojem promjena formata ionako može učiniti granicu čujnom.
+
+## Glasnoća
+
+Uvoz mjeri integriranu glasnoću (EBU R128) i true peak, po pjesmi i po albumu, tijekom prolaza provjere dekodiranja. Replay gain se izvodi iz tih mjerenja pri reprodukciji, nikad se ne upisuje u datoteke: cilj −18 LUFS, ograničen tako da true peak ne može klipati, primijenjen po pjesmi ili po albumu, uz uredno prebacivanje na granicama bez praznina. Način se trenutačno isporučuje bez sučelja postavki i zadano je isključen; može se postaviti u konfiguracijskoj datoteci biblioteke.
+
+## Pauze strana
+
+Popisi pjesama nose svoju strukturu strana i diskova, a mehanizam može zadržati na granici strane, prikazujući upit za nastavak, kad korisnik omogući pauzu između strana. Zadržavanje je stanje reprodukcijske usluge, ne dekodirana tišina, pa je nastavak trenutan.

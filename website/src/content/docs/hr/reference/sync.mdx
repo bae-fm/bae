@@ -1,0 +1,40 @@
+---
+title: Sinkronizacija
+description: Kako se promjene premještaju između uređaja i kako se spajaju
+---
+
+Sinkronizacija bae sinkronizacija je [coven](https://coven.bae.fm)-a: bae prijavljuje svoje tablice i binarne objekte, a coven radi ostalo. Ova stranica opisuje mehaniku kako se primjenjuje na bae; vlastita dokumentacija covena pokriva svaki dio u punoj dubini.
+
+## Hvatanje
+
+coven posjeduje SQLite vezu, pa svako pisanje koje bae potvrdi prolazi kroz njega. SQLiteovo proširenje sesije bilježi točno što se promijenilo u svakoj transakciji; promjene sinkroniziranih tablica postaju **skup promjena**, zapečaćen ključem biblioteke i potpisan identitetskim ključem uređaja. Bez računanja razlika, bez prljavih zastavica: hvatanje je svojstvo veze, a pisanje se ne može propustiti.
+
+## Tokovi
+
+Svaki uređaj dodaje svoje skupove promjena u vlastiti tok u mjestu u oblaku, numerirane redom. Uređaji nikad ne pišu u tokove jedni drugih, pa u pohrani nema sukoba pisanja, a svaki uređaj prati pokazivač za svaki partnerski tok. Ciklus sinkronizacije gura lokalni odlazni sandučić, zatim povlači svaki partnerski tok od njegova pokazivača naprijed, provjeravajući potpis svakog skupa promjena i članstvo njegova autora prije primjene.
+
+Ciklus se pokreće nakon lokalnih promjena, na mjeraču neaktivnosti s odgodom (do pet minuta između provjera) i odmah na **Sync Now**. Neuspjesi se odgađaju i ponovno pokušavaju; petlja prijavljuje ishod svakog ciklusa sučelju kao stanje, tekst pogreške i broj primijenjenih redaka.
+
+## Spajanje
+
+Dva uređaja koja uređuju istu biblioteku dok su odvojena normalan su slučaj, ne iznimka. Kad se njihove promjene susretnu:
+
+- Izmjene **različitih redaka ili različitih stupaca** obje se primjenjuju. Uređivanje godine izdanja na prijenosniku i njegova izdavača na desktopu daje oboje.
+- Izmjene **istog stupca istog retka** redoslijede se po hibridnom logičkom satu retka `_updated_at`: kasnija izmjena pobjeđuje, deterministički i jednako na svakom uređaju.
+- **Brisanja pobjeđuju** nad istodobnim izmjenama: izdanje izbrisano na jednom uređaju ostaje izbrisano čak i ako ga je drugi uređaj uredio u istom razdoblju.
+
+Nema sučelja za sukobe jer nema neriješenog stanja: svaki uređaj dolazi do istog rezultata iz bilo kojeg redoslijeda primjene.
+
+## Pokretanje
+
+Uređaj koji se pridružuje ili obnavlja ne reproducira povijest od početka. Preuzima **snimku**, punu SQLite sliku koja se povremeno objavljuje u mjesto u oblaku, zatim primjenjuje samo skupove promjena koje je svaki tok nakupio poslije. Metapodaci snimke bilježe verziju sheme i pokazivače po toku koje utjelovljuje.
+
+## Verzije sheme
+
+Shema bae migrira kroz numerirane prečke, a najviša prečka utiskuje se na svaki skup promjena koji uređaj napiše. Uređaj koji povuče skup promjena iz novije sheme nego što je njegova parkira taj tok, ne primjenjujući ništa nakon toga, dok se aplikacija ne ažurira; ništa se ne gubi i ništa se ne primjenjuje pogrešno. Sama datoteka baze podataka odbija se otvoriti pod binarnom datotekom starijom od svoje sheme.
+
+Grublja od verzije sheme je **era kompatibilnosti**: prikovana revizija covena ugrađena u svaku binarnu datoteku. Dvije gradnje sinkroniziraju se samo unutar ere; prekid žičanog formata covena nova je era i povećanje glavne verzije na svakoj aplikaciji. Prije 1.0 svaka je gradnja era nula i formati se mijenjaju bez migracije.
+
+## Što pružatelj vidi
+
+Na neprozirnom mjestu pružatelj sprema šifrirane skupove promjena, šifrirane binarne objekte i potpisane zapise članstva; može brojati objekte i promatrati veličine i vrijeme, a ništa od toga ne može čitati. Svaki objekt koji uređaj povuče provjerava se, potpis i članstvo, prije nego što išta dotakne bazu podataka: pohrana je glupi, nepouzdani poštanski sandučić. Pogledajte [Šifriranje](/hr/reference/encryption) i [Identitet i članstvo](/hr/reference/membership).

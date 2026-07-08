@@ -1,0 +1,43 @@
+---
+title: Model podataka
+description: Shema, što se sinkronizira i što ostaje na uređaju
+---
+
+Katalog bae običan je SQLite, prijavljen [coven](https://coven.bae.fm)-u tablicu po tablicu: sinkronizirane tablice nose sat sukoba i putuju na svaki uređaj; neprijavljene tablice nikad ne napuštaju uređaj. Ta je podjela najvažnija odluka modela podataka, pa je ova stranica organizirana oko nje.
+
+## Graf kataloga
+
+Sinkronizirano srce sheme:
+
+- **`artists`**, **`albums`**, **`works`**: sloj grupiranja. Album okuplja svoja izdanja i pokazuje na primarno; djela tvore roditelj/dijete graf za klasičnu strukturu.
+- **`releases`**: središnji entitet, jedan redak po tiskanom izdanju. Nosi činjenice o tisku (izdavač, kataloški broj, barkod, zemlja, format, godina), izvor metapodataka, hash sadržaja uvezene mape i izmjerenu glasnoću albuma.
+- **`release_identities`**: što izdanje *jest*, po izvoru. Bez redaka znači nepoznato; MusicBrainz ili Discogs redak s ID-jem izdanja znači točno; bez njega, približno. Izdanje može držati identitete u oba izvora odjednom.
+- **`tracks`** s **`track_artists`**, plus **`release_artist_roles`** i **`track_artist_roles`**: popisi pjesama i zasluge, svaka zasluga označena svojim izvorom.
+- **`track_works`**, **`work_parts`**, **`work_artists`**: snimke povezane s djelima koja izvode.
+- **`audio_formats`** i **`audio_format_segments`**: specifikacije reprodukcije. Po pjesmi: kodek, frekvencija uzorkovanja, dubina bita, kanali, izmjerena glasnoća i vrh te duljine pregapova. Segmenti preslikavaju pjesmu na uređene prozore bajtova i uzoraka njezinih izvornih datoteka, što omogućuje da pjesma iz CUE ripa, uključujući pregap, obuhvati područja jedne velike datoteke ili više datoteka.
+- **`release_files`**, **`covers`**, **`artist_images`**: tablice koje nose binarne objekte. Redci su kataloški zapisi; bajtovi žive u sloju binarnih objekata covena (vidi dolje).
+
+## Sinkronizirano, uvjetovano, lokalno
+
+Sve navedeno se sinkronizira, ali ne bezuvjetno. `releases` je prijavljen kao uvjetovani korijen na stupcu `remote`: redak izdanja i cijelo njegovo podstablo (pjesme, datoteke, zasluge, formati, omot) sinkroniziraju se samo dok je `remote` true, odnosno dok je izdanje upravljano u oblaku. Prebacivanje izdanja na upravljano objavljuje podstablo; neupravljano izdanje ostaje potpuno na uređaju koji ga je uvezao, iako mu je shema sinkronizirana. Nadređene tablice (`artists`, `albums`, `works`) sinkroniziraju se samo dok se na njih još poziva neko sinkronizirano izdanje, pa uređaj nikad ne prima izvođača bez ičega ispod njega.
+
+Potpuno lokalne tablice, nikad prijavljene covenu:
+
+- **`playback_state`**: trenutačna pjesma, položaj, red čekanja, glasnoća, nasumični redoslijed i ponavljanje. Reprodukcija je činjenica uređaja.
+- **`imports`**: praćenje operacije uvoza.
+- **`release_metadata`**: arhivirani sirovi JSON iz MusicBrainza i Discogsa, čuvan za buduće ponovno tumačenje.
+- **`attribution_names`**: prikazna imena za ključeve članova.
+
+Svaka sinkronizirana tablica nosi `_updated_at` stupac hibridnog logičkog sata, registar prema kojem covenovo spajanje polje po polje redoslijedi istodobne izmjene; test provjerava da su sinkronizirani skup i skup koji nosi sat točno jednaki.
+
+## Blobovi
+
+Zvuk i slike prolaze kroz sloj binarnih objekata covena u tri imenska prostora, svaki s vlastitim proračunom predmemorije uređaja: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+
+Datoteke izdanja daje korisnik i lijeno se predmemoriraju: za neupravljano izdanje binarni objekt je vanjska referenca na korisnikovu datoteku na izvornom putu; za upravljano je preneseni objekt dohvaćen u predmemoriju pri prvom čitanju. Omote i slike izvođača daje domaćin i predmemoriraju se unaprijed: bae proizvodi bajtove (omoti se ponovno renderiraju kao JPEG sličice širine najviše 600 px), a svaki ih uređaj dohvaća pri povlačenju kako bi se mreže prikazivale lokalno.
+
+Na neprozirnom mjestu binarni objekti prenose se pod besmislenim ključevima sadržaja. Na pregledljivom mjestu svaki redak binarnog objekta bilježi čitljiv put u oblaku (`{artist}/{album}/{filename}` za zvuk, `{album}/{release}/cover.{ext}` za omote), izračunat jednom pri prijenosu pa kasnije preimenovanje nikad ne premješta objekt.
+
+## Identitet ripa
+
+`releases.content_hash` je SHA-256 preko strukture datoteka uvezene mape (relativni putovi i veličine), neovisan o tome gdje se mapa nalazi na disku. Tako bae prepoznaje već uvezeni rip kad se ponovno pojavi u nadziranoj mapi i tako ponovni uvozi pronalaze izdanje koje trebaju zamijeniti.

@@ -1,0 +1,44 @@
+---
+title: Početak rada
+description: Stvorite biblioteku, uvezite prvi album i reproducirajte ga
+---
+
+bae je mjesto za albume koje posjedujete. Biblioteku gradite na desktopu, a ona vas prati na svaki uređaj: sinkronizirana kroz pohranu u oblaku koju već imate, šifrirana tako da je mogu čitati samo vaši uređaji.
+
+Desktop aplikacije (macOS, Windows) puni su alat: stvaraju biblioteke, uvoze glazbu i uređuju metapodatke. Telefonske aplikacije (iOS, Android) su reproduktori: pridružuju se biblioteci koju je stvorio vaš desktop, zatim pregledavaju, preuzimaju i reproduciraju.
+
+## Stvaranje biblioteke
+
+Otvorite bae na desktopu. Kad na računalu nema biblioteke, početni zaslon nudi tri izbora:
+
+- **Create a new library**, ako je ovo vaš prvi uređaj.
+- **Join a library**, ako drugi uređaj već ima biblioteku i njezin će vas vlasnik odobriti. Pogledajte [Uređaji i članovi](/hr/guide/devices).
+- **Restore from cloud**, ako je ovo vaša biblioteka i imate njezin kod za oporavak. Pogledajte [Uređaji i članovi](/hr/guide/devices#kodovi-za-oporavak).
+
+Stvorite je. Biblioteka počinje lokalno: sve živi na ovom računalu, ništa ne treba račun i nema oblaka dok ga ne povežete.
+
+## Uvoz prvog albuma
+
+1. Prebacite se na odjeljak **Import** u naslovnoj traci.
+2. Dodajte mapu s glazbom. Možete je odabrati, povući na prozor ili pritisnuti <kbd>⌘I</kbd>.
+3. bae skenira mapu i navodi izdanja koja pronađe. Odaberite jedno.
+4. bae ga identificira prema MusicBrainzu i Discogsu i prikazuje podudaranje. Potvrdite tiskanje, odaberite omot, prilagodite pojedinosti.
+5. Kliknite **Import**.
+
+Vaše se datoteke ne premještaju, ne kopiraju i ne prepisuju. bae ih katalogizira ondje gdje jesu. Cijeli tijek, uključujući što učiniti kad identifikaciji treba pomoć, nalazi se u [Uvozu](/hr/guide/importing).
+
+## Reprodukcija
+
+Natrag u odjeljku **Library**, album je u mreži. Kliknite ga, pritisnite reprodukciju. Reprodukcija koristi vaše izvorne datoteke u njihovoj izvornoj kvaliteti. [Reprodukcija](/hr/guide/playback) pokriva red čekanja, nasumični redoslijed i ponavljanje te pojedinosti koje bae čuva: CD pregapove, prekide strana vinila, albume bez praznina.
+
+## Ponesite je svugdje
+
+Kad želite biblioteku na više od jednog uređaja, povežite mjesto u oblaku: svoj Google Drive, Dropbox, OneDrive, iCloud ili bilo koji S3-kompatibilan spremnik. Sve što bae ondje stavi šifrira se prije prijenosa; pružatelj to pohranjuje, ali ne može čitati.
+
+- [Sinkronizacija](/hr/guide/sync): povežite mjesto u oblaku i odaberite što pohranjuje.
+- [Uređaji i članovi](/hr/guide/devices): dodajte telefon ili drugi desktop.
+- [Pohrana i izvanmrežno](/hr/guide/storage): držite glazbu na uređaju ili je strujite iz svog oblaka i prikvačite ono što trebate izvan mreže.
+
+## Gdje stvari žive
+
+Svaka biblioteka drži svoju bazu podataka i postavke pod `~/.bae/libraries/` na desktopu. Vaš zvuk ostaje ondje odakle ste ga uvezli, osim ako tražite da bae njime upravlja u vašem oblaku. Ključevi i vjerodajnice žive u privjesku ključeva operacijskog sustava, ne u datotekama.

@@ -1,0 +1,43 @@
+---
+title: Sinkronizacija
+description: Cijela biblioteka na svakom uređaju, kroz vaš oblak
+---
+
+Sinkronizacija obično znači tuđi poslužitelj: račun, pretplatu, tvrtku koja može čitati vašu biblioteku. bae sinkronizira kroz **vaš** oblak, pohranu koju već imate, i ne pokreće nikakav poslužitelj. Vaši uređaji pišu šifrirane promjene u tu pohranu i čitaju promjene jedni od drugih; pružatelj pohranjuje bajtove i ne može ih čitati.
+
+Jedna biblioteka, svaki uređaj, a jedini uključeni račun jest onaj koji već posjedujete.
+
+## Mjesto u oblaku
+
+Mjesto biblioteke u oblaku jedna je lokacija u vašoj pohrani: mapa u Google Driveu, Dropboxu ili OneDriveu, vaš iCloud ili bilo koji S3-kompatibilan spremnik (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Sadrži sve što biblioteka sinkronizira: promjene kataloga, grafiku i zvuk izdanja kojima dopustite da bae upravlja.
+
+Postavite ga u Settings, pod Sync:
+
+1. Odaberite pružatelja. Potrošački oblaci prijavljuju se vlastitom stranicom za prijavu pružatelja; o vašem računu ne sprema se ništa osim tokena koje izda. iCloud koristi vaš Apple ID takav kakav jest. S3 prima spremnik, regiju, krajnju točku i ključeve, provjerene prije spremanja.
+2. Odaberite kako mjesto pohranjuje objekte (vidi dolje).
+3. bae počinje sinkronizirati.
+
+Biblioteka bez mjesta u oblaku potpuna je sama za sebe. Samo lokalni rad je način rada, ne ograničenje, a odspajanje mjesta u oblaku vraća se na njega.
+
+## Neprozirno ili pregledljivo
+
+Pri postavljanju odabirete što pružatelj smije vidjeti, a odabir je trajan za to mjesto:
+
+- **Neprozirno** (zadano): svaki se objekt šifrira na vašem uređaju prije prijenosa i sprema pod besmislenim nazivima. Pružatelj, ili bilo tko tko uđe u spremnik, vidi šifrirani tekst. To je način koji opisuje stranica [šifriranje](/hr/reference/encryption), i jedini način koji podržava dodavanje drugih uređaja i članova.
+- **Pregledljivo**: objekti se spremaju otvoreno sa stvarnim imenima datoteka, u mapama nazvanima po izvođaču i albumu. Spremnik možete otvoriti bilo kojim alatom i izravno kopirati ili reproducirati svoje datoteke. Ništa nije šifrirano, pa je vlastita kontrola pristupa spremnika jedina zaštita, a mjesto se ne može dijeliti.
+
+## Što se sinkronizira
+
+- Katalog: albumi, izdanja, pjesme, zasluge, djela, identiteti, izmjene. Svaki uređaj dobiva sve.
+- Grafika: omoti i slike izvođača, dohvaćeni unaprijed kako bi se mreže svugdje prikazivale.
+- Zvuk: samo za izdanja kojima ste odabrali upravljati u oblaku. Neupravljana izdanja ostaju posve lokalna, s kataloškim zapisima uključenima na drugim uređajima, ali s bajtovima samo ondje gdje ste ih uvezli.
+
+Stanje po uređaju ne sinkronizira se: položaj reprodukcije, glasnoća, red čekanja i postavke uređaja ostaju na uređaju.
+
+## Kada se sinkronizira
+
+Sinkronizacija radi sama: nakon promjena, prema mjeraču vremena i na zahtjev s **Sync Now**. Izmjene stižu na druge uređaje kao male promjene, nekoliko sekundi poslije u uobičajenim uvjetima. Dva uređaja koja uređuju u isto vrijeme oba pobjeđuju ondje gdje se ne sudaraju: bae spaja istodobne izmjene polje po polje, a izbrisano izdanje ostaje izbrisano čak i ako je u istom trenutku uređeno drugdje. Nikad se od vas ne traži rješavanje sukoba.
+
+## Kada ne uspije
+
+Neuspjesi sinkronizacije ne prekidaju biblioteku; i dalje lokalno pregledavate, reproducirate i uvozite dok bae ponovno pokušava s odgodom. Redak stanja prikazuje sinkronizaciju i vrijeme zadnje sinkronizacije; neuspjeh prikazuje natpis s pogreškom, a prijenosi se mogu pauzirati, ponovno pokušati i pregledati u [upravitelju pohrane](/hr/guide/storage#upravitelj-pohrane). Ako prijava mjesta u oblaku istekne, bae traži ponovno povezivanje.

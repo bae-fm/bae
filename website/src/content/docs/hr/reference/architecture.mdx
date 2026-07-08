@@ -1,0 +1,41 @@
+---
+title: Arhitektura
+description: Nativne aplikacije na jednoj Rust jezgri, na covenu
+---
+
+bae je jedna Rust jezgra koja nosi četiri nativne aplikacije. Sve što definira proizvod, model biblioteke, uvoz, reprodukciju, sinkronizaciju i šifriranje živi u Rustu i ponaša se jednako na svakoj platformi; svaka aplikacija je tanko nativno sučelje nad njom.
+
+## Slojevi
+
+- **`bae-core`**: proizvod. Model biblioteke i metapodataka, cjevovodi uvoza i identifikacije, FFmpeg reprodukcijski mehanizam, analiza glasnoće, izvoz i integracija s covenom ispod. Uvoz i identifikacija prevode se samo na desktopu; mobilne gradnje su klijenti za sinkronizaciju i reprodukciju.
+- **[coven](https://coven.bae.fm)**: podatkovni sloj, zasebna biblioteka. coven posjeduje SQLite vezu, hvata svaku promjenu koju bae potvrdi i sinkronizira te promjene krajnje šifrirano kroz korisnikovu pohranu u oblaku. Također posjeduje pohranu binarnih objekata (zvučni bajtovi, grafika), lokalnu predmemoriju, identitetske ključeve i članstvo. bae prikvačuje točnu reviziju covena i utiskuje je u svaku binarnu datoteku; ona određuje generaciju kompatibilnosti sinkronizacije između gradnji.
+- **`bae-bridge`**: UniFFI granica. Tipovi mosta definiraju se jednom u Rustu i generiraju u Swift i Kotlin pri gradnji.
+- **Aplikacije**: SwiftUI na macOS-u i iOS-u, Jetpack Compose na Androidu i nativna Windows aplikacija. Svaka implementira i dijelove platforme koje jezgra traži: zvučni izlaz, prepoznavanje teksta na grafici, medijske kontrole, pristup privjesku ključeva, izvještavanje o rušenjima.
+
+Uz aplikacije: `bae-mcp` (MCP poslužitelj), `bae-cli` (naredbeni redak) i `bae-automation` (zajednički sloj alata koji oboje koriste).
+
+## Jedna biblioteka na disku
+
+Biblioteka živi na `~/.bae/libraries/<library-id>/` (podatkovni direktorij platforme na mobilnim uređajima):
+
+```
+~/.bae/libraries/<id>/
+  library.db        # SQLite: katalog, zasluge, specifikacije reprodukcije
+  config.yaml       # lokalne postavke uređaja, nikad sinkronizirane
+  storage/
+    local/          # binarni objekti koje ovaj uređaj posjeduje (omoti, slike izvođača)
+    cache/          # izbacive kopije binarnih objekata iz oblaka
+    pinned/         # kopije prikvačene za izvanmrežno, nikad izbačene
+```
+
+Baza podataka otvara se samo kroz coven, koji svoje knjigovodstvene tablice (pokazivači sinkronizacije, odlazni sandučić, stanje binarnih objekata) polaže uz shemu bae i pokreće migracije bae. Zvučne datoteke uvezene kao neupravljane uopće nisu pod `~/.bae`: baza podataka poziva se na njih na putovima gdje su uvezene.
+
+Tajne nikad ne žive u tim datotekama. Identitetski ključevi, ključ šifriranja biblioteke, vjerodajnice oblaka i API tokeni žive u privjesku ključeva OS-a (Keychain na Apple platformama, sinkroniziran preko iCloud Keychaina; ekvivalenti platforme drugdje).
+
+## Izdanja
+
+Dva izdanja za vrijeme gradnje postoje na svakoj platformi. **bae** uključuje OAuth pružatelje (Google Drive, Dropbox, OneDrive), CloudKit i telemetriju. **baeium** sve to izostavlja pri prevođenju: samo S3-kompatibilna pohrana i bez telemetrije, ništa vlasničko u stablu ovisnosti. Izdanja su isti izvor i ista jezgra; zastavica značajke odlučuje popis pružatelja i povezivanje dijagnostike.
+
+## Verzioniranje
+
+Aplikacije se verzioniraju kao `MAJOR.MINOR` po platformi. Major je era kompatibilnosti, zajednička svakoj aplikaciji: uređaji na istom majoru mogu sinkronizirati biblioteku. Povećava se samo kad se prekine žičani ili diskovni format, najčešće prikovana revizija covena. Minori broje izdanja po aplikaciji i nisu usporedivi među platformama.

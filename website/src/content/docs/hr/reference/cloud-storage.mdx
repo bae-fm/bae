@@ -1,0 +1,37 @@
+---
+title: Pohrana u oblaku
+description: Pružatelji, autentifikacija i oblik mjesta u oblaku
+---
+
+Mjesto u oblaku jedna je lokacija u pohrani koju korisnik već posjeduje. Svaki pružatelj pokreće se kroz isto sučelje pohrane u [coven](https://coven.bae.fm)-u; po pružatelju se razlikuju autentifikacija i način na koji drugi uređaj dobiva pristup.
+
+## Pružatelji
+
+| Pružatelj | Autentifikacija | Pristup za novi uređaj |
+|---|---|---|
+| S3-kompatibilno | Pristupni ključ + tajna | Vjerodajnice ugrađene u pozivnicu |
+| Google Drive | OAuth (PKCE) | Mapa podijeljena s računom pridružitelja |
+| Dropbox | OAuth (PKCE) | Mapa podijeljena s računom pridružitelja |
+| OneDrive | OAuth (PKCE) | Mapa podijeljena s računom pridružitelja |
+| iCloud (CloudKit) | Apple ID, bez prijave | CloudKit dijeljenje koje pridružitelj prihvaća |
+
+S3-kompatibilno pokriva AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO i sve drugo što govori API; spremnik, regija, krajnja točka i prefiks ključa mogu se konfigurirati, a spremnik se ispituje prije spremanja konfiguracije pa se tipfeler ruši pri postavljanju, ne pri prvoj sinkronizaciji. OAuth pružatelji postoje samo u punom izdanju **bae**; gradnje **baeium** ih izostavljaju pri prevođenju.
+
+## OAuth
+
+Prijava je tijek autorizacijskog koda s PKCE-om, kao javni klijent. Na desktopu preusmjeravanje stiže na povratni poslužitelj vezan za lokalni port za taj jedan povratni poziv; na mobilnom aplikacija umjesto toga hvata preusmjeravanje vlastite sheme. bae traži najuži opseg koji pružatelj nudi za posao; na Google Driveu to je pristup samo datotekama koje aplikacija sama stvori. Tokeni se spremaju u privjesak ključeva OS-a, osvježavaju se pružateljevim refresh grantom, a odbijeno osvježavanje prikazuje upit za ponovno povezivanje umjesto tihe petlje ponovnog pokušaja.
+
+CloudKit ne treba tijek: platformin CloudKit upravljački sloj, implementiran u aplikaciji i predan jezgri, radi kao prijavljeni Apple ID.
+
+## Raspored mjesta
+
+Unutar mjesta coven raspoređuje tokove skupova promjena po uređaju, generacije snimki, zapise članstva i imenske prostore binarnih objekata. bae dodaje tri imenska prostora binarnih objekata: `release_files`, `covers` i `artist_images`.
+
+Način na koji se objekti ključaju ovisi o načinu pohrane mjesta, fiksiranom pri stvaranju:
+
+- **Neprozirno**: objekti su šifrirani i spremljeni pod ključevima izvedenima iz sadržaja koji ništa ne otkrivaju. To je način potpunog oslanjanja na kriptografiju; pogledajte [Šifriranje](/hr/reference/encryption).
+- **Pregledljivo**: objekti su otvoreni tekst na čitljivim putovima zabilježenima po binarnom objektu pri prijenosu: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Spremnik je ujedno upotrebljivo stablo datoteka; razmjena je bez šifriranja i bez članstva, pa se pregledljiva mjesta ne mogu dijeliti s drugim ljudima.
+
+## Ponašanje na stvarnim mrežama
+
+Čitanja za reprodukciju su rasponska: reproduktor struji prozore bajtova koje treba umjesto cijelih datoteka. Prijenosi iznad praga veličine idu višedijelno gdje pružatelj to podržava. Ograničavanje učestalosti i prolazne pogreške pružatelja ponovno se pokušavaju s eksponencijalnom odgodom, poštujući pružateljev `Retry-After` kad je dan; istekli OAuth tokeni osvježavaju se na mjestu. Odlazni sandučić sinkronizacije preživljava ponovna pokretanja: prijenos prekinut izlaskom iz aplikacije nastavlja se umjesto da krene ispočetka.

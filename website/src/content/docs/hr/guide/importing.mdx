@@ -1,0 +1,64 @@
+---
+title: Uvoz
+description: Povežite svoje mape sa stvarnim izdanjima
+---
+
+Mapa ripova zna o sebi gotovo ništa. Izdanje iz kojeg je nastala, tiskanje, izdavač, zasluge, gdje pjesma 12 zapravo završava: sve to živi u bazama podataka poput MusicBrainza i Discogsa, ne u imenima vaših datoteka. Uvoz je način na koji bae spaja to dvoje: pokažete mu svoju glazbu, on utvrdi koje je izdanje svaka mapa, a biblioteka zapiše mapu kao to izdanje.
+
+Uvoz se događa na desktopu (macOS, Windows). Vaše se datoteke čitaju, nikad ne mijenjaju: bae ništa ne premješta, ne preimenuje, ne mijenja oznake i ne rekodira. Pogledajte [Pohrana i izvanmrežno](/hr/guide/storage) za to gdje datoteke žive nakon uvoza.
+
+## Nadzirane mape
+
+Prebacite se na odjeljak **Import** i dodajte mapu: odaberite je, povucite je na prozor ili pritisnite <kbd>⌘I</kbd>. bae od tada nadzire mapu. Nova glazba spuštena u nju sama se pojavljuje kao novi kandidat; ne skenirate ponovno ručno. Mape koje se još preuzimaju zanemaruju se dok ne završe.
+
+Skeniranje prepoznaje izdanja u oblicima koje ripovi stvarno imaju:
+
+| Raspored | Kako izgleda |
+|--------|-------------------|
+| Datoteka po pjesmi | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE + slika | `album.cue` + `album.flac`, jedna datoteka za cijeli disk |
+| Više diskova | podmape `CD1/`, `CD2/`, bilo koji oblik unutra |
+| Zbirke | mapa mapa, svaka svoje izdanje |
+
+bae uvozi formate koje reproducira: FLAC, MP3, APE, ALAC i AAC u `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack i DSD (`.dsf`/`.dff`). Grafika i dokumenti (CUE listovi, zapisnici ripanja, tekstne datoteke) u mapi prepoznaju se i čuvaju s izdanjem.
+
+## Identifikacija izdanja
+
+Odaberite kandidata i bae ga počinje identificirati. Umjesto pogađanja iz oznaka, čita dokaze u mapi i traži svaki dio:
+
+- **Disc ID.** Otisak točnog rasporeda pjesama CD-a, izračunat iz zapisnika ripanja ili CUE lista. Kad se podudara, identificira točno CD izdanje.
+- **Barkod.** Pročitan s naslovnica u mapi pomoću prepoznavanja teksta ili iz CUE lista.
+- **Kataloški brojevi i tekst.** Kataloški brojevi pronađeni na grafici i u imenima datoteka i mapa, upotrijebljeni za sužavanje rezultata.
+
+Signali se istodobno traže prema MusicBrainzu i Discogsu, a rezultati se međusobno provjeravaju. Svaki signal pojavljuje se kao značka iznad rezultata: možete vidjeti što je pronađeno, odakle je došlo (zadržite pokazivač za izvor: TOC diska, CUE list, sken omota, ime mape) i isključiti pojedine signale ako neki zavodi.
+
+Tri ishoda:
+
+- **Pronađeno.** Dokazi se slažu oko jedne grupe izdanja. Odabirete točno tiskanje s njezina popisa.
+- **Sukob.** Dva signala upućuju na različita izdanja, recimo Disc ID i barkod se ne slažu. bae prikazuje obje strane, a vi birate čemu vjerovati ili zanemarujete signal.
+- **Ništa nije pronađeno.** Pretražujte ručno: izvođač i album, kataloški broj ili barkod, prema bilo kojoj bazi podataka. Tekst prepoznat s grafike nudi se kao automatska dopuna.
+
+Možete i **preskočiti identifikaciju** i uvesti kao nepoznato izdanje. bae se tada vraća na ugrađene oznake vaših datoteka za nazive, a vi se možete ponovno identificirati poslije, kad izdanje postoji u bazi podataka ili imate bolji dokaz.
+
+## Točno ili približno
+
+Kad odaberete podudaranje, bae ga provjerava prema vašim datotekama i označava nepodudaranje broja pjesama. Zatim izjavljujete što je podudaranje:
+
+- **Točno**: vaše datoteke jesu ovo tiskanje.
+- **Samo metapodaci**: pravi album, ali ne nužno ovo točno tiskanje. bae koristi metapodatke i pamti da je tiskanje približno.
+
+Ako je izdanje već u vašoj biblioteci, ili drugo tiskanje istog albuma jest, bae vam kaže prije uvoza duplikata.
+
+## Potvrda i uvoz
+
+Okno potvrde prikazuje sve što će uvoz zapisati:
+
+- **Omot.** Odabran iz grafike baza podataka, slika u vašoj mapi ili grafike ugrađene u datoteke. Možete ga poslije promijeniti.
+- **Metapodaci.** Album, izvođač, godina, izdavač, kataloški broj, zemlja, barkod i svaka pjesma: sve se može urediti ovdje prije nego što se išta spremi.
+- **Pohrana.** Ako je povezano mjesto u oblaku, odaberite treba li bae upravljati datotekama u vašem oblaku i treba li zadržati i lokalnu kopiju. Pogledajte [Pohrana i izvanmrežno](/hr/guide/storage).
+
+Uvoz radi u pozadini: bae provjerava da se svaka pjesma dekodira do kraja, mjeri glasnoću za album i svaku pjesmu, sprema izdanje i, za upravljane uvoze, pokreće prijenos. Popis kandidata prelazi na sljedeću mapu, a izdanje se može odmah reproducirati.
+
+## Izvori podataka
+
+**MusicBrainz** ne treba račun ni ključ. **Discogs** zahtijeva vaš besplatni API token; zalijepite ga u Settings, a bae vam kaže ako prestane raditi. Bez tokena nisu dostupni Discogs pretraživanje i metapodaci iz Discogsa, a sve ostalo radi. Obje usluge imaju ograničenja učestalosti; bae raspoređuje zahtjeve kako bi ostao unutar ograničenja.
