@@ -164,10 +164,18 @@ final class AppSessionHolder {
 
                 let openHandle = liveHandle
                 // Seed the outbox mirror (carries the sync-pause flag) before
-                // building the service, matching macOS. A failed read lands on
-                // `.failed` via the outer catch rather than opening with a
-                // guessed-empty snapshot.
-                let initialOutbox = try await openHandle.getOutboxSnapshot()
+                // building the service. A failed read tears the just-opened core
+                // down before surfacing, rather than opening with a guessed-empty
+                // snapshot or leaving a half-open core behind.
+                let initialOutbox: BridgeOutboxSnapshot
+                do {
+                    initialOutbox = try await openHandle.getOutboxSnapshot()
+                }
+                catch {
+                    await openHandle.shutdown()
+                    screen = .failed(message: error.localizedDescription)
+                    return
+                }
                 let service = AppService(
                     appHandle: openHandle,
                     config: config,
@@ -184,7 +192,8 @@ final class AppSessionHolder {
                         }
                     )
                 }
-                openHandle.triggerSync()
+                // The sync loop runs its own first cycle shortly after
+                // bootstrap; opening a library doesn't trigger one.
                 appService = service
                 screen = .library(service)
             }
