@@ -157,13 +157,11 @@ struct AlbumDetailView: View {
                     )
                 }
                 else {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    detailPlaceholder(releaseId: selectedReleaseId)
                 }
             }
             else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                detailPlaceholder(releaseId: nil)
             }
         }
         .task(id: albumId) {
@@ -217,6 +215,29 @@ struct AlbumDetailView: View {
     }
 
     // MARK: - Data helpers
+
+    /// The placeholder shown before a release's detail loads: an error + Retry
+    /// once its on-demand load has failed, otherwise a spinner. Retry re-runs
+    /// the load for that release.
+    @ViewBuilder
+    private func detailPlaceholder(releaseId: String?) -> some View {
+        if let releaseId,
+            let error = libraryStore.releaseDetailErrors[releaseId]
+        {
+            LoadFailureView(line: error.line) {
+                Task {
+                    await libraryStore.loadReleaseDetail(
+                        releaseId: releaseId,
+                        library: library
+                    )
+                }
+            }
+        }
+        else {
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
 
     /// The active release ID for this album. Priority: explicit per-album
     /// selection → album's primary release → first release in

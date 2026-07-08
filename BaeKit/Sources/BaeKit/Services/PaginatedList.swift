@@ -85,6 +85,13 @@ where Row.ID: Sendable {
     /// Total row count from the most recent `loadInitial()` or `invalidate()`.
     public private(set) var totalCount: Int = 0
 
+    /// The cold count load (`loadInitial`) failed. The consuming grid reads this
+    /// to show an error + Retry instead of the empty-library placeholder — a
+    /// failed initial load is not an empty library. Only `loadInitial` sets it
+    /// (a page or invalidate failure keeps data on screen and routes to
+    /// `onError` instead); cleared when `loadInitial` starts again or succeeds.
+    public private(set) var initialLoadError: DisplayError?
+
     /// Bumped by `invalidate()`. Folded into `loadEpoch`, the value views key
     /// their row `.task(id:)` on so loads restart when the list is invalidated.
     public private(set) var generation: Int = 0
@@ -157,6 +164,7 @@ where Row.ID: Sendable {
 
     /// Fetch the total count. Called once when the list is first mounted.
     public func loadInitial() async {
+        initialLoadError = nil
         let gen = generation
         do {
             let count =
@@ -171,8 +179,11 @@ where Row.ID: Sendable {
             segments = []
         }
         catch {
-            logger.error("Failed to load count: \(error.localizedDescription)")
-            onError(DisplayError(line: error.localizedDescription))
+            // A cold load with nothing on screen: surface it as the list's
+            // failed state so the grid shows an error + Retry instead of the
+            // empty-library placeholder. `onError` (the banner) is reserved for
+            // page/invalidate failures, which leave existing rows visible.
+            initialLoadError = DisplayError(line: error.localizedDescription)
         }
     }
 

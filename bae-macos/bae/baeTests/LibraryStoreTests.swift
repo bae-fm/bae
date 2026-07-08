@@ -534,6 +534,99 @@ struct InternReleaseDetailTests {
     }
 }
 
+// MARK: - loadReleaseDetail failure surfacing
+
+/// `findReleaseDetail` stub that throws for its first `failFirst` calls, then
+/// returns `release`. Lets a test drive a failure and then a retry through the
+/// real store method. `@unchecked Sendable` with a lock because the store runs
+/// the closure on a detached task.
+private final class DetailLoadProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var calls = 0
+    private let failFirst: Int
+    private let release: BridgeRelease?
+
+    init(failFirst: Int, release: BridgeRelease?) {
+        self.failFirst = failFirst
+        self.release = release
+    }
+
+    func next() throws -> BridgeRelease? {
+        lock.lock()
+        defer { lock.unlock() }
+        calls += 1
+        if calls <= failFirst {
+            throw PaginatedListTestError(message: "detail load failed")
+        }
+        return release
+    }
+}
+
+@Suite("LibraryStore.loadReleaseDetail")
+struct LoadReleaseDetailTests {
+
+    @MainActor
+    @Test(
+        "a thrown load failure surfaces as a per-release error, not a swallow"
+    )
+    func failureSurfacesError() async {
+        let store = LibraryStore()
+        let library = Library(findReleaseDetail: { _ in
+            throw PaginatedListTestError(message: "detail load failed")
+        })
+
+        await store.loadReleaseDetail(releaseId: "release-1", library: library)
+
+        #expect(store.releaseDetails["release-1"] == nil)
+        #expect(
+            store.releaseDetailErrors["release-1"]
+                == DisplayError(line: "detail load failed")
+        )
+    }
+
+    @MainActor
+    @Test("a nil result surfaces a not-found error rather than spinning")
+    func nilResultSurfacesNotFound() async {
+        let store = LibraryStore()
+        let library = Library(findReleaseDetail: { _ in nil })
+
+        await store.loadReleaseDetail(releaseId: "release-1", library: library)
+
+        #expect(store.releaseDetails["release-1"] == nil)
+        #expect(store.releaseDetailErrors["release-1"] != nil)
+    }
+
+    @MainActor
+    @Test("retry after a failure clears the error and re-queries into content")
+    func retryClearsErrorAndLoads() async {
+        let probe = DetailLoadProbe(failFirst: 1, release: makeBridgeRelease())
+        let store = LibraryStore()
+        let library = Library(findReleaseDetail: { _ in try probe.next() })
+
+        await store.loadReleaseDetail(releaseId: "release-1", library: library)
+        #expect(store.releaseDetailErrors["release-1"] != nil)
+        #expect(store.releaseDetails["release-1"] == nil)
+
+        await store.loadReleaseDetail(releaseId: "release-1", library: library)
+        #expect(store.releaseDetailErrors["release-1"] == nil)
+        #expect(store.releaseDetails["release-1"] != nil)
+    }
+
+    @MainActor
+    @Test("a successful load leaves no error")
+    func successLeavesNoError() async {
+        let store = LibraryStore()
+        let library = Library(findReleaseDetail: { _ in
+            makeBridgeRelease()
+        })
+
+        await store.loadReleaseDetail(releaseId: "release-1", library: library)
+
+        #expect(store.releaseDetails["release-1"] != nil)
+        #expect(store.releaseDetailErrors["release-1"] == nil)
+    }
+}
+
 // MARK: - PaginatedList tests
 
 @Suite("PaginatedList")
@@ -637,8 +730,12 @@ struct PaginatedListTests {
     }
 
     @MainActor
-    @Test("loadInitial reports count errors")
-    func loadInitialReportsCountErrors() async {
+    @Test("loadInitial surfaces a cold count failure as initialLoadError")
+    func loadInitialSurfacesInitialLoadError() async {
+        // A cold count-load failure is not an empty library: it lands on the
+        // list's `initialLoadError` (which the grid renders as error + Retry),
+        // not on `onError` (which would surface a redundant banner over the
+        // empty grid).
         let source = ThrowingAlbumPageSource(
             albums: [],
             countError: PaginatedListTestError(message: "count failed")
@@ -652,7 +749,31 @@ struct PaginatedListTests {
 
         await list.loadInitial()
 
-        #expect(errors == [DisplayError(line: "count failed")])
+        #expect(list.initialLoadError == DisplayError(line: "count failed"))
+        #expect(errors.isEmpty)
+        #expect(list.totalCount == 0)
+    }
+
+    @MainActor
+    @Test("a successful retry clears initialLoadError and sets the count")
+    func retryClearsInitialLoadError() async {
+        let source = ThrowingAlbumPageSource(
+            albums: [makeBridgeAlbum(id: "a1")],
+            countError: PaginatedListTestError(message: "count failed")
+        )
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { _ in },
+            onError: { _ in },
+        )
+        await list.loadInitial()
+        #expect(list.initialLoadError != nil)
+
+        source.countError = nil
+        await list.loadInitial()
+
+        #expect(list.initialLoadError == nil)
+        #expect(list.totalCount == 1)
     }
 
     @MainActor

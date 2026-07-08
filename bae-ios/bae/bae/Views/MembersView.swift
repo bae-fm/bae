@@ -35,9 +35,12 @@ struct MembersView: View {
                 switch membership {
                 case nil:
                     if let loadError {
-                        Text(loadError)
-                            .foregroundStyle(.red)
-                            .font(.callout)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(loadError)
+                                .foregroundStyle(.red)
+                                .font(.callout)
+                            Button("Retry") { load() }
+                        }
                     }
                     else {
                         ProgressView()

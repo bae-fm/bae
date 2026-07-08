@@ -242,7 +242,12 @@ extension LibraryView {
     private var albumContent: some View {
         Group {
             if let albumList {
-                if albumList.totalCount == 0 {
+                if let error = albumList.initialLoadError {
+                    LoadFailureView(line: error.line) {
+                        Task { await albumList.loadInitial() }
+                    }
+                }
+                else if albumList.totalCount == 0 {
                     ContentUnavailableView(
                         "No albums",
                         systemImage: "square.stack",
@@ -283,7 +288,12 @@ extension LibraryView {
     private var composerContent: some View {
         Group {
             if let composerList {
-                if composerList.totalCount == 0 {
+                if let error = composerList.initialLoadError {
+                    LoadFailureView(line: error.line) {
+                        Task { await composerList.loadInitial() }
+                    }
+                }
+                else if composerList.totalCount == 0 {
                     ContentUnavailableView(
                         "No composers",
                         systemImage: "person.wave.2",

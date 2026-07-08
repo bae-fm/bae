@@ -606,7 +606,12 @@ private struct AlbumGrid: View {
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
 
     var body: some View {
-        if list.totalCount == 0 {
+        if let error = list.initialLoadError {
+            LoadFailureView(line: error.line) {
+                Task { await list.loadInitial() }
+            }
+        }
+        else if list.totalCount == 0 {
             Text("No albums yet. Syncing from the cloud\u{2026}")
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -706,7 +711,12 @@ private struct ComposerListView: View {
     let onSelect: (String) -> Void
 
     var body: some View {
-        if list.totalCount == 0 {
+        if let error = list.initialLoadError {
+            LoadFailureView(line: error.line) {
+                Task { await list.loadInitial() }
+            }
+        }
+        else if list.totalCount == 0 {
             Text("No composers")
                 .font(.callout)
                 .foregroundStyle(.secondary)

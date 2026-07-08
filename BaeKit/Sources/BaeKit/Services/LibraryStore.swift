@@ -232,6 +232,12 @@ public final class LibraryStore {
     public private(set) var composerSummaries: [String: BridgeComposerSummary] =
         [:]
 
+    /// Per-release detail-load failures, keyed by release id. `loadReleaseDetail`
+    /// records the failure here instead of swallowing it, so the album detail
+    /// view can show an error + Retry rather than spinning on the placeholder.
+    /// Cleared when a load for that release starts again or succeeds.
+    public private(set) var releaseDetailErrors: [String: DisplayError] = [:]
+
     public nonisolated init() {}
 
     // MARK: - Interning
@@ -344,6 +350,8 @@ public final class LibraryStore {
         guard releaseDetails[releaseId] == nil else {
             return
         }
+        // Clear any prior failure for this release: this call is the retry.
+        releaseDetailErrors[releaseId] = nil
 
         do {
             let findReleaseDetail = library.findReleaseDetail
@@ -356,14 +364,19 @@ public final class LibraryStore {
                 return
             }
             guard let bridge else {
-                logger.error("Release detail not found for \(releaseId)")
+                releaseDetailErrors[releaseId] = DisplayError(
+                    line: String(localized: "Release detail not found")
+                )
                 return
             }
             _ = internReleaseDetail(bridge)
         }
         catch {
-            logger.error(
-                "Failed to load release detail for \(releaseId): \(error.localizedDescription)"
+            if Task.isCancelled {
+                return
+            }
+            releaseDetailErrors[releaseId] = DisplayError(
+                line: error.localizedDescription
             )
         }
     }

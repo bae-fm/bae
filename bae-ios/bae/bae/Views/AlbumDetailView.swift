@@ -50,8 +50,7 @@ struct AlbumDetailView: View {
                     )
                 }
                 else {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    detailPlaceholder(releaseId: selectedReleaseId)
                 }
             }
             else if let summary = libraryStore.albumSummaries[albumId] {
@@ -65,13 +64,11 @@ struct AlbumDetailView: View {
                     )
                 }
                 else {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    detailPlaceholder(releaseId: releaseId)
                 }
             }
             else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                detailPlaceholder(releaseId: nil)
             }
         }
         .background(Theme.background)
@@ -111,6 +108,27 @@ struct AlbumDetailView: View {
                     library: library
                 )
             }
+        }
+    }
+
+    /// The pre-content placeholder for a release whose detail hasn't loaded:
+    /// an error + Retry once its load has failed, otherwise a spinner. Retry
+    /// re-runs the on-demand load for that release.
+    @ViewBuilder
+    private func detailPlaceholder(releaseId: String?) -> some View {
+        if let releaseId, let error = libraryStore.releaseDetailErrors[releaseId] {
+            LoadFailureView(line: error.line) {
+                Task {
+                    await libraryStore.loadReleaseDetail(
+                        releaseId: releaseId,
+                        library: library
+                    )
+                }
+            }
+        }
+        else {
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 

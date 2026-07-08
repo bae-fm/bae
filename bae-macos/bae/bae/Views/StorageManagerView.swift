@@ -58,17 +58,24 @@ struct StorageManagerView: View {
             .padding()
 
             if let list, let runner {
-                StorageTableView(
-                    list: list,
-                    selection: $selection,
-                    sort: $sort,
-                    libraryStore: libraryStore,
-                    library: library,
-                    runner: runner,
-                )
+                if let error = list.initialLoadError {
+                    LoadFailureView(line: error.line) {
+                        Task { await list.loadInitial() }
+                    }
+                }
+                else {
+                    StorageTableView(
+                        list: list,
+                        selection: $selection,
+                        sort: $sort,
+                        libraryStore: libraryStore,
+                        library: library,
+                        runner: runner,
+                    )
 
-                Divider()
-                StorageFooter(list: list, libraryStore: libraryStore)
+                    Divider()
+                    StorageFooter(list: list, libraryStore: libraryStore)
+                }
             }
             else {
                 ProgressView()
