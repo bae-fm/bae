@@ -310,6 +310,11 @@ struct MainAppMenuCommands: Commands {
             }
             .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
 
+            Button("Mute") {
+                playback.toggleMute()
+            }
+            .keyboardShortcut("m", modifiers: [.command, .option])
+
             Divider()
 
             Button("Cycle Repeat Mode") {
