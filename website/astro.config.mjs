@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { existsSync, readFileSync } from 'node:fs';
 import { LOCALES, NON_DEFAULT_LOCALES, sidebarTranslations } from './src/lib/site-locales.mjs';
 
 const localeConfig = {
@@ -23,6 +24,25 @@ const localeConfig = {
 function translations(group) {
 	return Object.fromEntries(
 		LOCALES.map((locale) => [locale.lang, group[locale.code] ?? group.en])
+	);
+}
+
+const docsRoot = new URL('./src/content/docs/', import.meta.url);
+
+function readDocTitle(locale, slug, fallback) {
+	const prefix = locale.path ? `${locale.path}/` : '';
+	const file = new URL(`${prefix}${slug}.mdx`, docsRoot);
+	if (!existsSync(file)) return fallback;
+
+	const source = readFileSync(file, 'utf8');
+	const frontmatter = source.match(/^---\n([\s\S]*?)\n---/);
+	const title = frontmatter?.[1].match(/^title:\s*(.+)$/m)?.[1]?.trim();
+	return title?.replace(/^["']|["']$/g, '') ?? fallback;
+}
+
+function docTitleTranslations(slug, fallback) {
+	return Object.fromEntries(
+		LOCALES.map((locale) => [locale.lang, readDocTitle(locale, slug, fallback)])
 	);
 }
 
@@ -63,31 +83,31 @@ export default defineConfig({
 					label: 'Use guide',
 					translations: translations(sidebarTranslations.sections.useGuide),
 					items: [
-						{ label: 'Installation', translations: translations(sidebarTranslations.pages.installation), slug: 'guide/installation' },
-						{ label: 'Getting started', translations: translations(sidebarTranslations.pages.gettingStarted), slug: 'guide/getting-started' },
-						{ label: 'Importing', translations: translations(sidebarTranslations.pages.importing), slug: 'guide/importing' },
-						{ label: 'Releases and metadata', translations: translations(sidebarTranslations.pages.releases), slug: 'guide/releases' },
-						{ label: 'Browsing and search', translations: translations(sidebarTranslations.pages.browsing), slug: 'guide/browsing' },
-						{ label: 'Playback', translations: translations(sidebarTranslations.pages.playback), slug: 'guide/playback' },
-						{ label: 'Sync', translations: translations(sidebarTranslations.pages.sync), slug: 'guide/sync' },
-						{ label: 'Devices and members', translations: translations(sidebarTranslations.pages.devices), slug: 'guide/devices' },
-						{ label: 'Storage and offline', translations: translations(sidebarTranslations.pages.storage), slug: 'guide/storage' },
-						{ label: 'Exporting', translations: translations(sidebarTranslations.pages.exporting), slug: 'guide/exporting' },
-						{ label: 'Automation', translations: translations(sidebarTranslations.pages.automation), slug: 'guide/automation' },
+						{ label: 'Installation', translations: docTitleTranslations('guide/installation', 'Installation'), slug: 'guide/installation' },
+						{ label: 'Getting started', translations: docTitleTranslations('guide/getting-started', 'Getting started'), slug: 'guide/getting-started' },
+						{ label: 'Importing', translations: docTitleTranslations('guide/importing', 'Importing'), slug: 'guide/importing' },
+						{ label: 'Releases and metadata', translations: docTitleTranslations('guide/releases', 'Releases and metadata'), slug: 'guide/releases' },
+						{ label: 'Browsing and search', translations: docTitleTranslations('guide/browsing', 'Browsing and search'), slug: 'guide/browsing' },
+						{ label: 'Playback', translations: docTitleTranslations('guide/playback', 'Playback'), slug: 'guide/playback' },
+						{ label: 'Sync', translations: docTitleTranslations('guide/sync', 'Sync'), slug: 'guide/sync' },
+						{ label: 'Devices and members', translations: docTitleTranslations('guide/devices', 'Devices and members'), slug: 'guide/devices' },
+						{ label: 'Storage and offline', translations: docTitleTranslations('guide/storage', 'Storage and offline'), slug: 'guide/storage' },
+						{ label: 'Exporting', translations: docTitleTranslations('guide/exporting', 'Exporting'), slug: 'guide/exporting' },
+						{ label: 'Automation', translations: docTitleTranslations('guide/automation', 'Automation'), slug: 'guide/automation' },
 					],
 				},
 				{
 					label: 'Technical reference',
 					translations: translations(sidebarTranslations.sections.technicalReference),
 					items: [
-						{ label: 'Architecture', translations: translations(sidebarTranslations.pages.architecture), slug: 'reference/architecture' },
-						{ label: 'Data model', translations: translations(sidebarTranslations.pages.dataModel), slug: 'reference/data-model' },
-						{ label: 'Sync', translations: translations(sidebarTranslations.pages.syncInternals), slug: 'reference/sync' },
-						{ label: 'Cloud storage', translations: translations(sidebarTranslations.pages.cloudStorage), slug: 'reference/cloud-storage' },
-						{ label: 'Encryption', translations: translations(sidebarTranslations.pages.encryption), slug: 'reference/encryption' },
-						{ label: 'Identity and membership', translations: translations(sidebarTranslations.pages.membership), slug: 'reference/membership' },
-						{ label: 'Import pipeline', translations: translations(sidebarTranslations.pages.importPipeline), slug: 'reference/import-pipeline' },
-						{ label: 'Playback engine', translations: translations(sidebarTranslations.pages.playbackEngine), slug: 'reference/playback-engine' },
+						{ label: 'Architecture', translations: docTitleTranslations('reference/architecture', 'Architecture'), slug: 'reference/architecture' },
+						{ label: 'Data model', translations: docTitleTranslations('reference/data-model', 'Data model'), slug: 'reference/data-model' },
+						{ label: 'Sync', translations: docTitleTranslations('reference/sync', 'Sync'), slug: 'reference/sync' },
+						{ label: 'Cloud storage', translations: docTitleTranslations('reference/cloud-storage', 'Cloud storage'), slug: 'reference/cloud-storage' },
+						{ label: 'Encryption', translations: docTitleTranslations('reference/encryption', 'Encryption'), slug: 'reference/encryption' },
+						{ label: 'Identity and membership', translations: docTitleTranslations('reference/membership', 'Identity and membership'), slug: 'reference/membership' },
+						{ label: 'Import pipeline', translations: docTitleTranslations('reference/import-pipeline', 'Import pipeline'), slug: 'reference/import-pipeline' },
+						{ label: 'Playback engine', translations: docTitleTranslations('reference/playback-engine', 'Playback engine'), slug: 'reference/playback-engine' },
 					],
 				},
 			],
