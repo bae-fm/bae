@@ -187,4 +187,8 @@
         <item quantity="one">%d faixa adicionada à fila</item>
         <item quantity="other">%d faixas adicionadas à fila</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">Controles de reprodução na sua tela inicial.</string>
+    <string name="widget_nothing_playing">Nada em reprodução</string>
 </resources>

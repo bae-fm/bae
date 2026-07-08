@@ -73,5 +73,21 @@
             android:authorities="${applicationId}.artwork"
             android:exported="false"
             android:grantUriPermissions="true" />
+
+        <!-- Now-playing home-screen widget. Renders the last playback snapshot
+             (written from the playback event path) so it shows a track even when
+             the app process is dead; taps drive live playback or open the app.
+             The label is the app's own ("bae"), so it's not exported. -->
+        <receiver
+            android:name=".widget.NowPlayingWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/now_playing_widget_info" />
+        </receiver>
     </application>
 </manifest>

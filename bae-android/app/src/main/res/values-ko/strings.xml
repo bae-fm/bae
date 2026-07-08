@@ -184,4 +184,8 @@
     <plurals name="queue_items_added">
         <item quantity="other">대기열에 %d곡을 추가했습니다</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">홈 화면의 재생 컨트롤.</string>
+    <string name="widget_nothing_playing">재생 중인 항목 없음</string>
 </resources>

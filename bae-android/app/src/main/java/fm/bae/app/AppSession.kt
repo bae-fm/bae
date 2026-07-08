@@ -3,6 +3,7 @@ package fm.bae.app
 import android.content.Context
 import android.content.Intent
 import android.os.Looper
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import fm.bae.app.data.ConfigStore
@@ -14,6 +15,9 @@ import fm.bae.app.data.OutboxStore
 import fm.bae.app.data.UiEventAdapter
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackService
+import fm.bae.app.widget.NowPlayingWidget
+import fm.bae.app.widget.WidgetSnapshot
+import fm.bae.app.widget.WidgetSnapshotStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +27,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -66,6 +72,8 @@ class OpenLibrary(
     val outboxStore: OutboxStore get() = stores.outbox
     private var eventChannel: Channel<BridgeUiEvent>? = null
     private var eventJob: Job? = null
+    private var widgetJob: Job? = null
+    private val widgetSnapshotStore = WidgetSnapshotStore(appContext)
 
     /**
      * Subscribe to the live event stream, routing playback variants into the
@@ -101,6 +109,28 @@ class OpenLibrary(
             },
         )
         appHandle.triggerSync()
+        observeNowPlayingForWidget(scope)
+    }
+
+    /**
+     * Mirror the player's now-playing projection into the widget snapshot and
+     * refresh the widget on every change. This observes the same
+     * [BaeCorePlayer.nowPlaying]/[BaeCorePlayer.isPlaying] the in-app bar reads —
+     * not a second bridge subscription — so the widget and the in-app UI reflect
+     * one source. Position ticks don't touch these flows, so `distinctUntilChanged`
+     * limits writes to real track/play-state changes.
+     */
+    private fun observeNowPlayingForWidget(scope: CoroutineScope) {
+        widgetJob =
+            scope.launch {
+                combine(playback.nowPlaying, playback.isPlaying) { nowPlaying, isPlaying ->
+                    WidgetSnapshot.from(nowPlaying, isPlaying)
+                }.distinctUntilChanged()
+                    .collect { snapshot ->
+                        widgetSnapshotStore.write(snapshot)
+                        NowPlayingWidget().updateAll(appContext)
+                    }
+            }
     }
 
     /**
@@ -128,8 +158,10 @@ class OpenLibrary(
         // system hooks come off — do it before close().
         playback.detachSystemHooks()
         eventJob?.cancel()
+        widgetJob?.cancel()
         eventChannel?.close()
         eventJob = null
+        widgetJob = null
         eventChannel = null
         appContext.stopService(Intent(appContext, PlaybackService::class.java))
     }

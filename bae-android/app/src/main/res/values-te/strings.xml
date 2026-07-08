@@ -186,4 +186,8 @@
         <item quantity="one">%d ట్రాక్‌ను క్యూకి జోడించారు</item>
         <item quantity="other">%d ట్రాక్‌లను క్యూకి జోడించారు</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">మీ హోమ్ స్క్రీన్‌లో ప్రస్తుతం ప్లే అవుతున్న నియంత్రణలు.</string>
+    <string name="widget_nothing_playing">ఏదీ ప్లే కావడం లేదు</string>
 </resources>

@@ -187,4 +187,8 @@
         <item quantity="one">%d brano aggiunto alla coda</item>
         <item quantity="other">%d brani aggiunti alla coda</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">Controlli di riproduzione sulla schermata Home.</string>
+    <string name="widget_nothing_playing">Nessuna riproduzione in corso</string>
 </resources>

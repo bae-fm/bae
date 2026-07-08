@@ -190,4 +190,8 @@
         <item quantity="many">Dodano %d utworów do kolejki</item>
         <item quantity="other">Dodano %d utworu do kolejki</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">Sterowanie odtwarzaniem na ekranie głównym.</string>
+    <string name="widget_nothing_playing">Nic nie jest odtwarzane</string>
 </resources>

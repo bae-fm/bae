@@ -182,6 +182,12 @@ dependencies {
     implementation("androidx.camera:camera-view:1.4.2")
     implementation("com.google.zxing:core:3.5.3")
     implementation("androidx.media3:media3-session:1.7.1")
+    // Glance builds the now-playing home-screen widget. 1.1.1 is the current
+    // stable line; it resolves Compose runtime / DataStore / lifecycle within
+    // the ranges the compose-bom (2025.01.01), lifecycle 2.8.7, and Kotlin
+    // 2.0.21 already bring, so no other pins move.
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("androidx.glance:glance-material3:1.1.1")
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("sh.calvin.reorderable:reorderable:2.4.0")
     implementation("androidx.browser:browser:1.8.0")

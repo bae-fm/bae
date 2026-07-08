@@ -187,4 +187,8 @@
         <item quantity="one">%d pista añadida a la cola</item>
         <item quantity="other">%d pistas añadidas a la cola</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">Controles de reproducción en tu pantalla de inicio.</string>
+    <string name="widget_nothing_playing">No se está reproduciendo nada</string>
 </resources>

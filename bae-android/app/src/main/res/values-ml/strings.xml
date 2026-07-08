@@ -186,4 +186,8 @@
         <item quantity="one">%d ട്രാക്ക് ക്യൂവിലേക്ക് ചേർത്തു</item>
         <item quantity="other">%d ട്രാക്കുകൾ ക്യൂവിലേക്ക് ചേർത്തു</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">നിങ്ങളുടെ ഹോം സ്‌ക്രീനിലെ ഇപ്പോൾ പ്ലേ ചെയ്യുന്ന നിയന്ത്രണങ്ങൾ.</string>
+    <string name="widget_nothing_playing">ഒന്നും പ്ലേ ചെയ്യുന്നില്ല</string>
 </resources>

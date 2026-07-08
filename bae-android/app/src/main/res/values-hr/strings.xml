@@ -188,4 +188,8 @@
         <item quantity="few">%d pjesme dodane u red čekanja</item>
         <item quantity="other">%d pjesama dodano u red čekanja</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">Kontrole reprodukcije na početnom zaslonu.</string>
+    <string name="widget_nothing_playing">Ništa se ne reproducira</string>
 </resources>

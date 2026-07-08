@@ -186,4 +186,8 @@
         <item quantity="one">قطار میں %d ٹریک شامل کیا گیا</item>
         <item quantity="other">قطار میں %d ٹریکس شامل کیے گئے</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">آپ کی ہوم اسکرین پر پلے بیک کنٹرولز۔</string>
+    <string name="widget_nothing_playing">کچھ نہیں چل رہا</string>
 </resources>

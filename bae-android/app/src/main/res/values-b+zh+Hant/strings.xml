@@ -184,4 +184,8 @@
     <plurals name="queue_items_added">
         <item quantity="other">已將 %d 首曲目加入佇列</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">主畫面上的正在播放控制項。</string>
+    <string name="widget_nothing_playing">未在播放</string>
 </resources>

@@ -194,4 +194,8 @@
         <item quantity="many">تمت إضافة %d مقطعًا إلى قائمة الانتظار</item>
         <item quantity="other">تمت إضافة %d مقطع إلى قائمة الانتظار</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">عناصر التحكم في التشغيل الحالي على شاشتك الرئيسية.</string>
+    <string name="widget_nothing_playing">لا شيء قيد التشغيل</string>
 </resources>

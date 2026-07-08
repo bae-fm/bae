@@ -190,4 +190,8 @@
         <item quantity="many">Додано %d треків до черги</item>
         <item quantity="other">Додано %d трека до черги</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">Керування відтворенням на головному екрані.</string>
+    <string name="widget_nothing_playing">Нічого не відтворюється</string>
 </resources>

@@ -186,4 +186,8 @@
         <item quantity="one">કતારમાં %d ટ્રૅક ઉમેર્યો</item>
         <item quantity="other">કતારમાં %d ટ્રૅક ઉમેર્યા</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">તમારી હોમ સ્ક્રીન પર હમણાં ચાલી રહેલ નિયંત્રણો.</string>
+    <string name="widget_nothing_playing">કંઈ ચાલી રહ્યું નથી</string>
 </resources>

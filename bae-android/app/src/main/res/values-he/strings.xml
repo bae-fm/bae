@@ -188,4 +188,8 @@
         <item quantity="two">נוספו שתי רצועות לתור</item>
         <item quantity="other">נוספו %d רצועות לתור</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">פקדי הנגן במסך הבית.</string>
+    <string name="widget_nothing_playing">לא מתנגן כלום</string>
 </resources>

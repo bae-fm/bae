@@ -187,4 +187,8 @@
         <item quantity="one">%d piste ajoutée à la file d\'attente</item>
         <item quantity="other">%d pistes ajoutées à la file d\'attente</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">Commandes de lecture sur votre écran d\'accueil.</string>
+    <string name="widget_nothing_playing">Aucune lecture en cours</string>
 </resources>

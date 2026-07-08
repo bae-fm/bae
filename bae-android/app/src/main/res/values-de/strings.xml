@@ -186,4 +186,8 @@
         <item quantity="one">%d Titel zur Warteschlange hinzugefügt</item>
         <item quantity="other">%d Titel zur Warteschlange hinzugefügt</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">Wiedergabesteuerung auf deinem Startbildschirm.</string>
+    <string name="widget_nothing_playing">Nichts wird wiedergegeben</string>
 </resources>

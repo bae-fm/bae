@@ -222,6 +222,11 @@
         <item quantity="other">%1$d files</item>
     </plurals>
 
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">Now playing controls on your home screen.</string>
+    <string name="widget_nothing_playing">Nothing playing</string>
+
     <!-- Unlock -->
     <string name="unlock_title">Library Locked</string>
     <!-- %1$s = key fingerprint hex -->

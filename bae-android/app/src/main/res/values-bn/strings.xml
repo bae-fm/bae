@@ -186,4 +186,8 @@
         <item quantity="one">সারিতে %dটি ট্র্যাক যোগ করা হয়েছে</item>
         <item quantity="other">সারিতে %dটি ট্র্যাক যোগ করা হয়েছে</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">আপনার হোম স্ক্রিনে এখন চলছে-এর নিয়ন্ত্রণ।</string>
+    <string name="widget_nothing_playing">কিছু চলছে না</string>
 </resources>

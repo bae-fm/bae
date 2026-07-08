@@ -190,4 +190,8 @@
         <item quantity="many">Do fronty přidáno %d skladby</item>
         <item quantity="other">Do fronty přidáno %d skladeb</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">Ovládání přehrávání na domovské obrazovce.</string>
+    <string name="widget_nothing_playing">Nic se nepřehrává</string>
 </resources>

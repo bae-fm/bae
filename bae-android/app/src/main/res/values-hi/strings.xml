@@ -186,4 +186,8 @@
         <item quantity="one">%d ट्रैक कतार में जोड़ा गया</item>
         <item quantity="other">%d ट्रैक कतार में जोड़े गए</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">आपकी होम स्क्रीन पर अभी चल रहे नियंत्रण।</string>
+    <string name="widget_nothing_playing">कुछ नहीं चल रहा</string>
 </resources>

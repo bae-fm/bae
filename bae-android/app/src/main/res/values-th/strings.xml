@@ -184,4 +184,8 @@
     <plurals name="queue_items_added">
         <item quantity="other">เพิ่ม %d เพลงในคิวแล้ว</item>
     </plurals>
+    <!-- Now-playing home-screen widget -->
+    <string name="widget_label">bae</string>
+    <string name="widget_description">ตัวควบคุมการเล่นบนหน้าจอหลักของคุณ</string>
+    <string name="widget_nothing_playing">ไม่มีการเล่น</string>
 </resources>
