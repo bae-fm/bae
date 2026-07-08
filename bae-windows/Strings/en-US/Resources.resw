@@ -221,8 +221,13 @@
   <data name="signal.kind.catalog" xml:space="preserve"><value>Catalog</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>artist</value></data>
+  <data name="sort.criterion.add" xml:space="preserve"><value>add sort</value></data>
+  <data name="sort.criterion.move_down" xml:space="preserve"><value>move down</value></data>
+  <data name="sort.criterion.move_up" xml:space="preserve"><value>move up</value></data>
+  <data name="sort.dateAdded" xml:space="preserve"><value>date added</value></data>
+  <data name="sort.direction.ascending" xml:space="preserve"><value>sort ascending</value></data>
+  <data name="sort.direction.descending" xml:space="preserve"><value>sort descending</value></data>
   <data name="sort.name" xml:space="preserve"><value>name</value></data>
-  <data name="sort.newest" xml:space="preserve"><value>newest</value></data>
   <data name="sort.title" xml:space="preserve"><value>title</value></data>
   <data name="sort.year" xml:space="preserve"><value>year</value></data>
   <data name="storage.action.manage" xml:space="preserve"><value>Move into library</value></data>

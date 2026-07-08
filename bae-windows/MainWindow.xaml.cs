@@ -28,11 +28,10 @@ namespace Bae.Windows;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
-    private bool _populatingSortBox;
-
     // The library session (handle + event subscription) and the stores it drives.
     private readonly SessionStore _session;
     private readonly LibraryBrowserStore _browser;
+    private readonly LibrarySortControls _sortControls;
     private readonly BrowserPanes _browserPanes;
     private readonly WelcomeView _welcomeView;
     private readonly LibrariesDialog _librariesDialog;
@@ -109,7 +108,8 @@ public sealed partial class MainWindow : Window
 
         BrowserModeBox.Items.Add(Loc.Chrome("library.mode.albums"));
         BrowserModeBox.Items.Add(Loc.Chrome("library.mode.composers"));
-        PopulateSortBox();
+        _sortControls = new LibrarySortControls(SortControls, _browser.Sort, ReloadBrowserForSortChange);
+        _sortControls.Render();
         BrowserModeBox.SelectedIndex = 0;
 
         _shell = new ShellStore();
@@ -270,47 +270,21 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnSortChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_populatingSortBox)
-        {
-            return;
-        }
-        if (SortBox.SelectedIndex < 0)
-        {
-            return;
-        }
-
-        _browser.Sort.SetActive(_browser.Sort.OptionAt(SortBox.SelectedIndex));
-
-        // Sort drives the full-library view; search results keep their relevance
-        // order. Reload only when no search is active and the library is open.
-        if (CurrentHandleOrNull() != null && string.IsNullOrEmpty(SearchBox.Text))
-        {
-            LoadCurrentBrowserMode();
-        }
-    }
-
     private void OnBrowserModeChanged(object sender, SelectionChangedEventArgs e)
     {
         _browser.Sort.SetMode(BrowserModeBox.SelectedIndex == 1 ? BrowserMode.Composers : BrowserMode.Albums);
-        PopulateSortBox();
+        _sortControls.Render();
+        ReloadBrowserForSortChange();
+    }
+
+    // Reload the active grid after a sort or mode change, but only when a library is
+    // open and no search is active — search results keep their relevance order.
+    private void ReloadBrowserForSortChange()
+    {
         if (CurrentHandleOrNull() != null && string.IsNullOrEmpty(SearchBox.Text))
         {
             LoadCurrentBrowserMode();
         }
-    }
-
-    private void PopulateSortBox()
-    {
-        _populatingSortBox = true;
-        SortBox.Items.Clear();
-        foreach (var option in _browser.Sort.ActiveOptions)
-        {
-            SortBox.Items.Add(Loc.Chrome(option.LabelKey));
-        }
-        SortBox.SelectedIndex = _browser.Sort.ActiveIndex;
-        _populatingSortBox = false;
     }
 
     private void ShowAlbumBrowser()

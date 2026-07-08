@@ -221,8 +221,13 @@
   <data name="signal.kind.catalog" xml:space="preserve"><value>カタログ</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ディスクID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>アーティスト</value></data>
+  <data name="sort.criterion.add" xml:space="preserve"><value>並べ替えを追加</value></data>
+  <data name="sort.criterion.move_down" xml:space="preserve"><value>下に移動</value></data>
+  <data name="sort.criterion.move_up" xml:space="preserve"><value>上に移動</value></data>
+  <data name="sort.dateAdded" xml:space="preserve"><value>追加日</value></data>
+  <data name="sort.direction.ascending" xml:space="preserve"><value>昇順で並べ替え</value></data>
+  <data name="sort.direction.descending" xml:space="preserve"><value>降順で並べ替え</value></data>
   <data name="sort.name" xml:space="preserve"><value>名前</value></data>
-  <data name="sort.newest" xml:space="preserve"><value>新しい順</value></data>
   <data name="sort.title" xml:space="preserve"><value>タイトル</value></data>
   <data name="sort.year" xml:space="preserve"><value>年</value></data>
   <data name="storage.action.manage" xml:space="preserve"><value>ライブラリに移動</value></data>

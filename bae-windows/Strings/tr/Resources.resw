@@ -221,8 +221,13 @@
   <data name="signal.kind.catalog" xml:space="preserve"><value>Katalog</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>sanatçı</value></data>
+  <data name="sort.criterion.add" xml:space="preserve"><value>sıralama ekle</value></data>
+  <data name="sort.criterion.move_down" xml:space="preserve"><value>aşağı taşı</value></data>
+  <data name="sort.criterion.move_up" xml:space="preserve"><value>yukarı taşı</value></data>
+  <data name="sort.dateAdded" xml:space="preserve"><value>eklenme tarihi</value></data>
+  <data name="sort.direction.ascending" xml:space="preserve"><value>artan sırada sırala</value></data>
+  <data name="sort.direction.descending" xml:space="preserve"><value>azalan sırada sırala</value></data>
   <data name="sort.name" xml:space="preserve"><value>ad</value></data>
-  <data name="sort.newest" xml:space="preserve"><value>en yeni</value></data>
   <data name="sort.title" xml:space="preserve"><value>başlık</value></data>
   <data name="sort.year" xml:space="preserve"><value>yıl</value></data>
   <data name="storage.action.manage" xml:space="preserve"><value>Move into Kitaplık</value></data>

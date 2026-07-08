@@ -221,8 +221,13 @@
   <data name="signal.kind.catalog" xml:space="preserve"><value>目錄</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>光碟 ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>演出者</value></data>
+  <data name="sort.criterion.add" xml:space="preserve"><value>加入排序</value></data>
+  <data name="sort.criterion.move_down" xml:space="preserve"><value>下移</value></data>
+  <data name="sort.criterion.move_up" xml:space="preserve"><value>上移</value></data>
+  <data name="sort.dateAdded" xml:space="preserve"><value>加入日期</value></data>
+  <data name="sort.direction.ascending" xml:space="preserve"><value>升冪排序</value></data>
+  <data name="sort.direction.descending" xml:space="preserve"><value>降冪排序</value></data>
   <data name="sort.name" xml:space="preserve"><value>名稱</value></data>
-  <data name="sort.newest" xml:space="preserve"><value>最新</value></data>
   <data name="sort.title" xml:space="preserve"><value>標題</value></data>
   <data name="sort.year" xml:space="preserve"><value>年份</value></data>
   <data name="storage.action.manage" xml:space="preserve"><value>移入資料庫</value></data>

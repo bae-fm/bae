@@ -221,8 +221,13 @@
   <data name="signal.kind.catalog" xml:space="preserve"><value>Catalogue</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ID de disque</value></data>
   <data name="sort.artist" xml:space="preserve"><value>artiste</value></data>
+  <data name="sort.criterion.add" xml:space="preserve"><value>ajouter un tri</value></data>
+  <data name="sort.criterion.move_down" xml:space="preserve"><value>déplacer vers le bas</value></data>
+  <data name="sort.criterion.move_up" xml:space="preserve"><value>déplacer vers le haut</value></data>
+  <data name="sort.dateAdded" xml:space="preserve"><value>date d’ajout</value></data>
+  <data name="sort.direction.ascending" xml:space="preserve"><value>trier par ordre croissant</value></data>
+  <data name="sort.direction.descending" xml:space="preserve"><value>trier par ordre décroissant</value></data>
   <data name="sort.name" xml:space="preserve"><value>nom</value></data>
-  <data name="sort.newest" xml:space="preserve"><value>plus récent</value></data>
   <data name="sort.title" xml:space="preserve"><value>titre</value></data>
   <data name="sort.year" xml:space="preserve"><value>année</value></data>
   <data name="storage.action.manage" xml:space="preserve"><value>Déplacer dans la bibliothèque</value></data>

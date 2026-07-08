@@ -34,7 +34,7 @@ internal sealed class LibraryBrowserStore
     private readonly SessionStore _session;
     private readonly DispatcherQueue _dispatcher;
 
-    public SortState Sort { get; } = new();
+    public LibrarySort Sort { get; }
 
     public ObservableCollection<Album> Albums { get; } = new();
     public ObservableCollection<ComposerSummary> Composers { get; } = new();
@@ -43,15 +43,18 @@ internal sealed class LibraryBrowserStore
     {
         _session = session;
         _dispatcher = dispatcher;
+        Sort = LibrarySortStore.Load();
+        // The album sort persists like macOS's: write the criteria back on every
+        // change. The composer sort is in-memory only, so it needs no hook.
+        Sort.Albums.Changed += () => LibrarySortStore.SaveAlbums(Sort.Albums);
     }
 
-    // Load the album grid (newest first, per the active album sort) from the
+    // Load the album grid, ordered by the active album sort criteria, from the
     // current handle into Albums.
     public BrowserGridLoad LoadAlbums()
     {
-        var sort = Sort.Active;
         var (current, page) = _session.WithCurrentHandle(
-            handle => NativeBae.AlbumPage(handle, 0, FirstPageSize, sort.Field, sort.Ascending));
+            handle => NativeBae.AlbumPage(handle, 0, FirstPageSize, Sort.Albums.Items));
         if (!current)
         {
             return new BrowserGridLoad(BrowserMode.Albums, BrowserLoadResult.HandleGone, null, false);
@@ -83,9 +86,9 @@ internal sealed class LibraryBrowserStore
     public BrowserGridLoad LoadComposers()
     {
         Composers.Clear();
-        var sort = Sort.Active;
+        var composerSort = Sort.Composer;
         var (current, page) = _session.WithCurrentHandle(
-            handle => NativeBae.ComposerPage(handle, 0, FirstPageSize, sort.Field, sort.Ascending));
+            handle => NativeBae.ComposerPage(handle, 0, FirstPageSize, composerSort.Field, composerSort.Direction));
         if (!current)
         {
             return new BrowserGridLoad(BrowserMode.Composers, BrowserLoadResult.HandleGone, null, false);

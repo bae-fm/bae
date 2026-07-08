@@ -221,8 +221,13 @@
   <data name="signal.kind.catalog" xml:space="preserve"><value>ಕ್ಯಾಟಲಾಗ್</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ಡಿಸ್ಕ್ ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>ಕಲಾವಿದ</value></data>
+  <data name="sort.criterion.add" xml:space="preserve"><value>ವಿಂಗಡಣೆ ಸೇರಿಸಿ</value></data>
+  <data name="sort.criterion.move_down" xml:space="preserve"><value>ಕೆಳಕ್ಕೆ ಸರಿಸಿ</value></data>
+  <data name="sort.criterion.move_up" xml:space="preserve"><value>ಮೇಲಕ್ಕೆ ಸರಿಸಿ</value></data>
+  <data name="sort.dateAdded" xml:space="preserve"><value>ಸೇರಿಸಿದ ದಿನಾಂಕ</value></data>
+  <data name="sort.direction.ascending" xml:space="preserve"><value>ಆರೋಹಣ ಕ್ರಮದಲ್ಲಿ ವಿಂಗಡಿಸಿ</value></data>
+  <data name="sort.direction.descending" xml:space="preserve"><value>ಅವರೋಹಣ ಕ್ರಮದಲ್ಲಿ ವಿಂಗಡಿಸಿ</value></data>
   <data name="sort.name" xml:space="preserve"><value>ಹೆಸರು</value></data>
-  <data name="sort.newest" xml:space="preserve"><value>ಹೊಸದು</value></data>
   <data name="sort.title" xml:space="preserve"><value>ಶೀರ್ಷಿಕೆ</value></data>
   <data name="sort.year" xml:space="preserve"><value>ವರ್ಷ</value></data>
   <data name="storage.action.manage" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯಕ್ಕೆ ಸರಿಸಿ</value></data>

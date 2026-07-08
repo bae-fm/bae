@@ -34,7 +34,7 @@
                 <TextBlock x:Name="SyncIndicator" VerticalAlignment="Center"
                            Foreground="Gray" TextWrapping="NoWrap" />
                 <ComboBox x:Name="BrowserModeBox" SelectionChanged="OnBrowserModeChanged" VerticalAlignment="Center" />
-                <ComboBox x:Name="SortBox" SelectionChanged="OnSortChanged" VerticalAlignment="Center" />
+                <StackPanel x:Name="SortControls" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" />
                 <Button x:Uid="ShuffleLibraryButton" Content="shuffle library" Click="OnShuffleLibraryClick" />
                 <Button x:Uid="LibrariesButton" Content="libraries" Click="OnLibrariesClick" />
                 <Button x:Uid="CloseLibraryButton" Content="close" Click="OnCloseLibraryClick" ToolTipService.ToolTip="close library">

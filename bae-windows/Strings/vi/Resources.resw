@@ -221,8 +221,13 @@
   <data name="signal.kind.catalog" xml:space="preserve"><value>Danh mục</value></data>
   <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>nghệ sĩ</value></data>
+  <data name="sort.criterion.add" xml:space="preserve"><value>thêm sắp xếp</value></data>
+  <data name="sort.criterion.move_down" xml:space="preserve"><value>di chuyển xuống</value></data>
+  <data name="sort.criterion.move_up" xml:space="preserve"><value>di chuyển lên</value></data>
+  <data name="sort.dateAdded" xml:space="preserve"><value>ngày thêm</value></data>
+  <data name="sort.direction.ascending" xml:space="preserve"><value>sắp xếp tăng dần</value></data>
+  <data name="sort.direction.descending" xml:space="preserve"><value>sắp xếp giảm dần</value></data>
   <data name="sort.name" xml:space="preserve"><value>tên</value></data>
-  <data name="sort.newest" xml:space="preserve"><value>mới nhất</value></data>
   <data name="sort.title" xml:space="preserve"><value>tiêu đề</value></data>
   <data name="sort.year" xml:space="preserve"><value>năm</value></data>
   <data name="storage.action.manage" xml:space="preserve"><value>Move into Thư viện</value></data>
