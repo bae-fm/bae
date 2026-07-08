@@ -92,10 +92,13 @@ PLATFORMS = [
     ("iOS", xcstrings_keys("bae-ios/bae/bae/Localizable.xcstrings"),
      apple_ref, ["bae-ios/bae/bae", "bae-macos/bae/bae", "BaeKit/Sources/BaeKit"],
      {".swift"}),
+    # Scan all of src/main so strings referenced from the manifest
+    # (android:label) and res/xml (a widget provider's android:description), not
+    # just Kotlin and layouts, count as used.
     ("Android", android_keys("bae-android/app/src/main/res/values/strings.xml"),
      lambda k, src: (f"R.string.{k}" in src) or (f"@string/{k}" in src)
      or (f"R.plurals.{k}" in src) or (f"@plurals/{k}" in src),
-     ["bae-android/app/src/main/java", "bae-android/app/src/main/res/layout"], {".kt", ".xml"}),
+     ["bae-android/app/src/main"], {".kt", ".xml"}),
     ("Windows", resw_keys("bae-windows/Strings/en-US/Resources.resw"),
      windows_ref, ["bae-windows"], {".cs", ".xaml"}),
 ]
