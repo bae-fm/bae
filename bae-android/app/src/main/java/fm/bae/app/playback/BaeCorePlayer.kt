@@ -18,7 +18,6 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import fm.bae.app.BaeLogger
 import fm.bae.app.formatDurationMs
-import fm.bae.app.formatRemainingMs
 import fm.bae.app.runLoggedBridgeCommand
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -147,20 +146,6 @@ interface PlaybackEventSink {
 
 private const val TAG = "bae.BaeCorePlayer"
 private val logger = BaeLogger(TAG)
-
-/** Bridge durations are 0 when unknown; map that to Media3's [C.TIME_UNSET]. */
-private fun durationOrUnset(durationMs: Long): Long = if (durationMs > 0L) durationMs else C.TIME_UNSET
-
-private fun playbackPositionTargetsCurrentTrack(
-    currentTrackId: String?,
-    trackId: String,
-): Boolean {
-    if (currentTrackId != null && currentTrackId != trackId) {
-        logger.warning("ignoring playback position for stale track $trackId; current track is $currentTrackId")
-        return false
-    }
-    return true
-}
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 private fun availableCommands(
@@ -585,10 +570,10 @@ class BaeCorePlayer(
     private var hasPrevious: Boolean = false
     private var media3RepeatMode: Int = Player.REPEAT_MODE_OFF
 
-    /** Position anchor from the latest `PlaybackProgress`. */
-    private var anchorPositionMs: Long = 0L
-    private var durationMs: Long = C.TIME_UNSET
-    private var pendingSeek: PendingSeek? = null
+    /** Anchor/duration/progress/pending-seek transition state and the position and
+     *  ratio derivations, kept as a pure unit the player feeds events and reads
+     *  outputs from (the Media3 state and the position StateFlow). */
+    private val positionModel = PlaybackPositionModel()
 
     // Compose-facing projection of the same state, for the in-app NowPlayingBar
     // (read directly off this player — no second MediaController transport).
@@ -644,18 +629,6 @@ class BaeCorePlayer(
         )
     val queueItemsAdded: SharedFlow<Int> = _queueItemsAdded.asSharedFlow()
 
-    /** Latest progress fields from `PlaybackProgress`, for the Compose bar. */
-    private var progress: Double = 0.0
-    private val effectivePositionMs: Long
-        get() = pendingSeek?.targetPositionMs ?: anchorPositionMs
-
-    private data class PendingSeek(
-        val trackId: String?,
-        val targetPositionMs: Long,
-    ) {
-        fun matches(trackId: String): Boolean = this.trackId == null || this.trackId == trackId
-    }
-
     init {
         systemHooks.attach()
     }
@@ -688,7 +661,7 @@ class BaeCorePlayer(
             track?.let {
                 Current(
                     meta(trackId, it.trackTitle, it.artistNames, it.albumTitle, it.coverImageId),
-                    durationOrUnset(it.durationMs.toLong()),
+                    it.durationMs.toLong(),
                 )
             }
         activate(Transport.BUFFERING, current)
@@ -699,14 +672,14 @@ class BaeCorePlayer(
             Transport.READY,
             Current(
                 meta(event.trackId, event.trackTitle, event.artistNames, event.albumTitle, event.coverImageId),
-                durationOrUnset(event.durationMs.toLong()),
+                event.durationMs.toLong(),
             ),
         )
     }
 
     /** The resolved current track an activation swaps in: its display [meta] and
-     *  core-reported [durationMs] ([C.TIME_UNSET] when unknown). The two always
-     *  move together, so they're one payload — the bare loading event carries no
+     *  core-reported raw [durationMs] (0 when unknown). The two always move
+     *  together, so they're one payload — the bare loading event carries no
      *  [Current] at all and keeps the prior track. */
     private data class Current(
         val meta: Meta,
@@ -728,12 +701,12 @@ class BaeCorePlayer(
         playWhenReady = true
         sidePausePrompt = null
         if (current != null) {
-            if (current.meta.trackId != playingTrackId) {
-                pendingSeek = null
-            }
+            positionModel.setActiveTrack(
+                trackChanged = current.meta.trackId != playingTrackId,
+                rawDurationMs = current.durationMs,
+            )
             playingTrackId = current.meta.trackId
             currentMeta = current.meta
-            durationMs = current.durationMs
             refreshArtwork(current.meta.coverImageId)
         }
         publish()
@@ -778,9 +751,10 @@ class BaeCorePlayer(
     }
 
     override fun onPaused(event: BridgeUiEvent.PlaybackPaused) {
-        if (event.trackId != playingTrackId) {
-            pendingSeek = null
-        }
+        positionModel.setActiveTrack(
+            trackChanged = event.trackId != playingTrackId,
+            rawDurationMs = event.durationMs.toLong(),
+        )
         transport = Transport.READY
         playWhenReady = false
         playingTrackId = event.trackId
@@ -791,7 +765,6 @@ class BaeCorePlayer(
                 BridgePlaybackPauseReason.Manual -> null
                 is BridgePlaybackPauseReason.SideEnded -> reason.prompt
             }
-        this.durationMs = durationOrUnset(event.durationMs.toLong())
         publish()
     }
 
@@ -802,10 +775,7 @@ class BaeCorePlayer(
         currentMeta = null
         refreshArtwork(null)
         sidePausePrompt = null
-        pendingSeek = null
-        anchorPositionMs = 0L
-        durationMs = C.TIME_UNSET
-        progress = 0.0
+        positionModel.reset()
         systemHooks.onPlaybackStopped()
         publish()
     }
@@ -834,11 +804,10 @@ class BaeCorePlayer(
         durationMs: Long,
         progress: Double,
     ) {
-        val pendingSeek = pendingSeek
-        if (pendingSeek != null && pendingSeek.matches(trackId)) {
-            return
-        }
-        applyPlaybackPosition(trackId, positionMs, durationMs, progress)
+        applyPositionUpdate(
+            positionModel.onProgress(playingTrackId, trackId, positionMs, durationMs, progress),
+            trackId,
+        )
     }
 
     override fun onSeeked(
@@ -847,26 +816,27 @@ class BaeCorePlayer(
         durationMs: Long,
         progress: Double,
     ) {
-        if (!playbackPositionTargetsCurrentTrack(playingTrackId, trackId)) {
-            return
-        }
-        pendingSeek = null
-        applyPlaybackPosition(trackId, positionMs, durationMs, progress)
+        applyPositionUpdate(
+            positionModel.onSeeked(playingTrackId, trackId, positionMs, durationMs, progress),
+            trackId,
+        )
     }
 
-    private fun applyPlaybackPosition(
+    /** Republish when the position advanced; log a stale-track position; leave a
+     *  projection held by a pending seek untouched. */
+    private fun applyPositionUpdate(
+        update: PositionUpdate,
         trackId: String,
-        positionMs: Long,
-        durationMs: Long,
-        progress: Double,
     ) {
-        if (!playbackPositionTargetsCurrentTrack(playingTrackId, trackId)) {
-            return
+        when (update) {
+            PositionUpdate.Applied -> publish()
+            PositionUpdate.HeldByPendingSeek -> Unit
+            PositionUpdate.StaleTrack -> logStalePosition(trackId)
         }
-        anchorPositionMs = positionMs
-        this.durationMs = durationOrUnset(durationMs)
-        this.progress = progress
-        publish()
+    }
+
+    private fun logStalePosition(trackId: String) {
+        logger.warning("ignoring playback position for stale track $trackId; current track is $playingTrackId")
     }
 
     override fun onRepeatModeChanged(mode: BridgeRepeatMode) {
@@ -939,7 +909,7 @@ class BaeCorePlayer(
             }
         _isPlaying.value = transport == Transport.READY && playWhenReady
         _isLoading.value = transport == Transport.BUFFERING
-        _position.value = playbackPosition()
+        _position.value = positionModel.position(hasCurrentTrack = currentMeta != null)
         _queue.value =
             QueueProjection(
                 manual = manualEntries.mapNotNull { it.toQueueItem() },
@@ -954,24 +924,6 @@ class BaeCorePlayer(
                         null
                     },
             )
-    }
-
-    private fun playbackPosition(): PlaybackPosition {
-        if (currentMeta == null) {
-            return PlaybackPosition(0.0, "", "")
-        }
-        val positionMs = effectivePositionMs
-        val progress =
-            if (durationMs > 0L) {
-                (positionMs.toDouble() / durationMs.toDouble()).coerceIn(0.0, 1.0)
-            } else {
-                progress.coerceIn(0.0, 1.0)
-            }
-        return PlaybackPosition(
-            progress = progress,
-            elapsedLabel = formatDurationMs(positionMs),
-            remainingLabel = if (durationMs > 0L) formatRemainingMs(positionMs, durationMs) else "",
-        )
     }
 
     private fun Meta.toQueueItem(): QueueItem? {
@@ -1018,7 +970,7 @@ class BaeCorePlayer(
         val playlist =
             metas.map { meta ->
                 val artwork = if (meta.trackId == playingTrackId) currentArtwork else null
-                mediaItemData(meta, playingTrackId, durationMs, artwork)
+                mediaItemData(meta, playingTrackId, positionModel.durationMs ?: C.TIME_UNSET, artwork)
             }
 
         val requestedIndex = playingTrackId?.let { id -> metas.indexOfFirst { it.trackId == id } }
@@ -1056,7 +1008,7 @@ class BaeCorePlayer(
             .setCurrentMediaItemIndex(currentIndex)
             .setContentPositionMs(
                 PositionSupplier.getExtrapolating(
-                    effectivePositionMs,
+                    positionModel.effectivePositionMs,
                     if (playbackState == Player.STATE_READY && playWhenReady) 1.0f else 0.0f,
                 ),
             ).build()
@@ -1110,7 +1062,7 @@ class BaeCorePlayer(
                 // it is a no-op.
                 val entryId = orderedMetas(entries, currentMeta).getOrNull(mediaItemIndex)?.entryId
                 if (entryId != null) {
-                    pendingSeek = null
+                    positionModel.clearPendingSeek()
                     appHandle.skipToEntry(entryId)
                 } else {
                     logger.warning("handleSeek to media item $mediaItemIndex has no queue entry id")
@@ -1119,16 +1071,11 @@ class BaeCorePlayer(
 
             else -> {
                 // In-track seek: COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM. Core seeks by
-                // ratio; derive it from the requested position and known duration.
-                val total = durationMs
-                if (total > 0L) {
-                    val targetPositionMs = positionMs.coerceIn(0L, total)
-                    appHandle.seekByRatio(targetPositionMs.toDouble() / total.toDouble())
-                    pendingSeek =
-                        PendingSeek(
-                            trackId = playingTrackId,
-                            targetPositionMs = targetPositionMs,
-                        )
+                // ratio; the model derives it from the requested position and known
+                // duration, and projects the dropped position until core confirms.
+                val ratio = positionModel.beginInTrackSeek(playingTrackId, positionMs)
+                if (ratio != null) {
+                    appHandle.seekByRatio(ratio)
                     publish()
                 } else {
                     logger.warning("handleSeek ignored: no duration for in-track seek")
