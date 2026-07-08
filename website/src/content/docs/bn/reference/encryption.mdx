@@ -1,0 +1,28 @@
+---
+title: Encryption
+description: Library কী কী, কোথায় থাকে, এবং provider কী ciphertext রাখে
+---
+
+Opaque মেঘ-ঘরে bae যা রাখে সব ডিভাইস ছাড়ার আগে encrypted হয়। bae নিজের cryptography implement করে না: পুরো scheme [coven](https://coven.bae.fm)-এর, আর এই পৃষ্ঠা বর্ণনা করে bae সেটি কীভাবে পরে। Browsable home এই সবকিছুর বাইরে থাকে; নিচের কিছুই তাদের জন্য প্রযোজ্য নয়।
+
+## Library কী
+
+Opaque লাইব্রেরির একটি root secret আছে: home তৈরি হলে mint করা random 256-bit কী। এটি OS keyring-এ থাকে, কখনও ফাইল-এ নয়; Apple প্ল্যাটফর্ম-এ keyring entry iCloud Keychain দিয়ে সিঙ্ক হয়। bae-এর config শুধু কী-এর fingerprint রাখে, unlock-এর সময় secret না ধরেই ভুল কী থেকে ঠিক কী আলাদা করার জন্য যথেষ্ট।
+
+Key ডিভাইসগুলোর মধ্যে দুইভাবে যায়, দুটিই [পরিচয় ও সদস্যপদ](/bn/reference/membership)-এ বর্ণিত: invite-এর সময় approved ডিভাইস-এর public কী-তে sealed, এবং recovery code-এর ভেতরে carried।
+
+## জেনারেশন
+
+Library কী আসলে numbered generation-এর keyring। Member সরালে নতুন generation append হয় যা সরানো সদস্য কখনও পায় না: এরপর লেখা সবকিছু নতুন generation ব্যবহার করে এবং তাদের কাছে অপাঠ্য, আর থাকা সদস্য সব generation রাখে ও সব history পড়তে পারে। প্রতিটি sealed object cleartext-এ record করে কোন generation সেটি খোলে।
+
+## কী sealed হয়
+
+Home-এর প্রতিটি object: changeset, snapshot, audio blob, চিত্র, membership record, control object। Object XChaCha20-Poly1305 দিয়ে 64 KB chunk-এ sealed হয়, প্রতিটি chunk authenticated, এবং context-এ bound: sealed object শুধু যে object হিসেবে লেখা হয়েছিল, এই লাইব্রেরি-র জন্য, এই কী-তেই decrypt হয়। Chunking-এর কারণেই streaming কাজ করে, player ঠিক fetch করা বাইট range decrypt করতে পারে।
+
+## Provider কী দেখতে পারে
+
+Object count, object size, আপলোড timing, এবং access pattern। Name নয়, মেটাডেটা নয়, audio নয়, চিত্র নয়, membership নয়। Server-side recovery নেই: ব্যবহারকারী যদি প্রতিটি ডিভাইস এবং কী-এর প্রতিটি copy হারায়, লাইব্রেরি-র ciphertext চিরতরে হারিয়েছে, এটাই design-এর উদ্দেশ্য।
+
+## Unlock ও lock
+
+Library খুললে keyring থেকে কী পড়া হয়। Library কী আশা করলে এবং keyring-এ না থাকলে bae লাইব্রেরি-কে locked ধরে: খুলতে গেলে কী চায়, keyring-এ ফের save করার আগে stored fingerprint দিয়ে entry যাচাই করে। Library lock করা ইচ্ছাকৃতভাবে keyring থেকে কী সরায়; আবার না দেওয়া পর্যন্ত ক্লাউড home-এর কিছু পড়া বা লেখা যায় না।

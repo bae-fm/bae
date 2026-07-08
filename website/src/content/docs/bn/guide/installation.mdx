@@ -1,0 +1,55 @@
+---
+title: ইনস্টলেশন
+description: প্রতিটি প্ল্যাটফর্মে bae বা baeium ডাউনলোড ও ইনস্টল করুন
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## দুই সংস্করণ
+
+প্রতিটি প্ল্যাটফর্ম একই উৎস থেকে তৈরি দুই edition-এ আসে:
+
+- **bae**, পূর্ণ app: S3, Google Drive, Dropbox, OneDrive, এবং iCloud সিঙ্ক।
+- **baeium**, proprietary অংশ ছাড়া: শুধু S3-compatible সংরক্ষণ, কোনো OAuth provider নেই, কোনো iCloud/CloudKit নেই, কোনো telemetry নেই।
+
+দুটিই পাশাপাশি ইনস্টল হয়, প্রতিটির নিজের লাইব্রেরি এবং নিজের (iCloud-Keychain-synced) কী থাকে। নিচে যেটি চান বেছে নিন।
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">macOS-এর জন্য bae ডাউনলোড করুন</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">macOS-এর জন্য baeium ডাউনলোড করুন</DownloadButton>
+
+1. ডাউনলোড করা `.dmg` খুলুন
+2. অ্যাপটি আপনার Applications ফোল্ডার-এ টেনে নিন
+3. Applications থেকে খুলুন
+
+দুটি edition-ই নিজস্ব Sparkle feed দিয়ে নিজে নিজে আপডেট হয়।
+
+## iOS
+
+iOS build sideloading-এর জন্য **unsigned `.ipa` ফাইল**। [AltStore](https://altstore.io) বা [Sideloadly](https://sideloadly.io) দিয়ে ইনস্টল করুন, বা আপনার নিজের Apple ID দিয়ে Xcode-এ re-sign করুন (free Apple ID baeium-এর জন্য চলে)। App Store distribution এখনও set up নয়।
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">iOS-এর জন্য bae ডাউনলোড করুন</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">iOS-এর জন্য baeium ডাউনলোড করুন</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">Android-এর জন্য bae ডাউনলোড করুন</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">Android-এর জন্য baeium ডাউনলোড করুন</DownloadButton>
+
+Prompt এলে browser/ফাইল থেকে install করা enable করুন, তারপর `.apk` খুলুন।
+
+## Windows
+
+Windows build হলো unpackaged app-এর **unsigned** zip। Extract করে `bae.exe` / `baeium.exe` চালান। প্রথম launch-এ SmartScreen warning দিতে পারে।
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">Windows-এর জন্য bae ডাউনলোড করুন</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">Windows-এর জন্য baeium ডাউনলোড করুন</DownloadButton>
+
+## Linux
+
+শিগগির আসছে।
+
+## উৎস থেকে build
+
+baeium build করতে proprietary কিছু লাগে না। Free provisioning-এর অধীনে iOS সহ প্রতি-প্ল্যাটফর্ম self-build নির্দেশনার জন্য [repository README](https://github.com/bae-fm/bae#building-baeium-yourself) দেখুন।

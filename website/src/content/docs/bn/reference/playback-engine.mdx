@@ -1,0 +1,34 @@
+---
+title: প্লেব্যাক ইঞ্জিন
+description: Decode, gapless, pregap, এবং loudness নির্ভুলভাবে
+---
+
+প্লেব্যাক ইঞ্জিনের চুক্তি হলো উৎসের প্রতি বিশ্বস্ততা: ব্যবহারকারীর মূল বাইট ডিকোড করা, উৎসের নিজের rate-এ, রিলিজের গঠন অক্ষত রেখে। এই পৃষ্ঠা সেই নির্দিষ্ট আচরণ লিখে রাখে।
+
+## Decode
+
+সব ডিকোড FFmpeg দিয়ে, একই প্রক্রিয়ার ভেতরে, প্রতিটি প্ল্যাটফর্মে: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack, এবং DSD ইম্পোর্টে গ্রহণ করা হয়, আর বাইট থেকে FFmpeg যা জানায়, ফাইলের extension নয়, সেটিই রেকর্ডে থাকা codec। Output ধাপ-এর জন্য নমুনা 32-bit float হিসেবে বের হয়; নমুনা ফরম্যাট রূপান্তর-ই একমাত্র রূপান্তর।
+
+Output হলো প্ল্যাটফর্মের native audio API (ডেস্কটপ ও iOS-এ cpal দিয়ে Core Audio, Android-এ AAudio)। Output stream **উৎসের নমুনা rate ও channel count**-এ configured হয়: 96 kHz ফাইল 96 kHz-তেই বাজে। Resampling ধাপ নেই। Default আউটপুট ডিভাইস প্রতিটি stream build-এ resolved হয়, তাই প্লেব্যাক system-এর ডিভাইস switch অনুসরণ করে। Android-এ hardware-supported codec offloaded ডিকোডিং-এর জন্য FFmpeg পুরোপুরি bypass করতে পারে।
+
+## চালানোর সময় পড়া
+
+প্লেব্যাকের পুরো ফাইল দরকার হয় না। অডিও sparse buffer দিয়ে পড়া হয়, যা চাহিদা অনুযায়ী বাইট range আনে, স্থানীয় ফাইল, ক্যাশে, বা মেঘ থেকে; আর seek করলে লক্ষ্য নমুনা-কে বাইট অবস্থান-এ মাপে, তাই না-আনা অংশে seek করলে সেখান থেকে আনা শুরু হয়। Fetch arbiter বাজতে থাকা ট্র্যাকের read-কে আগে রাখে, তাই পরের ট্র্যাক আগেভাগে আনা বর্তমান ট্র্যাককে দেরি করায় না।
+
+## Window হিসেবে ট্র্যাক
+
+ট্র্যাক কোনো ফাইল নয়; এটি এক বা একাধিক ফাইলের উপর ordered নমুনা উইন্ডো-এর list, ইম্পোর্টের সময় CUE sheet বা ফাইলের নিজের extent থেকে built। এই এক representation প্রতিটি disc shape বহন করে: প্রতি ট্র্যাকে ফাইল, এক image-এ পুরো disc, এক ফাইলের শেষে ও অন্যটির শুরুতে থাকা pregap, এবং lossy rip যা প্রতি ট্র্যাকে এক ফাইল করে কাটা।
+
+Pregap উইন্ডো আলাদা marked। প্লেব্যাক ট্র্যাক-এ তার pregap থেকে ঢোকে যখন থাকে (index 00, hidden-ট্র্যাক audio included), আর ঘড়ি ট্র্যাক time দেখায়: ট্র্যাক proper শুরু হওয়া পর্যন্ত অবস্থান শূন্যে আটকে থাকে, এবং দেখানো duration pregap বাদ দেয়, CD player-এর আচরণের মতো।
+
+## Gapless
+
+বর্তমান ট্র্যাক চলার সময় পরের ট্র্যাক খোলা ও buffer করা হয়। দুটির নমুনা rate ও channel count এক হলে engine live audio callback-এর ভিতরে সেগুলো chain করে: stream কখনও থামে না, আর সীমানা নমুনা-exact। ফরম্যাট আলাদা হলে stream আবার বানানো হয়, যেটি সেই case যেখানে ফরম্যাট change নিজেই সীমানা শুনিয়ে দেয়।
+
+## Loudness
+
+ইম্পোর্ট ডিকোড-verification pass-এর সময় প্রতি ট্র্যাক ও প্রতি অ্যালবাম integrated loudness (EBU R128) এবং true peak মাপে। Replay gain বাজানোর সময় এই মাপ থেকে বের হয়, ফাইলে কখনও লেখা হয় না: লক্ষ্য −18 LUFS, true peak clip না করার মতো capped, প্রতি ট্র্যাক বা প্রতি অ্যালবামে applied, gapless সীমানা-তে পরিষ্কারভাবে বদলায়। Mode বর্তমানে সেটিংস UI ছাড়া ships এবং ডিফল্ট off; লাইব্রেরি config ফাইল-এ set করা যায়।
+
+## Side pause
+
+ট্র্যাক-তালিকা তাদের side ও disc গঠন বহন করে, এবং ব্যবহারকারী pause-between-sides enable করলে engine side সীমানা-তে hold করতে পারে, চালিয়ে যাওয়ার prompt দেখিয়ে। Hold playback-service state, ডিকোড silence নয়, তাই resume সঙ্গে সঙ্গে হয়।

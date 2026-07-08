@@ -1,0 +1,40 @@
+---
+title: সিঙ্ক
+description: পরিবর্তন কীভাবে ডিভাইসগুলোর মধ্যে যায়, এবং কীভাবে মেলে
+---
+
+bae-এর সিঙ্ক হলো [coven](https://coven.bae.fm)-এর সিঙ্ক: bae তার টেবিল ও blob declare করে, আর বাকিটা coven করে। এই পৃষ্ঠা bae-এর ক্ষেত্রে কাজের ধরন বর্ণনা করে; coven-এর নিজের docs প্রতিটি অংশ পূর্ণ গভীরতায় ব্যাখ্যা করে।
+
+## ধরা
+
+coven SQLite connection-এর মালিক, তাই bae commit করা প্রতিটি write তার মধ্য দিয়ে যায়। SQLite-এর session extension প্রতিটি transaction-এ ঠিক কী বদলেছে record করে; synced টেবিল-এর change একটি **changeset** হয়, লাইব্রেরি কী দিয়ে sealed এবং ডিভাইস-এর identity কী দিয়ে signed। Diffing নেই, dirty flag নেই: capture connection-এর property, এবং write miss হতে পারে না।
+
+## ধারা
+
+প্রতিটি ডিভাইস মেঘ-ঘরে নিজের ধারায় sequentially numbered changeset append করে। ডিভাইস কখনও অন্যের ধারায় লেখে না, তাই সংরক্ষণ-এ write conflict নেই, আর প্রতিটি ডিভাইস peer stream প্রতি cursor ট্র্যাক করে। সিঙ্ক cycle স্থানীয় outbox push করে, তারপর প্রতিটি peer-এর stream নিজের cursor থেকে forward pull করে, প্রতিটি changeset-এর signature এবং author-এর membership verify করে apply করার আগে।
+
+Cycle স্থানীয় change-এর পরে, backoff সহ idle timer-এ (poll-এর মাঝে সর্বোচ্চ পাঁচ মিনিট), এবং **Sync Now**-এ সঙ্গে সঙ্গে চলে। Failure back off করে retry হয়; loop প্রতিটি cycle-এর outcome UI-তে status, error text, এবং applied সারি count হিসেবে report করে।
+
+## মেলানো
+
+দুই ডিভাইস আলাদা থাকা অবস্থায় একই লাইব্রেরি সম্পাদনা করা স্বাভাবিক ঘটনা। তাদের পরিবর্তন মিললে:
+
+- **Different সারি বা different column**-এ edit দুটিই apply হয়। Laptop-এ রিলিজ-এর year edit এবং desktop-এ label edit করলে দুটিই থাকে।
+- **Same সারি-এর same column**-এ edit সারি-এর `_updated_at` hybrid logical clock দিয়ে ordered হয়: later edit wins, deterministically এবং প্রতিটি ডিভাইস-এ একইভাবে।
+- **Delete wins** concurrent edit-এর উপর: এক ডিভাইস-এ রিলিজ delete হলে, অন্য ডিভাইস একই interval-এ edit করলেও সেটি deleted থাকে।
+
+Conflict UI নেই কারণ unresolved state নেই: যেকোনো application order থেকে প্রতিটি ডিভাইস একই result-এ converges।
+
+## শুরুতে ভরানো
+
+যোগ দেওয়া বা পুনরুদ্ধার করা ডিভাইস শুরু থেকে পুরো history replay করে না। এটি একটি **snapshot** ডাউনলোড করে, মেঘ-ঘরে periodically published full SQLite image, তারপর প্রতিটি ধারায় তার পরে জমা হওয়া changeset শুধু apply করে। Snapshot মেটাডেটা schema version এবং per-stream cursor record করে যা সেটির মধ্যে embodied।
+
+## Schema version
+
+bae-এর schema numbered ladder দিয়ে migrate করে, আর ladder-এর top rung প্রতিটি changeset-এ stamped থাকে যা ডিভাইস লেখে। কোনো ডিভাইস নিজের চেয়ে newer schema থেকে changeset pull করলে app update না হওয়া পর্যন্ত সেই stream park করে, তার পরে কিছুই apply করে না; কিছু হারায় না এবং ভুলভাবে apply হয় না। Database ফাইল নিজেও নিজের schema-র চেয়ে পুরোনো binary-তে open করতে অস্বীকার করে।
+
+Schema version-এর চেয়ে coarser হলো **compatibility era**: প্রতিটি binary-তে baked pinned coven revision। দুই build শুধু একই era-তে সিঙ্ক করে; coven wire-ফরম্যাট break নতুন era এবং প্রতিটি app-এ major version bump। Pre-1.0-তে প্রতিটি build era zero এবং ফরম্যাট migration ছাড়াই বদলায়।
+
+## Provider কী দেখে
+
+Opaque home-এ provider ciphertext changeset, ciphertext blob, এবং signed membership record রাখে; object count করতে পারে এবং size ও timing দেখতে পারে, কিন্তু কিছু পড়তে পারে না। Device pull করা প্রতিটি object ডেটাবেস ছোঁয়ার আগে verified হয়, signature ও membership; সংরক্ষণ একটি dumb, untrusted mailbox। [Encryption](/bn/reference/encryption) এবং [পরিচয় ও সদস্যপদ](/bn/reference/membership) দেখুন।

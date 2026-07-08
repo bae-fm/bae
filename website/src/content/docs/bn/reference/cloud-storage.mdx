@@ -1,0 +1,37 @@
+---
+title: মেঘ-সংরক্ষণ
+description: Provider, authentication, এবং মেঘ-ঘরের আকার
+---
+
+মেঘ-ঘর হলো ব্যবহারকারীর আগে থেকেই থাকা সংরক্ষণের একটি জায়গা। প্রতিটি provider [coven](https://coven.bae.fm)-এর একই সংরক্ষণ interface দিয়ে চালিত হয়; provider অনুযায়ী যা বদলায় তা হলো authentication এবং দ্বিতীয় ডিভাইসকে কীভাবে প্রবেশাধিকার দেওয়া হয়।
+
+## Provider
+
+| Provider | Auth | নতুন ডিভাইসের প্রবেশাধিকার |
+|---|---|---|
+| S3-compatible | Access কী + secret | আমন্ত্রণে থাকা credential |
+| Google Drive | OAuth (PKCE) | Joiner-এর অ্যাকাউন্ট-এ shared ফোল্ডার |
+| Dropbox | OAuth (PKCE) | Joiner-এর অ্যাকাউন্ট-এ shared ফোল্ডার |
+| OneDrive | OAuth (PKCE) | Joiner-এর অ্যাকাউন্ট-এ shared ফোল্ডার |
+| iCloud (CloudKit) | Apple ID, sign-in নেই | Joiner CloudKit share গ্রহণ করে |
+
+S3-compatible AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, এবং API বলা অন্য সবকিছু কভার করে; bucket, region, endpoint, এবং কী prefix configurable, আর config save করার আগে bucket probe করা হয় যাতে typo setup-এই fail করে, প্রথম সিঙ্কে নয়। OAuth provider শুধু full **bae** edition-এ থাকে; **baeium** build সেগুলো compile করে না।
+
+## OAuth
+
+Sign-in হলো PKCE সহ authorization-code flow, public client হিসেবে। ডেস্কটপে redirect এক callback-এর জন্য স্থানীয় port-এ bound loopback server-এ আসে; mobile-এ app custom-scheme redirect ধরে। bae কাজের জন্য provider যে সবচেয়ে সরু scope দেয় সেটিই চায়, Google Drive-এ সেটি শুধু app নিজে যে ফাইল তৈরি করে তাতে access। Token OS keyring-এ stored হয়, provider-এর refresh grant দিয়ে refresh হয়, আর rejected refresh silent retry loop না হয়ে reconnect prompt হিসেবে দেখা যায়।
+
+CloudKit-এর কোনো flow লাগে না: প্ল্যাটফর্মের CloudKit driver, app-এ implemented এবং core-কে দেওয়া, signed-in Apple ID হিসেবেই কাজ করে।
+
+## ঘরের বিন্যাস
+
+ঘরের ভেতরে coven প্রতি-ডিভাইস changeset stream, snapshot generation, membership record, এবং blob namespace সাজায়। bae তিনটি blob namespace দেয়: `release_files`, `covers`, এবং `artist_images`।
+
+Object কী কী হবে তা ঘরের সংরক্ষণ mode-এর উপর নির্ভর করে, creation-এ fixed:
+
+- **Opaque**: object encrypted হয় এবং content-derived কী-এর নিচে stored হয়, যা কিছু প্রকাশ করে না। এটি cryptography-তে পূর্ণ বিশ্বাসের mode; [Encryption](/bn/reference/encryption) দেখুন।
+- **Browsable**: object plaintext হিসেবে আপলোড time-এ প্রতি blob-এ recorded readable path-এ থাকে: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`। Bucket একটি ব্যবহারযোগ্য ফাইল tree হিসেবেও কাজ করে; বিনিময়ে encryption ও membership নেই, তাই browsable home অন্যদের সঙ্গে share করা যায় না।
+
+## বাস্তব network-এ আচরণ
+
+প্লেব্যাকের read ranged: player পুরো ফাইল নয়, দরকারি বাইট উইন্ডো stream করে। Provider support করলে size threshold-এর বেশি আপলোড multipart হয়। Rate limit ও transient provider error exponential backoff দিয়ে retry করে, provider retry-after দিলে তা মানে; expired OAuth টোকেন জায়গাতেই refresh হয়। Sync outbox restart টিকে থাকে: app quit করার কারণে interrupted আপলোড restart না হয়ে resume করে।

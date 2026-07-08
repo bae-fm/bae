@@ -1,0 +1,35 @@
+---
+title: পরিচয় ও সদস্যপদ
+description: Key-কে পরিচয় হিসেবে ব্যবহার, যোগদানের হাতমেলানো, ভূমিকা, এবং প্রত্যাহার
+---
+
+bae-তে কোথাও অ্যাকাউন্ট system নেই। একটি ডিভাইসের পরিচয় হলো Ed25519 keypair যা সে নিজের জন্য তৈরি করে এবং OS keyring-এ রাখে; public কী-ই পরিচয়। একটি লাইব্রেরিতে কারা আছে তা মেঘ-ঘরে থাকা signed record-এর set, যেটি যার কাছে record আছে সে verify করতে পারে, কোনো server issue করে না। এই ব্যবস্থা [coven](https://coven.bae.fm)-এর; এই পৃষ্ঠা দেখায় bae সেটি কীভাবে ব্যবহার করে।
+
+## সদস্যপদ নথি
+
+প্রতিটি মালিক মেঘ-ঘরে signed membership entry-র append-only stream লেখে: এই কী এই role-সহ added, এই কী removed। প্রতিটি entry আগেরটির সঙ্গে link করে, আর প্রতিটি মালিক তার stream-এর tip ঘোষণা করা head sign করে, তাই provider record drop বা reorder করলে তা detected হয়, believed নয়। লাইব্রেরি যা গ্রহণ করে তা হলো প্রতিটি মালিক-এর verified stream-এর union।
+
+প্রতিটি pull-এ, প্রতিটি changeset-এর author এই record-এর বিরুদ্ধে checked হয়: বর্তমান সদস্য দ্বারা signed, লিখতে পারে এমন role সহ। Removed ডিভাইস, কখনও added না হওয়া কী, বা invalid signature-এর changeset apply হয় না। Provider record রাখে কিন্তু forge করতে পারে না; শুধু মালিক কী-র holder membership বদলাতে পারে।
+
+## ভূমিকা
+
+**Owner** এবং **Member** দুজনেই লাইব্রেরি পড়তে ও লিখতে পারে; মালিক অতিরিক্তভাবে ডিভাইস approve ও remove করে। bae-এর founding ডিভাইস মালিক এবং সেটি যেসব ডিভাইস approve করে তারা সদস্য হিসেবে join করে। (Underlying machinery-তে তৃতীয় role আছে, read-only follower, যা bae এখন assign করে না।)
+
+## যোগদানের হাতমেলানো
+
+ডিভাইস যোগ করা মাঝখানে explicit human verification সহ দুই-code exchange:
+
+1. Joining ডিভাইস তার keypair generate করে এবং একটি **join request** দেখায়: তার public কী, তার একটি short fingerprint, এবং (OAuth provider-এর জন্য) ফোল্ডার share করার ক্লাউড অ্যাকাউন্ট।
+2. Owner request ডিকোড করেন, এবং দুই screen একই fingerprint দেখায়। Human মিল আছে কি না check করেন; এই step swapped কী ঠেকায়।
+3. Approval একসঙ্গে তিনটি কাজ করে: newcomer-এর অ্যাকাউন্ট-কে মেঘ-ঘরে access দেয় (consumer ক্লাউড-এ ফোল্ডার share, S3-তে embedded credential, iCloud-এ CloudKit share), লাইব্রেরি কী newcomer-এর public কী-তে seal করে, এবং তাকে add করা membership entry sign করে। সবকিছু একটি **invite code**-এ pack হয়।
+4. Joining ডিভাইস invite consume করে, কী unseal করে, latest snapshot থেকে bootstrap করে, এবং সিঙ্ক করে।
+
+Invite requesting কী-তে sealed: intercept করলে কিছু মেলে না।
+
+## প্রত্যাহার
+
+Member সরালে signed removal append হয় এবং লাইব্রেরি কী এমন নতুন generation-এ rotate হয় যা removed কী কখনও পায় না ([Encryption](/bn/reference/encryption#জেনারেশন) দেখুন)। যে সংরক্ষণ access revoke করতে পারে, সেখানে access-ও withdraw হয়। Removed ডিভাইস-এ যা আগে সিঙ্ক হয়েছে তা সেখানেই থাকে; ডেটা unsend করা যায় না। Rotation-এর পরের সব তার নাগালের বাইরে।
+
+## Recovery code
+
+Recovery code ইচ্ছাকৃতভাবে membership bypass করে: এটি মেঘ-ঘরের coordinates এবং লাইব্রেরি কী, এক bearer string-এ, কোনো surviving approver ছাড়া নিজের লাইব্রেরি restore করার জন্য। Demand-এ generated, Apple প্ল্যাটফর্ম-এ iCloud Keychain-এ automatically stored, এবং লাইব্রেরি নিজেই যত sensitive ঠিক ততটাই sensitive।

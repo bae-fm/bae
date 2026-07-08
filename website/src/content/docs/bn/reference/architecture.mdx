@@ -1,0 +1,41 @@
+---
+title: স্থাপত্য
+description: coven-এর উপর এক Rust core-এ native app
+---
+
+bae হলো এক Rust core, তার উপর চারটি native app। পণ্য, লাইব্রেরি মডেল, ইম্পোর্ট, প্লেব্যাক, সিঙ্ক, encryption যা সংজ্ঞায়িত করে, সব Rust-এ থাকে এবং প্রতিটি প্ল্যাটফর্মে একই আচরণ করে; প্রতিটি অ্যাপ তার উপর পাতলা native UI।
+
+## স্তরগুলো
+
+- **`bae-core`**: পণ্য। লাইব্রেরি ও মেটাডেটা মডেল, ইম্পোর্ট ও শনাক্তকরণ পাইপলাইন, FFmpeg প্লেব্যাক ইঞ্জিন, loudness মাপা, এক্সপোর্ট, এবং নিচের coven-এর সঙ্গে সংযোগ। ইম্পোর্ট ও শনাক্তকরণ শুধু ডেস্কটপে compile হয়; mobile build সিঙ্ক ও প্লেব্যাক client।
+- **[coven](https://coven.bae.fm)**: ডেটা স্তর, আলাদা লাইব্রেরি। coven SQLite connection-এর মালিক, bae commit করা প্রতিটি পরিবর্তন ধরে, এবং ব্যবহারকারীর মেঘ-সংরক্ষণ দিয়ে end-to-end encrypted অবস্থায় সেই পরিবর্তন সিঙ্ক করে। Blob সংরক্ষণ-ও (অডিও বাইট, চিত্র), স্থানীয় ক্যাশে, identity কী, এবং membership তার। bae একটি exact coven revision pin করে এবং প্রতিটি binary-তে stamp করে; সেটিই build-গুলোর সিঙ্ক-compatibility generation নির্ধারণ করে।
+- **`bae-bridge`**: UniFFI সীমানা। Bridge type একবার Rust-এ defined হয় এবং build time-এ Swift ও Kotlin-এ generated হয়।
+- **অ্যাপগুলো**: macOS ও iOS-এ SwiftUI, Android-এ Jetpack Compose, এবং native Windows app। প্রত্যেকটি core যে প্ল্যাটফর্ম অংশ চায় সেগুলোও implement করে: অডিও আউটপুট, চিত্র text recognition, media controls, keychain access, crash reporting।
+
+অ্যাপগুলোর পাশে: `bae-mcp` (MCP server), `bae-cli` (command line), এবং `bae-automation` (দুটির shared tool layer)।
+
+## ডিস্কে এক লাইব্রেরি
+
+একটি লাইব্রেরি থাকে `~/.bae/libraries/<লাইব্রেরি-id>/`-এ (mobile-এ প্ল্যাটফর্ম ডেটা directory):
+
+```
+~/.bae/libraries/<id>/
+  লাইব্রেরি.db        # SQLite: catalog, credits, playback specs
+  config.yaml       # ডিভাইস-স্থানীয় সেটিংস, never synced
+  সংরক্ষণ/
+    স্থানীয়/          # blobs this ডিভাইস owns (কভার, শিল্পী images)
+    ক্যাশ/          # evictable copies of ক্লাউড blobs
+    pinned/         # pinned-for-offline copies, never evicted
+```
+
+ডেটাবেস শুধু coven দিয়ে খোলা হয়, যা bae-এর schema-র পাশে নিজের হিসাবের টেবিল (সিঙ্ক cursor, outbox, blob state) বসায় এবং bae-এর migration চালায়। অ-পরিচালিত হিসেবে ইম্পোর্ট করা অডিও ফাইল মোটেই `~/.bae`-এর নিচে থাকে না: ডেটাবেস সেগুলোকে ইম্পোর্ট করার path-এই reference করে।
+
+Secret কখনও এই ফাইলগুলোতে থাকে না। Identity কী, লাইব্রেরি encryption কী, ক্লাউড credential, এবং API টোকেন OS keyring-এ থাকে (Apple প্ল্যাটফর্ম-এ Keychain, iCloud Keychain দিয়ে synced; অন্যত্র প্ল্যাটফর্ম equivalent)।
+
+## সংস্করণ
+
+প্রতিটি প্ল্যাটফর্মে build-time দুই edition আছে। **bae** OAuth provider (Google Drive, Dropbox, OneDrive), CloudKit, এবং telemetry compile করে। **baeium** এগুলো বাদ দিয়ে compile হয়: শুধু S3-compatible সংরক্ষণ, এবং telemetry নেই, dependency tree-তে proprietary কিছু নেই। Edition দুটি একই উৎস ও একই core; একটি feature flag provider list ও diagnostics wiring ঠিক করে।
+
+## Versioning
+
+App version প্রতি প্ল্যাটফর্মে `MAJOR.MINOR`। Major হলো compatibility era, সব app-এ shared: একই major-এ থাকা ডিভাইস লাইব্রেরি সিঙ্ক করতে পারে। Wire বা on-disk ফরম্যাট ভাঙলে, বেশিরভাগ সময় pinned coven revision বদলালে, এটি বাড়ে। Minor প্রতি app-এর রিলিজ গোনে এবং প্ল্যাটফর্মের মধ্যে তুলনীয় নয়।

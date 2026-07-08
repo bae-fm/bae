@@ -1,0 +1,43 @@
+---
+title: ডেটা মডেল
+description: স্কিমা, কী সিঙ্ক হয়, এবং কী ডিভাইসে থাকে
+---
+
+bae-এর তালিকা সাধারণ SQLite, [coven](https://coven.bae.fm)-কে টেবিল ধরে জানানো হয়: সিঙ্ক হওয়া টেবিল conflict clock বহন করে এবং প্রতিটি ডিভাইসে যায়; না-জানানো টেবিল কখনও ডিভাইস ছাড়ে না। এই ভাগটাই ডেটা মডেলের মূল সিদ্ধান্ত, তাই পৃষ্ঠাটি সেটিকে কেন্দ্র করে সাজানো।
+
+## তালিকার graph
+
+স্কিমার সিঙ্ক হওয়া কেন্দ্র:
+
+- **`artists`**, **`albums`**, **`works`**: গোষ্ঠী করার স্তর। একটি অ্যালবাম তার রিলিজগুলো এক করে এবং primary one-এ point করে; work ধ্রুপদী গঠনের জন্য parent/child graph তৈরি করে।
+- **`releases`**: কেন্দ্রের সত্তা, প্রতি pressing-এ এক সারি। Pressing-এর তথ্য (label, catalog number, barcode, country, format, year), মেটাডেটার উৎস, ইম্পোর্ট করা ফোল্ডারের content hash, এবং মাপা অ্যালবাম loudness বহন করে।
+- **`release_identities`**: উৎস অনুযায়ী রিলিজটি কী। সারি না থাকলে অজানা; release ID সহ MusicBrainz বা Discogs সারি মানে হুবহু; ID ছাড়া আনুমানিক। এক রিলিজ একই সঙ্গে দুই উৎসেই পরিচয় রাখতে পারে।
+- **`tracks`** সহ **`track_artists`**, plus **`release_artist_roles`** ও **`track_artist_roles`**: ট্র্যাক-তালিকা ও কৃতিত্ব, প্রতিটি কৃতিত্ব তার উৎসসহ tagged।
+- **`track_works`**, **`work_parts`**, **`work_artists`**: recording যে work perform করে তার সঙ্গে linked।
+- **`audio_formats`** ও **`audio_format_segments`**: প্লেব্যাক-বিবরণ। প্রতি ট্র্যাক: codec, sample rate, bit depth, channel, measured loudness ও peak, এবং pregap length। Segment একটি ট্র্যাককে তার উৎস ফাইলের ordered byte ও sample window-তে map করে; এই কারণেই CUE rip-এর track, pregap সহ, এক বড় file বা একাধিক file-এর region জুড়ে থাকতে পারে।
+- **`release_files`**, **`covers`**, **`artist_images`**: blob-বহনকারী টেবিল। সারি হলো তালিকার entry; bytes coven-এর blob layer-এ থাকে (নিচে দেখুন)।
+
+## সিঙ্ক হওয়া, gate-সহ, স্থানীয়
+
+উপরের সব সিঙ্ক হয়, কিন্তু নিঃশর্ত নয়। `releases` তার `remote` column-এ gated root হিসেবে declared: একটি release row এবং তার পুরো subtree (track, file, credit, format, cover) শুধু `remote` true থাকলে সিঙ্ক হয়, অর্থাৎ রিলিজ মেঘে-পরিচালিত থাকলে। রিলিজ পরিচালিত করলে subtree published হয়; অ-পরিচালিত রিলিজ ইম্পোর্টকারী ডিভাইসেই পুরো থাকে, যদিও তার স্কিমা সিঙ্ক হওয়া। Ancestor table (`artists`, `albums`, `works`) শুধু তখন সিঙ্ক হয় যখন কোনো সিঙ্ক হওয়া রিলিজ এখনও সেগুলো reference করে, তাই কোনো ডিভাইস কখনও নিচে কিছু নেই এমন artist পায় না।
+
+সম্পূর্ণ স্থানীয় টেবিল, coven-এ কখনও declared নয়:
+
+- **`playback_state`**: current track, position, queue, volume, shuffle ও repeat। Playback একটি device fact।
+- **`imports`**: ইম্পোর্টের কাজ tracking।
+- **`release_metadata`**: MusicBrainz ও Discogs থেকে archived raw JSON, ভবিষ্যৎ re-interpretation-এর জন্য রাখা।
+- **`attribution_names`**: member key-এর display name।
+
+প্রতিটি সিঙ্ক হওয়া table `_updated_at` hybrid-logical-clock column বহন করে, যেটি coven-এর field-by-field merge concurrent edit order করতে ব্যবহার করে; একটি test নিশ্চিত করে synced set এবং clock-carrying set ঠিক এক।
+
+## Blob
+
+অডিও ও ছবি coven-এর blob layer দিয়ে যায়, তিন namespace-এ, প্রতিটির নিজের device cache budget আছে: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB)।
+
+রিলিজ-ফাইল ব্যবহারকারীর দেওয়া এবং দরকার হলে ক্যাশে আসে: অ-পরিচালিত রিলিজের জন্য blob হলো original path-এ user file-এর external reference; পরিচালিত হলে uploaded object প্রথম read-এ cache-এ fetched হয়। Cover ও artist image host-provided এবং eagerly cached: bae bytes তৈরি করে (cover সর্বোচ্চ 600px চওড়া JPEG thumbnail হিসেবে re-rendered), আর প্রতিটি ডিভাইস pull করলে সেগুলো fetch করে যাতে grid local-এ render হয়।
+
+Opaque ঘরে blob অর্থহীন content key-র নিচে upload হয়। Browsable ঘরে প্রতিটি blob row readable cloud path record করে (audio-র জন্য `{artist}/{album}/{filename}`, cover-এর জন্য `{album}/{release}/cover.{ext}`), upload-এর সময় একবার computed, তাই পরে rename হলে object নড়ে না।
+
+## একটি rip-এর পরিচয়
+
+`releases.content_hash` imported folder-এর file structure (relative path ও size)-এর উপর SHA-256, folder disk-এ কোথায় আছে তার উপর নয়। Watched folder-এ একই rip আবার দেখা দিলে bae এভাবেই already-imported হিসেবে চেনে, আর re-import বুঝে কোন release replace করতে হবে।
