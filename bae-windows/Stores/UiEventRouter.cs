@@ -106,6 +106,17 @@ internal sealed class UiEventRouter
             case BridgeUiEvent.CandidateImportLoudnessProgress:
                 _importEvents(evt);
                 break;
+            case BridgeUiEvent.ReleaseTransferProgress:
+            case BridgeUiEvent.ReleaseTransferEnded:
+                // Release-transfer progress/ended carry a pin/unpin/manage/unmanage
+                // in-flight indicator for a release row; the Windows release views
+                // don't render one, so there's no work to do here.
+                break;
+            default:
+                // A BridgeUiEvent variant with no arm above: log the drift so a new
+                // variant surfaces here instead of vanishing silently.
+                BaeDiagnostics.Logger.Warning($"Unhandled BridgeUiEvent variant {evt.GetType().Name}.");
+                break;
         }
     }
 }
