@@ -285,6 +285,16 @@ private fun AddDeviceDialogContent(
                     style = MaterialTheme.typography.titleMedium,
                     fontFamily = FontFamily.Monospace,
                 )
+                // OAuth join-requests carry the account address the folder will be
+                // shared to; S3 requests have no email, so this row is absent.
+                step.providerAccountEmail?.let { email ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = email,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             AddDeviceStep.Inviting -> {
