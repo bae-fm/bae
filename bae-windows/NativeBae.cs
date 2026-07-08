@@ -734,10 +734,11 @@ internal static class NativeBae
         new BridgeSortCriterion(
             sortField switch
             {
+                "date_added" => BridgeSortField.DateAdded,
                 "title" => BridgeSortField.Title,
                 "artist" => BridgeSortField.Artist,
                 "year" => BridgeSortField.Year,
-                _ => BridgeSortField.DateAdded,
+                _ => throw new ArgumentOutOfRangeException(nameof(sortField), sortField, "Unknown album sort field"),
             },
             ascending ? BridgeSortDirection.Ascending : BridgeSortDirection.Descending),
     ];
@@ -746,9 +747,10 @@ internal static class NativeBae
         new(
             sortField switch
             {
+                "name" => BridgeComposerSortField.Name,
                 "work_count" => BridgeComposerSortField.WorkCount,
                 "linked_release_count" => BridgeComposerSortField.LinkedReleaseCount,
-                _ => BridgeComposerSortField.Name,
+                _ => throw new ArgumentOutOfRangeException(nameof(sortField), sortField, "Unknown composer sort field"),
             },
             ascending ? BridgeSortDirection.Ascending : BridgeSortDirection.Descending);
 
@@ -979,10 +981,11 @@ internal static class NativeBae
     private static string DiscogsStatusTag(BridgeDiscogsTokenStatus status) =>
         status switch
         {
+            BridgeDiscogsTokenStatus.NotConfigured => "not_configured",
             BridgeDiscogsTokenStatus.Valid => "valid",
             BridgeDiscogsTokenStatus.Unvalidated => "unvalidated",
             BridgeDiscogsTokenStatus.Rejected => "rejected",
-            _ => "not_configured",
+            _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown Discogs token status"),
         };
 
     private static string SyncProviderTag(BridgeSyncProvider provider) =>
@@ -1068,7 +1071,7 @@ internal static class NativeBae
             BridgeDiscogsSaveOutcome.Valid => "valid",
             BridgeDiscogsSaveOutcome.Unvalidated => "unvalidated",
             BridgeDiscogsSaveOutcome.Rejected => "rejected",
-            _ => "rejected",
+            _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, "Unknown Discogs save outcome"),
         };
 
 

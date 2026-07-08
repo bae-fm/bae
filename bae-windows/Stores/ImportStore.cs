@@ -156,6 +156,13 @@ internal sealed class ImportStore
                         ["total"] = loudness.TracksTotal,
                     }));
                 break;
+            default:
+                // The router forwards only the preview and candidate-loudness
+                // variants here; any other variant reaching this handler is a
+                // routing drift, so log it rather than dropping it silently.
+                BaeDiagnostics.Logger.Warning(
+                    $"Unexpected BridgeUiEvent variant {evt.GetType().Name} reached the import preview handler.");
+                break;
         }
     }
 
