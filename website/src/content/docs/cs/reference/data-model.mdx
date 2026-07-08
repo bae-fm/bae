@@ -1,0 +1,43 @@
+---
+title: Datový model
+description: Schéma, co se synchronizuje a co zůstává na zařízení
+---
+
+Katalog bae je běžné SQLite, deklarované pro [coven](https://coven.bae.fm) tabulku po tabulce: synchronizované tabulky nesou konfliktové hodiny a putují na každé zařízení; nedeklarované tabulky zařízení nikdy neopustí. Toto rozdělení je nejdůležitější rozhodnutí datového modelu, proto je tato stránka uspořádaná podle něj.
+
+## Graf katalogu
+
+Synchronizované jádro schématu:
+
+- **`artists`**, **`albums`**, **`works`**: seskupovací vrstva. Album sdružuje svá vydání a ukazuje na primární; díla tvoří graf rodič/potomek pro klasickou strukturu.
+- **`releases`**: centrální entita, jeden řádek na lisování. Nese údaje o lisování (vydavatelství, katalogové číslo, čárový kód, země, formát, rok), zdroj metadat, hash obsahu importované složky a změřenou hlasitost alba.
+- **`release_identities`**: co vydání *je*, podle zdroje. Žádné řádky znamenají neznámé; řádek MusicBrainz nebo Discogs s ID vydání znamená přesné; bez něj přibližné. Vydání může držet identity v obou zdrojích najednou.
+- **`tracks`** s **`track_artists`**, plus **`release_artist_roles`** a **`track_artist_roles`**: seznamy stop a kredity, každý kredit označený svým zdrojem.
+- **`track_works`**, **`work_parts`**, **`work_artists`**: nahrávky propojené s díly, která provádějí.
+- **`audio_formats`** a **`audio_format_segments`**: specifikace přehrávání. Pro každou stopu: kodek, vzorkovací frekvence, bitová hloubka, kanály, změřená hlasitost a špička a délky pregapů. Segmenty mapují stopu na seřazená okna bajtů a vzorků jejích zdrojových souborů; tak může stopa z CUE ripu včetně pregapu pokrývat oblasti jednoho velkého souboru nebo několika souborů.
+- **`release_files`**, **`covers`**, **`artist_images`**: tabulky nesoucí bloby. Řádky jsou položky katalogu; bajty žijí ve vrstvě blobů coven (viz níže).
+
+## Synchronizované, podmíněné, místní
+
+Všechno výše se synchronizuje, ale ne bezpodmínečně. `releases` je deklarovaná jako podmíněný kořen na sloupci `remote`: řádek vydání a celý jeho podstrom (stopy, soubory, kredity, formáty, obal) se synchronizují jen tehdy, když je `remote` true, tedy když je vydání spravované v cloudu. Přepnutí vydání na spravované zveřejní podstrom; nespravované vydání zůstane celé na zařízení, které ho importovalo, i když jeho schéma je synchronizované. Předkové (`artists`, `albums`, `works`) se synchronizují jen tehdy, dokud na ně stále odkazuje nějaké synchronizované vydání, takže zařízení nikdy nedostane interpreta, pod kterým nic není.
+
+Plně místní tabulky, nikdy nedeklarované pro coven:
+
+- **`playback_state`**: aktuální stopa, pozice, fronta, hlasitost, náhodné pořadí a opakování. Přehrávání je fakt zařízení.
+- **`imports`**: sledování importních operací.
+- **`release_metadata`**: archivovaný surový JSON z MusicBrainz a Discogs, uchovaný pro budoucí znovuvyložení.
+- **`attribution_names`**: zobrazovaná jména pro klíče členů.
+
+Každá synchronizovaná tabulka nese sloupec `_updated_at` s hybridními logickými hodinami, registr, podle kterého coven řadí souběžné úpravy po polích; test vynucuje, že synchronizovaná množina a množina nesoucí hodiny jsou přesně stejné.
+
+## Bloby
+
+Audio a obrázky procházejí vrstvou blobů coven ve třech jmenných prostorech, každý s vlastním limitem mezipaměti zařízení: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+
+Soubory vydání dodává uživatel a ukládají se do mezipaměti líně: u nespravovaného vydání je blob externí odkaz na uživatelův soubor v původní cestě; u spravovaného je to nahraný objekt stažený do mezipaměti při prvním čtení. Obaly a obrázky interpretů dodává hostitel a ukládají se předem: bae vytvoří bajty (obaly se znovu vykreslí jako náhledy JPEG o šířce nejvýše 600px) a každé zařízení je při stažení změn načte, aby se mřížky vykreslovaly místně.
+
+V neprůhledném domově se bloby nahrávají pod bezvýznamnými klíči obsahu. V procházetelném domově každý řádek blobu zaznamená čitelnou cloudovou cestu (`{artist}/{album}/{filename}` pro audio, `{album}/{release}/cover.{ext}` pro obaly), spočítanou jednou při nahrání, takže pozdější přejmenování objekt nepřesune.
+
+## Identita ripu
+
+`releases.content_hash` je SHA-256 přes strukturu souborů importované složky (relativní cesty a velikosti), nezávisle na tom, kde složka leží na disku. Díky němu bae rozpozná už importovaný rip, když se znovu objeví ve sledované složce, a reimporty najdou vydání, které mají nahradit.

@@ -1,0 +1,35 @@
+---
+title: Identita a členství
+description: Klíče jako identity, připojovací handshake, role a odebrání
+---
+
+V bae nikde není systém účtů. Identitou zařízení je pár klíčů Ed25519, který si samo vygeneruje a uchová v klíčence operačního systému; veřejný klíč *je* identita. Kdo patří do knihovny, je množina podepsaných záznamů v cloudovém domově, ověřitelná kýmkoli, kdo je drží, nevydaná žádným serverem. Mechanika patří [coven](https://coven.bae.fm); tato stránka popisuje, jak ji bae používá.
+
+## Záznamy členství
+
+Každý vlastník zapisuje do cloudového domova proud podepsaných záznamů členství, do kterého se jen přidává: tento klíč byl přidán s touto rolí, tento klíč byl odebrán. Každý záznam odkazuje na předchozí a každý vlastník podepisuje hlavu oznamující špičku svého proudu, takže poskytovatel, který záznamy zahodí nebo přeuspořádá, je odhalen místo toho, aby mu knihovna věřila. Knihovna přijímá sjednocení ověřených proudů všech vlastníků.
+
+Při každém stažení změn se autor každého changesetu kontroluje proti tomuto záznamu: podepsaný aktuálním členem s rolí, která smí zapisovat. Changesety z odebraných zařízení, z klíčů, které nikdy nebyly přidány, nebo s neplatnými podpisy se nepoužijí. Poskytovatel záznamy ukládá, ale nemůže je padělat; členství mohou měnit jen držitelé klíčů vlastníků.
+
+## Role
+
+**Owner** a **Member** oba knihovnu čtou a zapisují do ní; vlastníci navíc schvalují a odebírají zařízení. Zakládající zařízení bae je owner a každé zařízení, které schválí, se připojí jako member. (V podkladové mechanice existuje třetí role, read-only follower, kterou bae aktuálně nepřiděluje.)
+
+## Připojovací handshake
+
+Přidání zařízení je výměna dvou kódů s výslovným lidským ověřením uprostřed:
+
+1. Připojující se zařízení vygeneruje svůj pár klíčů a zobrazí **join request**: svůj veřejný klíč, krátký otisk tohoto klíče a (u poskytovatelů OAuth) cloudový účet, se kterým se má složka sdílet.
+2. Vlastník žádost dekóduje a obě obrazovky zobrazí stejný otisk. Člověk ověří, že se shodují; tento krok brání podstrčenému klíči.
+3. Schválení udělá tři věci najednou: udělí účtu nováčka přístup ke cloudovému domovu (sdílení složky u spotřebitelských cloudů, vložené přihlašovací údaje u S3, sdílení CloudKit u iCloudu), zapečetí klíč knihovny pro veřejný klíč nováčka a podepíše záznam členství, který ho přidává. Všechno se zabalí do **invite code**.
+4. Připojující se zařízení pozvánku spotřebuje, odpečetí klíč, nastartuje se z posledního snapshotu a synchronizuje.
+
+Pozvánka je zapečetěná pro žádající klíč: její zachycení nic neudělí.
+
+## Odebrání
+
+Odebrání člena přidá podepsané odebrání a otočí klíč knihovny na novou generaci, kterou odebraný klíč nikdy nedostane (viz [Šifrování](/cs/reference/encryption#generace)). V úložišti, které umí odebrat přístup, se přístup také odebere. Co už bylo synchronizováno na odebrané zařízení, zůstává u něj; data nejde vzít zpět. Všechno po obměně je mimo jeho dosah.
+
+## Obnovovací kódy
+
+Obnovovací kód záměrně obchází členství: jsou to souřadnice cloudového domova plus klíč knihovny v jednom bearer řetězci pro obnovení vlastní knihovny bez přeživšího schvalovatele. Generuje se na vyžádání, na platformách Apple se automaticky ukládá do iCloud Keychain a je přesně tak citlivý jako samotná knihovna.

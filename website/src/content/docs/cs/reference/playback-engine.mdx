@@ -1,0 +1,34 @@
+---
+title: Přehrávací engine
+description: Dekódování, přehrávání bez mezer, pregapy a hlasitost, přesně
+---
+
+Smlouva přehrávacího enginu je věrnost zdroji: dekódovat původní bajty uživatele, ve vlastní frekvenci zdroje, se zachovanou strukturou vydání. Tato stránka je specifikace za tímto chováním.
+
+## Dekódování
+
+Veškeré dekódování je FFmpeg, v procesu, na každé platformě: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack a DSD jsou to, co import přijímá, a kodek záznamu je cokoli, co FFmpeg nahlásí z bajtů, ne z přípony souboru. Vzorky vystupují jako 32bitový float pro výstupní fázi; převod formátu vzorků je jediný prováděný převod.
+
+Výstup je nativní zvukové API platformy (Core Audio přes cpal na desktopu a iOS, AAudio na Androidu). Výstupní stream se nastavuje na **vzorkovací frekvenci a počet kanálů zdroje**: soubor 96 kHz hraje v 96 kHz. Neexistuje fáze převzorkování. Výchozí výstupní zařízení se řeší při každém vytvoření streamu, takže přehrávání následuje přepnutí zařízení v systému. Na Androidu mohou hardwarově podporované kodeky obejít FFmpeg úplně pro odlehčené dekódování.
+
+## Streamované čtení
+
+Přehrávání nepotřebuje celé soubory. Audio se čte přes řídký buffer, který načítá rozsahy bajtů na vyžádání z místního souboru, mezipaměti nebo cloudu, a hledání v čase mapuje cílový vzorek na bajtovou pozici, takže skok do nenačtené oblasti začne načítat odtud. Rozhodování načítání upřednostňuje čtení přehrávané stopy před přednačítáním, takže nadcházející stopa nikdy nezdrží aktuální.
+
+## Stopy jako okna
+
+Stopa není soubor; je to uspořádaný seznam oken vzorků nad jedním nebo více soubory, vytvořený při importu z CUE sheetu nebo z rozsahu samotného souboru. Jedna reprezentace nese každý tvar disku: soubor na stopu, celý disk v jednom obrazu, pregap žijící na konci jednoho souboru a začátku druhého i ztrátové ripy se souborem na každou stopu.
+
+Okna pregapů jsou tak označena. Přehrávání vstupuje do stopy v jejím pregapu, když ho má (index 00, včetně skrytého zvuku), zatímco hodiny ukazují čas stopy: pozice je sevřená na nule, dokud nezačne vlastní stopa, a zobrazená délka pregap nezahrnuje, v souladu s chováním CD přehrávače.
+
+## Bez mezer
+
+Další stopa se otevře a bufferuje během přehrávání aktuální. Když obě sdílí vzorkovací frekvenci a počet kanálů, přehrávací vrstva je řetězí uvnitř živého zvukového volání: zvukový proud se nikdy nezastaví a hranice je přesná na vzorek. Když se formáty liší, proud se vytvoří znovu, což je případ, kdy změna formátu hranici stejně zviditelní sluchem.
+
+## Hlasitost
+
+Import měří integrovanou hlasitost (EBU R128) a true peak, po stopách i po albu, během průchodu ověřujícího dekódování. Replay gain se z těchto měření odvodí při přehrávání, nikdy se nezapéká do souborů: cíl −18 LUFS, omezeno tak, aby true peak nemohl klipovat, aplikováno po stopách nebo po albu, s čistým přepnutím na hranicích bez mezer. Režim se aktuálně dodává bez UI nastavení a ve výchozím stavu je vypnutý; lze ho nastavit v konfiguračním souboru knihovny.
+
+## Pauzy mezi stranami
+
+Seznamy stop nesou strukturu stran a disků a engine se může na hranici strany zastavit a zobrazit výzvu k pokračování, když uživatel zapne pause-between-sides. Zastavení je stav přehrávací služby, ne dekódované ticho, takže pokračování je okamžité.

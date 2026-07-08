@@ -1,0 +1,43 @@
+---
+title: Importní postup
+description: Skenování, důkazy, triangulace a atomické uložení
+---
+
+Import mění složku souborů na katalogovou položku přesnou na vydání, aniž by změnil jediný bajt souborů. Tato stránka popisuje postup za tokem uvedeným v [uživatelské příručce](/cs/guide/importing).
+
+## Skenování
+
+Sledované složky jsou monitorovány událostmi souborového systému platformy, s potlačením shluků událostí, a při změně se znovu skenují; skeny se porovnávají s existujícím seznamem kandidátů místo začátku od nuly. Skener klasifikuje složku jako jedno vydání (audio přímo uvnitř nebo podsložky tvaru disku jako `CD1`/`CD2`), nebo do ní rekurzivně vstoupí jako do kolekce. Soubory se podle přípony zařadí jako audio, obrázky a dokumenty, potom se audio prozkoumá: důležitý kodek je ten, který FFmpeg najde v bajtech, ne přípona souboru. Složky obsahující značky částečného stahování jsou vynechány, dokud stahování neskončí.
+
+CUE sheet mění jeden zvukový obraz na seznam stop. Parser zpracuje pregapy a postgapy, interprety a ISRC pro jednotlivé stopy a rozložení CUE s jedním obrazem i jedním souborem na stopu. Hranice stop se převedou z CUE framů (1/75 sekundy) na přesné pozice vzorků, které se později stanou okny bajtů a vzorků používanými přehráváním.
+
+## Důkazy, ne tagy
+
+Identifikace v jednom průchodu čte ze složky tři druhy důkazů:
+
+- **Disc ID**, otisk MusicBrainz přesného rozložení stop na CD, spočítaný z logu ripu nebo z CUE sheetu;
+- **čárové kódy**, dekódované ze skenů obalu frameworkem platformy pro rozpoznávání obrazu a přečtené z katalogových polí CUE;
+- **text**: katalogová čísla a volný text z OCR obrázků, názvů složek a souborů a textových souborů v ripu.
+
+Vložené audio tagy záměrně nejsou důkaz: popisují, čemu věřil tagger, ne co je lisování. (Použijí se pro náhradní metadata, když uživatel importuje vydání jako neznámé.)
+
+Disc ID a čárový kód se vyhledávají souběžně, Disc ID proti MusicBrainz, čárový kód proti MusicBrainz a Discogs zároveň, a výsledky se triangulují: výsledky shodující se na skupině vydání se sbíhají, shody katalogových čísel zužují seznam lisování a neshoda mezi signály se zobrazí uživateli jako výslovný konflikt místo tichého nejlepšího odhadu. Každý výsledek nese původ (nalezeno podle Disc ID, podle čárového kódu, katalogové shody), aby uživatelské rozhraní mohlo říct, proč je řádek nabízen.
+
+## Zdroje
+
+MusicBrainz se dotazuje anonymně s přísným tempem jeden požadavek za sekundu. Discogs se ověřuje osobním tokenem uživatele z klíčenky, dávkuje se a opakuje v rámci svých rychlostních limitů a odmítnutý token se nahlásí jako takový, aby ho uživatelské rozhraní mohlo označit místo tichého selhávání hledání. Odpovědi se ukládají do mezipaměti pro relaci a surový JSON zdroje, který vyhraje, se archivuje v databázi pro budoucí znovuvýklad.
+
+## Uložení
+
+Potvrzení importu spustí v pořadí:
+
+1. **Ověření dekódování**: každá stopa se dekóduje od začátku do konce; rip, který nelze plně dekódovat, selže před jakýmkoli zápisem (konfigurační přepínač to může vypnout).
+2. **Analýza hlasitosti**: integrovaná hlasitost a true peak se měří pro každou stopu a album během stejného průchodu dekódování, ukládají se pro použití replay gain.
+3. **Výběr obalu**: zvolený obrázek (vzdálený, obrázek ze složky nebo vložený) se znovu vykreslí na náhled pro zobrazení; originál zůstane mezi soubory vydání, pokud přišel ze složky.
+4. **Atomický zápis**: vydání, stopy, kredity, identity, formáty, segmenty, soubory a obal se uloží v jedné transakci. Neexistuje napůl importovaný stav.
+
+Vydání se uloží s odkazy na uživatelovy soubory na místě. Pokud uživatel zvolil správu v cloudu, nahrání proběhne po uložení jako přechod úložiště a původní bajty souborů zůstávají po celou dobu zdrojem pravdy; nic, co uživatel dal bae, se nikdy nemaže ani nemění.
+
+## Rozpoznávání ripů
+
+Každé vydání zaznamená hash obsahu přes strukturu importované složky (relativní cesty a velikosti, nezávislé na umístění). Opakované skeny ho používají k označení složek, které už v knihovně jsou, a reimporty stejného ripu najdou a nahradí své předchozí vydání místo vytvoření duplicity.

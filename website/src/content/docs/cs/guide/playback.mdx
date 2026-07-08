@@ -1,0 +1,41 @@
+---
+title: Přehrávání
+description: Původní kvalita a detaily, se kterými byla vydání vytvořena
+---
+
+Nahrávky byly vytvořené se strukturou, kterou souborové přehrávače často zploští: strany, které končí, skrytý zvuk před první stopou, skladby plynoucí jedna do druhé. bae zachovává detaily přehrávání vydání a přehrává je tak, jak vydání zamýšlelo, z vašich původních souborů, beze změn.
+
+## Původní kvalita
+
+Přehrávání dekóduje soubory tak, jak byly importovány. Žádné překódování, žádný přepis hlasitosti, žádné opětovné kódování na serveru; zvukové zařízení se ovládá ve vzorkovací frekvenci samotného souboru. Co jste ripovali, to se přehrává. Každý formát, který bae importuje, také přehrává: FLAC, MP3, APE, ALAC, AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack, DSD.
+
+## Bez mezer
+
+Alba smíchaná jako jeden souvislý celek se tak přehrávají. Další stopa se připravuje během přehrávání aktuální, a když obě sdílí formát, zvuk se na hranici nezastaví: žádná mezera, žádné cvaknutí.
+
+## Pregapy CD
+
+CD mohou skrývat zvuk v mezeře před začátkem stopy, včetně stopy první, klasický trik se skrytou stopou. Když je vydání importované z ripu s CUE sheetem, bae ví, kde každý pregap je, a přehrává je: zobrazení času stopy začne od nuly tam, kde začíná vlastní stopa, a skrytý zvuk před ní se přehraje v mezeře, přesně jako na CD. Exporty mohou pregapy ponechat, zahodit nebo znovu připojit; viz [Export](/cs/guide/exporting).
+
+## Předěly stran
+
+Vinylová a kazetová vydání mají strany a některé nahrávky používají pauzu mezi nimi záměrně. Zapněte **Pause between sides** v nastavení Playback a bae pozastaví přehrávání na každé hranici strany s výzvou k pokračování, jako obrácení bez obracení. Seznamy stop se seskupují podle strany a disku, takže struktura je při procházení viditelná.
+
+## Fronta
+
+Přehrávání má vždy kontext: vydání, které jste spustili, nebo celou knihovnu, pokud jste ji pustili náhodně. Fronta zobrazuje dvě části:
+
+- **Up Next**: stopy, které jste ručně zařadili do fronty, přehrají se první. Přetáhněte stopy dovnitř, změňte jejich pořadí, odeberte je.
+- **Playing from**: zbytek kontextu s vlastním přepínačem náhodného pořadí.
+
+**Play Next** a **Add to Queue** jsou u každé stopy a alba. Opakování cykluje mezi vypnuto, opakováním kontextu a opakováním jedné stopy.
+
+## Ovládání
+
+Přehrát/pozastavit na <kbd>Space</kbd>, další a předchozí z klávesnice, posuvník pro vyhledávání v čase. bae se integruje se systémem: mediální klávesy, Control Center na platformách Apple, mediální oznámení na Androidu, ovládání na zamčené obrazovce telefonu, s obalem a informacemi o stopě všude, kde je systém zobrazuje.
+
+Při ukončení může desktopová aplikace uložit, co se přehrávalo, včetně fronty a pozice, a při dalším spuštění na to navázat: **Restore on launch** v nastavení Playback.
+
+## Offline
+
+Vydání se přehraje všude, kde jsou dosažitelné jeho bajty: místní soubory se přehrávají přímo, cloudem spravovaná vydání se při přehrávání streamují a připnutá vydání jsou vždy na zařízení. Viz [Úložiště a offline](/cs/guide/storage).

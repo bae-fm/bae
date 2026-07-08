@@ -1,0 +1,44 @@
+---
+title: Začínáme
+description: Vytvořte knihovnu, importujte první album a přehrajte ho
+---
+
+bae je domov pro alba, která vlastníte. Knihovnu vytvoříte na desktopu a ta vás následuje na každé zařízení: synchronizuje se přes cloudové úložiště, které už máte, a je zašifrovaná tak, aby ji mohla číst jen vaše zařízení.
+
+Desktopové aplikace (macOS, Windows) jsou plný nástroj: vytvářejí knihovny, importují hudbu a upravují metadata. Telefonní aplikace (iOS, Android) jsou přehrávače: připojí se ke knihovně vytvořené desktopem a potom ji procházejí, stahují a přehrávají.
+
+## Vytvoření knihovny
+
+Otevřete bae na desktopu. Když na počítači není žádná knihovna, uvítací obrazovka nabídne tři volby:
+
+- **Create a new library**, pokud je to vaše první zařízení.
+- **Join a library**, pokud jiné zařízení už knihovnu má a jeho vlastník vás schválí. Viz [Zařízení a členové](/cs/guide/devices).
+- **Restore from cloud**, pokud je to vaše vlastní knihovna a máte její obnovovací kód. Viz [Zařízení a členové](/cs/guide/devices#obnovovací-kódy).
+
+Jednu vytvořte. Knihovna začíná místně: všechno žije na tomto počítači, není potřeba žádný účet a žádný cloud se nezapojí, dokud ho nepřipojíte.
+
+## Import prvního alba
+
+1. Přepněte do sekce **Import** v titulkovém pruhu.
+2. Přidejte složku s hudbou. Můžete ji vybrat, přetáhnout do okna nebo stisknout <kbd>⌘I</kbd>.
+3. bae složku prohledá a vypíše vydání, která v ní najde. Jedno vyberte.
+4. bae ho identifikuje proti MusicBrainz a Discogs a zobrazí shodu. Potvrďte lisování, vyberte obal a upravte případné detaily.
+5. Klikněte na **Import**.
+
+Vaše soubory se nepřesouvají, nekopírují ani nepřepisují. bae je katalogizuje tam, kde jsou. Celý postup včetně toho, co dělat, když identifikace potřebuje pomoc, je v [Importu](/cs/guide/importing).
+
+## Přehrání
+
+Zpět v sekci **Library** je album v mřížce. Klikněte na něj a spusťte přehrávání. Přehrávání používá vaše původní soubory v jejich původní kvalitě. [Přehrávání](/cs/guide/playback) popisuje frontu, náhodné a opakované přehrávání a detaily, které bae zachovává: pregapy CD, předěly stran vinylu a alba bez mezer.
+
+## Vezměte ji všude
+
+Když chcete knihovnu na víc než jednom zařízení, připojte cloudový domov: vlastní Google Drive, Dropbox, OneDrive, iCloud nebo libovolný bucket kompatibilní se S3. Všechno, co tam bae uloží, se před nahráním zašifruje; poskytovatel to ukládá, ale nemůže to číst.
+
+- [Synchronizace](/cs/guide/sync): připojte cloudový domov a zvolte, co uchovává.
+- [Zařízení a členové](/cs/guide/devices): přidejte telefon nebo další desktop.
+- [Úložiště a offline](/cs/guide/storage): ponechte hudbu na zařízení, nebo ji streamujte z cloudu a připněte, co potřebujete offline.
+
+## Kde věci žijí
+
+Každá knihovna drží svou databázi a nastavení na desktopu pod `~/.bae/libraries/`. Vaše audio zůstává tam, odkud jste ho importovali, pokud nepožádáte bae, aby ho spravovala ve vašem cloudu. Klíče a přihlašovací údaje žijí v klíčence operačního systému, ne v souborech.

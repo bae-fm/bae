@@ -1,0 +1,41 @@
+---
+title: Architektura
+description: Nativní aplikace na jednom jádru v Rustu, na coven
+---
+
+bae je jedno jádro v Rustu oblečené do čtyř nativních aplikací. Všechno, co definuje produkt, model knihovny, import, přehrávání, synchronizaci a šifrování, žije v Rustu a chová se stejně na každé platformě; každá aplikace je nad tím tenké nativní uživatelské rozhraní.
+
+## Vrstvy
+
+- **`bae-core`**: produkt. Model knihovny a metadat, postupy importu a identifikace, přehrávací engine FFmpeg, analýza hlasitosti, export a integrace s coven pod ním. Import a identifikace se kompilují jen na desktopu; mobilní sestavení jsou klienti synchronizace a přehrávání.
+- **[coven](https://coven.bae.fm)**: datová vrstva, samostatná knihovna. coven vlastní připojení SQLite, zachytává každou změnu, kterou bae uloží, a synchronizuje tyto změny end-to-end šifrovaně přes cloudové úložiště uživatele. Vlastní také úložiště blobů (audio bajty, obrázky), místní mezipaměť, klíče identit a členství. bae připíná přesnou revizi coven a vpisuje ji do každé binárky; tím určuje generaci kompatibility synchronizace mezi sestaveními.
+- **`bae-bridge`**: hranice UniFFI. Typy bridge jsou definovány jednou v Rustu a při sestavení generovány do Swiftu a Kotlinu.
+- **Aplikace**: SwiftUI na macOS a iOS, Jetpack Compose na Androidu a nativní aplikace pro Windows. Každá také implementuje části platformy, které jádro vyžaduje: zvukový výstup, rozpoznávání textu na obalech, mediální ovládání, přístup ke klíčence, hlášení pádů.
+
+Vedle aplikací: `bae-mcp` (server MCP), `bae-cli` (příkazový řádek) a `bae-automation` (sdílená nástrojová vrstva, kterou používají obě rozhraní).
+
+## Jedna knihovna na disku
+
+Knihovna žije v `~/.bae/libraries/<library-id>/` (na mobilu v datovém adresáři platformy):
+
+```
+~/.bae/libraries/<id>/
+  library.db        # SQLite: katalog, kredity, specifikace přehrávání
+  config.yaml       # místní nastavení zařízení, nikdy se nesynchronizuje
+  storage/
+    local/          # bloby vlastněné tímto zařízením (obaly, obrázky interpretů)
+    cache/          # zahoditelné kopie cloudových blobů
+    pinned/         # kopie připnuté pro offline, nikdy se nevyhazují
+```
+
+Databáze se otevírá jen přes coven, který vedle schématu bae přidává vlastní účetní tabulky (kurzory synchronizace, odchozí frontu, stav blobů) a spouští migrace bae. Audio soubory importované jako nespravované nejsou pod `~/.bae` vůbec: databáze na ně odkazuje cestami, odkud byly importovány.
+
+Tajemství v těchto souborech nikdy nežijí. Klíče identit, šifrovací klíč knihovny, cloudové přihlašovací údaje a API tokeny žijí v klíčence operačního systému (Keychain na platformách Apple, synchronizovaný přes iCloud Keychain; odpovídající mechanismy na ostatních platformách).
+
+## Edice
+
+Na každé platformě existují dvě edice určené při sestavení. **bae** kompiluje poskytovatele OAuth (Google Drive, Dropbox, OneDrive), CloudKit a telemetrii. **baeium** to všechno vynechává: jen úložiště kompatibilní se S3 a žádná telemetrie, nic proprietárního ve stromu závislostí. Edice používají stejný zdroj a stejné jádro; příznak při sestavení určuje seznam poskytovatelů a napojení diagnostiky.
+
+## Verzování
+
+Aplikace se verzují jako `MAJOR.MINOR` pro každou platformu. Major je éra kompatibility sdílená všemi aplikacemi: zařízení na stejném majoru mohou synchronizovat knihovnu. Zvyšuje se jen při změně formátu na drátu nebo na disku, nejčastěji připnuté revize coven. Minor počítá vydání pro každou aplikaci a mezi platformami se neporovnává.

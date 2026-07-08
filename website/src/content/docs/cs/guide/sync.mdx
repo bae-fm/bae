@@ -1,0 +1,43 @@
+---
+title: Synchronizace
+description: Celá knihovna na každém zařízení přes váš vlastní cloud
+---
+
+Synchronizace obvykle znamená server někoho jiného: účet, předplatné, firmu, která může číst vaši knihovnu. bae synchronizuje přes **váš** cloud, úložiště, které už máte, a neprovozuje žádný server. Vaše zařízení zapisují zašifrované změny do tohoto úložiště a čtou změny ostatních; poskytovatel drží bajty a nemůže je číst.
+
+Jedna knihovna, každé zařízení a jediný zapojený účet je ten, který už vlastníte.
+
+## Cloudový domov
+
+Cloudový domov knihovny je jedno místo ve vašem úložišti: složka v Google Drive, Dropboxu nebo OneDrivu, váš iCloud nebo libovolný bucket kompatibilní se S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Drží všechno, co knihovna synchronizuje: změny katalogu, obrázky a audio vydání, která necháte bae spravovat.
+
+Nastavíte ho v Settings pod Sync:
+
+1. Vyberte poskytovatele. Spotřebitelské cloudy se přihlašují vlastní přihlašovací stránkou poskytovatele; z vašeho účtu se neukládá nic kromě tokenů, které vydá. iCloud používá vaše Apple ID tak, jak je. S3 bere bucket, region, endpoint a klíče, ověřené před uložením.
+2. Zvolte, jak domov ukládá objekty (viz níže).
+3. bae začne synchronizovat.
+
+Knihovna bez cloudového domova je sama o sobě úplná. Místní režim je režim, ne omezení, a odpojení cloudového domova vás do něj vrátí.
+
+## Nečitelný nebo procházetelný
+
+Při nastavení volíte, co poskytovatel uvidí, a volba je pro daný domov trvalá:
+
+- **Opaque** (výchozí): každý objekt je před nahráním zašifrován na vašem zařízení a uložen pod bezvýznamným názvem. Poskytovatel nebo kdokoli, kdo se dostane do bucketu, vidí šifrový text. Tento režim popisuje stránka [Šifrování](/cs/reference/encryption) a je jediný, který podporuje přidávání dalších zařízení a členů.
+- **Browsable**: objekty jsou uloženy čitelně se skutečnými názvy souborů ve složkách pojmenovaných podle interpreta a alba. Bucket můžete otevřít libovolným nástrojem a soubory přímo kopírovat nebo přehrávat. Nic není zašifrované, takže jedinou ochranou je řízení přístupu samotného bucketu a domov nelze sdílet.
+
+## Co se synchronizuje
+
+- Katalog: alba, vydání, stopy, kredity, díla, identity, úpravy. Každé zařízení dostane všechno.
+- Obrázky: obaly a obrázky interpretů, načítané předem, aby se mřížky vykreslovaly všude.
+- Audio: jen u vydání, která jste zvolili ke správě v cloudu. Nespravovaná vydání zůstávají čistě místní, záznamy katalogu jsou i na ostatních zařízeních, ale bajty jen tam, kde jste je importovali.
+
+Stav na zařízení se nesynchronizuje: pozice přehrávání, hlasitost, fronta a nastavení zařízení zůstávají na zařízení.
+
+## Kdy se synchronizuje
+
+Synchronizace běží sama: po změnách, podle časovače a na vyžádání přes **Sync Now**. Úpravy dorazí na ostatní zařízení jako malé změny, za běžných podmínek o několik sekund později. Když dvě zařízení upravují zároveň, obě změny vyhrají tam, kde do sebe nenarážejí: bae slučuje souběžné úpravy pole po poli a smazané vydání zůstane smazané, i když bylo ve stejnou chvíli upraveno jinde. Nikdy vás nic nežádá o řešení konfliktu.
+
+## Když selže
+
+Selhání synchronizace knihovnu nepřeruší; dál místně procházíte, přehráváte a importujete, zatímco bae opakuje pokusy se zpomalováním. Stavový řádek ukazuje synchronizaci a čas poslední synchronizace; selhání zobrazí pruh s chybou a nahrávání lze pozastavit, zopakovat a prohlédnout ve [správci úložiště](/cs/guide/storage#správce-úložiště). Pokud vyprší přihlášení cloudového domova, bae vás požádá o opětovné připojení.

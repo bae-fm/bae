@@ -1,0 +1,39 @@
+---
+title: Vydání a metadata
+description: Knihovna přesná na vydání a jak ji udržet správně
+---
+
+Většina hudebních aplikací modeluje „album“: jeden název, jeden obal, jeden seznam stop. Skutečné sbírky tak nefungují. Můžete vlastnit původní CD, remaster a vinylové lisování stejné nahrávky a liší se seznamem stop, časy, obalem i kredity. bae modeluje **vydání**: každý import je konkrétní lisování a lisování stejného alba jsou seskupena dohromady.
+
+## Alba seskupují vydání
+
+V knihovně je album s několika lisováními jedna položka. Stránka alba zobrazuje výběr vydání; každé vydání drží vlastní seznam stop, obal, rok, vydavatelství, katalogové číslo a kredity. Jedno vydání je **primární**: to, které mřížka alb a přehrávání používají ve výchozím nastavení. Nastavte libovolné vydání jako primární z nabídky alba a kdykoli vyberte jiné vydání k poslechu; bae si volbu pamatuje pro každé album.
+
+## Co vydání ví
+
+Identifikovaná vydání nesou znalosti databází, ne jen názvy stop:
+
+- Detaily lisování: vydavatelství, katalogové číslo, čárový kód, země, formát, rok.
+- Kredity: interpreti, producenti, zvukaři, na úrovni vydání i stop.
+- Klasická struktura: skladatelé, díla a jejich části, propojené s jejich nahrávkami. Z toho se staví zobrazení skladatelů v knihovně; viz [Procházení a hledání](/cs/guide/browsing).
+- Identita: která položka MusicBrainz nebo Discogs to je a zda je shoda přesná, nebo přibližná.
+
+Ukládají se i surové zdrojové záznamy, aby šlo vydání později znovu vyložit bez dalšího dotazu do databází.
+
+## Úpravy
+
+Metadata jsou vaše a můžete je opravovat. **Edit metadata** na libovolném vydání otevře stejný formulář jako potvrzení importu: název alba a interpret, detaily lisování a název, interpret a číslování každé stopy. **Reset to source** vrátí to, co říkala databáze.
+
+Úpravy žijí jen v databázi bae. Vložené tagy vašich souborů se nikdy nepřepisují; soubory zůstávají bajt po bajtu tak, jak byly importovány.
+
+## Znovu identifikovat
+
+Pokud bylo vydání importováno jako neznámé, spárováno se špatným lisováním nebo se databáze od té doby zlepšila, **Re-identify** spustí identifikační postup znovu na existujícím vydání: stejné signály, stejné vyhledávací nástroje. Po uložení nové shody se bae zeptá, zda obnovit metadata z nového zdroje (a přepsat vaše úpravy), nebo ponechat to, co máte.
+
+## Obaly
+
+Každé vydání má jeden zobrazovaný obal. **Change cover** nabídne obrázky z databází a obrazové soubory, které přišly s vydáním. bae si drží vlastní kopii zvoleného obalu ve velikosti pro zobrazení, takže původní sken ve složce zůstane beze změn. Klepnutím na obal kdekoli otevřete celou galerii obrázků vydání.
+
+## Mazání
+
+Smazání vydání ho odstraní z knihovny a u spravovaných vydání také z cloudového domova. Soubory importované na místě jako nespravované se nikdy nemažou: bae na ně jen zapomene.

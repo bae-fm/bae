@@ -1,0 +1,25 @@
+---
+title: Export
+description: Získejte hudbu ven ve tvaru, který potřebujete
+---
+
+Žádné uzamčení do aplikace platí oběma směry: bae nemění vaše soubory při vstupu a nedrží je jako rukojmí při výstupu. Nespravovaná vydání jsou už teď soubory ve vašich složkách. Spravovaná vydání lze kdykoli vrátit zpět na místní disk, bajt po bajtu. A když potřebujete *jiný* tvar, kódování vhodné pro telefon nebo obraz připravený k vypálení, export ho vytvoří bez zásahu do originálů.
+
+## Dva exporty
+
+- **Export stopy**: klikněte pravým tlačítkem na stopu, **Save As**, vyberte formát, hotovo.
+- **Export vydání**: z nabídky alba nebo ze správce úložiště exportuje celé vydání do složky. Běží ve frontě s průběhem, pozastavením a opakováním.
+
+Původní soubory se exportují tak, jak jsou. Všechno ostatní se při výstupu kóduje.
+
+## Předvolby
+
+Exportní formáty jsou předvolby, které jednou definujete v Settings: FLAC, MP3, Opus, WAV nebo AIFF, s parametry kodeku (bitová hloubka pro bezeztrátové formáty, datový tok pro ztrátové) a šablonou názvu souboru postavenou z tokenů jako title, artist, album, year a track number. Nastavte výchozí předvolbu pro stopy a jednu pro vydání a zvolte, zda se exporty vydání vždy ptají na cíl, nebo vždy používají pevnou složku.
+
+## Pregapy v exportech
+
+Ripy CD s pregapy při exportu kladou skutečnou otázku: kam patří skrytý zvuk? Každá předvolba vybírá pravidlo:
+
+- **Připojit k předchozí stopě**, běžná konvence, s volbou, zda se zvuk skrytý před první stopou ponechá na začátku první stopy, nebo zahodí.
+- **Vyloučit** pregapy celé: čisté hranice stop, skrytý zvuk vynechán.
+- **Jeden soubor s CUE**: disk jako jeden zvukový soubor plus CUE sheet, s přesným zachováním původního rozložení.

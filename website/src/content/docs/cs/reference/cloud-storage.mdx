@@ -1,0 +1,37 @@
+---
+title: Cloudové úložiště
+description: Poskytovatelé, ověřování a tvar cloudového domova
+---
+
+Cloudový domov je jedno místo v úložišti, které už uživatel vlastní. Každý poskytovatel je ovládán přes stejné rozhraní úložiště v [coven](https://coven.bae.fm); liší se ověřování a způsob, jakým se druhému zařízení udělí přístup.
+
+## Poskytovatelé
+
+| Poskytovatel | Ověření | Přístup pro nové zařízení |
+|---|---|---|
+| Kompatibilní se S3 | Access key + secret | Přihlašovací údaje vložené v pozvánce |
+| Google Drive | OAuth (PKCE) | Složka sdílená s účtem připojujícího se zařízení |
+| Dropbox | OAuth (PKCE) | Složka sdílená s účtem připojujícího se zařízení |
+| OneDrive | OAuth (PKCE) | Složka sdílená s účtem připojujícího se zařízení |
+| iCloud (CloudKit) | Apple ID, bez přihlášení | Sdílení CloudKit přijaté připojujícím se zařízením |
+
+Kompatibilita se S3 zahrnuje AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO a cokoli dalšího, co mluví tímto API; bucket, region, endpoint a předpona klíčů jsou nastavitelné a bucket se vyzkouší před uložením konfigurace, takže překlep selže při nastavení, ne při první synchronizaci. Poskytovatelé OAuth existují jen v úplné edici **bae**; sestavení **baeium** je vynechávají.
+
+## OAuth
+
+Přihlášení je tok autorizačního kódu s PKCE jako veřejný klient. Na desktopu přesměrování dorazí na server na loopback adrese navázaný na místní port pro jediné zpětné volání; na mobilu aplikace místo toho zachytí přesměrování vlastního schématu. bae žádá nejužší rozsah, který poskytovatel pro danou práci nabízí; na Google Drive je to přístup jen k souborům, které aplikace sama vytvoří. Tokeny jsou uloženy v klíčence operačního systému, obnovují se obnovovacím grantem poskytovatele a odmítnuté obnovení se zobrazí jako výzva k opětovnému připojení místo tiché smyčky pokusů.
+
+CloudKit nepotřebuje žádný tok: ovladač CloudKit platformy, implementovaný v aplikaci a předaný jádru, funguje jako přihlášené Apple ID.
+
+## Rozložení domova
+
+Uvnitř domova coven rozkládá proudy changesetů pro každé zařízení, generace snapshotů, záznamy členství a jmenné prostory blobů. bae přidává tři jmenné prostory blobů: `release_files`, `covers` a `artist_images`.
+
+Klíčování objektů závisí na režimu úložiště domova, pevně daném při vytvoření:
+
+- **Opaque**: objekty jsou zašifrované a uložené pod klíči odvozenými z obsahu, které nic neprozrazují. Je to režim plné důvěry v kryptografii; viz [Šifrování](/cs/reference/encryption).
+- **Browsable**: objekty jsou prostý text v čitelných cestách zapsaných pro každý blob při nahrání: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Bucket zároveň funguje jako použitelný strom souborů; výměnou za to chybí šifrování a členství, takže procházetelné domovy nelze sdílet s dalšími lidmi.
+
+## Chování ve skutečných sítích
+
+Čtení pro přehrávání používá rozsahy: přehrávač streamuje okna bajtů, která potřebuje, ne celé soubory. Nahrávání nad velikostním prahem používá multipart tam, kde ho poskytovatel podporuje. Omezení rychlosti a dočasné chyby poskytovatele se opakují s exponenciálním zpomalováním a respektují `retry-after`, pokud je poskytnuto; vypršené tokeny OAuth se obnovují na místě. Odchozí fronta synchronizace přežije restart: nahrávání přerušené ukončením aplikace pokračuje místo restartu.

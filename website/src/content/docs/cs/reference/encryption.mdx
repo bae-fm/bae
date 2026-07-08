@@ -1,0 +1,28 @@
+---
+title: Šifrování
+description: Co je klíč knihovny, kde žije a jaký šifrový text drží poskytovatel
+---
+
+Všechno, co bae ukládá do neprůhledného cloudového domova, je zašifrováno, než opustí zařízení. bae neimplementuje vlastní kryptografii: celé schéma patří [coven](https://coven.bae.fm) a tato stránka popisuje, jak ho bae používá. Procházetelné domovy se z toho všeho odhlašují; nic níže se jich netýká.
+
+## Klíč knihovny
+
+Neprůhledná knihovna má jedno kořenové tajemství: náhodný 256bitový klíč vytvořený při založení domova. Žije v klíčence operačního systému, nikdy v souboru; na platformách Apple se položka klíčenky synchronizuje přes iCloud Keychain. Konfigurace bae ukládá jen otisk klíče, dostatečný k rozlišení špatného klíče od správného při odemčení, aniž by držela tajemství.
+
+Klíč putuje mezi zařízeními dvěma způsoby, oba popisuje [Identita a členství](/cs/reference/membership): zapečetěný pro veřejný klíč schváleného zařízení během pozvánky a nesený v obnovovacím kódu.
+
+## Generace
+
+Klíč knihovny je ve skutečnosti klíčenka číslovaných generací. Odebrání člena přidá novou generaci, kterou odebraný člen nikdy nedostane: všechno zapsané potom používá novou generaci a je pro něj nečitelné, zatímco zbývající členové drží každou generaci a mohou číst celou historii. Každý zapečetěný objekt uvádí v čitelné podobě, která generace ho otevře.
+
+## Co se pečetí
+
+Každý objekt v domově: changesety, snapshoty, audio bloby, obrázky, záznamy členství, řídicí objekty. Objekty se pečetí pomocí XChaCha20-Poly1305 v blocích po 64 KB, každý blok je ověřený a svázaný se svým kontextem: zapečetěný objekt se dešifruje jen jako objekt, kterým měl být, pro tuto knihovnu, s tímto klíčem. Díky blokům funguje streamování, přehrávač může dešifrovat přesně ta bajtová rozmezí, která načítá.
+
+## Co vidí poskytovatel
+
+Počet objektů, velikosti objektů, časy nahrávání a vzorce přístupu. Ne názvy, ne metadata, ne audio, ne obrázky, ne členství. Neexistuje obnova na straně serveru: uživatel, který ztratí každé zařízení i každou kopii klíče, ztratil šifrový text knihovny navždy, což odpovídá návrhu.
+
+## Odemčení a zamčení
+
+Otevření knihovny čte klíč z klíčenky. Pokud knihovna klíč očekává a klíčenka ho nemá, bae považuje knihovnu za zamčenou: před otevřením si vyžádá klíč, ověří zadanou hodnotu proti uloženému otisku a teprve pak ji uloží zpět do klíčenky. Zamčení knihovny záměrně odstraní klíč z klíčenky; v cloudovém domově nelze nic číst ani zapisovat, dokud ho někdo znovu nezadá.

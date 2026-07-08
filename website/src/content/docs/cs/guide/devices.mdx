@@ -1,0 +1,43 @@
+---
+title: Zařízení a členové
+description: Přidejte telefon, schvalte zařízení, obnovte knihovnu
+---
+
+V bae neexistuje účet. Identitou zařízení je pár klíčů, který si zařízení samo vygeneruje a uchová v klíčence operačního systému; knihovna rozpoznává zařízení podle jejich klíčů. Přidání zařízení znamená, že za nové zařízení kryptograficky ručí existující zařízení, bez prostředníka.
+
+Dvoje dveře pro dvě různé situace:
+
+- **Připojení**: nové zařízení schválí zařízení, které knihovnu už má. Použijte to k přidání telefonu nebo zařízení jiné osoby.
+- **Obnovení**: vaše vlastní nové nebo přeinstalované zařízení obnoví knihovnu přímo z cloudového domova pomocí obnovovacího kódu. Bez schvalovatele.
+
+## Přidání zařízení
+
+Na novém zařízení zvolte **Join a library**. Zobrazí krátký kód, také jako QR: žádost o připojení, která nese veřejný klíč zařízení a otisk, který můžete přečíst nahlas.
+
+Na zařízení, které knihovnu už má, otevře vlastník Settings, Devices, **Add a device** a tuto žádost naskenuje nebo vloží. bae zobrazí otisk připojovaného zařízení; potvrďte, že odpovídá tomu, co zobrazuje nové zařízení. Schválení vytvoří zvací kód: předejte ho novému zařízení (naskenujte QR nebo ho vložte) a nové zařízení stáhne knihovnu a začne se synchronizovat.
+
+Za tímto postupem: schvalující zařízení udělí nováčkovi přístup ke cloudovému domovu (spotřebitelské cloudy sdílí složku s účtem nováčka; pozvánky S3 obsahují přihlašovací údaje) a zapečetí šifrovací klíč knihovny pro veřejný klíč nováčka. Pozvánka je pro jakékoli jiné zařízení nepoužitelná. Detaily jsou v [Identitě a členství](/cs/reference/membership).
+
+## Členové a role
+
+Settings, Devices uvádí každého člena: otisk, roli a označení, které zařízení je toto. Zakládající zařízení je **owner**; zařízení, která schválí, se připojí jako **members**. Obě role knihovnu čtou a zapisují do ní; jen vlastníci schvalují a odebírají zařízení.
+
+## Odebrání zařízení
+
+Vlastníci mohou odebrat libovolného člena. Odebrání nezavře jen dveře: šifrovací klíč knihovny se obmění a odebrané zařízení nový klíč nikdy nedostane. Co už zkopírovalo, to mu zůstane, data nejde vzít zpět, ale všechno, co knihovna od té chvíle zapíše, je pro něj nečitelné.
+
+## Obnovovací kódy
+
+Obnovovací kód je bearer tajemství pro vaši vlastní knihovnu: souřadnice cloudového domova plus šifrovací klíč v jednom řetězci. **Show recovery code** v Settings ho zobrazí; uložte ho na bezpečné místo, třeba do správce hesel. Na novém zařízení volba **Restore from cloud** s tímto kódem obnoví knihovnu bez schvalovatele.
+
+Na platformách Apple se kód také automaticky uchovává v iCloud Keychain, takže nový Mac nebo iPhone přihlášený k vašemu Apple ID může obnovit knihovnu jedním klepnutím.
+
+Kdokoli, kdo kód drží, drží knihovnu, proto s ním zacházejte jako s klíčem, kterým je.
+
+## Uzamčení
+
+**Lock Library** odstraní šifrovací klíč z klíčenky zařízení. Knihovna zůstane na disku, nečitelná, dokud někdo klíč znovu nezadá; bae ho před přijetím ověří proti uloženému otisku. Použijte to pro notebook, který nosíte mimo domov.
+
+## Na telefonu
+
+iOS a Android se připojují a obnovují přesně tímto způsobem; je to celé jejich úvodní nastavení. Telefon může také odebrat svou kopii knihovny (Settings, remove from this device), což smaže místní soubory a v cloudu se ničeho nedotkne.

@@ -1,0 +1,55 @@
+---
+title: Instalace
+description: Stáhněte a nainstalujte bae nebo baeium na každé platformě
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## Dvě edice
+
+Každá platforma se dodává ve dvou edicích postavených ze stejného zdroje:
+
+- **bae**, úplná aplikace: synchronizace přes S3, Google Drive, Dropbox, OneDrive a iCloud.
+- **baeium**, bez proprietárních částí: jen úložiště kompatibilní se S3, žádní poskytovatelé OAuth, žádný iCloud/CloudKit, žádná telemetrie.
+
+Instalují se vedle sebe, každá s vlastní knihovnou a vlastními klíči synchronizovanými přes iCloud Keychain. Níže vyberte tu, kterou chcete.
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">Stáhnout bae pro macOS</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">Stáhnout baeium pro macOS</DownloadButton>
+
+1. Otevřete stažený `.dmg`
+2. Přetáhněte aplikaci do složky Applications
+3. Otevřete ji z Applications
+
+Obě edice se automaticky aktualizují přes vlastní kanál Sparkle.
+
+## iOS
+
+Sestavení pro iOS jsou **nepodepsané soubory `.ipa` pro ruční instalaci mimo App Store**. Nainstalujte je pomocí [AltStore](https://altstore.io) nebo [Sideloadly](https://sideloadly.io), případně je znovu podepište v Xcode vlastním Apple ID (bezplatné Apple ID funguje pro baeium). Distribuce přes App Store zatím není nastavená.
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">Stáhnout bae pro iOS</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">Stáhnout baeium pro iOS</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">Stáhnout bae pro Android</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">Stáhnout baeium pro Android</DownloadButton>
+
+Po výzvě povolte instalaci z prohlížeče nebo souborů a pak otevřete `.apk`.
+
+## Windows
+
+Sestavení pro Windows jsou **nepodepsané** zipy aplikace bez instalačního balíčku. Rozbalte je a spusťte `bae.exe` / `baeium.exe`. SmartScreen může při prvním spuštění varovat.
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">Stáhnout bae pro Windows</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">Stáhnout baeium pro Windows</DownloadButton>
+
+## Linux
+
+Již brzy.
+
+## Sestavení ze zdroje
+
+baeium ke sestavení nepotřebuje nic proprietárního. Pokyny pro vlastní sestavení pro jednotlivé platformy, včetně iOS s bezplatným vývojářským podpisem, najdete v [README repozitáře](https://github.com/bae-fm/bae#building-baeium-yourself).

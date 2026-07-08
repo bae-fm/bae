@@ -1,0 +1,64 @@
+---
+title: Import
+description: Spárujte své složky se skutečnými vydáními
+---
+
+Složka ripů o sobě ví skoro nic. Vydání, ze kterého pochází, lisování, vydavatelství, kredity, kde stopa 12 skutečně končí: to všechno žije v databázích jako MusicBrainz a Discogs, ne v názvech vašich souborů. Import je způsob, jak bae propojí obojí: ukážete jí hudbu, ona zjistí, které vydání každá složka je, a knihovna složku zapíše jako toto vydání.
+
+Import probíhá na desktopu (macOS, Windows). Vaše soubory se čtou, nikdy nemění: bae nic nepřesouvá, nepřejmenovává, nepřepisuje tagy ani znovu nekóduje. Kde soubory žijí po importu, popisuje [Úložiště a offline](/cs/guide/storage).
+
+## Sledované složky
+
+Přepněte do sekce **Import** a přidejte složku: vyberte ji, přetáhněte ji do okna nebo stiskněte <kbd>⌘I</kbd>. bae ji od té chvíle sleduje. Nová hudba vložená do složky se sama objeví jako nový kandidát; nemusíte ručně spouštět nové skenování. Složky, které se ještě stahují, se ignorují, dokud nejsou hotové.
+
+Sken rozpoznává vydání ve tvarech, jaké ripy skutečně mívají:
+
+| Rozložení | Jak vypadá |
+|--------|-------------------|
+| Soubor na stopu | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE + obraz | `album.cue` + `album.flac`, jeden soubor pro celý disk |
+| Více disků | podsložky `CD1/`, `CD2/`, uvnitř libovolný z těchto tvarů |
+| Kolekce | složka složek, každá jako vlastní vydání |
+
+bae importuje formáty, které přehrává: FLAC, MP3, APE, ALAC a AAC v `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack a DSD (`.dsf`/`.dff`). Obrázky a dokumenty (CUE sheety, logy ripu, textové soubory) ve složce rozpozná a ponechá u vydání.
+
+## Identifikace vydání
+
+Vyberte kandidáta a bae ho začne identifikovat. Místo hádání z tagů přečte důkazy ve složce a každý z nich vyhledá:
+
+- **Disc ID.** Otisk přesného rozložení stop na CD, spočítaný z logu ripu nebo z CUE sheetu. Když se shoduje, identifikuje přesnou edici CD.
+- **Čárový kód.** Přečtený ze skenů obalu ve složce pomocí rozpoznávání textu nebo z CUE sheetu.
+- **Katalogová čísla a text.** Katalogová čísla nalezená na obrázcích a v názvech souborů a složek, použitá ke zúžení výsledků.
+
+Signály se vyhledávají proti MusicBrainz a Discogs současně a výsledky se křížově kontrolují. Každý signál se objeví jako štítek nad výsledky: vidíte, co se našlo, odkud to pochází (najetím zobrazíte původ: disc TOC, CUE sheet, sken obalu, název složky) a můžete jednotlivé signály vypnout, pokud některý zavádí.
+
+Tři výsledky:
+
+- **Nalezeno.** Důkazy se shodují na jedné skupině vydání. Přesné lisování vyberete z jejího seznamu.
+- **Konflikt.** Dva signály ukazují na různá vydání, třeba když se Disc ID a čárový kód neshodnou. bae zobrazí obě strany a vy zvolíte, které věřit, nebo signál ignorujete.
+- **Nic nenalezeno.** Hledejte ručně: interpret a album, katalogové číslo nebo čárový kód, proti jedné nebo druhé databázi. Text rozpoznaný z obrázků se nabízí jako automatické doplňování.
+
+Můžete také **skip identifying** a importovat jako neznámé vydání. bae pak použije vložené tagy vašich souborů jako zdroj názvů a můžete znovu identifikovat později, až vydání bude v databázi nebo budete mít lepší důkazy.
+
+## Přesná nebo přibližná shoda
+
+Když vyberete shodu, bae ji porovná s vašimi soubory a upozorní na odlišný počet stop. Potom určíte, jaká shoda to je:
+
+- **Exact**: vaše soubory jsou toto lisování.
+- **Jen metadata**: správné album, ale ne nutně přesně toto lisování. bae použije metadata a zapamatuje si, že lisování je přibližné.
+
+Pokud už vydání ve vaší knihovně je, nebo je tam jiné lisování stejného alba, bae vás před importem duplicity upozorní.
+
+## Potvrzení a import
+
+Panel potvrzení ukáže všechno, co import zapíše:
+
+- **Obal.** Vybraný z obrázků v databázích, obrázků ve vaší složce nebo obrázků vložených v souborech. Později ho můžete změnit.
+- **Metadata.** Album, interpret, rok, vydavatelství, katalogové číslo, země, čárový kód a každá stopa: vše je upravitelné přímo tady, než se cokoli uloží.
+- **Úložiště.** Pokud je připojený cloudový domov, zvolte, zda má bae spravovat soubory ve vašem cloudu a zda má také ponechat místní kopii. Viz [Úložiště a offline](/cs/guide/storage).
+
+Import běží na pozadí: bae ověří, že každou stopu lze bez chyby dekódovat, změří hlasitost alba a každé stopy, uloží vydání a u spravovaných importů spustí nahrávání. Seznam kandidátů přejde na další složku a vydání lze okamžitě přehrát.
+
+## Zdroje dat
+
+**MusicBrainz** nepotřebuje účet ani klíč. **Discogs** vyžaduje váš vlastní bezplatný API token; vložte ho v Settings a bae vám řekne, když přestane fungovat. Bez tokenu nejsou vyhledávání v Discogs a metadata pocházející z Discogs dostupná, všechno ostatní funguje. Obě služby mají omezení rychlosti; bae dávkuje požadavky tak, aby zůstala uvnitř limitů.
