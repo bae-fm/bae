@@ -6,6 +6,7 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
+import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeWorkDetail
@@ -28,6 +29,10 @@ class Library(
     ): List<BridgeAlbum> = handle.getAlbumPage(sortCriteria, offset, limit)
 
     suspend fun albumDetail(albumId: String): BridgeAlbumDetail = handle.getAlbumDetail(albumId)
+
+    /** Fat release detail (tracks grouped by side) by release id, or null when
+     *  no such release exists. */
+    suspend fun releaseDetail(releaseId: String): BridgeRelease? = handle.findReleaseDetail(releaseId)
 
     suspend fun composerCount(): ULong = handle.getComposerCount()
 

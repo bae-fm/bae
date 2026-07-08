@@ -174,6 +174,12 @@ private fun availableCommands(
             .add(Player.COMMAND_STOP)
             .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
             .add(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
+            // Lets a browse client (Android Auto / a head unit) play a tapped
+            // library item: its play request resolves to a single-item
+            // setMediaItem, which routes to handleSetMediaItems below. The
+            // core-driven queue isn't editable through the raw media-item API, so
+            // COMMAND_CHANGE_MEDIA_ITEMS (add/remove/move) stays unavailable.
+            .add(Player.COMMAND_SET_MEDIA_ITEM)
             .add(Player.COMMAND_SET_REPEAT_MODE)
             .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
             .add(Player.COMMAND_GET_TIMELINE)
@@ -1128,6 +1134,29 @@ class BaeCorePlayer(
                     logger.warning("handleSeek ignored: no duration for in-track seek")
                 }
             }
+        }
+        return Futures.immediateVoidFuture()
+    }
+
+    /**
+     * Play a library item chosen from the browse tree (Android Auto, a Bluetooth
+     * head unit). The item carries a browse media id — not audio this player
+     * decodes — so resolve the tapped id to a play-by-id command and forward it
+     * to core, exactly as the in-app album detail plays a track. No local state
+     * change: the resulting `Playback*` events update [State], like every other
+     * transport command here. Reached via COMMAND_SET_MEDIA_ITEM (a browse play
+     * resolves to a single-item setMediaItem).
+     */
+    override fun handleSetMediaItems(
+        mediaItems: MutableList<MediaItem>,
+        startIndex: Int,
+        startPositionMs: Long,
+    ): ListenableFuture<*> {
+        val item = mediaItems.getOrNull(startIndex) ?: mediaItems.firstOrNull()
+        val mediaId = item?.mediaId
+        when (val browseId = mediaId?.let { BrowseId.parse(it) }) {
+            is BrowseId.Track -> appHandle.playRelease(browseId.releaseId, browseId.index.toUInt(), false)
+            else -> logger.warning("handleSetMediaItems ignored non-track media id: $mediaId")
         }
         return Futures.immediateVoidFuture()
     }

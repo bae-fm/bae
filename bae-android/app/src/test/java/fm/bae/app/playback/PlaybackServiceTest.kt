@@ -24,7 +24,16 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.BridgeAlbum
+import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeComposerDetail
+import uniffi.bae_bridge.BridgeComposerSortCriterion
+import uniffi.bae_bridge.BridgeComposerSummary
+import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeSearchResults
+import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeUiEvent
+import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.UiEventCallback
 
@@ -130,9 +139,24 @@ class PlaybackServiceTest {
 
 internal class FakeAppHandle(
     private val imageBytes: Map<String, ByteArray> = emptyMap(),
+    private val albumCount: ULong = 0uL,
+    private val composerCount: ULong = 0uL,
+    private val albumPages: (offset: ULong, limit: ULong) -> List<BridgeAlbum> = { _, _ -> emptyList() },
+    private val composerPages: (offset: ULong, limit: ULong) -> List<BridgeComposerSummary> = { _, _ -> emptyList() },
+    private val albumDetails: Map<String, BridgeAlbumDetail> = emptyMap(),
+    private val composerDetails: Map<String, BridgeComposerDetail> = emptyMap(),
+    private val workDetails: Map<String, BridgeWorkDetail> = emptyMap(),
+    private val releaseDetails: Map<String, BridgeRelease> = emptyMap(),
+    private val searchResults: (query: String) -> BridgeSearchResults = { BridgeFixtures.searchResults() },
 ) : AppHandle(NoHandle) {
     var pauseCount = 0
     var resumeCount = 0
+
+    /** Offset/limit each `getAlbumPage` was called with — lets browse-paging
+     *  tests assert the requested window reached the bridge unaltered. */
+    val albumPageWindows = mutableListOf<Pair<ULong, ULong>>()
+    val composerPageWindows = mutableListOf<Pair<ULong, ULong>>()
+    val playReleaseCalls = mutableListOf<Triple<String, UInt?, Boolean>>()
 
     override fun pause() {
         pauseCount++
@@ -149,4 +173,45 @@ internal class FakeAppHandle(
     override fun triggerSync() {}
 
     override suspend fun fetchCoverImageBytes(releaseId: String): ByteArray? = imageBytes[releaseId]
+
+    override suspend fun getAlbumCount(): ULong = albumCount
+
+    override suspend fun getComposerCount(): ULong = composerCount
+
+    override suspend fun getAlbumPage(
+        sortCriteria: List<BridgeSortCriterion>,
+        offset: ULong,
+        limit: ULong,
+    ): List<BridgeAlbum> {
+        albumPageWindows.add(offset to limit)
+        return albumPages(offset, limit)
+    }
+
+    override suspend fun getComposerPage(
+        sortCriterion: BridgeComposerSortCriterion,
+        offset: ULong,
+        limit: ULong,
+    ): List<BridgeComposerSummary> {
+        composerPageWindows.add(offset to limit)
+        return composerPages(offset, limit)
+    }
+
+    override suspend fun getAlbumDetail(albumId: String): BridgeAlbumDetail =
+        checkNotNull(albumDetails[albumId]) { "no album detail fixture for $albumId" }
+
+    override suspend fun getComposerDetail(artistId: String): BridgeComposerDetail? = composerDetails[artistId]
+
+    override suspend fun getWorkDetail(workId: String): BridgeWorkDetail? = workDetails[workId]
+
+    override suspend fun findReleaseDetail(releaseId: String): BridgeRelease? = releaseDetails[releaseId]
+
+    override suspend fun searchLibrary(query: String): BridgeSearchResults = searchResults(query)
+
+    override fun playRelease(
+        releaseId: String,
+        startTrackIndex: UInt?,
+        shuffle: Boolean,
+    ) {
+        playReleaseCalls.add(Triple(releaseId, startTrackIndex, shuffle))
+    }
 }

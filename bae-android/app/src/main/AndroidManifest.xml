@@ -26,6 +26,14 @@
             android:name="io.sentry.auto-init"
             android:value="false" />
 
+        <!-- Declares the app as an Android Auto media app so head units surface
+             the browsable library. `automotive_app_desc` names the "media" use;
+             the PlaybackService's MediaBrowserService intent filter is what Auto
+             discovers and binds to. -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -42,8 +50,28 @@
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
+                <action android:name="androidx.media3.session.MediaLibraryService" />
                 <action android:name="androidx.media3.session.MediaSessionService" />
+                <!-- The legacy browse action Android Auto and other
+                     MediaBrowser clients discover the service by; Media3's
+                     MediaLibraryService implements the legacy browser binder. -->
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+            <!-- Voice search on Android Auto ("play X in bae"): the session
+                 resolves the spoken query to a playable track (see
+                 BaeLibrarySessionCallback.onAddMediaItems). -->
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
             </intent-filter>
         </service>
+
+        <!-- Serves cover bytes to browse clients over content:// URIs (see
+             ArtworkContentProvider). Not exported: Media3 grants the connected
+             controller per-URI read access, so no other app can read it. -->
+        <provider
+            android:name=".playback.ArtworkContentProvider"
+            android:authorities="${applicationId}.artwork"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>
