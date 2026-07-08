@@ -170,4 +170,16 @@
     <string name="unlock_key_label">എൻക്രിപ്ഷൻ കീ (64 ഹെക്സ് അക്ഷരങ്ങൾ)</string>
     <string name="unlock_failed">അൺലോക്ക് · പിശക്</string>
     <string name="unlock_action">അൺലോക്ക്</string>
+    <!-- Downloads -->
+    <string name="downloads">ഡൗൺലോഡുകൾ</string>
+    <string name="download">ഡൗൺലോഡ്</string>
+    <string name="download_remove">ഡൗൺലോഡ് നീക്കം ചെയ്യുക</string>
+    <string name="download_downloaded">ഡൗൺലോഡ് ചെയ്തു</string>
+    <string name="download_waiting">ഡൗൺലോഡിനായി കാത്തിരിക്കുന്നു</string>
+    <string name="resume">തുടരുക</string>
+    <string name="downloads_empty">ഡൗൺലോഡുകൾ ഇല്ല</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d ഫയൽ</item>
+        <item quantity="other">%1$d ഫയലുകൾ</item>
+    </plurals>
 </resources>

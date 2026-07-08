@@ -139,6 +139,7 @@ fun AlbumDetailScreen(
             } else {
                 val release = loaded.releases.firstOrNull { it.id == selectedReleaseId }
                 AlbumDetailContent(
+                    session = session,
                     detail = loaded,
                     selectedRelease = release,
                     cover = release?.cover,
@@ -266,6 +267,7 @@ private fun buildAlbumDetailCallbacks(
 
 @Composable
 private fun AlbumDetailContent(
+    session: OpenLibrary,
     detail: BridgeAlbumDetail,
     selectedRelease: BridgeRelease?,
     cover: BridgeImageRef?,
@@ -318,6 +320,7 @@ private fun AlbumDetailContent(
         }
 
         if (selectedRelease != null) {
+            item { ReleaseDownloadControl(session = session, release = selectedRelease) }
             item { AlbumActionButtons(callbacks) }
             albumTrackGroups(selectedRelease, isCompilation, playback, callbacks, context)
         }

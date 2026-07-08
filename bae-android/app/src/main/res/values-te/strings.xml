@@ -170,4 +170,16 @@
     <string name="unlock_key_label">గుప్తీకరణ కీ (64 హెక్స్ అక్షరాలు)</string>
     <string name="unlock_failed">అన్‌లాక్ · లోపం</string>
     <string name="unlock_action">అన్‌లాక్</string>
+    <!-- Downloads -->
+    <string name="downloads">డౌన్‌లోడ్‌లు</string>
+    <string name="download">డౌన్‌లోడ్ చేయండి</string>
+    <string name="download_remove">డౌన్‌లోడ్‌ను తీసివేయండి</string>
+    <string name="download_downloaded">డౌన్‌లోడ్ అయింది</string>
+    <string name="download_waiting">డౌన్‌లోడ్ కోసం వేచి ఉంది</string>
+    <string name="resume">పునఃప్రారంభించండి</string>
+    <string name="downloads_empty">డౌన్‌లోడ్‌లు లేవు</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d ఫైల్</item>
+        <item quantity="other">%1$d ఫైళ్లు</item>
+    </plurals>
 </resources>

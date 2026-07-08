@@ -170,4 +170,16 @@
     <string name="unlock_key_label">ಎನ್‌ಕ್ರಿಪ್ಷನ್ ಕೀಲಿ (64 ಹೆಕ್ಸ್ ಅಕ್ಷರಗಳು)</string>
     <string name="unlock_failed">ಅನ್‌ಲಾಕ್ · ದೋಷ</string>
     <string name="unlock_action">ಅನ್‌ಲಾಕ್</string>
+    <!-- Downloads -->
+    <string name="downloads">ಡೌನ್‌ಲೋಡ್‌ಗಳು</string>
+    <string name="download">ಡೌನ್‌ಲೋಡ್</string>
+    <string name="download_remove">ಡೌನ್‌ಲೋಡ್ ತೆಗೆದುಹಾಕಿ</string>
+    <string name="download_downloaded">ಡೌನ್‌ಲೋಡ್ ಆಗಿದೆ</string>
+    <string name="download_waiting">ಡೌನ್‌ಲೋಡ್‌ಗಾಗಿ ಕಾಯುತ್ತಿದೆ</string>
+    <string name="resume">ಮುಂದುವರಿಸಿ</string>
+    <string name="downloads_empty">ಯಾವುದೇ ಡೌನ್‌ಲೋಡ್‌ಗಳಿಲ್ಲ</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d ಫೈಲ್</item>
+        <item quantity="other">%1$d ಫೈಲ್‌ಗಳು</item>
+    </plurals>
 </resources>

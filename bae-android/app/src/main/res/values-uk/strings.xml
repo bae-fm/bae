@@ -170,4 +170,18 @@
     <string name="unlock_key_label">Ключ шифрування (64 шістнадцяткові символи)</string>
     <string name="unlock_failed">Не вдалося розблокувати</string>
     <string name="unlock_action">Розблокувати</string>
+    <!-- Downloads -->
+    <string name="downloads">Завантаження</string>
+    <string name="download">Завантажити</string>
+    <string name="download_remove">Видалити завантаження</string>
+    <string name="download_downloaded">Завантажено</string>
+    <string name="download_waiting">Очікує завантаження</string>
+    <string name="resume">Відновити</string>
+    <string name="downloads_empty">Немає завантажень</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d файл</item>
+        <item quantity="few">%1$d файли</item>
+        <item quantity="many">%1$d файлів</item>
+        <item quantity="other">%1$d файлу</item>
+    </plurals>
 </resources>

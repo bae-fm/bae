@@ -170,4 +170,16 @@
     <string name="unlock_key_label">Versleuteling (64 hex)</string>
     <string name="unlock_failed">Ontgrendelen · Fout</string>
     <string name="unlock_action">Ontgrendelen</string>
+    <!-- Downloads -->
+    <string name="downloads">Downloads</string>
+    <string name="download">Downloaden</string>
+    <string name="download_remove">Download verwijderen</string>
+    <string name="download_downloaded">Gedownload</string>
+    <string name="download_waiting">Wacht op download</string>
+    <string name="resume">Hervatten</string>
+    <string name="downloads_empty">Geen downloads</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d bestand</item>
+        <item quantity="other">%1$d bestanden</item>
+    </plurals>
 </resources>

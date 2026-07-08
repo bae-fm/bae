@@ -170,4 +170,15 @@
     <string name="unlock_key_label">คีย์เข้ารหัส (เลขฐานสิบหก 64 อักขระ)</string>
     <string name="unlock_failed">ปลดล็อก · ข้อผิดพลาด</string>
     <string name="unlock_action">ปลดล็อก</string>
+    <!-- Downloads -->
+    <string name="downloads">การดาวน์โหลด</string>
+    <string name="download">ดาวน์โหลด</string>
+    <string name="download_remove">ลบการดาวน์โหลด</string>
+    <string name="download_downloaded">ดาวน์โหลดแล้ว</string>
+    <string name="download_waiting">รอดาวน์โหลด</string>
+    <string name="resume">ดำเนินการต่อ</string>
+    <string name="downloads_empty">ไม่มีการดาวน์โหลด</string>
+    <plurals name="download_file_count">
+        <item quantity="other">%1$d ไฟล์</item>
+    </plurals>
 </resources>

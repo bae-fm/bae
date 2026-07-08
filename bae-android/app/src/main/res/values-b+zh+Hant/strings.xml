@@ -170,4 +170,15 @@
     <string name="unlock_key_label">加密金鑰 (64 個十六進位字元)</string>
     <string name="unlock_failed">解鎖 · 錯誤</string>
     <string name="unlock_action">解鎖</string>
+    <!-- Downloads -->
+    <string name="downloads">下載</string>
+    <string name="download">下載</string>
+    <string name="download_remove">移除下載</string>
+    <string name="download_downloaded">已下載</string>
+    <string name="download_waiting">等待下載</string>
+    <string name="resume">繼續</string>
+    <string name="downloads_empty">沒有下載</string>
+    <plurals name="download_file_count">
+        <item quantity="other">%1$d 個檔案</item>
+    </plurals>
 </resources>

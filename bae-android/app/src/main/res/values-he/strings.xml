@@ -170,4 +170,17 @@
     <string name="unlock_key_label">מפתח הצפנה (64 תווים הקסדצימליים)</string>
     <string name="unlock_failed">פתיחת הנעילה נכשלה</string>
     <string name="unlock_action">פתח נעילה</string>
+    <!-- Downloads -->
+    <string name="downloads">הורדות</string>
+    <string name="download">הורדה</string>
+    <string name="download_remove">הסר הורדה</string>
+    <string name="download_downloaded">הורד</string>
+    <string name="download_waiting">ממתין להורדה</string>
+    <string name="resume">המשך</string>
+    <string name="downloads_empty">אין הורדות</string>
+    <plurals name="download_file_count">
+        <item quantity="one">קובץ אחד</item>
+        <item quantity="two">שני קבצים</item>
+        <item quantity="other">%1$d קבצים</item>
+    </plurals>
 </resources>

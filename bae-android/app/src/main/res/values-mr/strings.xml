@@ -170,4 +170,16 @@
     <string name="unlock_key_label">कूटबद्धीकरण कळ (64 hex अक्षरे)</string>
     <string name="unlock_failed">अनलॉक · त्रुटी</string>
     <string name="unlock_action">अनलॉक</string>
+    <!-- Downloads -->
+    <string name="downloads">डाउनलोड</string>
+    <string name="download">डाउनलोड करा</string>
+    <string name="download_remove">डाउनलोड काढा</string>
+    <string name="download_downloaded">डाउनलोड केले</string>
+    <string name="download_waiting">डाउनलोडची प्रतीक्षा करत आहे</string>
+    <string name="resume">पुन्हा सुरू करा</string>
+    <string name="downloads_empty">कोणतेही डाउनलोड नाहीत</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d फाइल</item>
+        <item quantity="other">%1$d फायली</item>
+    </plurals>
 </resources>

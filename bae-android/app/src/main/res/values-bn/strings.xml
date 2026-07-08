@@ -170,4 +170,16 @@
     <string name="unlock_key_label">এনক্রিপশন কী (৬৪ হেক্স অক্ষর)</string>
     <string name="unlock_failed">আনলক · ত্রুটি</string>
     <string name="unlock_action">আনলক</string>
+    <!-- Downloads -->
+    <string name="downloads">ডাউনলোড</string>
+    <string name="download">ডাউনলোড করুন</string>
+    <string name="download_remove">ডাউনলোড সরান</string>
+    <string name="download_downloaded">ডাউনলোড হয়েছে</string>
+    <string name="download_waiting">ডাউনলোডের অপেক্ষায়</string>
+    <string name="resume">পুনরায় শুরু করুন</string>
+    <string name="downloads_empty">কোনো ডাউনলোড নেই</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$dটি ফাইল</item>
+        <item quantity="other">%1$dটি ফাইল</item>
+    </plurals>
 </resources>

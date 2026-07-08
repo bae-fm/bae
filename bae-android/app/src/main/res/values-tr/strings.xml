@@ -170,4 +170,16 @@
     <string name="unlock_key_label">Şifreleme (64 hex)</string>
     <string name="unlock_failed">Kilidi aç · Hata</string>
     <string name="unlock_action">Kilidi aç</string>
+    <!-- Downloads -->
+    <string name="downloads">İndirilenler</string>
+    <string name="download">İndir</string>
+    <string name="download_remove">İndirmeyi kaldır</string>
+    <string name="download_downloaded">İndirildi</string>
+    <string name="download_waiting">İndirme bekleniyor</string>
+    <string name="resume">Sürdür</string>
+    <string name="downloads_empty">İndirme yok</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d dosya</item>
+        <item quantity="other">%1$d dosya</item>
+    </plurals>
 </resources>

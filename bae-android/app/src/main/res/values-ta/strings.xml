@@ -170,4 +170,16 @@
     <string name="unlock_key_label">குறியாக்க விசை (64 hex எழுத்துகள்)</string>
     <string name="unlock_failed">திற · பிழை</string>
     <string name="unlock_action">திற</string>
+    <!-- Downloads -->
+    <string name="downloads">பதிவிறக்கங்கள்</string>
+    <string name="download">பதிவிறக்கு</string>
+    <string name="download_remove">பதிவிறக்கத்தை அகற்று</string>
+    <string name="download_downloaded">பதிவிறக்கப்பட்டது</string>
+    <string name="download_waiting">பதிவிறக்கத்திற்காக காத்திருக்கிறது</string>
+    <string name="resume">மீண்டும் தொடங்கு</string>
+    <string name="downloads_empty">பதிவிறக்கங்கள் இல்லை</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d கோப்பு</item>
+        <item quantity="other">%1$d கோப்புகள்</item>
+    </plurals>
 </resources>

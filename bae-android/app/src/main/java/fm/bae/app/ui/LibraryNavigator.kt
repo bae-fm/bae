@@ -27,6 +27,8 @@ internal sealed interface LibraryDestination {
     data object Members : LibraryDestination
 
     data object Settings : LibraryDestination
+
+    data object Downloads : LibraryDestination
 }
 
 /**
@@ -122,6 +124,10 @@ internal fun LibraryDestinationScreen(
                 onSwitchLibrary = onSwitchLibrary,
                 onLeaveLibrary = onLeaveLibrary,
             )
+        }
+
+        LibraryDestination.Downloads -> {
+            DownloadsScreen(session = session, onBack = onBack)
         }
     }
 }

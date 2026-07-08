@@ -170,4 +170,18 @@
     <string name="unlock_key_label">Klucz szyfrujący (64 znaki szesnastkowe)</string>
     <string name="unlock_failed">Nie udało się odblokować</string>
     <string name="unlock_action">Odblokuj</string>
+    <!-- Downloads -->
+    <string name="downloads">Pobieranie</string>
+    <string name="download">Pobierz</string>
+    <string name="download_remove">Usuń pobrane</string>
+    <string name="download_downloaded">Pobrano</string>
+    <string name="download_waiting">Oczekuje na pobranie</string>
+    <string name="resume">Wznów</string>
+    <string name="downloads_empty">Brak pobrań</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d plik</item>
+        <item quantity="few">%1$d pliki</item>
+        <item quantity="many">%1$d plików</item>
+        <item quantity="other">%1$d pliku</item>
+    </plurals>
 </resources>

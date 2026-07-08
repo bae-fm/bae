@@ -170,4 +170,16 @@
     <string name="unlock_key_label">ਇਨਕ੍ਰਿਪਸ਼ਨ ਕੁੰਜੀ (64 ਹੈਕਸ ਅੱਖਰ)</string>
     <string name="unlock_failed">ਅਨਲਾਕ · ਗਲਤੀ</string>
     <string name="unlock_action">ਅਨਲਾਕ</string>
+    <!-- Downloads -->
+    <string name="downloads">ਡਾਊਨਲੋਡ</string>
+    <string name="download">ਡਾਊਨਲੋਡ ਕਰੋ</string>
+    <string name="download_remove">ਡਾਊਨਲੋਡ ਹਟਾਓ</string>
+    <string name="download_downloaded">ਡਾਊਨਲੋਡ ਹੋ ਗਿਆ</string>
+    <string name="download_waiting">ਡਾਊਨਲੋਡ ਦੀ ਉਡੀਕ ਵਿੱਚ</string>
+    <string name="resume">ਮੁੜ ਸ਼ੁਰੂ ਕਰੋ</string>
+    <string name="downloads_empty">ਕੋਈ ਡਾਊਨਲੋਡ ਨਹੀਂ</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d ਫ਼ਾਈਲ</item>
+        <item quantity="other">%1$d ਫ਼ਾਈਲਾਂ</item>
+    </plurals>
 </resources>

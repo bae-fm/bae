@@ -170,4 +170,18 @@
     <string name="unlock_key_label">Šifrovací klíč (64 šestnáctkových znaků)</string>
     <string name="unlock_failed">Odemčení selhalo</string>
     <string name="unlock_action">Odemknout</string>
+    <!-- Downloads -->
+    <string name="downloads">Stahování</string>
+    <string name="download">Stáhnout</string>
+    <string name="download_remove">Odebrat stažené</string>
+    <string name="download_downloaded">Staženo</string>
+    <string name="download_waiting">Čeká na stažení</string>
+    <string name="resume">Pokračovat</string>
+    <string name="downloads_empty">Žádná stahování</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d soubor</item>
+        <item quantity="few">%1$d soubory</item>
+        <item quantity="many">%1$d souboru</item>
+        <item quantity="other">%1$d souborů</item>
+    </plurals>
 </resources>

@@ -170,4 +170,16 @@
     <string name="unlock_key_label">એન્ક્રિપ્શન કી (64 હેક્સ અક્ષરો)</string>
     <string name="unlock_failed">અનલોક · ભૂલ</string>
     <string name="unlock_action">અનલોક</string>
+    <!-- Downloads -->
+    <string name="downloads">ડાઉનલોડ્સ</string>
+    <string name="download">ડાઉનલોડ કરો</string>
+    <string name="download_remove">ડાઉનલોડ દૂર કરો</string>
+    <string name="download_downloaded">ડાઉનલોડ થયું</string>
+    <string name="download_waiting">ડાઉનલોડ થવાની રાહ જુએ છે</string>
+    <string name="resume">ફરી શરૂ કરો</string>
+    <string name="downloads_empty">કોઈ ડાઉનલોડ નથી</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d ફાઇલ</item>
+        <item quantity="other">%1$d ફાઇલ</item>
+    </plurals>
 </resources>

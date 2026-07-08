@@ -170,4 +170,16 @@
     <string name="unlock_key_label">خفیہ کاری کلید (64 hex حروف)</string>
     <string name="unlock_failed">کھولیں · خرابی</string>
     <string name="unlock_action">کھولیں</string>
+    <!-- Downloads -->
+    <string name="downloads">ڈاؤن لوڈز</string>
+    <string name="download">ڈاؤن لوڈ کریں</string>
+    <string name="download_remove">ڈاؤن لوڈ ہٹائیں</string>
+    <string name="download_downloaded">ڈاؤن لوڈ ہو گیا</string>
+    <string name="download_waiting">ڈاؤن لوڈ کے انتظار میں</string>
+    <string name="resume">دوبارہ شروع کریں</string>
+    <string name="downloads_empty">کوئی ڈاؤن لوڈ نہیں</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d فائل</item>
+        <item quantity="other">%1$d فائلیں</item>
+    </plurals>
 </resources>

@@ -170,4 +170,15 @@
     <string name="unlock_key_label">暗号化キー（16進数64文字）</string>
     <string name="unlock_failed">ロック解除に失敗しました</string>
     <string name="unlock_action">ロック解除</string>
+    <!-- Downloads -->
+    <string name="downloads">ダウンロード</string>
+    <string name="download">ダウンロード</string>
+    <string name="download_remove">ダウンロードを削除</string>
+    <string name="download_downloaded">ダウンロード済み</string>
+    <string name="download_waiting">ダウンロード待ち</string>
+    <string name="resume">再開</string>
+    <string name="downloads_empty">ダウンロードはありません</string>
+    <plurals name="download_file_count">
+        <item quantity="other">%1$d 個のファイル</item>
+    </plurals>
 </resources>

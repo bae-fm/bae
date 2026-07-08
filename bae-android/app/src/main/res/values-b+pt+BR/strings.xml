@@ -170,4 +170,17 @@
     <string name="unlock_key_label">Chave de criptografia (64 caracteres hexadecimais)</string>
     <string name="unlock_failed">Falha ao desbloquear</string>
     <string name="unlock_action">Desbloquear</string>
+    <!-- Downloads -->
+    <string name="downloads">Downloads</string>
+    <string name="download">Baixar</string>
+    <string name="download_remove">Remover download</string>
+    <string name="download_downloaded">Baixado</string>
+    <string name="download_waiting">Aguardando download</string>
+    <string name="resume">Retomar</string>
+    <string name="downloads_empty">Nenhum download</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d arquivo</item>
+        <item quantity="many">%1$d arquivos</item>
+        <item quantity="other">%1$d arquivos</item>
+    </plurals>
 </resources>

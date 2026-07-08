@@ -170,4 +170,17 @@
     <string name="unlock_key_label">Ključ za šifriranje (64 heksadecimalna znaka)</string>
     <string name="unlock_failed">Otključavanje nije uspjelo</string>
     <string name="unlock_action">Otključaj</string>
+    <!-- Downloads -->
+    <string name="downloads">Preuzimanja</string>
+    <string name="download">Preuzmi</string>
+    <string name="download_remove">Ukloni preuzeto</string>
+    <string name="download_downloaded">Preuzeto</string>
+    <string name="download_waiting">Čeka na preuzimanje</string>
+    <string name="resume">Nastavi</string>
+    <string name="downloads_empty">Nema preuzimanja</string>
+    <plurals name="download_file_count">
+        <item quantity="one">%1$d datoteka</item>
+        <item quantity="few">%1$d datoteke</item>
+        <item quantity="other">%1$d datoteka</item>
+    </plurals>
 </resources>

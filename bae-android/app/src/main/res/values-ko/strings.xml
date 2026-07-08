@@ -170,4 +170,15 @@
     <string name="unlock_key_label">암호화 키(64자 16진수)</string>
     <string name="unlock_failed">잠금 해제 실패</string>
     <string name="unlock_action">잠금 해제</string>
+    <!-- Downloads -->
+    <string name="downloads">다운로드</string>
+    <string name="download">다운로드</string>
+    <string name="download_remove">다운로드 삭제</string>
+    <string name="download_downloaded">다운로드됨</string>
+    <string name="download_waiting">다운로드 대기 중</string>
+    <string name="resume">재개</string>
+    <string name="downloads_empty">다운로드 없음</string>
+    <plurals name="download_file_count">
+        <item quantity="other">파일 %1$d개</item>
+    </plurals>
 </resources>
