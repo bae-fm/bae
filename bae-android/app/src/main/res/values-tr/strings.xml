@@ -190,4 +190,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">Ana ekranınızda oynatma denetimleri.</string>
     <string name="widget_nothing_playing">Hiçbir şey çalmıyor</string>
+    <string name="shortcut_resume_long">Oynatmayı sürdür</string>
+    <string name="shortcut_search_long">Kitaplıkta ara</string>
 </resources>

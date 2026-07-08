@@ -44,6 +44,12 @@ android {
         // editions are distinguishable once both are installed.
         manifestPlaceholders["appLabel"] = "bae"
 
+        // The launcher-shortcut intents (res/xml/shortcuts.xml) target this
+        // applicationId. res/xml can't read the manifest ${applicationId}
+        // placeholder, so surface it as a string resource; the baeium flavor
+        // overrides it to match its suffixed id.
+        resValue("string", "shortcut_target_package", "fm.bae.app")
+
         // Package native libs for one ABI only when run.sh passes
         // -Pbae.abi=<abi> for the connected device. This filters every native
         // source — our libbae_bridge.so plus AAR libs like JNA's
@@ -94,6 +100,7 @@ android {
             // fm.bae.app), labelled "baeium" on the launcher.
             applicationIdSuffix = ".baeium"
             manifestPlaceholders["appLabel"] = "baeium"
+            resValue("string", "shortcut_target_package", "fm.bae.app.baeium")
         }
     }
 

@@ -191,4 +191,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">Controlli di riproduzione sulla schermata Home.</string>
     <string name="widget_nothing_playing">Nessuna riproduzione in corso</string>
+    <string name="shortcut_resume_long">Riprendi la riproduzione</string>
+    <string name="shortcut_search_long">Cerca nella libreria</string>
 </resources>

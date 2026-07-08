@@ -191,4 +191,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">Controles de reproducción en tu pantalla de inicio.</string>
     <string name="widget_nothing_playing">No se está reproduciendo nada</string>
+    <string name="shortcut_resume_long">Reanudar la reproducción</string>
+    <string name="shortcut_search_long">Buscar en la biblioteca</string>
 </resources>

@@ -192,4 +192,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">פקדי הנגן במסך הבית.</string>
     <string name="widget_nothing_playing">לא מתנגן כלום</string>
+    <string name="shortcut_resume_long">המשך השמעה</string>
+    <string name="shortcut_search_long">חיפוש בספרייה</string>
 </resources>

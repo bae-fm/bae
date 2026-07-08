@@ -188,4 +188,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">ตัวควบคุมการเล่นบนหน้าจอหลักของคุณ</string>
     <string name="widget_nothing_playing">ไม่มีการเล่น</string>
+    <string name="shortcut_resume_long">เล่นต่อ</string>
+    <string name="shortcut_search_long">ค้นหาในคลังเพลง</string>
 </resources>

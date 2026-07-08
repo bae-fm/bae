@@ -38,11 +38,18 @@
             android:name=".MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|smallestScreenSize|keyboardHidden|locale|layoutDirection|fontScale|uiMode|density"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Bae">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Launcher long-press shortcuts (Resume playback, Search). The
+                 single activity is singleTop, so a warm shortcut tap re-enters
+                 via onNewIntent rather than stacking a second instance. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <service

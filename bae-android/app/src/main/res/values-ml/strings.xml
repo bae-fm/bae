@@ -190,4 +190,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">നിങ്ങളുടെ ഹോം സ്‌ക്രീനിലെ ഇപ്പോൾ പ്ലേ ചെയ്യുന്ന നിയന്ത്രണങ്ങൾ.</string>
     <string name="widget_nothing_playing">ഒന്നും പ്ലേ ചെയ്യുന്നില്ല</string>
+    <string name="shortcut_resume_long">പ്ലേബാക്ക് തുടരുക</string>
+    <string name="shortcut_search_long">ലൈബ്രറിയിൽ തിരയുക</string>
 </resources>

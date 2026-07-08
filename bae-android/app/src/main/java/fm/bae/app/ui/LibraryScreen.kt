@@ -200,6 +200,8 @@ internal fun rememberLibraryPage(
 fun LibraryScreen(
     session: OpenLibrary,
     libraries: StateFlow<List<BridgeLibrary>>,
+    openSearch: Boolean,
+    onSearchOpened: () -> Unit,
     onSwitchLibrary: (BridgeLibrary) -> Unit,
     onLeaveLibrary: () -> Unit,
 ) {
@@ -208,6 +210,17 @@ fun LibraryScreen(
     val stateHolder = rememberSaveableStateHolder()
     val popEntry: () -> Unit = {
         navigator.pop()?.let { stateHolder.removeState(it.key) }
+    }
+    // The Search shortcut lands on the searchable browser wherever the user last
+    // was: unwind any pushed destination (only the browser root hosts the search
+    // field), then open search. Keyed on the request so it fires once and re-arms
+    // only when a new Search shortcut sets it.
+    LaunchedEffect(openSearch) {
+        if (openSearch) {
+            while (navigator.entries.isNotEmpty()) popEntry()
+            browserState.searchOpen = true
+            onSearchOpened()
+        }
     }
     BackHandler(enabled = navigator.entries.isNotEmpty()) { popEntry() }
     when (val entry = navigator.top) {

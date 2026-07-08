@@ -194,4 +194,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">Sterowanie odtwarzaniem na ekranie głównym.</string>
     <string name="widget_nothing_playing">Nic nie jest odtwarzane</string>
+    <string name="shortcut_resume_long">Wznów odtwarzanie</string>
+    <string name="shortcut_search_long">Przeszukaj bibliotekę</string>
 </resources>

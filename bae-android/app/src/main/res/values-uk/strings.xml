@@ -194,4 +194,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">Керування відтворенням на головному екрані.</string>
     <string name="widget_nothing_playing">Нічого не відтворюється</string>
+    <string name="shortcut_resume_long">Відновити відтворення</string>
+    <string name="shortcut_search_long">Пошук у фонотеці</string>
 </resources>

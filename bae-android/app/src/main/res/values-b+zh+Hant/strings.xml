@@ -188,4 +188,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">主畫面上的正在播放控制項。</string>
     <string name="widget_nothing_playing">未在播放</string>
+    <string name="shortcut_resume_long">繼續播放</string>
+    <string name="shortcut_search_long">搜尋資料庫</string>
 </resources>

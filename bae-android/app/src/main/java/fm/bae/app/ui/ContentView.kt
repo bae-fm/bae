@@ -27,6 +27,7 @@ import fm.bae.app.AppSessionHolder
 import fm.bae.app.OAuthLinker
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.ShortcutAction
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -41,6 +42,8 @@ import uniffi.bae_bridge.BridgeLibrary
 fun ContentView(
     oauthLinking: OAuthLinker?,
     oauthLinkingError: String?,
+    shortcutAction: ShortcutAction?,
+    onShortcutHandled: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -73,6 +76,8 @@ fun ContentView(
                         screen = screen,
                         oauthLinking = oauthLinking,
                         oauthLinkingError = oauthLinkingError,
+                        shortcutAction = shortcutAction,
+                        onShortcutHandled = onShortcutHandled,
                         onScreen = { screen = it },
                     )
                 }
@@ -86,6 +91,8 @@ private fun AppScreenRouter(
     screen: AppScreen,
     oauthLinking: OAuthLinker?,
     oauthLinkingError: String?,
+    shortcutAction: ShortcutAction?,
+    onShortcutHandled: () -> Unit,
     onScreen: (AppScreen) -> Unit,
 ) {
     val context = LocalContext.current
@@ -125,6 +132,8 @@ private fun AppScreenRouter(
             LibraryOpenScreen(
                 session = current.session,
                 libraries = AppSessionHolder.libraries,
+                shortcutAction = shortcutAction,
+                onShortcutHandled = onShortcutHandled,
                 onSwitchLibrary = { library ->
                     scope.launch { AppSessionHolder.openLibrary(context, library.id, onScreen) }
                 },
@@ -152,6 +161,8 @@ private fun AppScreenRouter(
 private fun LibraryOpenScreen(
     session: OpenLibrary,
     libraries: StateFlow<List<BridgeLibrary>>,
+    shortcutAction: ShortcutAction?,
+    onShortcutHandled: () -> Unit,
     onSwitchLibrary: (BridgeLibrary) -> Unit,
     onLeaveLibrary: () -> Unit,
 ) {
@@ -164,10 +175,25 @@ private fun LibraryOpenScreen(
             )
         }
     }
+    // The Resume shortcut opens the app straight into playback. Opening the
+    // library already restored the queue paused at the saved position, so this
+    // is the explicit resume that turns that restore into audio. The resulting
+    // PlaybackPlaying event brings the foreground playback service up (the app is
+    // foregrounded by the launch), the same path an on-screen play uses. Keyed on
+    // the session + action so it fires once and re-arms only for a fresh request;
+    // the Search shortcut seeds the browser through LibraryScreen instead.
+    LaunchedEffect(session, shortcutAction) {
+        if (shortcutAction == ShortcutAction.RESUME) {
+            session.appHandle.resume()
+            onShortcutHandled()
+        }
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         LibraryScreen(
             session = session,
             libraries = libraries,
+            openSearch = shortcutAction == ShortcutAction.SEARCH,
+            onSearchOpened = onShortcutHandled,
             onSwitchLibrary = onSwitchLibrary,
             onLeaveLibrary = onLeaveLibrary,
         )

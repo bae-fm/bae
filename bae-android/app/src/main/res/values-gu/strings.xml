@@ -190,4 +190,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">તમારી હોમ સ્ક્રીન પર હમણાં ચાલી રહેલ નિયંત્રણો.</string>
     <string name="widget_nothing_playing">કંઈ ચાલી રહ્યું નથી</string>
+    <string name="shortcut_resume_long">પ્લેબૅક ફરી શરૂ કરો</string>
+    <string name="shortcut_search_long">લાઇબ્રેરીમાં શોધો</string>
 </resources>

@@ -188,4 +188,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">홈 화면의 재생 컨트롤.</string>
     <string name="widget_nothing_playing">재생 중인 항목 없음</string>
+    <string name="shortcut_resume_long">재생 재개</string>
+    <string name="shortcut_search_long">라이브러리 검색</string>
 </resources>

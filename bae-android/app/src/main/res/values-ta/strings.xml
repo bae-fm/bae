@@ -190,4 +190,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">உங்கள் முகப்புத் திரையில் தற்போது இயங்கும் கட்டுப்பாடுகள்.</string>
     <string name="widget_nothing_playing">எதுவும் இயங்கவில்லை</string>
+    <string name="shortcut_resume_long">இயக்கத்தை மீண்டும் தொடங்கு</string>
+    <string name="shortcut_search_long">நூலகத்தில் தேடு</string>
 </resources>

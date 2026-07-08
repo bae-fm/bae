@@ -190,4 +190,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">Afspeelknoppen op je startscherm.</string>
     <string name="widget_nothing_playing">Er speelt niets</string>
+    <string name="shortcut_resume_long">Afspelen hervatten</string>
+    <string name="shortcut_search_long">Bibliotheek doorzoeken</string>
 </resources>

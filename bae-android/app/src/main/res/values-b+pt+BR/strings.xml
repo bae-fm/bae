@@ -191,4 +191,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">Controles de reprodução na sua tela inicial.</string>
     <string name="widget_nothing_playing">Nada em reprodução</string>
+    <string name="shortcut_resume_long">Retomar reprodução</string>
+    <string name="shortcut_search_long">Buscar na biblioteca</string>
 </resources>

@@ -194,4 +194,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">Ovládání přehrávání na domovské obrazovce.</string>
     <string name="widget_nothing_playing">Nic se nepřehrává</string>
+    <string name="shortcut_resume_long">Pokračovat v přehrávání</string>
+    <string name="shortcut_search_long">Hledat v knihovně</string>
 </resources>

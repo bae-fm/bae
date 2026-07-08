@@ -227,6 +227,11 @@
     <string name="widget_description">Now playing controls on your home screen.</string>
     <string name="widget_nothing_playing">Nothing playing</string>
 
+    <!-- Launcher long-press shortcuts. The short labels reuse the plain
+         "Resume" / "Search" actions; these are the long labels. -->
+    <string name="shortcut_resume_long">Resume playback</string>
+    <string name="shortcut_search_long">Search library</string>
+
     <!-- Unlock -->
     <string name="unlock_title">Library Locked</string>
     <!-- %1$s = key fingerprint hex -->

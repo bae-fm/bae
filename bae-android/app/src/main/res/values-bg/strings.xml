@@ -190,4 +190,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">Контроли за възпроизвеждане на началния екран.</string>
     <string name="widget_nothing_playing">Нищо не се възпроизвежда</string>
+    <string name="shortcut_resume_long">Възобновяване на възпроизвеждането</string>
+    <string name="shortcut_search_long">Търсене в библиотеката</string>
 </resources>

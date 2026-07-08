@@ -190,4 +190,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">మీ హోమ్ స్క్రీన్‌లో ప్రస్తుతం ప్లే అవుతున్న నియంత్రణలు.</string>
     <string name="widget_nothing_playing">ఏదీ ప్లే కావడం లేదు</string>
+    <string name="shortcut_resume_long">ప్లేబ్యాక్ పునఃప్రారంభించండి</string>
+    <string name="shortcut_search_long">లైబ్రరీలో వెతుకు</string>
 </resources>

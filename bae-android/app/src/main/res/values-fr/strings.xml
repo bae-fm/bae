@@ -191,4 +191,6 @@
     <string name="widget_label">bae</string>
     <string name="widget_description">Commandes de lecture sur votre écran d\'accueil.</string>
     <string name="widget_nothing_playing">Aucune lecture en cours</string>
+    <string name="shortcut_resume_long">Reprendre la lecture</string>
+    <string name="shortcut_search_long">Rechercher dans la bibliothèque</string>
 </resources>
