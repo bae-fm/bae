@@ -31,7 +31,9 @@ final class AppService: BaeKit.AppService {
     func wireUp() {
         registerCommonProjections()
         appHandle.subscribeUiEvents(
-            callback: UiEventHandler(appService: self)
+            callback: UiEventPump(
+                sink: UiEventRouter.makeSink(appService: self)
+            )
         )
         mediaControlService.setupRemoteCommands(
             playback: playback,

@@ -1,95 +1,53 @@
 import BaeKit
 import os.log
 
-private let logger = Logger.bae("UiEventHandler")
+private let logger = Logger.bae("UiEventRouter")
 
-/// Receives UI events from core and delivers them on the main actor in order.
-final class UiEventHandler: UiEventCallback, @unchecked Sendable {
-    private let eventContinuation: AsyncStream<BridgeUiEvent>.Continuation
-    private let eventDeliveryTask: Task<Void, Never>
-
-    init(appService: AppService) {
-        let eventStream = AsyncStream.makeStream(
-            of: BridgeUiEvent.self,
-            bufferingPolicy: .unbounded
-        )
-        let deliveryTarget = UiEventDeliveryTarget(appService: appService)
-        self.eventContinuation = eventStream.continuation
-        self.eventDeliveryTask = Task { @MainActor in
-            for await event in eventStream.stream {
-                deliveryTarget.route(event)
+/// Routes a core UI event to the iOS stores on the main actor. The classifier
+/// enums below split the flat `BridgeUiEvent` into transport / state / control
+/// buckets; `route` dispatches each to its store apply.
+enum UiEventRouter {
+    /// Builds the sink a `UiEventPump` drains on the main actor. The closure
+    /// captures `appService` weakly: once the library is torn down (closed or
+    /// switched) the reference is gone, so any event still queued is dropped
+    /// with a warning instead of routed to a dead target.
+    @MainActor
+    static func makeSink(
+        appService: AppService
+    ) -> @MainActor @Sendable (BridgeUiEvent) -> Void {
+        { [weak appService] event in
+            guard let appService else {
+                logger.warning(
+                    "Dropped UI event because the library event target was deallocated: \(String(describing: event))"
+                )
+                return
             }
+            route(event, appService: appService)
         }
-    }
-
-    func onEvent(event: BridgeUiEvent) {
-        switch eventContinuation.yield(event) {
-        case .enqueued:
-            break
-
-        case .dropped(let event):
-            logger.warning(
-                "Dropped UI event because the delivery stream buffer dropped it: \(String(describing: event))"
-            )
-
-        case .terminated:
-            logger.warning(
-                "Dropped UI event because the delivery stream has terminated: \(String(describing: event))"
-            )
-
-        @unknown default:
-            logger.warning(
-                "Dropped UI event because the delivery stream returned an unknown result: \(String(describing: event))"
-            )
-        }
-    }
-
-    deinit {
-        eventContinuation.finish()
-        eventDeliveryTask.cancel()
-    }
-}
-
-private final class UiEventDeliveryTarget: @unchecked Sendable {
-    private weak var appService: AppService?
-
-    init(appService: AppService) {
-        self.appService = appService
     }
 
     @MainActor
-    func route(_ event: BridgeUiEvent) {
-        guard let appService else {
-            logger.warning(
-                "Dropped UI event because the library event target was deallocated: \(String(describing: event))"
-            )
+    static func route(_ event: BridgeUiEvent, appService: AppService) {
+        if routeInvalidation(event, appService: appService) {
             return
         }
-        routeUiEvent(event, appService: appService)
+        if let event = PlaybackTransportEvent(event) {
+            routePlaybackTransport(event, appService: appService)
+            return
+        }
+        if let event = PlaybackStateEvent(event) {
+            routePlaybackState(event, appService: appService)
+            return
+        }
+        if let event = PlaybackControlEvent(event) {
+            routePlaybackControls(event, appService: appService)
+            return
+        }
+        if routeErrors(event, appService: appService) {
+            return
+        }
+        ignoreObsoleteOrDesktopEvent(event)
     }
-}
-
-@MainActor
-private func routeUiEvent(_ event: BridgeUiEvent, appService: AppService) {
-    if routeInvalidation(event, appService: appService) {
-        return
-    }
-    if let event = PlaybackTransportEvent(event) {
-        routePlaybackTransport(event, appService: appService)
-        return
-    }
-    if let event = PlaybackStateEvent(event) {
-        routePlaybackState(event, appService: appService)
-        return
-    }
-    if let event = PlaybackControlEvent(event) {
-        routePlaybackControls(event, appService: appService)
-        return
-    }
-    if routeErrors(event, appService: appService) {
-        return
-    }
-    ignoreObsoleteOrDesktopEvent(event)
 }
 
 @MainActor

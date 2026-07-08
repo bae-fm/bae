@@ -6,10 +6,10 @@ import Testing
 /// The iOS UI-event router decomposes a flat `BridgeUiEvent` into the narrow
 /// transport / state / control buckets before applying it to a store. These
 /// suites cover that classification and the Now Playing metadata it builds —
-/// the pure, store-independent half of `routeUiEvent`. The apply side
-/// (`routeUiEvent` writing into the stores) needs a live `AppService`, which
-/// only a real opened library produces, so it isn't unit-tested here.
-@Suite("UiEventHandler transport classification")
+/// the pure, store-independent half of `UiEventRouter.route`. The apply side
+/// (`UiEventRouter.route` writing into the stores) needs a live `AppService`,
+/// which only a real opened library produces, so it isn't unit-tested here.
+@Suite("UiEventRouter transport classification")
 struct PlaybackTransportEventTests {
     @Test("a Playing event carries the track and builds Now Playing metadata")
     func playingBuildsMetadata() {
@@ -124,7 +124,7 @@ struct PlaybackTransportEventTests {
     }
 }
 
-@Suite("UiEventHandler state classification")
+@Suite("UiEventRouter state classification")
 struct PlaybackStateEventTests {
     @Test("a PlaybackError carries its reason")
     func errorCarriesReason() {
@@ -179,7 +179,7 @@ struct PlaybackStateEventTests {
     }
 }
 
-@Suite("UiEventHandler control classification")
+@Suite("UiEventRouter control classification")
 struct PlaybackControlEventTests {
     @Test("Volume carries the level")
     func volumeCarriesLevel() {
@@ -228,10 +228,10 @@ struct PlaybackControlEventTests {
     }
 }
 
-/// The desktop/preview events the iOS handler receives but does nothing with
+/// The desktop/preview events the iOS router receives but does nothing with
 /// must fall through every playback classifier, so they reach the ignore path
 /// rather than a store apply.
-@Suite("UiEventHandler ignores desktop and preview events")
+@Suite("UiEventRouter ignores desktop and preview events")
 struct UiEventIgnoreTests {
     private static let ignored: [BridgeUiEvent] = [
         .previewIdle,

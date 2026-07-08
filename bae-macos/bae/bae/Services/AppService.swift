@@ -85,12 +85,8 @@ final class AppService: BaeKit.AppService {
         registerProjection(makeImportCandidateProjection())
         registerProjection(makeImportLibraryStatusProjection())
         appHandle.subscribeUiEvents(
-            callback: UiEventHandler(
-                playbackStore: playbackStore,
-                importStore: importStore,
-                projectionRegistry: projectionRegistry,
-                appService: self,
-                uiStore: uiStore
+            callback: UiEventPump(
+                sink: UiEventReducer.makeSink(appService: self)
             )
         )
         appHandle.registerArtworkAnalyzer(analyzer: VisionArtworkAnalyzer())

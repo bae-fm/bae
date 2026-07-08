@@ -1,5 +1,8 @@
 import AppKit
 import BaeKit
+import os.log
+
+private let logger = Logger.bae("UiEventReducer")
 
 /// The stores and services a `UiEventReducer` writes, bundled so the reducer and
 /// its per-category helpers take one dependency.
@@ -108,6 +111,34 @@ private struct NowPlayingFields {
 /// `reduce` groups the variants by concern and routes each group to a helper;
 /// the helpers handle only the variants routed to them.
 enum UiEventReducer {
+    /// Builds the sink a `UiEventPump` drains on the main actor. The closure
+    /// captures `appService` weakly: once the library is torn down (closed or
+    /// switched) the reference is gone, so any event still queued is dropped
+    /// with a warning instead of reduced into dead stores.
+    @MainActor
+    static func makeSink(
+        appService: AppService
+    ) -> @MainActor @Sendable (BridgeUiEvent) -> Void {
+        { [weak appService] event in
+            guard let appService else {
+                logger.warning(
+                    "Dropped UI event because the library event target was deallocated: \(String(describing: event))"
+                )
+                return
+            }
+            reduce(
+                event,
+                into: ReducerContext(
+                    playbackStore: appService.playbackStore,
+                    importStore: appService.importStore,
+                    projectionRegistry: appService.projectionRegistry,
+                    appService: appService,
+                    uiStore: appService.uiStore
+                )
+            )
+        }
+    }
+
     @MainActor
     static func reduce(_ event: BridgeUiEvent, into context: ReducerContext) {
         switch event {
