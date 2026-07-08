@@ -1,28 +1,11 @@
 use super::*;
 
-/// A built, playing cpal (or test) stream over a decoded `TrackStream`: the
-/// `StreamSetup` (stream + its audio-events receiver) plus the wrapped source.
-/// `start_decoder_and_watch` pairs this with the decoder handle it spawned; the
-/// preload-advance paths pair it with the already-running preloaded decoder.
-pub(super) struct StreamParts {
-    pub(super) setup: StreamSetup,
-    pub(super) source: Arc<Mutex<source::PlaybackSource>>,
-}
-
-/// Everything a fresh decoder load assembles: the stream parts plus the decoder
-/// thread the caller stores in the `CurrentTrack`. Returned by
-/// `start_decoder_and_watch` so the caller assigns the slot as one whole value.
-pub(super) struct StartedStream {
-    pub(super) parts: StreamParts,
-    pub(super) decoder_handle: std::thread::JoinHandle<()>,
-}
-
 impl PlaybackService {
     /// Tear down the current track, whatever phase it is in, leaving the slot
-    /// Stopped. Cancels the playback source so the callback goes silent, signals
-    /// the decoder cancel token and cancels its unshared buffers (so the decoder
-    /// thread exits its park loop and the data reader stops fetching), and drops
-    /// the stream, audio-events receiver, and (detaching) the decoder handle.
+    /// Stopped. The pipeline's `cancel()` silences the audio callback, signals the
+    /// decoder token, and drops the stream; cancelling the prepared track's
+    /// unshared buffers stops the data reader and lets the decoder thread exit its
+    /// park loop.
     ///
     /// A shared buffer is spared (the same-source reuse path appends into it via
     /// `uncancel`); `stop()` drops the shared-buffer cache wholesale instead. The
@@ -32,19 +15,9 @@ impl PlaybackService {
     pub(super) fn teardown_current_track(&mut self) {
         if let PlaybackSlot::Active(cur) = std::mem::replace(&mut self.slot, PlaybackSlot::Stopped)
         {
-            match cur.source.lock() {
-                Ok(guard) => guard.cancel(),
-                // A poisoned lock means the cpal callback thread panicked while
-                // holding it. The source is being dropped here anyway, so the
-                // cancel it would have requested is moot — log and move on.
-                Err(_) => warn!("playback source lock poisoned during teardown; skipping cancel"),
-            }
-            cur.prepared
-                .cancel_token
-                .store(true, std::sync::atomic::Ordering::Release);
+            cur.pipeline.cancel();
             cur.prepared.cancel_unshared_buffers();
-            // Dropping `cur` drops the stream and audio-events receiver and
-            // detaches the decoder thread.
+            // Dropping `cur` drops the audio-events receiver.
         }
     }
 
@@ -56,147 +29,84 @@ impl PlaybackService {
     pub(super) fn install_active_track(
         &mut self,
         prepared: PlaybackPreparedTrack,
-        started: StartedStream,
+        pipeline: StreamPipeline,
+        audio_events: AudioEventReceiver,
         phase: TrackPhase,
     ) {
         self.slot = PlaybackSlot::Active(CurrentTrack {
             prepared,
-            stream: started.parts.setup.stream,
-            source: started.parts.source,
-            decoder_handle: started.decoder_handle,
-            audio_events: started.parts.setup.audio_events,
+            pipeline,
+            audio_events,
             phase,
         });
         self.mark_current_foreground();
         self.sync_audio_state();
     }
 
-    /// Build the cpal (or test) stream over a decoded `TrackStream`, start it,
-    /// and return the parts. Sets the shared position to the stream's start
-    /// offset. Does not touch the slot or the audio-state atomic — the caller
-    /// assembles the slot and calls `sync_audio_state`.
-    pub(super) async fn init_streaming(
-        &mut self,
-        source: TrackStream,
-        fmt: TrackFmt,
-    ) -> Result<StreamParts, PlaybackError> {
-        // fmt is the per-stream formatting envelope; the caller built it from its
-        // prepared track (see `PlaybackPreparedTrack::track_fmt`). The audio
-        // callback tags every position/completion emit with it; at a gapless
-        // boundary the callback swaps to the staged next track's fmt.
-        let position_offset = fmt.position_offset;
-
-        // Wrap the track source in a PlaybackSource so the audio callback can
-        // advance to a pre-staged next track without rebuilding the stream.
-        let gapless = Arc::new(Mutex::new(source::PlaybackSource::new(source, fmt)));
-
-        let setup = setup_audio_stream(
-            &mut *self.audio_output,
-            gapless.clone(),
-            self.position_update_interval_ms,
-        )
-        .await?;
-
-        if let Err(e) = setup.stream.play() {
-            return Err(PlaybackError::task(format!(
-                "Failed to start streaming playback: {e:?}"
-            )));
-        }
-
-        *self.current_position_shared.lock().unwrap() = Some(position_offset);
-
-        Ok(StreamParts {
-            setup,
-            source: gapless,
-        })
-    }
-
-    /// Spawn the in-core decoder for `prepared`, build the audio stream, and arm
-    /// the ready-watcher — the shared tail of the play and seek paths. The
-    /// decoder reads `prepared`'s buffer and cancel token, so the watcher's
-    /// `TrackReady` carries this load's `generation` and the handler ignores a
-    /// stale signal. Audio doesn't flow until the ring fills, so the caller may
-    /// set the phase target after this returns without racing the watcher.
+    /// Spawn the in-core decoder for `prepared`, build the audio stream through
+    /// the shared `StreamPipeline`, and arm the ready-watcher — the shared tail of
+    /// the play and seek paths. The watcher's `TrackReady` carries this load's
+    /// `generation` so the handler ignores a stale signal. Audio doesn't flow
+    /// until the ring fills, so the caller may set the phase target after this
+    /// returns without racing the watcher.
     ///
-    /// On stream-build failure the just-spawned decoder is cancelled (it would
-    /// otherwise fill a ring nobody pulls) and the error is returned; the caller
-    /// owns the rest of the failure path.
+    /// On stream-build failure `start_stream_pipeline` has already cancelled the
+    /// just-spawned decoder; here we cancel the prepared track's unshared buffers
+    /// and wake their readers (so a read-blocked decoder sees the token), then
+    /// return the error for the caller to resolve.
     pub(super) async fn start_decoder_and_watch(
         &mut self,
         prepared: &PlaybackPreparedTrack,
         decode: StreamDecodeParams,
         fmt: TrackFmt,
         generation: LoadGeneration,
-    ) -> Result<StartedStream, PlaybackError> {
-        let decoder_buffer = prepared
-            .segments
-            .first()
-            .expect("prepared track has at least one segment")
-            .buffer
-            .clone();
-        let cancel_token = prepared.cancel_token.clone();
-        let sample_rate = prepared.sample_rate;
-        let channels = prepared.channels;
+    ) -> Result<(StreamPipeline, AudioEventReceiver), PlaybackError> {
+        let position_offset = fmt.position_offset;
         let track_id = prepared.track_info.track_id.clone();
 
-        // Create decoder sink/source with the track's sample rate and spawn the
-        // in-core FFmpeg decoder thread that fills the sink's ring buffer.
-        let (mut sink, source, ready_rx) = create_track_stream_pair(sample_rate, channels);
-
-        let decoder_handle = {
-            let decoder_cancel = cancel_token.clone();
-            // Kept to tell a genuine decode failure from normal teardown (seek /
-            // stop / track change all cancel the token before the decoder exits).
-            let teardown_check = cancel_token.clone();
-            let error_tx = self.progress_tx.clone();
-            std::thread::spawn(move || {
-                if let Err(e) = decode.run_decoder(decoder_buffer, &mut sink, decoder_cancel) {
-                    if let Some(message) = log_streaming_decode_failure("Streaming decode", e) {
-                        if !teardown_check.load(std::sync::atomic::Ordering::Relaxed) {
-                            emit_progress(
-                                &error_tx,
-                                PlaybackProgress::PlaybackError {
-                                    reason: crate::ui::PlaybackErrorReason::internal(format!(
-                                        "Playback decode failed: {message}"
-                                    )),
-                                },
-                            );
-                        }
-                    }
-                }
-            })
-        };
-
-        let parts = match self.init_streaming(source, fmt).await {
-            Ok(parts) => parts,
+        let start = match start_stream_pipeline(
+            &mut *self.audio_output,
+            decode,
+            fmt,
+            prepared.sample_rate,
+            prepared.channels,
+            self.position_update_interval_ms,
+            "Streaming decode",
+            DecodeFailureReport::EmitPlaybackError {
+                progress_tx: self.progress_tx.clone(),
+            },
+        )
+        .await
+        {
+            Ok(start) => start,
             Err(e) => {
-                error!("Failed to create streaming audio stream: {:?}", e);
-                // The decoder is spawned but no stream will pull from it. Cancel
-                // it so it exits instead of parking on a ring nobody reads, then
-                // detach — joining would block the command loop.
-                cancel_token.store(true, std::sync::atomic::Ordering::Release);
                 prepared.cancel_unshared_buffers();
                 for segment in &prepared.segments {
                     segment.buffer.wake_readers();
                 }
-                drop(decoder_handle);
                 return Err(e);
             }
         };
 
+        // The stream's start offset is the in-track time it begins at (non-zero
+        // only on seek). Set here rather than inside the shared unit — preview has
+        // no shared position cell.
+        *self.current_position_shared.lock().unwrap() = Some(position_offset);
+
         // Hold the phase in Loading until audio is actually flowing. The in-core
-        // decoder signals `ready_rx` when the ring buffer fills to the play
-        // threshold (or hits EOF for a short track); a watcher task turns that
-        // into a `TrackReady` command so the command loop stays responsive to
-        // Stop/Pause during a slow cloud load. Awaiting inline would wedge the loop.
+        // decoder signals `ready` when the ring buffer fills to the play threshold
+        // (or hits EOF for a short track); a watcher task turns that into a
+        // `TrackReady` command so the command loop stays responsive to Stop/Pause
+        // during a slow cloud load. Awaiting inline would wedge the loop.
         let command_tx = self.command_tx.clone();
+        let ready = start.ready;
         tokio::spawn(async move {
             // Err means the decoder dropped its sink before signalling ready (it
             // died or was cancelled). The decode-failure path drives playback to
             // Stopped, and a cancelled load's generation no longer matches so
             // TrackReady would be ignored anyway — the error path owns recovery,
             // so just record the dropped watcher.
-            match ready_rx.await {
+            match ready.await {
                 Ok(()) => dispatch_command(
                     &command_tx,
                     PlaybackCommand::TrackReady {
@@ -210,10 +120,7 @@ impl PlaybackService {
             }
         });
 
-        Ok(StartedStream {
-            parts,
-            decoder_handle,
-        })
+        Ok((start.pipeline, start.audio_events))
     }
 
     /// Play a track.
@@ -289,11 +196,11 @@ impl PlaybackService {
         let fmt = prepared.track_fmt(start_position);
         let generation = self.next_load_generation();
 
-        let started = match self
+        let (pipeline, audio_events) = match self
             .start_decoder_and_watch(&prepared, decode, fmt, generation)
             .await
         {
-            Ok(started) => started,
+            Ok(parts) => parts,
             Err(_) => {
                 emit_progress(
                     &self.progress_tx,
@@ -315,7 +222,8 @@ impl PlaybackService {
         // onto the atomic so the callback outputs samples/silence as intended.
         self.install_active_track(
             prepared,
-            started,
+            pipeline,
+            audio_events,
             TrackPhase::Loading { generation, target },
         );
 

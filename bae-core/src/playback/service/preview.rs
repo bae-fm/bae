@@ -55,15 +55,10 @@ impl PlaybackService {
     /// Preview a local file. Same path toggles off (and resumes main); a
     /// different path switches; a fresh path starts and pauses the main player.
     pub(super) async fn preview_play(&mut self, path: String) {
-        // Same path: dismiss if playing/paused (and resume main); if finished,
-        // clear it and replay from the top.
+        // Same path: dismiss (and resume main).
         if self.preview.current_path() == Some(path.as_str()) {
-            if self.preview.is_finished() {
-                self.preview.clear_finished();
-            } else {
-                self.preview_stop();
-                return;
-            }
+            self.preview_stop();
+            return;
         }
 
         // Pause the main player only once the preview has actually started, so a
@@ -86,16 +81,8 @@ impl PlaybackService {
         self.maybe_resume_main_player();
     }
 
-    /// Toggle pause/resume on the active preview. A finished preview restarts
-    /// from the top (which re-pauses the main player).
-    pub(super) async fn preview_toggle_pause(&mut self) {
-        let Some(path) = self.preview.current_path().map(str::to_string) else {
-            return;
-        };
-        if self.preview.is_finished() {
-            self.preview_play(path).await;
-            return;
-        }
+    /// Toggle pause/resume on the active preview.
+    pub(super) fn preview_toggle_pause(&mut self) {
         self.preview.toggle_pause();
     }
 }

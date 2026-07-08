@@ -31,9 +31,7 @@ use crate::db::{DbAudioSegmentRole, DbPlaybackContext, DbPlaybackState};
 use crate::library::LibraryEvent;
 use crate::library::LibraryManager;
 use crate::library::ResolvedTrackAudio;
-use crate::playback::audio_output::{
-    audio_event_channel, AudioEvent, AudioEventReceiver, AudioOutput, AudioStream,
-};
+use crate::playback::audio_output::{AudioEvent, AudioEventReceiver, AudioOutput};
 use crate::playback::data_source::{create_audio_reader, FetchArbiter};
 use crate::playback::error::PlaybackError;
 use crate::playback::progress::emit_progress;
@@ -62,7 +60,10 @@ mod seek;
 mod slot;
 mod state;
 
-use pipeline::StartedStream;
+use crate::playback::stream_pipeline::{
+    log_stream_diagnostic, report_dropped_audio_events, start_stream_pipeline, DecodeFailureReport,
+    SegmentDecodeParams, StreamDecodeParams, StreamPipeline,
+};
 use slot::{
     CurrentTrack, LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase,
 };
@@ -614,9 +615,6 @@ struct PreparedAudioSegment {
 struct PlaybackPreparedTrack {
     track_info: PlaybackTrackInfo,
     segments: Vec<PreparedAudioSegment>,
-    /// Per-decoder cancellation token. Set to true to stop the AVIO read callback
-    /// without affecting other decoders on the same buffer.
-    cancel_token: Arc<std::sync::atomic::AtomicBool>,
     /// Sample rate in Hz for time-to-sample conversion
     sample_rate: u32,
     channels: u32,
@@ -640,6 +638,10 @@ struct PlaybackPreparedTrack {
 struct PreloadedNext {
     prepared: PlaybackPreparedTrack,
     decoder_handle: std::thread::JoinHandle<()>,
+    /// The preload decoder's AVIO cancel flag, minted where the decoder is
+    /// spawned. Handed to `attach_preloaded` / `adopt_crossed_decoder` when the
+    /// preload is promoted to current, so the pipeline owns exactly one token.
+    cancel_token: Arc<std::sync::atomic::AtomicBool>,
     source: PreloadedNextSource,
 }
 
@@ -692,12 +694,36 @@ fn clear_preloaded_next(
     };
 
     let PreloadedNext {
-        prepared, source, ..
+        prepared,
+        source,
+        cancel_token,
+        ..
     } = preloaded;
 
-    if let Some(source) = detach_preloaded_source(current_playback_source, source) {
+    let detached = detach_preloaded_source(current_playback_source, source);
+    discard_preloaded_decoder(&prepared, detached, &cancel_token);
+}
+
+/// Stop a preloaded (not-yet-promoted) decoder and free its byte buffers. Three
+/// mechanisms, one per place the decoder can be blocked:
+/// - cancel the output source: sets the sink's cancel flag and unparks the
+///   decoder, so one blocked writing a full ring exits;
+/// - set the per-decoder token: stops a decoder blocked reading a *shared* buffer
+///   — `cancel_unshared_buffers` deliberately spares shared buffers (cancelling
+///   one would kill the other decoder still reading it), and `source.cancel()`
+///   only reaches the sink/write side, so the token is that decoder's only
+///   read-side stop;
+/// - cancel the unshared byte buffers: stops their reader and wakes a decoder
+///   blocked reading one.
+fn discard_preloaded_decoder(
+    prepared: &PlaybackPreparedTrack,
+    detached_source: Option<TrackStream>,
+    cancel_token: &Arc<std::sync::atomic::AtomicBool>,
+) {
+    if let Some(source) = detached_source {
         source.cancel();
     }
+    cancel_token.store(true, std::sync::atomic::Ordering::Release);
     prepared.cancel_unshared_buffers();
 }
 
@@ -740,7 +766,6 @@ fn finalize_playback_track(
     PlaybackPreparedTrack {
         track_info,
         segments,
-        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         sample_rate: resolved.sample_rate,
         channels: resolved.channels,
         pregap_ms: resolved.pregap_ms,
@@ -992,57 +1017,6 @@ impl PlaybackService {
         self.sync_audio_state();
     }
 
-    fn log_audio_diagnostic(&self, event: AudioEvent) {
-        match event {
-            AudioEvent::SourceLockMissed { missed_ms } => {
-                warn!(
-                    missed_ms,
-                    "audio callback could not lock playback source while playing"
-                );
-            }
-            AudioEvent::SourceLockReacquired { missed_ms } => {
-                debug!(missed_ms, "audio callback reacquired playback source lock");
-            }
-            AudioEvent::Starved {
-                fmt,
-                starved_ms,
-                position_ms,
-                producer_finished,
-                samples_decoded,
-                decode_errors,
-                has_next,
-            } => {
-                warn!(
-                    track_id = %fmt.track_id,
-                    starved_ms,
-                    position_ms,
-                    producer_finished,
-                    samples_decoded,
-                    decode_errors,
-                    has_next,
-                    "playback source has no decoded samples while current track is not finished"
-                );
-            }
-            AudioEvent::StarvationEnded {
-                fmt,
-                starved_ms,
-                position_ms,
-                samples_decoded,
-                decode_errors,
-            } => {
-                debug!(
-                    track_id = %fmt.track_id,
-                    starved_ms,
-                    position_ms,
-                    samples_decoded,
-                    decode_errors,
-                    "playback source resumed after decoded sample starvation"
-                );
-            }
-            AudioEvent::Position(_) | AudioEvent::Completion(_) | AudioEvent::TrackCrossing(_) => {}
-        }
-    }
-
     async fn handle_audio_event(&mut self, event: AudioEvent) {
         match event {
             AudioEvent::Position((fmt, pos)) => self.handle_position_event(fmt, pos),
@@ -1050,7 +1024,9 @@ impl PlaybackService {
                 self.handle_completion_event(fmt, error_count, samples_decoded);
             }
             AudioEvent::TrackCrossing(crossing) => self.handle_track_crossed(crossing).await,
-            event => self.log_audio_diagnostic(event),
+            event => {
+                log_stream_diagnostic("playback", &event);
+            }
         }
     }
 
@@ -1066,13 +1042,9 @@ impl PlaybackService {
         let dropped_required = self
             .slot
             .pollable_audio_events_ref()
-            .map(AudioEventReceiver::take_dropped_required_count)
-            .unwrap_or(0);
-        if dropped_required > 0 {
-            error!(
-                dropped_required,
-                "audio callback event queue dropped required events"
-            );
+            .map(|events| report_dropped_audio_events(events, "playback"))
+            .unwrap_or(false);
+        if dropped_required {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PlaybackError {
@@ -1082,14 +1054,6 @@ impl PlaybackService {
                 },
             );
             self.stop().await;
-            return;
-        }
-
-        if let Some(events) = self.slot.pollable_audio_events_ref() {
-            let dropped = events.take_dropped_count();
-            if dropped > 0 {
-                warn!(dropped, "audio callback event queue dropped events");
-            }
         }
     }
 }
@@ -1138,147 +1102,6 @@ pub(crate) fn default_audio_output(
     Ok(Box::new(
         crate::playback::aaudio_output::AAudioOutput::new()?
     ))
-}
-
-pub(crate) struct StreamSetup {
-    pub(crate) stream: Box<dyn AudioStream>,
-    pub(crate) audio_events: AudioEventReceiver,
-}
-
-pub(crate) async fn setup_audio_stream(
-    audio_output: &mut dyn AudioOutput,
-    source: Arc<Mutex<source::PlaybackSource>>,
-    position_update_interval_ms: u32,
-) -> Result<StreamSetup, PlaybackError> {
-    let (source_sample_rate, source_channels) = {
-        let guard = source.lock().unwrap();
-        (guard.sample_rate(), guard.channels())
-    };
-
-    let (audio_event_tx, audio_events) = audio_event_channel();
-
-    let stream = match audio_output.create_stream(
-        source,
-        source_sample_rate,
-        source_channels,
-        audio_event_tx,
-        position_update_interval_ms,
-    ) {
-        Ok(stream) => stream,
-        Err(e) => {
-            return Err(PlaybackError::task(format!("Audio stream: {:?}", e)));
-        }
-    };
-
-    Ok(StreamSetup {
-        stream,
-        audio_events,
-    })
-}
-
-/// Tear down the decoded-audio pipeline for a seek.
-///
-/// Cancels this decoder's token to unblock the old decoder while the data
-/// reader keeps filling the buffer. After this, the buffer is ready for a new
-/// decoder to read from position 0. Shared by the main player's seek and the
-/// preview player's seek.
-pub(crate) async fn teardown_decoder_for_seek(
-    source: &mut Option<Arc<Mutex<source::PlaybackSource>>>,
-    buffers: &[SharedSparseBuffer],
-    cancel_token: &Arc<std::sync::atomic::AtomicBool>,
-    decoder_handle: &mut Option<std::thread::JoinHandle<()>>,
-) {
-    // Cancel streaming source (cpal callback outputs silence)
-    if let Some(src) = source.take() {
-        if let Ok(guard) = src.lock() {
-            guard.cancel();
-        }
-    }
-
-    // Cancel this decoder's AVIO reads via its token.
-    cancel_token.store(true, std::sync::atomic::Ordering::Release);
-
-    // Wake any readers blocked on the condvar so they can check the token.
-    for buffer in buffers {
-        buffer.wake_readers();
-    }
-
-    // Wait for decoder thread to exit. Surface a thread panic as an error
-    // (decoder bug, real signal); tokio join failures (panic in the
-    // spawn_blocking wrapper itself, runtime shutdown) get a warn.
-    if let Some(handle) = decoder_handle.take() {
-        match tokio::task::spawn_blocking(move || handle.join()).await {
-            Ok(Ok(())) => {}
-            Ok(Err(panic)) => {
-                error!("Decoder thread panicked during seek teardown: {:?}", panic);
-            }
-            Err(e) => {
-                warn!("spawn_blocking failed while joining decoder thread: {e}");
-            }
-        }
-    }
-}
-
-/// The decoder window for one stream. `target_sample` is where FFmpeg trims
-/// lead-in (the track's start plus any pregap/seek offset). The seek to it is
-/// either a by-byte jump (`seek_to_byte`, a lossless track's natural start) or a
-/// sample seek (APE, or a mid-track seek); the `target_sample` trim makes the
-/// first output sample exact either way. `stop_at_sample` ends output at the
-/// track's end (`None` = to EOF).
-struct StreamDecodeParams {
-    segments: Vec<SegmentDecodeParams>,
-    leading_silence_frames: u64,
-}
-
-struct SegmentDecodeParams {
-    buffer: SharedSparseBuffer,
-    seek_to_byte: Option<u64>,
-    target_sample: u64,
-    stop_at_sample: Option<u64>,
-    /// The track's end byte offset -- the read-ahead ceiling. `None` = whole file.
-    end_byte: Option<u64>,
-}
-
-impl StreamDecodeParams {
-    /// Run the streaming decoder for this window: FFmpeg seeks (by byte or by
-    /// sample), trims lead-in at `target_sample`, and stops at `stop_at_sample`.
-    /// Shared by the play/seek and preload paths so they can't drift on the
-    /// seek/trim mapping.
-    fn run_decoder(
-        &self,
-        _buffer: SharedSparseBuffer,
-        sink: &mut crate::playback::track_stream::TrackSink,
-        cancel: Arc<std::sync::atomic::AtomicBool>,
-    ) -> Result<(), StreamingDecodeError> {
-        if self.leading_silence_frames > 0 {
-            sink.push_silence_frames_blocking(self.leading_silence_frames);
-            if cancel.load(std::sync::atomic::Ordering::Relaxed) || sink.is_cancelled() {
-                return Err(StreamingDecodeError::InputCancelled);
-            }
-        }
-
-        for segment in &self.segments {
-            let seek_to_sample = if segment.seek_to_byte.is_some() {
-                None
-            } else {
-                Some(segment.target_sample)
-            };
-            crate::audio_codec::decode_audio_streaming(
-                segment.buffer.clone(),
-                sink,
-                segment.seek_to_byte,
-                seek_to_sample,
-                Some(segment.target_sample),
-                segment.stop_at_sample,
-                segment.end_byte,
-                cancel.clone(),
-            )?;
-            if cancel.load(std::sync::atomic::Ordering::Relaxed) || sink.is_cancelled() {
-                return Err(StreamingDecodeError::InputCancelled);
-            }
-        }
-        Ok(())
-    }
 }
 
 impl PlaybackService {
@@ -1803,7 +1626,7 @@ impl PlaybackService {
                     self.preview_stop();
                 }
                 PlaybackCommand::PreviewTogglePause => {
-                    self.preview_toggle_pause().await;
+                    self.preview_toggle_pause();
                 }
                 PlaybackCommand::PreviewSeekByRatio(ratio) => {
                     self.preview.seek_by_ratio(ratio).await;

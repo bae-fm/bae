@@ -66,14 +66,11 @@ impl PlaybackService {
             }
         };
 
-        // Create decoder sink/source and start decoder eagerly for gapless playback
-        let decoder_buffer = prepared
-            .segments
-            .first()
-            .expect("prepared track has at least one segment")
-            .buffer
-            .clone();
-        let cancel_token = prepared.cancel_token.clone();
+        // A preload has no stream — it is not a pipeline yet. Mint its decoder's
+        // cancel token here (where the decoder is spawned) and carry it in
+        // `PreloadedNext` so promotion hands it to the pipeline that adopts this
+        // decoder.
+        let cancel_token = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
         // Preload params (natural transition: no pregap skip): seek to the
         // track's first sample, trim there, stop at its end.
@@ -81,11 +78,14 @@ impl PlaybackService {
         let (mut sink, source, _ready) =
             create_track_stream_pair(prepared.sample_rate, prepared.channels);
 
-        let decoder_handle = std::thread::spawn(move || {
-            if let Err(e) = decode.run_decoder(decoder_buffer, &mut sink, cancel_token) {
-                let _ = log_streaming_decode_failure("Preload streaming decode", e);
-            }
-        });
+        let decoder_handle = {
+            let decoder_cancel = cancel_token.clone();
+            std::thread::spawn(move || {
+                if let Err(e) = decode.run_decoder(&mut sink, decoder_cancel) {
+                    let _ = log_streaming_decode_failure("Preload streaming decode", e);
+                }
+            })
+        };
 
         // Store preloaded state. If the next track shares the live stream's
         // format, stage it into the PlaybackSource so the audio callback can
@@ -100,7 +100,7 @@ impl PlaybackService {
                     && self.playback_queue.repeat_mode() != RepeatMode::Track
                     && !self.should_hold_for_side_pause(&cur.prepared, &prepared) =>
             {
-                Some(cur.source.clone())
+                Some(cur.pipeline.source().clone())
             }
             _ => None,
         };
@@ -116,6 +116,7 @@ impl PlaybackService {
             self.preloaded_next = Some(PreloadedNext {
                 prepared,
                 decoder_handle,
+                cancel_token,
                 source: PreloadedNextSource::Staged,
             });
         } else {
@@ -126,6 +127,7 @@ impl PlaybackService {
             self.preloaded_next = Some(PreloadedNext {
                 prepared,
                 decoder_handle,
+                cancel_token,
                 source: PreloadedNextSource::Held(source),
             });
         }
@@ -312,7 +314,7 @@ impl PlaybackService {
     /// The current track's playback source, if a track is active.
     pub(super) fn current_source(&self) -> Option<&Arc<Mutex<source::PlaybackSource>>> {
         match &self.slot {
-            PlaybackSlot::Active(cur) => Some(&cur.source),
+            PlaybackSlot::Active(cur) => Some(cur.pipeline.source()),
             _ => None,
         }
     }
@@ -375,6 +377,7 @@ impl PlaybackService {
         let PreloadedNext {
             prepared: next_prepared,
             decoder_handle,
+            cancel_token,
             ..
         } = preloaded;
         let track_id = crossing.incoming_fmt.track_id.clone();
@@ -397,7 +400,8 @@ impl PlaybackService {
         cur.prepared
             .release_buffers_not_used_by(&next_prepared, &mut self.shared_file_buffers);
         cur.prepared = next_prepared;
-        cur.decoder_handle = decoder_handle;
+        cur.pipeline
+            .adopt_crossed_decoder(decoder_handle, cancel_token);
 
         // The crossed-into track is now playing: hand its reader fetch priority
         // over the track preloaded below.
@@ -478,6 +482,7 @@ impl PlaybackService {
         let PreloadedNext {
             prepared: next_prepared,
             decoder_handle,
+            cancel_token,
             source: preloaded_source,
         } = preloaded;
 
@@ -489,10 +494,11 @@ impl PlaybackService {
         // Fall back to play_track which handles pregap at decoder start.
         if !is_natural_transition && pregap_ms.is_some_and(|p| p > 0) {
             info!("Pregap skip needed for preloaded track - falling back to play_track");
-            next_prepared.cancel_unshared_buffers();
-            if let Some(source) = detach_preloaded_source(self.current_source(), preloaded_source) {
-                source.cancel();
-            }
+            // This preload was staged for a natural start (byte 0); a pregap-skip
+            // direct selection can't use it, so discard its decoder and re-decode
+            // through play_track.
+            let detached = detach_preloaded_source(self.current_source(), preloaded_source);
+            discard_preloaded_decoder(&next_prepared, detached, &cancel_token);
             self.play_track(
                 &track_id,
                 TrackStart::from_natural_transition(is_natural_transition),
@@ -502,9 +508,9 @@ impl PlaybackService {
             return;
         }
 
-        // Recover the preloaded next source (staged in the gapless chain or held
-        // for the rebuild path) BEFORE tearing down the current stream.
-        let source = detach_preloaded_source(self.current_source(), preloaded_source)
+        // Recover the preloaded next track stream (staged in the gapless chain or
+        // held for the rebuild path) BEFORE tearing down the current stream.
+        let track_stream = detach_preloaded_source(self.current_source(), preloaded_source)
             .expect("Preloaded track has no streaming source");
 
         // Tear down the current track. Cancel its source so the callback goes
@@ -512,21 +518,33 @@ impl PlaybackService {
         // track). The preloaded track's already-running decoder becomes current.
         if let PlaybackSlot::Active(cur) = std::mem::replace(&mut self.slot, PlaybackSlot::Stopped)
         {
-            if let Ok(guard) = cur.source.lock() {
+            if let Ok(guard) = cur.pipeline.source().lock() {
                 guard.cancel();
             }
             cur.prepared
                 .release_buffers_not_used_by(&next_prepared, &mut self.shared_file_buffers);
-            // Dropping `cur` drops the old stream/events and detaches its decoder.
+            // Dropping `cur` drops the old pipeline (stream + source, detaching the
+            // decoder) and the old audio-events receiver.
         }
 
         // Natural transition: start at position 0 (INDEX 00, pregap plays).
         let fmt = next_prepared.track_fmt(std::time::Duration::ZERO);
+        let position_update_interval_ms = self.position_update_interval_ms;
 
-        // Initialize streaming with the preloaded source. On failure the caller
-        // owns the failure path: surface a PlaybackError, then stop() to resolve
-        // the transition to Stopped (as play_track does when audio can't start).
-        let parts = match self.init_streaming(source, fmt).await {
+        // Adopt the preloaded track's already-running decoder onto a fresh stream.
+        // On failure the caller owns the failure path: surface a PlaybackError,
+        // then stop() to resolve the transition to Stopped (as play_track does when
+        // audio can't start).
+        let (pipeline, audio_events) = match StreamPipeline::attach_preloaded(
+            &mut *self.audio_output,
+            track_stream,
+            fmt,
+            decoder_handle,
+            cancel_token,
+            position_update_interval_ms,
+        )
+        .await
+        {
             Ok(parts) => parts,
             Err(_) => {
                 emit_progress(
@@ -542,12 +560,15 @@ impl PlaybackService {
             }
         };
 
-        // The preloaded track's already-running decoder becomes current.
-        let started = StartedStream {
-            parts,
-            decoder_handle,
-        };
-        self.install_active_track(next_prepared, started, target.into_track_phase());
+        // The gapless natural transition begins at position 0.
+        *self.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
+
+        self.install_active_track(
+            next_prepared,
+            pipeline,
+            audio_events,
+            target.into_track_phase(),
+        );
         self.emit_state();
 
         self.preload_queue_front().await;

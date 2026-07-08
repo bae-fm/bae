@@ -105,12 +105,14 @@ impl TrackPhase {
 }
 
 /// Everything that exists exactly when a track is current, held as one
-/// always-consistent whole.
+/// always-consistent whole. The stream + source + decoder are the shared
+/// `StreamPipeline`; the audio-events receiver stays a `CurrentTrack` field
+/// (not inside the pipeline) because the service drains it on its select tick,
+/// while preview moves its receiver into a spawned task — that asymmetry lives
+/// at the owner, not in the shared unit.
 pub(super) struct CurrentTrack {
     pub(super) prepared: PlaybackPreparedTrack,
-    pub(super) stream: Box<dyn AudioStream>,
-    pub(super) source: Arc<Mutex<source::PlaybackSource>>,
-    pub(super) decoder_handle: std::thread::JoinHandle<()>,
+    pub(super) pipeline: StreamPipeline,
     pub(super) audio_events: AudioEventReceiver,
     pub(super) phase: TrackPhase,
 }

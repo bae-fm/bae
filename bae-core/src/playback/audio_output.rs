@@ -581,6 +581,39 @@ impl AudioOutput for CaptureAudioOutput {
     capture_output_control_methods!();
 }
 
+/// A test audio output whose `create_stream` always fails, for exercising the
+/// stream-build failure path shared by both players.
+#[cfg(all(test, feature = "test-utils"))]
+pub(crate) struct FailingAudioOutput;
+
+#[cfg(all(test, feature = "test-utils"))]
+impl AudioOutput for FailingAudioOutput {
+    fn create_stream(
+        &mut self,
+        _source: Arc<Mutex<PlaybackSource>>,
+        _source_sample_rate: u32,
+        _source_channels: u32,
+        _audio_events: AudioEventSender,
+        _position_update_interval_ms: u32,
+    ) -> Result<Box<dyn AudioStream>, AudioError> {
+        Err(AudioError::StreamBuildError(
+            "stream build failure".to_string(),
+        ))
+    }
+
+    fn set_state(&self, _state: AudioState) {}
+
+    fn get_state(&self) -> AudioState {
+        AudioState::Stopped
+    }
+
+    fn set_volume(&self, _volume: f32) {}
+
+    fn get_volume(&self) -> f32 {
+        1.0
+    }
+}
+
 #[cfg(feature = "test-utils")]
 impl AudioOutput for RealtimeCaptureAudioOutput {
     fn create_stream(

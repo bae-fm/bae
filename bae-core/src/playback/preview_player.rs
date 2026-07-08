@@ -1,32 +1,31 @@
 //! # Preview Player
 //!
 //! A self-contained second audio player for auditioning a local file before
-//! import. It owns its own audio output, stream, decoder, buffer, and listener
-//! tasks — entirely separate from the main playback pipeline. The only point of
+//! import. It owns its own audio output and runs one shared `StreamPipeline` at
+//! a time — entirely separate from the main playback pipeline. The only point of
 //! contact with the main player is that previewing pauses the main player and
 //! stopping resumes it; that coordination lives in `PlaybackService`, not here.
 //!
 //! Preview has only Idle/Playing/Paused — no Loading/Buffering state — so it
-//! emits Playing/Paused immediately and skips the ready-watcher the main player
-//! uses. The demand-driven local fill keeps the ring fed; the audio callback
-//! outputs silence until the first samples land.
+//! emits Playing/Paused immediately and drops the pipeline's ready receiver (the
+//! main player uses it to arm a ready-watcher). The demand-driven local fill
+//! keeps the ring fed; the audio callback outputs silence until the first
+//! samples land.
 
-use crate::playback::audio_output::{AudioEvent, AudioOutput, AudioStream};
+use crate::playback::audio_output::{AudioEvent, AudioEventReceiver, AudioOutput, AudioState};
 use crate::playback::data_source::{AudioDataReader, LocalReader};
 use crate::playback::progress::{emit_progress, PlaybackProgress, PreviewState};
-use crate::playback::service::{
-    default_audio_output, dispatch_command, log_streaming_decode_failure, setup_audio_stream,
-    teardown_decoder_for_seek, PlaybackCommand,
-};
-use crate::playback::source;
+use crate::playback::service::{default_audio_output, dispatch_command, PlaybackCommand};
 use crate::playback::source::TrackFmt;
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
-use crate::playback::track_stream::create_track_stream_pair;
-use std::sync::{Arc, Mutex};
+use crate::playback::stream_pipeline::{
+    log_stream_diagnostic, report_dropped_audio_events, start_stream_pipeline, DecodeFailureReport,
+    SegmentDecodeParams, StreamDecodeParams, StreamPipeline, StreamPipelineStart,
+};
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::task::JoinHandle;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 /// A second audio player dedicated to previewing a local file. Holds all preview
 /// state; the main player coordinates pause/resume around it but never reaches
@@ -40,28 +39,28 @@ pub(crate) struct PreviewPlayer {
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     /// How often (ms) the audio callback emits position updates to the UI.
     position_update_interval_ms: u32,
-    /// Separate audio output for preview (lazily created on first play).
+    /// Separate audio output for preview (lazily created on first play, retained
+    /// across plays). Preview's play/pause authority is this output's state
+    /// atomic — its own truth, distinct from the main player's slot.
     audio_output: Option<Box<dyn AudioOutput>>,
-    /// Stream for preview playback.
-    stream: Option<Box<dyn AudioStream>>,
-    /// Streaming source for preview (to cancel on stop). Wrapped in a
-    /// single-track `PlaybackSource` (preview never chains) to share the audio
-    /// output's stream interface.
-    playback_source: Option<Arc<Mutex<source::PlaybackSource>>>,
-    /// Path of the file currently being previewed.
-    path: Option<String>,
-    /// Last known duration for the preview file.
+    /// The currently-loaded preview, if any.
+    active: Option<ActivePreview>,
+}
+
+/// One loaded preview: its file identity + format, the retained buffer (kept
+/// across seeks so the reader isn't restarted), the event-listener task, and the
+/// live streaming pipeline.
+struct ActivePreview {
+    path: String,
     duration: Duration,
-    /// Abort handles for preview event listener tasks.
-    listener_handle: Option<JoinHandle<()>>,
-    /// Sparse buffer for the current preview (retained across seeks).
-    buffer: Option<SharedSparseBuffer>,
-    /// JoinHandle for the preview decoder thread (needed for seek cancellation).
-    decoder_handle: Option<std::thread::JoinHandle<()>>,
-    /// Token for the active preview decoder's AVIO reader.
-    decoder_cancel_token: Option<Arc<std::sync::atomic::AtomicBool>>,
     sample_rate: u32,
     channels: u32,
+    /// Sparse buffer for the current preview, retained across seeks; the owner
+    /// cancels it on stop.
+    buffer: SharedSparseBuffer,
+    /// The preview event-listener task (aborted on stop/seek).
+    listener_handle: JoinHandle<()>,
+    pipeline: StreamPipeline,
 }
 
 impl PreviewPlayer {
@@ -75,48 +74,26 @@ impl PreviewPlayer {
             command_tx,
             position_update_interval_ms,
             audio_output: None,
-            stream: None,
-            playback_source: None,
-            path: None,
-            duration: Duration::ZERO,
-            listener_handle: None,
-            buffer: None,
-            decoder_handle: None,
-            decoder_cancel_token: None,
-            sample_rate: 44100,
-            channels: 2,
+            active: None,
         }
     }
 
     /// Path of the file currently being previewed, if any.
     pub(crate) fn current_path(&self) -> Option<&str> {
-        self.path.as_deref()
+        self.active.as_ref().map(|a| a.path.as_str())
     }
 
-    /// Whether a preview file is loaded (playing, paused, or finished-but-shown).
+    /// Whether a preview file is loaded (playing or paused).
     pub(crate) fn is_active(&self) -> bool {
-        self.path.is_some()
-    }
-
-    /// Whether the active preview reached its end (stream and source torn down)
-    /// but is still shown on the bar.
-    pub(crate) fn is_finished(&self) -> bool {
-        self.stream.is_none() && self.playback_source.is_none()
-    }
-
-    /// Drop a finished preview's lingering listeners and path so a fresh play of
-    /// the same file starts clean.
-    pub(crate) fn clear_finished(&mut self) {
-        self.abort_listeners();
-        self.path = None;
+        self.active.is_some()
     }
 
     /// Start a fresh preview of `path`. Switches off any currently-loaded
     /// preview first. Returns true if playback started.
     pub(crate) async fn play(&mut self, path: String) -> bool {
-        // A different preview is still active: stop it first (without resuming
-        // main — the new preview keeps main paused).
-        if self.path.is_some() {
+        // A preview is still active: stop it first (without resuming main — the
+        // new preview keeps main paused).
+        if self.active.is_some() {
             self.stop();
         }
 
@@ -128,29 +105,22 @@ impl PreviewPlayer {
             }
         };
 
-        // Probe duration and sample rate from file
+        // Probe duration and sample rate from file.
         let Some(probe) = probe_preview_audio(&path).await else {
             return false;
         };
-        let probed_duration = probe.duration;
-        let sample_rate = probe.sample_rate;
-        let channels = probe.channels;
 
-        // Create sparse buffer and start local file reader
+        // Create sparse buffer and start local file reader.
         let buffer = create_sparse_buffer(source_size);
         let reader: Box<dyn AudioDataReader> = Box::new(LocalReader::new(path.clone()));
         reader.start_reading(buffer.clone(), self.progress_tx.clone());
 
-        self.buffer = Some(buffer.clone());
-        self.sample_rate = sample_rate;
-        self.channels = channels;
-
         let started = self
-            .start_decode(
+            .start_streaming(
                 path.clone(),
-                probed_duration,
-                sample_rate,
-                channels,
+                probe.duration,
+                probe.sample_rate,
+                probe.channels,
                 buffer,
                 None,
                 false,
@@ -164,69 +134,76 @@ impl PreviewPlayer {
 
     /// Seek by slider ratio (0.0–1.0) within the active preview.
     pub(crate) async fn seek_by_ratio(&mut self, ratio: f64) {
-        let duration_ms = self.duration.as_millis() as u64;
+        let Some(active) = self.active.as_ref() else {
+            return;
+        };
+        let duration_ms = active.duration.as_millis() as u64;
         let position_ms = (ratio.clamp(0.0, 1.0) * duration_ms as f64) as u64;
         self.seek(Duration::from_millis(position_ms)).await;
     }
 
-    /// Seek within the active preview.
+    /// Seek within the active preview. Tears down the current pipeline (retaining
+    /// the buffer) and rebuilds a fresh one seeked to `position`.
     pub(crate) async fn seek(&mut self, position: Duration) {
-        let buffer = match &self.buffer {
-            Some(buf) => buf.clone(),
-            None => return,
+        let Some(active) = self.active.as_ref() else {
+            return;
         };
-        if self.path.is_none() {
+        if active.duration.is_zero() {
             return;
         }
-        let duration = self.duration;
-        if duration.is_zero() {
-            return;
-        }
+
+        let buffer = active.buffer.clone();
+        let path = active.path.clone();
+        let duration = active.duration;
+        let sample_rate = active.sample_rate;
+        let channels = active.channels;
 
         let was_paused = self
             .audio_output
             .as_ref()
-            .map(|o| o.get_state() == crate::playback::audio_output::AudioState::Paused)
+            .map(|o| o.get_state() == AudioState::Paused)
             .unwrap_or(false);
 
-        // Abort old listeners immediately to prevent stale position ticks
-        self.abort_listeners();
-        if let Some(stream) = self.stream.take() {
-            drop(stream);
+        // Take the active preview out, abort its listener, and shut the pipeline
+        // down — cancelling the old decoder and joining it so the fresh decoder
+        // can reuse the retained buffer.
+        let active = self.active.take().unwrap();
+        active.listener_handle.abort();
+        active
+            .pipeline
+            .shutdown_for_seek(std::slice::from_ref(&buffer))
+            .await;
+
+        let started = self
+            .start_streaming(
+                path,
+                duration,
+                sample_rate,
+                channels,
+                buffer,
+                Some(position),
+                was_paused,
+            )
+            .await;
+
+        // The rebuild failed: the old pipeline is already torn down and
+        // `start_streaming` cancelled the buffer, so the preview is simply gone
+        // (no zombie left behind). Surface Idle so the UI stops showing a preview
+        // that no longer exists, instead of freezing on the pre-seek state.
+        if !started {
+            if let Some(preview_output) = &self.audio_output {
+                preview_output.set_state(AudioState::Stopped);
+            }
+            emit_progress(
+                &self.progress_tx,
+                PlaybackProgress::PreviewStateChanged(PreviewState::Idle),
+            );
+            return;
         }
 
-        // Tear down old decoder, preserve buffer
-        let preview_cancel = self
-            .decoder_cancel_token
-            .take()
-            .expect("active preview decoder has a cancel token");
-        teardown_decoder_for_seek(
-            &mut self.playback_source,
-            std::slice::from_ref(&buffer),
-            &preview_cancel,
-            &mut self.decoder_handle,
-        )
-        .await;
-
-        // Start new decoder on the same buffer with seek_to
-        let path = self.path.clone().unwrap();
-        let sample_rate = self.sample_rate;
-        let channels = self.channels;
-        self.start_decode(
-            path,
-            duration,
-            sample_rate,
-            channels,
-            buffer,
-            Some(position),
-            was_paused,
-        )
-        .await;
-
-        // When seeking while paused, no tick will fire to carry the new
-        // position — emit explicitly so the NSView updates. When seeking
-        // while playing, the event listener task picks up from the new
-        // offset on its next tick, so no explicit emit is needed.
+        // When seeking while paused, no tick will fire to carry the new position —
+        // emit explicitly so the NSView updates. When seeking while playing, the
+        // event listener picks up from the new offset on its next tick.
         if was_paused {
             let pos_ms = position.as_millis() as u64;
             let dur_ms = duration.as_millis() as u64;
@@ -240,21 +217,21 @@ impl PreviewPlayer {
         }
     }
 
-    /// Toggle pause/resume on the active (non-finished) preview.
+    /// Toggle pause/resume on the active preview.
     pub(crate) fn toggle_pause(&mut self) {
-        let Some(path) = self.path.clone() else {
+        let Some(active) = self.active.as_ref() else {
             return;
         };
+        let path = active.path.clone();
+        let dur_ms = active.duration.as_millis() as u64;
 
         let Some(preview_output) = &self.audio_output else {
             return;
         };
 
-        let dur_ms = self.duration.as_millis() as u64;
         match preview_output.get_state() {
-            crate::playback::audio_output::AudioState::Playing => {
-                preview_output.set_state(crate::playback::audio_output::AudioState::Paused);
-
+            AudioState::Playing => {
+                preview_output.set_state(AudioState::Paused);
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PreviewStateChanged(PreviewState::Paused {
@@ -263,9 +240,8 @@ impl PreviewPlayer {
                     }),
                 );
             }
-            crate::playback::audio_output::AudioState::Paused => {
-                preview_output.set_state(crate::playback::audio_output::AudioState::Playing);
-
+            AudioState::Paused => {
+                preview_output.set_state(AudioState::Playing);
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PreviewStateChanged(PreviewState::Playing {
@@ -281,15 +257,19 @@ impl PreviewPlayer {
     /// Stop preview playback and tear down its pipeline. Does not touch the main
     /// player — the caller decides whether to resume it.
     pub(crate) fn stop(&mut self) {
-        self.teardown_decoder();
-
-        if let Some(preview_output) = &self.audio_output {
-            preview_output.set_state(crate::playback::audio_output::AudioState::Stopped);
+        let was_previewing = self.active.is_some();
+        if let Some(active) = self.active.take() {
+            active.listener_handle.abort();
+            // Cancel the source + decoder token and drop the stream; then cancel
+            // the buffer so the local reader stops and any blocked decoder read
+            // exits.
+            active.pipeline.cancel();
+            active.buffer.cancel();
         }
 
-        let was_previewing = self.path.is_some();
-        self.path = None;
-        self.duration = Duration::ZERO;
+        if let Some(preview_output) = &self.audio_output {
+            preview_output.set_state(AudioState::Stopped);
+        }
 
         if was_previewing {
             info!("Preview stopped");
@@ -300,40 +280,10 @@ impl PreviewPlayer {
         }
     }
 
-    fn teardown_decoder(&mut self) {
-        if let Some(source) = self.playback_source.take() {
-            if let Ok(guard) = source.lock() {
-                guard.cancel();
-            }
-        }
-
-        // Cancel the token and buffer so any blocked decoder read exits.
-        if let Some(cancel_token) = self.decoder_cancel_token.take() {
-            cancel_token.store(true, std::sync::atomic::Ordering::Release);
-        }
-        if let Some(buf) = &self.buffer {
-            buf.cancel();
-        }
-        self.buffer = None;
-        self.decoder_handle = None;
-
-        if let Some(stream) = self.stream.take() {
-            drop(stream);
-        }
-
-        self.abort_listeners();
-    }
-
-    /// Abort preview event listener tasks.
-    fn abort_listeners(&mut self) {
-        if let Some(handle) = self.listener_handle.take() {
-            handle.abort();
-        }
-    }
-
-    /// Start decoding and streaming for preview playback. Shared by `play`
-    /// (`seek_to=None`) and `seek`. Returns true on success.
-    async fn start_decode(
+    /// Build and start the shared streaming pipeline for a preview. Shared by
+    /// `play` (`seek_to=None`) and `seek`. On success installs the `ActivePreview`
+    /// and returns true; on failure cancels the buffer and returns false.
+    async fn start_streaming(
         &mut self,
         path: String,
         duration: Duration,
@@ -343,88 +293,75 @@ impl PreviewPlayer {
         seek_to: Option<Duration>,
         paused: bool,
     ) -> bool {
-        let (mut sink, source, _) = create_track_stream_pair(sample_rate, channels);
-
-        let decoder_buffer = buffer.clone();
-        let preview_cancel = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let decoder_cancel_token = preview_cancel.clone();
-        let seek_to_sample = seek_to.map(|d| (d.as_secs_f64() * sample_rate as f64) as u64);
-        let decoder_handle = std::thread::spawn(move || {
-            if let Err(e) = crate::audio_codec::decode_audio_streaming(
-                decoder_buffer,
-                &mut sink,
-                None,
-                seek_to_sample,
-                None,
-                None,
-                None, // preview auditions the whole file
-                preview_cancel,
-            ) {
-                let _ = log_streaming_decode_failure("Preview decode", e);
-            }
-        });
-
-        self.decoder_handle = Some(decoder_handle);
-        self.decoder_cancel_token = Some(decoder_cancel_token);
-
-        // Preview never chains; the fmt's values are read from the audio
-        // event stream by the listener.
-        let preview_fmt = TrackFmt {
-            track_id: path.clone(),
-            duration_ms: duration.as_millis() as u64,
-            pregap_ms: None,
-            position_offset: seek_to.unwrap_or(Duration::ZERO),
-            // Preview plays an unimported file (no stored measurements) at unity.
-            replay_gain_linear: 1.0,
-        };
-        let source = Arc::new(Mutex::new(source::PlaybackSource::new(source, preview_fmt)));
-
         if self.audio_output.is_none() {
             match default_audio_output() {
                 Ok(output) => self.audio_output = Some(output),
                 Err(e) => {
                     error!("Failed to create preview audio output: {:?}", e);
-                    self.teardown_decoder();
+                    buffer.cancel();
                     return false;
                 }
             }
         }
-        if let Some(stream) = self.stream.take() {
-            drop(stream);
-        }
 
-        let setup = match setup_audio_stream(
+        // Preview is a single whole-file window. `target_sample` trims the first
+        // output sample exactly at the seek target (0 for a fresh play).
+        let target_sample = seek_to
+            .map(|d| (d.as_secs_f64() * sample_rate as f64) as u64)
+            .unwrap_or(0);
+        let decode = StreamDecodeParams {
+            segments: vec![SegmentDecodeParams {
+                buffer: buffer.clone(),
+                seek_to_byte: None,
+                target_sample,
+                stop_at_sample: None,
+                end_byte: None, // preview auditions the whole file
+            }],
+            leading_silence_frames: 0,
+        };
+
+        // Preview never chains and plays an unimported file (no stored loudness
+        // measurements) at unity gain; the listener reads position from the event
+        // stream's fmt.
+        let fmt = TrackFmt {
+            track_id: path.clone(),
+            duration_ms: duration.as_millis() as u64,
+            pregap_ms: None,
+            position_offset: seek_to.unwrap_or(Duration::ZERO),
+            replay_gain_linear: 1.0,
+        };
+
+        let StreamPipelineStart {
+            pipeline,
+            audio_events,
+            ready: _,
+        } = match start_stream_pipeline(
             self.audio_output.as_deref_mut().unwrap(),
-            source.clone(),
+            decode,
+            fmt,
+            sample_rate,
+            channels,
             self.position_update_interval_ms,
+            "Preview decode",
+            DecodeFailureReport::LogOnly,
         )
         .await
         {
-            Ok(s) => s,
+            Ok(start) => start,
             Err(e) => {
-                error!("Failed to create preview audio stream: {:?}", e);
-                self.teardown_decoder();
+                error!("Failed to start preview stream: {:?}", e);
+                buffer.cancel();
                 return false;
             }
         };
 
-        if let Err(e) = setup.stream.play() {
-            error!("Failed to start preview playback: {:?}", e);
-            self.teardown_decoder();
-            return false;
-        }
-
+        // Preview's play/pause authority is its own audio-output state atomic.
         let preview_output = self.audio_output.as_ref().unwrap();
-        if paused {
-            preview_output.set_state(crate::playback::audio_output::AudioState::Paused);
+        preview_output.set_state(if paused {
+            AudioState::Paused
         } else {
-            preview_output.set_state(crate::playback::audio_output::AudioState::Playing);
-        }
-
-        self.stream = Some(setup.stream);
-        self.playback_source = Some(source.clone());
-        self.path = Some(path.clone());
-        self.duration = duration;
+            AudioState::Playing
+        });
 
         let dur_ms = duration.as_millis() as u64;
         let preview_state = if paused {
@@ -438,17 +375,33 @@ impl PreviewPlayer {
                 duration_ms: dur_ms,
             }
         };
-
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::PreviewStateChanged(preview_state),
         );
 
+        let listener_handle = self.spawn_listener(audio_events);
+
+        self.active = Some(ActivePreview {
+            path,
+            duration,
+            sample_rate,
+            channels,
+            buffer,
+            listener_handle,
+            pipeline,
+        });
+        true
+    }
+
+    /// Spawn the preview event-listener task. Keeps the preview-specific arms
+    /// (Position → `PreviewPositionUpdate`, Completion → `PreviewCompleted`) and
+    /// delegates the diagnostics and dropped-event accounting to the shared unit.
+    fn spawn_listener(&self, mut audio_events: AudioEventReceiver) -> JoinHandle<()> {
         let progress_tx = self.progress_tx.clone();
         let command_tx = self.command_tx.clone();
-        let mut audio_events = setup.audio_events;
 
-        let h3 = tokio::spawn(async move {
+        tokio::spawn(async move {
             let mut event_tick = tokio::time::interval(Duration::from_millis(10));
             event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             loop {
@@ -456,10 +409,9 @@ impl PreviewPlayer {
                 let mut completed = false;
                 while let Some(event) = audio_events.pop() {
                     match event {
-                        // Preview is single-track; the audio callback tags
-                        // every tick with the same fmt we built above. Read
-                        // its fields directly so the listener doesn't carry
-                        // parallel copies.
+                        // Preview is single-track; the audio callback tags every
+                        // tick with the same fmt built above. Read its fields
+                        // directly so the listener carries no parallel copies.
                         AudioEvent::Position((fmt, pos)) => {
                             let actual_pos_ms = (fmt.position_offset + pos).as_millis() as u64;
                             emit_progress(
@@ -474,73 +426,24 @@ impl PreviewPlayer {
                                 },
                             );
                         }
-                        AudioEvent::Completion((_fmt, _error_count, _samples_decoded)) => {
+                        AudioEvent::Completion(_) => {
                             // Preview doesn't track decode stats — it is not a
                             // library track. The stats carried by the uniform
                             // event are dropped here by design.
                             dispatch_command(&command_tx, PlaybackCommand::PreviewCompleted);
                             completed = true;
                         }
-                        AudioEvent::TrackCrossing(_) => {}
-                        AudioEvent::SourceLockMissed { missed_ms } => {
-                            warn!(
-                                missed_ms,
-                                "preview audio callback could not lock playback source while playing"
-                            );
-                        }
-                        AudioEvent::SourceLockReacquired { missed_ms } => {
-                            debug!(
-                                missed_ms,
-                                "preview audio callback reacquired playback source lock"
-                            );
-                        }
-                        AudioEvent::Starved {
-                            fmt,
-                            starved_ms,
-                            position_ms,
-                            producer_finished,
-                            samples_decoded,
-                            decode_errors,
-                            has_next,
-                        } => {
-                            warn!(
-                                track_id = %fmt.track_id,
-                                starved_ms,
-                                position_ms,
-                                producer_finished,
-                                samples_decoded,
-                                decode_errors,
-                                has_next,
-                                "preview playback source has no decoded samples while current track is not finished"
-                            );
-                        }
-                        AudioEvent::StarvationEnded {
-                            fmt,
-                            starved_ms,
-                            position_ms,
-                            samples_decoded,
-                            decode_errors,
-                        } => {
-                            debug!(
-                                track_id = %fmt.track_id,
-                                starved_ms,
-                                position_ms,
-                                samples_decoded,
-                                decode_errors,
-                                "preview playback source resumed after decoded sample starvation"
-                            );
+                        // Diagnostics (and the never-relevant TrackCrossing) go to
+                        // the shared logger.
+                        other => {
+                            log_stream_diagnostic("preview", &other);
                         }
                     }
                     if completed {
                         break;
                     }
                 }
-                let dropped_required = audio_events.take_dropped_required_count();
-                if dropped_required > 0 {
-                    error!(
-                        dropped_required,
-                        "preview audio callback event queue dropped required events"
-                    );
+                if report_dropped_audio_events(&audio_events, "preview") {
                     emit_progress(
                         &progress_tx,
                         PlaybackProgress::PlaybackError {
@@ -551,19 +454,11 @@ impl PreviewPlayer {
                     );
                     break;
                 }
-                let dropped = audio_events.take_dropped_count();
-                if dropped > 0 {
-                    warn!(dropped, "preview audio callback event queue dropped events");
-                }
                 if completed {
                     break;
                 }
             }
-        });
-
-        self.listener_handle = Some(h3);
-
-        true
+        })
     }
 }
 
@@ -599,41 +494,35 @@ fn resolve_preview_probe(
     }
 }
 
+#[cfg(test)]
+impl PreviewPlayer {
+    /// Inject an active preview over a caller-built pipeline so service-level
+    /// tests can exercise the completion/stop teardown seam without real audio.
+    pub(crate) fn set_active_for_test(
+        &mut self,
+        path: String,
+        pipeline: StreamPipeline,
+        buffer: SharedSparseBuffer,
+    ) {
+        self.active = Some(ActivePreview {
+            path,
+            duration: Duration::from_secs(1),
+            sample_rate: 44_100,
+            channels: 2,
+            buffer,
+            listener_handle: tokio::spawn(async {}),
+            pipeline,
+        });
+    }
+}
+
 #[cfg(all(test, feature = "test-utils"))]
 mod tests {
     use super::*;
     use crate::playback::audio_output::{
-        AudioError, AudioEventSender, AudioState, CaptureAudioOutput,
+        audio_event_channel, CaptureAudioOutput, FailingAudioOutput,
     };
-
-    struct FailingAudioOutput;
-
-    impl AudioOutput for FailingAudioOutput {
-        fn create_stream(
-            &mut self,
-            _source: Arc<Mutex<source::PlaybackSource>>,
-            _source_sample_rate: u32,
-            _source_channels: u32,
-            _audio_events: AudioEventSender,
-            _position_update_interval_ms: u32,
-        ) -> Result<Box<dyn AudioStream>, AudioError> {
-            Err(AudioError::StreamBuildError(
-                "preview test failure".to_string(),
-            ))
-        }
-
-        fn set_state(&self, _state: AudioState) {}
-
-        fn get_state(&self) -> AudioState {
-            AudioState::Stopped
-        }
-
-        fn set_volume(&self, _volume: f32) {}
-
-        fn get_volume(&self) -> f32 {
-            1.0
-        }
-    }
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn preview_play_rejects_unprobeable_file() {
@@ -654,17 +543,20 @@ mod tests {
         assert!(!started);
     }
 
+    /// A failed stream start leaves no active preview and cancels the buffer — the
+    /// preview side of the shared unit's failure contract (the unit cancels the
+    /// decoder; the owner cancels the buffer). A subsequent start over a working
+    /// output leaves `active` populated with the file as the current path.
     #[tokio::test]
-    async fn failed_preview_stream_start_clears_decoder_state() {
+    async fn failed_preview_stream_start_leaves_no_active_preview() {
         let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
         let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
         let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
         let buffer = create_sparse_buffer(0);
-        player.buffer = Some(buffer.clone());
         player.audio_output = Some(Box::new(FailingAudioOutput));
 
         let started = player
-            .start_decode(
+            .start_streaming(
                 "preview.wav".to_string(),
                 Duration::from_secs(1),
                 44_100,
@@ -676,23 +568,20 @@ mod tests {
             .await;
 
         assert!(!started);
-        assert!(player.buffer.is_none());
-        assert!(player.decoder_handle.is_none());
-        assert!(player.decoder_cancel_token.is_none());
+        assert!(player.active.is_none());
         assert!(buffer.is_cancelled());
 
         let (output, _capture_rx) = CaptureAudioOutput::new();
         let next_buffer = create_sparse_buffer(0);
-        player.buffer = Some(next_buffer);
         player.audio_output = Some(Box::new(output));
 
         let started = player
-            .start_decode(
+            .start_streaming(
                 "preview.wav".to_string(),
                 Duration::from_secs(1),
                 44_100,
                 2,
-                player.buffer.as_ref().unwrap().clone(),
+                next_buffer,
                 None,
                 false,
             )
@@ -701,6 +590,88 @@ mod tests {
         assert!(started);
         assert_eq!(player.current_path(), Some("preview.wav"));
         player.stop();
+    }
+
+    /// The preview listener maps a natural-completion audio event to a
+    /// `PreviewCompleted` command — the seam the service turns into teardown.
+    #[tokio::test]
+    async fn preview_listener_maps_completion_to_preview_completed() {
+        let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
+        let (command_tx, mut command_rx) = tokio_mpsc::unbounded_channel();
+        let player = PreviewPlayer::new(progress_tx, command_tx, 50);
+
+        let (mut audio_tx, audio_rx) = audio_event_channel();
+        let handle = player.spawn_listener(audio_rx);
+
+        audio_tx.push_required(AudioEvent::Completion((
+            Arc::new(TrackFmt {
+                track_id: "preview.wav".to_string(),
+                duration_ms: 1_000,
+                pregap_ms: None,
+                position_offset: Duration::ZERO,
+                replay_gain_linear: 1.0,
+            }),
+            0,
+            0,
+        )));
+
+        let cmd = tokio::time::timeout(Duration::from_secs(1), command_rx.recv())
+            .await
+            .expect("the listener dispatches within the timeout")
+            .expect("a command is sent");
+        assert!(matches!(cmd, PlaybackCommand::PreviewCompleted));
+        handle.abort();
+    }
+
+    /// A preview seek whose stream rebuild fails tears the preview down outright
+    /// (no zombie) and surfaces `PreviewState::Idle` so the UI stops showing it.
+    #[tokio::test]
+    async fn failed_preview_seek_surfaces_idle() {
+        let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
+        let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+        let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+
+        // Set up an active preview over a working capture output.
+        let (output, _capture_rx) = CaptureAudioOutput::new();
+        player.audio_output = Some(Box::new(output));
+        let buffer = create_sparse_buffer(0);
+        assert!(
+            player
+                .start_streaming(
+                    "preview.wav".to_string(),
+                    Duration::from_secs(1),
+                    44_100,
+                    2,
+                    buffer,
+                    None,
+                    false,
+                )
+                .await
+        );
+        assert!(player.is_active());
+
+        // The rebuild output now fails; seeking must tear the preview down and
+        // notify the UI rather than leaving a torn-down zombie.
+        player.audio_output = Some(Box::new(FailingAudioOutput));
+        player.seek(Duration::from_millis(500)).await;
+
+        assert!(
+            !player.is_active(),
+            "a failed seek leaves no active preview"
+        );
+        let mut saw_idle = false;
+        while let Ok(progress) = progress_rx.try_recv() {
+            if matches!(
+                progress,
+                PlaybackProgress::PreviewStateChanged(PreviewState::Idle)
+            ) {
+                saw_idle = true;
+            }
+        }
+        assert!(
+            saw_idle,
+            "a failed preview seek surfaces PreviewState::Idle to the UI"
+        );
     }
 
     #[tokio::test]

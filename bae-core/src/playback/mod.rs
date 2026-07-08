@@ -16,6 +16,7 @@ mod repeat_mode;
 pub mod service;
 pub mod source;
 pub mod sparse_buffer;
+pub mod stream_pipeline;
 pub mod track_stream;
 
 #[cfg(feature = "test-utils")]

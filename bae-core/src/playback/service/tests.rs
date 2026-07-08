@@ -1,6 +1,6 @@
 use super::*;
 use crate::playback::audio_output::{
-    audio_event_channel, AudioError, AudioEvent, AudioEventSender, AudioState,
+    audio_event_channel, AudioError, AudioEvent, AudioEventSender, AudioState, AudioStream,
 };
 use tempfile::TempDir;
 
@@ -114,18 +114,26 @@ async fn test_playback_service() -> (
     (home, service, progress_rx)
 }
 
-/// Build an `Active` slot from a prepared track, wrapping a fresh test stream
-/// source and audio-events channel. Tests that need a specific source or
-/// pending audio event build the slot inline instead.
-fn active_slot(prepared: PlaybackPreparedTrack, phase: TrackPhase) -> PlaybackSlot {
+/// Build a `StreamPipeline` over a fresh source for the prepared track's fmt —
+/// the shared unit a `CurrentTrack` holds. The stub stream/decoder/token come
+/// from `new_for_test`.
+fn test_pipeline(prepared: &PlaybackPreparedTrack) -> StreamPipeline {
     let (_sink, source, _ready) = create_track_stream_pair(prepared.sample_rate, prepared.channels);
     let track_fmt = prepared.track_fmt(std::time::Duration::ZERO);
+    StreamPipeline::new_for_test(Arc::new(Mutex::new(source::PlaybackSource::new(
+        source, track_fmt,
+    ))))
+}
+
+/// Build an `Active` slot from a prepared track, wrapping a fresh test pipeline
+/// and audio-events channel. Tests that need a specific source or pending audio
+/// event build the slot inline instead.
+fn active_slot(prepared: PlaybackPreparedTrack, phase: TrackPhase) -> PlaybackSlot {
+    let pipeline = test_pipeline(&prepared);
     let (_tx, audio_events) = audio_event_channel();
     PlaybackSlot::Active(CurrentTrack {
         prepared,
-        stream: Box::new(TestAudioStream),
-        source: Arc::new(Mutex::new(source::PlaybackSource::new(source, track_fmt))),
-        decoder_handle: finished_decoder_handle(),
+        pipeline,
         audio_events,
         phase,
     })
@@ -171,7 +179,6 @@ fn test_prepared_track_with_file(
             start_byte: None,
             end_byte: None,
         }],
-        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         sample_rate: 44_100,
         channels: 2,
         pregap_ms: None,
@@ -228,6 +235,7 @@ fn clear_preloaded_next_cancels_held_unshared_buffer() {
     let mut preloaded = Some(PreloadedNext {
         prepared: test_prepared_track("next-track", buffer.clone(), false),
         decoder_handle: finished_decoder_handle(),
+        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         source: PreloadedNextSource::Held(source),
     });
 
@@ -254,6 +262,7 @@ fn clear_preloaded_next_removes_staged_source() {
     let mut preloaded = Some(PreloadedNext {
         prepared: test_prepared_track("next-track", buffer.clone(), false),
         decoder_handle: finished_decoder_handle(),
+        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         source: PreloadedNextSource::Staged,
     });
 
@@ -283,14 +292,13 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
         incoming_fmt: Arc::new(test_track_fmt("incoming-track")),
     }));
     let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
+    let pipeline = StreamPipeline::new_for_test(Arc::new(Mutex::new(source::PlaybackSource::new(
+        source,
+        test_track_fmt("finished-track"),
+    ))));
     service.slot = PlaybackSlot::Active(CurrentTrack {
         prepared: test_prepared_track("finished-track", finished_buffer.clone(), false),
-        stream: Box::new(TestAudioStream),
-        source: Arc::new(Mutex::new(source::PlaybackSource::new(
-            source,
-            test_track_fmt("finished-track"),
-        ))),
-        decoder_handle: finished_decoder_handle(),
+        pipeline,
         audio_events: audio_rx,
         phase: TrackPhase::Playing,
     });
@@ -299,6 +307,7 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
     service.preloaded_next = Some(PreloadedNext {
         prepared: test_prepared_track("incoming-track", incoming_buffer, false),
         decoder_handle: finished_decoder_handle(),
+        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         source: PreloadedNextSource::Staged,
     });
 
@@ -389,6 +398,7 @@ async fn next_after_natural_completion_resumes_audibly() {
     service.preloaded_next = Some(PreloadedNext {
         prepared: test_prepared_track("next-track", next_buffer, false),
         decoder_handle: finished_decoder_handle(),
+        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         source: PreloadedNextSource::Held(next_source),
     });
 
@@ -444,6 +454,7 @@ async fn gapless_crossing_evicts_finished_track_file_buffer() {
             false,
         ),
         decoder_handle: finished_decoder_handle(),
+        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         source: PreloadedNextSource::Staged,
     });
 
@@ -491,6 +502,7 @@ async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
             true,
         ),
         decoder_handle: finished_decoder_handle(),
+        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         source: PreloadedNextSource::Staged,
     });
 
@@ -598,6 +610,44 @@ async fn halt_on_error_noops_when_stopped() {
         progress_rx.try_recv().is_err(),
         "halting an already-stopped slot must emit nothing"
     );
+}
+
+/// Natural preview completion (a `PreviewCompleted` command) tears the preview
+/// pipeline down and emits `PreviewState::Idle`. This pins the service-side
+/// contract the preview listener's Completion arm feeds into: PreviewCompleted →
+/// stop() → Idle, with the pipeline gone.
+#[tokio::test]
+async fn preview_completed_tears_down_and_emits_idle() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+
+    let buffer = create_sparse_buffer(1_024);
+    let prepared = test_prepared_track("preview-file", buffer.clone(), false);
+    let pipeline = test_pipeline(&prepared);
+    service
+        .preview
+        .set_active_for_test("preview-file".to_string(), pipeline, buffer.clone());
+    assert!(service.preview.is_active());
+
+    service.preview_completed();
+
+    assert!(
+        !service.preview.is_active(),
+        "completion tears the active preview down"
+    );
+    assert!(
+        buffer.is_cancelled(),
+        "completion cancels the preview buffer"
+    );
+    let mut saw_idle = false;
+    while let Ok(progress) = progress_rx.try_recv() {
+        if matches!(
+            progress,
+            PlaybackProgress::PreviewStateChanged(crate::playback::PreviewState::Idle)
+        ) {
+            saw_idle = true;
+        }
+    }
+    assert!(saw_idle, "completion emits PreviewState::Idle");
 }
 
 /// Table-drive `playback_state()` over each slot/phase.
