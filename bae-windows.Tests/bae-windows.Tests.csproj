@@ -51,6 +51,7 @@
     <Compile Include="../bae-windows/Stores/SyncIndicatorModel.cs" Link="SyncIndicatorModel.cs" />
     <Compile Include="../bae-windows/UpdateFlow.cs" Link="UpdateFlow.cs" />
     <Compile Include="../bae-windows/Stores/SortState.cs" Link="SortState.cs" />
+    <Compile Include="../bae-windows/TextTruncation.cs" Link="TextTruncation.cs" />
   </ItemGroup>
 
   <ItemGroup>

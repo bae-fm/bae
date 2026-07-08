@@ -53,6 +53,10 @@ public sealed partial class MainWindow : Window
     private readonly ProjectionRegistry _projections;
     private readonly UiEventRouter _router;
     private readonly NowPlayingBarController _nowPlayingBar;
+    private readonly ImportStore _import;
+    private readonly ImportDialog _importDialog;
+    private readonly ImportPickerDialog _importPicker;
+    private readonly ImportConfirmDialog _importConfirm;
 
     // Releases whose unmanage is running right now. Unmanage is a blocking
     // foreground transfer (unlike pin, which enqueues, or upload, which lives in
@@ -66,13 +70,6 @@ public sealed partial class MainWindow : Window
     // Windows media flyout) from playback events. One instance for the window's
     // lifetime; library switches deactivate it rather than recreating it.
     private readonly MediaControlService _mediaControls;
-
-    // Scan candidates, refreshed from core when import invalidations arrive and
-    // bound to the import dialog list.
-    private readonly ObservableCollection<ImportCandidate> _candidates = new();
-
-    // The import dialog's status line while it is open.
-    private TextBlock? _scanStatus;
 
     // Reloads the storage dialog's outbox panel and storage rows; set while that
     // dialog is open so outbox invalidations refresh them live, null when closed.
@@ -92,14 +89,6 @@ public sealed partial class MainWindow : Window
     // album/release invalidations refresh each row's state badge and actions, not
     // just the album grid.
     private Action? _refreshStorageRows;
-
-    // The import-picker's preview position label, set while that picker is open so
-    // PreviewProgress updates it; null when closed.
-    private TextBlock? _previewElapsed;
-
-    // The previewing track's total-duration label, from PreviewPlaying. Shown after
-    // the elapsed position ("0:23 / 3:45"); null when nothing is previewing.
-    private string? _previewDurationLabel;
 
     // x:Bind Albums/Composers in the shell resolve here; the collections live in
     // the browser store (constructed before InitializeComponent so these are
@@ -170,8 +159,9 @@ public sealed partial class MainWindow : Window
             QueueAddBadge,
             QueueAddBadgeScale,
             QueueAddBadgeText);
+        _import = new ImportStore(_session, _shell, _mediaControls);
         _projections = new ProjectionRegistry();
-        _router = new UiEventRouter(_playback, _shell, _projections, _mediaControls, HandleImportPreviewEvent);
+        _router = new UiEventRouter(_playback, _shell, _projections, _mediaControls, _import.HandlePreviewEvent);
         _session.UiEvent += _router.Route;
 
         // The composer/search panes and the library-lifecycle dialogs. The window
@@ -214,6 +204,18 @@ public sealed partial class MainWindow : Window
             () => _joinDialog.Show(),
             () => _restoreCloudDialog.Show());
 
+        // The import flow: the confirm step (which can open an album), the picker
+        // that leads to it, and the folder-scan dialog that opens the picker.
+        _importConfirm = new ImportConfirmDialog(
+            _session, () => Content.XamlRoot, albumId => ShowAlbumDetail(albumId));
+        _importPicker = new ImportPickerDialog(_session, () => Content.XamlRoot, _import, _importConfirm);
+        _importDialog = new ImportDialog(
+            _session,
+            () => Content.XamlRoot,
+            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
+            _import,
+            _importPicker);
+
         RegisterProjections();
 
         LoadLibrary();
@@ -238,9 +240,9 @@ public sealed partial class MainWindow : Window
         _projections.Register(typeof(BridgeInvalidation.SyncStatus), _sync.Refresh);
         _projections.Register(typeof(BridgeInvalidation.Outbox), () => _refreshOutbox?.Invoke());
         _projections.Register(typeof(BridgeInvalidation.DownloadQueue), () => _refreshDownloads?.Invoke());
-        _projections.Register(typeof(BridgeInvalidation.ImportCandidateList), RefreshImportCandidates);
-        _projections.Register(typeof(BridgeInvalidation.ImportCandidate), RefreshImportCandidates);
-        _projections.Register(typeof(BridgeInvalidation.WatchedFolders), RefreshImportCandidates);
+        _projections.Register(typeof(BridgeInvalidation.ImportCandidateList), _import.RefreshCandidates);
+        _projections.Register(typeof(BridgeInvalidation.ImportCandidate), _import.RefreshCandidates);
+        _projections.Register(typeof(BridgeInvalidation.WatchedFolders), _import.RefreshCandidates);
     }
 
     private void ReloadBrowserFromInvalidation()
@@ -500,9 +502,7 @@ public sealed partial class MainWindow : Window
 
         _playback.Reset();
         _nowPlayingBar.Reset();
-        // Scan candidates are per-library in-memory state; clear them on teardown
-        // so the next library doesn't inherit the previous one's candidate list.
-        _candidates.Clear();
+        _import.Reset();
         _browser.Reset();
         SearchBox.Text = string.Empty;
         StatusText.Text = string.Empty;
@@ -560,241 +560,9 @@ public sealed partial class MainWindow : Window
         await _librariesDialog.Show();
     }
 
-    // Import-preview and candidate-loudness events, which drive the import
-    // picker's live position label and the candidate rows' status line.
-    private void HandleImportPreviewEvent(BridgeUiEvent evt)
-    {
-        switch (evt)
-        {
-            case BridgeUiEvent.PreviewProgress previewProgress:
-                if (_previewElapsed is not null)
-                {
-                    var elapsed = PlaybackPositionModel.DurationLabel(previewProgress.PositionMs);
-                    _previewElapsed.Text = _previewDurationLabel is null
-                        ? elapsed
-                        : $"{elapsed} / {_previewDurationLabel}";
-                }
-                _mediaControls.UpdatePreviewPosition(previewProgress.PositionMs);
-                break;
-            case BridgeUiEvent.PreviewPlaying preview:
-                // Total duration arrives once when preview starts; the next
-                // PreviewProgress tick renders it alongside the elapsed position.
-                _previewDurationLabel = PlaybackPositionModel.DurationLabel(preview.DurationMs);
-                _mediaControls.UpdateNowPlayingForPreview(preview.Path, preview.DurationMs, isPlaying: true);
-                break;
-            case BridgeUiEvent.PreviewPaused preview:
-                _previewDurationLabel = PlaybackPositionModel.DurationLabel(preview.DurationMs);
-                _mediaControls.UpdateNowPlayingForPreview(preview.Path, preview.DurationMs, isPlaying: false);
-                break;
-            case BridgeUiEvent.PreviewIdle:
-                _previewDurationLabel = null;
-                if (_previewElapsed is not null)
-                {
-                    _previewElapsed.Text = string.Empty;
-                }
-                _mediaControls.UpdatePreviewIdle();
-                break;
-            case BridgeUiEvent.CandidateImportLoudnessProgress loudness:
-                // Replace the candidate status with a live per-track loudness line.
-                UpdateCandidate(loudness.Key, null, Loc.Core(
-                    "ui.import.loudness_progress",
-                    new Dictionary<string, object?>
-                    {
-                        ["done"] = loudness.TracksDone,
-                        ["total"] = loudness.TracksTotal,
-                    }));
-                break;
-        }
-    }
-
-    private async void RefreshImportCandidates()
-    {
-        if (CurrentHandleOrNull() == null)
-        {
-            return;
-        }
-
-        var (current, candidates) = await RunForCurrentHandle(NativeBae.ImportCandidates);
-        if (!current)
-        {
-            return;
-        }
-        if (candidates is null)
-        {
-            ShowImportBanner(Loc.Chrome("import.failed"));
-            return;
-        }
-
-        _candidates.Clear();
-        foreach (var candidate in candidates)
-        {
-            _candidates.Add(candidate);
-        }
-        if (_scanStatus is not null)
-        {
-            _scanStatus.Text = _candidates.Count == 0 ? Loc.Chrome("import.no_releases") : string.Empty;
-        }
-    }
-
-    // Replace a candidate row in place (ObservableCollection raises Replace so the
-    // bound list re-renders), applying an optional mutation and a live status.
-    private void UpdateCandidate(string? key, Action<ImportCandidate>? mutate, string status)
-    {
-        var index = IndexOfCandidate(key);
-        if (index < 0)
-        {
-            return;
-        }
-
-        var existing = _candidates[index];
-        var updated = new ImportCandidate
-        {
-            Key = existing.Key,
-            Name = existing.Name,
-            TrackCount = existing.TrackCount,
-            Format = existing.Format,
-            Matches = existing.Matches,
-            Signals = existing.Signals,
-            AudioPaths = existing.AudioPaths,
-            FolderPath = existing.FolderPath,
-            RowStatus = existing.RowStatus,
-            StatusOverride = status,
-        };
-        mutate?.Invoke(updated);
-        _candidates[index] = updated;
-    }
-
-
-    private int IndexOfCandidate(string? key)
-    {
-        for (var i = 0; i < _candidates.Count; i++)
-        {
-            if (_candidates[i].Key == key)
-            {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
     private async void OnImportClick(object sender, RoutedEventArgs e)
     {
-        await ShowImportDialog();
-    }
-
-    // Build and show the import dialog: the folder scan source plus the live
-    // candidate list bound to _candidates.
-    // Shared by the toolbar import button and the folder-drop handler.
-    private async System.Threading.Tasks.Task ShowImportDialog()
-    {
-        if (CurrentHandleOrNull() == null)
-        {
-            return;
-        }
-        RefreshImportCandidates();
-
-        var scanButton = new Button { Content = Loc.Chrome("import.choose_folder") };
-        var status = new TextBlock
-        {
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-            TextWrapping = TextWrapping.Wrap,
-            Visibility = Visibility.Collapsed,
-        };
-        var list = new ListView
-        {
-            ItemsSource = _candidates,
-            SelectionMode = ListViewSelectionMode.None,
-            IsItemClickEnabled = true,
-            MaxHeight = 320,
-        };
-
-        // Each row builds imperatively: the candidate's one-line summary plus a
-        // signals badge row. ContainerContentChanging fires per recycled container
-        // (re-firing when UpdateCandidate swaps in a fresh instance), so the badges
-        // refresh as identify events land.
-        list.ContainerContentChanging += (_, args) =>
-        {
-            if (args.InRecycleQueue || args.Item is not ImportCandidate candidate)
-            {
-                return;
-            }
-
-            args.ItemContainer.Content = BuildCandidateRow(candidate);
-            args.Handled = true;
-        };
-
-        // First click on an unidentified candidate kicks off auto-identification;
-        // once it has a result, clicking opens the import dialog (auto matches
-        // plus a manual-search fallback). The row reflects status from the
-        // candidate snapshot.
-        list.ItemClick += async (_, args) =>
-        {
-            if (args.ClickedItem is not ImportCandidate candidate)
-            {
-                return;
-            }
-
-            if (string.IsNullOrEmpty(candidate.Status))
-            {
-                _ = RunForCurrentHandle(
-                    handle => NativeBae.AutoIdentifyFolder(handle, candidate.Key, candidate.FolderPath));
-            }
-            else
-            {
-                await ShowImportPicker(candidate);
-            }
-        };
-
-        // The picker needs the app window's handle in an unpackaged app. Adding
-        // a watched folder starts scanning; invalidations refresh _candidates.
-        scanButton.Click += async (_, _) =>
-        {
-            var picker = new global::Windows.Storage.Pickers.FolderPicker();
-            picker.FileTypeFilter.Add("*");
-            WinRT.Interop.InitializeWithWindow.Initialize(
-                picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
-            var folder = await picker.PickSingleFolderAsync();
-            if (folder is null)
-            {
-                return;
-            }
-
-            status.Text = Loc.Chrome("import.scanning");
-            status.Visibility = Visibility.Visible;
-            var path = folder.Path;
-            var (current, error) = await RunForCurrentHandle(
-                handle => NativeBae.ScanFolder(handle, path, true));
-            if (!current)
-            {
-                return;
-            }
-            if (error is not null)
-            {
-                status.Text = error;
-            }
-            else
-            {
-                RefreshImportCandidates();
-            }
-        };
-
-        var content = new StackPanel { Spacing = 8, Width = 420 };
-        content.Children.Add(scanButton);
-        content.Children.Add(status);
-        content.Children.Add(list);
-
-        var dialog = new ContentDialog
-        {
-            Title = Loc.Chrome("import.title"),
-            Content = content,
-            CloseButtonText = Loc.Chrome("action.close"),
-            XamlRoot = Content.XamlRoot,
-        };
-
-        _scanStatus = status;
-        await dialog.ShowAsync();
-        _scanStatus = null;
+        await _importDialog.Show();
     }
 
     // Accept a dragged folder anywhere over the window (matching macOS, which
@@ -819,8 +587,8 @@ public sealed partial class MainWindow : Window
 
     // Scan a dropped folder and open the import dialog on its candidates. Mirrors
     // the macOS window drop: the first dropped folder is scanned with clearFirst,
-    // candidates stream into _candidates, and the dialog (bound to that list) shows
-    // them. Scanning runs off the UI thread; errors surface in the banner.
+    // candidates stream into the import store, and the dialog (bound to that list)
+    // shows them. Scanning runs off the UI thread; errors surface in the banner.
     private async void OnWindowDrop(object sender, DragEventArgs e)
     {
         if (CurrentHandleOrNull() == null || !e.DataView.Contains(StandardDataFormats.StorageItems))
@@ -863,8 +631,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var (current, error) = await RunForCurrentHandle(
-            handle => NativeBae.ScanFolder(handle, folderPath, true));
+        var (current, error) = await _import.ScanFolder(folderPath);
         if (!current)
         {
             return;
@@ -877,406 +644,15 @@ public sealed partial class MainWindow : Window
         // Open the import dialog on the streamed candidates — on scan error too,
         // matching macOS, which navigates to import regardless of the scan result.
         // Skip if one is already open (only one ContentDialog can open at a time).
-        if (_scanStatus is null)
+        if (!_importDialog.IsOpen)
         {
-            await ShowImportDialog();
+            await _importDialog.Show();
         }
     }
 
     private void ShowImportBanner(string message)
     {
         _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("import.error_title"), message);
-    }
-
-    // One candidate row: the summary line, then a signals badge row underneath
-    // (omitted until the first toolbar event lands). Core pre-shapes every badge;
-    // this iterates and renders.
-    private StackPanel BuildCandidateRow(ImportCandidate candidate)
-    {
-        var row = new StackPanel { Spacing = 4 };
-        row.Children.Add(new TextBlock
-        {
-            Text = candidate.ToString(),
-            TextWrapping = TextWrapping.Wrap,
-        });
-
-        if (candidate.Signals.Count > 0)
-        {
-            var badges = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            foreach (var signal in candidate.Signals)
-            {
-                badges.Children.Add(BuildSignalBadge(candidate.Key, signal));
-            }
-
-            badges.Children.Add(BuildRerunButton(candidate.Key));
-            row.Children.Add(badges);
-        }
-
-        return row;
-    }
-
-    // The trailing re-run control on the signals row: re-dispatches the
-    // candidate's lookups (keeping the user's exclusions). The re-derived state
-    // arrives through candidate invalidation.
-    private Button BuildRerunButton(string candidateKey)
-    {
-        var button = new Button
-        {
-            Content = "↻",
-            Padding = new Thickness(8, 3, 8, 3),
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        ToolTipService.SetToolTip(button, Loc.Chrome("import.rerun_identify"));
-        button.Click += (_, _) =>
-        {
-            if (CurrentHandleOrNull() != null)
-            {
-                _ = RunForCurrentHandle(
-                    handle => NativeBae.RerunIdentifyForCandidate(handle, candidateKey));
-            }
-        };
-        return button;
-    }
-
-    // Middle-truncate a signal value so both ends stay visible: catalog numbers and
-    // barcodes differ at the end, which an end-ellipsis would hide. WinUI has no
-    // middle TextTrimming, and the badge value is monospace (Consolas), so a
-    // character budget tracks the pixel width closely. Mirrors macOS's
-    // .truncationMode(.middle) on the signal value.
-    private static string MiddleTruncate(string value, int maxChars)
-    {
-        if (value.Length <= maxChars)
-        {
-            return value;
-        }
-
-        var keep = maxChars - 1; // one character for the ellipsis
-        var head = keep / 2;
-        var tail = keep - head;
-        return value[..head] + "…" + value[^tail..];
-    }
-
-    // One signals badge: a kind label, the value (truncated), and a trailing
-    // state visual (spinner / count / dash / warning). Excluded badges dim and
-    // strike through but stay in place so the row's layout is stable. Clicking a
-    // badge toggles its signal in/out of triangulation (excluded badges re-include
-    // on click); the re-derived toolbar arrives through candidate invalidation.
-    // Mirrors the macOS SignalBadge anatomy in plain WinUI primitives.
-    private Button BuildSignalBadge(string candidateKey, SignalBadge signal)
-    {
-        var inner = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 6,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-
-        var label = new TextBlock
-        {
-            Text = SignalKindLabel(signal.Kind),
-            FontSize = 12,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        if (signal.Excluded)
-        {
-            label.TextDecorations = global::Windows.UI.Text.TextDecorations.Strikethrough;
-        }
-
-        inner.Children.Add(label);
-
-        if (!string.IsNullOrEmpty(signal.Value))
-        {
-            var value = new TextBlock
-            {
-                Text = MiddleTruncate(signal.Value, 20),
-                FontSize = 11,
-                FontFamily = new FontFamily("Consolas"),
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-                MaxWidth = 140,
-                // The character budget keeps the value under MaxWidth; CharacterEllipsis
-                // is only a backstop if a font measures wider than monospace estimates.
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            if (signal.Excluded)
-            {
-                value.TextDecorations = global::Windows.UI.Text.TextDecorations.Strikethrough;
-            }
-
-            inner.Children.Add(value);
-        }
-
-        inner.Children.Add(BuildSignalState(signal));
-
-        // A Button, not a Border+Tapped: the ListView raises ItemClick from its own
-        // gesture handling and ignores a child that merely marks Tapped handled, but
-        // it honors a pointer-capturing control. So the badge press toggles the
-        // signal without also re-triggering auto-identify / opening the import
-        // dialog. MinWidth/Height 0 keeps it badge-sized, not the default button box.
-        var badge = new Button
-        {
-            Content = inner,
-            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-            Padding = new Thickness(8, 3, 8, 3),
-            MinWidth = 0,
-            MinHeight = 0,
-            CornerRadius = new CornerRadius(8),
-            BorderThickness = new Thickness(1),
-            BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.DimGray),
-            Margin = new Thickness(0, 0, 6, 0),
-            Opacity = signal.Excluded ? 0.45 : 1.0,
-        };
-
-        // Clicking toggles this signal's exclusion. Excluded badges stay clickable
-        // (to re-include). The catalog kind names a specific candidate by its value;
-        // disc_id / barcode are singletons (value ignored core-side).
-        ToolTipService.SetToolTip(
-            badge,
-            signal.Excluded ? Loc.Chrome("signal.include") : Loc.Chrome("signal.exclude"));
-        badge.Click += (_, _) =>
-        {
-            if (CurrentHandleOrNull() != null)
-            {
-                var kind = signal.Kind;
-                var value = signal.Value ?? string.Empty;
-                _ = RunForCurrentHandle(
-                    handle => NativeBae.ToggleSignalForCandidate(handle, candidateKey, kind, value));
-            }
-        };
-        return badge;
-    }
-
-    // The badge's trailing state visual, chosen by the pre-shaped SignalState the
-    // generated bridge carried over. An excluded badge shows the exclusion mark regardless.
-    private static FrameworkElement BuildSignalState(SignalBadge signal)
-    {
-        if (signal.Excluded)
-        {
-            return new TextBlock
-            {
-                Text = "✕",
-                FontSize = 11,
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-        }
-
-        switch (signal.State.Kind)
-        {
-            case "looking_up":
-                return new ProgressRing { IsActive = true, Width = 14, Height = 14 };
-            case "found":
-                return CountPill((signal.State.Count ?? 0).ToString(), Microsoft.UI.Colors.LightGreen);
-            case "confirms":
-                return signal.State.Count is > 0
-                    ? new TextBlock
-                    {
-                        Text = "✓",
-                        FontSize = 12,
-                        FontWeight = Microsoft.UI.Text.FontWeights.Bold,
-                        Foreground = new SolidColorBrush(Microsoft.UI.Colors.DeepSkyBlue),
-                        VerticalAlignment = VerticalAlignment.Center,
-                    }
-                    : CountPill("0", Microsoft.UI.Colors.Gray);
-            case "no_match":
-                return CountPill("0", Microsoft.UI.Colors.Gray);
-            case "skipped":
-                return new TextBlock
-                {
-                    Text = "–",
-                    FontSize = 12,
-                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-                    VerticalAlignment = VerticalAlignment.Center,
-                };
-            case "failed":
-                var warning = new TextBlock
-                {
-                    Text = "⚠",
-                    FontSize = 12,
-                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange),
-                    VerticalAlignment = VerticalAlignment.Center,
-                };
-                // The structured lookup failure resolves its localized line for
-                // the hover tooltip; no prose crosses the bridge.
-                if (signal.State.Failure is { } failure)
-                {
-                    ToolTipService.SetToolTip(warning, BridgeDisplay.LocalizedLine(failure));
-                }
-                return warning;
-            default:
-                return new TextBlock { Text = string.Empty };
-        }
-    }
-
-    // The badge's kind label. Mirrors the macOS SignalBadgeStyle.label(for:);
-    // the wire kind names come from the generated bridge's snake_case mapping, resolved to a
-    // localized chrome label.
-    private static string SignalKindLabel(string kind) => kind switch
-    {
-        "disc_id" => Loc.Chrome("signal.kind.disc_id"),
-        "barcode" => Loc.Chrome("signal.kind.barcode"),
-        "catalog" => Loc.Chrome("signal.kind.catalog"),
-        _ => kind,
-    };
-
-    // A small count pill — a colored digit, the badge's settled-state readout.
-    private static Border CountPill(string text, global::Windows.UI.Color color)
-    {
-        return new Border
-        {
-            Child = new TextBlock
-            {
-                Text = text,
-                FontSize = 11,
-                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-                Foreground = new SolidColorBrush(color),
-            },
-            Padding = new Thickness(6, 1, 6, 1),
-            CornerRadius = new CornerRadius(6),
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-    }
-
-    // Import-confirm dialog for a candidate: pick an identity (the auto-identified
-    // matches, or one found by manual search when auto-identification came up
-    // empty), choose a storage mode, and import.
-    private async System.Threading.Tasks.Task ShowImportPicker(ImportCandidate candidate)
-    {
-        var results = new List<ReleaseCandidateChoice>(candidate.Matches);
-        var resultsList = new ListView
-        {
-            SelectionMode = ListViewSelectionMode.Single,
-            MaxHeight = 240,
-        };
-        void RenderResults() => resultsList.ItemsSource = results.Select(result => result.Summary).ToList();
-        RenderResults();
-
-        var artistBox = new TextBox { Header = Loc.Chrome("import.field.artist_manual") };
-        var albumBox = new TextBox { Header = Loc.Chrome("search.field.album"), Text = candidate.Name };
-        var sourceBox = new ComboBox { Header = Loc.Chrome("search.field.source") };
-        sourceBox.Items.Add("discogs");
-        sourceBox.Items.Add("musicbrainz");
-        sourceBox.SelectedIndex = 0;
-        var searchButton = new Button { Content = Loc.Chrome("action.search") };
-
-        var status = new TextBlock
-        {
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
-            TextWrapping = TextWrapping.Wrap,
-            Visibility = Visibility.Collapsed,
-        };
-
-        var content = new StackPanel { Spacing = 8, Width = 420 };
-        content.Children.Add(new TextBlock { Text = candidate.Name });
-
-        // Preview the candidate's audio before committing to an identity.
-        if (candidate.AudioPaths.Count > 0)
-        {
-            var preview = new Button { Content = "▶ " + Loc.Chrome("import.preview") };
-            preview.Click += (_, _) => WithCurrentHandle(
-                handle => NativeBae.PreviewPlay(handle, candidate.AudioPaths[0]));
-            var pause = new Button { Content = "⏸" };
-            pause.Click += (_, _) => WithCurrentHandle(NativeBae.PreviewTogglePause);
-            var stop = new Button { Content = "⏹" };
-            stop.Click += (_, _) => WithCurrentHandle(NativeBae.PreviewStop);
-            // Live preview position, updated by PreviewProgress while the picker is open.
-            var previewElapsed = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
-            _previewElapsed = previewElapsed;
-            var previewRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-            previewRow.Children.Add(preview);
-            previewRow.Children.Add(pause);
-            previewRow.Children.Add(stop);
-            previewRow.Children.Add(previewElapsed);
-            content.Children.Add(previewRow);
-        }
-
-        content.Children.Add(resultsList);
-        content.Children.Add(artistBox);
-        content.Children.Add(albumBox);
-        content.Children.Add(sourceBox);
-        content.Children.Add(searchButton);
-        content.Children.Add(status);
-
-        var dialog = new ContentDialog
-        {
-            Title = Loc.Chrome("import.release_title"),
-            Content = new ScrollViewer { Content = content },
-            PrimaryButtonText = Loc.Chrome("action.import"),
-            CloseButtonText = Loc.Chrome("action.cancel"),
-            XamlRoot = Content.XamlRoot,
-            IsPrimaryButtonEnabled = false,
-        };
-
-        searchButton.Click += async (_, _) =>
-        {
-            var source = (string)sourceBox.SelectedItem;
-            var artist = artistBox.Text;
-            var album = albumBox.Text;
-            searchButton.IsEnabled = false;
-            var (current, search) = await RunForCurrentHandle(
-                handle => NativeBae.SearchReleases(handle, source, artist, album));
-            searchButton.IsEnabled = true;
-            if (!current)
-            {
-                return;
-            }
-            if (search.Error is not null)
-            {
-                status.Text = search.Error;
-                status.Visibility = Visibility.Visible;
-                return;
-            }
-
-            results = search.Candidates ?? [];
-            RenderResults();
-            dialog.IsPrimaryButtonEnabled = false;
-        };
-
-        resultsList.SelectionChanged += (_, _) =>
-        {
-            dialog.IsPrimaryButtonEnabled = resultsList.SelectedIndex >= 0;
-        };
-
-        // Clicking Import here doesn't commit — it advances to the metadata edit
-        // step. A second ContentDialog can't open while this one shows, so the
-        // picker closes on Primary (the selection + storage mode are captured) and
-        // the confirm step opens after ShowAsync returns. The loop re-opens this
-        // picker — with its search results and selection intact — when the confirm
-        // step's "Back to Search" is chosen; Import or Cancel ends the flow.
-        try
-        {
-            while (true)
-            {
-                var pickerResult = await dialog.ShowAsync();
-                WithCurrentHandle(NativeBae.PreviewStop);
-                if (pickerResult != ContentDialogResult.Primary)
-                {
-                    return;
-                }
-
-                var index = resultsList.SelectedIndex;
-                if (index < 0 || index >= results.Count)
-                {
-                    return;
-                }
-
-                var backToSearch = await ShowImportConfirm(candidate, results[index]);
-                if (!backToSearch)
-                {
-                    return;
-                }
-            }
-        }
-        finally
-        {
-            _previewElapsed = null;
-            _previewDurationLabel = null;
-        }
     }
 
     /// <summary>
@@ -1297,296 +673,6 @@ public sealed partial class MainWindow : Window
         }
 
         await dialog.ShowAsync();
-    }
-
-    /// <summary>
-    /// The import confirmation step: seed the album/pressing/track edit form from
-    /// the chosen candidate release, let the user revise it, then commit the import
-    /// with those edits overlaid. Errors stay in-dialog (the window banner is
-    /// occluded by the modal). Mirrors macOS's ImportConfirmationView.
-    /// </summary>
-    // Returns true when the user chose "Back to Search" — the caller re-opens the
-    // picker so they can pick or search for a different release.
-    private async System.Threading.Tasks.Task<bool> ShowImportConfirm(
-        ImportCandidate candidate, ReleaseCandidateChoice chosen)
-    {
-        var (current, prefetched) = await RunForCurrentHandle(
-            handle => NativeBae.PrefetchCandidateEdit(
-                handle, chosen.ReleaseId, chosen.Source, candidate.FolderPath).Prefetched);
-        if (!current)
-        {
-            return false;
-        }
-        if (prefetched is null)
-        {
-            await ShowError(Loc.Chrome("import.error.load_release"));
-            return false;
-        }
-
-        var (settingsCurrent, settings) = await RunForCurrentHandle(NativeBae.GetSettings);
-        if (!settingsCurrent)
-        {
-            return false;
-        }
-        var form = new ReleaseEditForm(prefetched.Edit, 520);
-
-        // No selection means "let the import choose its default cover" (the
-        // source's first cover art, else a folder image).
-        BridgeCoverSelection? selectedCover = null;
-        var storageRemote = new CheckBox
-        {
-            Content = Loc.Chrome("import.storage.managed"),
-            IsChecked = true,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        var storagePinned = new CheckBox
-        {
-            Content = Loc.Chrome("import.storage.keep_local"),
-            IsChecked = true,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        bool StorageRemoteSelected() => settings.HasCloudHome && storageRemote.IsChecked == true;
-        // Storage state and pinned-ness are orthogonal: the mode tag is purely
-        // the remote-vs-local storage choice; the pin choice rides alongside as
-        // its own arg, meaningful only for a remote import.
-        string StorageModeTag() => StorageRemoteSelected() ? "managed" : "unmanaged";
-        bool StoragePinSelected() => StorageRemoteSelected() && storagePinned.IsChecked == true;
-
-        void RefreshStorageControls()
-        {
-            storagePinned.Visibility = StorageRemoteSelected()
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-        }
-        storageRemote.Checked += (_, _) => RefreshStorageControls();
-        storageRemote.Unchecked += (_, _) => RefreshStorageControls();
-        RefreshStorageControls();
-
-        var panel = new StackPanel { Spacing = 8, MinWidth = 520 };
-        if (settings.HasCloudHome)
-        {
-            var storageRow = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 8,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            storageRow.Children.Add(storageRemote);
-            storageRow.Children.Add(storagePinned);
-            panel.Children.Add(storageRow);
-        }
-        panel.Children.Add(BuildCoverPicker(
-            prefetched.RemoteCovers, prefetched.LocalArtwork, picked => selectedCover = picked));
-        panel.Children.Add(form.Panel);
-
-        var dialog = new ContentDialog
-        {
-            Title = Loc.Chrome("import.confirm_title"),
-            Content = new ScrollViewer { Content = panel },
-            PrimaryButtonText = Loc.Chrome("action.import"),
-            SecondaryButtonText = Loc.Chrome("import.back_to_search"),
-            CloseButtonText = Loc.Chrome("action.cancel"),
-            XamlRoot = Content.XamlRoot,
-        };
-
-        // Whether the user clicked "view in library" on the already-in-library
-        // banner. A nested ContentDialog can't open over this one, so the banner
-        // closes the confirm dialog and the album opens after ShowAsync returns
-        // (the gallery/edit/re-identify pattern).
-        string? viewInLibraryAlbumId = null;
-
-        // Tell the user when the chosen release is already in the library before
-        // they import a duplicate. The check is by release identity (the confirm
-        // flow has no group id), so it reports the exact pressing — album_in_library
-        // tracks release_in_library here. Reads the database — run it off the UI
-        // thread. A failure leaves the banner absent; the import still proceeds
-        // (the banner is advisory, not a gate).
-        var (statusCurrent, libraryStatus) = await RunForCurrentHandle(
-            handle => NativeBae.CheckReleaseInLibrary(handle, chosen.ReleaseId).Status);
-        if (!statusCurrent)
-        {
-            return false;
-        }
-        if (libraryStatus is not null && libraryStatus.ReleaseInLibrary)
-        {
-            panel.Children.Insert(0, BuildLibraryStatusBanner(libraryStatus, () =>
-            {
-                viewInLibraryAlbumId = libraryStatus.AlbumId;
-                dialog.Hide();
-            }));
-        }
-
-        // The import runs in the background; its result updates the candidate row
-        // and library grid through invalidations.
-        // Shape (validation) of the edit happens in Rust — on failure keep the
-        // dialog open and show the reason.
-        dialog.PrimaryButtonClick += async (_, args) =>
-        {
-            var deferral = args.GetDeferral();
-            var payload = form.ReadBack();
-            var storageMode = StorageModeTag();
-            var pin = StoragePinSelected();
-            var (importCurrent, error) = await RunForCurrentHandle(
-                handle => NativeBae.ImportCandidate(
-                    handle, candidate.Key, candidate.FolderPath, chosen.ReleaseId, chosen.Source, storageMode, pin, payload, selectedCover));
-            if (!importCurrent)
-            {
-                args.Cancel = true;
-                deferral.Complete();
-                return;
-            }
-            if (error is not null)
-            {
-                form.ErrorText.Text = error;
-                form.ErrorText.Visibility = Visibility.Visible;
-                args.Cancel = true;
-            }
-
-            deferral.Complete();
-        };
-
-        var result = await dialog.ShowAsync();
-
-        // "view in library" closed the dialog above; open that album now that the
-        // confirm dialog is gone (a nested ContentDialog can't open over it).
-        if (viewInLibraryAlbumId is not null)
-        {
-            await ShowAlbumDetail(viewInLibraryAlbumId);
-            return false;
-        }
-
-        // "Back to Search" (Secondary) returns the user to the picker; Import and
-        // Cancel both end the flow.
-        return result == ContentDialogResult.Secondary;
-    }
-
-    /// <summary>
-    /// The already-in-library banner shown at the top of the import confirmation
-    /// when the chosen release (<see cref="BridgeLibraryStatus.ReleaseInLibrary"/>) is
-    /// already in the library. When an album id is present it offers a "view in
-    /// library" button that invokes <paramref name="onViewInLibrary"/>.
-    /// </summary>
-    private static InfoBar BuildLibraryStatusBanner(BridgeLibraryStatus status, Action onViewInLibrary)
-    {
-        var banner = new InfoBar
-        {
-            Severity = InfoBarSeverity.Warning,
-            IsOpen = true,
-            IsClosable = false,
-            Message = Loc.Chrome("import.already_in_library"),
-        };
-
-        if (!string.IsNullOrEmpty(status.AlbumId))
-        {
-            var viewButton = new Button { Content = Loc.Chrome("import.view_in_library") };
-            viewButton.Click += (_, _) => onViewInLibrary();
-            banner.ActionButton = viewButton;
-        }
-
-        return banner;
-    }
-
-    /// <summary>
-    /// The import confirmation's cover-art picker: a gallery of the chosen
-    /// release's remote covers (thumbnails by URL) and the candidate folder's
-    /// local artwork (thumbnails by disk path). Clicking a tile selects it,
-    /// highlights it, and reports its cover selection via
-    /// <paramref name="onPick"/>; nothing is picked by default, so the import
-    /// uses its own default cover. Renders inline (not a nested dialog, which
-    /// can't open over the confirm dialog).
-    /// </summary>
-    private static StackPanel BuildCoverPicker(
-        List<BridgeRemoteCover> remoteCovers, List<LocalArtwork> localArtwork, Action<BridgeCoverSelection> onPick)
-    {
-        var section = new StackPanel { Spacing = 4 };
-        section.Children.Add(new TextBlock { Text = Loc.Chrome("cover.section_title") });
-
-        if (remoteCovers.Count == 0 && localArtwork.Count == 0)
-        {
-            section.Children.Add(new TextBlock
-            {
-                Text = Loc.Chrome("cover.none_available"),
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-                TextWrapping = TextWrapping.Wrap,
-            });
-            return section;
-        }
-
-        section.Children.Add(new TextBlock
-        {
-            Text = Loc.Chrome("cover.pick_hint"),
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-            TextWrapping = TextWrapping.Wrap,
-        });
-
-        var grid = new VariableSizedWrapGrid
-        {
-            Orientation = Orientation.Horizontal,
-            ItemWidth = 140,
-            ItemHeight = 160,
-        };
-
-        // Highlight only the picked tile: clear every tile's border, then mark
-        // the clicked one. Each tile carries its own cover selection.
-        var tiles = new List<Button>();
-        void Select(Button picked, BridgeCoverSelection selection)
-        {
-            foreach (var tile in tiles)
-            {
-                tile.BorderThickness = new Thickness(0);
-            }
-
-            picked.BorderThickness = new Thickness(2);
-            picked.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.DeepSkyBlue);
-            onPick(selection);
-        }
-
-        void AddTile(ImageSource? source, string caption, BridgeCoverSelection selection)
-        {
-            var tile = CoverTile(source, caption);
-            tile.Click += (_, _) => Select(tile, selection);
-            tiles.Add(tile);
-            grid.Children.Add(tile);
-        }
-
-        // A malformed cover URL or artwork path would throw synchronously out of
-        // this static builder (and the async-void caller) — skip that tile instead
-        // of crashing the picker, matching the change-cover gallery's guard.
-        foreach (var cover in remoteCovers)
-        {
-            BitmapImage source;
-            try
-            {
-                source = new BitmapImage(new Uri(NativeBae.RemoteCoverThumbnailUrl(cover)));
-            }
-            catch (UriFormatException)
-            {
-                continue;
-            }
-
-            var selection = NativeBae.RemoteCoverSelection(cover);
-            AddTile(source, cover.Label, selection);
-        }
-
-        foreach (var art in localArtwork)
-        {
-            BitmapImage source;
-            try
-            {
-                source = new BitmapImage(new Uri(art.Path));
-            }
-            catch (UriFormatException)
-            {
-                continue;
-            }
-
-            var selection = new BridgeCoverSelection.ReleaseImage(art.FileId);
-            AddTile(source, System.IO.Path.GetFileName(art.FileId), selection);
-        }
-
-        section.Children.Add(grid);
-        return section;
     }
 
     private async void OnQueueClick(object sender, RoutedEventArgs e)
