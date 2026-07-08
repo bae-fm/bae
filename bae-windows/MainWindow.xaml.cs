@@ -28,12 +28,6 @@ namespace Bae.Windows;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
-    private const ulong FirstPageSize = 500;
-
-    // LabelKey is a chrome key resolved to the localized menu label at display
-    // time; Field is the locale-free sort identifier the generated bridge expects (never
-    // localized).
-    private sealed record SortOption(string LabelKey, string Field, bool Ascending);
     private sealed record QueueEntryRow(BridgeQueueEntry Entry)
     {
         internal string EntryId => Entry.EntryId;
@@ -41,33 +35,18 @@ public sealed partial class MainWindow : Window
             $"{Entry.Title} — {Entry.ArtistNames} · {Loc.Duration(Entry.DurationMs)}".Trim();
     }
 
-    private enum BrowserMode
-    {
-        Albums,
-        Composers,
-    }
-
-    private static readonly SortOption[] AlbumSortOptions =
-    {
-        new("sort.newest", "date_added", false),
-        new("sort.title", "title", true),
-        new("sort.artist", "artist", true),
-        new("sort.year", "year", true),
-    };
-    private static readonly SortOption[] ComposerSortOptions =
-    {
-        new("sort.name", "name", true),
-        new("search.section.works", "work_count", false),
-        new("search.section.releases", "linked_release_count", false),
-    };
-
-    private SortOption _albumSort = AlbumSortOptions[0];
-    private SortOption _composerSort = ComposerSortOptions[0];
-    private BrowserMode _browserMode = BrowserMode.Albums;
     private bool _populatingSortBox;
 
     // The library session (handle + event subscription) and the stores it drives.
     private readonly SessionStore _session;
+    private readonly LibraryBrowserStore _browser;
+    private readonly BrowserPanes _browserPanes;
+    private readonly WelcomeView _welcomeView;
+    private readonly LibrariesDialog _librariesDialog;
+    private readonly JoinLibraryDialog _joinDialog;
+    private readonly ApproveDeviceDialog _approveDialog;
+    private readonly UnlockDialog _unlockDialog;
+    private readonly RestoreFromCloudDialog _restoreCloudDialog;
     private readonly ShellStore _shell;
     private readonly SyncStatusStore _sync;
     private readonly PlaybackStore _playback;
@@ -122,15 +101,20 @@ public sealed partial class MainWindow : Window
     // the elapsed position ("0:23 / 3:45"); null when nothing is previewing.
     private string? _previewDurationLabel;
 
-    // The welcome chooser controls (the on-disk library list plus create /
-    // restore), shown when no library is open; removed once one is opened.
-    private StackPanel? _welcome;
-
-    public ObservableCollection<Album> Albums { get; } = new();
-    public ObservableCollection<ComposerSummary> Composers { get; } = new();
+    // x:Bind Albums/Composers in the shell resolve here; the collections live in
+    // the browser store (constructed before InitializeComponent so these are
+    // non-null when the bindings first evaluate).
+    public ObservableCollection<Album> Albums => _browser.Albums;
+    public ObservableCollection<ComposerSummary> Composers => _browser.Composers;
 
     public MainWindow()
     {
+        // The browser store owns the Albums/Composers collections the shell binds
+        // to with x:Bind, so it (and the session it reads) must exist before
+        // InitializeComponent evaluates those bindings.
+        _session = new SessionStore(DispatcherQueue);
+        _browser = new LibraryBrowserStore(_session, DispatcherQueue);
+
         InitializeComponent();
         Closed += OnClosed;
 
@@ -160,7 +144,6 @@ public sealed partial class MainWindow : Window
         PopulateSortBox();
         BrowserModeBox.SelectedIndex = 0;
 
-        _session = new SessionStore(DispatcherQueue);
         _shell = new ShellStore();
         _shell.Changed += RenderBanner;
         _playback = new PlaybackStore();
@@ -190,6 +173,47 @@ public sealed partial class MainWindow : Window
         _projections = new ProjectionRegistry();
         _router = new UiEventRouter(_playback, _shell, _projections, _mediaControls, HandleImportPreviewEvent);
         _session.UiEvent += _router.Route;
+
+        // The composer/search panes and the library-lifecycle dialogs. The window
+        // stays the navigation shell (open/close/switch); these render and drive
+        // their own screens, calling back for the operations it owns.
+        _browserPanes = new BrowserPanes(
+            _session,
+            DispatcherQueue,
+            SearchResultsPanel,
+            ComposerDetailPane,
+            text => StatusText.Text = text,
+            ShowComposerBrowser,
+            (albumId, scrollToTrackId, initialReleaseId) => ShowAlbumDetail(albumId, scrollToTrackId, initialReleaseId));
+        _unlockDialog = new UnlockDialog(() => Content.XamlRoot, text => StatusText.Text = text, OpenLibrary);
+        _joinDialog = new JoinLibraryDialog(
+            () => Content.XamlRoot,
+            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
+            () => _welcomeView.Dismiss(),
+            OpenLibrary);
+        _restoreCloudDialog = new RestoreFromCloudDialog(
+            () => Content.XamlRoot,
+            () => _welcomeView.Dismiss(),
+            OpenLibrary);
+        _approveDialog = new ApproveDeviceDialog(
+            () => Content.XamlRoot,
+            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
+            _session);
+        _librariesDialog = new LibrariesDialog(
+            () => Content.XamlRoot,
+            _session,
+            LoadLibraries,
+            CreateLibraryOrReport,
+            SwitchLibrary);
+        _welcomeView = new WelcomeView(
+            EmptyState,
+            text => StatusText.Text = text,
+            LoadLibraries,
+            CreateLibraryOrReport,
+            OpenLibrary,
+            () => _joinDialog.Show(),
+            () => _restoreCloudDialog.Show());
+
         RegisterProjections();
 
         LoadLibrary();
@@ -238,7 +262,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        SetActiveSort(ActiveSortOptions[SortBox.SelectedIndex]);
+        _browser.Sort.SetActive(_browser.Sort.OptionAt(SortBox.SelectedIndex));
 
         // Sort drives the full-library view; search results keep their relevance
         // order. Reload only when no search is active and the library is open.
@@ -250,7 +274,7 @@ public sealed partial class MainWindow : Window
 
     private void OnBrowserModeChanged(object sender, SelectionChangedEventArgs e)
     {
-        _browserMode = BrowserModeBox.SelectedIndex == 1 ? BrowserMode.Composers : BrowserMode.Albums;
+        _browser.Sort.SetMode(BrowserModeBox.SelectedIndex == 1 ? BrowserMode.Composers : BrowserMode.Albums);
         PopulateSortBox();
         if (CurrentHandleOrNull() != null && string.IsNullOrEmpty(SearchBox.Text))
         {
@@ -258,33 +282,15 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private SortOption[] ActiveSortOptions =>
-        _browserMode == BrowserMode.Composers ? ComposerSortOptions : AlbumSortOptions;
-
-    private SortOption ActiveSort =>
-        _browserMode == BrowserMode.Composers ? _composerSort : _albumSort;
-
-    private void SetActiveSort(SortOption sort)
-    {
-        if (_browserMode == BrowserMode.Composers)
-        {
-            _composerSort = sort;
-        }
-        else
-        {
-            _albumSort = sort;
-        }
-    }
-
     private void PopulateSortBox()
     {
         _populatingSortBox = true;
         SortBox.Items.Clear();
-        foreach (var option in ActiveSortOptions)
+        foreach (var option in _browser.Sort.ActiveOptions)
         {
             SortBox.Items.Add(Loc.Chrome(option.LabelKey));
         }
-        SortBox.SelectedIndex = Math.Max(0, Array.IndexOf(ActiveSortOptions, ActiveSort));
+        SortBox.SelectedIndex = _browser.Sort.ActiveIndex;
         _populatingSortBox = false;
     }
 
@@ -309,27 +315,45 @@ public sealed partial class MainWindow : Window
         SearchResultsScroll.Visibility = Visibility.Visible;
     }
 
+    // Load the active mode's grid through the store, then render the status line
+    // from what it returns. The composer pane flips into view and clears its detail
+    // column up front (matching the original order) before the load can bail; the
+    // album pane flips only once a load lands, so a handle-gone bail leaves it as-is.
     private void LoadCurrentBrowserMode()
     {
-        switch (_browserMode)
+        if (_browser.Sort.Mode == BrowserMode.Composers)
         {
-            case BrowserMode.Albums:
-                var (current, page) = WithCurrentHandle(
-                    handle => NativeBae.AlbumPage(
-                        handle,
-                        0,
-                        FirstPageSize,
-                        _albumSort.Field,
-                        _albumSort.Ascending));
-                if (!current)
-                {
-                    return;
-                }
-                SetAlbums(page.Albums, page.Error, Loc.Chrome("library.empty"));
-                break;
-            case BrowserMode.Composers:
-                LoadComposers();
-                break;
+            ShowComposerBrowser();
+            _browserPanes.ClearComposerDetail();
+            RenderGridStatus(_browser.LoadComposers());
+            return;
+        }
+
+        var load = _browser.LoadAlbums();
+        if (load.Result == BrowserLoadResult.HandleGone)
+        {
+            return;
+        }
+        ShowAlbumBrowser();
+        RenderGridStatus(load);
+    }
+
+    // Set the status line from a completed grid load; a handle-gone load leaves it
+    // untouched. Visibility is the caller's concern.
+    private void RenderGridStatus(BrowserGridLoad load)
+    {
+        switch (load.Result)
+        {
+            case BrowserLoadResult.HandleGone:
+                return;
+            case BrowserLoadResult.Failed:
+                StatusText.Text = load.Error ?? Loc.Chrome("library.load_failed");
+                return;
+            default:
+                StatusText.Text = load.IsEmpty
+                    ? Loc.Chrome(load.Mode == BrowserMode.Composers ? "library.no_composers" : "library.empty")
+                    : string.Empty;
+                return;
         }
     }
 
@@ -373,7 +397,7 @@ public sealed partial class MainWindow : Window
             ?? libraries.FirstOrDefault();
         if (library is null)
         {
-            ShowWelcome();
+            _welcomeView.Show();
             return;
         }
 
@@ -391,14 +415,14 @@ public sealed partial class MainWindow : Window
                 // Encrypted library whose key isn't on this device: the session
                 // freed the handle it made; prompt for the key rather than show a
                 // half-open library. Unlocking re-opens with sync online.
-                _ = ShowUnlock(libraryId);
+                _ = _unlockDialog.Show(libraryId);
                 return;
         }
 
         // Committed to showing this library: drop the welcome chooser if it's up.
         // Done here (not at the call sites) so a failed open or an unlock detour
         // above leaves the welcome in place rather than stranding the user.
-        DismissWelcome();
+        _welcomeView.Dismiss();
 
         LoadCurrentBrowserMode();
         _nowPlayingBar.SeedVolume();
@@ -456,62 +480,6 @@ public sealed partial class MainWindow : Window
         Banner.IsOpen = _shell.BannerIsOpen;
     }
 
-    // A locked library (encrypted, key absent on this device): prompt for the
-    // 64-character hex key. unlock_library stores it in the credential store; a
-    // successful unlock re-opens the library with sync online. The dialog stays
-    // open on a bad key; cancelling leaves the library locked.
-    private async System.Threading.Tasks.Task ShowUnlock(string libraryId)
-    {
-        var keyBox = new TextBox { PlaceholderText = Loc.Chrome("library.unlock.key_placeholder"), Width = 360 };
-        var status = new TextBlock
-        {
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
-            TextWrapping = TextWrapping.Wrap,
-            Visibility = Visibility.Collapsed,
-        };
-        var content = new StackPanel { Spacing = 8 };
-        content.Children.Add(new TextBlock
-        {
-            Text = Loc.Chrome("library.unlock.body"),
-            TextWrapping = TextWrapping.Wrap,
-        });
-        content.Children.Add(keyBox);
-        content.Children.Add(status);
-
-        var dialog = new ContentDialog
-        {
-            Title = Loc.Chrome("library.unlock.title"),
-            Content = content,
-            PrimaryButtonText = Loc.Chrome("library.unlock.confirm"),
-            CloseButtonText = Loc.Chrome("action.cancel"),
-            XamlRoot = Content.XamlRoot,
-        };
-        dialog.PrimaryButtonClick += async (_, args) =>
-        {
-            var deferral = args.GetDeferral();
-            var key = keyBox.Text?.Trim() ?? string.Empty;
-            var error = await System.Threading.Tasks.Task.Run(() => NativeBae.UnlockLibrary(libraryId, key));
-            if (error is not null)
-            {
-                status.Text = error;
-                status.Visibility = Visibility.Visible;
-                args.Cancel = true;
-            }
-
-            deferral.Complete();
-        };
-
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
-        {
-            OpenLibrary(libraryId);
-        }
-        else
-        {
-            StatusText.Text = Loc.Chrome("library.locked");
-        }
-    }
-
     // Switch the active library: persist the current one's playback state, tear
     // down its handle and view state, then open the target. generated bridge init records the
     // target as the active library once it opens unlocked; a locked target lands
@@ -535,7 +503,7 @@ public sealed partial class MainWindow : Window
         // Scan candidates are per-library in-memory state; clear them on teardown
         // so the next library doesn't inherit the previous one's candidate list.
         _candidates.Clear();
-        Albums.Clear();
+        _browser.Reset();
         SearchBox.Text = string.Empty;
         StatusText.Text = string.Empty;
         _mediaControls.Deactivate();
@@ -555,7 +523,7 @@ public sealed partial class MainWindow : Window
         }
 
         await TearDownLibrary();
-        ShowWelcome();
+        _welcomeView.Show();
     }
 
     private System.Threading.Tasks.Task ShutdownAndFreeCurrentHandle() =>
@@ -582,10 +550,6 @@ public sealed partial class MainWindow : Window
         await CloseLibrary();
     }
 
-    // The library manager: switch between the libraries on this device, or add a
-    // new one. Restore-from-code lives only in the first-run flow. Once a library
-    // is open the first-run flow never shows, so this is the only way to reach
-    // other libraries or create another.
     private void OnShuffleLibraryClick(object sender, RoutedEventArgs e)
     {
         WithCurrentHandle(NativeBae.PlayLibraryShuffled);
@@ -593,958 +557,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnLibrariesClick(object sender, RoutedEventArgs e)
     {
-        var libraries = LoadLibraries();
-
-        var list = new StackPanel { Spacing = 4, MinWidth = 360 };
-        var status = new TextBlock
-        {
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
-            TextWrapping = TextWrapping.Wrap,
-            Visibility = Visibility.Collapsed,
-        };
-        list.Children.Add(status);
-
-        var dialog = new ContentDialog
-        {
-            Title = Loc.Chrome("libraries.title"),
-            Content = new ScrollViewer { Content = list, MaxHeight = 420 },
-            CloseButtonText = Loc.Chrome("action.close"),
-            XamlRoot = Content.XamlRoot,
-        };
-
-        foreach (var library in libraries)
-        {
-            var id = library.Id;
-            var isActive = library.IsActive;
-
-            var row = new Grid { ColumnSpacing = 4 };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            // Click the name to switch to that library; the active one can't switch
-            // to itself but can still be renamed.
-            var switchButton = new Button
-            {
-                Content = isActive
-                    ? Loc.Chrome("libraries.active", "name", library.Name)
-                    : library.Name,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                IsEnabled = !isActive,
-            };
-            switchButton.Click += async (_, _) =>
-            {
-                dialog.Hide();
-                await SwitchLibrary(id);
-            };
-            Grid.SetColumn(switchButton, 0);
-            row.Children.Add(switchButton);
-
-            // Rename via a flyout editor (a nested ContentDialog can't open over this
-            // one). Saving updates the row label in place; no list rebuild needed.
-            var nameBox = new TextBox { Text = library.Name, MinWidth = 220 };
-            var renameStatus = new TextBlock
-            {
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
-                TextWrapping = TextWrapping.Wrap,
-                Visibility = Visibility.Collapsed,
-            };
-            var saveName = new Button { Content = Loc.Chrome("action.save") };
-            var renameContent = new StackPanel { Spacing = 6 };
-            renameContent.Children.Add(nameBox);
-            renameContent.Children.Add(saveName);
-            renameContent.Children.Add(renameStatus);
-            var renameFlyout = new Flyout { Content = renameContent };
-            saveName.Click += (_, _) =>
-            {
-                var newName = nameBox.Text?.Trim() ?? string.Empty;
-                if (string.IsNullOrEmpty(newName))
-                {
-                    return;
-                }
-
-                var (current, error) = WithCurrentHandle(
-                    handle => NativeBae.RenameLibrary(handle, id, newName));
-                if (!current)
-                {
-                    return;
-                }
-                if (error is not null)
-                {
-                    renameStatus.Text = error;
-                    renameStatus.Visibility = Visibility.Visible;
-                    return;
-                }
-
-                switchButton.Content = isActive
-                    ? Loc.Chrome("libraries.active", "name", newName)
-                    : newName;
-                // Keep the editor's value in sync so reopening it shows the saved
-                // name, not the stale snapshot it was seeded with.
-                nameBox.Text = newName;
-                renameFlyout.Hide();
-            };
-            var renameButton = new Button { Content = Loc.Chrome("libraries.rename"), Flyout = renameFlyout };
-            Grid.SetColumn(renameButton, 1);
-            row.Children.Add(renameButton);
-
-            list.Children.Add(row);
-        }
-
-        var newButton = new Button
-        {
-            Content = Loc.Chrome("libraries.new"),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        };
-        newButton.Click += async (_, _) =>
-        {
-            var newId = CreateLibraryOrReport(message =>
-            {
-                status.Text = message;
-                status.Visibility = Visibility.Visible;
-            });
-            if (newId is null)
-            {
-                return;
-            }
-
-            dialog.Hide();
-            await SwitchLibrary(newId);
-        };
-        list.Children.Add(newButton);
-
-        await dialog.ShowAsync();
-    }
-
-    // The welcome chooser, shown before any library is open: on first run (no
-    // library on disk) and after closing one. Lists the libraries already on
-    // disk to reopen, and offers to create a new one or restore from a code or
-    // the cloud directly. Creating writes the new library's keys (Windows
-    // Credential Manager) and on-disk layout; restoring pulls an existing library
-    // from the cloud onto this device.
-    private void ShowWelcome()
-    {
-        // Re-entrant safety: drop any welcome panel from a previous showing so we
-        // don't stack two.
-        DismissWelcome();
-
-        var libraries = LoadLibraries();
-        StatusText.Text = libraries.Count > 0
-            ? Loc.Chrome("welcome.choose_library")
-            : Loc.Chrome("welcome.no_library");
-
-        _welcome = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center };
-
-        if (libraries.Count > 0)
-        {
-            _welcome.Children.Add(new TextBlock
-            {
-                Text = Loc.Chrome("welcome.your_libraries"),
-                HorizontalAlignment = HorizontalAlignment.Center,
-            });
-            foreach (var library in libraries)
-            {
-                var id = library.Id;
-                var openButton = new Button
-                {
-                    Content = library.Name,
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                };
-                openButton.Click += (_, _) => OpenLibrary(id);
-                _welcome.Children.Add(openButton);
-            }
-        }
-
-        var createButton = new Button
-        {
-            Content = Loc.Chrome("welcome.create_library"),
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        createButton.Click += (_, _) =>
-        {
-            var libraryId = CreateLibraryOrReport(message => StatusText.Text = message);
-            if (libraryId is null)
-            {
-                return;
-            }
-
-            OpenLibrary(libraryId);
-        };
-
-        var codeBox = new TextBox { PlaceholderText = Loc.Chrome("restore.code_placeholder"), Width = 320 };
-        var restoreButton = new Button
-        {
-            Content = Loc.Chrome("restore.from_code"),
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        restoreButton.Click += async (_, _) => await RestoreFromCode(codeBox.Text ?? string.Empty);
-
-        // Join a library that already exists on another device: this device shows
-        // its join-request code, an existing owner approves it, and the invite
-        // code it returns brings the library down here.
-        var joinButton = new Button
-        {
-            Content = Loc.Chrome("welcome.join_library"),
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        joinButton.Click += async (_, _) => await ShowJoinLibrary();
-
-        // Restore by entering the cloud location and credentials directly, when
-        // there's no restore code (the code can't carry secrets like S3 keys).
-        var restoreCloudButton = new Button
-        {
-            Content = Loc.Chrome("restore.from_cloud"),
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        restoreCloudButton.Click += async (_, _) => await ShowRestoreFromCloud();
-
-        _welcome.Children.Add(createButton);
-        _welcome.Children.Add(codeBox);
-        _welcome.Children.Add(restoreButton);
-        _welcome.Children.Add(joinButton);
-        _welcome.Children.Add(restoreCloudButton);
-        EmptyState.Children.Add(_welcome);
-    }
-
-    private void DismissWelcome()
-    {
-        if (_welcome is not null)
-        {
-            EmptyState.Children.Remove(_welcome);
-            _welcome = null;
-        }
-    }
-
-    private async System.Threading.Tasks.Task RestoreFromCode(string code)
-    {
-        if (string.IsNullOrWhiteSpace(code))
-        {
-            return;
-        }
-
-        BridgeRestoreCodeInfo info;
-        try
-        {
-            info = NativeBae.DecodeRestoreCode(code);
-        }
-        catch (BridgeException exception)
-        {
-            BaeDiagnostics.Logger.Error("Failed to decode restore code.", exception);
-            StatusText.Text = Loc.Chrome("restore.invalid_code");
-            return;
-        }
-
-        // OAuth providers (Google Drive, Dropbox, OneDrive) need a sign-in first: the
-        // core opens the browser and captures the 127.0.0.1 redirect, returning a
-        // token JSON that the restore pull authenticates with. Credential providers
-        // pass no token.
-        string? oauthTokenJson = null;
-        if (info.NeedsOauth)
-        {
-            // The provider list is the build's support boundary: an S3-only
-            // build cannot restore an OAuth-provider code here.
-            if (!NativeBae.IsCloudProviderAvailable(info.CloudProvider))
-            {
-                StatusText.Text = Loc.Chrome("cloud.unsupported_provider", "provider", ProviderDisplayName(info.CloudProvider));
-                return;
-            }
-            if (!OAuthCreds.Available)
-            {
-                StatusText.Text = OAuthCreds.RegistrationError
-                    ?? Loc.Chrome("cloud.signin.not_configured");
-                return;
-            }
-            StatusText.Text = Loc.Chrome("cloud.signin.in_progress", "provider", ProviderDisplayName(info.CloudProvider));
-            try
-            {
-                oauthTokenJson = await System.Threading.Tasks.Task.Run(() => NativeBae.OAuthAuthorize(info.CloudProvider));
-            }
-            catch (BridgeException exception)
-            {
-                BaeDiagnostics.Logger.Error("Failed to authorize cloud provider for restore.", exception);
-                StatusText.Text = Loc.Chrome("cloud.signin.failed");
-                return;
-            }
-        }
-
-        StatusText.Text = Loc.Chrome("restore.in_progress_named", "name", info.LibraryName);
-        string libraryId;
-        try
-        {
-            libraryId = await System.Threading.Tasks.Task.Run(() => NativeBae.RestoreFromCode(code, oauthTokenJson));
-        }
-        catch (BridgeException exception)
-        {
-            BaeDiagnostics.Logger.Error("Failed to restore library from code.", exception);
-            StatusText.Text = Loc.Chrome("restore.failed");
-            return;
-        }
-
-        DismissWelcome();
-        OpenLibrary(libraryId);
-    }
-
-    // Copy text to the system clipboard (a shared code the user hands to another
-    // device).
-    private static void CopyToClipboard(string text)
-    {
-        var package = new DataPackage();
-        package.SetText(text);
-        Clipboard.SetContent(package);
-    }
-
-    // A code-display block: the QR image (when it renders), the code as selectable
-    // monospaced text, and a Copy button. Shared by the join screen (this device's
-    // code), the approve flow (the invite code), and the recovery reveal.
-    private static StackPanel BuildCodeDisplay(string code)
-    {
-        var panel = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center };
-
-        var qr = QrCode.Image(code);
-        if (qr is not null)
-        {
-            panel.Children.Add(new Image
-            {
-                Source = qr,
-                Width = 180,
-                Height = 180,
-                Stretch = Stretch.Uniform,
-            });
-        }
-
-        panel.Children.Add(new TextBox
-        {
-            Text = code,
-            IsReadOnly = true,
-            TextWrapping = TextWrapping.Wrap,
-            FontFamily = new FontFamily("Consolas"),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        });
-
-        var copy = new Button
-        {
-            Content = Loc.Chrome("action.copy"),
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        copy.Click += (_, _) => CopyToClipboard(code);
-        panel.Children.Add(copy);
-
-        return panel;
-    }
-
-    // Join a library that already lives on another device. This device generates
-    // its join-request code (its public key) and shows it as a QR + text + short
-    // fingerprint; an existing owner approves it (in their Settings → Devices) and
-    // reads back an invite code, which the user pastes or scans here. Decoding the
-    // invite runs the OAuth sign-in when the provider needs it, then JoinFromCode
-    // pulls the library down. Mirrors RestoreFromCode's non-cancellable flow.
-    private async System.Threading.Tasks.Task ShowJoinLibrary()
-    {
-        var content = new StackPanel { Spacing = 12, MinWidth = 360 };
-        content.Children.Add(new TextBlock
-        {
-            Text = Loc.Chrome("join.intro"),
-            TextWrapping = TextWrapping.Wrap,
-        });
-
-        // This device's code section, filled once it's generated below.
-        content.Children.Add(new TextBlock
-        {
-            Text = Loc.Chrome("join.this_device_code"),
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-        });
-        var deviceCodeHost = new StackPanel { Spacing = 8 };
-        deviceCodeHost.Children.Add(new ProgressRing { IsActive = true, Width = 20, Height = 20 });
-        content.Children.Add(deviceCodeHost);
-        content.Children.Add(new TextBlock
-        {
-            Text = Loc.Chrome("join.show_to_member"),
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-        });
-
-        // Invite-code section.
-        content.Children.Add(new TextBlock
-        {
-            Text = Loc.Chrome("join.invite_label"),
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-        });
-        content.Children.Add(new TextBlock
-        {
-            Text = Loc.Chrome("join.invite_hint"),
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-        });
-        var inviteBox = new TextBox
-        {
-            PlaceholderText = Loc.Chrome("join.invite_placeholder"),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        };
-        var scanButton = new Button { Content = Loc.Chrome("action.scan") };
-        var inviteRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        inviteRow.Children.Add(inviteBox);
-        inviteRow.Children.Add(scanButton);
-        content.Children.Add(inviteRow);
-
-        var invitePreview = new TextBlock
-        {
-            TextWrapping = TextWrapping.Wrap,
-            Visibility = Visibility.Collapsed,
-        };
-        content.Children.Add(invitePreview);
-
-        var status = new TextBlock
-        {
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
-            TextWrapping = TextWrapping.Wrap,
-            Visibility = Visibility.Collapsed,
-        };
-        content.Children.Add(status);
-
-        var joinButton = new Button
-        {
-            Content = Loc.Chrome("join.confirm"),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            IsEnabled = false,
-        };
-        content.Children.Add(joinButton);
-
-        var dialog = new ContentDialog
-        {
-            Title = Loc.Chrome("join.title"),
-            Content = new ScrollViewer { Content = content, MaxHeight = 560 },
-            CloseButtonText = Loc.Chrome("action.cancel"),
-            XamlRoot = Content.XamlRoot,
-        };
-
-        // The decoded invite and the OAuth token (when the provider needed one):
-        // both feed the Join click and gate the button.
-        BridgeInviteCodeInfo? decoded = null;
-        string? oauthTokenJson = null;
-
-        void ShowStatus(string message)
-        {
-            status.Text = message;
-            status.Visibility = Visibility.Visible;
-        }
-
-        void ClearStatus()
-        {
-            status.Text = string.Empty;
-            status.Visibility = Visibility.Collapsed;
-        }
-
-        // The button is ready once a valid invite is decoded and — for an OAuth
-        // provider — the sign-in has produced a token.
-        void Revalidate()
-        {
-            joinButton.IsEnabled = decoded is not null && (!decoded.NeedsOauth || oauthTokenJson is not null);
-        }
-
-        // Decode the typed/scanned invite and preview the library it joins. The
-        // decode is a fast in-memory parse, so it runs on the UI thread; OAuth
-        // sign-in is deferred to the Join click so the user isn't sent to the
-        // browser just for typing.
-        void DecodeInvite(string code)
-        {
-            decoded = null;
-            oauthTokenJson = null;
-            invitePreview.Visibility = Visibility.Collapsed;
-            ClearStatus();
-            Revalidate();
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                return;
-            }
-
-            BridgeInviteCodeInfo info;
-            try
-            {
-                info = NativeBae.DecodeInviteCode(code);
-            }
-            catch (BridgeException exception)
-            {
-                BaeDiagnostics.Logger.Error("Failed to decode invite code.", exception);
-                ShowStatus(Loc.Chrome("join.invalid_invite"));
-                return;
-            }
-
-            decoded = info;
-            invitePreview.Text = Loc.Chrome("join.invite_for", new Dictionary<string, object?>
-            {
-                ["name"] = info.LibraryName,
-                ["provider"] = ProviderDisplayName(info.CloudProvider),
-                ["fingerprint"] = info.OwnerFingerprint,
-            });
-            invitePreview.Visibility = Visibility.Visible;
-            Revalidate();
-        }
-
-        inviteBox.TextChanged += (_, _) => DecodeInvite(inviteBox.Text?.Trim() ?? string.Empty);
-        scanButton.Click += async (_, _) =>
-        {
-            var scanned = await QrScanner.ScanFromFileAsync(WinRT.Interop.WindowNative.GetWindowHandle(this));
-            if (scanned is not null)
-            {
-                inviteBox.Text = scanned.Trim();
-            }
-        };
-
-        joinButton.Click += async (_, _) =>
-        {
-            if (decoded is null)
-            {
-                return;
-            }
-
-            var info = decoded;
-            ClearStatus();
-
-            // OAuth providers (Google Drive, Dropbox, OneDrive) need a sign-in
-            // first: the joining device authorizes its own cloud account, exactly
-            // as RestoreFromCode does.
-            if (info.NeedsOauth)
-            {
-                if (!NativeBae.IsCloudProviderAvailable(info.CloudProvider))
-                {
-                    ShowStatus(Loc.Chrome("cloud.unsupported_provider", "provider", ProviderDisplayName(info.CloudProvider)));
-                    return;
-                }
-                if (!OAuthCreds.Available)
-                {
-                    ShowStatus(OAuthCreds.RegistrationError ?? Loc.Chrome("cloud.signin.not_configured"));
-                    return;
-                }
-
-                joinButton.IsEnabled = false;
-                status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                ShowStatus(Loc.Chrome("cloud.signin.in_progress", "provider", ProviderDisplayName(info.CloudProvider)));
-                try
-                {
-                    oauthTokenJson = await System.Threading.Tasks.Task.Run(() => NativeBae.OAuthAuthorize(info.CloudProvider));
-                }
-                catch (BridgeException exception)
-                {
-                    BaeDiagnostics.Logger.Error("Failed to authorize cloud provider for join.", exception);
-                    status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
-                    ShowStatus(Loc.Chrome("cloud.signin.failed"));
-                    Revalidate();
-                    return;
-                }
-            }
-
-            joinButton.IsEnabled = false;
-            status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-            ShowStatus(Loc.Chrome("join.in_progress", "name", info.LibraryName));
-            var code = inviteBox.Text?.Trim() ?? string.Empty;
-            var token = oauthTokenJson;
-            string libraryId;
-            try
-            {
-                libraryId = await System.Threading.Tasks.Task.Run(() => NativeBae.JoinFromCode(code, token));
-            }
-            catch (BridgeException exception)
-            {
-                BaeDiagnostics.Logger.Error("Failed to join library from invite.", exception);
-                status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
-                ShowStatus(Loc.Chrome("join.failed"));
-                joinButton.IsEnabled = true;
-                return;
-            }
-
-            dialog.Hide();
-            DismissWelcome();
-            OpenLibrary(libraryId);
-        };
-
-        // Generate this device's join-request code off the UI thread, then render
-        // it (QR + text + Copy) and its fingerprint. A failure leaves the device
-        // section showing only an error — the invite half is unaffected.
-        _ = GenerateJoinCode(deviceCodeHost);
-
-        await dialog.ShowAsync();
-    }
-
-    // Fill the join screen's device-code section: generate the join-request code
-    // and its fingerprint, then render the code display. Runs the blocking generated bridge off
-    // the UI thread.
-    private async System.Threading.Tasks.Task GenerateJoinCode(StackPanel host)
-    {
-        BridgeJoinRequest request;
-        try
-        {
-            request = await System.Threading.Tasks.Task.Run(() => NativeBae.GenerateJoinRequest());
-        }
-        catch (BridgeException exception)
-        {
-            BaeDiagnostics.Logger.Error("Failed to generate join request.", exception);
-            host.Children.Clear();
-            host.Children.Add(new TextBlock
-            {
-                Text = Loc.Chrome("join.generate_failed"),
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
-                TextWrapping = TextWrapping.Wrap,
-            });
-            return;
-        }
-
-        host.Children.Clear();
-
-        host.Children.Add(BuildCodeDisplay(request.Code));
-
-        // The same short form the approving device sees, so the user can confirm
-        // they're pairing the right device.
-        host.Children.Add(new TextBlock
-        {
-            Text = Loc.Chrome("join.fingerprint", "fingerprint", request.Fingerprint),
-            FontFamily = new FontFamily("Consolas"),
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-        });
-    }
-
-    // Owner-side approve flow: a single dialog whose body swaps between steps —
-    // capture (scan or paste the new device's join-request code) → confirm (its
-    // fingerprint) → invited (the invite code to enter on the new device). Approve
-    // wraps the library key to the device and signs a membership entry; the invite
-    // code it returns is the new device's way in. Mirrors macOS's ApproveDeviceSheet.
-    private async System.Threading.Tasks.Task ShowApproveDevice()
-    {
-        var body = new StackPanel { Spacing = 12, MinWidth = 360 };
-        var dialog = new ContentDialog
-        {
-            Title = Loc.Chrome("members.approve.title"),
-            Content = new ScrollViewer { Content = body, MaxHeight = 560 },
-            CloseButtonText = Loc.Chrome("action.done"),
-            XamlRoot = Content.XamlRoot,
-        };
-
-        void ShowCapture()
-        {
-            body.Children.Clear();
-            body.Children.Add(new TextBlock
-            {
-                Text = Loc.Chrome("members.approve.capture_hint"),
-                TextWrapping = TextWrapping.Wrap,
-            });
-
-            var pasteBox = new TextBox
-            {
-                PlaceholderText = Loc.Chrome("members.approve.paste_placeholder"),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-            };
-            var decode = new Button { Content = Loc.Chrome("members.approve.decode") };
-            var scan = new Button { Content = Loc.Chrome("action.scan") };
-            var captureRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-            captureRow.Children.Add(pasteBox);
-            captureRow.Children.Add(decode);
-            captureRow.Children.Add(scan);
-            body.Children.Add(captureRow);
-
-            var error = new TextBlock
-            {
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
-                TextWrapping = TextWrapping.Wrap,
-                Visibility = Visibility.Collapsed,
-            };
-            body.Children.Add(error);
-
-            void TryDecode(string code)
-            {
-                if (string.IsNullOrWhiteSpace(code))
-                {
-                    return;
-                }
-
-                BridgeJoinRequestInfo info;
-                try
-                {
-                    info = NativeBae.DecodeJoinRequest(code);
-                }
-                catch (BridgeException exception)
-                {
-                    BaeDiagnostics.Logger.Error("Failed to decode join request.", exception);
-                    error.Text = Loc.Chrome("members.approve.invalid_request");
-                    error.Visibility = Visibility.Visible;
-                    return;
-                }
-
-                ShowConfirm(info);
-            }
-
-            decode.Click += (_, _) => TryDecode(pasteBox.Text?.Trim() ?? string.Empty);
-            scan.Click += async (_, _) =>
-            {
-                var scanned = await QrScanner.ScanFromFileAsync(WinRT.Interop.WindowNative.GetWindowHandle(this));
-                if (scanned is not null)
-                {
-                    TryDecode(scanned.Trim());
-                }
-            };
-        }
-
-        void ShowConfirm(BridgeJoinRequestInfo info)
-        {
-            body.Children.Clear();
-            body.Children.Add(new TextBlock
-            {
-                Text = Loc.Chrome("members.approve.confirm_title"),
-                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            });
-            body.Children.Add(new TextBlock
-            {
-                Text = info.Fingerprint,
-                FontFamily = new FontFamily("Consolas"),
-            });
-            if (!string.IsNullOrEmpty(info.Email))
-            {
-                body.Children.Add(new TextBlock
-                {
-                    Text = info.Email,
-                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-                });
-            }
-            body.Children.Add(new TextBlock
-            {
-                Text = Loc.Chrome("members.approve.confirm_hint"),
-                TextWrapping = TextWrapping.Wrap,
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-            });
-
-            var error = new TextBlock
-            {
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
-                TextWrapping = TextWrapping.Wrap,
-                Visibility = Visibility.Collapsed,
-            };
-
-            var back = new Button { Content = Loc.Chrome("action.back") };
-            back.Click += (_, _) => ShowCapture();
-            var approve = new Button
-            {
-                Content = Loc.Chrome("members.approve.confirm"),
-                Style = Application.Current.Resources["AccentButtonStyle"] as Style,
-            };
-            approve.Click += async (_, _) =>
-            {
-                approve.IsEnabled = false;
-                back.IsEnabled = false;
-                error.Visibility = Visibility.Collapsed;
-                error.Text = Loc.Chrome("members.approve.in_progress");
-                error.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                error.Visibility = Visibility.Visible;
-
-                var pubkey = info.Pubkey;
-                var (current, code) = await RunForCurrentHandle(
-                    handle => NativeBae.InviteMember(handle, pubkey));
-                if (!current)
-                {
-                    return;
-                }
-                if (code is null)
-                {
-                    error.Text = Loc.Chrome("members.approve.failed");
-                    error.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
-                    error.Visibility = Visibility.Visible;
-                    approve.IsEnabled = true;
-                    back.IsEnabled = true;
-                    return;
-                }
-
-                ShowInvited(code);
-            };
-
-            var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-            buttons.Children.Add(back);
-            buttons.Children.Add(approve);
-            body.Children.Add(buttons);
-            body.Children.Add(error);
-        }
-
-        void ShowInvited(string code)
-        {
-            body.Children.Clear();
-            body.Children.Add(new TextBlock
-            {
-                Text = Loc.Chrome("members.approve.invited_hint"),
-                TextWrapping = TextWrapping.Wrap,
-            });
-            body.Children.Add(BuildCodeDisplay(code));
-        }
-
-        ShowCapture();
-        await dialog.ShowAsync();
-    }
-
-    // Restore a library by entering its cloud location and credentials directly,
-    // for the S3 credential provider whose secrets a restore code can't carry.
-    // OAuth-backed libraries restore from a code instead, where the browser
-    // sign-in supplies the tokens.
-    private async System.Threading.Tasks.Task ShowRestoreFromCloud()
-    {
-        var content = new StackPanel { Spacing = 8, MinWidth = 360 };
-
-        var libraryIdBox = new TextBox { Header = Loc.Chrome("restore.field.library_id") };
-        // The encryption key unlocks the whole library — mask it, as macOS does.
-        var keyBox = new PasswordBox { Header = Loc.Chrome("restore.field.encryption_key") };
-        var nameBox = new TextBox { Header = Loc.Chrome("restore.field.library_name") };
-        content.Children.Add(libraryIdBox);
-        content.Children.Add(keyBox);
-        content.Children.Add(nameBox);
-
-        var providerPicker = new ComboBox
-        {
-            Header = Loc.Chrome("restore.field.cloud_storage"),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        };
-        foreach (var wire in new[] { "s3" })
-        {
-            providerPicker.Items.Add(new ComboBoxItem { Content = ProviderDisplayName(wire), Tag = wire });
-        }
-        content.Children.Add(providerPicker);
-
-        // S3 fields, shown when S3 is selected.
-        var s3Bucket = new TextBox { Header = Loc.Chrome("s3.field.bucket"), Visibility = Visibility.Collapsed };
-        var s3Region = new TextBox { Header = Loc.Chrome("s3.field.region"), Visibility = Visibility.Collapsed };
-        var s3Endpoint = new TextBox { Header = Loc.Chrome("s3.field.endpoint"), Visibility = Visibility.Collapsed };
-        var s3AccessKey = new PasswordBox { Header = Loc.Chrome("s3.field.access_key"), Visibility = Visibility.Collapsed };
-        var s3SecretKey = new PasswordBox { Header = Loc.Chrome("s3.field.secret_key"), Visibility = Visibility.Collapsed };
-        content.Children.Add(s3Bucket);
-        content.Children.Add(s3Region);
-        content.Children.Add(s3Endpoint);
-        content.Children.Add(s3AccessKey);
-        content.Children.Add(s3SecretKey);
-
-        var status = new TextBlock
-        {
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
-            TextWrapping = TextWrapping.Wrap,
-            Visibility = Visibility.Collapsed,
-        };
-        content.Children.Add(status);
-
-        var restoreButton = new Button
-        {
-            Content = Loc.Chrome("restore.confirm"),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            IsEnabled = false,
-        };
-        content.Children.Add(restoreButton);
-
-        var dialog = new ContentDialog
-        {
-            Title = Loc.Chrome("restore.from_cloud_title"),
-            Content = new ScrollViewer { Content = content, MaxHeight = 520 },
-            CloseButtonText = Loc.Chrome("action.cancel"),
-            XamlRoot = Content.XamlRoot,
-        };
-
-        string SelectedWire() =>
-            (providerPicker.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty;
-
-        // Enable restore only when the common fields and the selected provider's
-        // required fields are all filled.
-        void Revalidate()
-        {
-            var wire = SelectedWire();
-            var common = !string.IsNullOrWhiteSpace(libraryIdBox.Text)
-                && !string.IsNullOrWhiteSpace(keyBox.Password);
-            var providerReady = wire switch
-            {
-                "s3" => !string.IsNullOrWhiteSpace(s3Bucket.Text)
-                    && !string.IsNullOrWhiteSpace(s3Region.Text)
-                    && !string.IsNullOrWhiteSpace(s3AccessKey.Password)
-                    && !string.IsNullOrWhiteSpace(s3SecretKey.Password),
-                _ => false,
-            };
-            restoreButton.IsEnabled = common && providerReady;
-        }
-
-        providerPicker.SelectionChanged += (_, _) =>
-        {
-            var s3 = SelectedWire() == "s3";
-            s3Bucket.Visibility = s3Region.Visibility = s3Endpoint.Visibility =
-                s3AccessKey.Visibility = s3SecretKey.Visibility =
-                    s3 ? Visibility.Visible : Visibility.Collapsed;
-            Revalidate();
-        };
-        foreach (var box in new[] { libraryIdBox, s3Bucket, s3Region })
-        {
-            box.TextChanged += (_, _) => Revalidate();
-        }
-        foreach (var secret in new[] { keyBox, s3AccessKey, s3SecretKey })
-        {
-            secret.PasswordChanged += (_, _) => Revalidate();
-        }
-        // Land on S3 so its fields show immediately; fires the handler above.
-        providerPicker.SelectedIndex = 0;
-
-        restoreButton.Click += async (_, _) =>
-        {
-            restoreButton.IsEnabled = false;
-            status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-            status.Text = Loc.Chrome("restore.in_progress");
-            status.Visibility = Visibility.Visible;
-
-            var libraryId = libraryIdBox.Text?.Trim() ?? string.Empty;
-            var key = keyBox.Password?.Trim() ?? string.Empty;
-            var name = nameBox.Text?.Trim() ?? string.Empty;
-            string restoredLibraryId;
-            try
-            {
-                restoredLibraryId = await System.Threading.Tasks.Task.Run(
-                    () => NativeBae.RestoreFromS3(
-                        libraryId,
-                        key,
-                        name,
-                        s3Bucket.Text?.Trim() ?? string.Empty,
-                        s3Region.Text?.Trim() ?? string.Empty,
-                        s3Endpoint.Text?.Trim(),
-                        s3AccessKey.Password?.Trim() ?? string.Empty,
-                        s3SecretKey.Password ?? string.Empty));
-            }
-            catch (BridgeException exception)
-            {
-                BaeDiagnostics.Logger.Error("Failed to restore S3 library.", exception);
-                status.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
-                status.Text = Loc.Chrome("restore.failed");
-                restoreButton.IsEnabled = true;
-                return;
-            }
-
-            dialog.Hide();
-            DismissWelcome();
-            OpenLibrary(restoredLibraryId);
-        };
-
-        await dialog.ShowAsync();
-    }
-
-    // The wire provider tag (google_drive / dropbox / onedrive / s3) as a name to
-    // show the user. Unknown tags pass through unchanged.
-    private static string ProviderDisplayName(string provider) => provider switch
-    {
-        "google_drive" => Loc.Chrome("cloud.provider.google_drive"),
-        "dropbox" => Loc.Chrome("cloud.provider.dropbox"),
-        "onedrive" => Loc.Chrome("cloud.provider.onedrive"),
-        "s3" => Loc.Chrome("cloud.provider.s3"),
-        _ => provider,
-    };
-
-    private static string ProviderDisplayName(BridgeCloudProvider provider)
-    {
-        var key = NativeBae.CloudProviderLabelKey(provider);
-        if (key is not null)
-        {
-            return Loc.Core(key);
-        }
-
-        return provider switch
-        {
-            BridgeCloudProvider.GoogleDrive => Loc.Chrome("cloud.provider.google_drive"),
-            BridgeCloudProvider.Dropbox => Loc.Chrome("cloud.provider.dropbox"),
-            BridgeCloudProvider.OneDrive => Loc.Chrome("cloud.provider.onedrive"),
-            BridgeCloudProvider.CloudKit => Loc.Chrome("cloud.provider.icloud"),
-            _ => provider.ToString(),
-        };
+        await _librariesDialog.Show();
     }
 
     // Import-preview and candidate-loudness events, which drive the import
@@ -2890,164 +1903,21 @@ public sealed partial class MainWindow : Window
         }
         else
         {
-            var (current, search) = WithCurrentHandle(handle => NativeBae.Search(handle, query));
-            if (!current)
-            {
-                return;
-            }
-            SetSearchResults(search.Results, search.Error, query);
+            RenderSearch(_browser.Search(query));
         }
     }
 
-    private void SetSearchResults(LibrarySearchResults? results, string? error, string query)
+    // Show the search pane and render the store's cover-attached results; a session
+    // closed mid-search leaves the current view in place.
+    private void RenderSearch(BrowserSearch search)
     {
-        var handle = CurrentHandleOrNull();
-        if (handle == null)
+        if (search.HandleGone)
         {
             return;
         }
 
         ShowSearchBrowser();
-        SearchResultsPanel.Children.Clear();
-        if (error is not null || results is null)
-        {
-            StatusText.Text = error ?? Loc.Chrome("search.failed");
-            return;
-        }
-        foreach (var album in results.Albums)
-        {
-            album.AttachCover(handle, DispatcherQueue);
-        }
-        foreach (var composer in results.Composers)
-        {
-            composer.AttachCover(handle, DispatcherQueue);
-        }
-        foreach (var work in results.Works)
-        {
-            work.AttachCover(handle, DispatcherQueue);
-        }
-
-        if (results.Albums.Count == 0 && results.Tracks.Count == 0
-            && results.Composers.Count == 0 && results.Works.Count == 0)
-        {
-            StatusText.Text = Loc.Chrome("search.no_matches");
-            return;
-        }
-
-        StatusText.Text = string.Empty;
-        AddSearchSection(Loc.Chrome("search.section.albums"), results.Albums, album =>
-            SearchButton(album.Title, album.Artist, async () => await ShowAlbumDetail(album.Id)));
-        AddSearchSection(Loc.Chrome("search.section.tracks"), results.Tracks, track =>
-            SearchButton(track.Title, $"{track.ArtistName} — {track.AlbumTitle}", async () => await ShowAlbumDetail(track.AlbumId)));
-        AddSearchSection(Loc.Chrome("search.section.composers"), results.Composers, composer =>
-            SearchButton(composer.Name, composer.WorkCountText, async () => await ShowComposerDetail(composer.ArtistId)));
-        AddSearchSection(Loc.Chrome("search.section.works"), results.Works, work =>
-            SearchButton(work.Title, work.ComposerNames ?? string.Empty, async () => await ShowWorkDetail(work.WorkId)));
-    }
-
-    private void AddSearchSection<T>(
-        string title,
-        IReadOnlyList<T> rows,
-        Func<T, Button> button)
-    {
-        if (rows.Count == 0)
-        {
-            return;
-        }
-
-        SearchResultsPanel.Children.Add(new TextBlock
-        {
-            Text = title,
-            Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"],
-        });
-        foreach (var row in rows)
-        {
-            SearchResultsPanel.Children.Add(button(row));
-        }
-    }
-
-    private static Button SearchButton(string title, string subtitle, Func<System.Threading.Tasks.Task> action)
-    {
-        var panel = new StackPanel { Spacing = 2 };
-        panel.Children.Add(new TextBlock { Text = title, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis });
-        if (!string.IsNullOrWhiteSpace(subtitle))
-        {
-            panel.Children.Add(new TextBlock
-            {
-                Text = subtitle,
-                MaxLines = 1,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-            });
-        }
-        var button = new Button
-        {
-            Content = panel,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Left,
-        };
-        button.Click += async (_, _) => await action();
-        return button;
-    }
-
-    /// <summary>Replace the grid's albums from generated bridge rows.</summary>
-    private void SetAlbums(List<Album>? albums, string? error, string emptyMessage)
-    {
-        var handle = CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return;
-        }
-
-        ShowAlbumBrowser();
-        Albums.Clear();
-        if (error is not null || albums is null)
-        {
-            StatusText.Text = error ?? Loc.Chrome("library.load_failed");
-            return;
-        }
-
-        foreach (var album in albums)
-        {
-            album.AttachCover(handle, DispatcherQueue);
-            Albums.Add(album);
-        }
-
-        StatusText.Text = albums.Count == 0 ? emptyMessage : string.Empty;
-    }
-
-    private void LoadComposers()
-    {
-        ShowComposerBrowser();
-        Composers.Clear();
-        ComposerDetailPane.Children.Clear();
-        var (current, page) = WithCurrentHandle(
-            handle => NativeBae.ComposerPage(
-                handle,
-                0,
-                FirstPageSize,
-                _composerSort.Field,
-                _composerSort.Ascending));
-        if (!current)
-        {
-            return;
-        }
-        if (page.Error is not null || page.Composers is null)
-        {
-            StatusText.Text = page.Error ?? Loc.Chrome("library.load_failed");
-            return;
-        }
-        var handle = CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return;
-        }
-        foreach (var composer in page.Composers)
-        {
-            composer.AttachCover(handle, DispatcherQueue);
-            Composers.Add(composer);
-        }
-        StatusText.Text = page.Composers.Count == 0 ? Loc.Chrome("library.no_composers") : string.Empty;
+        _browserPanes.RenderSearchResults(search.Results, search.Error);
     }
 
     private async void OnComposerClick(object sender, ItemClickEventArgs e)
@@ -3057,188 +1927,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        await ShowComposerDetail(composer.ArtistId);
-    }
-
-    private async System.Threading.Tasks.Task ShowComposerDetail(string artistId)
-    {
-        var (current, response) = await RunForCurrentHandle(
-            handle => NativeBae.GetComposerDetail(handle, artistId));
-        if (!current)
-        {
-            return;
-        }
-        if (response.Error is not null || response.Detail is null)
-        {
-            StatusText.Text = response.Error ?? Loc.Chrome("composer.open_failed");
-            return;
-        }
-
-        var detail = response.Detail;
-        var handle = CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return;
-        }
-        detail.Composer.AttachCover(handle, DispatcherQueue);
-        foreach (var group in detail.WorkGroups)
-        {
-            if (group.Parent is not null)
-            {
-                group.Parent.AttachCover(handle, DispatcherQueue);
-            }
-            foreach (var work in group.Works)
-            {
-                work.AttachCover(handle, DispatcherQueue);
-            }
-        }
-
-        ShowComposerBrowser();
-        ComposerDetailPane.Children.Clear();
-        ComposerDetailPane.Children.Add(new TextBlock
-        {
-            Text = detail.Composer.Name,
-            Style = (Style)Application.Current.Resources["TitleTextBlockStyle"],
-        });
-        if (detail.WorkGroups.Count > 0)
-        {
-            AddPaneHeader(Loc.Chrome("search.section.works"));
-            foreach (var group in detail.WorkGroups)
-            {
-                if (group.Parent is not null)
-                {
-                    ComposerDetailPane.Children.Add(WorkButton(group.Parent));
-                }
-                foreach (var work in group.Works)
-                {
-                    ComposerDetailPane.Children.Add(WorkButton(work));
-                }
-            }
-        }
-        if (detail.UnlinkedReleaseRoles.Count > 0)
-        {
-            AddPaneHeader(Loc.Chrome("search.section.credits"));
-            foreach (var role in detail.UnlinkedReleaseRoles)
-            {
-                ComposerDetailPane.Children.Add(PaneButton(role.AlbumTitle, role.SourceCredit ?? string.Empty, async () =>
-                    await ShowAlbumDetail(role.AlbumId)));
-            }
-        }
-        if (detail.UnlinkedTrackRoles.Count > 0)
-        {
-            AddPaneHeader(Loc.Chrome("search.section.recordings"));
-            foreach (var role in detail.UnlinkedTrackRoles)
-            {
-                ComposerDetailPane.Children.Add(PaneButton(role.TrackTitle, role.AlbumTitle, async () => await ShowAlbumDetail(role.AlbumId)));
-            }
-        }
-        if (detail.DefaultWorkId is not null)
-        {
-            await ShowWorkDetail(detail.DefaultWorkId, replacePane: false);
-        }
-    }
-
-    private Button WorkButton(WorkSummary work) =>
-        PaneButton(work.Title, work.ComposerNames ?? string.Empty, async () => await ShowWorkDetail(work.WorkId));
-
-    private void AddPaneHeader(string title)
-    {
-        ComposerDetailPane.Children.Add(new TextBlock
-        {
-            Text = title,
-            Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"],
-        });
-    }
-
-    private static Button PaneButton(string title, string subtitle, Func<System.Threading.Tasks.Task> action)
-    {
-        var panel = new StackPanel { Spacing = 2 };
-        panel.Children.Add(new TextBlock { Text = title, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis });
-        if (!string.IsNullOrWhiteSpace(subtitle))
-        {
-            panel.Children.Add(new TextBlock
-            {
-                Text = subtitle,
-                MaxLines = 1,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-            });
-        }
-        var button = new Button
-        {
-            Content = panel,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Left,
-        };
-        button.Click += async (_, _) => await action();
-        return button;
-    }
-
-    private async System.Threading.Tasks.Task ShowWorkDetail(string workId, bool replacePane = true)
-    {
-        var (current, response) = await RunForCurrentHandle(
-            handle => NativeBae.GetWorkDetail(handle, workId));
-        if (!current)
-        {
-            return;
-        }
-        if (response.Error is not null || response.Detail is null)
-        {
-            StatusText.Text = response.Error ?? Loc.Chrome("work.open_failed");
-            return;
-        }
-
-        var detail = response.Detail;
-        var handle = CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return;
-        }
-        detail.Work.AttachCover(handle, DispatcherQueue);
-        foreach (var work in detail.ChildWorks)
-        {
-            work.AttachCover(handle, DispatcherQueue);
-        }
-        foreach (var release in detail.Releases)
-        {
-            release.AttachCover(handle, DispatcherQueue);
-        }
-
-        ShowComposerBrowser();
-        if (replacePane)
-        {
-            ComposerDetailPane.Children.Clear();
-        }
-        ComposerDetailPane.Children.Add(new TextBlock
-        {
-            Text = detail.Work.Title,
-            Style = (Style)Application.Current.Resources["TitleTextBlockStyle"],
-        });
-        if (detail.ChildWorks.Count > 0)
-        {
-            AddPaneHeader(Loc.Chrome("search.section.works"));
-            foreach (var work in detail.ChildWorks)
-            {
-                ComposerDetailPane.Children.Add(WorkButton(work));
-            }
-        }
-        if (detail.Releases.Count > 0)
-        {
-            AddPaneHeader(Loc.Chrome("search.section.releases"));
-            foreach (var release in detail.Releases)
-            {
-                ComposerDetailPane.Children.Add(PaneButton(release.AlbumTitle, release.DisplaySubtitle, async () =>
-                    await ShowAlbumDetail(release.AlbumId, initialReleaseId: release.ReleaseId)));
-            }
-        }
-        if (detail.Tracks.Count > 0)
-        {
-            AddPaneHeader(Loc.Chrome("search.section.recordings"));
-            foreach (var track in detail.Tracks)
-            {
-                ComposerDetailPane.Children.Add(PaneButton(track.TrackTitle, track.AlbumTitle, async () => await ShowAlbumDetail(track.AlbumId)));
-            }
-        }
+        await _browserPanes.ShowComposerDetail(composer.ArtistId);
     }
 
     private async void OnAlbumClick(object sender, ItemClickEventArgs e)
@@ -5381,7 +4070,7 @@ public sealed partial class MainWindow : Window
         {
             if (available.Contains(wire))
             {
-                oauthButtons.Children.Add(CloudButton(ProviderDisplayName(wire), wire));
+                oauthButtons.Children.Add(CloudButton(BridgeDisplay.ProviderDisplayName(wire), wire));
             }
         }
 
@@ -5970,7 +4659,7 @@ public sealed partial class MainWindow : Window
                 ShowSettingsError(Loc.Chrome("settings.automation.token_unavailable"));
                 return;
             }
-            CopyToClipboard(token);
+            ClipboardHelper.CopyToClipboard(token);
             mcpStatus.Text = Loc.Chrome(successKey);
         }
 
@@ -6004,7 +4693,7 @@ public sealed partial class MainWindow : Window
                 ShowSettingsError(error);
                 return;
             }
-            CopyToClipboard(token);
+            ClipboardHelper.CopyToClipboard(token);
             mcpStatus.Text = Loc.Chrome("settings.automation.token_rotated");
         };
 
@@ -6307,7 +4996,7 @@ public sealed partial class MainWindow : Window
         // shows the newly-approved device.
         if (addDeviceRequested)
         {
-            await ShowApproveDevice();
+            await _approveDialog.Show();
             OnSettingsClick(sender, e);
         }
     }

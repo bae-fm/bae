@@ -51,4 +51,33 @@ internal static class BridgeDisplay
             _ => Loc.Core(key),
         };
     }
+
+    // The wire provider tag (google_drive / dropbox / onedrive / s3) as a name to
+    // show the user. Unknown tags pass through unchanged.
+    internal static string ProviderDisplayName(string provider) => provider switch
+    {
+        "google_drive" => Loc.Chrome("cloud.provider.google_drive"),
+        "dropbox" => Loc.Chrome("cloud.provider.dropbox"),
+        "onedrive" => Loc.Chrome("cloud.provider.onedrive"),
+        "s3" => Loc.Chrome("cloud.provider.s3"),
+        _ => provider,
+    };
+
+    internal static string ProviderDisplayName(BridgeCloudProvider provider)
+    {
+        var key = NativeBae.CloudProviderLabelKey(provider);
+        if (key is not null)
+        {
+            return Loc.Core(key);
+        }
+
+        return provider switch
+        {
+            BridgeCloudProvider.GoogleDrive => Loc.Chrome("cloud.provider.google_drive"),
+            BridgeCloudProvider.Dropbox => Loc.Chrome("cloud.provider.dropbox"),
+            BridgeCloudProvider.OneDrive => Loc.Chrome("cloud.provider.onedrive"),
+            BridgeCloudProvider.CloudKit => Loc.Chrome("cloud.provider.icloud"),
+            _ => provider.ToString(),
+        };
+    }
 }
