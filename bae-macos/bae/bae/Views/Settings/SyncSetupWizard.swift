@@ -425,16 +425,15 @@ extension SyncSetupWizard {
         }
     }
 
-    /// Map a connect error to user-facing text. OAuth surfaces a denied
-    /// authorization specially; `CloudKitError` already carries a ready
-    /// sentence in `msg`, but its `localizedDescription` is the reflected
-    /// enum, so unwrap the case instead.
+    /// Map a connect error to user-facing text. A typed `BridgeError` renders
+    /// its generic per-category line through the shared catalog path, so a
+    /// rejected credential, an unreachable backend, a keyring failure, and a
+    /// config-write failure each read as their own line. `CloudKitError`
+    /// already carries a ready sentence in `msg`, but its `localizedDescription`
+    /// is the reflected enum, so unwrap the case instead.
     fileprivate func connectErrorMessage(_ error: Error) -> String {
-        if case BridgeError.Diagnostic(let category, let detail) = error,
-            category == .config
-        {
-            return detail.contains("denied")
-                ? String(localized: "Access denied") : detail
+        if let bridgeError = error as? BridgeError {
+            return bridgeError.localizedLine
         }
         #if BAE_CLOUDKIT
             if case CloudKitError.Storage(let msg) = error {

@@ -682,6 +682,13 @@ impl From<LibraryError> for AutomationError {
             LibraryError::Encryption(e) => Self::Unavailable(e.to_string()),
             LibraryError::Storage(e) => Self::Unavailable(e),
             LibraryError::Playback(e) => Self::Unavailable(e),
+            LibraryError::Internal(e) => Self::Internal(e),
+            LibraryError::Config(e) => Self::Internal(e.to_string()),
+            LibraryError::Keyring(e) => Self::Unavailable(e.to_string()),
+            LibraryError::CloudHome(e) => Self::Unavailable(e.to_string()),
+            LibraryError::CloudSetup(e) => Self::Unavailable(e.to_string()),
+            LibraryError::Sync(e) => Self::Unavailable(e.to_string()),
+            LibraryError::Validation(e) => Self::Validation(e),
         }
     }
 }

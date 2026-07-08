@@ -109,6 +109,89 @@ pub enum LibraryError {
     Storage(String),
     #[error("Playback error: {0}")]
     Playback(String),
+    /// An internal invariant the caller can't act on (a missing platform driver,
+    /// a provider used through the wrong entry point).
+    #[error("{0}")]
+    Internal(String),
+    /// The OS keyring couldn't be read or written (encryption key, cloud-home
+    /// credentials, Discogs/MCP tokens).
+    #[error("Keyring error: {0}")]
+    Keyring(#[from] coven::KeyError),
+    /// Reading or writing the on-disk library config failed.
+    #[error("Config error: {0}")]
+    Config(#[from] coven::ConfigError),
+    /// Building or probing a cloud home failed — bad credentials/config
+    /// (`Configuration`) or an unreachable backend (`Transport`).
+    #[error("Cloud home error: {0}")]
+    CloudHome(#[from] coven::CloudHomeError),
+    /// Consumer-cloud OAuth sign-in failed.
+    #[error("Cloud setup error: {0}")]
+    CloudSetup(#[from] coven::storage::cloud::setup::SetupError),
+    /// A sync-manager connection or membership operation failed.
+    #[error("Sync error: {0}")]
+    Sync(#[from] coven::SyncError),
+    /// A bae-level input validation failed (an empty library name). bae's own
+    /// validation, not coven's — the detail is log-only, so the user sees the
+    /// generic settings line.
+    #[error("{0}")]
+    Validation(String),
+}
+
+impl LibraryError {
+    /// The user-facing diagnostic class the bridge renders. Membership/setup
+    /// failures carry the distinctions the cloud-setup and sharing flows show as
+    /// different messages (bad credentials vs unreachable backend vs keyring vs
+    /// membership); everything else maps to its general class.
+    pub fn category(&self) -> crate::ui::UiErrorCategory {
+        use crate::ui::UiErrorCategory as C;
+        match self {
+            LibraryError::Database(_) => C::Database,
+            LibraryError::Config(_) | LibraryError::Validation(_) => C::Config,
+            LibraryError::Keyring(_) => C::Keyring,
+            LibraryError::CloudHome(e) => cloud_home_category(e),
+            LibraryError::CloudSetup(_) => C::Credentials,
+            LibraryError::Sync(e) => sync_category(e),
+            LibraryError::Import(_) => C::Import,
+            LibraryError::Io(_)
+            | LibraryError::TrackMapping(_)
+            | LibraryError::Encryption(_)
+            | LibraryError::Storage(_)
+            | LibraryError::Playback(_)
+            | LibraryError::Internal(_) => C::Internal,
+        }
+    }
+}
+
+/// A cloud-home failure the user must fix (bad credentials, missing bucket) vs a
+/// transient one to retry (unreachable backend, local I/O).
+fn cloud_home_category(error: &coven::CloudHomeError) -> crate::ui::UiErrorCategory {
+    use crate::ui::UiErrorCategory as C;
+    if error.is_retryable() {
+        C::Network
+    } else {
+        C::Credentials
+    }
+}
+
+/// Classify a coven sync/membership failure into a user-facing class: keyring vs
+/// cloud credentials/network vs the membership chain itself.
+fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
+    use crate::ui::UiErrorCategory as C;
+    use coven::SyncError;
+    match error {
+        SyncError::Key(_) => C::Keyring,
+        SyncError::CloudHome(e) => cloud_home_category(e),
+        SyncError::Setup(_) => C::Credentials,
+        SyncError::Membership(_) => C::Membership,
+        SyncError::StorageSetup(_) => C::Network,
+        SyncError::NotConfigured
+        | SyncError::LoopNotRunning
+        | SyncError::NotEncryptedHome
+        | SyncError::OpaqueHomeWithoutEncryption
+        | SyncError::Init(_)
+        | SyncError::BlobUpload(_)
+        | SyncError::Loop(_) => C::Internal,
+    }
 }
 
 impl From<crate::import::ImportError> for LibraryError {
@@ -845,7 +928,7 @@ impl LibraryManager {
         &self,
         cloud_home: Arc<dyn CloudHome>,
         cipher: crate::sync::CloudCipher,
-    ) -> Result<(), String> {
+    ) -> Result<(), LibraryError> {
         self.sync.connect_test_cloud_home(cloud_home, cipher).await
     }
 

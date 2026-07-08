@@ -195,12 +195,10 @@ impl SyncController {
     /// The library's membership: its devices (with this device flagged, each
     /// member's fingerprint, and whether it can be removed) and whether the
     /// running device is an owner.
-    pub(crate) async fn get_members(&self) -> Result<crate::sync::membership::Membership, String> {
-        let members = self
-            .handle
-            .get_members()
-            .await
-            .map_err(|error| error.to_string())?;
+    pub(crate) async fn get_members(
+        &self,
+    ) -> Result<crate::sync::membership::Membership, LibraryError> {
+        let members = self.handle.get_members().await?;
         Ok(crate::sync::membership::Membership::from_members(members))
     }
 
@@ -212,29 +210,25 @@ impl SyncController {
         &self,
         public_key_hex: &str,
         provider_account_email: Option<&str>,
-    ) -> Result<String, String> {
-        self.handle
+    ) -> Result<String, LibraryError> {
+        Ok(self
+            .handle
             .invite_member(
                 public_key_hex,
                 provider_account_email,
                 crate::sync::membership::MemberRole::Member,
             )
-            .await
-            .map_err(|error| error.to_string())
+            .await?)
     }
 
     /// Remove a device from the library and rotate the library key so the removed
     /// device can no longer read new data. Records the rotated key's fingerprint
     /// in this device's config.
-    pub(crate) async fn remove_member(&self, public_key_hex: &str) -> Result<(), String> {
-        let fingerprint = self
-            .handle
-            .remove_member(public_key_hex)
-            .await
-            .map_err(|error| error.to_string())?;
+    pub(crate) async fn remove_member(&self, public_key_hex: &str) -> Result<(), LibraryError> {
+        let fingerprint = self.handle.remove_member(public_key_hex).await?;
         self.config_handle
-            .record_encryption_key_fingerprint(fingerprint)
-            .map_err(|e| e.to_string())
+            .record_encryption_key_fingerprint(fingerprint)?;
+        Ok(())
     }
 
     // =========================================================================
@@ -244,7 +238,7 @@ impl SyncController {
     /// Probe, persist, and connect an S3 cloud home. The resolver-side re-emit of
     /// every album (storage actions gained) is the manager's job after this
     /// returns.
-    pub(crate) async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), String> {
+    pub(crate) async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), LibraryError> {
         use crate::keys::CloudHomeCredentials;
         use coven::CloudHome;
         use coven::S3CloudHome;
@@ -252,7 +246,9 @@ impl SyncController {
         // Probe the bucket with the proposed credentials *before* persisting
         // anything. A typo or a missing bucket would otherwise leave the UI
         // showing "Connected" and the user discovering broken sync only via
-        // the reconnect banner after the first failed cycle.
+        // the reconnect banner after the first failed cycle. The probe's typed
+        // outcome — bad credentials/bucket vs unreachable endpoint — reaches the
+        // UI as distinct error classes.
         let probe_home = S3CloudHome::new(
             data.bucket.clone(),
             data.region.clone(),
@@ -261,28 +257,23 @@ impl SyncController {
             data.secret_key.clone(),
             data.key_prefix.clone(),
         )
-        .await
-        .map_err(|e| format!("Failed to build S3 client: {e}"))?;
-        probe_home.probe().await.map_err(|e| format!("{e}"))?;
+        .await?;
+        probe_home.probe().await?;
 
         let creds = CloudHomeCredentials::S3 {
             access_key: data.access_key,
             secret_key: data.secret_key,
         };
-        self.key_service
-            .set_cloud_home_credentials(&creds)
-            .map_err(|e| format!("Failed to save credentials: {e}"))?;
+        self.key_service.set_cloud_home_credentials(&creds)?;
 
-        self.config_handle
-            .update(move |c| {
-                c.cloud_home.provider = Some(CloudProvider::S3);
-                c.cloud_home.s3_bucket = Some(data.bucket);
-                c.cloud_home.s3_region = Some(data.region);
-                c.cloud_home.s3_endpoint = data.endpoint.filter(|s| !s.is_empty());
-                c.cloud_home.s3_key_prefix = data.key_prefix.filter(|s| !s.is_empty());
-                c.cloud_home.storage = data.storage;
-            })
-            .map_err(|e| format!("Failed to save config: {e}"))?;
+        self.config_handle.update(move |c| {
+            c.cloud_home.provider = Some(CloudProvider::S3);
+            c.cloud_home.s3_bucket = Some(data.bucket);
+            c.cloud_home.s3_region = Some(data.region);
+            c.cloud_home.s3_endpoint = data.endpoint.filter(|s| !s.is_empty());
+            c.cloud_home.s3_key_prefix = data.key_prefix.filter(|s| !s.is_empty());
+            c.cloud_home.storage = data.storage;
+        })?;
 
         self.ensure_sync_manager_and_start().await?;
         info!("Saved S3 sync configuration");
@@ -297,7 +288,7 @@ impl SyncController {
         provider: CloudProvider,
         storage: crate::config::HomeStorage,
         clock: &ClockRef,
-    ) -> Result<(), String> {
+    ) -> Result<(), LibraryError> {
         use coven::{sign_in_dropbox, sign_in_google_drive, sign_in_onedrive};
 
         // Hold the sender alive across the await so cancel.wait_for inside
@@ -314,43 +305,37 @@ impl SyncController {
             CloudProvider::GoogleDrive => {
                 let folder_id =
                     sign_in_google_drive(&self.key_service, &library_name, cancel_rx, clock)
-                        .await
-                        .map_err(|e| e.to_string())?;
-                self.config_handle
-                    .update(move |c| {
-                        c.cloud_home.provider = Some(CloudProvider::GoogleDrive);
-                        c.cloud_home.google_drive_folder_id = Some(folder_id);
-                        c.cloud_home.storage = storage;
-                    })
-                    .map_err(|e| e.to_string())?;
+                        .await?;
+                self.config_handle.update(move |c| {
+                    c.cloud_home.provider = Some(CloudProvider::GoogleDrive);
+                    c.cloud_home.google_drive_folder_id = Some(folder_id);
+                    c.cloud_home.storage = storage;
+                })?;
             }
             CloudProvider::Dropbox => {
                 let folder_path =
-                    sign_in_dropbox(&self.key_service, &library_name, cancel_rx, clock)
-                        .await
-                        .map_err(|e| e.to_string())?;
-                self.config_handle
-                    .update(move |c| {
-                        c.cloud_home.provider = Some(CloudProvider::Dropbox);
-                        c.cloud_home.dropbox_folder_path = Some(folder_path);
-                        c.cloud_home.storage = storage;
-                    })
-                    .map_err(|e| e.to_string())?;
+                    sign_in_dropbox(&self.key_service, &library_name, cancel_rx, clock).await?;
+                self.config_handle.update(move |c| {
+                    c.cloud_home.provider = Some(CloudProvider::Dropbox);
+                    c.cloud_home.dropbox_folder_path = Some(folder_path);
+                    c.cloud_home.storage = storage;
+                })?;
             }
             CloudProvider::OneDrive => {
-                let (drive_id, folder_id) = sign_in_onedrive(&self.key_service, cancel_rx, clock)
-                    .await
-                    .map_err(|e| e.to_string())?;
-                self.config_handle
-                    .update(move |c| {
-                        c.cloud_home.provider = Some(CloudProvider::OneDrive);
-                        c.cloud_home.onedrive_drive_id = Some(drive_id);
-                        c.cloud_home.onedrive_folder_id = Some(folder_id);
-                        c.cloud_home.storage = storage;
-                    })
-                    .map_err(|e| e.to_string())?;
+                let (drive_id, folder_id) =
+                    sign_in_onedrive(&self.key_service, cancel_rx, clock).await?;
+                self.config_handle.update(move |c| {
+                    c.cloud_home.provider = Some(CloudProvider::OneDrive);
+                    c.cloud_home.onedrive_drive_id = Some(drive_id);
+                    c.cloud_home.onedrive_folder_id = Some(folder_id);
+                    c.cloud_home.storage = storage;
+                })?;
             }
-            _ => return Err("This provider does not use OAuth sign-in".to_string()),
+            _ => {
+                return Err(LibraryError::Internal(
+                    "provider does not use OAuth sign-in".to_string(),
+                ))
+            }
         }
         self.ensure_sync_manager_and_start().await?;
         Ok(())
@@ -361,16 +346,14 @@ impl SyncController {
     pub(crate) async fn use_cloudkit(
         &self,
         storage: crate::config::HomeStorage,
-    ) -> Result<(), String> {
-        self.config_handle
-            .update(move |c| {
-                c.cloud_home.provider = Some(CloudProvider::CloudKit);
-                c.cloud_home.storage = storage;
-                c.cloud_home.cloudkit_share_url = None;
-                c.cloud_home.cloudkit_owner_name = None;
-                c.cloud_home.cloudkit_zone_name = None;
-            })
-            .map_err(|e| format!("Failed to save CloudKit config: {e}"))?;
+    ) -> Result<(), LibraryError> {
+        self.config_handle.update(move |c| {
+            c.cloud_home.provider = Some(CloudProvider::CloudKit);
+            c.cloud_home.storage = storage;
+            c.cloud_home.cloudkit_share_url = None;
+            c.cloud_home.cloudkit_owner_name = None;
+            c.cloud_home.cloudkit_zone_name = None;
+        })?;
         self.ensure_sync_manager_and_start().await?;
         info!("Configured CloudKit cloud provider");
         Ok(())
@@ -379,15 +362,14 @@ impl SyncController {
     /// Stop the sync loop, clear the cloud-home config and credentials, and drop
     /// the encryption service. The manager re-emits every album (storage actions
     /// lost) after this returns.
-    pub(crate) fn disconnect_cloud_provider(&self) -> Result<(), String> {
+    pub(crate) fn disconnect_cloud_provider(&self) -> Result<(), LibraryError> {
         // Stop the sync loop and drop the installed manager; the library becomes
         // home-less until the next connect.
         self.handle.disconnect_sync();
 
         // Connecting fills the whole cloud home; disconnecting clears it as a unit.
         self.config_handle
-            .update(|c| c.cloud_home = Default::default())
-            .map_err(|e| e.to_string())?;
+            .update(|c| c.cloud_home = Default::default())?;
 
         // Clearing the cloud-home credentials from the keyring is coven's concern.
         if let Err(e) = self.key_service.delete_cloud_home_credentials() {
@@ -404,24 +386,19 @@ impl SyncController {
     pub(crate) async fn attach_and_start_sync(
         &self,
         encryption_service: Option<EncryptionService>,
-    ) -> Result<(), String> {
+    ) -> Result<(), LibraryError> {
         let provider = self.config_handle.config().cloud_home.provider.clone();
         match provider {
             Some(CloudProvider::CloudKit) => {
-                let ops = self
-                    .cloudkit_ops
-                    .clone()
-                    .ok_or_else(|| "CloudKit driver not provided".to_string())?;
+                let ops = self.cloudkit_ops.clone().ok_or_else(|| {
+                    LibraryError::Internal("CloudKit driver not provided".to_string())
+                })?;
                 self.handle
                     .connect_sync_with_cloudkit(encryption_service, ops)
-                    .await
-                    .map_err(|error| error.to_string())?;
+                    .await?;
             }
             _ => {
-                self.handle
-                    .connect_sync(encryption_service)
-                    .await
-                    .map_err(|error| error.to_string())?;
+                self.handle.connect_sync(encryption_service).await?;
             }
         }
         Ok(())
@@ -439,22 +416,18 @@ impl SyncController {
         &self,
         cloud_home: Arc<dyn CloudHome>,
         cipher: crate::sync::CloudCipher,
-    ) -> Result<(), String> {
+    ) -> Result<(), LibraryError> {
         self.handle
             .connect_sync_with_test_home(cloud_home, cipher)
-            .await
-            .map_err(|error| error.to_string())?;
+            .await?;
         Ok(())
     }
 
     /// Ensure a SyncManager exists (creating encryption key if needed) and start sync.
-    async fn ensure_sync_manager_and_start(&self) -> Result<(), String> {
+    async fn ensure_sync_manager_and_start(&self) -> Result<(), LibraryError> {
         // If we already have a sync manager, just (re)start its loop.
         if self.handle.is_connected() {
-            self.handle
-                .start_sync()
-                .await
-                .map_err(|error| error.to_string())?;
+            self.handle.start_sync().await?;
             return Ok(());
         }
 
@@ -465,12 +438,8 @@ impl SyncController {
         // is idempotent, so a retry after a failed sync init reuses the key.
         let storage = self.config_handle.config().cloud_home.storage;
         let (enc_service, fingerprint) = if storage.is_opaque() {
-            let enc_key_hex = self
-                .key_service
-                .get_or_create_encryption_key()
-                .map_err(|e| format!("Failed to create encryption key: {e}"))?;
-            let enc = EncryptionService::new(&enc_key_hex)
-                .map_err(|e| format!("Failed to create encryption service: {e}"))?;
+            let enc_key_hex = self.key_service.get_or_create_encryption_key()?;
+            let enc = EncryptionService::new(&enc_key_hex)?;
             let fingerprint = enc.fingerprint();
             (Some(enc), Some(fingerprint))
         } else {
@@ -486,20 +455,15 @@ impl SyncController {
         let provider = self.config_handle.config().cloud_home.provider.clone();
         match provider {
             Some(CloudProvider::CloudKit) => {
-                let ops = self
-                    .cloudkit_ops
-                    .clone()
-                    .ok_or_else(|| "CloudKit driver not provided".to_string())?;
+                let ops = self.cloudkit_ops.clone().ok_or_else(|| {
+                    LibraryError::Internal("CloudKit driver not provided".to_string())
+                })?;
                 self.handle
                     .connect_sync_with_cloudkit(enc_service, ops)
-                    .await
-                    .map_err(|error| error.to_string())?;
+                    .await?;
             }
             _ => {
-                self.handle
-                    .connect_sync(enc_service)
-                    .await
-                    .map_err(|error| error.to_string())?;
+                self.handle.connect_sync(enc_service).await?;
             }
         }
 
@@ -513,7 +477,7 @@ impl SyncController {
                 .record_encryption_key_fingerprint(fingerprint)
             {
                 self.handle.disconnect_sync();
-                return Err(format!("Failed to save config: {e}"));
+                return Err(e.into());
             }
         }
 

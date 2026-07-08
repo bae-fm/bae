@@ -54,7 +54,7 @@ impl DesktopApp {
         let token_manager = services.library_manager().clone();
         let controller = McpServerController::new(
             automation,
-            Arc::new(move || token_manager.ensure_mcp_token()),
+            Arc::new(move || token_manager.ensure_mcp_token().map_err(|e| e.to_string())),
         );
         let initial = services.library_manager().get_config().mcp;
         runtime.block_on(controller.apply_config(initial));

@@ -180,7 +180,7 @@ async fn forget_library_returns_error_when_registered_path_cannot_be_removed() {
         .expect_err("directory removal failure must surface");
 
     assert!(
-        err.contains("Failed to remove library data"),
+        err.to_string().contains("Failed to remove library data"),
         "error should name the failed library data deletion: {err}"
     );
     assert_eq!(
@@ -242,7 +242,8 @@ async fn forget_library_returns_error_when_active_pointer_cannot_be_read() {
         .expect_err("active pointer read failure must surface");
 
     assert!(
-        err.contains("Failed to read active-library pointer"),
+        err.to_string()
+            .contains("Failed to read active-library pointer"),
         "error should name the failed active pointer read: {err}"
     );
     assert!(library_path.exists());
@@ -268,7 +269,7 @@ async fn forget_library_returns_error_when_active_pointer_names_another_library(
         .expect_err("active pointer mismatch must surface");
 
     assert!(
-        err.contains("points at different-library"),
+        err.to_string().contains("points at different-library"),
         "error should name the active pointer mismatch: {err}"
     );
     assert!(library_path.exists());
@@ -297,7 +298,7 @@ async fn forget_library_rejects_unregistered_library_dir() {
         .expect_err("unregistered library directory must fail loudly");
 
     assert!(
-        err.contains("does not match library id"),
+        err.to_string().contains("does not match library id"),
         "error should name the unregistered library directory: {err}"
     );
     assert!(library_path.exists());
@@ -5115,4 +5116,85 @@ async fn test_playback_state_source_column_round_trips_both_kinds() {
             "the source column round-trips for {source:?}"
         );
     }
+}
+
+/// Each sync/membership/cloud-setup failure class carries a distinct diagnostic
+/// category to the bridge, so the UI shows different messages for bad
+/// credentials, an unreachable backend, a keyring failure, a config-write
+/// failure, and a membership-chain failure. Builds the exact coven boundary
+/// errors these flows return and asserts the class the bridge reads.
+#[test]
+fn setup_failure_classes_map_to_distinct_categories() {
+    use crate::ui::UiErrorCategory as C;
+
+    let cases: Vec<(LibraryError, C)> = vec![
+        (
+            coven::CloudHomeError::Configuration("rejected credentials".into()).into(),
+            C::Credentials,
+        ),
+        (
+            coven::CloudHomeError::NotFound("missing bucket".into()).into(),
+            C::Credentials,
+        ),
+        (
+            coven::CloudHomeError::Transport("unreachable endpoint".into()).into(),
+            C::Network,
+        ),
+        (
+            coven::storage::cloud::setup::SetupError("oauth denied".into()).into(),
+            C::Credentials,
+        ),
+        (
+            coven::KeyError::Persistence("keyring write failed".into()).into(),
+            C::Keyring,
+        ),
+        (
+            coven::ConfigError::Config("config write failed".into()).into(),
+            C::Config,
+        ),
+        (
+            coven::SyncError::Key(coven::KeyError::Persistence("k".into())).into(),
+            C::Keyring,
+        ),
+        (
+            coven::SyncError::CloudHome(coven::CloudHomeError::Transport("t".into())).into(),
+            C::Network,
+        ),
+        (
+            coven::SyncError::Membership(
+                coven::sync::membership_ops::MembershipOpsError::SelfInvite,
+            )
+            .into(),
+            C::Membership,
+        ),
+        (coven::SyncError::NotConfigured.into(), C::Internal),
+        (
+            LibraryError::Storage("pin ended without completion".into()),
+            C::Internal,
+        ),
+        (
+            LibraryError::Validation("library name cannot be empty".into()),
+            C::Config,
+        ),
+    ];
+
+    for (error, expected) in &cases {
+        assert_eq!(error.category(), *expected, "{error}");
+    }
+}
+
+/// A coven-typed sync error propagates through the sync controller and the
+/// manager forwarder without being flattened to a string: an unconfigured
+/// library surfaces `SyncError::NotConfigured` intact, and its class is Internal.
+#[tokio::test]
+async fn get_members_on_unconfigured_library_propagates_typed_sync_error() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let Err(err) = manager.get_members().await else {
+        panic!("no cloud home is connected, so get_members must fail");
+    };
+    assert!(
+        matches!(err, LibraryError::Sync(coven::SyncError::NotConfigured)),
+        "expected a typed SyncError::NotConfigured, got {err:?}"
+    );
+    assert_eq!(err.category(), crate::ui::UiErrorCategory::Internal);
 }

@@ -1424,9 +1424,7 @@ pub(crate) async fn prepare_release(
 ) -> Result<crate::import::folder_scanner::PreparedRelease, crate::import::ImportError> {
     match release_ref.source {
         MetadataSource::MusicBrainz => {
-            let discogs_client = library_manager
-                .discogs_client()
-                .map_err(|detail| crate::import::ImportError::Config { detail })?;
+            let discogs_client = library_manager.discogs_client()?;
             crate::import::search::commit_mb_release(
                 library_manager,
                 &release_ref.id,
@@ -1436,8 +1434,7 @@ pub(crate) async fn prepare_release(
         }
         MetadataSource::Discogs => {
             let client = library_manager
-                .discogs_client()
-                .map_err(|detail| crate::import::ImportError::Config { detail })?
+                .discogs_client()?
                 .ok_or(crate::import::ImportError::DiscogsNotConfigured)?;
             crate::import::search::commit_discogs_release(
                 &client,

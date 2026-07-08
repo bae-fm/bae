@@ -66,7 +66,7 @@ impl LibraryManager {
         self.handle.sync_now();
     }
 
-    pub async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), String> {
+    pub async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), LibraryError> {
         self.sync.save_s3_config(data).await?;
         // A cloud home now exists, so every release gains its storage actions.
         self.emit_all_albums_updated().await;
@@ -78,7 +78,7 @@ impl LibraryManager {
         &self,
         provider: CloudProvider,
         storage: crate::config::HomeStorage,
-    ) -> Result<(), String> {
+    ) -> Result<(), LibraryError> {
         self.sync
             .sign_in_cloud_provider(provider, storage, &self.clock)
             .await?;
@@ -87,14 +87,17 @@ impl LibraryManager {
         Ok(())
     }
 
-    pub async fn use_cloudkit(&self, storage: crate::config::HomeStorage) -> Result<(), String> {
+    pub async fn use_cloudkit(
+        &self,
+        storage: crate::config::HomeStorage,
+    ) -> Result<(), LibraryError> {
         self.sync.use_cloudkit(storage).await?;
         // A cloud home now exists, so every release gains its storage actions.
         self.emit_all_albums_updated().await;
         Ok(())
     }
 
-    pub fn disconnect_cloud_provider(&self) -> Result<(), String> {
+    pub fn disconnect_cloud_provider(&self) -> Result<(), LibraryError> {
         self.sync.disconnect_cloud_provider()?;
 
         // The cloud home is gone, so releases lose their storage actions; re-emit
@@ -113,19 +116,11 @@ impl LibraryManager {
     /// dialog just shows its base message. Asks coven's cache per remote release
     /// (a representative blob in `storage/pinned/`); pinned-ness is coven cache
     /// state, never a bae column.
-    pub async fn disconnect_warning_message(&self) -> Result<Option<String>, String> {
-        let remote_file_ids = self
-            .database
-            .get_remote_release_file_ids()
-            .await
-            .map_err(|e| format!("list remote releases: {e}"))?;
+    pub async fn disconnect_warning_message(&self) -> Result<Option<String>, LibraryError> {
+        let remote_file_ids = self.database.get_remote_release_file_ids().await?;
         let mut count: u64 = 0;
         for any_file_id in &remote_file_ids {
-            if !self
-                .release_pinned(any_file_id.as_deref())
-                .await
-                .map_err(|e| format!("pin-state check: {e}"))?
-            {
+            if !self.release_pinned(any_file_id.as_deref()).await? {
                 count += 1;
             }
         }
@@ -151,7 +146,7 @@ impl LibraryManager {
     pub async fn attach_and_start_sync(
         &self,
         encryption_service: Option<EncryptionService>,
-    ) -> Result<(), String> {
+    ) -> Result<(), LibraryError> {
         self.sync.attach_and_start_sync(encryption_service).await
     }
 }

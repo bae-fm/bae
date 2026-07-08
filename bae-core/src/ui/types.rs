@@ -9,6 +9,19 @@ pub enum UiErrorCategory {
     Internal,
     Import,
     Export,
+    /// A cloud provider rejected the request or the setup is misconfigured: bad
+    /// credentials, denied permission, a bucket/folder that isn't set. The user
+    /// fixes the cloud settings; retrying unchanged won't help.
+    Credentials,
+    /// The cloud backend or the network to it was unreachable — a transient
+    /// transport failure the user retries.
+    Network,
+    /// The device's OS keyring (secure credential store) couldn't be read or
+    /// written — the local secret store, not the cloud.
+    Keyring,
+    /// A library-sharing membership operation failed: the membership chain, an
+    /// invite, or key rotation across devices.
+    Membership,
 }
 
 /// What a `UiError::NotFound` was looking for, so the UI can localize "… not

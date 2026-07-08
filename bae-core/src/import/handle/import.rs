@@ -144,11 +144,7 @@ impl ImportServiceHandle {
         if self.library_manager.discogs_validation() != Some(DiscogsValidation::Unvalidated) {
             return Ok(());
         }
-        let Some(client) = self
-            .library_manager
-            .discogs_client()
-            .map_err(|detail| crate::import::ImportError::Config { detail })?
-        else {
+        let Some(client) = self.library_manager.discogs_client()? else {
             // A stored `Unvalidated` key (the guard above) with no client means
             // the keyring entry and the config disagree — surface it rather than
             // silently leaving the key stuck unvalidated.

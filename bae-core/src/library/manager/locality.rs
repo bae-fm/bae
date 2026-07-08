@@ -118,16 +118,14 @@ impl LibraryManager {
         }
     }
 
-    pub fn generate_restore_code(&self) -> Result<String, String> {
-        self.handle
-            .generate_restore_code()
-            .map_err(|error| error.to_string())
+    pub fn generate_restore_code(&self) -> Result<String, LibraryError> {
+        Ok(self.handle.generate_restore_code()?)
     }
 
     /// The library's membership: its devices (with this device flagged, each
     /// member's fingerprint, and whether it can be removed) and whether the
     /// running device is an owner.
-    pub async fn get_members(&self) -> Result<crate::sync::membership::Membership, String> {
+    pub async fn get_members(&self) -> Result<crate::sync::membership::Membership, LibraryError> {
         self.sync.get_members().await
     }
 
@@ -139,7 +137,7 @@ impl LibraryManager {
         &self,
         public_key_hex: &str,
         provider_account_email: Option<&str>,
-    ) -> Result<String, String> {
+    ) -> Result<String, LibraryError> {
         self.sync
             .invite_member(public_key_hex, provider_account_email)
             .await
@@ -148,7 +146,7 @@ impl LibraryManager {
     /// Remove a device from the library and rotate the library key so the removed
     /// device can no longer read new data. Records the rotated key's fingerprint
     /// in this device's config.
-    pub async fn remove_member(&self, public_key_hex: &str) -> Result<(), String> {
+    pub async fn remove_member(&self, public_key_hex: &str) -> Result<(), LibraryError> {
         self.sync.remove_member(public_key_hex).await
     }
 
@@ -338,27 +336,30 @@ impl LibraryManager {
             }
             Err(error) => {
                 error!("Pin failed for release {release_id}: {error}");
-                self.download_queue.mark_failed(release_id, error);
+                self.download_queue
+                    .mark_failed(release_id, error.to_string());
                 self.emit_download_queue_changed();
             }
         }
     }
 
     /// Unpin a release: delete local copies, mark as cloud-only.
-    pub async fn unpin_release(&self, release_id: &str) -> Result<(), String> {
+    pub async fn unpin_release(&self, release_id: &str) -> Result<(), LibraryError> {
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.unpin_release(release_id.to_string());
-        let result = self
-            .drive_transfer(release_id, ReleaseStorageAction::Unpin, rx)
-            .await;
-        result
+        self.drive_transfer(release_id, ReleaseStorageAction::Unpin, rx)
+            .await
     }
 
     /// Manage a local release: upload its files to the cloud home. `pin`
     /// chooses whether coven keeps the blobs in `storage/pinned/` (offline) vs the
     /// evictable cache. The in-place source is always deleted once the upload lands
     /// (a remote release has no local path).
-    pub async fn make_release_remote(&self, release_id: &str, pin: bool) -> Result<(), String> {
+    pub async fn make_release_remote(
+        &self,
+        release_id: &str,
+        pin: bool,
+    ) -> Result<(), LibraryError> {
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.make_release_remote(release_id.to_string(), pin);
         self.drive_transfer(release_id, ReleaseStorageAction::MakeRemote, rx)
@@ -368,7 +369,11 @@ impl LibraryManager {
     /// Unmanage a remote release: copy its files back out to `new_path` and
     /// drop the remote copies. coven owns the durability-first ordering: every
     /// copy is verified at the new path before any delete is queued.
-    pub async fn make_release_local(&self, release_id: &str, new_path: &str) -> Result<(), String> {
+    pub async fn make_release_local(
+        &self,
+        release_id: &str,
+        new_path: &str,
+    ) -> Result<(), LibraryError> {
         // Register a cancellation token so `cancel_release_transition` can stop
         // this transfer; the guard deregisters even if this future is dropped.
         let cancel = crate::library::CancellationToken::new();
@@ -437,14 +442,14 @@ impl LibraryManager {
 
     /// Drain a transfer's progress channel, translating start into a
     /// `ReleaseTransferProgress` UI event and emitting `ReleaseTransferEnded` on
-    /// completion or failure. Returns the failure error string (also surfaced to
-    /// the caller) on `Failed`.
+    /// completion or failure. On `Failed` the transfer channel's error string is
+    /// wrapped as a `Storage` failure and surfaced to the caller.
     pub(super) async fn drive_transfer(
         &self,
         release_id: &str,
         action: ReleaseStorageAction,
         mut rx: tokio::sync::mpsc::UnboundedReceiver<crate::storage::transfer::TransferProgress>,
-    ) -> Result<(), String> {
+    ) -> Result<(), LibraryError> {
         use crate::storage::transfer::TransferProgress;
 
         // The bridge transfer future is abortable: a view dismiss / re-trigger
@@ -461,10 +466,10 @@ impl LibraryManager {
 
         let outcome = loop {
             let Some(progress) = rx.recv().await else {
-                break Err(format!(
+                break Err(LibraryError::Storage(format!(
                     "{} ended without completion or failure",
                     verb(action)
-                ));
+                )));
             };
             match progress {
                 TransferProgress::Started => {
@@ -493,7 +498,7 @@ impl LibraryManager {
                     }
                 }
                 TransferProgress::Complete { .. } => break Ok(()),
-                TransferProgress::Failed { error, .. } => break Err(error),
+                TransferProgress::Failed { error, .. } => break Err(LibraryError::Storage(error)),
             }
         };
 

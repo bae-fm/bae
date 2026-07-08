@@ -97,8 +97,7 @@ impl ImportServiceHandle {
 
     fn discogs_client(&self) -> Result<DiscogsClient, crate::import::ImportError> {
         self.library_manager
-            .discogs_client()
-            .map_err(|detail| crate::import::ImportError::Config { detail })?
+            .discogs_client()?
             .ok_or(crate::import::ImportError::DiscogsNotConfigured)
     }
 

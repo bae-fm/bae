@@ -10,6 +10,7 @@
 mod support;
 
 use bae_core::config::CloudProvider;
+use bae_core::ui::UiErrorCategory;
 use support::{setup_fresh_library, TestS3Endpoint};
 
 #[test]
@@ -43,9 +44,13 @@ fn save_s3_config_fails_fast_for_missing_bucket() {
     let err = runtime
         .block_on(lm.save_s3_config(s3.config(&bucket, None)))
         .expect_err("save_s3_config should refuse a missing bucket");
+    // A missing bucket is a credentials/config class the UI shows as such, with
+    // the underlying reason carried as opaque detail.
+    assert_eq!(err.category(), UiErrorCategory::Credentials, "got: {err}");
+    let detail = err.to_string();
     assert!(
-        err.contains("does not exist") || err.contains("NoSuchBucket"),
-        "expected bucket-doesn't-exist error, got: {err}",
+        detail.contains("does not exist") || detail.contains("NoSuchBucket"),
+        "expected bucket-doesn't-exist detail, got: {detail}",
     );
 
     // Crucially: state was not modified. Provider unset, sync not configured.
@@ -66,9 +71,13 @@ fn save_s3_config_fails_fast_for_bad_credentials() {
     let err = runtime
         .block_on(lm.save_s3_config(s3.config(&bucket, Some("wrong-secret"))))
         .expect_err("save_s3_config should refuse a bad secret");
+    // Rejected credentials reach the UI as the credentials class, distinct from
+    // an unreachable endpoint (which would be the network class).
+    assert_eq!(err.category(), UiErrorCategory::Credentials, "got: {err}");
+    let detail = err.to_string();
     assert!(
-        err.contains("rejected") || err.contains("SignatureDoesNotMatch"),
-        "expected credentials-rejected error, got: {err}",
+        detail.contains("rejected") || detail.contains("SignatureDoesNotMatch"),
+        "expected credentials-rejected detail, got: {detail}",
     );
 
     let config = lm.get_config();

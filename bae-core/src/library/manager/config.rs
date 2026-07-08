@@ -165,33 +165,27 @@ impl LibraryManager {
         self.config_handle.has_discogs_key()
     }
 
-    pub fn get_discogs_token(&self) -> Result<Option<String>, String> {
-        self.key_service
-            .get_discogs_key()
-            .map_err(|e| e.to_string())
+    pub fn get_discogs_token(&self) -> Result<Option<String>, LibraryError> {
+        Ok(self.key_service.get_discogs_key()?)
     }
 
-    pub fn save_discogs_key(&self, token: &str) -> Result<(), String> {
-        self.key_service
-            .set_discogs_key(token)
-            .map_err(|e| e.to_string())
+    pub fn save_discogs_key(&self, token: &str) -> Result<(), LibraryError> {
+        Ok(self.key_service.set_discogs_key(token)?)
     }
 
-    pub fn delete_discogs_key(&self) -> Result<(), String> {
-        self.key_service
-            .delete_discogs_key()
-            .map_err(|e| e.to_string())
+    pub fn delete_discogs_key(&self) -> Result<(), LibraryError> {
+        Ok(self.key_service.delete_discogs_key()?)
     }
 
     // =========================================================================
     // MCP token management
     // =========================================================================
 
-    pub fn get_mcp_token(&self) -> Result<Option<String>, String> {
-        self.key_service.get_mcp_token().map_err(|e| e.to_string())
+    pub fn get_mcp_token(&self) -> Result<Option<String>, LibraryError> {
+        Ok(self.key_service.get_mcp_token()?)
     }
 
-    pub fn ensure_mcp_token(&self) -> Result<String, String> {
+    pub fn ensure_mcp_token(&self) -> Result<String, LibraryError> {
         match self.get_mcp_token()? {
             Some(token) => Ok(token),
             None => {
@@ -202,10 +196,8 @@ impl LibraryManager {
         }
     }
 
-    pub fn set_mcp_token(&self, token: String) -> Result<(), String> {
-        self.key_service
-            .set_mcp_token(&token)
-            .map_err(|e| e.to_string())
+    pub fn set_mcp_token(&self, token: String) -> Result<(), LibraryError> {
+        Ok(self.key_service.set_mcp_token(&token)?)
     }
 
     /// Record a stored key with its validation state — the single write for the
@@ -277,15 +269,14 @@ impl LibraryManager {
     /// `Unvalidated` key is served (the latter used optimistically); a
     /// `Rejected` key is withheld so search call sites skip Discogs entirely.
     /// The client reports each call's outcome back into the validation state.
-    pub fn discogs_client(&self) -> Result<Option<crate::discogs::DiscogsClient>, String> {
+    pub fn discogs_client(&self) -> Result<Option<crate::discogs::DiscogsClient>, LibraryError> {
         if self.discogs_validation() == Some(crate::config::DiscogsValidation::Rejected) {
             return Ok(None);
         }
         let observer = self.discogs_validation_observer();
         Ok(self
             .key_service
-            .get_discogs_key()
-            .map_err(|e| e.to_string())?
+            .get_discogs_key()?
             .map(|key| crate::discogs::DiscogsClient::with_observer(key, observer)))
     }
 }

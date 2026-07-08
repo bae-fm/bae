@@ -2665,6 +2665,16 @@ pub enum BridgeErrorCategory {
     Internal,
     Import,
     Export,
+    /// A cloud provider rejected the request or the setup is misconfigured (bad
+    /// credentials, denied permission, a bucket/folder that isn't set).
+    Credentials,
+    /// The cloud backend or the network to it was unreachable — retryable.
+    Network,
+    /// The device's OS keyring (secure credential store) couldn't be read/written.
+    Keyring,
+    /// A library-sharing membership operation failed (the membership chain, an
+    /// invite, or cross-device key rotation).
+    Membership,
 }
 
 /// What a `NotFound` was looking for, so the UI can localize "… not found".
@@ -2755,6 +2765,10 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::Internal => "core.error.category.internal",
         BridgeErrorCategory::Import => "core.error.category.import",
         BridgeErrorCategory::Export => "core.error.category.export",
+        BridgeErrorCategory::Credentials => "core.error.category.credentials",
+        BridgeErrorCategory::Network => "core.error.category.network",
+        BridgeErrorCategory::Keyring => "core.error.category.keyring",
+        BridgeErrorCategory::Membership => "core.error.category.membership",
     }
     .to_string()
 }
@@ -2821,6 +2835,10 @@ impl BridgeErrorCategory {
             UiErrorCategory::Internal => BridgeErrorCategory::Internal,
             UiErrorCategory::Import => BridgeErrorCategory::Import,
             UiErrorCategory::Export => BridgeErrorCategory::Export,
+            UiErrorCategory::Credentials => BridgeErrorCategory::Credentials,
+            UiErrorCategory::Network => BridgeErrorCategory::Network,
+            UiErrorCategory::Keyring => BridgeErrorCategory::Keyring,
+            UiErrorCategory::Membership => BridgeErrorCategory::Membership,
         }
     }
 }
@@ -2850,6 +2868,19 @@ impl BridgeError {
                 category: BridgeErrorCategory::from_core(category),
                 detail,
             },
+        }
+    }
+}
+
+/// Carry a core `LibraryError`'s diagnostic class across the bridge: the class
+/// (keyring vs cloud credentials vs network vs membership vs …) becomes the
+/// `BridgeErrorCategory` the UI renders a localized line for; the error chain
+/// rides along as opaque, log-only detail.
+impl From<bae_core::library::LibraryError> for BridgeError {
+    fn from(error: bae_core::library::LibraryError) -> Self {
+        BridgeError::Diagnostic {
+            category: BridgeErrorCategory::from_core(error.category()),
+            detail: error.to_string(),
         }
     }
 }
@@ -4243,6 +4274,10 @@ mod loc_key_coverage {
             BridgeErrorCategory::Internal,
             BridgeErrorCategory::Import,
             BridgeErrorCategory::Export,
+            BridgeErrorCategory::Credentials,
+            BridgeErrorCategory::Network,
+            BridgeErrorCategory::Keyring,
+            BridgeErrorCategory::Membership,
         ] {
             let expected = match c {
                 BridgeErrorCategory::Database => "core.error.category.database",
@@ -4250,6 +4285,10 @@ mod loc_key_coverage {
                 BridgeErrorCategory::Internal => "core.error.category.internal",
                 BridgeErrorCategory::Import => "core.error.category.import",
                 BridgeErrorCategory::Export => "core.error.category.export",
+                BridgeErrorCategory::Credentials => "core.error.category.credentials",
+                BridgeErrorCategory::Network => "core.error.category.network",
+                BridgeErrorCategory::Keyring => "core.error.category.keyring",
+                BridgeErrorCategory::Membership => "core.error.category.membership",
             };
             assert_eq!(bridge_error_category_key(c), expected);
             keys.push(expected.to_string());

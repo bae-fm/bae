@@ -208,13 +208,13 @@ fn bootstrap_inner(
         // Opaque home, unlocked: build the sync manager with the library key.
         runtime
             .block_on(library_manager.attach_and_start_sync(Some(enc)))
-            .map_err(BootstrapError::Database)?;
+            .map_err(|e| BootstrapError::Database(e.to_string()))?;
     } else if cloud_home_is_browsable {
         // Browsable home: no key, build a keyless sync manager (an opaque-but-
         // locked home stays unbuilt above, awaiting unlock).
         runtime
             .block_on(library_manager.attach_and_start_sync(None))
-            .map_err(BootstrapError::Database)?;
+            .map_err(|e| BootstrapError::Database(e.to_string()))?;
     }
 
     // Forward the sync loop's row changes + errors as library/UI events. This is

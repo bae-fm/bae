@@ -190,9 +190,7 @@ impl ImportService {
             |role, artist_id| role.artist_id = artist_id,
         )?;
 
-        let discogs_client = library_manager
-            .discogs_client()
-            .map_err(|detail| crate::import::ImportError::Config { detail })?;
+        let discogs_client = library_manager.discogs_client()?;
         let artist_images = if let Some(ref discogs_client) = discogs_client {
             fetch_artist_images(library_manager, discogs_client, &artists, &artist_id_map).await
         } else {

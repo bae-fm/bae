@@ -547,7 +547,7 @@ fn mcp_token_set(selector: &LibrarySelector, token: String) -> Result<Value, Cli
     app.services
         .library_manager()
         .set_mcp_token(token.clone())
-        .map_err(CliError::Unavailable)?;
+        .map_err(|e| CliError::Unavailable(e.to_string()))?;
     drop(app);
     Ok(json!({ "token": token }))
 }

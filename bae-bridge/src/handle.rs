@@ -537,22 +537,17 @@ impl AppHandle {
     pub fn rename_library(&self, library_id: String, name: String) -> Result<(), BridgeError> {
         self.services
             .library_manager()
-            .rename_library(&library_id, &name)
-            .map_err(BridgeError::config)
+            .rename_library(&library_id, &name)?;
+        Ok(())
     }
 
     pub fn lock_active_library(&self) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .forget_encryption_key()
-            .map_err(BridgeError::internal)
+        self.services.library_manager().forget_encryption_key()?;
+        Ok(())
     }
 
     pub fn get_discogs_token(&self) -> Result<Option<String>, BridgeError> {
-        self.services
-            .library_manager()
-            .get_discogs_token()
-            .map_err(BridgeError::config)
+        Ok(self.services.library_manager().get_discogs_token()?)
     }
 
     // Discogs token writes live on the desktop-only import service (see the
@@ -611,8 +606,8 @@ impl AppHandle {
         self.services
             .library_manager()
             .unpin_release(&release_id)
-            .await
-            .map_err(BridgeError::internal)
+            .await?;
+        Ok(())
     }
 
     pub async fn make_release_remote(
@@ -623,8 +618,8 @@ impl AppHandle {
         self.services
             .library_manager()
             .make_release_remote(&release_id, pin)
-            .await
-            .map_err(BridgeError::internal)
+            .await?;
+        Ok(())
     }
 
     pub async fn make_release_local(
@@ -635,8 +630,8 @@ impl AppHandle {
         self.services
             .library_manager()
             .make_release_local(&release_id, &new_path)
-            .await
-            .map_err(BridgeError::internal)
+            .await?;
+        Ok(())
     }
 
     pub async fn delete_release(&self, release_id: String) {
@@ -675,15 +670,15 @@ impl AppHandle {
                 secret_key: config_data.secret_key,
                 storage: crate::types::BridgeHomeStorage::into_core(config_data.storage),
             })
-            .await
-            .map_err(BridgeError::config)
+            .await?;
+        Ok(())
     }
 
     pub fn disconnect_cloud_provider(&self) -> Result<(), BridgeError> {
         self.services
             .library_manager()
-            .disconnect_cloud_provider()
-            .map_err(BridgeError::config)
+            .disconnect_cloud_provider()?;
+        Ok(())
     }
 
     /// Warning text for the disconnect-sync confirmation when releases live
@@ -691,30 +686,22 @@ impl AppHandle {
     /// is a pre-formatted (singular/plural, full sentence) warning the UI
     /// appends to its base "this will stop syncing" message.
     pub async fn disconnect_warning_message(&self) -> Result<Option<String>, BridgeError> {
-        self.services
+        Ok(self
+            .services
             .library_manager()
             .disconnect_warning_message()
-            .await
-            .map_err(BridgeError::internal)
+            .await?)
     }
 
     pub fn generate_restore_code(&self) -> Result<String, BridgeError> {
-        self.services
-            .library_manager()
-            .generate_restore_code()
-            .map_err(BridgeError::config)
+        Ok(self.services.library_manager().generate_restore_code()?)
     }
 
     /// The library's membership (devices, with this device flagged, and whether
     /// the running device is an owner). Reads the membership chain from cloud
     /// storage.
     pub async fn get_members(&self) -> Result<crate::types::BridgeMembership, BridgeError> {
-        let membership = self
-            .services
-            .library_manager()
-            .get_members()
-            .await
-            .map_err(BridgeError::internal)?;
+        let membership = self.services.library_manager().get_members().await?;
         Ok(crate::types::BridgeMembership::from_core(membership))
     }
 
@@ -725,11 +712,11 @@ impl AppHandle {
         public_key_hex: String,
         provider_account_email: Option<String>,
     ) -> Result<String, BridgeError> {
-        self.services
+        Ok(self
+            .services
             .library_manager()
             .invite_member(&public_key_hex, provider_account_email.as_deref())
-            .await
-            .map_err(BridgeError::internal)
+            .await?)
     }
 
     /// Remove a device from the library and rotate the library key.
@@ -737,8 +724,8 @@ impl AppHandle {
         self.services
             .library_manager()
             .remove_member(&public_key_hex)
-            .await
-            .map_err(BridgeError::internal)
+            .await?;
+        Ok(())
     }
 
     /// Forget the active local library on this device: delete its key, clear the
@@ -746,10 +733,7 @@ impl AppHandle {
     /// untouched). The caller must drop this handle right after — the database
     /// lives in the removed directory — and re-open / onboard from scratch.
     pub fn forget_library(&self) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .forget_library()
-            .map_err(BridgeError::config)?;
+        self.services.library_manager().forget_library()?;
 
         info!("Forgot local library");
         Ok(())
@@ -1010,8 +994,8 @@ impl AppHandle {
         self.services
             .library_manager()
             .use_cloudkit(storage)
-            .await
-            .map_err(BridgeError::config)
+            .await?;
+        Ok(())
     }
 }
 
@@ -1035,8 +1019,8 @@ impl AppHandle {
         self.services
             .library_manager()
             .sign_in_cloud_provider(core_provider, storage)
-            .await
-            .map_err(BridgeError::config)
+            .await?;
+        Ok(())
     }
 }
 
@@ -1058,10 +1042,7 @@ impl AppHandle {
     }
 
     pub fn get_mcp_token(&self) -> Result<String, BridgeError> {
-        self.services
-            .library_manager()
-            .ensure_mcp_token()
-            .map_err(BridgeError::config)
+        Ok(self.services.library_manager().ensure_mcp_token()?)
     }
 
     pub fn generate_mcp_token(&self) -> String {
@@ -1069,10 +1050,8 @@ impl AppHandle {
     }
 
     pub fn set_mcp_token(&self, token: String) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .set_mcp_token(token)
-            .map_err(BridgeError::config)
+        self.services.library_manager().set_mcp_token(token)?;
+        Ok(())
     }
 
     /// Validate then persist a Discogs API token, returning what happened so the
