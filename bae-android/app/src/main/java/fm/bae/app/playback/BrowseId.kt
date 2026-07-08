@@ -85,10 +85,9 @@ internal sealed interface BrowseId {
             }
 
         private fun parseTrack(payload: String): Track? {
-            val index = payload.substringBefore(':').toIntOrNull() ?: return null
+            val index = payload.substringBefore(':').toIntOrNull()
             val releaseId = payload.substringAfter(':', missingDelimiterValue = "")
-            if (releaseId.isEmpty()) return null
-            return Track(releaseId, index)
+            return if (index != null && releaseId.isNotEmpty()) Track(releaseId, index) else null
         }
     }
 }

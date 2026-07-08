@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.ParcelFileDescriptor
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
+import fm.bae.app.OpenLibrary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import kotlin.concurrent.thread
@@ -39,30 +40,52 @@ class ArtworkContentProvider : ContentProvider() {
         mode: String,
     ): ParcelFileDescriptor? {
         val coverId = uri.lastPathSegment
-        if (coverId == null) {
-            logger.warning("artwork request with no cover id: $uri")
-            return null
-        }
         val session = AppSessionHolder.currentSession()
-        if (session == null) {
-            logger.debug("artwork request $coverId with no open library; no bytes")
-            return null
-        }
-        val bytes =
-            try {
-                runBlocking { session.library.imageBytes(coverId) }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logger.error("failed to load artwork bytes for $coverId", e)
-                return null
+        return when {
+            coverId == null -> {
+                logger.warning("artwork request with no cover id: $uri")
+                null
             }
+
+            session == null -> {
+                logger.debug("artwork request $coverId with no open library; no bytes")
+                null
+            }
+
+            else -> {
+                pipeFor(coverId, session)
+            }
+        }
+    }
+
+    /** The pipe a browse client reads [coverId]'s bytes from, or null when the
+     *  open library has no bytes for it. */
+    private fun pipeFor(
+        coverId: String,
+        session: OpenLibrary,
+    ): ParcelFileDescriptor? {
+        val bytes = readCoverBytes(coverId, session)
         if (bytes == null) {
             logger.debug("no artwork bytes for cover $coverId")
             return null
         }
         return pipeOf(bytes, coverId)
     }
+
+    /** Read [coverId]'s bytes from the open library, or null on failure (a
+     *  cancellation propagates so the caller's read is cancelled, not swallowed). */
+    private fun readCoverBytes(
+        coverId: String,
+        session: OpenLibrary,
+    ): ByteArray? =
+        try {
+            runBlocking { session.library.imageBytes(coverId) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.error("failed to load artwork bytes for $coverId", e)
+            null
+        }
 
     /** Stream [bytes] through a pipe so the client reads them without the bytes
      *  crossing the Binder transaction. */

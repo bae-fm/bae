@@ -39,8 +39,7 @@ internal class BaeLibrarySessionCallback(
         session: MediaLibrarySession,
         browser: MediaSession.ControllerInfo,
         params: LibraryParams?,
-    ): ListenableFuture<LibraryResult<MediaItem>> =
-        scope.future { LibraryResult.ofItem(tree.root(), params) }
+    ): ListenableFuture<LibraryResult<MediaItem>> = scope.future { LibraryResult.ofItem(tree.root(), params) }
 
     override fun onGetChildren(
         session: MediaLibrarySession,
@@ -118,15 +117,18 @@ internal class BaeLibrarySessionCallback(
         // A tapped browse node already names what to play.
         if (BrowseId.parse(item.mediaId) != null) return item
         // A spoken query ("play X") carries no media id — resolve it to a track.
-        val query = item.requestMetadata.searchQuery
-        if (!query.isNullOrBlank()) {
-            val track = tree.searchTopPlayable(query)
-            if (track != null) {
-                return MediaItem.Builder().setMediaId(track.mediaId).setMediaMetadata(item.mediaMetadata).build()
-            }
+        val query = item.requestMetadata.searchQuery?.takeUnless { it.isBlank() }
+        val track = query?.let { tree.searchTopPlayable(it) }
+        if (query != null && track == null) {
             logger.warning("no playable result for spoken query \"$query\"")
         }
-        return item
+        return track?.let {
+            MediaItem
+                .Builder()
+                .setMediaId(it.mediaId)
+                .setMediaMetadata(item.mediaMetadata)
+                .build()
+        } ?: item
     }
 }
 

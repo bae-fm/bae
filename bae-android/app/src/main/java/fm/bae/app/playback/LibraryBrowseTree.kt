@@ -6,15 +6,14 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import fm.bae.app.BaeLogger
 import fm.bae.app.data.Library
+import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
-import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
 import uniffi.bae_bridge.BridgeTrack
-import uniffi.bae_bridge.BridgeWorkSummary
 
 private const val TAG = "bae.LibraryBrowseTree"
 private val logger = BaeLogger(TAG)
@@ -40,7 +39,8 @@ internal data class BrowseLabels(
  * straight from the database honoring the browser's requested page window,
  * never loading the whole library. Detail-derived child lists (an album's
  * tracks, a composer's works) come from a single bounded detail read and are
- * sliced to the requested window.
+ * sliced to the requested window. Nodes themselves are built by
+ * [BrowseNodeFactory]; this type only reads and navigates.
  */
 internal class LibraryBrowseTree(
     private val library: Library,
@@ -51,11 +51,13 @@ internal class LibraryBrowseTree(
     /** Maps a cover-image id (a release/composer/work cover) to the content URI
      *  the browse client fetches its bytes from — the same bytes the bridge's
      *  `fetchCoverImageBytes` serves. */
-    private val artworkUri: (coverId: String) -> Uri,
+    artworkUri: (coverId: String) -> Uri,
 ) {
+    private val nodes = BrowseNodeFactory(artworkUri)
+
     /** The tree root. Its [children] are the top-level categories. */
     fun root(): MediaItem =
-        browsableItem(
+        nodes.browsable(
             id = BrowseId.Root,
             title = ROOT_TITLE,
             coverId = null,
@@ -73,24 +75,52 @@ internal class LibraryBrowseTree(
         pageSize: Int,
     ): List<MediaItem>? =
         when (val id = BrowseId.parse(parentId)) {
-            null -> null
+            null -> {
+                null
+            }
+
             BrowseId.Root -> {
                 val labels = labels()
                 paginate(
                     listOf(
-                        browsableItem(BrowseId.Albums, labels.albums, null, MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
-                        browsableItem(BrowseId.Composers, labels.composers, null, MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS),
+                        nodes.browsable(
+                            BrowseId.Albums,
+                            labels.albums,
+                            null,
+                            MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS,
+                        ),
+                        nodes.browsable(
+                            BrowseId.Composers,
+                            labels.composers,
+                            null,
+                            MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS,
+                        ),
                     ),
                     page,
                     pageSize,
                 )
             }
 
-            BrowseId.Albums -> albumListChildren(page, pageSize)
-            BrowseId.Composers -> composerListChildren(page, pageSize)
-            is BrowseId.Album -> albumTrackChildren(id.albumId, page, pageSize)
-            is BrowseId.Composer -> composerNodeChildren(id.artistId, page, pageSize)
-            is BrowseId.Work -> workNodeChildren(id.workId, page, pageSize)
+            BrowseId.Albums -> {
+                albumListChildren(page, pageSize)
+            }
+
+            BrowseId.Composers -> {
+                composerListChildren(page, pageSize)
+            }
+
+            is BrowseId.Album -> {
+                albumTrackChildren(id.albumId, page, pageSize)
+            }
+
+            is BrowseId.Composer -> {
+                composerNodeChildren(id.artistId, page, pageSize)
+            }
+
+            is BrowseId.Work -> {
+                workNodeChildren(id.workId, page, pageSize)
+            }
+
             is BrowseId.Track -> {
                 // A track is a leaf (playable, not browsable); a browse client
                 // should never ask for its children.
@@ -102,33 +132,41 @@ internal class LibraryBrowseTree(
     /** The single node [mediaId] names, or null when it names none. */
     suspend fun item(mediaId: String): MediaItem? =
         when (val id = BrowseId.parse(mediaId)) {
-            null -> null
-            BrowseId.Root -> root()
-            BrowseId.Albums ->
-                browsableItem(BrowseId.Albums, labels().albums, null, MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS)
+            null -> {
+                null
+            }
 
-            BrowseId.Composers ->
-                browsableItem(BrowseId.Composers, labels().composers, null, MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS)
+            BrowseId.Root -> {
+                root()
+            }
+
+            BrowseId.Albums -> {
+                nodes.browsable(BrowseId.Albums, labels().albums, null, MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS)
+            }
+
+            BrowseId.Composers -> {
+                nodes.browsable(BrowseId.Composers, labels().composers, null, MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS)
+            }
 
             is BrowseId.Album -> {
                 val detail = library.albumDetail(id.albumId)
-                albumItem(detail.album.id, detail.album.title, detail.album.cover?.id)
+                nodes.album(detail.album.id, detail.album.title, detail.album.cover?.id)
             }
 
             is BrowseId.Composer -> {
                 val detail = library.composerDetail(id.artistId) ?: return null
-                composerItem(detail.composer)
+                nodes.composer(detail.composer)
             }
 
             is BrowseId.Work -> {
                 val detail = library.workDetail(id.workId) ?: return null
-                workItem(detail.work)
+                nodes.work(detail.work)
             }
 
             is BrowseId.Track -> {
                 val release = library.releaseDetail(id.releaseId) ?: return null
                 val track = flatTracks(release).getOrNull(id.index) ?: return null
-                trackItem(release, track, id.index)
+                nodes.track(release, track, id.index)
             }
         }
 
@@ -142,30 +180,43 @@ internal class LibraryBrowseTree(
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
-        val albums = library.search(query).albums.map { albumItem(it.id, it.title, it.cover?.id) }
+        val albums = library.search(query).albums.map { nodes.album(it.id, it.title, it.cover?.id) }
         return paginate(albums, page, pageSize)
     }
 
     /**
      * The track a spoken "play X" should start, or null when the search finds
      * nothing playable. Prefers a matching track (started in its primary
-     * release); falls back to the top album's first track.
+     * release); falls back to the top album's first track. A track result
+     * short-circuits: if there is one but its album has no primary release, the
+     * answer is null — the search does not then fall back to the album list.
      */
     suspend fun searchTopPlayable(query: String): BrowseId.Track? {
         val results = library.search(query)
-        results.tracks.firstOrNull()?.let { track ->
-            val release = primaryRelease(library.albumDetail(track.albumId)) ?: return null
-            val index = flatTracks(release).indexOfFirst { it.id == track.id }
-            if (index < 0) {
-                logger.debug("spoken-match track ${track.id} not in primary release ${release.id}; starting the release")
+        val firstTrack = results.tracks.firstOrNull()
+        val firstAlbum = results.albums.firstOrNull()
+        return when {
+            firstTrack != null -> {
+                primaryRelease(library.albumDetail(firstTrack.albumId))?.let { release ->
+                    val index = flatTracks(release).indexOfFirst { it.id == firstTrack.id }
+                    if (index < 0) {
+                        logger.debug(
+                            "spoken-match track ${firstTrack.id} not in primary release " +
+                                "${release.id}; starting the release",
+                        )
+                    }
+                    BrowseId.Track(release.id, index.coerceAtLeast(0))
+                }
             }
-            return BrowseId.Track(release.id, index.coerceAtLeast(0))
+
+            firstAlbum != null -> {
+                primaryRelease(library.albumDetail(firstAlbum.id))?.let { BrowseId.Track(it.id, 0) }
+            }
+
+            else -> {
+                null
+            }
         }
-        results.albums.firstOrNull()?.let { album ->
-            val release = primaryRelease(library.albumDetail(album.id)) ?: return null
-            return BrowseId.Track(release.id, 0)
-        }
-        return null
     }
 
     private suspend fun albumListChildren(
@@ -173,7 +224,7 @@ internal class LibraryBrowseTree(
         pageSize: Int,
     ): List<MediaItem> {
         val albums = library.albumPage(listOf(ALBUM_SORT), offsetOf(page, pageSize), limitOf(pageSize))
-        return albums.map { albumItem(it.id, it.title, it.cover?.id) }
+        return albums.map { nodes.album(it.id, it.title, it.cover?.id) }
     }
 
     private suspend fun composerListChildren(
@@ -181,7 +232,7 @@ internal class LibraryBrowseTree(
         pageSize: Int,
     ): List<MediaItem> {
         val composers = library.composerPage(COMPOSER_SORT, offsetOf(page, pageSize), limitOf(pageSize))
-        return composers.map { composerItem(it) }
+        return composers.map { nodes.composer(it) }
     }
 
     private suspend fun albumTrackChildren(
@@ -191,7 +242,7 @@ internal class LibraryBrowseTree(
     ): List<MediaItem> {
         val detail = library.albumDetail(albumId)
         val release = primaryRelease(detail) ?: return emptyList()
-        val items = flatTracks(release).mapIndexed { index, track -> trackItem(release, track, index) }
+        val items = flatTracks(release).mapIndexed { index, track -> nodes.track(release, track, index) }
         return paginate(items, page, pageSize)
     }
 
@@ -206,8 +257,8 @@ internal class LibraryBrowseTree(
             return emptyList()
         }
         val works = detail.workGroups.flatMap { group -> listOfNotNull(group.parent) + group.works }
-        val workItems = works.map { workItem(it) }
-        val creditAlbums = detail.unlinkedReleaseRoles.map { albumItem(it.albumId, it.albumTitle, null) }
+        val workItems = works.map { nodes.work(it) }
+        val creditAlbums = detail.unlinkedReleaseRoles.map { nodes.album(it.albumId, it.albumTitle, null) }
         return paginate(workItems + creditAlbums, page, pageSize)
     }
 
@@ -221,85 +272,10 @@ internal class LibraryBrowseTree(
             logger.warning("work $workId has no detail; no browse children")
             return emptyList()
         }
-        val childWorkItems = detail.childWorks.map { workItem(it) }
-        val releaseAlbums = detail.releases.map { albumItem(it.albumId, it.albumTitle, it.cover?.id) }
+        val childWorkItems = detail.childWorks.map { nodes.work(it) }
+        val releaseAlbums = detail.releases.map { nodes.album(it.albumId, it.albumTitle, it.cover?.id) }
         return paginate(childWorkItems + releaseAlbums, page, pageSize)
     }
-
-    // ── Node builders ────────────────────────────────────────────────────
-
-    private fun albumItem(
-        albumId: String,
-        title: String,
-        coverId: String?,
-    ): MediaItem = browsableItem(BrowseId.Album(albumId), title, coverId, MediaMetadata.MEDIA_TYPE_ALBUM)
-
-    private fun composerItem(composer: BridgeComposerSummary): MediaItem =
-        browsableItem(BrowseId.Composer(composer.artistId), composer.name, composer.image?.id, MediaMetadata.MEDIA_TYPE_ARTIST)
-
-    private fun workItem(work: BridgeWorkSummary): MediaItem =
-        browsableItem(
-            id = BrowseId.Work(work.workId),
-            title = work.title,
-            coverId = work.representativeCover?.id,
-            mediaType = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
-            subtitle = work.composerNames,
-        )
-
-    private fun browsableItem(
-        id: BrowseId,
-        title: String,
-        coverId: String?,
-        mediaType: Int,
-        subtitle: String? = null,
-    ): MediaItem {
-        val metadata =
-            baseMetadata(title, coverId)
-                .setSubtitle(subtitle)
-                .setIsBrowsable(true)
-                .setIsPlayable(false)
-                .setMediaType(mediaType)
-                .build()
-        return MediaItem.Builder().setMediaId(id.mediaId).setMediaMetadata(metadata).build()
-    }
-
-    private fun trackItem(
-        release: BridgeRelease,
-        track: BridgeTrack,
-        index: Int,
-    ): MediaItem {
-        val metadata =
-            baseMetadata(track.title, release.cover?.id)
-                .setArtist(track.artistNames)
-                .setDurationMs(track.durationMs)
-                .setIsBrowsable(false)
-                .setIsPlayable(true)
-                .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
-                .build()
-        return MediaItem
-            .Builder()
-            .setMediaId(BrowseId.Track(release.id, index).mediaId)
-            .setMediaMetadata(metadata)
-            .build()
-    }
-
-    private fun baseMetadata(
-        title: String,
-        coverId: String?,
-    ): MediaMetadata.Builder {
-        val builder = MediaMetadata.Builder().setTitle(title)
-        coverId?.let { builder.setArtworkUri(artworkUri(it)) }
-        return builder
-    }
-
-    private fun primaryRelease(detail: uniffi.bae_bridge.BridgeAlbumDetail): BridgeRelease? =
-        detail.releases.firstOrNull { it.id == detail.album.primaryReleaseId }
-            ?: detail.releases.firstOrNull()
-
-    // The release-wide flat track order (across track groups) — the same
-    // flattening the album-detail screen taps into, so a track's position here
-    // is the start index `play_release` expects.
-    private fun flatTracks(release: BridgeRelease): List<BridgeTrack> = release.trackGroups.flatMap { it.tracks }
 
     private companion object {
         const val ROOT_TITLE = "bae"
@@ -334,3 +310,14 @@ internal class LibraryBrowseTree(
         }
     }
 }
+
+/** The album's primary release, or its first release when the primary id names
+ *  none — the release a browse drill or spoken match starts from. */
+private fun primaryRelease(detail: BridgeAlbumDetail): BridgeRelease? =
+    detail.releases.firstOrNull { it.id == detail.album.primaryReleaseId }
+        ?: detail.releases.firstOrNull()
+
+/** The release-wide flat track order (across track groups) — the same
+ *  flattening the album-detail screen taps into, so a track's position here is
+ *  the start index `play_release` expects. */
+private fun flatTracks(release: BridgeRelease): List<BridgeTrack> = release.trackGroups.flatMap { it.tracks }
