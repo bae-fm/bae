@@ -1,0 +1,40 @@
+---
+title: Đồng bộ
+description: Cách thay đổi di chuyển giữa thiết bị, và cách chúng được gộp
+---
+
+Đồng bộ của bae là đồng bộ của [coven](https://coven.bae.fm): bae khai báo bảng và blob của nó, rồi coven làm phần còn lại. Trang này là cơ chế khi áp dụng cho bae; tài liệu riêng của coven bao phủ từng phần đầy đủ hơn.
+
+## Ghi lại
+
+coven sở hữu kết nối SQLite, nên mọi lần ghi bae commit đều đi qua nó. Session extension của SQLite ghi lại chính xác thứ gì thay đổi trong mỗi transaction; các thay đổi trên bảng đồng bộ trở thành một **changeset**, được niêm phong bằng khóa thư viện và ký bằng khóa danh tính của thiết bị. Không diffing, không cờ bẩn: ghi lại là thuộc tính của kết nối, và một lần ghi không thể bị bỏ sót.
+
+## Luồng
+
+Mỗi thiết bị thêm changeset của nó vào stream riêng trong nhà trên đám mây, đánh số tuần tự. Thiết bị không bao giờ ghi vào stream của nhau, nên không có xung đột ghi trong lưu trữ, và mỗi thiết bị theo dõi một con trỏ cho từng stream ngang hàng. Một chu kỳ đồng bộ đẩy hộp thư đi cục bộ, rồi kéo stream của từng ngang hàng từ con trỏ của nó về trước, xác minh chữ ký của từng changeset và tư cách thành viên của tác giả trước khi áp dụng.
+
+Chu kỳ chạy sau thay đổi cục bộ, theo bộ hẹn giờ nhàn rỗi có backoff (tối đa năm phút giữa các lần thăm dò), và ngay lập tức với **Sync Now**. Lỗi back off và thử lại; vòng lặp báo kết quả của mỗi chu kỳ cho giao diện dưới dạng trạng thái, văn bản lỗi và số hàng đã áp dụng.
+
+## Gộp
+
+Hai thiết bị sửa cùng thư viện khi tách rời là trường hợp bình thường, không phải ngoại lệ. Khi thay đổi của chúng gặp nhau:
+
+- Chỉnh sửa trên **hàng khác nhau hoặc cột khác nhau** đều áp dụng. Sửa năm của một bản phát hành trên laptop và hãng đĩa của nó trên desktop cho ra cả hai.
+- Chỉnh sửa trên **cùng cột của cùng hàng** được sắp thứ tự bởi đồng hồ logic lai `_updated_at` của hàng: chỉnh sửa muộn hơn thắng, xác định và giống nhau trên mọi thiết bị.
+- **Xóa thắng** chỉnh sửa đồng thời: một bản phát hành bị xóa trên một thiết bị vẫn bị xóa kể cả khi thiết bị khác sửa nó trong cùng khoảng.
+
+Không có giao diện xung đột vì không có trạng thái chưa giải quyết: mọi thiết bị hội tụ về cùng kết quả từ bất kỳ thứ tự áp dụng nào.
+
+## Khởi tạo
+
+Thiết bị tham gia hoặc khôi phục không phát lại lịch sử từ đầu. Nó tải xuống một **snapshot**, ảnh SQLite đầy đủ được công bố định kỳ lên nhà trên đám mây, rồi chỉ áp dụng các changeset mà mỗi stream tích lũy sau đó. Siêu dữ liệu snapshot ghi phiên bản schema và con trỏ theo từng stream mà nó thể hiện.
+
+## Phiên bản schema
+
+Schema của bae di chuyển qua một thang số, và bậc cao nhất của thang được đóng dấu trên mọi changeset mà thiết bị ghi. Thiết bị kéo một changeset từ schema mới hơn schema của nó sẽ giữ stream đó lại, không áp dụng gì sau nó, cho đến khi ứng dụng cập nhật; không gì bị mất và không gì được áp dụng sai. Bản thân tệp cơ sở dữ liệu từ chối mở dưới binary cũ hơn schema của nó.
+
+Thô hơn phiên bản schema là **kỷ nguyên tương thích**: revision coven được ghim, nhúng vào mỗi binary. Hai bản dựng chỉ đồng bộ trong một kỷ nguyên; một thay đổi phá vỡ định dạng wire của coven là kỷ nguyên mới và tăng major version trên mọi ứng dụng. Trước 1.0, mọi bản dựng là kỷ nguyên không và định dạng thay đổi không migration.
+
+## Nhà cung cấp thấy gì
+
+Trên nhà mờ đục, nhà cung cấp lưu changeset ciphertext, blob ciphertext và bản ghi thành viên đã ký; nó có thể đếm đối tượng và quan sát kích thước, thời điểm, và không đọc được gì trong đó. Mọi đối tượng thiết bị kéo về đều được xác minh, chữ ký và tư cách thành viên, trước khi bất cứ thứ gì chạm vào cơ sở dữ liệu: lưu trữ là hộp thư không đáng tin, không thông minh. Xem [Mã hóa](/vi/reference/encryption) và [Danh tính và tư cách thành viên](/vi/reference/membership).

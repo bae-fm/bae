@@ -1,0 +1,39 @@
+---
+title: Bản phát hành và siêu dữ liệu
+description: Thư viện đúng theo bản phát hành, và cách giữ nó đúng
+---
+
+Hầu hết ứng dụng nhạc mô hình hóa "một album": một tựa đề, một bìa, một danh sách track. Bộ sưu tập thật không hoạt động như vậy. Bạn có thể sở hữu CD gốc, bản remaster và một lần phát hành vinyl của cùng một bản ghi, và chúng khác nhau về danh sách track, thời lượng, artwork và ghi công. bae mô hình hóa **bản phát hành**: mỗi lượt nhập là một lần phát hành cụ thể, và các lần phát hành của cùng album được nhóm lại với nhau.
+
+## Album nhóm các bản phát hành
+
+Trong thư viện, một album có nhiều lần phát hành là một mục. Trang album hiển thị bộ chọn bản phát hành; mỗi bản phát hành giữ danh sách track, bìa, năm, hãng đĩa, số catalog và ghi công riêng. Một bản phát hành là **chính**: bản mà lưới album và phát lại dùng mặc định. Đặt bất kỳ bản phát hành nào làm chính từ menu album, và chọn bản phát hành khác để nghe bất cứ lúc nào; bae nhớ lựa chọn của bạn theo từng album.
+
+## Một bản phát hành biết gì
+
+Bản phát hành đã nhận diện mang tri thức của cơ sở dữ liệu, không chỉ tên track:
+
+- Chi tiết lần phát hành: hãng đĩa, số catalog, mã vạch, quốc gia, định dạng, năm.
+- Ghi công: người biểu diễn, nhà sản xuất, kỹ sư, theo từng bản phát hành và từng track.
+- Cấu trúc nhạc cổ điển: nhà soạn nhạc, tác phẩm và các phần của chúng, liên kết tới các bản thu của chúng. Chế độ xem nhà soạn nhạc của thư viện được dựng từ đây; xem [Duyệt và tìm kiếm](/vi/guide/browsing).
+- Danh tính: đây là mục MusicBrainz hoặc Discogs nào, và kết quả khớp là chính xác hay xấp xỉ.
+
+Bản ghi nguồn thô cũng được giữ lại, để bản phát hành có thể được diễn giải lại sau mà không hỏi lại cơ sở dữ liệu.
+
+## Sửa
+
+Siêu dữ liệu là của bạn để sửa. **Edit metadata** trên bất kỳ bản phát hành nào mở cùng biểu mẫu mà phần xác nhận nhập dùng: tựa đề album và nghệ sĩ, chi tiết lần phát hành, và tựa đề, nghệ sĩ, đánh số của mọi track. **Reset to source** quay về nội dung cơ sở dữ liệu đã nói.
+
+Các chỉnh sửa chỉ nằm trong cơ sở dữ liệu của bae. Tag nhúng trong tệp của bạn không bao giờ bị ghi lại; tệp giữ nguyên từng byte như khi nhập.
+
+## Nhận diện lại
+
+Nếu một bản phát hành đã được nhập như chưa biết, khớp nhầm lần phát hành, hoặc cơ sở dữ liệu đã được cải thiện, **Re-identify** chạy lại luồng nhận diện trên bản phát hành hiện có: cùng tín hiệu, cùng công cụ tìm kiếm. Sau khi kết quả khớp mới được ghi, bae hỏi liệu có làm mới siêu dữ liệu từ nguồn mới (ghi đè chỉnh sửa của bạn) hay giữ thứ bạn đang có.
+
+## Bìa
+
+Mỗi bản phát hành có một bìa hiển thị. **Change cover** đưa ra artwork của cơ sở dữ liệu và các tệp ảnh đi cùng bản phát hành. bae giữ bản sao riêng của bìa đã chọn, đặt kích thước cho hiển thị, nên ảnh quét gốc trong thư mục của bạn không bị chạm vào. Chạm vào bìa ở bất cứ đâu để mở toàn bộ thư viện ảnh của một bản phát hành.
+
+## Xóa
+
+Xóa một bản phát hành gỡ nó khỏi thư viện và, với bản phát hành được quản lý, khỏi nhà trên đám mây của bạn. Tệp được nhập tại chỗ, không được quản lý, không bao giờ bị xóa: bae chỉ quên chúng.

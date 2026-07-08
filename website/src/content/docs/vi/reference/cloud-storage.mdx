@@ -1,0 +1,37 @@
+---
+title: Lưu trữ đám mây
+description: Nhà cung cấp, xác thực và hình dạng của nhà trên đám mây
+---
+
+Nhà trên đám mây là một vị trí trong lưu trữ mà người dùng đã sở hữu. Mọi nhà cung cấp được điều khiển qua cùng giao diện lưu trữ trong [coven](https://coven.bae.fm); điểm khác nhau theo từng nhà cung cấp là xác thực và cách thiết bị thứ hai được cấp quyền truy cập.
+
+## Nhà cung cấp
+
+| Nhà cung cấp | Xác thực | Truy cập cho thiết bị mới |
+|---|---|---|
+| Tương thích S3 | Access key + secret | Thông tin xác thực nhúng trong lời mời |
+| Google Drive | OAuth (PKCE) | Thư mục được chia sẻ tới tài khoản của thiết bị tham gia |
+| Dropbox | OAuth (PKCE) | Thư mục được chia sẻ tới tài khoản của thiết bị tham gia |
+| OneDrive | OAuth (PKCE) | Thư mục được chia sẻ tới tài khoản của thiết bị tham gia |
+| iCloud (CloudKit) | Apple ID, không đăng nhập | Thiết bị tham gia chấp nhận CloudKit share |
+
+Tương thích S3 bao phủ AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, và bất kỳ thứ gì khác nói API này; bucket, region, endpoint và tiền tố khóa có thể cấu hình, và bucket được kiểm tra trước khi cấu hình được lưu để lỗi gõ sai thất bại lúc thiết lập, không phải ở lần đồng bộ đầu. Các nhà cung cấp OAuth chỉ tồn tại trong phiên bản **bae** đầy đủ; bản dựng **baeium** biên dịch loại bỏ chúng.
+
+## OAuth
+
+Đăng nhập là luồng authorization-code với PKCE, dưới dạng public client. Trên desktop, redirect đi tới một loopback server gắn với cổng cục bộ cho một callback; trên mobile, ứng dụng bắt redirect custom-scheme thay vào đó. bae yêu cầu scope hẹp nhất mà nhà cung cấp đưa ra cho công việc; trên Google Drive, đó là quyền truy cập chỉ tới tệp do chính ứng dụng tạo. Token được lưu trong keyring của hệ điều hành, được làm mới bằng refresh grant của nhà cung cấp, và refresh bị từ chối hiện ra như lời nhắc kết nối lại thay vì vòng thử lại im lặng.
+
+CloudKit không cần luồng nào: driver CloudKit của nền tảng, được triển khai trong ứng dụng và đưa cho lõi, hoạt động như Apple ID đã đăng nhập.
+
+## Bố cục của nhà
+
+Bên trong nhà, coven bố trí stream changeset theo từng thiết bị, thế hệ snapshot, bản ghi thành viên và namespace blob. bae đóng góp ba namespace blob: `release_files`, `covers`, và `artist_images`.
+
+Cách đặt khóa đối tượng phụ thuộc vào chế độ lưu trữ của nhà, cố định khi tạo:
+
+- **Mờ đục**: đối tượng được mã hóa và lưu dưới khóa dẫn xuất từ nội dung, không tiết lộ gì. Đây là chế độ tin cậy đầy đủ vào mật mã; xem [Mã hóa](/vi/reference/encryption).
+- **Duyệt được**: đối tượng là plaintext ở các đường dẫn đọc được, được ghi theo từng blob lúc tải lên: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Bucket đồng thời là cây tệp dùng được; đánh đổi là không mã hóa và không có tư cách thành viên, nên nhà duyệt được không thể chia sẻ cho người khác.
+
+## Hành vi dưới mạng thật
+
+Đọc cho phát lại là đọc theo khoảng: trình phát truyền các cửa sổ byte nó cần thay vì toàn bộ tệp. Lượt tải lên vượt ngưỡng kích thước chuyển sang multipart ở nơi nhà cung cấp hỗ trợ. Giới hạn tốc độ và lỗi nhà cung cấp tạm thời được thử lại với backoff lũy thừa, tôn trọng retry-after của nhà cung cấp khi có; token OAuth hết hạn được làm mới tại chỗ. Hộp thư đi đồng bộ sống qua lần khởi động lại: một lượt tải lên bị ngắt vì thoát ứng dụng tiếp tục thay vì bắt đầu lại.

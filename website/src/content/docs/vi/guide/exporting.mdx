@@ -1,0 +1,25 @@
+---
+title: Xuất
+description: Lấy nhạc ra, theo hình dạng bạn cần
+---
+
+Không khóa người dùng đi theo cả hai chiều: bae không đổi tệp của bạn khi đưa vào, và không giữ chúng làm con tin khi đưa ra. Các bản phát hành không được quản lý vốn đã chỉ là tệp trong thư mục của bạn. Các bản phát hành được quản lý có thể được đưa về cục bộ bất cứ lúc nào, từng byte một. Và khi bạn cần một hình dạng *khác*, một bản mã hóa hợp với điện thoại, một ảnh đĩa sẵn sàng để ghi, xuất sẽ tạo nó mà không chạm vào bản gốc.
+
+## Hai kiểu xuất
+
+- **Xuất track**: bấm phải vào một track, **Save As**, chọn định dạng, xong.
+- **Xuất bản phát hành**: từ menu album hoặc trình quản lý lưu trữ, xuất toàn bộ một bản phát hành ra một thư mục. Chạy trên hàng đợi có tiến độ, tạm dừng và thử lại.
+
+Tệp gốc được xuất nguyên trạng. Mọi thứ khác được mã hóa lại trên đường ra.
+
+## Thiết lập sẵn
+
+Định dạng xuất là các preset bạn định nghĩa một lần trong Settings: FLAC, MP3, Opus, WAV hoặc AIFF, với tham số của codec (độ sâu bit cho định dạng lossless, bitrate cho định dạng lossy) và mẫu tên tệp dựng từ token như tựa đề, nghệ sĩ, album, năm và số track. Đặt preset mặc định cho track và một preset cho bản phát hành, rồi chọn việc xuất bản phát hành luôn hỏi đích đến hay luôn dùng một thư mục cố định.
+
+## Pregap trong bản xuất
+
+Bản rip CD có pregap đặt ra một câu hỏi thực khi xuất: âm thanh ẩn đi đâu? Mỗi preset chọn một chính sách:
+
+- **Gắn vào track trước**, quy ước thường dùng, kèm lựa chọn giữ âm thanh ẩn trước track một ở đầu track một hay bỏ nó.
+- **Loại trừ** toàn bộ pregap: ranh giới track gọn, âm thanh ẩn bị bỏ.
+- **Một tệp với CUE**: đĩa là một tệp âm thanh cộng một CUE sheet, giữ đúng bố cục gốc.

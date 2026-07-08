@@ -1,0 +1,41 @@
+---
+title: Kiến trúc
+description: Ứng dụng native trên một lõi Rust, trên coven
+---
+
+bae là một lõi Rust mang bốn ứng dụng native. Mọi thứ định nghĩa sản phẩm, mô hình thư viện, nhập, phát lại, đồng bộ, mã hóa, đều nằm trong Rust và hoạt động giống nhau trên mọi nền tảng; mỗi ứng dụng là một giao diện native mỏng phía trên nó.
+
+## Các lớp
+
+- **`bae-core`**: sản phẩm. Mô hình thư viện và siêu dữ liệu, pipeline nhập và nhận diện, engine phát lại FFmpeg, phân tích độ lớn âm thanh, xuất, và tích hợp với coven bên dưới. Nhập và nhận diện chỉ biên dịch trên desktop; bản dựng mobile là máy khách đồng bộ và phát lại.
+- **[coven](https://coven.bae.fm)**: lớp dữ liệu, một thư viện riêng. coven sở hữu kết nối SQLite, ghi lại mọi thay đổi bae commit, và đồng bộ các thay đổi đó được mã hóa đầu cuối qua lưu trữ đám mây của người dùng. Nó cũng sở hữu lưu trữ blob (byte âm thanh, artwork), bộ nhớ đệm cục bộ, khóa danh tính và tư cách thành viên. bae ghim một revision coven chính xác và đóng dấu nó vào mọi binary; nó định nghĩa thế hệ tương thích đồng bộ giữa các bản dựng.
+- **`bae-bridge`**: ranh giới UniFFI. Kiểu bridge được định nghĩa một lần trong Rust và sinh ra Swift, Kotlin lúc build.
+- **Ứng dụng**: SwiftUI trên macOS và iOS, Jetpack Compose trên Android, và ứng dụng Windows native. Mỗi ứng dụng cũng triển khai các phần nền tảng mà lõi yêu cầu: đầu ra âm thanh, nhận dạng văn bản artwork, điều khiển media, truy cập keychain, báo cáo crash.
+
+Bên cạnh các ứng dụng: `bae-mcp` (máy chủ MCP), `bae-cli` (dòng lệnh), và `bae-automation` (lớp công cụ dùng chung cho cả hai).
+
+## Một thư viện trên đĩa
+
+Một thư viện nằm tại `~/.bae/libraries/<library-id>/` (một thư mục dữ liệu nền tảng trên mobile):
+
+```
+~/.bae/libraries/<id>/
+  library.db        # SQLite: catalog, credits, playback specs
+  config.yaml       # device-local settings, never synced
+  storage/
+    local/          # blobs this device owns (covers, artist images)
+    cache/          # evictable copies of cloud blobs
+    pinned/         # pinned-for-offline copies, never evicted
+```
+
+Cơ sở dữ liệu chỉ được mở qua coven, lớp này đặt các bảng sổ sách riêng (con trỏ đồng bộ, hộp thư đi, trạng thái blob) cạnh schema của bae và chạy migration của bae. Tệp âm thanh được nhập không quản lý hoàn toàn không nằm dưới `~/.bae`: cơ sở dữ liệu tham chiếu tới chúng tại đường dẫn nơi chúng được nhập.
+
+Bí mật không bao giờ nằm trong các tệp này. Khóa danh tính, khóa mã hóa thư viện, thông tin xác thực đám mây và token API nằm trong keyring của hệ điều hành (Keychain trên nền tảng Apple, đồng bộ qua iCloud Keychain; các tương đương nền tảng ở nơi khác).
+
+## Phiên bản
+
+Hai phiên bản ở thời điểm build tồn tại trên mọi nền tảng. **bae** biên dịch kèm các nhà cung cấp OAuth (Google Drive, Dropbox, OneDrive), CloudKit và telemetry. **baeium** biên dịch loại bỏ tất cả: chỉ lưu trữ tương thích S3, không telemetry, không có gì độc quyền trong cây phụ thuộc. Hai phiên bản cùng nguồn và cùng lõi; một feature flag quyết định danh sách nhà cung cấp và dây nối chẩn đoán.
+
+## Đánh phiên bản
+
+Ứng dụng đánh phiên bản dạng `MAJOR.MINOR` theo từng nền tảng. Major là kỷ nguyên tương thích, dùng chung bởi mọi ứng dụng: thiết bị cùng major có thể đồng bộ một thư viện. Nó chỉ tăng khi định dạng wire hoặc trên đĩa bị phá vỡ, thường nhất là revision coven được ghim. Minor đếm bản phát hành theo từng ứng dụng và không so sánh được giữa các nền tảng.

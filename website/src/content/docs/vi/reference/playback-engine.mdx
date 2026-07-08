@@ -1,0 +1,34 @@
+---
+title: Engine phát lại
+description: Giải mã, không khoảng ngắt, pregap và độ lớn âm thanh, chính xác
+---
+
+Hợp đồng của engine phát lại là trung thành với nguồn: giải mã byte gốc của người dùng, ở tốc độ riêng của nguồn, với cấu trúc bản phát hành còn nguyên. Trang này là đặc tả phía sau điều đó.
+
+## Giải mã
+
+Toàn bộ giải mã là FFmpeg, trong tiến trình, trên mọi nền tảng: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack và DSD là những gì nhập chấp nhận, và bất cứ codec nào FFmpeg báo cáo từ byte, không phải phần mở rộng tệp, là codec được ghi nhận. Sample đi ra dưới dạng float 32-bit cho tầng đầu ra; chuyển đổi định dạng sample là chuyển đổi duy nhất được thực hiện.
+
+Đầu ra là API âm thanh native của nền tảng (Core Audio qua cpal trên desktop và iOS, AAudio trên Android). Stream đầu ra được cấu hình theo **sample rate và số kênh của nguồn**: tệp 96 kHz phát ở 96 kHz. Không có tầng resampling. Thiết bị đầu ra mặc định được phân giải ở mỗi lần dựng stream, nên phát lại đi theo chuyển đổi thiết bị của hệ thống. Trên Android, codec được phần cứng hỗ trợ có thể bỏ qua FFmpeg hoàn toàn để giải mã offload.
+
+## Đọc phát trực tuyến
+
+Phát lại không cần toàn bộ tệp. Âm thanh được đọc qua bộ đệm thưa lấy các khoảng byte theo nhu cầu, từ tệp cục bộ, bộ nhớ đệm hoặc đám mây, và tua ánh xạ sample đích tới vị trí byte để tua vào vùng chưa lấy sẽ lấy từ đó. Một bộ phân xử lấy dữ liệu ưu tiên lượt đọc của track đang phát hơn tải trước, nên track sắp tới không bao giờ trì hoãn track hiện tại.
+
+## Track như cửa sổ
+
+Track không phải là tệp; nó là danh sách có thứ tự các cửa sổ sample trên một hoặc nhiều tệp, được dựng lúc nhập từ CUE sheet hoặc phạm vi riêng của tệp. Một biểu diễn này mang mọi hình dạng đĩa: một tệp mỗi track, cả đĩa trong một ảnh, pregap nằm ở cuối một tệp và đầu tệp khác, và bản rip lossy cắt một tệp mỗi track.
+
+Cửa sổ pregap được đánh dấu như vậy. Phát lại đi vào một track từ pregap của nó khi có (index 00, gồm âm thanh track ẩn) trong khi đồng hồ hiển thị thời gian track: vị trí bị kẹp ở không cho đến khi phần chính của track bắt đầu, và thời lượng hiển thị không gồm pregap, khớp hành vi của đầu CD.
+
+## Không khoảng ngắt
+
+Track kế tiếp được mở và đệm khi track hiện tại đang phát. Khi hai track cùng sample rate và số kênh, engine nối chúng bên trong callback âm thanh đang chạy: stream không dừng, và ranh giới chính xác tới sample. Khi định dạng khác nhau, stream được dựng lại, đó là trường hợp thay đổi định dạng vốn làm ranh giới nghe thấy được.
+
+## Độ lớn âm thanh
+
+Nhập đo integrated loudness (EBU R128) và true peak, theo từng track và từng album, trong lượt xác minh giải mã. Replay gain được dẫn xuất từ các phép đo đó lúc phát, không bao giờ ghi vào tệp: mục tiêu −18 LUFS, bị giới hạn để true peak không clip, áp dụng theo từng track hoặc từng album, chuyển sạch ở ranh giới không khoảng ngắt. Chế độ hiện phát hành không có giao diện cài đặt và mặc định tắt; có thể đặt trong tệp cấu hình của thư viện.
+
+## Tạm dừng giữa mặt
+
+Danh sách track mang cấu trúc mặt và đĩa, và engine có thể giữ tại ranh giới mặt, đưa ra lời nhắc tiếp tục, khi người dùng bật pause-between-sides. Lần giữ này là trạng thái của dịch vụ phát lại, không phải im lặng đã giải mã, nên tiếp tục là tức thời.

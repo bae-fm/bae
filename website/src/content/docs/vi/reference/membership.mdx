@@ -1,0 +1,35 @@
+---
+title: Danh tính và tư cách thành viên
+description: Khóa làm danh tính, bắt tay tham gia, vai trò và thu hồi
+---
+
+Không có hệ thống tài khoản ở bất cứ đâu trong bae. Danh tính của một thiết bị là cặp khóa Ed25519 do nó tự tạo và giữ trong keyring của hệ điều hành; khóa công khai *chính là* danh tính. Ai thuộc về một thư viện là tập bản ghi đã ký trong nhà trên đám mây, bất kỳ ai giữ chúng đều xác minh được, không máy chủ nào cấp. Bộ máy này là của [coven](https://coven.bae.fm); trang này là cách bae dùng nó.
+
+## Bản ghi thành viên
+
+Mỗi owner ghi một stream chỉ thêm gồm các mục thành viên đã ký vào nhà trên đám mây: khóa này đã được thêm với vai trò này, khóa này đã bị xóa. Mỗi mục liên kết tới mục trước đó, và mỗi owner ký một head khai báo đầu stream của họ, nên nhà cung cấp bỏ hoặc sắp xếp lại bản ghi sẽ bị phát hiện thay vì được tin. Thư viện chấp nhận hợp của mọi stream owner đã xác minh.
+
+Ở mỗi lần pull, tác giả của từng changeset được kiểm tra với bản ghi này: được ký bởi thành viên hiện tại, với vai trò được ghi. Changeset từ thiết bị đã bị xóa, từ khóa chưa từng được thêm, hoặc có chữ ký không hợp lệ không được áp dụng. Nhà cung cấp lưu bản ghi nhưng không thể giả mạo chúng; chỉ người giữ khóa owner mới đổi được tư cách thành viên.
+
+## Vai trò
+
+**Owner** và **Member** đều đọc và ghi thư viện; owner còn phê duyệt và xóa thiết bị. Thiết bị sáng lập của bae là owner và mọi thiết bị nó phê duyệt tham gia dưới vai trò member. (Một vai trò thứ ba tồn tại trong bộ máy bên dưới, follower chỉ đọc, mà bae hiện không gán.)
+
+## Bắt tay tham gia
+
+Thêm thiết bị là trao đổi hai mã với bước xác minh rõ ràng của con người ở giữa:
+
+1. Thiết bị tham gia tạo cặp khóa và hiển thị một **join request**: khóa công khai của nó, vân tay ngắn của khóa, và (với nhà cung cấp OAuth) tài khoản đám mây để chia sẻ thư mục tới.
+2. Một owner giải mã yêu cầu, và hai màn hình hiển thị cùng vân tay. Con người kiểm tra chúng khớp; đây là bước đánh bại khóa bị tráo.
+3. Phê duyệt làm ba việc cùng lúc: cấp cho tài khoản của thiết bị mới quyền truy cập nhà trên đám mây (chia sẻ thư mục trên đám mây tiêu dùng, thông tin xác thực nhúng trên S3, CloudKit share trên iCloud), niêm phong khóa thư viện cho khóa công khai của thiết bị mới, và ký một mục thành viên thêm thiết bị đó. Tất cả được đóng gói vào một **invite code**.
+4. Thiết bị tham gia dùng lời mời, mở niêm phong khóa, khởi tạo từ snapshot mới nhất và đồng bộ.
+
+Lời mời được niêm phong cho khóa yêu cầu: chặn được nó cũng không cấp gì.
+
+## Thu hồi
+
+Xóa một thành viên thêm một mục xóa đã ký và xoay khóa thư viện sang thế hệ mới mà khóa bị xóa không bao giờ nhận (xem [Mã hóa](/vi/reference/encryption#các-thế-hệ)). Trên lưu trữ có thể thu hồi truy cập, quyền truy cập cũng bị rút. Những gì đã đồng bộ tới thiết bị bị xóa vẫn ở đó; dữ liệu không thể được lấy lại. Mọi thứ sau lần xoay khóa nằm ngoài tầm với của nó.
+
+## Mã khôi phục
+
+Mã khôi phục cố ý đi vòng qua tư cách thành viên: đó là tọa độ nhà trên đám mây cộng khóa thư viện, trong một chuỗi mang quyền truy cập, để khôi phục thư viện của chính bạn khi không còn người phê duyệt sống sót. Nó được tạo theo yêu cầu, tự động lưu trong iCloud Keychain trên nền tảng Apple, và nhạy cảm đúng bằng chính thư viện.

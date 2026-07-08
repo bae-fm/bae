@@ -1,0 +1,43 @@
+---
+title: Mô hình dữ liệu
+description: Schema, những gì đồng bộ và những gì ở lại trên thiết bị
+---
+
+Catalog của bae là SQLite bình thường, được khai báo cho [coven](https://coven.bae.fm) từng bảng một: bảng đồng bộ mang đồng hồ xung đột và đi tới mọi thiết bị; bảng không khai báo không bao giờ rời thiết bị. Phần tách này là quyết định chịu tải nhất của mô hình dữ liệu, nên trang này được tổ chức quanh nó.
+
+## Đồ thị catalog
+
+Trái tim đồng bộ của schema:
+
+- **`artists`**, **`albums`**, **`works`**: lớp nhóm. Một album gom các bản phát hành của nó và trỏ tới bản chính; works tạo đồ thị cha/con cho cấu trúc nhạc cổ điển.
+- **`releases`**: thực thể trung tâm, một hàng cho mỗi lần phát hành. Mang các sự kiện của lần phát hành (hãng đĩa, số catalog, mã vạch, quốc gia, định dạng, năm), nguồn siêu dữ liệu, hash nội dung của thư mục đã nhập và độ lớn âm thanh album đã đo.
+- **`release_identities`**: một bản phát hành *là gì*, theo từng nguồn. Không có hàng nghĩa là chưa biết; một hàng MusicBrainz hoặc Discogs có release ID nghĩa là chính xác; không có ID nghĩa là xấp xỉ. Một bản phát hành có thể giữ danh tính trong cả hai nguồn cùng lúc.
+- **`tracks`** với **`track_artists`**, cộng **`release_artist_roles`** và **`track_artist_roles`**: danh sách track và ghi công, mỗi ghi công gắn với nguồn của nó.
+- **`track_works`**, **`work_parts`**, **`work_artists`**: bản thu liên kết tới tác phẩm mà chúng trình diễn.
+- **`audio_formats`** và **`audio_format_segments`**: đặc tả phát lại. Theo từng track: codec, sample rate, độ sâu bit, kênh, độ lớn âm thanh và peak đã đo, và độ dài pregap. Segment ánh xạ một track lên các cửa sổ byte và sample có thứ tự của tệp nguồn, đây là cách track của bản rip CUE, gồm cả pregap, có thể trải qua các vùng của một tệp lớn, hoặc nhiều tệp.
+- **`release_files`**, **`covers`**, **`artist_images`**: bảng mang blob. Hàng là mục catalog; byte nằm trong lớp blob của coven (xem bên dưới).
+
+## Đồng bộ, có cổng, cục bộ
+
+Tất cả các bảng trên đồng bộ, nhưng không vô điều kiện. `releases` được khai báo là root có cổng trên cột `remote`: một hàng release và toàn bộ cây con của nó (tracks, files, credits, formats, cover) chỉ đồng bộ khi `remote` là true, tức là khi bản phát hành được quản lý trên đám mây. Chuyển một bản phát hành sang được quản lý sẽ công bố cây con; bản phát hành không quản lý hoàn toàn ở lại trên thiết bị đã nhập, dù schema của nó là schema đồng bộ. Các bảng tổ tiên (`artists`, `albums`, `works`) chỉ đồng bộ khi vẫn còn bản phát hành đã đồng bộ tham chiếu tới chúng, nên một thiết bị không bao giờ nhận một nghệ sĩ không có gì bên dưới.
+
+Các bảng hoàn toàn cục bộ, không bao giờ khai báo cho coven:
+
+- **`playback_state`**: track hiện tại, vị trí, hàng đợi, âm lượng, phát ngẫu nhiên và lặp lại. Phát lại là sự kiện của thiết bị.
+- **`imports`**: theo dõi thao tác nhập.
+- **`release_metadata`**: JSON thô đã lưu trữ từ MusicBrainz và Discogs, giữ cho diễn giải lại sau này.
+- **`attribution_names`**: tên hiển thị cho khóa thành viên.
+
+Mọi bảng đồng bộ mang cột `_updated_at` hybrid-logical-clock, thanh ghi mà merge theo từng trường của coven dùng để sắp thứ tự chỉnh sửa đồng thời; một test bảo đảm tập bảng đồng bộ và tập bảng mang đồng hồ là bằng nhau chính xác.
+
+## Blob
+
+Âm thanh và ảnh đi qua lớp blob của coven trong ba namespace, mỗi namespace có hạn mức bộ nhớ đệm thiết bị riêng: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+
+Tệp bản phát hành do người dùng cung cấp và được lưu đệm lười: với bản phát hành không quản lý, blob là tham chiếu ngoài tới tệp của người dùng tại đường dẫn gốc; với bản được quản lý, nó là đối tượng đã tải lên được lấy vào bộ nhớ đệm ở lần đọc đầu. Bìa và ảnh nghệ sĩ do host cung cấp và được lưu đệm sớm: bae tạo byte (bìa được render lại thành thumbnail JPEG rộng tối đa 600px), và mọi thiết bị lấy chúng khi pull để lưới hiển thị cục bộ.
+
+Trên nhà mờ đục, blob tải lên dưới khóa nội dung vô nghĩa. Trên nhà duyệt được, mỗi hàng blob ghi một đường dẫn đám mây đọc được (`{artist}/{album}/{filename}` cho âm thanh, `{album}/{release}/cover.{ext}` cho bìa), được tính một lần lúc tải lên nên lần đổi tên sau này không di chuyển đối tượng.
+
+## Danh tính của một bản rip
+
+`releases.content_hash` là SHA-256 trên cấu trúc tệp của thư mục đã nhập (đường dẫn tương đối và kích thước), độc lập với vị trí thư mục nằm trên đĩa. Đó là cách bae nhận ra một bản rip đã nhập khi nó xuất hiện lại trong thư mục được theo dõi, và cách lượt nhập lại tìm bản phát hành chúng nên thay thế.

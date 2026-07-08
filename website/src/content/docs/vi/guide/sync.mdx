@@ -1,0 +1,43 @@
+---
+title: Đồng bộ
+description: Toàn bộ thư viện của bạn trên mọi thiết bị, qua đám mây của chính bạn
+---
+
+Đồng bộ thường nghĩa là máy chủ của người khác: một tài khoản, một gói thuê bao, một công ty có thể đọc thư viện của bạn. bae đồng bộ qua đám mây **của bạn**, lưu trữ bạn đã có, và không chạy máy chủ nào. Thiết bị của bạn ghi các thay đổi đã mã hóa vào lưu trữ đó và đọc thay đổi của nhau; nhà cung cấp giữ byte và không đọc được chúng.
+
+Một thư viện, mọi thiết bị, và tài khoản duy nhất tham gia là tài khoản bạn đã sở hữu.
+
+## Nhà trên đám mây
+
+Nhà trên đám mây của một thư viện là một vị trí trong lưu trữ của bạn: một thư mục trong Google Drive, Dropbox hoặc OneDrive, iCloud của bạn, hoặc bất kỳ bucket tương thích S3 nào (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Nó giữ mọi thứ thư viện đồng bộ: các thay đổi catalog, artwork và âm thanh của những bản phát hành bạn cho bae quản lý.
+
+Thiết lập trong Settings, dưới Sync:
+
+1. Chọn nhà cung cấp. Đám mây tiêu dùng đăng nhập bằng trang đăng nhập riêng của nhà cung cấp; không có gì về tài khoản của bạn được lưu ngoài token mà trang đó cấp. iCloud dùng Apple ID của bạn như hiện có. S3 nhận bucket, region, endpoint và khóa, được kiểm tra trước khi lưu để lỗi gõ sai thất bại lúc thiết lập, không phải ở lần đồng bộ đầu.
+2. Chọn cách nhà lưu đối tượng (xem bên dưới).
+3. bae bắt đầu đồng bộ.
+
+Thư viện không có nhà trên đám mây vẫn đầy đủ tự thân. Chỉ cục bộ là một chế độ, không phải giới hạn, và ngắt kết nối nhà trên đám mây đưa thư viện về chế độ đó.
+
+## Mờ đục hoặc duyệt được
+
+Khi thiết lập, bạn chọn nhà cung cấp được thấy gì, và lựa chọn này là vĩnh viễn cho nhà đó:
+
+- **Mờ đục** (mặc định): mọi đối tượng được mã hóa trên thiết bị của bạn trước khi tải lên và được lưu dưới tên vô nghĩa. Nhà cung cấp, hoặc bất kỳ ai vào được bucket, thấy ciphertext. Đây là chế độ trang [mã hóa](/vi/reference/encryption) mô tả, và là chế độ duy nhất hỗ trợ thêm thiết bị và thành viên khác.
+- **Duyệt được**: đối tượng được lưu rõ với tên tệp thật, trong thư mục đặt theo nghệ sĩ và album. Bạn có thể mở bucket bằng bất kỳ công cụ nào và sao chép hoặc phát tệp trực tiếp. Không có gì được mã hóa, nên kiểm soát truy cập riêng của bucket là lớp bảo vệ duy nhất, và nhà này không thể được chia sẻ.
+
+## Những gì đồng bộ
+
+- Catalog: album, bản phát hành, track, ghi công, tác phẩm, danh tính, chỉnh sửa. Mọi thiết bị nhận toàn bộ.
+- Artwork: bìa và ảnh nghệ sĩ, được lấy sớm để lưới hiển thị ở mọi nơi.
+- Âm thanh: chỉ cho các bản phát hành bạn chọn quản lý trong đám mây. Bản phát hành không quản lý vẫn thuần cục bộ, mục catalog có trên thiết bị khác nhưng byte chỉ nằm nơi bạn đã nhập.
+
+Trạng thái theo thiết bị không đồng bộ: vị trí phát, âm lượng, hàng đợi và cài đặt thiết bị nằm trên thiết bị.
+
+## Khi nào đồng bộ
+
+Đồng bộ tự chạy: sau thay đổi, theo bộ hẹn giờ, và theo yêu cầu với **Sync Now**. Chỉnh sửa đến thiết bị khác dưới dạng thay đổi nhỏ, vài giây sau trong điều kiện bình thường. Hai thiết bị sửa cùng lúc đều thắng ở nơi chúng không va chạm: bae gộp chỉnh sửa đồng thời theo từng trường, và một bản phát hành đã xóa vẫn bị xóa kể cả khi nó được sửa ở nơi khác cùng lúc. Không có gì yêu cầu bạn giải quyết xung đột.
+
+## Khi thất bại
+
+Lỗi đồng bộ không ngắt thư viện; bạn vẫn duyệt, phát và nhập cục bộ trong khi bae thử lại với backoff. Dòng trạng thái hiển thị đang đồng bộ và thời gian đồng bộ gần nhất; lỗi hiển thị banner với thông báo lỗi, và lượt tải lên có thể được tạm dừng, thử lại và xem trong [trình quản lý lưu trữ](/vi/guide/storage#trình-quản-lý-lưu-trữ). Nếu đăng nhập của nhà trên đám mây hết hạn, bae yêu cầu bạn kết nối lại.

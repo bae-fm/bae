@@ -1,0 +1,28 @@
+---
+title: Mã hóa
+description: Khóa thư viện là gì, nó nằm ở đâu, và nhà cung cấp giữ ciphertext nào
+---
+
+Mọi thứ bae đặt vào nhà trên đám mây mờ đục đều được mã hóa trước khi rời thiết bị. bae không tự triển khai mật mã: toàn bộ sơ đồ là của [coven](https://coven.bae.fm), và trang này mô tả cách bae dùng nó. Nhà duyệt được bỏ qua toàn bộ phần này; không gì bên dưới áp dụng cho chúng.
+
+## Khóa thư viện
+
+Một thư viện mờ đục có một bí mật gốc: khóa ngẫu nhiên 256-bit được tạo khi nhà được tạo. Nó nằm trong keyring của hệ điều hành, không bao giờ trong tệp; trên nền tảng Apple, mục keyring đồng bộ qua iCloud Keychain. Cấu hình của bae chỉ lưu vân tay của khóa, đủ để phân biệt khóa sai với khóa đúng khi mở khóa mà không giữ bí mật.
+
+Khóa đi giữa thiết bị theo hai cách, cả hai được mô tả trong [Danh tính và tư cách thành viên](/vi/reference/membership): được niêm phong cho khóa công khai của thiết bị đã phê duyệt trong lúc mời, và nằm trong mã khôi phục.
+
+## Các thế hệ
+
+Khóa thư viện thật ra là một keyring gồm các thế hệ đánh số. Xóa một thành viên sẽ thêm một thế hệ mới mà thành viên bị xóa không bao giờ nhận: mọi thứ được ghi sau đó dùng thế hệ mới và không đọc được đối với họ, trong khi thành viên còn lại giữ mọi thế hệ và đọc được toàn bộ lịch sử. Mỗi đối tượng được niêm phong ghi rõ, ở dạng không mã hóa, thế hệ nào mở nó.
+
+## Những gì được niêm phong
+
+Mọi đối tượng trong nhà: changeset, snapshot, blob âm thanh, artwork, bản ghi thành viên, đối tượng điều khiển. Đối tượng được niêm phong bằng XChaCha20-Poly1305 theo chunk 64 KB, mỗi chunk được xác thực, và được ràng buộc với ngữ cảnh của nó: một đối tượng được niêm phong chỉ giải mã như đúng đối tượng mà nó được ghi để trở thành, cho thư viện này, ở khóa này. Chia chunk là lý do phát trực tuyến hoạt động, trình phát có thể giải mã đúng các khoảng byte nó lấy.
+
+## Nhà cung cấp thấy gì
+
+Số đối tượng, kích thước đối tượng, thời điểm tải lên và mẫu truy cập. Không tên, không siêu dữ liệu, không âm thanh, không artwork, không tư cách thành viên. Không có khôi phục phía máy chủ: người dùng mất mọi thiết bị và mọi bản sao khóa đã mất ciphertext của thư viện mãi mãi, đó là thiết kế hoạt động đúng như dự định.
+
+## Mở khóa và khóa
+
+Mở một thư viện đọc khóa từ keyring. Nếu thư viện cần khóa và keyring không có, bae xem thư viện là đã khóa: nó nhắc nhập khóa trước khi mở, kiểm tra mục nhập với vân tay đã lưu trước khi lưu lại vào keyring. Khóa thư viện chủ động xóa khóa khỏi keyring; không gì trong nhà trên đám mây có thể được đọc hoặc ghi cho đến khi khóa được nhập lại.

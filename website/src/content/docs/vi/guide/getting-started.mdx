@@ -1,0 +1,44 @@
+---
+title: Bắt đầu
+description: Tạo thư viện, nhập album đầu tiên và phát nó
+---
+
+bae là nơi ở cho những album bạn sở hữu. Bạn dựng thư viện trên desktop, và nó đi theo bạn tới mọi thiết bị: đồng bộ qua lưu trữ đám mây bạn đã có, được mã hóa để chỉ thiết bị của bạn đọc được.
+
+Ứng dụng desktop (macOS, Windows) là công cụ đầy đủ: chúng tạo thư viện, nhập nhạc và sửa siêu dữ liệu. Ứng dụng điện thoại (iOS, Android) là trình phát: chúng tham gia vào thư viện do desktop của bạn tạo, rồi duyệt, tải xuống và phát.
+
+## Tạo thư viện
+
+Mở bae trên desktop. Khi máy chưa có thư viện, màn hình chào mừng đưa ra ba lựa chọn:
+
+- **Create a new library**, nếu đây là thiết bị đầu tiên của bạn.
+- **Join a library**, nếu một thiết bị khác đã có thư viện và owner của nó sẽ phê duyệt bạn. Xem [Thiết bị và thành viên](/vi/guide/devices).
+- **Restore from cloud**, nếu đây là thư viện của chính bạn và bạn có mã khôi phục của nó. Xem [Thiết bị và thành viên](/vi/guide/devices#mã-khôi-phục).
+
+Tạo một thư viện. Thư viện bắt đầu cục bộ: mọi thứ nằm trên máy này, không cần tài khoản, và không có đám mây nào tham gia cho đến khi bạn kết nối một đám mây.
+
+## Nhập album đầu tiên
+
+1. Chuyển sang mục **Import** trong thanh tiêu đề.
+2. Thêm một thư mục nhạc. Bạn có thể chọn nó, kéo nó vào cửa sổ, hoặc nhấn <kbd>⌘I</kbd>.
+3. bae quét thư mục và liệt kê các bản phát hành tìm thấy. Chọn một bản.
+4. bae nhận diện nó với MusicBrainz và Discogs rồi hiển thị kết quả khớp. Xác nhận lần phát hành, chọn bìa, chỉnh mọi chi tiết.
+5. Bấm **Import**.
+
+Tệp của bạn không bị di chuyển, sao chép hay ghi lại. bae lập danh mục chúng tại nơi chúng đang ở. Luồng đầy đủ, gồm việc cần làm khi nhận diện cần trợ giúp, nằm trong [Nhập](/vi/guide/importing).
+
+## Phát nó
+
+Quay lại mục **Library**, album nằm trong lưới. Bấm vào nó, nhấn phát. Phát lại dùng tệp gốc của bạn, ở chất lượng gốc. [Phát lại](/vi/guide/playback) nói về hàng đợi, phát ngẫu nhiên và lặp lại, cùng các chi tiết bae giữ lại: pregap CD, ranh giới mặt đĩa vinyl, album không khoảng ngắt.
+
+## Mang đi khắp nơi
+
+Khi bạn muốn thư viện trên nhiều thiết bị, kết nối một nhà trên đám mây: Google Drive, Dropbox, OneDrive, iCloud của chính bạn, hoặc bất kỳ bucket tương thích S3 nào. Mọi thứ bae đặt ở đó được mã hóa trước khi tải lên; nhà cung cấp lưu nó nhưng không đọc được.
+
+- [Đồng bộ](/vi/guide/sync): kết nối nhà trên đám mây và chọn nó lưu những gì.
+- [Thiết bị và thành viên](/vi/guide/devices): thêm điện thoại hoặc desktop khác.
+- [Lưu trữ và ngoại tuyến](/vi/guide/storage): giữ nhạc trên thiết bị, hoặc phát trực tuyến từ đám mây của bạn và ghim những gì bạn cần ngoại tuyến.
+
+## Nơi mọi thứ nằm
+
+Mỗi thư viện giữ cơ sở dữ liệu và cài đặt dưới `~/.bae/libraries/` trên desktop. Âm thanh của bạn vẫn ở nơi bạn đã nhập từ đó, trừ khi bạn yêu cầu bae quản lý nó trong đám mây. Khóa và thông tin xác thực nằm trong keyring của hệ điều hành, không nằm trong tệp.

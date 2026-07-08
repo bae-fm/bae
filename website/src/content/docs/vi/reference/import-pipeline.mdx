@@ -1,0 +1,43 @@
+---
+title: Pipeline nhập
+description: Quét, bằng chứng, đối chiếu tam giác và commit nguyên tử
+---
+
+Nhập biến một thư mục tệp thành một mục catalog đúng theo bản phát hành mà không sửa một byte nào của tệp. Trang này là pipeline phía sau luồng được mô tả trong [hướng dẫn sử dụng](/vi/guide/importing).
+
+## Quét
+
+Thư mục được theo dõi được giám sát bằng sự kiện hệ thống tệp của nền tảng, debounce, và quét lại khi thay đổi; lượt quét đối chiếu với danh sách ứng viên hiện có thay vì bắt đầu lại. Scanner phân loại một thư mục là một bản phát hành (âm thanh nằm trực tiếp bên trong, hoặc thư mục con dạng đĩa như `CD1`/`CD2`), hoặc đệ quy vào nó như một bộ sưu tập. Tệp được phân loại theo phần mở rộng thành âm thanh, artwork và tài liệu, rồi âm thanh được thăm dò: codec quan trọng là codec FFmpeg tìm thấy trong byte, không phải phần mở rộng tệp. Thư mục chứa marker tải xuống chưa xong bị loại trừ cho đến khi tải xong.
+
+Một CUE sheet biến một ảnh âm thanh thành danh sách track. Parser xử lý pregap và postgap, performer và ISRC theo từng track, cả ảnh một tệp và bố cục CUE một tệp mỗi track. Ranh giới track chuyển từ frame CUE (1/75 giây) sang vị trí sample chính xác, thứ sau đó trở thành các cửa sổ byte và sample mà phát lại dùng.
+
+## Bằng chứng, không phải thẻ
+
+Nhận diện đọc ba loại bằng chứng từ thư mục trong một lượt:
+
+- một **disc ID**, vân tay MusicBrainz của bố cục track chính xác của CD, tính từ log rip hoặc từ CUE sheet;
+- **mã vạch**, giải mã từ ảnh quét artwork bằng framework thị giác của nền tảng và đọc từ trường catalog của CUE;
+- **văn bản**: số catalog và văn bản tự do từ OCR artwork, tên thư mục và tệp, và tệp văn bản trong bản rip.
+
+Tag âm thanh nhúng cố ý không phải bằng chứng: chúng mô tả điều một trình tag tin, không phải lần phát hành là gì. (Chúng cấp siêu dữ liệu dự phòng khi người dùng nhập một bản phát hành như chưa biết.)
+
+Disc ID và mã vạch được tra cứu đồng thời, disc ID trên MusicBrainz, mã vạch trên cả MusicBrainz và Discogs cùng lúc, và kết quả được đối chiếu tam giác: kết quả đồng thuận trên một nhóm bản phát hành hội tụ, kết quả khớp số catalog thu hẹp danh sách lần phát hành, và bất đồng giữa tín hiệu hiện ra như xung đột rõ ràng cho người dùng thay vì đoán tốt nhất im lặng. Mỗi kết quả mang nguồn gốc của nó (tìm bằng disc ID, bằng mã vạch, khớp catalog) để giao diện có thể nói vì sao một hàng được đưa ra.
+
+## Nguồn
+
+MusicBrainz được truy vấn ẩn danh với nhịp nghiêm ngặt một yêu cầu mỗi giây. Discogs xác thực bằng token cá nhân của người dùng từ keyring, được điều tiết và thử lại trong giới hạn tốc độ của nó, và token bị từ chối được báo đúng như vậy để giao diện có thể gắn cờ thay vì để tìm kiếm thất bại im lặng. Phản hồi được lưu đệm theo phiên, và JSON thô của bất kỳ nguồn nào thắng được lưu trữ trong cơ sở dữ liệu cho diễn giải lại sau này.
+
+## Ghi
+
+Xác nhận một lượt nhập chạy theo thứ tự:
+
+1. **Xác minh giải mã**: mọi track được giải mã từ đầu đến cuối; một bản rip không thể giải mã đầy đủ thất bại trước khi bất cứ thứ gì được ghi (một cờ cấu hình có thể tắt việc này).
+2. **Phân tích độ lớn âm thanh**: integrated loudness và true peak được đo theo từng track và từng album trong cùng lượt giải mã đó, lưu cho dùng replay-gain.
+3. **Chọn bìa**: art đã chọn (từ xa, ảnh thư mục, hoặc nhúng) được render lại thành thumbnail hiển thị; bản gốc được giữ trong các tệp của bản phát hành nếu nó đến từ thư mục.
+4. **Ghi nguyên tử**: bản phát hành, track, ghi công, danh tính, định dạng, segment, tệp và bìa commit trong một transaction. Không có trạng thái nhập nửa chừng.
+
+Bản phát hành được tạo với tham chiếu tới tệp của người dùng tại chỗ. Nếu người dùng chọn được quản lý trên đám mây, tải lên diễn ra sau commit như một chuyển đổi lưu trữ, và byte gốc của tệp vẫn là nguồn sự thật trong suốt quá trình; không thứ gì người dùng đưa cho bae bị xóa hoặc thay đổi.
+
+## Nhận ra bản rip
+
+Mỗi bản phát hành ghi một hash nội dung trên cấu trúc thư mục đã nhập (đường dẫn tương đối và kích thước, độc lập vị trí). Lượt quét lại dùng nó để đánh dấu thư mục đã có trong thư viện, và lượt nhập lại của cùng bản rip tìm rồi thay thế bản phát hành trước đó thay vì tạo bản trùng.

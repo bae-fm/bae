@@ -1,0 +1,55 @@
+---
+title: Cài đặt
+description: Tải xuống và cài đặt bae hoặc baeium trên mọi nền tảng
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## Hai phiên bản
+
+Mỗi nền tảng phát hành hai phiên bản, dựng từ cùng nguồn:
+
+- **bae**, ứng dụng đầy đủ: đồng bộ S3, Google Drive, Dropbox, OneDrive và iCloud.
+- **baeium**, không có phần độc quyền: chỉ lưu trữ tương thích S3, không có nhà cung cấp OAuth, không có iCloud/CloudKit, không có telemetry.
+
+Chúng cài cạnh nhau, mỗi ứng dụng có thư viện riêng và khóa riêng (được đồng bộ qua iCloud Keychain). Chọn phiên bản bạn muốn bên dưới.
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">Download bae for macOS</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">Download baeium for macOS</DownloadButton>
+
+1. Mở `.dmg` đã tải xuống
+2. Kéo ứng dụng vào thư mục Applications
+3. Mở ứng dụng từ Applications
+
+Cả hai phiên bản tự cập nhật qua Sparkle feed riêng.
+
+## iOS
+
+Bản dựng iOS là **tệp `.ipa` chưa ký để sideload**. Cài bằng [AltStore](https://altstore.io) hoặc [Sideloadly](https://sideloadly.io), hoặc ký lại trong Xcode bằng Apple ID của riêng bạn (Apple ID miễn phí dùng được cho baeium). Phân phối qua App Store chưa được thiết lập.
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">Download bae for iOS</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">Download baeium for iOS</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">Download bae for Android</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">Download baeium for Android</DownloadButton>
+
+Bật cài đặt từ trình duyệt/tệp khi được hỏi, rồi mở `.apk`.
+
+## Windows
+
+Bản dựng Windows là tệp zip **chưa ký** của ứng dụng không đóng gói. Giải nén và chạy `bae.exe` / `baeium.exe`. SmartScreen có thể cảnh báo ở lần chạy đầu.
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">Download bae for Windows</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">Download baeium for Windows</DownloadButton>
+
+## Linux
+
+Sắp có.
+
+## Dựng từ nguồn
+
+baeium không cần thành phần độc quyền nào để dựng. Xem [README của repository](https://github.com/bae-fm/bae#building-baeium-yourself) để biết hướng dẫn tự dựng theo từng nền tảng, gồm iOS với cấp quyền miễn phí.

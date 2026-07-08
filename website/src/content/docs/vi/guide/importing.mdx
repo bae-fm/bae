@@ -1,0 +1,64 @@
+---
+title: Nhập
+description: Khớp thư mục của bạn với bản phát hành thật
+---
+
+Một thư mục bản rip gần như không biết gì về chính nó. Bản phát hành mà nó đến từ, lần phát hành, hãng đĩa, ghi công, nơi track 12 thật sự kết thúc: tất cả những thứ đó nằm trong cơ sở dữ liệu như MusicBrainz và Discogs, không nằm trong tên tệp của bạn. Nhập là cách bae nối hai phía: bạn trỏ nó tới nhạc của bạn, nó xác định mỗi thư mục là bản phát hành nào, và thư viện ghi thư mục đó dưới dạng bản phát hành ấy.
+
+Nhập diễn ra trên desktop (macOS, Windows). Tệp của bạn được đọc, không bao giờ bị thay đổi: bae không di chuyển, đổi tên, gắn lại tag hay mã hóa lại bất cứ thứ gì. Xem [Lưu trữ và ngoại tuyến](/vi/guide/storage) để biết tệp nằm ở đâu sau khi nhập.
+
+## Thư mục được theo dõi
+
+Chuyển sang mục **Import** và thêm một thư mục: chọn nó, kéo nó vào cửa sổ, hoặc nhấn <kbd>⌘I</kbd>. Từ đó bae theo dõi thư mục. Nhạc mới thả vào đó tự xuất hiện như ứng viên mới; bạn không quét lại bằng tay. Thư mục vẫn đang tải xuống bị bỏ qua cho đến khi hoàn tất.
+
+Một lượt quét nhận ra bản phát hành theo các hình dạng mà bản rip thật sự có:
+
+| Bố cục | Trông như thế nào |
+|--------|-------------------|
+| Một tệp mỗi track | `01 - Song.flac`, `02 - Song.flac`, ... |
+| CUE + ảnh đĩa | `album.cue` + `album.flac`, một tệp cho cả đĩa |
+| Nhiều đĩa | thư mục con `CD1/`, `CD2/`, bên trong là một trong hai hình dạng |
+| Bộ sưu tập | một thư mục chứa nhiều thư mục, mỗi thư mục là một bản phát hành riêng |
+
+bae nhập các định dạng nó phát: FLAC, MP3, APE, ALAC và AAC trong `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack và DSD (`.dsf`/`.dff`). Artwork và tài liệu (CUE sheet, log rip, tệp văn bản) trong thư mục được nhận ra và giữ cùng bản phát hành.
+
+## Nhận diện bản phát hành
+
+Chọn một ứng viên và bae bắt đầu nhận diện nó. Thay vì đoán từ tag, nó đọc bằng chứng trong thư mục và tra cứu từng phần:
+
+- **Disc ID.** Vân tay của bố cục track chính xác của CD, tính từ log rip hoặc CUE sheet. Khi khớp, nó nhận diện đúng phiên bản CD cụ thể.
+- **Mã vạch.** Đọc từ ảnh quét bìa trong thư mục bằng nhận dạng văn bản, hoặc từ CUE sheet.
+- **Số catalog và văn bản.** Số catalog tìm thấy trên artwork và trong tên tệp, tên thư mục, dùng để thu hẹp kết quả.
+
+Các tín hiệu được tra cứu đồng thời trên MusicBrainz và Discogs, rồi kết quả được đối chiếu chéo. Mỗi tín hiệu xuất hiện như một huy hiệu phía trên kết quả: bạn có thể thấy đã tìm thấy gì, nó đến từ đâu (di chuột để xem nguồn: disc TOC, CUE sheet, ảnh quét bìa, tên thư mục), và tắt từng tín hiệu riêng nếu một tín hiệu gây hiểu sai.
+
+Ba kết quả:
+
+- **Đã tìm thấy.** Bằng chứng đồng thuận trên một nhóm bản phát hành. Bạn chọn đúng lần phát hành từ danh sách của nó.
+- **Xung đột.** Hai tín hiệu trỏ tới các bản phát hành khác nhau, chẳng hạn disc ID và mã vạch không khớp. bae hiển thị cả hai phía và bạn chọn tin phía nào, hoặc bỏ qua một tín hiệu.
+- **Không tìm thấy.** Tìm bằng tay: nghệ sĩ và album, số catalog, hoặc mã vạch, trên một trong hai cơ sở dữ liệu. Văn bản nhận ra từ artwork được đưa ra làm gợi ý tự hoàn thành.
+
+Bạn cũng có thể **skip identifying** và nhập như một bản phát hành chưa biết. Khi đó bae quay về dùng tag nhúng trong tệp của bạn cho tên, và bạn có thể nhận diện lại sau, khi bản phát hành có trong cơ sở dữ liệu hoặc bạn có bằng chứng tốt hơn.
+
+## Chính xác hoặc xấp xỉ
+
+Khi bạn chọn một kết quả khớp, bae kiểm tra nó với tệp của bạn, và báo nếu số track không khớp. Sau đó bạn khai báo kết quả khớp là gì:
+
+- **Exact**: tệp của bạn là lần phát hành này.
+- **Chỉ siêu dữ liệu**: đúng album, nhưng không nhất thiết đúng lần phát hành cụ thể này. bae dùng siêu dữ liệu và nhớ rằng lần phát hành là xấp xỉ.
+
+Nếu bản phát hành đã có trong thư viện của bạn, hoặc một lần phát hành khác của cùng album đã có, bae báo cho bạn trước khi bạn nhập bản trùng.
+
+## Xác nhận và nhập
+
+Khung xác nhận hiển thị mọi thứ lượt nhập sẽ ghi:
+
+- **Bìa.** Chọn từ artwork của cơ sở dữ liệu, ảnh trong thư mục của bạn, hoặc art nhúng trong tệp. Bạn có thể đổi nó sau.
+- **Siêu dữ liệu.** Album, nghệ sĩ, năm, hãng đĩa, số catalog, quốc gia, mã vạch và mọi track: tất cả đều sửa được ngay tại đây trước khi bất cứ thứ gì được lưu.
+- **Lưu trữ.** Nếu đã kết nối nhà trên đám mây, chọn liệu bae có quản lý tệp trong đám mây của bạn hay không, và có giữ thêm một bản cục bộ hay không. Xem [Lưu trữ và ngoại tuyến](/vi/guide/storage).
+
+Nhập chạy trong nền: bae xác minh mọi track giải mã được đầy đủ, đo độ lớn âm thanh cho album và từng track, lưu bản phát hành, và, với lượt nhập được quản lý, bắt đầu tải lên. Danh sách ứng viên chuyển sang thư mục kế tiếp, và bản phát hành phát được ngay.
+
+## Nguồn dữ liệu
+
+**MusicBrainz** không cần tài khoản và không cần khóa. **Discogs** cần token API miễn phí của riêng bạn; dán nó trong Settings, và bae báo cho bạn nếu nó ngừng hoạt động. Không có token, tìm kiếm Discogs và siêu dữ liệu lấy từ Discogs không khả dụng, còn mọi thứ khác vẫn hoạt động. Cả hai dịch vụ đều giới hạn tốc độ; bae điều tiết yêu cầu để nằm trong giới hạn.
