@@ -2820,6 +2820,39 @@ async fn download_queue_skips_already_pinned() {
     assert!(manager.download_snapshot().ops.is_empty());
 }
 
+/// A local (unmanaged) release has nothing to pin — it is already fully on disk —
+/// so `enqueue_pins` skips it rather than queueing a download that would fail. The
+/// album grid's bulk pin reaches this path with a mixed local/remote selection.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn download_queue_skips_local_release() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    manager.set_downloads_paused(true);
+
+    let release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("local-source"),
+        "Test Album",
+        &[("a.flac", b"aaa")],
+    )
+    .await;
+    let summary = manager
+        .find_release_storage_summary(&release.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        summary.storage_state,
+        crate::album_detail::ReleaseStorageState::Local
+    );
+
+    manager.enqueue_pins(vec![release.id.clone()]).await;
+    assert!(
+        manager.download_snapshot().ops.is_empty(),
+        "a local release is not enqueued for pinning"
+    );
+}
+
 /// A pin that fails (no cloud home for a cloud-only release) lands `Failed`
 /// and stays in the queue; `retry_downloads` flips it back to `Queued`.
 #[tokio::test]

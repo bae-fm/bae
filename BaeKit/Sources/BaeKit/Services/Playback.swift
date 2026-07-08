@@ -19,6 +19,10 @@ public final class Playback: Sendable, Observable {
         @Sendable (
             _ releaseId: String, _ startTrackIndex: UInt32?, _ shuffle: Bool
         ) -> Void
+    /// Play several releases as one context, concatenated in the given order.
+    /// A single release behaves exactly like `playRelease`; core skips any
+    /// release whose tracks can't be loaded.
+    public let playReleases: @Sendable (_ releaseIds: [String]) -> Void
     /// Play the whole library in a freshly seeded shuffle. An empty library is a
     /// no-op (logged in core).
     public let playLibraryShuffled: @Sendable () -> Void
@@ -39,6 +43,7 @@ public final class Playback: Sendable, Observable {
             _,
             _ in
         },
+        playReleases: @escaping @Sendable ([String]) -> Void = { _ in },
         playLibraryShuffled: @escaping @Sendable () -> Void = {},
         setPauseBetweenSides: @escaping @Sendable (Bool) throws -> Void = {
             _ in
@@ -54,6 +59,7 @@ public final class Playback: Sendable, Observable {
         self.toggleMute = toggleMute
         self.cycleRepeatMode = cycleRepeatMode
         self.playRelease = playRelease
+        self.playReleases = playReleases
         self.playLibraryShuffled = playLibraryShuffled
         self.setPauseBetweenSides = setPauseBetweenSides
     }
@@ -76,6 +82,7 @@ public final class Playback: Sendable, Observable {
                     shuffle: $2
                 )
             },
+            playReleases: { handle.playReleases(releaseIds: $0) },
             playLibraryShuffled: { handle.playLibraryShuffled() },
             setPauseBetweenSides: {
                 try handle.setPauseBetweenSides(enabled: $0)

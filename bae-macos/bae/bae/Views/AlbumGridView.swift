@@ -19,11 +19,23 @@ struct AlbumGridView<ExpansionContent: View>: View {
     /// it to resolve an album's index for `revealAlbum`; the sort *controls*
     /// live in `LibraryView`'s pinned header.
     let sortCriteria: [BridgeSortCriterion]
-    let onPlay: (String) -> Void
-    let onAddToQueue: (String) -> Void
-    let onAddNext: (String) -> Void
+    /// Multi-selection state, owned by `LibraryView`. The grid reads it to render
+    /// the selection tint and build bulk-action targets, and mutates it on
+    /// modifier clicks / Esc / cmd-A.
+    let selection: AlbumGridSelection
+    /// Bulk-action closures. Each takes the album ids to act on, in visible grid
+    /// order — one album for a plain card, the whole selection for a selected one.
+    let onPlay: ([String]) -> Void
+    let onAddToQueue: ([String]) -> Void
+    let onAddNext: ([String]) -> Void
+    let onPin: ([String]) -> Void
     @ViewBuilder
     let expansionContent: (_ albumId: String) -> ExpansionContent
+
+    /// Focus lands on the grid the moment a selection interaction happens, so Esc
+    /// (clear) and cmd-A (select all loaded) work immediately after a click.
+    @FocusState
+    private var gridFocused: Bool
 
     private static var maxContentWidth: CGFloat {
         1200
@@ -74,51 +86,24 @@ struct AlbumGridView<ExpansionContent: View>: View {
                                                     .artistNames,
                                                 year: summary.year,
                                                 cover: summary.cover,
-                                                isSelected: uiStore
+                                                isExpanded: uiStore
                                                     .selectedAlbumId
                                                     == summary.id,
+                                                isSelected:
+                                                    selection
+                                                    .contains(summary.id),
                                                 size: cardWidth,
-                                                onPlay: {
-                                                    onPlay(
-                                                        summary
-                                                            .primaryReleaseId
-                                                    )
-                                                },
-                                                onAddToQueue: {
-                                                    onAddToQueue(
-                                                        summary
-                                                            .primaryReleaseId
-                                                    )
-                                                },
-                                                onAddNext: {
-                                                    onAddNext(
-                                                        summary
-                                                            .primaryReleaseId
-                                                    )
-                                                },
+                                                menu: cardMenu(
+                                                    for: summary.id
+                                                ),
                                             )
                                             .id(summary.id)
                                             .frame(width: cardWidth)
-                                            .draggable(summary.id)
+                                            .draggable(
+                                                dragPayload(for: summary.id)
+                                            )
                                             .onTapGesture {
-                                                withAnimation(
-                                                    .spring(
-                                                        response: 0.3,
-                                                        dampingFraction:
-                                                            0.85
-                                                    )
-                                                ) {
-                                                    uiStore
-                                                        .selectAlbumFromGrid(
-                                                            uiStore
-                                                                .selectedAlbumId
-                                                                == summary
-                                                                .id
-                                                                ? nil
-                                                                : summary
-                                                                    .id
-                                                        )
-                                                }
+                                                handleTap(on: summary.id)
                                             }
                                         }
                                         else {
@@ -166,6 +151,31 @@ struct AlbumGridView<ExpansionContent: View>: View {
                     .padding(.bottom)
                     .frame(maxWidth: Self.maxContentWidth)
                     .frame(maxWidth: .infinity)
+                    // A click on the empty grid background (not on a card, whose
+                    // own tap wins) clears the multi-selection.
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if !selection.isEmpty {
+                            selection.clear()
+                        }
+                    }
+                }
+                .focusable()
+                .focusEffectDisabled()
+                .focused($gridFocused)
+                .onKeyPress(.escape) {
+                    guard !selection.isEmpty else {
+                        return .ignored
+                    }
+                    selection.clear()
+                    return .handled
+                }
+                .onKeyPress(keys: ["a"]) { keyPress in
+                    guard keyPress.modifiers.contains(.command) else {
+                        return .ignored
+                    }
+                    selection.selectAll(list.allLoadedIds)
+                    return .handled
                 }
                 .task(id: uiStore.albumReveal?.seq) {
                     guard let reveal = uiStore.albumReveal else {
@@ -238,6 +248,63 @@ extension AlbumGridView {
         await list.loadRange(offset: first, limit: end - first)
     }
 
+    /// Dispatch a click by its modifiers (read at tap time): cmd toggles the
+    /// clicked album in the selection, shift extends the range from the anchor,
+    /// and a plain click clears the multi-selection and toggles the detail
+    /// expansion (the pre-existing behavior). Modifier clicks focus the grid so
+    /// Esc / cmd-A work immediately.
+    private func handleTap(on albumId: String) {
+        let modifiers = NSEvent.modifierFlags
+        if modifiers.contains(.command) {
+            selection.toggle(albumId)
+            gridFocused = true
+        }
+        else if modifiers.contains(.shift) {
+            selection.extendRange(
+                to: albumId,
+                position: { list.position(of: $0) },
+                idAt: { list.idAt($0) }
+            )
+            gridFocused = true
+        }
+        else {
+            selection.clear()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                uiStore.selectAlbumFromGrid(
+                    uiStore.selectedAlbumId == albumId ? nil : albumId
+                )
+            }
+        }
+    }
+
+    /// The bulk-action menu for a card, bound to the album ids the click targets:
+    /// the whole selection (visible order) when the card is part of a
+    /// multi-selection, else just this album.
+    private func cardMenu(for albumId: String) -> AlbumCardMenu {
+        let targets = selection.orderedTargets(
+            for: albumId,
+            position: { list.position(of: $0) }
+        )
+        return AlbumCardMenu(
+            targetCount: targets.count,
+            onPlay: { onPlay(targets) },
+            onAddToQueue: { onAddToQueue(targets) },
+            onAddNext: { onAddNext(targets) },
+            onPin: { onPin(targets) }
+        )
+    }
+
+    /// The drag payload for a card: the whole ordered selection when the card is
+    /// part of it, else just this album id.
+    private func dragPayload(for albumId: String) -> String {
+        AlbumDragPayload.encode(
+            selection.orderedTargets(
+                for: albumId,
+                position: { list.position(of: $0) }
+            )
+        )
+    }
+
     private func selectedAlbumId(rowIndex: Int, columnCount: Int) -> String? {
         guard let selectedId = uiStore.selectedAlbumId else {
             return nil
@@ -273,11 +340,12 @@ struct AlbumCardView: View {
     let artistNames: String
     let year: Int32?
     let cover: BridgeImageRef?
+    /// The album's detail expansion is open — shown as the accent ring on the art.
+    let isExpanded: Bool
+    /// The album is part of the multi-selection — shown as a tint behind the card.
     let isSelected: Bool
     let size: CGFloat
-    let onPlay: () -> Void
-    let onAddToQueue: () -> Void
-    let onAddNext: () -> Void
+    let menu: AlbumCardMenu
 
     @State
     private var isHovered = false
@@ -292,19 +360,14 @@ struct AlbumCardView: View {
                     RoundedRectangle(cornerRadius: 8)
                         .strokeBorder(
                             Color.accentColor,
-                            lineWidth: isSelected ? 3 : 0,
+                            lineWidth: isExpanded ? 3 : 0,
                         ),
                 )
                 .overlay(alignment: .topTrailing) {
-                    CardMenuButton(
-                        onPlay: onPlay,
-                        onAddToQueue: onAddToQueue,
-                        onAddNext: onAddNext,
-                        showMenu: $showMenu
-                    )
-                    .padding(6)
-                    .opacity(isHovered || showMenu ? 1 : 0)
-                    .allowsHitTesting(isHovered || showMenu)
+                    CardMenuButton(menu: menu, showMenu: $showMenu)
+                        .padding(6)
+                        .opacity(isHovered || showMenu ? 1 : 0)
+                        .allowsHitTesting(isHovered || showMenu)
                 }
                 .onHover { isHovered = $0 }
                 .padding(.bottom, 6)
@@ -323,10 +386,16 @@ struct AlbumCardView: View {
                 lineHeight: 12
             )
         }
+        .padding(6)
+        // The selection tint stays in the layout tree, toggled by opacity, so a
+        // selection change never re-measures the row (layout stability).
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.accentColor.opacity(0.18))
+                .opacity(isSelected ? 1 : 0)
+        )
         .contextMenu {
-            Button("Play") { onPlay() }
-            Button("Add to Queue") { onAddToQueue() }
-            Button("Add Next") { onAddNext() }
+            AlbumCardMenuItems(menu: menu)
         }
     }
 
@@ -336,12 +405,61 @@ struct AlbumCardView: View {
     }
 }
 
-// MARK: - Card Overlay Button
+// MARK: - Card Menu
 
-private struct CardMenuButton: View {
+/// The bulk-action menu a grid card presents: how many albums it targets and the
+/// four actions, each already bound to those targets. Built by the grid from
+/// `AlbumGridSelection.orderedTargets`; both the SwiftUI context menu and the
+/// AppKit ellipsis menu render from this one definition. Labels switch to the
+/// plural form (carrying the count) when more than one album is targeted.
+struct AlbumCardMenu {
+    let targetCount: Int
     let onPlay: () -> Void
     let onAddToQueue: () -> Void
     let onAddNext: () -> Void
+    let onPin: () -> Void
+
+    var playLabel: String {
+        targetCount > 1
+            ? String(localized: "Play \(targetCount) Albums")
+            : String(localized: "Play")
+    }
+
+    var addToQueueLabel: String {
+        targetCount > 1
+            ? String(localized: "Add \(targetCount) Albums to Queue")
+            : String(localized: "Add to Queue")
+    }
+
+    var addNextLabel: String {
+        targetCount > 1
+            ? String(localized: "Add \(targetCount) Albums Next")
+            : String(localized: "Add Next")
+    }
+
+    var pinLabel: String {
+        targetCount > 1
+            ? String(localized: "Pin \(targetCount) Albums for Offline")
+            : String(localized: "Pin for offline")
+    }
+}
+
+/// The SwiftUI rendering of an `AlbumCardMenu` — the `.contextMenu` items.
+private struct AlbumCardMenuItems: View {
+    let menu: AlbumCardMenu
+
+    var body: some View {
+        Button(menu.playLabel) { menu.onPlay() }
+        Button(menu.addToQueueLabel) { menu.onAddToQueue() }
+        Button(menu.addNextLabel) { menu.onAddNext() }
+        Button(menu.pinLabel) { menu.onPin() }
+    }
+}
+
+// MARK: - Card Overlay Button
+
+private struct CardMenuButton: View {
+    let menu: AlbumCardMenu
     @Binding
     var showMenu: Bool
     @State
@@ -364,20 +482,18 @@ private struct CardMenuButton: View {
 
     private func presentMenu() {
         showMenu = true
-        let menu = NSMenu()
-        let playItem = MenuItem(title: String(localized: "Play")) { onPlay() }
-        menu.addItem(playItem)
-        menu.addItem(NSMenuItem.separator())
-        let queueItem = MenuItem(title: String(localized: "Add to Queue")) {
-            onAddToQueue()
-        }
-        menu.addItem(queueItem)
-        let nextItem = MenuItem(title: String(localized: "Add Next")) {
-            onAddNext()
-        }
-        menu.addItem(nextItem)
+        let nsMenu = NSMenu()
+        nsMenu.addItem(MenuItem(title: menu.playLabel, handler: menu.onPlay))
+        nsMenu.addItem(NSMenuItem.separator())
+        nsMenu.addItem(
+            MenuItem(title: menu.addToQueueLabel, handler: menu.onAddToQueue)
+        )
+        nsMenu.addItem(
+            MenuItem(title: menu.addNextLabel, handler: menu.onAddNext)
+        )
+        nsMenu.addItem(MenuItem(title: menu.pinLabel, handler: menu.onPin))
 
-        menu.popUp(
+        nsMenu.popUp(
             positioning: nil,
             at: NSEvent.mouseLocation,
             in: nil
@@ -430,9 +546,11 @@ private class MenuItem: NSMenuItem {
             AlbumGridView(
                 list: list,
                 sortCriteria: sortCriteria,
+                selection: AlbumGridSelection(),
                 onPlay: { _ in },
                 onAddToQueue: { _ in },
                 onAddNext: { _ in },
+                onPin: { _ in },
             ) { albumId in
                 AlbumDetailView(albumId: albumId)
             }
@@ -461,28 +579,33 @@ private class MenuItem: NSMenuItem {
     #Preview("Album Card") {
         let album = PreviewData.albums[0]
         let selected = PreviewData.albums[3]
+        let menu = AlbumCardMenu(
+            targetCount: 1,
+            onPlay: {},
+            onAddToQueue: {},
+            onAddNext: {},
+            onPin: {}
+        )
         HStack(spacing: 20) {
             AlbumCardView(
                 title: album.title,
                 artistNames: album.artistNames,
                 year: album.year,
                 cover: nil,
+                isExpanded: false,
                 isSelected: false,
                 size: albumCardSize,
-                onPlay: {},
-                onAddToQueue: {},
-                onAddNext: {},
+                menu: menu,
             )
             AlbumCardView(
                 title: selected.title,
                 artistNames: selected.artistNames,
                 year: selected.year,
                 cover: nil,
+                isExpanded: false,
                 isSelected: true,
                 size: albumCardSize,
-                onPlay: {},
-                onAddToQueue: {},
-                onAddNext: {},
+                menu: menu,
             )
         }
         .padding()

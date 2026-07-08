@@ -1,9 +1,6 @@
 import BaeKit
 import SwiftUI
 import UniformTypeIdentifiers
-import os.log
-
-private let logger = Logger.bae("MainAppView")
 
 struct SearchFieldAnchorKey: PreferenceKey {
     nonisolated(unsafe) static var defaultValue: Anchor<CGRect>?
@@ -29,6 +26,10 @@ struct MainAppView: View {
     @State
     private var searchText: String = ""
 
+    private var queueActions: QueueActions {
+        QueueActions(library: library, queue: queue, uiStore: uiStore)
+    }
+
     var body: some View {
         ZStack {
             // Main layout: title bar, active section, now playing bar
@@ -47,8 +48,10 @@ struct MainAppView: View {
                 }
                 Divider()
                 NowPlayingBarContainer(
-                    onQueueInsertTracks: resolveAndInsertInQueue,
-                    onDropToQueue: resolveAndAddToQueue,
+                    onQueueInsertTracks: { ids, index in
+                        queueActions.insertInQueue(ids, at: index)
+                    },
+                    onDropToQueue: { ids in queueActions.addToQueue(ids) },
                 )
             }
 
@@ -134,48 +137,6 @@ struct MainAppView: View {
         searchText = ""
         NSApp.keyWindow?.makeFirstResponder(nil)
         uiStore.searchResults = nil
-    }
-
-    // MARK: - Queue drop handling
-
-    private func resolveAndInsertInQueue(ids: [String], at index: Int) {
-        let library = library
-        let queue = queue
-        Task.detached {
-            do {
-                let trackIds = try await library.resolveToTrackIds(ids)
-                if !trackIds.isEmpty {
-                    await MainActor.run {
-                        queue.insertInQueue(trackIds, UInt32(index))
-                    }
-                }
-            }
-            catch {
-                logger.error(
-                    "Failed to resolve track IDs for queue insert: \(error.localizedDescription)"
-                )
-            }
-        }
-    }
-
-    private func resolveAndAddToQueue(ids: [String]) {
-        let library = library
-        let queue = queue
-        Task.detached {
-            do {
-                let trackIds = try await library.resolveToTrackIds(ids)
-                if !trackIds.isEmpty {
-                    await MainActor.run {
-                        queue.addToQueue(trackIds)
-                    }
-                }
-            }
-            catch {
-                logger.error(
-                    "Failed to resolve track IDs for queue add: \(error.localizedDescription)"
-                )
-            }
-        }
     }
 
     // MARK: - Scan + Drop

@@ -55,13 +55,44 @@ impl AudioOutput for TestAudioOutput {
     }
 }
 
-async fn test_library_manager() -> (TempDir, LibraryManager) {
+/// Insert each `(release_id, track_ids)` as album + release + track rows so
+/// `get_track_ids` returns each release's tracks in the given order. Tracks are
+/// numbered in slice order (the query orders by `side, track_number, id`).
+async fn seed_test_releases(database: &crate::db::Database, releases: &[(&str, &[&str])]) {
+    use crate::db::{DbAlbum, DbArtist, DbRelease, DbTrack};
+    if releases.is_empty() {
+        return;
+    }
+    let artist = DbArtist {
+        id: "test-artist-id".to_string(),
+        name: "Artist Name".to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: None,
+        created_at: chrono::Utc::now(),
+    };
+    database.insert_artist(&artist).await.unwrap();
+    for (release_id, track_ids) in releases {
+        let album = DbAlbum::new_test("Album Title", &artist.id);
+        let release = DbRelease::new_test(&album.id, release_id);
+        database.insert_album(&album).await.unwrap();
+        database.insert_release(&release).await.unwrap();
+        for (index, track_id) in track_ids.iter().enumerate() {
+            let track =
+                DbTrack::new_test(release_id, track_id, "Track Title", Some(index as i32 + 1));
+            database.insert_track(&track).await.unwrap();
+        }
+    }
+}
+
+async fn seeded_library_manager(releases: &[(&str, &[&str])]) -> (TempDir, LibraryManager) {
     let home = TempDir::new().unwrap();
     let db_path = home.path().join("playback-service-test.db");
     let database =
         crate::db::Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
             .await
             .unwrap();
+    seed_test_releases(&database, releases).await;
     let library_id = "playback-service-test".to_string();
     let config = crate::config::Config::with_defaults(
         library_id.clone(),
@@ -86,7 +117,17 @@ async fn test_playback_service() -> (
     PlaybackService,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
-    let (home, library_manager) = test_library_manager().await;
+    seeded_playback_service(&[]).await
+}
+
+async fn seeded_playback_service(
+    releases: &[(&str, &[&str])],
+) -> (
+    TempDir,
+    PlaybackService,
+    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
+) {
+    let (home, library_manager) = seeded_library_manager(releases).await;
     let queue_ids = library_manager.ids().clone();
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
@@ -988,4 +1029,52 @@ fn test_ranges_merge_when_gap_filled() {
         vec![(0, 30000)],
         "Should be single contiguous range"
     );
+}
+
+/// A multi-release play concatenates each release's tracks in the input order the
+/// releases were chosen, and reports the releases that contributed as the source.
+#[tokio::test]
+async fn play_releases_concatenates_tracks_in_input_order() {
+    let (_home, service, _rx) =
+        seeded_playback_service(&[("rel-1", &["t1a", "t1b"]), ("rel-2", &["t2a"])]).await;
+
+    let (playable, tracks) = service
+        .load_release_set_tracks(vec!["rel-2".to_string(), "rel-1".to_string()])
+        .await;
+
+    assert_eq!(playable, vec!["rel-2", "rel-1"]);
+    assert_eq!(tracks, vec!["t2a", "t1a", "t1b"]);
+}
+
+/// A release with no tracks (deleted, or never existed) is skipped; the remaining
+/// releases still play in order.
+#[tokio::test]
+async fn play_releases_skips_a_release_without_tracks() {
+    let (_home, service, _rx) =
+        seeded_playback_service(&[("rel-1", &["t1a"]), ("rel-2", &["t2a", "t2b"])]).await;
+
+    let (playable, tracks) = service
+        .load_release_set_tracks(vec![
+            "rel-1".to_string(),
+            "rel-gone".to_string(),
+            "rel-2".to_string(),
+        ])
+        .await;
+
+    assert_eq!(playable, vec!["rel-1", "rel-2"]);
+    assert_eq!(tracks, vec!["t1a", "t2a", "t2b"]);
+}
+
+/// The shuffle/restore re-fetch of a multi-release source concatenates each
+/// release's current tracks in source order — the same order the initial play
+/// built, so a shuffle toggle re-derives over the whole multi-album order.
+#[tokio::test]
+async fn fetch_source_tracks_concatenates_a_releases_source() {
+    let (_home, service, _rx) =
+        seeded_playback_service(&[("rel-1", &["t1a", "t1b"]), ("rel-2", &["t2a"])]).await;
+
+    let source = ContextSource::Releases(vec!["rel-1".to_string(), "rel-2".to_string()]);
+    let tracks = service.fetch_source_tracks(&source).await.unwrap();
+
+    assert_eq!(tracks, vec!["t1a", "t1b", "t2a"]);
 }

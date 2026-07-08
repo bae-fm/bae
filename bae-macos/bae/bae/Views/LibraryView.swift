@@ -40,6 +40,8 @@ struct LibraryView: View {
     var queue
     @Environment(Library.self)
     var library
+    @Environment(Downloads.self)
+    var downloads
     @Environment(LibraryStore.self)
     var libraryStore
     @Environment(UiStore.self)
@@ -49,6 +51,10 @@ struct LibraryView: View {
 
     @State
     private var albumList: AlbumList?
+    /// Album-grid multi-selection, a browsing-session concern owned here as local
+    /// state (the Storage Manager precedent) and passed to the grid.
+    @State
+    private var albumSelection = AlbumGridSelection()
     @State
     private var composerList: ComposerList?
     @State
@@ -104,10 +110,66 @@ struct LibraryView: View {
             }
             applyLibraryNavigation(request.target)
         }
+        // Opening a detail expansion (plain click, search, external navigation)
+        // clears the multi-selection — the same semantics as a plain grid click.
+        .onChange(of: uiStore.selectedAlbumId) { _, selected in
+            if selected != nil {
+                albumSelection.clear()
+            }
+        }
+        // The album-list invalidation is coarse (no per-id removal event), so
+        // after a shape change prune any selected album that no longer resolves —
+        // e.g. one deleted on another device. The selection is small; one
+        // authoritative index lookup per id, cancellable between ids.
+        .task(id: albumList?.loadEpoch) {
+            await pruneDeletedSelection()
+        }
     }
 }
 
 extension LibraryView {
+    private var queueActions: QueueActions {
+        QueueActions(library: library, queue: queue, uiStore: uiStore)
+    }
+
+    /// The primary release id of each album, in the album order given. The grid's
+    /// bulk Play and Pin act on releases; a selected album is loaded (its summary
+    /// is interned), so the lookup resolves.
+    private func primaryReleaseIds(for albumIds: [String]) -> [String] {
+        albumIds.compactMap {
+            libraryStore.albumSummaries[$0]?.primaryReleaseId
+        }
+    }
+
+    /// Drop any selected album that no longer resolves under the current sort —
+    /// the authoritative `getAlbumIndex` returning nil means it was deleted. Runs
+    /// off the album-list epoch; checks cancellation between ids so a newer epoch
+    /// supersedes it cleanly.
+    private func pruneDeletedSelection() async {
+        guard !albumSelection.isEmpty else {
+            return
+        }
+        var missing: [String] = []
+        for id in albumSelection.selectedIds {
+            if Task.isCancelled {
+                return
+            }
+            do {
+                if try await library.getAlbumIndex(sortCriteria, id) == nil {
+                    missing.append(id)
+                }
+            }
+            catch {
+                // A lookup failure isn't evidence the album is gone; leave the
+                // selection untouched rather than prune on a transient error.
+                return
+            }
+        }
+        if !missing.isEmpty {
+            albumSelection.remove(missing)
+        }
+    }
+
     /// Pinned above the content, fixed across mode switches. The heading *is*
     /// the mode switcher; the trailing controls are mode-specific.
     private var libraryHeader: some View {
@@ -191,14 +253,21 @@ extension LibraryView {
                     AlbumGridView(
                         list: albumList,
                         sortCriteria: sortCriteria,
-                        onPlay: { releaseId in
-                            playback.playRelease(releaseId, nil, false)
+                        selection: albumSelection,
+                        onPlay: { albumIds in
+                            playback.playReleases(
+                                primaryReleaseIds(for: albumIds)
+                            )
                         },
-                        onAddToQueue: { releaseId in
-                            queue.addReleaseToQueue(releaseId)
+                        onAddToQueue: { albumIds in
+                            queueActions.addToQueue(albumIds)
                         },
-                        onAddNext: { releaseId in
-                            queue.addReleaseNext(releaseId)
+                        onAddNext: { albumIds in
+                            queueActions.addNext(albumIds)
+                        },
+                        onPin: { albumIds in
+                            let releaseIds = primaryReleaseIds(for: albumIds)
+                            Task { await downloads.queuePins(releaseIds) }
                         },
                     ) { albumId in
                         AlbumDetailView(albumId: albumId)

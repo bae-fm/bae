@@ -60,10 +60,13 @@ struct QueueView: View {
                 )
                 .frame(maxHeight: .infinity)
                 .dropDestination(for: String.self) { droppedIds, _ in
-                    guard !droppedIds.isEmpty else {
+                    // A dragged album card may carry several ids joined by a
+                    // newline (a multi-selection drag); split each back out.
+                    let ids = droppedIds.flatMap(AlbumDragPayload.decode)
+                    guard !ids.isEmpty else {
                         return false
                     }
-                    onInsertTracks(droppedIds, 0)
+                    onInsertTracks(ids, 0)
                     return true
                 }
             }
@@ -507,8 +510,11 @@ private struct QueueDropDelegate: DropDelegate {
         }
 
         group.notify(queue: .main) {
-            if !collectedIds.isEmpty {
-                onInsertTracks(collectedIds, insertAt)
+            // A dragged album card may carry several ids joined by a newline (a
+            // multi-selection drag); split each back out before resolving.
+            let ids = collectedIds.flatMap(AlbumDragPayload.decode)
+            if !ids.isEmpty {
+                onInsertTracks(ids, insertAt)
             }
         }
 

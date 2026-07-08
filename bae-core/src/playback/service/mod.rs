@@ -165,6 +165,11 @@ pub(crate) enum PlaybackCommand {
         start_track_index: Option<usize>,
         shuffle: bool,
     },
+    /// Play several releases as one context, concatenated in the given order and
+    /// starting at the first track. Each release's tracks that fail to load are
+    /// skipped (logged); an all-empty result is a no-op. A single playable release
+    /// collapses to a `Release` context, identical to `PlayRelease`.
+    PlayReleases(Vec<String>),
     /// Play the whole library in a freshly seeded shuffle. An empty library is a
     /// no-op (logged); the seed is minted in the handler.
     PlayLibraryShuffled,
@@ -319,6 +324,9 @@ impl PlaybackHandle {
                 shuffle,
             },
         );
+    }
+    pub fn play_releases(&self, release_ids: Vec<String>) {
+        dispatch_command(&self.command_tx, PlaybackCommand::PlayReleases(release_ids));
     }
     pub fn play_library_shuffled(&self) {
         dispatch_command(&self.command_tx, PlaybackCommand::PlayLibraryShuffled);
@@ -1325,6 +1333,27 @@ impl PlaybackService {
                         ContextSource::Release(release_id),
                         track_ids,
                         start,
+                    );
+                    self.emit_queue_update();
+                    self.play_track(&first_track, TrackStart::Direct, PlayTarget::Playing).await;
+                }
+                PlaybackCommand::PlayReleases(release_ids) => {
+                    // The context's source is exactly the releases that
+                    // contributed tracks, so a later shuffle/restore re-fetch stays
+                    // in lockstep. A single playable release collapses to a
+                    // `Release` context (`ContextSource::releases`), identical to
+                    // `PlayRelease`.
+                    let (playable_ids, track_ids) =
+                        self.load_release_set_tracks(release_ids).await;
+                    if track_ids.is_empty() {
+                        warn!("PlayReleases: no playable releases; nothing to play");
+                        continue;
+                    }
+                    self.stop_preview_for_main_playback();
+                    let first_track = self.playback_queue.play_release(
+                        ContextSource::releases(playable_ids),
+                        track_ids,
+                        ContextStart::Index(0),
                     );
                     self.emit_queue_update();
                     self.play_track(&first_track, TrackStart::Direct, PlayTarget::Playing).await;

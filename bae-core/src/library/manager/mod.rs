@@ -32,8 +32,8 @@ use tracing::{debug, error, info, warn};
 use crate::album_detail::{
     join_artist_names, AlbumDetail, AlbumSummary, ComposerDetail, ComposerSummary,
     ComposerWorkGroup, GallerySource, ImageRef, ReleaseDetail, ReleaseResolveCtx,
-    ReleaseStorageAction, ReleaseStorageSummary, SearchResults, StorageFilter, StoragePage,
-    StorageRow, StorageSort, StorageSortDirection, StorageSortField, WorkDetail,
+    ReleaseStorageAction, ReleaseStorageState, ReleaseStorageSummary, SearchResults, StorageFilter,
+    StoragePage, StorageRow, StorageSort, StorageSortDirection, StorageSortField, WorkDetail,
     WorkReleaseSummary, WorkSummary,
 };
 #[cfg(feature = "oauth-providers")]

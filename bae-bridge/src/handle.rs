@@ -287,6 +287,10 @@ impl AppHandle {
         );
     }
 
+    pub fn play_releases(&self, release_ids: Vec<String>) {
+        self.services.playback().play_releases(release_ids);
+    }
+
     pub fn play_library_shuffled(&self) {
         self.services.playback().play_library_shuffled();
     }

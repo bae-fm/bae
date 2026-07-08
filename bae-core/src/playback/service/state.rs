@@ -324,18 +324,58 @@ impl PlaybackService {
     /// The write is logged-best-effort, not propagated as fatal: a failed
     /// resume-cache write only costs the resume point; playback is unaffected.
     /// Fetch a context's tracks in source order for the source it plays from:
-    /// a release's ordered track ids, or every library track. The one place the
-    /// service re-derives a context's tracks (the shuffle toggle, restore, and
-    /// any future `Context`-repeat re-fetch dispatch here so the two sources stay
-    /// in lockstep).
+    /// a release's ordered track ids, several releases' track ids concatenated in
+    /// input order, or every library track. The one place the service re-derives a
+    /// context's tracks (the shuffle toggle, restore, and any future
+    /// `Context`-repeat re-fetch dispatch here so the sources stay in lockstep). A
+    /// missing release fails the whole re-fetch — the caller leaves the queue
+    /// unchanged rather than silently dropping tracks from a live order.
     pub(super) async fn fetch_source_tracks(
         &self,
         source: &ContextSource,
     ) -> Result<Vec<String>, crate::library::LibraryError> {
         match source {
             ContextSource::Release(id) => self.library_manager.get_track_ids(id).await,
+            ContextSource::Releases(ids) => {
+                let mut track_ids = Vec::new();
+                for id in ids {
+                    track_ids.extend(self.library_manager.get_track_ids(id).await?);
+                }
+                Ok(track_ids)
+            }
             ContextSource::Library => self.library_manager.get_all_track_ids().await,
         }
+    }
+
+    /// Load the tracks for a set of releases in input order, concatenated,
+    /// skipping (with a log) any release whose tracks fail to load or that has
+    /// none — the per-release form of `PlayRelease`'s log-and-continue, so one bad
+    /// album doesn't sink the rest of a multi-album play. Returns the releases that
+    /// contributed and their concatenated track ids; an empty track list means
+    /// nothing was playable.
+    pub(super) async fn load_release_set_tracks(
+        &self,
+        release_ids: Vec<String>,
+    ) -> (Vec<String>, Vec<String>) {
+        let mut playable_ids = Vec::new();
+        let mut track_ids = Vec::new();
+        for release_id in release_ids {
+            match self.library_manager.get_track_ids(&release_id).await {
+                Ok(ids) if ids.is_empty() => {
+                    warn!("PlayReleases: release {release_id} has no tracks; skipping");
+                }
+                Ok(ids) => {
+                    playable_ids.push(release_id);
+                    track_ids.extend(ids);
+                }
+                Err(e) => {
+                    warn!(
+                        "PlayReleases: couldn't load tracks for release {release_id}: {e}; skipping"
+                    );
+                }
+            }
+        }
+        (playable_ids, track_ids)
     }
 
     /// The log is the never-mask escape hatch — a write failure is recorded, not

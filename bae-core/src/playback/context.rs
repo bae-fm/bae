@@ -1,15 +1,37 @@
 use crate::playback::queue::QueueEntry;
 
-/// What the queue is playing from: a single release (its track order), or the
-/// whole library. A `Release` carries the id its tracks are fetched by; `Library`
-/// has no id — its tracks are every track in the library. The service dispatches
-/// the track re-fetch on this (release → `get_track_ids`, library →
-/// `get_all_track_ids`) and persistence encodes it in the resume cache's `source`
-/// column.
+/// What the queue is playing from: a single release (its track order), several
+/// releases concatenated in the order they were chosen, or the whole library. A
+/// `Release` carries the id its tracks are fetched by; `Releases` carries the
+/// ordered ids of a multi-album play; `Library` has no id — its tracks are every
+/// track in the library. The service dispatches the track re-fetch on this
+/// (release → `get_track_ids`, releases → each release's `get_track_ids`
+/// concatenated, library → `get_all_track_ids`) and persistence encodes it in the
+/// resume cache's `source` column.
+///
+/// `Releases` always holds at least two ids: a single-release play collapses to
+/// `Release` (see [`ContextSource::releases`]) so it is byte-identical to
+/// `play_release`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContextSource {
     Release(String),
+    Releases(Vec<String>),
     Library,
+}
+
+impl ContextSource {
+    /// Build a source from an ordered, non-empty set of release ids, collapsing a
+    /// single id to [`ContextSource::Release`] so a one-album play behaves exactly
+    /// like `play_release`. The caller guarantees a non-empty list — an empty set
+    /// of releases is a no-op decided upstream, never a source.
+    pub fn releases(mut ids: Vec<String>) -> ContextSource {
+        debug_assert!(!ids.is_empty(), "a release source needs at least one id");
+        if ids.len() == 1 {
+            ContextSource::Release(ids.remove(0))
+        } else {
+            ContextSource::Releases(ids)
+        }
+    }
 }
 
 /// How the context's track order was derived, kept so `Context` repeat can
@@ -79,4 +101,25 @@ pub(crate) fn shuffled_traversal<T>(items: &mut [T], seed: u64) -> Traversal {
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     items.shuffle(&mut rng);
     Traversal::Shuffled { seed }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn releases_of_one_collapses_to_release() {
+        assert_eq!(
+            ContextSource::releases(vec!["only".into()]),
+            ContextSource::Release("only".into())
+        );
+    }
+
+    #[test]
+    fn releases_of_many_keeps_input_order() {
+        assert_eq!(
+            ContextSource::releases(vec!["a".into(), "b".into(), "c".into()]),
+            ContextSource::Releases(vec!["a".into(), "b".into(), "c".into()])
+        );
+    }
 }

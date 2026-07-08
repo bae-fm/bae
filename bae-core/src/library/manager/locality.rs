@@ -185,6 +185,15 @@ impl LibraryManager {
                     continue;
                 }
             };
+            if summary.storage_state == ReleaseStorageState::Local {
+                // Pinning keeps a *cloud* release offline; a local release is
+                // already fully on disk, so there is nothing to download. Callers
+                // that can't see storage state (the album grid's bulk pin) reach
+                // here with a mixed selection — skip the local ones instead of
+                // enqueueing a download that would only fail.
+                debug!("enqueue_pins: {release_id} is local (nothing to pin), skipping");
+                continue;
+            }
             if summary.pinned {
                 debug!("enqueue_pins: {release_id} already pinned, skipping");
                 continue;

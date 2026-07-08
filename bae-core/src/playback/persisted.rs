@@ -66,8 +66,11 @@ impl PersistedPlayback {
                     Some(seed) => Traversal::Shuffled { seed: seed as u64 },
                     None => Traversal::Sequential,
                 };
+                // A malformed source discards the whole row; `source_from_str`
+                // logs the specific reason before returning `None`.
+                let source = source_from_str(ctx.source)?;
                 Some(ContextSnapshot {
-                    source: source_from_str(ctx.source),
+                    source,
                     traversal,
                     cursor,
                 })
@@ -109,24 +112,48 @@ impl PersistedPlayback {
 const LIBRARY_SOURCE: &str = "library";
 
 /// Encode a [`ContextSource`] for the `playback_state.source` column: a release
-/// stores its id, the library the `LIBRARY_SOURCE` sentinel. A present context
-/// always has a `source`; "no context" is the NULL column, handled one level up.
+/// stores its id, several releases store a JSON array of their ids, the library
+/// the `LIBRARY_SOURCE` sentinel. The three are mutually unambiguous — a release
+/// id is a UUID (never `[…]`, never the sentinel), a JSON array always starts
+/// with `[`, and the sentinel is a fixed word. A present context always has a
+/// `source`; "no context" is the NULL column, handled one level up.
 pub fn source_to_str(source: &ContextSource) -> String {
     match source {
         ContextSource::Release(id) => id.clone(),
+        ContextSource::Releases(ids) => {
+            serde_json::to_string(ids).expect("release ids serialize to a JSON array")
+        }
         ContextSource::Library => LIBRARY_SOURCE.to_string(),
     }
 }
 
 /// Decode the `playback_state.source` column back to a [`ContextSource`]: the
-/// sentinel is the library, anything else is a release id. Total — every stored
-/// string maps to a source, so a present context never discards the cache here.
-fn source_from_str(source: String) -> ContextSource {
+/// sentinel is the library, a `[…]` value is the JSON array of a multi-release
+/// source, anything else is a bare release id. `None` discards the resume cache —
+/// a value that opens like a JSON array but doesn't parse (or parses empty) is a
+/// corrupt local write, not a release id.
+fn source_from_str(source: String) -> Option<ContextSource> {
     if source == LIBRARY_SOURCE {
-        ContextSource::Library
-    } else {
-        ContextSource::Release(source)
+        return Some(ContextSource::Library);
     }
+    if source.starts_with('[') {
+        let ids: Vec<String> = match serde_json::from_str(&source) {
+            Ok(ids) => ids,
+            Err(e) => {
+                warn!(
+                    "discarding the playback resume cache: context source looks like a \
+                     release-id array but is not valid JSON ({e}): {source:?}"
+                );
+                return None;
+            }
+        };
+        if ids.is_empty() {
+            warn!("discarding the playback resume cache: empty release-id array as context source");
+            return None;
+        }
+        return Some(ContextSource::releases(ids));
+    }
+    Some(ContextSource::Release(source))
 }
 
 /// Serialize `RepeatMode` for the `playback_state.repeat` column.
@@ -215,17 +242,69 @@ mod tests {
         assert_eq!(context.source, ContextSource::Library);
     }
 
-    /// Both source kinds survive the `playback_state.source` encode/decode: a
-    /// release id is its own string, the library is the sentinel, and neither is
-    /// mistaken for the other (a release id is a UUID, never the sentinel).
+    /// Every source kind survives the `playback_state.source` encode/decode: a
+    /// release id is its own string, a multi-release source is a JSON array, the
+    /// library is the sentinel, and none is mistaken for another (a release id is
+    /// a UUID, never `[…]`, never the sentinel).
     #[test]
     fn source_encoding_round_trips() {
         for source in [
             ContextSource::Release("550e8400-e29b-41d4-a716-446655440000".into()),
+            ContextSource::Releases(vec![
+                "550e8400-e29b-41d4-a716-446655440000".into(),
+                "6ba7b810-9dad-11d1-80b4-00c04fd430c8".into(),
+            ]),
             ContextSource::Library,
         ] {
-            assert_eq!(source_from_str(source_to_str(&source)), source);
+            assert_eq!(source_from_str(source_to_str(&source)), Some(source));
         }
+    }
+
+    /// A single-element release array collapses to `Release` on decode, matching
+    /// the constructor invariant that `Releases` never holds one id.
+    #[test]
+    fn single_element_release_array_decodes_as_release() {
+        let encoded = serde_json::to_string(&["only-one"]).unwrap();
+        assert_eq!(
+            source_from_str(encoded),
+            Some(ContextSource::Release("only-one".into()))
+        );
+    }
+
+    /// A source that opens like a JSON array but doesn't parse discards the row.
+    #[test]
+    fn malformed_source_array_discards_the_row() {
+        let row = DbPlaybackState {
+            context: Some(DbPlaybackContext {
+                source: "[not valid json".to_string(),
+                shuffle_seed: None,
+                cursor: 0,
+            }),
+            ..valid_row()
+        };
+        assert!(PersistedPlayback::from_row(row).is_none());
+    }
+
+    /// A multi-release source survives a full row round-trip through `from_row`.
+    #[test]
+    fn releases_context_row_round_trips() {
+        let row = DbPlaybackState {
+            context: Some(DbPlaybackContext {
+                source: source_to_str(&ContextSource::Releases(vec![
+                    "rel-A".into(),
+                    "rel-B".into(),
+                ])),
+                shuffle_seed: None,
+                cursor: 1,
+            }),
+            ..valid_row()
+        };
+        let parsed = PersistedPlayback::from_row(row).expect("a valid row parses");
+        let context = parsed.queue.context.expect("the context survives");
+        assert_eq!(
+            context.source,
+            ContextSource::Releases(vec!["rel-A".into(), "rel-B".into()])
+        );
     }
 
     #[test]
