@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">এই ডিভাইসের কোড তৈরি করা যায়নি।</string>
     <string name="onboarding_join_enter_invite">তারপর ওই ডিভাইস আপনাকে যে আমন্ত্রণ কোড দেয় তা লিখুন।</string>
     <string name="onboarding_join_scan_invite">আমন্ত্রণ কোড স্ক্যান করুন</string>
-    <string name="onboarding_join_paste_invite">আমন্ত্রণ কোড পেস্ট করুন</string>
-    <string name="onboarding_join_paste_invite_instructions">আপনার অন্য ডিভাইসের আমন্ত্রণ কোড পেস্ট করুন।</string>
     <string name="onboarding_invite_code_placeholder">আমন্ত্রণ কোড পেস্ট করুন</string>
+    <string name="onboarding_invite_library">লাইব্রেরি</string>
+    <string name="onboarding_invite_provider">প্রদানকারী</string>
+    <string name="onboarding_invite_owner">মালিক</string>
+    <string name="onboarding_invite_invalid">এই আমন্ত্রণ কোডটি বৈধ নয়।</string>
+    <string name="onboarding_invite_provider_mismatch">এই লাইব্রেরির জন্য একটি সাইন-ইন করা প্রদানকারী প্রয়োজন। ফিরে গিয়ে এটি যে প্রদানকারী ব্যবহার করে সেটি বাছুন।</string>
+    <string name="onboarding_invite_provider_unsupported">এই লাইব্রেরি এমন একটি প্রদানকারী ব্যবহার করে যেটির সাথে এই বিল্ড সংযোগ করতে পারে না।</string>
     <string name="onboarding_join_action">যোগ দিন</string>
     <string name="onboarding_joining_title">আপনার লাইব্রেরিতে যোগ দিচ্ছে</string>
     <string name="onboarding_joining_body">bae এই ডিভাইসটি আপনার লাইব্রেরিতে যোগ করছে।</string>

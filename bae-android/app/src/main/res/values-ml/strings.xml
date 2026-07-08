@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">ഈ ഉപകരണത്തിന്റെ കോഡ് സൃഷ്ടിക്കാനായില്ല.</string>
     <string name="onboarding_join_enter_invite">തുടർന്ന് ആ ഉപകരണം തിരികെ നൽകുന്ന ക്ഷണ കോഡ് നൽകുക.</string>
     <string name="onboarding_join_scan_invite">ക്ഷണ കോഡ് സ്കാൻ ചെയ്യുക</string>
-    <string name="onboarding_join_paste_invite">ക്ഷണ കോഡ് ഒട്ടിക്കുക</string>
-    <string name="onboarding_join_paste_invite_instructions">മറ്റൊരു ഉപകരണത്തിൽ നിന്നുള്ള ക്ഷണ കോഡ് ഒട്ടിക്കുക.</string>
     <string name="onboarding_invite_code_placeholder">ക്ഷണ കോഡ് ഒട്ടിക്കുക</string>
+    <string name="onboarding_invite_library">ശേഖരം</string>
+    <string name="onboarding_invite_provider">ദാതാവ്</string>
+    <string name="onboarding_invite_owner">ഉടമ</string>
+    <string name="onboarding_invite_invalid">ഈ ക്ഷണ കോഡ് സാധുവല്ല.</string>
+    <string name="onboarding_invite_provider_mismatch">ഈ ശേഖരത്തിന് സൈൻ ഇൻ ചെയ്ത ദാതാവ് ആവശ്യമാണ്. തിരികെ പോയി അത് ഉപയോഗിക്കുന്ന ദാതാവിനെ തിരഞ്ഞെടുക്കുക.</string>
+    <string name="onboarding_invite_provider_unsupported">ഈ ശേഖരം ഈ ബിൽഡിന് കണക്റ്റ് ചെയ്യാൻ കഴിയാത്ത ഒരു ദാതാവിനെ ഉപയോഗിക്കുന്നു.</string>
     <string name="onboarding_join_action">ചേരുക</string>
     <string name="onboarding_joining_title">നിങ്ങളുടെ ശേഖരത്തിൽ ചേരുന്നു</string>
     <string name="onboarding_joining_body">bae ഈ ഉപകരണം നിങ്ങളുടെ ശേഖരത്തിലേക്ക് ചേർക്കുന്നു.</string>

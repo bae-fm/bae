@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">Кодът на това устройство не можа да бъде генериран.</string>
     <string name="onboarding_join_enter_invite">След това въведете кода за покана, който това устройство ви даде.</string>
     <string name="onboarding_join_scan_invite">Сканиране на код за покана</string>
-    <string name="onboarding_join_paste_invite">Поставяне на код за покана</string>
-    <string name="onboarding_join_paste_invite_instructions">Поставете кода за покана от другото си устройство.</string>
     <string name="onboarding_invite_code_placeholder">Поставете кода за покана</string>
+    <string name="onboarding_invite_library">Библиотека</string>
+    <string name="onboarding_invite_provider">Доставчик</string>
+    <string name="onboarding_invite_owner">Собственик</string>
+    <string name="onboarding_invite_invalid">Този код за покана е невалиден.</string>
+    <string name="onboarding_invite_provider_mismatch">Тази библиотека изисква доставчик с вписване. Върнете се и изберете доставчика, който тя използва.</string>
+    <string name="onboarding_invite_provider_unsupported">Тази библиотека използва доставчик, към който тази версия не може да се свърже.</string>
     <string name="onboarding_join_action">Присъединяване</string>
     <string name="onboarding_joining_title">Присъединяване към библиотеката ви</string>
     <string name="onboarding_joining_body">bae добавя това устройство към библиотеката ви.</string>

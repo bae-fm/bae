@@ -4,11 +4,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
@@ -17,13 +19,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -31,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OAuthLinker
@@ -45,8 +45,10 @@ import uniffi.bae_bridge.availableCloudProviders
  * fetches the account email up front, then generates this device's join-request
  * with the email baked in. Once the code is ready this shows it (a QR plus the
  * copyable text and its fingerprint) for an existing member to approve, and
- * accepts the invite code that member hands back (scan or paste). The captured
- * OAuth token is reused for the join — no second sign-in.
+ * accepts the invite code that member hands back (scan or paste). The invite code
+ * is decoded live into a Library / Provider / Owner preview, and Join enables only
+ * once the code parses and this device can reach the library's provider. The
+ * captured OAuth token is reused for the join — no second sign-in.
  */
 @Composable
 fun JoinLibraryScreen(
@@ -130,38 +132,23 @@ private fun JoinCodeExchange(
         isAuthorizing = joinLauncher.isAuthorizing,
     )
     Spacer(modifier = Modifier.height(32.dp))
-    var showPasteDialog by remember { mutableStateOf(false) }
-    var pasteInput by remember { mutableStateOf("") }
     JoinInviteEntry(
+        input = joinLauncher.inviteInput,
+        onInputChange = joinLauncher::updateInvite,
+        preview = joinLauncher.invitePreview,
         error = joinLauncher.error,
         onScanInvite = onRequestScan,
-        onPasteInvite = {
-            joinLauncher.error = null
-            pasteInput = ""
-            showPasteDialog = true
-        },
     )
     Spacer(modifier = Modifier.height(16.dp))
-    TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
-
-    if (showPasteDialog) {
-        PasteCodeDialog(
-            text =
-                PasteDialogText(
-                    title = stringResource(R.string.onboarding_join_paste_invite),
-                    instructions = stringResource(R.string.onboarding_join_paste_invite_instructions),
-                    placeholder = stringResource(R.string.onboarding_invite_code_placeholder),
-                    confirmLabel = stringResource(R.string.onboarding_join_action),
-                ),
-            pasteInput = pasteInput,
-            onInputChange = { pasteInput = it },
-            onConfirm = { code ->
-                showPasteDialog = false
-                joinLauncher.join(code)
-            },
-            onDismiss = { showPasteDialog = false },
-        )
+    Button(
+        onClick = { joinLauncher.join() },
+        enabled = joinLauncher.joinReady,
+        modifier = Modifier.width(220.dp),
+    ) {
+        Text(stringResource(R.string.onboarding_join_action))
     }
+    Spacer(modifier = Modifier.height(8.dp))
+    TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
 }
 
 /** The display name for a provider in the join picker. */
@@ -225,12 +212,19 @@ private fun JoinRequestCode(
     }
 }
 
-/** Prompt and buttons for entering the invite code the approving member returns. */
+/**
+ * The invite-code field and its live preview. The code is decoded as it's typed
+ * or scanned; a valid code shows the library, provider, and owner it points at,
+ * and — when this device can't reach that provider — a mismatch notice. An
+ * unparseable code shows an inline invalid-code notice.
+ */
 @Composable
 private fun JoinInviteEntry(
+    input: String,
+    onInputChange: (String) -> Unit,
+    preview: JoinInvitePreview,
     error: String?,
     onScanInvite: () -> Unit,
-    onPasteInvite: () -> Unit,
 ) {
     Text(
         text = stringResource(R.string.onboarding_join_enter_invite),
@@ -239,17 +233,100 @@ private fun JoinInviteEntry(
         textAlign = TextAlign.Center,
     )
     Spacer(modifier = Modifier.height(12.dp))
-    val buttonWidth = Modifier.width(220.dp)
-    Button(onClick = onScanInvite, modifier = buttonWidth) {
+    OutlinedTextField(
+        value = input,
+        onValueChange = onInputChange,
+        placeholder = { Text(stringResource(R.string.onboarding_invite_code_placeholder)) },
+        modifier = Modifier.fillMaxWidth(),
+        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
+        singleLine = true,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedButton(onClick = onScanInvite, modifier = Modifier.width(220.dp)) {
         Text(stringResource(R.string.onboarding_join_scan_invite))
     }
-    Spacer(modifier = Modifier.height(8.dp))
-    OutlinedButton(onClick = onPasteInvite, modifier = buttonWidth) {
-        Text(stringResource(R.string.onboarding_join_paste_invite))
-    }
+    Spacer(modifier = Modifier.height(12.dp))
+    InvitePreviewContent(preview)
     error?.let {
         Spacer(modifier = Modifier.height(8.dp))
         Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** The rows shown under the invite field once a code is entered. */
+@Composable
+private fun InvitePreviewContent(preview: JoinInvitePreview) {
+    when (preview) {
+        JoinInvitePreview.Empty -> {
+            Unit
+        }
+
+        JoinInvitePreview.Invalid -> {
+            Text(
+                text = stringResource(R.string.onboarding_invite_invalid),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
+        is JoinInvitePreview.Decoded -> {
+            InvitePreviewRow(
+                label = stringResource(R.string.onboarding_invite_library),
+                value = preview.info.libraryName,
+            )
+            InvitePreviewRow(
+                label = stringResource(R.string.onboarding_invite_provider),
+                value = cloudProviderLabel(preview.info.cloudProvider),
+            )
+            InvitePreviewRow(
+                label = stringResource(R.string.onboarding_invite_owner),
+                value = preview.info.ownerFingerprint,
+                monospaceValue = true,
+            )
+            preview.mismatch?.let { mismatch ->
+                val message =
+                    when (mismatch) {
+                        ProviderMismatch.PROVIDER_NOT_SELECTED -> {
+                            stringResource(R.string.onboarding_invite_provider_mismatch)
+                        }
+
+                        ProviderMismatch.OAUTH_UNSUPPORTED -> {
+                            stringResource(R.string.onboarding_invite_provider_unsupported)
+                        }
+                    }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+}
+
+/** One label/value line in the invite preview. */
+@Composable
+private fun InvitePreviewRow(
+    label: String,
+    value: String,
+    monospaceValue: Boolean = false,
+) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontFamily = if (monospaceValue) FontFamily.Monospace else null,
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.End,
+        )
     }
 }
 

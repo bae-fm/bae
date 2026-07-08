@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">Không thể tạo mã của thiết bị này.</string>
     <string name="onboarding_join_enter_invite">Sau đó nhập mã mời mà thiết bị đó trả lại cho bạn.</string>
     <string name="onboarding_join_scan_invite">Quét mã mời</string>
-    <string name="onboarding_join_paste_invite">Dán mã mời</string>
-    <string name="onboarding_join_paste_invite_instructions">Dán mã mời từ thiết bị khác của bạn.</string>
     <string name="onboarding_invite_code_placeholder">Dán mã mời</string>
+    <string name="onboarding_invite_library">Thư viện</string>
+    <string name="onboarding_invite_provider">Nhà cung cấp</string>
+    <string name="onboarding_invite_owner">Chủ sở hữu</string>
+    <string name="onboarding_invite_invalid">Mã lời mời này không hợp lệ.</string>
+    <string name="onboarding_invite_provider_mismatch">Thư viện này cần một nhà cung cấp đã đăng nhập. Quay lại và chọn nhà cung cấp mà thư viện sử dụng.</string>
+    <string name="onboarding_invite_provider_unsupported">Thư viện này dùng một nhà cung cấp mà bản dựng này không thể kết nối.</string>
     <string name="onboarding_join_action">Tham gia</string>
     <string name="onboarding_joining_title">Đang tham gia thư viện của bạn</string>
     <string name="onboarding_joining_body">bae đang thêm thiết bị này vào thư viện của bạn.</string>

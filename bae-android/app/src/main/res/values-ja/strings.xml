@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">このデバイスのコードを生成できませんでした。</string>
     <string name="onboarding_join_enter_invite">次に、そのデバイスから返される招待コードを入力してください。</string>
     <string name="onboarding_join_scan_invite">招待コードをスキャン</string>
-    <string name="onboarding_join_paste_invite">招待コードを貼り付け</string>
-    <string name="onboarding_join_paste_invite_instructions">ほかのデバイスからの招待コードを貼り付けてください。</string>
     <string name="onboarding_invite_code_placeholder">招待コードを貼り付け</string>
+    <string name="onboarding_invite_library">ライブラリ</string>
+    <string name="onboarding_invite_provider">プロバイダー</string>
+    <string name="onboarding_invite_owner">所有者</string>
+    <string name="onboarding_invite_invalid">この招待コードは無効です。</string>
+    <string name="onboarding_invite_provider_mismatch">このライブラリにはサインイン済みのプロバイダーが必要です。前に戻って、このライブラリが使用しているプロバイダーを選択してください。</string>
+    <string name="onboarding_invite_provider_unsupported">このライブラリは、このビルドでは接続できないプロバイダーを使用しています。</string>
     <string name="onboarding_join_action">参加</string>
     <string name="onboarding_joining_title">ライブラリに参加中</string>
     <string name="onboarding_joining_body">baeがこのデバイスをライブラリに追加しています。</string>

@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">สร้างรหัสของอุปกรณ์นี้ไม่ได้</string>
     <string name="onboarding_join_enter_invite">จากนั้นป้อนรหัสเชิญที่อุปกรณ์นั้นส่งกลับมาให้คุณ</string>
     <string name="onboarding_join_scan_invite">สแกนรหัสเชิญ</string>
-    <string name="onboarding_join_paste_invite">วางรหัสเชิญ</string>
-    <string name="onboarding_join_paste_invite_instructions">วางรหัสเชิญจากอุปกรณ์อื่นของคุณ</string>
     <string name="onboarding_invite_code_placeholder">วางรหัสเชิญ</string>
+    <string name="onboarding_invite_library">คลัง</string>
+    <string name="onboarding_invite_provider">ผู้ให้บริการ</string>
+    <string name="onboarding_invite_owner">เจ้าของ</string>
+    <string name="onboarding_invite_invalid">รหัสคำเชิญนี้ไม่ถูกต้อง</string>
+    <string name="onboarding_invite_provider_mismatch">คลังนี้ต้องใช้ผู้ให้บริการที่ลงชื่อเข้าใช้แล้ว กลับไปและเลือกผู้ให้บริการที่คลังนี้ใช้อยู่</string>
+    <string name="onboarding_invite_provider_unsupported">คลังนี้ใช้ผู้ให้บริการที่บิลด์นี้ไม่สามารถเชื่อมต่อได้</string>
     <string name="onboarding_join_action">เข้าร่วม</string>
     <string name="onboarding_joining_title">กำลังเข้าร่วมคลังของคุณ</string>
     <string name="onboarding_joining_body">bae กำลังเพิ่มอุปกรณ์นี้ไปยังคลังของคุณ</string>

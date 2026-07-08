@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">無法產生此裝置的代碼。</string>
     <string name="onboarding_join_enter_invite">接著輸入該裝置回傳給你的邀請碼。</string>
     <string name="onboarding_join_scan_invite">掃描邀請碼</string>
-    <string name="onboarding_join_paste_invite">貼上邀請碼</string>
-    <string name="onboarding_join_paste_invite_instructions">貼上你另一台裝置上的邀請碼。</string>
     <string name="onboarding_invite_code_placeholder">貼上邀請碼</string>
+    <string name="onboarding_invite_library">資料庫</string>
+    <string name="onboarding_invite_provider">提供者</string>
+    <string name="onboarding_invite_owner">擁有者</string>
+    <string name="onboarding_invite_invalid">此邀請碼無效。</string>
+    <string name="onboarding_invite_provider_mismatch">此資料庫需要已登入的提供者。請返回並選擇它使用的提供者。</string>
+    <string name="onboarding_invite_provider_unsupported">此資料庫使用的提供者無法在此版本中連線。</string>
     <string name="onboarding_join_action">加入</string>
     <string name="onboarding_joining_title">正在加入你的資料庫</string>
     <string name="onboarding_joining_body">bae 正在將此裝置加入你的資料庫。</string>

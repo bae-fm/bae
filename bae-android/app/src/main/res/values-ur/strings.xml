@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">اس آلے کا رمز نہیں بن سکا۔</string>
     <string name="onboarding_join_enter_invite">پھر وہ دعوتی رمز درج کریں جو آلہ آپ کو واپس دے۔</string>
     <string name="onboarding_join_scan_invite">دعوتی رمز اسکین کریں</string>
-    <string name="onboarding_join_paste_invite">دعوتی رمز پیسٹ کریں</string>
-    <string name="onboarding_join_paste_invite_instructions">اپنے دوسرے آلے کا دعوتی رمز پیسٹ کریں۔</string>
     <string name="onboarding_invite_code_placeholder">دعوتی رمز پیسٹ کریں</string>
+    <string name="onboarding_invite_library">کتب خانہ</string>
+    <string name="onboarding_invite_provider">فراہم کنندہ</string>
+    <string name="onboarding_invite_owner">مالک</string>
+    <string name="onboarding_invite_invalid">یہ دعوتی کوڈ درست نہیں ہے۔</string>
+    <string name="onboarding_invite_provider_mismatch">اس کتب خانے کو سائن ان شدہ فراہم کنندہ درکار ہے۔ واپس جائیں اور وہ فراہم کنندہ منتخب کریں جسے یہ استعمال کرتا ہے۔</string>
+    <string name="onboarding_invite_provider_unsupported">یہ کتب خانہ ایسا فراہم کنندہ استعمال کرتا ہے جس سے یہ بلڈ منسلک نہیں ہو سکتا۔</string>
     <string name="onboarding_join_action">شامل ہوں</string>
     <string name="onboarding_joining_title">آپ کے کتب خانے میں شامل ہو رہا ہے</string>
     <string name="onboarding_joining_body">bae یہ آلہ آپ کے کتب خانے میں شامل کر رہا ہے۔</string>

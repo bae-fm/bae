@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">Nije moguće generirati kod ovog uređaja.</string>
     <string name="onboarding_join_enter_invite">Zatim unesite pozivni kod koji vam taj uređaj vrati.</string>
     <string name="onboarding_join_scan_invite">Skeniraj pozivni kod</string>
-    <string name="onboarding_join_paste_invite">Zalijepi pozivni kod</string>
-    <string name="onboarding_join_paste_invite_instructions">Zalijepite pozivni kod s drugog uređaja.</string>
     <string name="onboarding_invite_code_placeholder">Zalijepi pozivni kod</string>
+    <string name="onboarding_invite_library">Fonoteka</string>
+    <string name="onboarding_invite_provider">Pružatelj</string>
+    <string name="onboarding_invite_owner">Vlasnik</string>
+    <string name="onboarding_invite_invalid">Ovaj kod pozivnice nije valjan.</string>
+    <string name="onboarding_invite_provider_mismatch">Ovoj fonoteci potreban je prijavljeni pružatelj. Vratite se i odaberite pružatelja kojeg koristi.</string>
+    <string name="onboarding_invite_provider_unsupported">Ova fonoteka koristi pružatelja s kojim se ova verzija ne može povezati.</string>
     <string name="onboarding_join_action">Pridruži se</string>
     <string name="onboarding_joining_title">Pridruživanje vašoj fonoteci</string>
     <string name="onboarding_joining_body">bae dodaje ovaj uređaj u vašu fonoteku.</string>

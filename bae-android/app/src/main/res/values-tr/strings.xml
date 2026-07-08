@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">Bu cihazın kodu oluşturulamadı.</string>
     <string name="onboarding_join_enter_invite">Sonra o cihazın size verdiği davet kodunu girin.</string>
     <string name="onboarding_join_scan_invite">Davet kodunu tara</string>
-    <string name="onboarding_join_paste_invite">Davet kodunu yapıştır</string>
-    <string name="onboarding_join_paste_invite_instructions">Diğer cihazınızdaki davet kodunu yapıştırın.</string>
     <string name="onboarding_invite_code_placeholder">Davet kodunu yapıştırın</string>
+    <string name="onboarding_invite_library">Arşiv</string>
+    <string name="onboarding_invite_provider">Sağlayıcı</string>
+    <string name="onboarding_invite_owner">Sahip</string>
+    <string name="onboarding_invite_invalid">Bu davet kodu geçerli değil.</string>
+    <string name="onboarding_invite_provider_mismatch">Bu arşiv, oturum açılmış bir sağlayıcı gerektiriyor. Geri dönün ve arşivin kullandığı sağlayıcıyı seçin.</string>
+    <string name="onboarding_invite_provider_unsupported">Bu arşiv, bu sürümün bağlanamayacağı bir sağlayıcı kullanıyor.</string>
     <string name="onboarding_join_action">Katıl</string>
     <string name="onboarding_joining_title">Arşivinize katılıyor</string>
     <string name="onboarding_joining_body">bae bu cihazı arşivinize ekliyor.</string>

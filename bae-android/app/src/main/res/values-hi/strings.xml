@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">इस उपकरण का कोड नहीं बनाया जा सका।</string>
     <string name="onboarding_join_enter_invite">फिर वह उपकरण जो आमंत्रण कोड देता है उसे दर्ज करें।</string>
     <string name="onboarding_join_scan_invite">आमंत्रण कोड स्कैन करें</string>
-    <string name="onboarding_join_paste_invite">आमंत्रण कोड पेस्ट करें</string>
-    <string name="onboarding_join_paste_invite_instructions">अपने दूसरे उपकरण से आमंत्रण कोड पेस्ट करें।</string>
     <string name="onboarding_invite_code_placeholder">आमंत्रण कोड पेस्ट करें</string>
+    <string name="onboarding_invite_library">लाइब्रेरी</string>
+    <string name="onboarding_invite_provider">प्रदाता</string>
+    <string name="onboarding_invite_owner">स्वामी</string>
+    <string name="onboarding_invite_invalid">यह आमंत्रण कोड मान्य नहीं है।</string>
+    <string name="onboarding_invite_provider_mismatch">इस लाइब्रेरी को साइन-इन किया हुआ प्रदाता चाहिए। वापस जाएँ और वह प्रदाता चुनें जिसे यह उपयोग करती है।</string>
+    <string name="onboarding_invite_provider_unsupported">यह लाइब्रेरी ऐसा प्रदाता उपयोग करती है जिससे यह बिल्ड कनेक्ट नहीं हो सकता।</string>
     <string name="onboarding_join_action">जुड़ें</string>
     <string name="onboarding_joining_title">आपकी लाइब्रेरी से जुड़ा जा रहा है</string>
     <string name="onboarding_joining_body">bae इस उपकरण को आपकी लाइब्रेरी में जोड़ रहा है।</string>

@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">இந்த சாதனத்தின் குறியீட்டை உருவாக்க முடியவில்லை.</string>
     <string name="onboarding_join_enter_invite">பிறகு அந்த சாதனம் தரும் அழைப்புக் குறியீட்டை உள்ளிடவும்.</string>
     <string name="onboarding_join_scan_invite">அழைப்புக் குறியீட்டை வருடு</string>
-    <string name="onboarding_join_paste_invite">அழைப்புக் குறியீட்டை ஒட்டு</string>
-    <string name="onboarding_join_paste_invite_instructions">உங்கள் மற்ற சாதனத்திலிருந்து அழைப்புக் குறியீட்டை ஒட்டவும்.</string>
     <string name="onboarding_invite_code_placeholder">அழைப்புக் குறியீட்டை ஒட்டு</string>
+    <string name="onboarding_invite_library">நூலகம்</string>
+    <string name="onboarding_invite_provider">வழங்குநர்</string>
+    <string name="onboarding_invite_owner">உரிமையாளர்</string>
+    <string name="onboarding_invite_invalid">இந்த அழைப்புக் குறியீடு செல்லாது.</string>
+    <string name="onboarding_invite_provider_mismatch">இந்த நூலகத்திற்கு உள்நுழைந்த வழங்குநர் தேவை. பின் சென்று அது பயன்படுத்தும் வழங்குநரைத் தேர்வு செய்யவும்.</string>
+    <string name="onboarding_invite_provider_unsupported">இந்த நூலகம் இந்த பதிப்பால் இணைக்க முடியாத வழங்குநரைப் பயன்படுத்துகிறது.</string>
     <string name="onboarding_join_action">சேர்</string>
     <string name="onboarding_joining_title">உங்கள் நூலகத்தில் சேர்கிறது</string>
     <string name="onboarding_joining_body">bae இந்த சாதனத்தை உங்கள் நூலகத்தில் சேர்க்கிறது.</string>

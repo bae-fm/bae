@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">לא ניתן ליצור את הקוד של המכשיר הזה.</string>
     <string name="onboarding_join_enter_invite">לאחר מכן הזינו את קוד ההזמנה שהמכשיר הזה נותן לכם בחזרה.</string>
     <string name="onboarding_join_scan_invite">סרוק קוד הזמנה</string>
-    <string name="onboarding_join_paste_invite">הדבק קוד הזמנה</string>
-    <string name="onboarding_join_paste_invite_instructions">הדביקו את קוד ההזמנה מהמכשיר האחר שלכם.</string>
     <string name="onboarding_invite_code_placeholder">הדבק את קוד ההזמנה</string>
+    <string name="onboarding_invite_library">ספרייה</string>
+    <string name="onboarding_invite_provider">ספק</string>
+    <string name="onboarding_invite_owner">בעלים</string>
+    <string name="onboarding_invite_invalid">קוד ההזמנה הזה אינו תקין.</string>
+    <string name="onboarding_invite_provider_mismatch">ספרייה זו דורשת ספק מחובר. חזרו ובחרו את הספק שבו היא משתמשת.</string>
+    <string name="onboarding_invite_provider_unsupported">ספרייה זו משתמשת בספק שגרסה זו אינה יכולה להתחבר אליו.</string>
     <string name="onboarding_join_action">הצטרף</string>
     <string name="onboarding_joining_title">מצטרף לספרייה שלך</string>
     <string name="onboarding_joining_body">bae מוסיף את המכשיר הזה לספרייה שלך.</string>

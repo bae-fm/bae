@@ -56,9 +56,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeInviteCodeInfo
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.JoinFromCodeOperation
 import uniffi.bae_bridge.RestoreFromCodeOperation
+import uniffi.bae_bridge.availableCloudProviders
+import uniffi.bae_bridge.decodeInviteCode
 import uniffi.bae_bridge.decodeRestoreCode
 import uniffi.bae_bridge.generateJoinRequest
 import uniffi.bae_bridge.joinFromCodeOperation
@@ -223,10 +226,40 @@ class JoinLauncher(
     var isAuthorizing by mutableStateOf(false)
         private set
 
+    // The invite code the approving device handed back, and its live decode:
+    // null before anything is entered, success once it parses, failure when it
+    // doesn't. Both drive the preview rows and the join gate.
+    var inviteInput by mutableStateOf("")
+        private set
+    private var decodedInvite by mutableStateOf<Result<BridgeInviteCodeInfo>?>(null)
+
+    // Whether this edition can connect to any OAuth provider. The S3-only
+    // edition's bindings offer only S3, so an OAuth library can't be joined here.
+    private val oauthSupported: Boolean = availableCloudProviders().any(::providerUsesOauth)
+
     // The token/email captured at provider selection: the token is reused for
     // the join, the email is baked into the generated code.
     private var oauthTokenJson: String? = null
     private var prepJob: Job? = null
+
+    /** The preview and join-gate state derived from the current invite input. */
+    val invitePreview: JoinInvitePreview
+        get() = joinInvitePreview(decodedInvite, oauthSupported, oauthTokenJson != null)
+
+    /** Whether the join action should be enabled for the current input. */
+    val joinReady: Boolean get() = joinEnabled(invitePreview)
+
+    /**
+     * Record the invite code the joiner typed or scanned and decode it live for
+     * the preview. Decoding is a local parse, so it runs inline as the code
+     * changes; a failure surfaces as the invalid-code preview, not a throw.
+     */
+    fun updateInvite(raw: String) {
+        inviteInput = raw
+        error = null
+        val trimmed = raw.trim()
+        decodedInvite = if (trimmed.isEmpty()) null else runCatching { decodeInviteCode(trimmed) }
+    }
 
     /**
      * Pick the provider the target library uses and prepare this device's
@@ -290,10 +323,13 @@ class JoinLauncher(
         generateError = null
         isAuthorizing = false
         oauthTokenJson = null
+        inviteInput = ""
+        decodedInvite = null
         error = null
     }
 
-    fun join(code: String) {
+    fun join() {
+        val code = inviteInput.trim()
         // Reuse the token captured at provider selection — no second OAuth.
         val oauthTokenJson = this.oauthTokenJson
         error = null
@@ -432,7 +468,10 @@ fun OnboardingScreen(
                     scanTarget = null
                     when (target) {
                         ScanTarget.RESTORE_CODE -> launcher.link(code, oauthLinking, oauthLinkingError)
-                        ScanTarget.INVITE_CODE -> joinLauncher.join(code)
+
+                        // Fill the invite field so the preview and provider check
+                        // show before the joiner commits to Join.
+                        ScanTarget.INVITE_CODE -> joinLauncher.updateInvite(code)
                     }
                 },
                 onDismiss = { scanTarget = null },

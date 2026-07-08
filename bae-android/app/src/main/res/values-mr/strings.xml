@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">या डिव्हाइसचा संकेत तयार करता आला नाही.</string>
     <string name="onboarding_join_enter_invite">मग ते डिव्हाइस परत देत असलेला आमंत्रण संकेत प्रविष्ट करा.</string>
     <string name="onboarding_join_scan_invite">आमंत्रण संकेत स्कॅन करा</string>
-    <string name="onboarding_join_paste_invite">आमंत्रण संकेत पेस्ट करा</string>
-    <string name="onboarding_join_paste_invite_instructions">तुमच्या दुसऱ्या डिव्हाइसवरील आमंत्रण संकेत पेस्ट करा.</string>
     <string name="onboarding_invite_code_placeholder">आमंत्रण संकेत पेस्ट करा</string>
+    <string name="onboarding_invite_library">संग्रहालय</string>
+    <string name="onboarding_invite_provider">प्रदाता</string>
+    <string name="onboarding_invite_owner">मालक</string>
+    <string name="onboarding_invite_invalid">हा आमंत्रण कोड वैध नाही.</string>
+    <string name="onboarding_invite_provider_mismatch">या संग्रहालयाला साइन-इन केलेला प्रदाता आवश्यक आहे. मागे जा आणि ते वापरत असलेला प्रदाता निवडा.</string>
+    <string name="onboarding_invite_provider_unsupported">हे संग्रहालय असा प्रदाता वापरते ज्याच्याशी हे बिल्ड कनेक्ट होऊ शकत नाही.</string>
     <string name="onboarding_join_action">जोडा</string>
     <string name="onboarding_joining_title">तुमच्या संग्रहालयात जोडत आहे</string>
     <string name="onboarding_joining_body">bae हे डिव्हाइस तुमच्या संग्रहालयात जोडत आहे.</string>

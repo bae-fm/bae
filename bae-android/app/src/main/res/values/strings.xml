@@ -197,9 +197,13 @@
     <string name="onboarding_join_generate_failed">Couldn\'t generate this device\'s code.</string>
     <string name="onboarding_join_enter_invite">Then enter the invite code that device gives you back.</string>
     <string name="onboarding_join_scan_invite">Scan invite code</string>
-    <string name="onboarding_join_paste_invite">Paste invite code</string>
-    <string name="onboarding_join_paste_invite_instructions">Paste the invite code from your other device.</string>
     <string name="onboarding_invite_code_placeholder">Paste the invite code</string>
+    <string name="onboarding_invite_library">Library</string>
+    <string name="onboarding_invite_provider">Provider</string>
+    <string name="onboarding_invite_owner">Owner</string>
+    <string name="onboarding_invite_invalid">This invite code isn\'t valid.</string>
+    <string name="onboarding_invite_provider_mismatch">This library needs a signed-in provider. Go back and choose the provider it uses.</string>
+    <string name="onboarding_invite_provider_unsupported">This library uses a provider this build can\'t connect to.</string>
     <string name="onboarding_join_action">Join</string>
     <string name="onboarding_joining_title">Joining your library</string>
     <string name="onboarding_joining_body">bae is adding this device to your library.</string>

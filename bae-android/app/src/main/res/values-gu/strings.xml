@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">આ ઉપકરણનો કોડ બનાવી શકાયો નહીં.</string>
     <string name="onboarding_join_enter_invite">પછી તે ઉપકરણ તમને પાછો આપે તે આમંત્રણ કોડ દાખલ કરો.</string>
     <string name="onboarding_join_scan_invite">આમંત્રણ કોડ સ્કેન કરો</string>
-    <string name="onboarding_join_paste_invite">આમંત્રણ કોડ ચોંટાડો</string>
-    <string name="onboarding_join_paste_invite_instructions">તમારા બીજા ઉપકરણ પરથી આમંત્રણ કોડ ચોંટાડો.</string>
     <string name="onboarding_invite_code_placeholder">આમંત્રણ કોડ ચોંટાડો</string>
+    <string name="onboarding_invite_library">લાઇબ્રેરી</string>
+    <string name="onboarding_invite_provider">પ્રદાતા</string>
+    <string name="onboarding_invite_owner">માલિક</string>
+    <string name="onboarding_invite_invalid">આ આમંત્રણ કોડ માન્ય નથી.</string>
+    <string name="onboarding_invite_provider_mismatch">આ લાઇબ્રેરીને સાઇન-ઇન કરેલ પ્રદાતાની જરૂર છે. પાછા જાઓ અને તે વાપરે છે તે પ્રદાતા પસંદ કરો.</string>
+    <string name="onboarding_invite_provider_unsupported">આ લાઇબ્રેરી એવો પ્રદાતા વાપરે છે જેની સાથે આ બિલ્ડ કનેક્ટ થઈ શકતું નથી.</string>
     <string name="onboarding_join_action">જોડાઓ</string>
     <string name="onboarding_joining_title">તમારી લાઇબ્રેરીમાં જોડાઈ રહ્યું છે</string>
     <string name="onboarding_joining_body">bae આ ઉપકરણને તમારી લાઇબ્રેરીમાં ઉમેરી રહ્યું છે.</string>

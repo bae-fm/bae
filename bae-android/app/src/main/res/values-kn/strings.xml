@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">ಈ ಸಾಧನದ ಕೋಡ್ ಸೃಷ್ಟಿಸಲಾಗಲಿಲ್ಲ.</string>
     <string name="onboarding_join_enter_invite">ನಂತರ ಆ ಸಾಧನ ನಿಮಗೆ ನೀಡುವ ಆಹ್ವಾನ ಕೋಡ್ ನಮೂದಿಸಿ.</string>
     <string name="onboarding_join_scan_invite">ಆಹ್ವಾನ ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ</string>
-    <string name="onboarding_join_paste_invite">ಆಹ್ವಾನ ಕೋಡ್ ಅಂಟಿಸಿ</string>
-    <string name="onboarding_join_paste_invite_instructions">ನಿಮ್ಮ ಇನ್ನೊಂದು ಸಾಧನದ ಆಹ್ವಾನ ಕೋಡ್ ಅಂಟಿಸಿ.</string>
     <string name="onboarding_invite_code_placeholder">ಆಹ್ವಾನ ಕೋಡ್ ಅಂಟಿಸಿ</string>
+    <string name="onboarding_invite_library">ಲೈಬ್ರರಿ</string>
+    <string name="onboarding_invite_provider">ಪೂರೈಕೆದಾರ</string>
+    <string name="onboarding_invite_owner">ಮಾಲೀಕ</string>
+    <string name="onboarding_invite_invalid">ಈ ಆಹ್ವಾನ ಕೋಡ್ ಮಾನ್ಯವಾಗಿಲ್ಲ.</string>
+    <string name="onboarding_invite_provider_mismatch">ಈ ಲೈಬ್ರರಿಗೆ ಸೈನ್-ಇನ್ ಆದ ಪೂರೈಕೆದಾರ ಅಗತ್ಯವಿದೆ. ಹಿಂದೆ ಹೋಗಿ ಅದು ಬಳಸುವ ಪೂರೈಕೆದಾರರನ್ನು ಆಯ್ಕೆಮಾಡಿ.</string>
+    <string name="onboarding_invite_provider_unsupported">ಈ ಲೈಬ್ರರಿ ಈ ಬಿಲ್ಡ್ ಸಂಪರ್ಕಿಸಲಾಗದ ಪೂರೈಕೆದಾರರನ್ನು ಬಳಸುತ್ತದೆ.</string>
     <string name="onboarding_join_action">ಸೇರಿ</string>
     <string name="onboarding_joining_title">ನಿಮ್ಮ ಲೈಬ್ರರಿಗೆ ಸೇರುತ್ತಿದೆ</string>
     <string name="onboarding_joining_body">bae ಈ ಸಾಧನವನ್ನು ನಿಮ್ಮ ಲೈಬ್ರರಿಗೆ ಸೇರಿಸುತ್ತಿದೆ.</string>

@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">이 기기의 코드를 생성할 수 없습니다.</string>
     <string name="onboarding_join_enter_invite">그런 다음 해당 기기가 제공하는 초대 코드를 입력하세요.</string>
     <string name="onboarding_join_scan_invite">초대 코드 스캔</string>
-    <string name="onboarding_join_paste_invite">초대 코드 붙여넣기</string>
-    <string name="onboarding_join_paste_invite_instructions">다른 기기의 초대 코드를 붙여넣으세요.</string>
     <string name="onboarding_invite_code_placeholder">초대 코드 붙여넣기</string>
+    <string name="onboarding_invite_library">라이브러리</string>
+    <string name="onboarding_invite_provider">공급자</string>
+    <string name="onboarding_invite_owner">소유자</string>
+    <string name="onboarding_invite_invalid">이 초대 코드는 유효하지 않습니다.</string>
+    <string name="onboarding_invite_provider_mismatch">이 라이브러리에는 로그인된 공급자가 필요합니다. 뒤로 돌아가 이 라이브러리가 사용하는 공급자를 선택하세요.</string>
+    <string name="onboarding_invite_provider_unsupported">이 라이브러리는 이 빌드에서 연결할 수 없는 공급자를 사용합니다.</string>
     <string name="onboarding_join_action">참여</string>
     <string name="onboarding_joining_title">라이브러리에 참여하는 중</string>
     <string name="onboarding_joining_body">bae가 이 기기를 라이브러리에 추가하는 중입니다.</string>

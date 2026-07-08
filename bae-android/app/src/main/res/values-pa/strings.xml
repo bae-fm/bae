@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">ਇਸ ਡਿਵਾਈਸ ਦਾ ਕੋਡ ਬਣਾਇਆ ਨਹੀਂ ਜਾ ਸਕਿਆ।</string>
     <string name="onboarding_join_enter_invite">ਫਿਰ ਉਹ ਸੱਦਾ ਕੋਡ ਦਾਖਲ ਕਰੋ ਜੋ ਉਹ ਡਿਵਾਈਸ ਤੁਹਾਨੂੰ ਵਾਪਸ ਦਿੰਦਾ ਹੈ।</string>
     <string name="onboarding_join_scan_invite">ਸੱਦਾ ਕੋਡ ਸਕੈਨ ਕਰੋ</string>
-    <string name="onboarding_join_paste_invite">ਸੱਦਾ ਕੋਡ ਪੇਸਟ ਕਰੋ</string>
-    <string name="onboarding_join_paste_invite_instructions">ਆਪਣੇ ਹੋਰ ਡਿਵਾਈਸ ਤੋਂ ਸੱਦਾ ਕੋਡ ਪੇਸਟ ਕਰੋ।</string>
     <string name="onboarding_invite_code_placeholder">ਸੱਦਾ ਕੋਡ ਪੇਸਟ ਕਰੋ</string>
+    <string name="onboarding_invite_library">ਲਾਇਬ੍ਰੇਰੀ</string>
+    <string name="onboarding_invite_provider">ਪ੍ਰਦਾਤਾ</string>
+    <string name="onboarding_invite_owner">ਮਾਲਕ</string>
+    <string name="onboarding_invite_invalid">ਇਹ ਸੱਦਾ ਕੋਡ ਜਾਇਜ਼ ਨਹੀਂ ਹੈ।</string>
+    <string name="onboarding_invite_provider_mismatch">ਇਸ ਲਾਇਬ੍ਰੇਰੀ ਨੂੰ ਸਾਈਨ-ਇਨ ਕੀਤਾ ਪ੍ਰਦਾਤਾ ਚਾਹੀਦਾ ਹੈ। ਵਾਪਸ ਜਾਓ ਅਤੇ ਉਹ ਪ੍ਰਦਾਤਾ ਚੁਣੋ ਜੋ ਇਹ ਵਰਤਦੀ ਹੈ।</string>
+    <string name="onboarding_invite_provider_unsupported">ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਅਜਿਹਾ ਪ੍ਰਦਾਤਾ ਵਰਤਦੀ ਹੈ ਜਿਸ ਨਾਲ ਇਹ ਬਿਲਡ ਕਨੈਕਟ ਨਹੀਂ ਹੋ ਸਕਦਾ।</string>
     <string name="onboarding_join_action">ਸ਼ਾਮਲ ਹੋਵੋ</string>
     <string name="onboarding_joining_title">ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋ ਰਿਹਾ ਹੈ</string>
     <string name="onboarding_joining_body">bae ਇਸ ਡਿਵਾਈਸ ਨੂੰ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਕਰ ਰਿਹਾ ਹੈ।</string>

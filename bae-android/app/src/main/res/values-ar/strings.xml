@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">تعذر إنشاء رمز هذا الجهاز.</string>
     <string name="onboarding_join_enter_invite">ثم أدخل رمز الدعوة الذي يعطيك إياه ذلك الجهاز.</string>
     <string name="onboarding_join_scan_invite">مسح رمز الدعوة</string>
-    <string name="onboarding_join_paste_invite">لصق رمز الدعوة</string>
-    <string name="onboarding_join_paste_invite_instructions">الصق رمز الدعوة من جهازك الآخر.</string>
     <string name="onboarding_invite_code_placeholder">لصق رمز الدعوة</string>
+    <string name="onboarding_invite_library">المكتبة</string>
+    <string name="onboarding_invite_provider">المزود</string>
+    <string name="onboarding_invite_owner">المالك</string>
+    <string name="onboarding_invite_invalid">رمز الدعوة هذا غير صالح.</string>
+    <string name="onboarding_invite_provider_mismatch">تحتاج هذه المكتبة إلى مزود مسجّل الدخول. ارجع واختر المزود الذي تستخدمه.</string>
+    <string name="onboarding_invite_provider_unsupported">تستخدم هذه المكتبة مزودًا لا يمكن لهذا الإصدار الاتصال به.</string>
     <string name="onboarding_join_action">انضمام</string>
     <string name="onboarding_joining_title">جارٍ الانضمام إلى مكتبتك</string>
     <string name="onboarding_joining_body">يقوم bae بإضافة هذا الجهاز إلى مكتبتك.</string>

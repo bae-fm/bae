@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">Не вдалося створити код цього пристрою.</string>
     <string name="onboarding_join_enter_invite">Потім введіть код запрошення, який цей пристрій надасть у відповідь.</string>
     <string name="onboarding_join_scan_invite">Сканувати код запрошення</string>
-    <string name="onboarding_join_paste_invite">Вставити код запрошення</string>
-    <string name="onboarding_join_paste_invite_instructions">Вставте код запрошення з іншого пристрою.</string>
     <string name="onboarding_invite_code_placeholder">Вставте код запрошення</string>
+    <string name="onboarding_invite_library">Бібліотека</string>
+    <string name="onboarding_invite_provider">Провайдер</string>
+    <string name="onboarding_invite_owner">Власник</string>
+    <string name="onboarding_invite_invalid">Цей код запрошення недійсний.</string>
+    <string name="onboarding_invite_provider_mismatch">Ця бібліотека потребує провайдера з виконаним входом. Поверніться й виберіть провайдера, який вона використовує.</string>
+    <string name="onboarding_invite_provider_unsupported">Ця бібліотека використовує провайдера, до якого ця збірка не може підключитися.</string>
     <string name="onboarding_join_action">Приєднатися</string>
     <string name="onboarding_joining_title">Приєднання до вашої бібліотеки</string>
     <string name="onboarding_joining_body">bae додає цей пристрій до вашої бібліотеки.</string>

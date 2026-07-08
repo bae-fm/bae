@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">Nepodařilo se vygenerovat kód tohoto zařízení.</string>
     <string name="onboarding_join_enter_invite">Potom zadejte zvací kód, který vám toto zařízení vrátí.</string>
     <string name="onboarding_join_scan_invite">Naskenovat zvací kód</string>
-    <string name="onboarding_join_paste_invite">Vložit zvací kód</string>
-    <string name="onboarding_join_paste_invite_instructions">Vložte zvací kód z druhého zařízení.</string>
     <string name="onboarding_invite_code_placeholder">Vložte zvací kód</string>
+    <string name="onboarding_invite_library">Knihovna</string>
+    <string name="onboarding_invite_provider">Poskytovatel</string>
+    <string name="onboarding_invite_owner">Vlastník</string>
+    <string name="onboarding_invite_invalid">Tento kód pozvánky není platný.</string>
+    <string name="onboarding_invite_provider_mismatch">Tato knihovna vyžaduje přihlášeného poskytovatele. Vraťte se a vyberte poskytovatele, kterého používá.</string>
+    <string name="onboarding_invite_provider_unsupported">Tato knihovna používá poskytovatele, ke kterému se toto sestavení nemůže připojit.</string>
     <string name="onboarding_join_action">Připojit se</string>
     <string name="onboarding_joining_title">Připojování k vaší knihovně</string>
     <string name="onboarding_joining_body">bae přidává toto zařízení do vaší knihovny.</string>

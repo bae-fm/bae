@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">无法生成此设备的代码。</string>
     <string name="onboarding_join_enter_invite">然后输入那台设备返回给你的邀请码。</string>
     <string name="onboarding_join_scan_invite">扫描邀请码</string>
-    <string name="onboarding_join_paste_invite">粘贴邀请码</string>
-    <string name="onboarding_join_paste_invite_instructions">粘贴你另一台设备上的邀请码。</string>
     <string name="onboarding_invite_code_placeholder">粘贴邀请码</string>
+    <string name="onboarding_invite_library">曲库</string>
+    <string name="onboarding_invite_provider">提供商</string>
+    <string name="onboarding_invite_owner">所有者</string>
+    <string name="onboarding_invite_invalid">此邀请码无效。</string>
+    <string name="onboarding_invite_provider_mismatch">此曲库需要已登录的提供商。请返回并选择它所使用的提供商。</string>
+    <string name="onboarding_invite_provider_unsupported">此曲库使用的提供商无法在此版本中连接。</string>
     <string name="onboarding_join_action">加入</string>
     <string name="onboarding_joining_title">正在加入你的曲库</string>
     <string name="onboarding_joining_body">bae 正在将此设备添加到你的曲库。</string>

@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">Kan de code van dit apparaat niet genereren.</string>
     <string name="onboarding_join_enter_invite">Voer daarna de uitnodigingscode in die dat apparaat teruggeeft.</string>
     <string name="onboarding_join_scan_invite">Uitnodigingscode scannen</string>
-    <string name="onboarding_join_paste_invite">Uitnodigingscode plakken</string>
-    <string name="onboarding_join_paste_invite_instructions">Plak de uitnodigingscode van je andere apparaat.</string>
     <string name="onboarding_invite_code_placeholder">Plak de uitnodigingscode</string>
+    <string name="onboarding_invite_library">Bibliotheek</string>
+    <string name="onboarding_invite_provider">Provider</string>
+    <string name="onboarding_invite_owner">Eigenaar</string>
+    <string name="onboarding_invite_invalid">Deze uitnodigingscode is ongeldig.</string>
+    <string name="onboarding_invite_provider_mismatch">Deze bibliotheek heeft een aangemelde provider nodig. Ga terug en kies de provider die deze gebruikt.</string>
+    <string name="onboarding_invite_provider_unsupported">Deze bibliotheek gebruikt een provider waarmee deze build geen verbinding kan maken.</string>
     <string name="onboarding_join_action">Deelnemen</string>
     <string name="onboarding_joining_title">Deelnemen aan je bibliotheek</string>
     <string name="onboarding_joining_body">bae voegt dit apparaat toe aan je bibliotheek.</string>

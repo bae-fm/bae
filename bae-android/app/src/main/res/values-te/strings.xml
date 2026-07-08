@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">ఈ పరికరం కోడ్‌ను సృష్టించలేకపోయింది.</string>
     <string name="onboarding_join_enter_invite">తర్వాత ఆ పరికరం మీకు ఇచ్చే ఆహ్వాన కోడ్‌ను నమోదు చేయండి.</string>
     <string name="onboarding_join_scan_invite">ఆహ్వాన కోడ్‌ను స్కాన్ చేయి</string>
-    <string name="onboarding_join_paste_invite">ఆహ్వాన కోడ్‌ను అతికించు</string>
-    <string name="onboarding_join_paste_invite_instructions">మీ ఇతర పరికరం నుంచి ఆహ్వాన కోడ్‌ను అతికించండి.</string>
     <string name="onboarding_invite_code_placeholder">ఆహ్వాన కోడ్‌ను అతికించండి</string>
+    <string name="onboarding_invite_library">లైబ్రరీ</string>
+    <string name="onboarding_invite_provider">ప్రదాత</string>
+    <string name="onboarding_invite_owner">యజమాని</string>
+    <string name="onboarding_invite_invalid">ఈ ఆహ్వాన కోడ్ చెల్లదు.</string>
+    <string name="onboarding_invite_provider_mismatch">ఈ లైబ్రరీకి సైన్ ఇన్ చేసిన ప్రదాత అవసరం. వెనక్కి వెళ్లి అది ఉపయోగించే ప్రదాతను ఎంచుకోండి.</string>
+    <string name="onboarding_invite_provider_unsupported">ఈ లైబ్రరీ ఈ బిల్డ్ కనెక్ట్ కాలేని ప్రదాతను ఉపయోగిస్తుంది.</string>
     <string name="onboarding_join_action">చేరు</string>
     <string name="onboarding_joining_title">మీ లైబ్రరీలో చేరుతోంది</string>
     <string name="onboarding_joining_body">bae ఈ పరికరాన్ని మీ లైబ్రరీకి జోడిస్తోంది.</string>

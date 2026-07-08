@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">Impossibile generare il codice di questo dispositivo.</string>
     <string name="onboarding_join_enter_invite">Poi inserisci il codice invito che quel dispositivo restituisce.</string>
     <string name="onboarding_join_scan_invite">Scansiona codice invito</string>
-    <string name="onboarding_join_paste_invite">Incolla codice invito</string>
-    <string name="onboarding_join_paste_invite_instructions">Incolla il codice invito dall\'altro dispositivo.</string>
     <string name="onboarding_invite_code_placeholder">Incolla il codice invito</string>
+    <string name="onboarding_invite_library">Libreria</string>
+    <string name="onboarding_invite_provider">Provider</string>
+    <string name="onboarding_invite_owner">Proprietario</string>
+    <string name="onboarding_invite_invalid">Questo codice di invito non è valido.</string>
+    <string name="onboarding_invite_provider_mismatch">Questa libreria richiede un provider con accesso effettuato. Torna indietro e scegli il provider che utilizza.</string>
+    <string name="onboarding_invite_provider_unsupported">Questa libreria usa un provider a cui questa versione non può connettersi.</string>
     <string name="onboarding_join_action">Unisciti</string>
     <string name="onboarding_joining_title">Accesso alla tua libreria</string>
     <string name="onboarding_joining_body">bae sta aggiungendo questo dispositivo alla tua libreria.</string>

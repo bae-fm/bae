@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">Nie udało się wygenerować kodu tego urządzenia.</string>
     <string name="onboarding_join_enter_invite">Następnie wpisz kod zaproszenia podany przez tamto urządzenie.</string>
     <string name="onboarding_join_scan_invite">Skanuj kod zaproszenia</string>
-    <string name="onboarding_join_paste_invite">Wklej kod zaproszenia</string>
-    <string name="onboarding_join_paste_invite_instructions">Wklej kod zaproszenia z drugiego urządzenia.</string>
     <string name="onboarding_invite_code_placeholder">Wklej kod zaproszenia</string>
+    <string name="onboarding_invite_library">Biblioteka</string>
+    <string name="onboarding_invite_provider">Dostawca</string>
+    <string name="onboarding_invite_owner">Właściciel</string>
+    <string name="onboarding_invite_invalid">Ten kod zaproszenia jest nieprawidłowy.</string>
+    <string name="onboarding_invite_provider_mismatch">Ta biblioteka wymaga zalogowanego dostawcy. Wróć i wybierz dostawcę, którego używa.</string>
+    <string name="onboarding_invite_provider_unsupported">Ta biblioteka używa dostawcy, z którym ta kompilacja nie może się połączyć.</string>
     <string name="onboarding_join_action">Dołącz</string>
     <string name="onboarding_joining_title">Dołączanie do Twojej biblioteki</string>
     <string name="onboarding_joining_body">bae dodaje to urządzenie do Twojej biblioteki.</string>

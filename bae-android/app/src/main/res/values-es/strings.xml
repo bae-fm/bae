@@ -155,9 +155,13 @@
     <string name="onboarding_join_generate_failed">No se pudo generar el código de este dispositivo.</string>
     <string name="onboarding_join_enter_invite">Luego introduce el código de invitación que te devuelva ese dispositivo.</string>
     <string name="onboarding_join_scan_invite">Escanear código de invitación</string>
-    <string name="onboarding_join_paste_invite">Pegar código de invitación</string>
-    <string name="onboarding_join_paste_invite_instructions">Pega el código de invitación de tu otro dispositivo.</string>
     <string name="onboarding_invite_code_placeholder">Pegar el código de invitación</string>
+    <string name="onboarding_invite_library">Biblioteca</string>
+    <string name="onboarding_invite_provider">Proveedor</string>
+    <string name="onboarding_invite_owner">Propietario</string>
+    <string name="onboarding_invite_invalid">Este código de invitación no es válido.</string>
+    <string name="onboarding_invite_provider_mismatch">Esta biblioteca necesita un proveedor con sesión iniciada. Vuelve y elige el proveedor que usa.</string>
+    <string name="onboarding_invite_provider_unsupported">Esta biblioteca usa un proveedor al que esta versión no puede conectarse.</string>
     <string name="onboarding_join_action">Unirse</string>
     <string name="onboarding_joining_title">Uniéndote a tu biblioteca</string>
     <string name="onboarding_joining_body">bae está añadiendo este dispositivo a tu biblioteca.</string>
