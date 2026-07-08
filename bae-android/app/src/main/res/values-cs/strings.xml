@@ -74,6 +74,8 @@
     <string name="settings_local_only">Pouze místně</string>
     <string name="settings_synced">Synchronizováno</string>
     <string name="settings_syncing">Synchronizace…</string>
+    <string name="settings_sync_disconnected">Odpojeno</string>
+    <string name="settings_reconnect">Znovu připojit</string>
     <string name="settings_pause_between_sides">Pauza mezi stranami</string>
     <string name="settings_devices">Zařízení</string>
     <string name="settings_manage_devices">Spravovat zařízení</string>

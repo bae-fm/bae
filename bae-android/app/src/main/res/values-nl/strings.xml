@@ -74,6 +74,8 @@
     <string name="settings_local_only">Alleen lokaal</string>
     <string name="settings_synced">Gesynchroniseerd</string>
     <string name="settings_syncing">Synchroniseren…</string>
+    <string name="settings_sync_disconnected">Verbinding verbroken</string>
+    <string name="settings_reconnect">Opnieuw verbinden</string>
     <string name="settings_pause_between_sides">Pauze tussen kanten</string>
     <string name="settings_devices">Apparaten</string>
     <string name="settings_manage_devices">Apparaten beheren</string>

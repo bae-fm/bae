@@ -74,6 +74,8 @@
     <string name="settings_local_only">फक्त स्थानिक</string>
     <string name="settings_synced">समक्रमण</string>
     <string name="settings_syncing">समक्रमण</string>
+    <string name="settings_sync_disconnected">कनेक्शन तुटले</string>
+    <string name="settings_reconnect">पुन्हा कनेक्ट करा</string>
     <string name="settings_pause_between_sides">बाजूंमध्ये विराम</string>
     <string name="settings_devices">डिव्हाइसेस</string>
     <string name="settings_manage_devices">डिव्हाइसेस व्यवस्थापित करा</string>

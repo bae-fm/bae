@@ -83,6 +83,7 @@ fun SettingsScreen(
 ) {
     val config by session.configStore.config.collectAsState()
     val syncReady by session.configStore.syncReady.collectAsState()
+    val syncError by session.configStore.syncError.collectAsState()
     val allLibraries by libraries.collectAsState()
     var confirmLeave by remember { mutableStateOf(false) }
     var showRecoveryCode by remember { mutableStateOf(false) }
@@ -101,9 +102,14 @@ fun SettingsScreen(
             session = session,
             config = config,
             syncReady = syncReady,
+            syncError = syncError,
             ioDispatcher = ioDispatcher,
         )
-        if (config.sync != null) {
+        // Managing devices and revealing the recovery code both read the
+        // membership chain from the library's cloud storage, so they need a live
+        // sync session this run — gate on runtime sync readiness, not merely a
+        // configured provider (which can be present while sync is broken).
+        if (syncReady) {
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             SettingsDevicesSection(
                 onManageDevices = onManageDevices,
@@ -197,11 +203,39 @@ private fun SettingsLibrarySection(
     }
 }
 
+/**
+ * The sync row's rendered state, derived from the runtime sync snapshot. A
+ * present error means the last sync cycle failed and the row offers a
+ * reconnect; an absent error falls back to whether the loop is up ([Synced]) or
+ * still coming up ([Syncing]). Only meaningful when a cloud provider is
+ * configured — the error takes precedence over readiness.
+ */
+internal sealed interface SettingsSyncStatus {
+    data class Disconnected(
+        val error: String,
+    ) : SettingsSyncStatus
+
+    data object Synced : SettingsSyncStatus
+
+    data object Syncing : SettingsSyncStatus
+}
+
+internal fun settingsSyncStatus(
+    syncError: String?,
+    syncReady: Boolean,
+): SettingsSyncStatus =
+    when {
+        syncError != null -> SettingsSyncStatus.Disconnected(syncError)
+        syncReady -> SettingsSyncStatus.Synced
+        else -> SettingsSyncStatus.Syncing
+    }
+
 @Composable
 private fun SettingsConfigSection(
     session: OpenLibrary,
     config: BridgeConfig,
     syncReady: Boolean,
+    syncError: String?,
     ioDispatcher: CoroutineDispatcher,
 ) {
     val context = LocalContext.current
@@ -217,10 +251,10 @@ private fun SettingsConfigSection(
         )
         Text(stringResource(if (config.sync != null) R.string.settings_cloud_sync_on else R.string.settings_local_only))
         if (config.sync != null) {
-            Text(
-                text = stringResource(if (syncReady) R.string.settings_synced else R.string.settings_syncing),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            SettingsSyncStatusRow(
+                syncError = syncError,
+                syncReady = syncReady,
+                onReconnect = { session.appHandle.triggerSync() },
             )
         }
         Row(
@@ -253,6 +287,49 @@ private fun SettingsConfigSection(
             )
         }
     }
+}
+
+/**
+ * The sync status line under "Cloud sync on": either a failure with its message
+ * and a reconnect action, or the live loop's synced/coming-up state. Rendered
+ * only when a cloud provider is configured.
+ */
+@Composable
+private fun SettingsSyncStatusRow(
+    syncError: String?,
+    syncReady: Boolean,
+    onReconnect: () -> Unit,
+) {
+    when (val status = settingsSyncStatus(syncError, syncReady)) {
+        is SettingsSyncStatus.Disconnected -> {
+            Text(
+                text = stringResource(R.string.settings_sync_disconnected),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+            SyncStatusDetail(status.error)
+            OutlinedButton(onClick = onReconnect) {
+                Text(stringResource(R.string.settings_reconnect))
+            }
+        }
+
+        SettingsSyncStatus.Synced -> {
+            SyncStatusDetail(stringResource(R.string.settings_synced))
+        }
+
+        SettingsSyncStatus.Syncing -> {
+            SyncStatusDetail(stringResource(R.string.settings_syncing))
+        }
+    }
+}
+
+@Composable
+private fun SyncStatusDetail(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable

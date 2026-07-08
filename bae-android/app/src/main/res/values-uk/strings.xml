@@ -74,6 +74,8 @@
     <string name="settings_local_only">Лише локально</string>
     <string name="settings_synced">Синхронізовано</string>
     <string name="settings_syncing">Синхронізація…</string>
+    <string name="settings_sync_disconnected">Відключено</string>
+    <string name="settings_reconnect">Підключити знову</string>
     <string name="settings_pause_between_sides">Пауза між сторонами</string>
     <string name="settings_devices">Пристрої</string>
     <string name="settings_manage_devices">Керувати пристроями</string>

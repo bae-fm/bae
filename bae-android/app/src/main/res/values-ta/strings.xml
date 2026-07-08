@@ -74,6 +74,8 @@
     <string name="settings_local_only">உள்ளூரில் மட்டும்</string>
     <string name="settings_synced">ஒத்திசைவு</string>
     <string name="settings_syncing">ஒத்திசைவு</string>
+    <string name="settings_sync_disconnected">இணைப்பு துண்டிக்கப்பட்டது</string>
+    <string name="settings_reconnect">மீண்டும் இணை</string>
     <string name="settings_pause_between_sides">பக்கங்களுக்கு இடையில் இடைநிறுத்து</string>
     <string name="settings_devices">சாதனங்கள்</string>
     <string name="settings_manage_devices">சாதனங்களை நிர்வகி</string>

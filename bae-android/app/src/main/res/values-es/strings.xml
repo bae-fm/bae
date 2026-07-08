@@ -74,6 +74,8 @@
     <string name="settings_local_only">Solo local</string>
     <string name="settings_synced">Sincronizado</string>
     <string name="settings_syncing">Sincronizando…</string>
+    <string name="settings_sync_disconnected">Desconectado</string>
+    <string name="settings_reconnect">Reconectar</string>
     <string name="settings_pause_between_sides">Pausa entre caras</string>
     <string name="settings_devices">Dispositivos</string>
     <string name="settings_manage_devices">Gestionar dispositivos</string>

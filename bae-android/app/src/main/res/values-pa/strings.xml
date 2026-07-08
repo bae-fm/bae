@@ -74,6 +74,8 @@
     <string name="settings_local_only">ਕੇਵਲ ਲੋਕਲ</string>
     <string name="settings_synced">ਸਿੰਕ</string>
     <string name="settings_syncing">ਸਿੰਕ</string>
+    <string name="settings_sync_disconnected">ਡਿਸਕਨੈਕਟ ਹੋ ਗਿਆ</string>
+    <string name="settings_reconnect">ਮੁੜ ਕਨੈਕਟ ਕਰੋ</string>
     <string name="settings_pause_between_sides">ਸਾਈਡਾਂ ਵਿਚਕਾਰ ਠਹਿਰਾਓ</string>
     <string name="settings_devices">ਡਿਵਾਈਸ</string>
     <string name="settings_manage_devices">ਡਿਵਾਈਸ ਸੰਭਾਲੋ</string>

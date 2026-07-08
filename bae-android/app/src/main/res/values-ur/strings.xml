@@ -74,6 +74,8 @@
     <string name="settings_local_only">صرف مقامی</string>
     <string name="settings_synced">مطابقت پذیری</string>
     <string name="settings_syncing">مطابقت پذیری</string>
+    <string name="settings_sync_disconnected">منقطع</string>
+    <string name="settings_reconnect">دوبارہ جوڑیں</string>
     <string name="settings_pause_between_sides">اطراف کے درمیان وقفہ</string>
     <string name="settings_devices">آلات</string>
     <string name="settings_manage_devices">آلات کا انتظام کریں</string>

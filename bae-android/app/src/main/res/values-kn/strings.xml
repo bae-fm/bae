@@ -74,6 +74,8 @@
     <string name="settings_local_only">ಸ್ಥಳೀಯ ಮಾತ್ರ</string>
     <string name="settings_synced">ಸಿಂಕ್</string>
     <string name="settings_syncing">ಸಿಂಕ್</string>
+    <string name="settings_sync_disconnected">ಸಂಪರ್ಕ ಕಡಿತಗೊಂಡಿದೆ</string>
+    <string name="settings_reconnect">ಮರುಸಂಪರ್ಕಿಸಿ</string>
     <string name="settings_pause_between_sides">ಬದಿಗಳ ನಡುವೆ ವಿರಾಮ</string>
     <string name="settings_devices">ಸಾಧನಗಳು</string>
     <string name="settings_manage_devices">ಸಾಧನಗಳನ್ನು ನಿರ್ವಹಿಸಿ</string>

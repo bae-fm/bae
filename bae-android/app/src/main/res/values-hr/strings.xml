@@ -74,6 +74,8 @@
     <string name="settings_local_only">Samo lokalno</string>
     <string name="settings_synced">Sinkronizirano</string>
     <string name="settings_syncing">Sinkronizacija…</string>
+    <string name="settings_sync_disconnected">Veza prekinuta</string>
+    <string name="settings_reconnect">Ponovno poveži</string>
     <string name="settings_pause_between_sides">Pauza između strana</string>
     <string name="settings_devices">Uređaji</string>
     <string name="settings_manage_devices">Upravljanje uređajima</string>

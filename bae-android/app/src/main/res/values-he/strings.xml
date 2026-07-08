@@ -74,6 +74,8 @@
     <string name="settings_local_only">מקומי בלבד</string>
     <string name="settings_synced">מסונכרן</string>
     <string name="settings_syncing">מסנכרן…</string>
+    <string name="settings_sync_disconnected">מנותק</string>
+    <string name="settings_reconnect">התחבר מחדש</string>
     <string name="settings_pause_between_sides">השהיה בין צדדים</string>
     <string name="settings_devices">מכשירים</string>
     <string name="settings_manage_devices">נהל מכשירים</string>

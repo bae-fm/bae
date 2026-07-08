@@ -74,6 +74,8 @@
     <string name="settings_local_only">માત્ર સ્થાનિક</string>
     <string name="settings_synced">સિંક</string>
     <string name="settings_syncing">સિંક</string>
+    <string name="settings_sync_disconnected">જોડાણ તૂટ્યું</string>
+    <string name="settings_reconnect">ફરી જોડો</string>
     <string name="settings_pause_between_sides">બાજુઓ વચ્ચે વિરામ</string>
     <string name="settings_devices">ઉપકરણો</string>
     <string name="settings_manage_devices">ઉપકરણો સંભાળો</string>

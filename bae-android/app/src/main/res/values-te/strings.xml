@@ -74,6 +74,8 @@
     <string name="settings_local_only">లోకల్ మాత్రమే</string>
     <string name="settings_synced">సింక్</string>
     <string name="settings_syncing">సింక్</string>
+    <string name="settings_sync_disconnected">కనెక్షన్ తెగింది</string>
+    <string name="settings_reconnect">మళ్లీ కనెక్ట్ చేయండి</string>
     <string name="settings_pause_between_sides">వైపుల మధ్య విరామం</string>
     <string name="settings_devices">పరికరాలు</string>
     <string name="settings_manage_devices">పరికరాలను నిర్వహించు</string>

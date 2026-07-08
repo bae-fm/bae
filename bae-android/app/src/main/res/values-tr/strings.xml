@@ -74,6 +74,8 @@
     <string name="settings_local_only">Yalnızca yerel</string>
     <string name="settings_synced">Eşzamanlandı</string>
     <string name="settings_syncing">Eşzamanlanıyor…</string>
+    <string name="settings_sync_disconnected">Bağlantı kesildi</string>
+    <string name="settings_reconnect">Yeniden bağlan</string>
     <string name="settings_pause_between_sides">Yüzler arasında duraklat</string>
     <string name="settings_devices">Cihazlar</string>
     <string name="settings_manage_devices">Cihazları yönet</string>

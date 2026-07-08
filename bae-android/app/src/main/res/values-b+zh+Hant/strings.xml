@@ -74,6 +74,8 @@
     <string name="settings_local_only">僅本機</string>
     <string name="settings_synced">同步</string>
     <string name="settings_syncing">同步</string>
+    <string name="settings_sync_disconnected">已中斷連接</string>
+    <string name="settings_reconnect">重新連接</string>
     <string name="settings_pause_between_sides">面與面之間暫停</string>
     <string name="settings_devices">裝置</string>
     <string name="settings_manage_devices">管理裝置</string>

@@ -74,6 +74,8 @@
     <string name="settings_local_only">محلي فقط</string>
     <string name="settings_synced">تمت المزامنة</string>
     <string name="settings_syncing">جارٍ المزامنة…</string>
+    <string name="settings_sync_disconnected">غير متصل</string>
+    <string name="settings_reconnect">إعادة الاتصال</string>
     <string name="settings_pause_between_sides">إيقاف مؤقت بين الجانبين</string>
     <string name="settings_devices">الأجهزة</string>
     <string name="settings_manage_devices">إدارة الأجهزة</string>

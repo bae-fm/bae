@@ -74,6 +74,8 @@
     <string name="settings_local_only">শুধু স্থানীয়</string>
     <string name="settings_synced">সিঙ্ক</string>
     <string name="settings_syncing">সিঙ্ক</string>
+    <string name="settings_sync_disconnected">সংযোগ বিচ্ছিন্ন</string>
+    <string name="settings_reconnect">পুনরায় সংযোগ করুন</string>
     <string name="settings_pause_between_sides">সাইডের মাঝে বিরতি</string>
     <string name="settings_devices">ডিভাইস</string>
     <string name="settings_manage_devices">ডিভাইস পরিচালনা করুন</string>
