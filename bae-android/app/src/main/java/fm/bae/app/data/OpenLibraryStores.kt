@@ -4,4 +4,5 @@ class OpenLibraryStores(
     val library: LibraryStore,
     val config: ConfigStore,
     val downloads: DownloadStore,
+    val outbox: OutboxStore,
 )

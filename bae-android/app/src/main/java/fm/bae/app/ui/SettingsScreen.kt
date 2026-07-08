@@ -203,33 +203,6 @@ private fun SettingsLibrarySection(
     }
 }
 
-/**
- * The sync row's rendered state, derived from the runtime sync snapshot. A
- * present error means the last sync cycle failed and the row offers a
- * reconnect; an absent error falls back to whether the loop is up ([Synced]) or
- * still coming up ([Syncing]). Only meaningful when a cloud provider is
- * configured — the error takes precedence over readiness.
- */
-internal sealed interface SettingsSyncStatus {
-    data class Disconnected(
-        val error: String,
-    ) : SettingsSyncStatus
-
-    data object Synced : SettingsSyncStatus
-
-    data object Syncing : SettingsSyncStatus
-}
-
-internal fun settingsSyncStatus(
-    syncError: String?,
-    syncReady: Boolean,
-): SettingsSyncStatus =
-    when {
-        syncError != null -> SettingsSyncStatus.Disconnected(syncError)
-        syncReady -> SettingsSyncStatus.Synced
-        else -> SettingsSyncStatus.Syncing
-    }
-
 @Composable
 private fun SettingsConfigSection(
     session: OpenLibrary,
@@ -250,11 +223,13 @@ private fun SettingsConfigSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(stringResource(if (config.sync != null) R.string.settings_cloud_sync_on else R.string.settings_local_only))
-        if (config.sync != null) {
-            SettingsSyncStatusRow(
-                syncError = syncError,
+        config.sync?.let { sync ->
+            SyncConnectedControls(
+                session = session,
+                sync = sync,
                 syncReady = syncReady,
-                onReconnect = { session.appHandle.triggerSync() },
+                syncError = syncError,
+                ioDispatcher = ioDispatcher,
             )
         }
         Row(
@@ -287,49 +262,6 @@ private fun SettingsConfigSection(
             )
         }
     }
-}
-
-/**
- * The sync status line under "Cloud sync on": either a failure with its message
- * and a reconnect action, or the live loop's synced/coming-up state. Rendered
- * only when a cloud provider is configured.
- */
-@Composable
-private fun SettingsSyncStatusRow(
-    syncError: String?,
-    syncReady: Boolean,
-    onReconnect: () -> Unit,
-) {
-    when (val status = settingsSyncStatus(syncError, syncReady)) {
-        is SettingsSyncStatus.Disconnected -> {
-            Text(
-                text = stringResource(R.string.settings_sync_disconnected),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-            SyncStatusDetail(status.error)
-            OutlinedButton(onClick = onReconnect) {
-                Text(stringResource(R.string.settings_reconnect))
-            }
-        }
-
-        SettingsSyncStatus.Synced -> {
-            SyncStatusDetail(stringResource(R.string.settings_synced))
-        }
-
-        SettingsSyncStatus.Syncing -> {
-            SyncStatusDetail(stringResource(R.string.settings_syncing))
-        }
-    }
-}
-
-@Composable
-private fun SyncStatusDetail(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
 }
 
 @Composable

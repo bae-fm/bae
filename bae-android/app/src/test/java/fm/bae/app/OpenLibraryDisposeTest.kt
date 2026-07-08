@@ -5,6 +5,7 @@ import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.OpenLibraryStores
+import fm.bae.app.data.OutboxStore
 import fm.bae.app.playback.BaeCorePlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,6 +62,7 @@ class OpenLibraryDisposeTest {
                         library = LibraryStore(),
                         config = ConfigStore(BridgeFixtures.config(), initialSyncReady = false),
                         downloads = DownloadStore(BridgeFixtures.downloadSnapshot()),
+                        outbox = OutboxStore(BridgeFixtures.outboxSnapshot()),
                     ),
                 playback =
                     BaeCorePlayer(

@@ -118,6 +118,19 @@
     <string name="settings_remove_library_confirm_title">Remove this library from this device?</string>
     <string name="settings_remove_library_confirm_body">Your library in the cloud is untouched. You can re-pair this device later.</string>
     <string name="settings_remove">Remove</string>
+    <string name="settings_provider">Provider</string>
+    <string name="settings_account">Account</string>
+    <string name="settings_bucket">Bucket</string>
+    <string name="settings_region">Region</string>
+    <string name="settings_endpoint">Endpoint</string>
+    <string name="settings_disconnect">Disconnect</string>
+    <string name="settings_disconnect_confirm_title">Disconnect sync?</string>
+    <string name="settings_disconnect_body">This will stop syncing and remove the cloud provider configuration.</string>
+    <string name="settings_disconnect_reconnect_hint">To sync this library again, pair this device from another device.</string>
+    <string name="settings_disconnect_failed">Failed to disconnect: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Couldn\'t check for cloud-only releases: %1$s</string>
+    <string name="settings_pause_uploads">Pause uploads</string>
+    <string name="settings_pause_uploads_footer">While paused, changes wait on this device and upload when you resume.</string>
 
     <!-- Devices (membership) -->
     <string name="members_title">Devices</string>

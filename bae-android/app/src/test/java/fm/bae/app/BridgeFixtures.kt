@@ -13,11 +13,13 @@ import uniffi.bae_bridge.BridgeExportSelection
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeMcpConfig
+import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
+import uniffi.bae_bridge.BridgeUploadProgress
 import uniffi.bae_bridge.BridgeWorkSummary
 
 /**
@@ -162,6 +164,27 @@ object BridgeFixtures {
                     failed = failed,
                 ),
             paused = paused,
+        )
+
+    fun outboxSnapshot(paused: Boolean = false): BridgeOutboxSnapshot =
+        BridgeOutboxSnapshot(
+            uploadGroups = emptyList(),
+            deletes = emptyList(),
+            perRelease = emptyMap(),
+            total =
+                BridgeUploadProgress(
+                    queued = 0u,
+                    active = 0u,
+                    failed = 0u,
+                    bytesDone = 0uL,
+                    bytesTotal = 0uL,
+                    activity = null,
+                ),
+            activeBytesTotal = 0uL,
+            pendingDeletes = 0u,
+            paused = paused,
+            throughputBps = 0uL,
+            etaSeconds = null,
         )
 
     fun library(

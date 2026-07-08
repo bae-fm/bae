@@ -10,6 +10,7 @@ import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.OpenLibraryStores
+import fm.bae.app.data.OutboxStore
 import fm.bae.app.data.UiEventAdapter
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackService
@@ -28,6 +29,7 @@ import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeLibrary
+import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.UiEventCallback
 import uniffi.bae_bridge.initApp
@@ -61,6 +63,7 @@ class OpenLibrary(
     val libraryStore: LibraryStore get() = stores.library
     val configStore: ConfigStore get() = stores.config
     val downloadStore: DownloadStore get() = stores.downloads
+    val outboxStore: OutboxStore get() = stores.outbox
     private var eventChannel: Channel<BridgeUiEvent>? = null
     private var eventJob: Job? = null
 
@@ -313,11 +316,14 @@ object AppSessionHolder {
                 return
             }
 
+            val initialOutbox = withContext(Dispatchers.IO) { handle.getOutboxSnapshot() }
+
             // A different library was open: tear it down before swapping.
             current?.dispose()
             current = null
 
-            val session = buildSession(libraryId, handle, config, context.applicationContext)
+            val session =
+                buildSession(libraryId, handle, config, initialOutbox, context.applicationContext)
             current = session
             session.wireUp(appScope)
             onScreen(AppScreen.LibraryOpen(session))
@@ -336,6 +342,7 @@ object AppSessionHolder {
         libraryId: String,
         handle: AppHandle,
         config: BridgeConfig,
+        initialOutbox: BridgeOutboxSnapshot,
         appContext: Context,
     ): OpenLibrary =
         OpenLibrary(
@@ -346,6 +353,7 @@ object AppSessionHolder {
                     library = LibraryStore(),
                     config = ConfigStore(config, handle.isSyncReady()),
                     downloads = DownloadStore(handle.getDownloadSnapshot()),
+                    outbox = OutboxStore(initialOutbox),
                 ),
             playback =
                 BaeCorePlayer(

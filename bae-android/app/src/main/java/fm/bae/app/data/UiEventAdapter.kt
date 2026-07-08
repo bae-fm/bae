@@ -249,8 +249,12 @@ object UiEventAdapter {
                 stores.downloads.setSnapshot(snapshot)
             }
 
+            BridgeInvalidation.Outbox -> {
+                val snapshot = withContext(Dispatchers.IO) { appHandle.getOutboxSnapshot() }
+                stores.outbox.setSnapshot(snapshot)
+            }
+
             BridgeInvalidation.Queue,
-            BridgeInvalidation.Outbox,
             BridgeInvalidation.ExportQueue,
             BridgeInvalidation.ImportCandidateList,
             is BridgeInvalidation.ImportCandidate,
