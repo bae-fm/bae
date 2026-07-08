@@ -39,12 +39,22 @@ struct DisconnectSyncFlowTests {
             nil
         },
         disconnect: @escaping @Sendable () throws -> Void = {},
-        deleteRestoreCode: @escaping () -> Void = {}
+        deleteRestoreCode: @escaping () -> Void = {},
+        baseMessage: @escaping () -> String = { "Disconnect." },
+        warningCheckFailedMessage: @escaping (String) -> String = {
+            "check failed: \($0)"
+        },
+        disconnectFailedMessage: @escaping (String) -> String = {
+            "disconnect failed: \($0)"
+        }
     ) -> DisconnectSyncFlow {
         DisconnectSyncFlow(
             warningMessage: warningMessage,
             disconnect: disconnect,
-            deleteRestoreCode: deleteRestoreCode
+            deleteRestoreCode: deleteRestoreCode,
+            baseMessage: baseMessage,
+            warningCheckFailedMessage: warningCheckFailedMessage,
+            disconnectFailedMessage: disconnectFailedMessage
         )
     }
 

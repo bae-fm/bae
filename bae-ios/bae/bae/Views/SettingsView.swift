@@ -195,6 +195,26 @@ private struct SyncConnectedControls: View {
                 disconnect: sync.disconnectCloudProvider,
                 deleteRestoreCode: {
                     KeychainService.deleteRestoreCode(libraryId: libraryId)
+                },
+                baseMessage: {
+                    String(
+                        localized:
+                            "This will stop syncing and remove the cloud provider configuration."
+                    )
+                        + " "
+                        + String(
+                            localized:
+                                "To sync this library again, pair this device from another device."
+                        )
+                },
+                warningCheckFailedMessage: {
+                    String(
+                        localized:
+                            "Couldn't check for cloud-only releases: \($0)"
+                    )
+                },
+                disconnectFailedMessage: {
+                    String(localized: "Failed to disconnect: \($0)")
                 }
             )
         )

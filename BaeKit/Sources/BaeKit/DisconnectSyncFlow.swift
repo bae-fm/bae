@@ -1,12 +1,17 @@
-import BaeKit
 import Foundation
+import Observation
 import os.log
 
 private let logger = Logger.bae("DisconnectSyncFlow")
 
 /// Confirmation-and-execution model for disconnecting the cloud provider from
-/// this device. Built with injected closures so the view supplies the live
-/// bridge calls and tests supply stubs.
+/// this device, shared by the macOS and iOS settings screens. Built with
+/// injected closures so each platform supplies its live bridge/keychain calls,
+/// its localized message text (the base sentence differs — iOS notes that
+/// reconnecting needs another device because it has no provider-setup flow,
+/// macOS omits that because it does), and its error-string templates (tests and
+/// the shared package can't resolve an app catalog's localized strings, so the
+/// app resolving them owns them).
 ///
 /// Two ordering invariants the flow enforces:
 /// - the disconnect runs off the main actor, because bae-core joins the
@@ -16,7 +21,7 @@ private let logger = Logger.bae("DisconnectSyncFlow")
 ///   disconnect invalidates, so a failed disconnect must leave it in place.
 @MainActor
 @Observable
-final class DisconnectSyncFlow {
+public final class DisconnectSyncFlow {
     /// bae-core's pre-formatted at-risk sentence when releases live only in the
     /// cloud, or `nil` when nothing is at risk.
     private let warningMessage: @Sendable () async throws -> String?
@@ -25,52 +30,56 @@ final class DisconnectSyncFlow {
     private let disconnect: @Sendable () throws -> Void
     /// Removes this library's restore code from the iCloud keychain.
     private let deleteRestoreCode: () -> Void
+    /// The platform's base confirmation sentence, resolved against the app's
+    /// localized catalog.
+    private let baseMessage: () -> String
+    /// Builds the inline error shown when the at-risk check itself fails, from
+    /// the error's description.
+    private let warningCheckFailedMessage: (String) -> String
+    /// Builds the inline error shown when the disconnect fails, from the error's
+    /// description.
+    private let disconnectFailedMessage: (String) -> String
 
     /// Whether the confirmation dialog is shown.
-    var showConfirm = false
+    public var showConfirm = false
     /// bae-core's pre-formatted at-risk sentence to append to the confirmation
     /// body, or `nil` when nothing is at risk (or the check failed).
-    var extraWarning: String?
+    public var extraWarning: String?
     /// Inline error line for the Sync section, or `nil`.
-    var error: String?
+    public var error: String?
 
     @ObservationIgnored
     private var warningTask: Task<Void, Never>?
 
-    init(
+    public init(
         warningMessage: @escaping @Sendable () async throws -> String?,
         disconnect: @escaping @Sendable () throws -> Void,
-        deleteRestoreCode: @escaping () -> Void
+        deleteRestoreCode: @escaping () -> Void,
+        baseMessage: @escaping () -> String,
+        warningCheckFailedMessage: @escaping (String) -> String,
+        disconnectFailedMessage: @escaping (String) -> String
     ) {
         self.warningMessage = warningMessage
         self.disconnect = disconnect
         self.deleteRestoreCode = deleteRestoreCode
+        self.baseMessage = baseMessage
+        self.warningCheckFailedMessage = warningCheckFailedMessage
+        self.disconnectFailedMessage = disconnectFailedMessage
     }
 
-    /// Confirmation body: the base sentence, the note that reconnecting needs
-    /// another device (iOS has no provider-setup flow), and — when releases
-    /// live only in the cloud — bae-core's pre-formatted at-risk sentence
-    /// appended verbatim.
-    var message: String {
-        var text = String(
-            localized:
-                "This will stop syncing and remove the cloud provider configuration."
-        )
-        text +=
-            " "
-            + String(
-                localized:
-                    "To sync this library again, pair this device from another device."
-            )
-        guard let extraWarning else { return text }
-        return "\(text) \(extraWarning)"
+    /// Confirmation body: the platform's base sentence and — when releases live
+    /// only in the cloud — bae-core's pre-formatted at-risk sentence appended
+    /// verbatim.
+    public var message: String {
+        guard let extraWarning else { return baseMessage() }
+        return "\(baseMessage()) \(extraWarning)"
     }
 
     /// Query the at-risk warning, then open the confirmation. If the query
     /// itself fails, surface the error inline (so the user sees the data-loss
     /// check didn't run) and still open the confirmation so they can proceed
     /// or cancel.
-    func promptDisconnect() {
+    public func promptDisconnect() {
         error = nil
         warningTask?.cancel()
         warningTask = Task {
@@ -84,9 +93,8 @@ final class DisconnectSyncFlow {
                 logger.error(
                     "Failed to compute disconnect warning: \(error.localizedDescription)"
                 )
-                self.error = String(
-                    localized:
-                        "Couldn't check for cloud-only releases: \(error.localizedDescription)"
+                self.error = warningCheckFailedMessage(
+                    error.localizedDescription
                 )
                 extraWarning = nil
             }
@@ -95,14 +103,14 @@ final class DisconnectSyncFlow {
     }
 
     /// Cancel an in-flight warning query when the view disappears.
-    func cancelWarningTask() {
+    public func cancelWarningTask() {
         warningTask?.cancel()
     }
 
     /// Disconnect off the main actor, then — only on success — delete the
     /// restore code. On failure the code is left untouched and the error is
     /// shown inline.
-    func confirm() async {
+    public func confirm() async {
         let disconnect = disconnect
         do {
             try await DetachedWork.run { try disconnect() }
@@ -111,9 +119,7 @@ final class DisconnectSyncFlow {
         }
         catch {
             logger.error("Failed to disconnect: \(error.localizedDescription)")
-            self.error = String(
-                localized: "Failed to disconnect: \(error.localizedDescription)"
-            )
+            self.error = disconnectFailedMessage(error.localizedDescription)
         }
     }
 }

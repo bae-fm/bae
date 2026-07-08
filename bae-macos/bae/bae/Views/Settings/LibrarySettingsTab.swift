@@ -18,20 +18,9 @@ struct LibrarySettingsTab: View {
     var outboxStore
 
     @State
-    private var error: String?
-    @State
     private var showSyncSetup = false
     @State
-    private var showDisconnectConfirm = false
-    @State
     private var showForgetConfirm = false
-    /// Captured at the moment the user clicks Disconnect: bae-core's
-    /// pre-formatted warning when releases live only in the cloud (`nil`
-    /// when no releases are at risk).
-    @State
-    private var disconnectExtraWarning: String?
-    @State
-    private var disconnectWarningTask: Task<Void, Never>?
 
     private var isConnected: Bool {
         configStore.syncReady
@@ -62,10 +51,11 @@ struct LibrarySettingsTab: View {
             Section("Sync") {
                 SyncErrorBanner(onReconnect: { showSyncSetup = true })
 
-                if let sync = configStore.config.sync {
-                    CloudProviderConnectedSection(
-                        config: sync,
-                        onDisconnect: { promptDisconnect() },
+                if let syncConfig = configStore.config.sync {
+                    ConnectedProviderControls(
+                        config: syncConfig,
+                        sync: sync,
+                        libraryId: configStore.config.libraryId
                     )
                 }
                 else {
@@ -73,12 +63,6 @@ struct LibrarySettingsTab: View {
                         showSyncSetup = true
                     }
                 }
-            }
-
-            if let error {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .font(.callout)
             }
 
             if isConnected {
@@ -118,14 +102,6 @@ struct LibrarySettingsTab: View {
                 },
             )
         }
-        .alert("Disconnect sync?", isPresented: $showDisconnectConfirm) {
-            Button("Disconnect", role: .destructive) {
-                disconnect()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(disconnectMessage)
-        }
         .alert(
             "Remove this library from this Mac?",
             isPresented: $showForgetConfirm
@@ -141,9 +117,6 @@ struct LibrarySettingsTab: View {
                     hasPendingCloudWork: outboxStore.hasPendingCloudWork
                 )
             )
-        }
-        .onDisappear {
-            disconnectWarningTask?.cancel()
         }
     }
 
@@ -192,71 +165,78 @@ struct LibrarySettingsTab: View {
         return "\(base) \(extra)"
     }
 
-    /// Body text for the disconnect confirmation. bae-core pre-formats the
-    /// data-loss warning when releases live only in the cloud; the view just
-    /// stitches it onto the base sentence.
-    private var disconnectMessage: String {
-        let base = String(
-            localized:
-                "This will stop syncing and remove the cloud provider configuration."
-        )
-        guard let extra = disconnectExtraWarning else { return base }
-        return "\(base) \(extra)"
-    }
-
-    // MARK: - Actions
-
-    /// Query the disconnect warning text, then surface the confirmation
-    /// alert. If the count itself fails, render the error inline (so the
-    /// user knows they're proceeding without the data-loss check) and
-    /// still open the alert so the user can choose to continue or cancel.
-    private func promptDisconnect() {
-        error = nil
-        disconnectWarningTask?.cancel()
-        disconnectWarningTask = Task {
-            do {
-                disconnectExtraWarning =
-                    try await sync.disconnectWarningMessage()
-            }
-            catch is CancellationError {
-                return
-            }
-            catch {
-                logger.error(
-                    "Failed to compute disconnect warning: \(error.localizedDescription)"
-                )
-                self.error = String(
-                    localized:
-                        "Couldn't check for cloud-only releases: \(error.localizedDescription)"
-                )
-                disconnectExtraWarning = nil
-            }
-            showDisconnectConfirm = true
-        }
-    }
-
-    private func disconnect() {
-        do {
-            try sync.disconnectCloudProvider()
-            error = nil
-            KeychainService.deleteRestoreCode(
-                libraryId: configStore.config.libraryId
-            )
-        }
-        catch {
-            logger.error("Failed to disconnect: \(error.localizedDescription)")
-            self.error = String(
-                localized:
-                    "Failed to disconnect: \(error.localizedDescription)"
-            )
-        }
-    }
-
     private func storeRestoreCode() {
         sync.storeRestoreCodeInKeychain(
             libraryId: configStore.config.libraryId,
             onError: { [uiStore] in uiStore.showError($0) }
         )
+    }
+}
+
+/// The connected-provider controls in the Sync section: the provider details
+/// and the disconnect flow. Split into its own view so it can seed the shared
+/// `DisconnectSyncFlow` as `@State` from the sync service and library id —
+/// values a parent can't read at `@State` init time because they come from the
+/// environment. macOS's base confirmation sentence omits iOS's "pair from
+/// another device" note because it has a reconnect flow.
+private struct ConnectedProviderControls: View {
+    let config: BridgeSyncConfig
+
+    @State
+    private var flow: DisconnectSyncFlow
+
+    init(config: BridgeSyncConfig, sync: Sync, libraryId: String) {
+        self.config = config
+        _flow = State(
+            initialValue: DisconnectSyncFlow(
+                warningMessage: sync.disconnectWarningMessage,
+                disconnect: sync.disconnectCloudProvider,
+                deleteRestoreCode: {
+                    KeychainService.deleteRestoreCode(libraryId: libraryId)
+                },
+                baseMessage: {
+                    String(
+                        localized:
+                            "This will stop syncing and remove the cloud provider configuration."
+                    )
+                },
+                warningCheckFailedMessage: {
+                    String(
+                        localized:
+                            "Couldn't check for cloud-only releases: \($0)"
+                    )
+                },
+                disconnectFailedMessage: {
+                    String(localized: "Failed to disconnect: \($0)")
+                }
+            )
+        )
+    }
+
+    var body: some View {
+        @Bindable
+        var flow = flow
+        Group {
+            CloudProviderConnectedSection(
+                config: config,
+                onDisconnect: { flow.promptDisconnect() }
+            )
+
+            if let error = flow.error {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .font(.callout)
+            }
+        }
+        .alert("Disconnect sync?", isPresented: $flow.showConfirm) {
+            Button("Disconnect", role: .destructive) {
+                Task { await flow.confirm() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(flow.message)
+        }
+        .onDisappear { flow.cancelWarningTask() }
     }
 }
 
