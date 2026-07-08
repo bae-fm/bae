@@ -1,0 +1,39 @@
+---
+title: रिलीज और मेटाडेटा
+description: रिलीज के स्तर पर सही लाइब्रेरी, और उसे सही रखने का तरीका
+---
+
+अधिकांश music ऐप "एक एल्बम" model करते हैं: एक शीर्षक, एक कवर, एक ट्रैक list। असली collections ऐसे काम नहीं करते। आपके पास उसी record की मूल CD, remaster, और vinyl प्रेसिंग हो सकती है, और वे ट्रैक lists, timings, चित्र, और credits में अलग होती हैं। bae **रिलीज** model करता है: हर आयात एक specific प्रेसिंग है, और same एल्बम की pressings साथ grouped होती हैं।
+
+## एल्बम रिलीज को साथ रखते हैं
+
+लाइब्रेरी में, कई pressings वाला एल्बम एक entry है। एल्बम पेज रिलीज picker दिखाता है; हर रिलीज अपनी ट्रैक list, कवर, year, label, catalog number, और credits रखती है। एक रिलीज **primary** होती है: एल्बम grid और playback उसी को डिफॉल्ट मानते हैं। Album menu से किसी भी रिलीज को primary set करें, और सुनने के लिए कभी भी दूसरी रिलीज चुनें; bae आपकी choice per एल्बम याद रखता है।
+
+## रिलीज क्या जानती है
+
+पहचानी गई रिलीज databases का ज्ञान रखती हैं, केवल ट्रैक names नहीं:
+
+- प्रेसिंग details: label, catalog number, barcode, country, फ़ॉर्मैट, year।
+- Credits: performers, producers, engineers, per रिलीज और per ट्रैक।
+- Classical संरचना: composers, works, और उनके parts, उनसे जुड़ी recordings से linked। लाइब्रेरी का composer view इसी से बनता है; देखें [ब्राउजिंग और खोज](/hi/guide/browsing)।
+- Identity: यह कौन सी MusicBrainz या Discogs entry है, और match exact है या approximate।
+
+Raw स्रोत records भी रखे जाते हैं, ताकि रिलीज को बाद में databases से फिर पूछे बिना re-interpret किया जा सके।
+
+## Editing
+
+मेटाडेटा आपका है, आप सुधार सकते हैं। किसी भी रिलीज पर **Edit मेटाडेटा** वही form खोलता है जो आयात confirmation इस्तेमाल करता है: एल्बम शीर्षक और कलाकार, प्रेसिंग details, और हर ट्रैक का शीर्षक, कलाकार, और numbering। **Reset to स्रोत** डेटाबेस ने जो कहा था उस पर वापस लाता है।
+
+Edits केवल bae के डेटाबेस में रहते हैं। आपकी फाइलें के embedded tags कभी rewrite नहीं होते; फाइलें imported रूप में बाइट-for-बाइट रहती हैं।
+
+## Re-identify
+
+अगर कोई रिलीज unknown के रूप में imported थी, गलत प्रेसिंग से matched थी, या डेटाबेस तब से बेहतर हुआ है, **Re-identify** existing रिलीज पर identification flow फिर चलाता है: वही signals, वही search tools। New match कमिट होने के बाद, bae पूछता है कि new स्रोत से मेटाडेटा refresh करना है (आपके edits overwrite करते हुए) या जो आपके पास है उसे रखना है।
+
+## Covers
+
+हर रिलीज का एक display कवर होता है। **Change कवर** databases की चित्र और रिलीज के साथ आई image फाइलें देता है। bae चुने हुए कवर की अपनी copy रखता है, display के लिए sized, ताकि आपके फोल्डर का मूल स्कैन untouched रहे। किसी भी कवर पर tap करके रिलीज की images की full gallery खोलें।
+
+## Deleting
+
+रिलीज delete करने से वह लाइब्रेरी से हटती है और प्रबंधित रिलीज के लिए आपके क्लाउड home से भी। जो फाइलें in place, अप्रबंधित आयात हुई थीं, वे कभी delete नहीं होतीं: bae केवल उन्हें भूलता है।

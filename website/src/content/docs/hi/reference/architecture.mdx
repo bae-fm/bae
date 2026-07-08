@@ -1,0 +1,41 @@
+---
+title: वास्तुकला
+description: coven पर एक Rust core से बने native ऐप
+---
+
+bae चार native ऐप के भीतर एक Rust core है। product, लाइब्रेरी मॉडल, आयात, प्लेबैक, समन्वय और एन्क्रिप्शन को परिभाषित करने वाली हर चीज Rust में रहती है और हर प्लेटफॉर्म पर समान व्यवहार करती है; हर ऐप उसके ऊपर बना native UI है।
+
+## परतें
+
+- **`bae-core`**: product। लाइब्रेरी और मेटाडेटा मॉडल, आयात और पहचान pipelines, FFmpeg प्लेबैक इंजन, ध्वनि-स्तर विश्लेषण, निर्यात, और नीचे coven से जुड़ाव। आयात और पहचान केवल डेस्कटॉप पर compile होते हैं; mobile builds समन्वय और प्लेबैक clients हैं।
+- **[coven](https://coven.bae.fm)**: डेटा परत, अलग लाइब्रेरी। coven SQLite connection का मालिक है, bae द्वारा कमिट किए गए हर बदलाव को पकड़ता है, और उन बदलावों को उपयोगकर्ता के क्लाउड संग्रहण के जरिए end-to-end encrypted समन्वयित करता है। यह blob संग्रहण (ऑडियो बाइट, चित्र), स्थानीय कैश, पहचान कुंजियां और सदस्यता भी संभालता है। bae ठीक coven revision पिन करता है और उसे हर binary में stamp करता है; वही builds के बीच समन्वय-compatibility generation तय करता है।
+- **`bae-bridge`**: UniFFI सीमा। Bridge types Rust में एक बार define होते हैं और build time पर Swift और Kotlin में generate होते हैं।
+- **ऐप**: macOS और iOS पर SwiftUI, Android पर Jetpack Compose, और native Windows ऐप। हर ऐप वे प्लेटफ़ॉर्म हिस्से भी implement करता है जिनकी core को जरूरत होती है: audio आउटपुट, चित्र text recognition, media controls, keychain access, crash reporting।
+
+ऐप के साथ: `bae-mcp` (MCP server), `bae-cli` (command line), और `bae-automation` (shared tool layer जिसे दोनों उपयोग करते हैं)।
+
+## disk पर एक लाइब्रेरी
+
+लाइब्रेरी `~/.bae/libraries/<लाइब्रेरी-id>/` में रहती है (mobile पर प्लेटफ़ॉर्म डेटा directory):
+
+```
+~/.bae/libraries/<id>/
+  लाइब्रेरी.db        # SQLite: catalog, credits, playback specs
+  config.yaml       # उपकरण-स्थानीय सेटिंग, never synced
+  संग्रहण/
+    स्थानीय/          # blobs this उपकरण owns (कवर, कलाकार images)
+    कैश/          # evictable copies of क्लाउड blobs
+    pinned/         # pinned-for-offline copies, never evicted
+```
+
+Database केवल coven के जरिए खुलता है, जो bae के schema के पास अपनी bookkeeping टेबल (समन्वय cursors, outbox, blob state) रखता है और bae की migrations चलाता है। अप्रबंधित रूप से आयात की गई audio फाइलें `~/.bae` के नीचे नहीं होतीं: डेटाबेस उन्हें उन्हीं paths पर संदर्भित करता है जहां से वे आयात हुई थीं।
+
+Secrets इन फाइलों में कभी नहीं रहते। Identity कुंजियां, लाइब्रेरी encryption कुंजी, क्लाउड credentials और API टोकन OS keyring में रहते हैं (Apple platforms पर Keychain, iCloud Keychain से synced; बाकी जगह प्लेटफ़ॉर्म equivalents)।
+
+## editions
+
+हर प्लेटफ़ॉर्म पर दो build-time editions हैं। **bae** OAuth providers (Google Drive, Dropbox, OneDrive), CloudKit और telemetry compile करता है। **baeium** यह सब compile out करता है: केवल S3-compatible संग्रहण, कोई telemetry नहीं, dependency tree में कुछ proprietary नहीं। editions वही स्रोत और वही core साझा करते हैं; feature flag provider list और diagnostics wiring तय करता है।
+
+## versioning
+
+ऐप हर प्लेटफ़ॉर्म पर `MAJOR.MINOR` के रूप में version होते हैं। Major compatibility era है, हर ऐप में साझा: same major वाले उपकरण लाइब्रेरी समन्वय कर सकते हैं। यह केवल तब bump होता है जब wire या on-disk फ़ॉर्मैट टूटता है, अधिकतर पिन की गई coven revision के कारण। Minors हर ऐप की रिलीज़ें गिनते हैं और platforms के बीच तुलनीय नहीं होते।

@@ -1,0 +1,28 @@
+---
+title: एन्क्रिप्शन
+description: लाइब्रेरी कुंजी क्या है, वह कहां रहती है, और प्रदाता कौन सा ciphertext रखता है
+---
+
+Opaque क्लाउड home में bae जो कुछ रखता है वह उपकरण छोड़ने से पहले encrypted होता है। bae अपनी cryptography implement नहीं करता: पूरी योजना [coven](https://coven.bae.fm) की है, और यह पेज बताता है कि bae उसे कैसे उपयोग करता है। Browsable homes इससे बाहर रहते हैं; नीचे की कोई बात उन पर लागू नहीं होती।
+
+## लाइब्रेरी कुंजी
+
+Opaque लाइब्रेरी का एक root secret होता है: random 256-bit कुंजी, जो home बनाते समय बनाई जाती है। यह OS keyring में रहती है, कभी फाइल में नहीं; Apple platforms पर keyring entry iCloud Keychain से समन्वयित होती है। bae का config केवल कुंजी का fingerprint रखता है, इतना कि unlock पर secret पकड़े बिना गलत कुंजी को सही कुंजी से अलग बता सके।
+
+कुंजी उपकरणों के बीच दो तरीकों से जाती है, दोनों [पहचान और सदस्यता](/hi/reference/membership) में बताए गए हैं: invite के दौरान approved उपकरण की public कुंजी से sealed, और recovery code के भीतर रखी हुई।
+
+## पीढ़ियां
+
+लाइब्रेरी कुंजी असल में क्रमांकित पीढ़ियों की keyring है। सदस्य हटाने पर नई पीढ़ी जुड़ती है जो हटाए गए सदस्य को कभी नहीं मिलती: उसके बाद लिखा गया सब नई पीढ़ी उपयोग करता है और उसके लिए पढ़ा नहीं जा सकता, जबकि बचे हुए सदस्य हर पीढ़ी रखते हैं और पूरा इतिहास पढ़ सकते हैं। हर sealed object खुली जानकारी में दर्ज करता है कि उसे कौन सी पीढ़ी खोलती है।
+
+## क्या seal होता है
+
+Home का हर object: changesets, snapshots, audio blobs, चित्र, membership records, control objects। Objects XChaCha20-Poly1305 से 64 KB chunks में sealed होते हैं, हर chunk authenticated होता है, और अपने context से बंधा होता है: sealed object केवल वही object बनकर decrypt होता है जिसके रूप में वह लिखा गया था, इस लाइब्रेरी के लिए, इस कुंजी पर। Chunking की वजह से streaming चलती है; player ठीक वही बाइट ranges decrypt कर सकता है जिन्हें वह लाता है।
+
+## प्रदाता क्या देख सकता है
+
+Object count, object sizes, अपलोड timing और access patterns। नाम नहीं, मेटाडेटा नहीं, audio नहीं, चित्र नहीं, membership नहीं। Server-side recovery नहीं है: उपयोगकर्ता अगर हर उपकरण और कुंजी की हर copy खो देता है, तो लाइब्रेरी का ciphertext हमेशा के लिए खो गया; यही design है।
+
+## unlock और lock
+
+लाइब्रेरी खोलना keyring से कुंजी पढ़ता है। अगर लाइब्रेरी कुंजी चाहती है और keyring में वह नहीं है, bae लाइब्रेरी को locked मानता है: खोलने से पहले कुंजी मांगता है, entry को stored fingerprint से validate करता है, फिर उसे keyring में वापस save करता है। लाइब्रेरी lock करना जानबूझकर keyring से कुंजी हटाता है; क्लाउड home में कुछ भी तब तक पढ़ा या लिखा नहीं जा सकता जब तक उसे फिर enter न किया जाए।

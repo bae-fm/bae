@@ -1,0 +1,40 @@
+---
+title: समन्वय
+description: बदलाव उपकरणों के बीच कैसे जाते हैं और कैसे मिलते हैं
+---
+
+bae का समन्वय [coven](https://coven.bae.fm) का समन्वय है: bae अपनी टेबल और blobs घोषित करता है, और coven बाकी काम करता है। यह पेज वही यांत्रिकी बताता है जैसे वे bae पर लागू होती हैं; coven के अपने दस्तावेज हर हिस्से को पूरी गहराई में बताते हैं।
+
+## पकड़ना
+
+coven SQLite connection का मालिक है, इसलिए bae द्वारा कमिट किया गया हर लेखन उससे होकर गुजरता है। SQLite का session extension ठीक-ठीक दर्ज करता है कि हर transaction में क्या बदला; समन्वयित टेबल के बदलाव **changeset** बनते हैं, लाइब्रेरी कुंजी से sealed और उपकरण की identity कुंजी से signed। कोई diffing नहीं, कोई dirty flags नहीं: पकड़ना connection की property है, और कोई लेखन छूट नहीं सकता।
+
+## स्ट्रीम
+
+हर उपकरण क्लाउड घर में अपनी स्ट्रीम पर changesets जोड़ता है, क्रमांकित रूप से। उपकरण एक-दूसरे की streams पर कभी नहीं लिखते, इसलिए संग्रहण में write conflicts नहीं होते, और हर उपकरण हर peer stream के लिए cursor रखता है। समन्वय चक्र स्थानीय outbox push करता है, फिर हर peer की स्ट्रीम अपने cursor से आगे pull करता है, और लागू करने से पहले हर changeset की signature तथा लेखक की membership सत्यापित करता है।
+
+चक्र स्थानीय बदलावों के बाद, backoff वाले idle timer पर (polls के बीच अधिकतम पांच मिनट), और **Sync Now** पर तुरंत चलता है। विफलताएं back off करके फिर कोशिश करती हैं; loop हर चक्र का नतीजा UI को status, error text और लागू पंक्तियों की संख्या के रूप में बताता है।
+
+## मिलान
+
+दो उपकरणों पर अलग-अलग रहते हुए एक ही लाइब्रेरी edit होना सामान्य स्थिति है, अपवाद नहीं। जब उनके बदलाव मिलते हैं:
+
+- **अलग पंक्तियों या अलग columns** पर edits दोनों लागू होते हैं। Laptop पर रिलीज का year बदलना और desktop पर उसका label बदलना, दोनों नतीजे देता है।
+- **उसी पंक्ति के उसी column** पर edits पंक्ति के `_updated_at` hybrid logical clock से क्रमित होते हैं: बाद वाला edit जीतता है, निश्चित रूप से और हर उपकरण पर समान रूप से।
+- साथ-साथ हुए edits पर **delete जीतता है**: एक उपकरण पर हटाई गई रिलीज हटाई ही रहती है, भले दूसरे उपकरण ने उसी अंतराल में उसे edit किया हो।
+
+Conflict UI नहीं है क्योंकि अनसुलझी अवस्था नहीं है: लागू करने का क्रम कोई भी हो, हर उपकरण एक ही नतीजे पर पहुंचता है।
+
+## शुरुआत
+
+जुड़ता या बहाल होता उपकरण इतिहास शुरू से replay नहीं करता। वह **snapshot** डाउनलोड करता है, जो क्लाउड घर में समय-समय पर प्रकाशित पूरी SQLite image है, फिर केवल वे changesets लागू करता है जो हर स्ट्रीम ने उसके बाद जोड़े। Snapshot मेटाडेटा schema version और per-stream cursors दर्ज करता है जिन्हें वह समेटता है।
+
+## schema version
+
+bae का schema क्रमांकित सीढ़ी से migrate करता है, और सीढ़ी का सबसे ऊपर वाला पायदान उपकरण द्वारा लिखे हर changeset पर stamped होता है। जो उपकरण अपने schema से नए schema वाला changeset pull करता है, वह उस स्ट्रीम को रोक देता है और उसके आगे कुछ लागू नहीं करता, जब तक ऐप update न हो; कुछ खोता नहीं और कुछ गलत लागू नहीं होता। Database फाइल खुद अपने schema से पुराने binary में खुलने से इनकार करती है।
+
+Schema version से मोटी सीमा **compatibility era** है: हर binary में baked पिन की गई coven revision। दो builds केवल एक era के भीतर समन्वय करते हैं; coven wire-फ़ॉर्मैट टूटना नया era है और हर ऐप में major version bump है। Pre-1.0 में हर build era zero है और फ़ॉर्मैट migration के बिना बदलते हैं।
+
+## प्रदाता क्या देखता है
+
+Opaque home पर प्रदाता ciphertext changesets, ciphertext blobs और signed membership records रखता है; वह objects गिन सकता है और sizes तथा timing देख सकता है, पर कुछ पढ़ नहीं सकता। उपकरण द्वारा pull किया गया हर object डेटाबेस तक पहुंचने से पहले signature और membership, दोनों से सत्यापित होता है: संग्रहण dumb, untrusted mailbox है। देखें [एन्क्रिप्शन](/hi/reference/encryption) और [पहचान और सदस्यता](/hi/reference/membership)।

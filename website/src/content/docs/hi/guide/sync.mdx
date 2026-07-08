@@ -1,0 +1,43 @@
+---
+title: समन्वय
+description: आपकी पूरी लाइब्रेरी हर उपकरण पर, आपके अपने क्लाउड से
+---
+
+समन्वय का मतलब आम तौर पर किसी और का सर्वर होता है: खाता, subscription, ऐसी company जो आपकी लाइब्रेरी पढ़ सके। bae **आपके** क्लाउड से समन्वय करता है, उस संग्रहण से जो आपके पास पहले से है, और कोई सर्वर नहीं चलाता। आपके उपकरण उस संग्रहण में encrypted बदलाव लिखते हैं और एक-दूसरे के बदलाव पढ़ते हैं; प्रदाता बाइट रखता है और उन्हें पढ़ नहीं सकता।
+
+एक लाइब्रेरी, हर उपकरण, और शामिल एकमात्र खाता वही है जो आपके पास पहले से है।
+
+## क्लाउड home
+
+लाइब्रेरी का क्लाउड home आपके संग्रहण में एक location है: आपके Google Drive, Dropbox, या OneDrive में फोल्डर, आपका iCloud, या कोई भी S3-compatible bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...)। इसमें वह सब रहता है जो लाइब्रेरी समन्वय करती है: catalog बदलाव, चित्र, और उन रिलीज का audio जिन्हें आप bae से manage कराते हैं।
+
+इसे Settings में, समन्वय के नीचे set up करें:
+
+1. Provider चुनें। Consumer clouds प्रदाता के अपने login पेज से sign in करते हैं; आपके खाता के बारे में issued टोकन से आगे कुछ संग्रहित नहीं होता। iCloud आपका Apple ID जैसा है वैसा इस्तेमाल करता है। S3 bucket, region, endpoint, और कुंजियां लेता है, जिन्हें save होने से पहले check किया जाता है।
+2. चुनें कि home objects कैसे संग्रहित करे (नीचे देखें)।
+3. bae समन्वय शुरू करता है।
+
+क्लाउड home के बिना लाइब्रेरी अपने आप में complete है। Local-only एक मोड है, limitation नहीं, और क्लाउड home disconnect करने से वही मोड वापस आता है।
+
+## Opaque या browsable
+
+Setup पर आप चुनते हैं कि प्रदाता क्या देख सकता है, और choice उस home के लिए permanent है:
+
+- **Opaque** (डिफॉल्ट): हर object आपके उपकरण पर अपलोड से पहले encrypted होता है और meaningless names के नीचे संग्रहित होता है। Provider, या bucket में घुसा कोई भी, ciphertext देखता है। यही वह मोड है जिसे [encryption](/hi/reference/encryption) पेज describe करता है, और यही मोड other उपकरण और सदस्य जोड़ने को support करता है।
+- **Browsable**: objects real filenames के साथ clear में संग्रहित होते हैं, कलाकार और एल्बम के नाम वाले फोल्डर में। आप किसी भी tool से bucket खोलकर अपनी फाइलें सीधे copy या चलाएं कर सकते हैं। कुछ encrypted नहीं होता, इसलिए bucket का अपना access control ही protection है, और home share नहीं किया जा सकता।
+
+## क्या समन्वय होता है
+
+- Catalog: एल्बम, रिलीज, ट्रैक, credits, works, identities, edits। हर उपकरण को सब मिलता है।
+- Artwork: कवर और कलाकार images, eagerly fetched ताकि grids हर जगह render हों।
+- Audio: केवल उन रिलीज के लिए जिन्हें आपने क्लाउड में manage करने को चुना। अप्रबंधित रिलीज purely स्थानीय रहती हैं, catalog entries other उपकरण पर शामिल होती हैं लेकिन बाइट केवल वहीं जहां आपने उन्हें आयात किया।
+
+Per-उपकरण state समन्वय नहीं होता: playback स्थिति, volume, पंक्ति, और उपकरण सेटिंग्स उपकरण पर ही रहते हैं।
+
+## कब समन्वय होता है
+
+समन्वय अपने आप चलता है: बदलाव के बाद, timer पर, और demand पर **समन्वय Now** से। Edits normal conditions में seconds later छोटे बदलाव के रूप में other उपकरण पर land होते हैं। एक ही समय में edit कर रहे दो उपकरण दोनों जीतते हैं जहां वे collide नहीं करते: bae concurrent edits को फ़ील्ड by फ़ील्ड merge करता है, और deleted रिलीज deleted रहती है भले ही उसी समय कहीं और edit हुई हो। आपको conflict resolve करने के लिए कभी नहीं पूछा जाता।
+
+## Fail होने पर
+
+समन्वय failures लाइब्रेरी को interrupt नहीं करतीं; bae backoff के साथ retry करते समय आप स्थानीय रूप से browse, चलाएं, और आयात करते रहते हैं। Status line syncing और last-synced time दिखाती है; failure banner error दिखाता है, और अपलोड को [संग्रहण प्रबंधक](/hi/guide/संग्रहण#संग्रहण-प्रबंधक) में pause, retry, और inspect किया जा सकता है। अगर क्लाउड home का sign-in expire हो जाता है, bae reconnect करने को कहता है।
