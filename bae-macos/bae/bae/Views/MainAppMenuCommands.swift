@@ -149,6 +149,36 @@ struct LibraryModeCommandButtons: View {
     }
 }
 
+/// The body of the Playback → Repeat submenu: one checkmarked item per mode,
+/// each setting the mode absolutely. The active mode carries a leading
+/// checkmark. The now-playing bar's single button cycles instead.
+struct RepeatModeMenuItems: View {
+    let current: RepeatMode
+    let onSelect: (RepeatMode) -> Void
+
+    private static let items: [(mode: RepeatMode, title: LocalizedStringKey)] =
+        [
+            (.off, "Off"),
+            (.context, "All"),
+            (.track, "One"),
+        ]
+
+    var body: some View {
+        ForEach(Array(Self.items.enumerated()), id: \.offset) { _, item in
+            Button {
+                onSelect(item.mode)
+            } label: {
+                if item.mode == current {
+                    Label(item.title, systemImage: "checkmark")
+                }
+                else {
+                    Text(item.title)
+                }
+            }
+        }
+    }
+}
+
 struct MainAppMenuCommands: Commands {
     let playback: Playback
     let importer: Importer
@@ -286,6 +316,12 @@ struct MainAppMenuCommands: Commands {
                 playback.cycleRepeatMode()
             }
             .keyboardShortcut("r", modifiers: .command)
+
+            Menu("Repeat") {
+                RepeatModeMenuItems(current: playbackStore.repeatMode) { mode in
+                    playback.setRepeatMode(mode)
+                }
+            }
         }
     }
 }

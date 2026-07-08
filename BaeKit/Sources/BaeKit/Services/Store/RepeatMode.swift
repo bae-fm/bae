@@ -12,4 +12,12 @@ public enum RepeatMode: Equatable {
         case .context: self = .context
         }
     }
+
+    public var bridge: BridgeRepeatMode {
+        switch self {
+        case .off: .off
+        case .track: .track
+        case .context: .context
+        }
+    }
 }
