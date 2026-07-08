@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using uniffi.bae_bridge;
 using Windows.System;
+// `Windows.System` (needed for VirtualKey) also declares a DispatcherQueue;
+// alias the WinUI one so the unqualified name stays unambiguous (CS0104).
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
 
 namespace Bae.Windows;
 
