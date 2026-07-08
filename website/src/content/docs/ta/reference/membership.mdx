@@ -1,0 +1,35 @@
+---
+title: அடையாளமும் உறுப்பினர் நிலையும்
+description: Keys அடையாளங்களாக, join handshake, roles, revocation
+---
+
+bae இல் கணக்கு system எங்கும் இல்லை. ஒரு சாதனத்தின் அடையாளம், அது தானாக உருவாக்கி OS keyring இல் வைத்திருக்கும் Ed25519 keypair; public விசை *தான்* identity. ஒரு நூலகம் யில் யார் உள்ளனர் என்பது மேகம் home இல் உள்ள signed records தொகுப்பு; அவற்றை வைத்திருப்பவர் யாரும் verify செய்ய முடியும்; server எதுவும் issue செய்யாது. machinery [coven](https://coven.bae.fm) உடையது; bae அதை எப்படிப் பயன்படுத்துகிறது என்பதே இந்தப் பக்கம்.
+
+## Membership records
+
+ஒவ்வொரு உரிமையாளர் உம் மேகம் home க்கு signed membership entries இன் append-only stream எழுதுகிறார்: இந்த விசை இந்த role உடன் சேர்க்கப்பட்டது, இந்த விசை நீக்கப்பட்டது. ஒவ்வொரு entry முந்தையதுடன் link ஆகும்; ஒவ்வொரு உரிமையாளர் உம் தன் stream tip ஐ அறிவிக்கும் head இல் sign செய்கிறார். எனவே records ஐ provider drop அல்லது reorder செய்தால் அது கண்டறியப்படும், நம்பப்படாது. நூலகம் ஏற்றுக்கொள்வது ஒவ்வொரு உரிமையாளர்'s verified stream இன் union.
+
+ஒவ்வொரு pull இலும், ஒவ்வொரு changeset author இந்த record எதிராகச் சரிபார்க்கப்படுகிறார்: தற்போதைய உறுப்பினர் ஆல் signed, write செய்யக்கூடிய role உடன். Removed சாதனங்கள் இலிருந்து, ஒருபோதும் added ஆகாத விசைகள் இலிருந்து, அல்லது invalid signatures உடன் வரும் changesets apply ஆகாது. provider records ஐச் சேமிப்பார், forge செய்ய முடியாது; உரிமையாளர் விசைகள் வைத்திருப்பவர்களே membership மாற்ற முடியும்.
+
+## Roles
+
+**Owner** மற்றும் **Member** இரண்டும் நூலகம் யைப் படித்து எழுதும்; owners கூடுதலாக சாதனங்கள் ஐ approve செய்து remove செய்கின்றனர். bae இன் founding சாதனம் உரிமையாளர்; அது approve செய்யும் ஒவ்வொரு சாதனம் உறுப்பினர் ஆக joins. (underlying machinery இல் மூன்றாவது role உள்ளது, read-only follower; bae தற்போது அதை assign செய்யவில்லை.)
+
+## Join handshake
+
+சாதனம் சேர்த்தல் என்பது நடுவில் explicit human verification கொண்ட two-code exchange:
+
+1. joining சாதனம் தனது keypair உருவாக்கி **join request** காட்டுகிறது: அதன் public விசை, அதன் short fingerprint, மேலும் (OAuth providers க்கு) கோப்புறை share செய்ய வேண்டிய மேகம் கணக்கு.
+2. உரிமையாளர் request ஐ குறிமாற்று செய்கிறார்; இரண்டு screens ஒரே fingerprint ஐக் காட்டும். human அவை பொருந்துகிறதா சரிபார்க்கிறார்; swapped விசை ஐத் தடுக்கிறது இந்த step.
+3. Approval ஒரே நேரத்தில் மூன்று செயல்களைச் செய்கிறது: newcomer's கணக்கு க்கு மேகம் home அணுகலை வழங்குகிறது (consumer clouds இல் கோப்புறை share, S3 இல் embedded credentials, iCloud இல் CloudKit share), நூலகம் விசை ஐ newcomer's public விசை க்கு seal செய்கிறது, membership entry adding it இல் sign செய்கிறது. இவை அனைத்தும் **invite code** ஆக packed.
+4. joining சாதனம் invite ஐ consume செய்து, விசை ஐ unseal செய்து, latest snapshot இலிருந்து bootstrap செய்து ஒத்திசைவு செய்கிறது.
+
+invite requesting விசை க்கு sealed: அதை intercept செய்தால் எதுவும் கிடையாது.
+
+## Revocation
+
+உறுப்பினர் ஐ நீக்குவது signed removal append செய்து, நூலகம் விசை ஐ removed விசை பெறாத புதிய generation க்கு rotate செய்கிறது ([மறைகுறியாக்கம்](/ta/reference/encryption#தலைமுறைகள்) பார்க்கவும்). revoke access செய்யக்கூடிய சேமிப்பு இல், access கூட withdrawn செய்யப்படும். removed சாதனம் க்கு ஏற்கனவே synced ஆனது அதனிடமே இருக்கும்; தரவு ஐ unsend செய்ய முடியாது. rotation க்கு பிறகான அனைத்தும் அதன் எட்டுகைக்கு வெளியே.
+
+## Recovery codes
+
+recovery code membership ஐ நோக்கமுடன் bypass செய்கிறது: surviving approver இல்லாமல் உங்கள் சொந்த நூலகம் ஐ restore செய்ய, மேகம் home coordinates மற்றும் நூலகம் விசை ஒரே bearer string இல். அது demand இல் generated, Apple platforms இல் iCloud Keychain இல் தானாக stored, நூலகம் தானே எவ்வளவு sensitive ஆ இருக்கிறதோ அதே அளவு sensitive.

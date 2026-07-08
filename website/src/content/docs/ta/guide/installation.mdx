@@ -1,0 +1,55 @@
+---
+title: நிறுவல்
+description: ஒவ்வொரு தளத்திலும் bae அல்லது baeium ஐ பதிவிறக்கி நிறுவுங்கள்
+---
+
+import DownloadButton from '../../../../components/DownloadButton.astro';
+
+## இரண்டு பதிப்புகள்
+
+ஒவ்வொரு தளமும் ஒரே மூலத்திலிருந்து கட்டப்பட்ட இரண்டு பதிப்புகளாக வருகிறது:
+
+- **bae**, முழு பயன்பாடு: S3, Google Drive, Dropbox, OneDrive, மற்றும் iCloud ஒத்திசைவு.
+- **baeium**, தனியுரிமை பகுதிகள் இல்லாதது: S3-compatible சேமிப்பு மட்டும், OAuth வழங்குநர்கள் இல்லை, iCloud/CloudKit இல்லை, telemetry இல்லை.
+
+இவை ஒன்றோடொன்று இணையாக நிறுவப்படும்; ஒவ்வொன்றுக்கும் தனி நூலகமும் தனி (iCloud Keychain வழியாக ஒத்திசைக்கப்படும்) திறவுகோல்களும் இருக்கும். கீழே உங்களுக்கு ஏற்றதைத் தேர்ந்தெடுக்கவும்.
+
+## macOS
+
+<DownloadButton platform="macos" edition="full" class="sl-button primary">macOS க்கான bae ஐ பதிவிறக்கவும்</DownloadButton>
+<DownloadButton platform="macos" edition="baeium" class="sl-button">macOS க்கான baeium ஐ பதிவிறக்கவும்</DownloadButton>
+
+1. பதிவிறக்கிய `.dmg` ஐத் திறக்கவும்
+2. பயன்பாட்டை உங்கள் Applications அடைவுக்கு இழுத்து விடவும்
+3. Applications இலிருந்து அதைத் திறக்கவும்
+
+இரு பதிப்புகளும் தங்களது Sparkle ஊட்டம் வழியாக தானாக புதுப்பிக்கப்படும்.
+
+## iOS
+
+iOS கட்டுதல்கள் **sideloading க்கான கையொப்பமிடாத `.ipa` கோப்புகள்**. [AltStore](https://altstore.io) அல்லது [Sideloadly](https://sideloadly.io) கொண்டு நிறுவவும், அல்லது உங்கள் சொந்த Apple ID கொண்டு Xcode இல் மீண்டும் கையொப்பமிடவும் (இலவச Apple ID baeium க்கு போதும்). App Store விநியோகம் இன்னும் அமைக்கப்படவில்லை.
+
+<DownloadButton platform="ios" edition="full" class="sl-button primary">iOS க்கான bae ஐ பதிவிறக்கவும்</DownloadButton>
+<DownloadButton platform="ios" edition="baeium" class="sl-button">iOS க்கான baeium ஐ பதிவிறக்கவும்</DownloadButton>
+
+## Android
+
+<DownloadButton platform="android" edition="full" class="sl-button primary">Android க்கான bae ஐ பதிவிறக்கவும்</DownloadButton>
+<DownloadButton platform="android" edition="baeium" class="sl-button">Android க்கான baeium ஐ பதிவிறக்கவும்</DownloadButton>
+
+கேட்கும்போது உங்கள் உலாவி அல்லது கோப்புகள் பயன்பாட்டிலிருந்து நிறுவ அனுமதித்து, பின்னர் `.apk` ஐத் திறக்கவும்.
+
+## Windows
+
+Windows கட்டுதல்கள் தொகுக்கப்படாத பயன்பாட்டின் **கையொப்பமிடாத** zip கோப்புகள். Extract செய்து `bae.exe` / `baeium.exe` ஐ இயக்கவும். முதல் தொடக்கத்தில் SmartScreen எச்சரிக்கலாம்.
+
+<DownloadButton platform="windows" edition="full" class="sl-button primary">Windows க்கான bae ஐ பதிவிறக்கவும்</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" class="sl-button">Windows க்கான baeium ஐ பதிவிறக்கவும்</DownloadButton>
+
+## Linux
+
+விரைவில் வரும்.
+
+## மூலத்திலிருந்து கட்டுதல்
+
+baeium ஐ கட்ட தனியுரிமை எதுவும் தேவையில்லை. இலவச provisioning உடன் iOS உட்பட, ஒவ்வொரு தளத்திற்கான தானே கட்டும் வழிமுறைகளுக்கு [repository README](https://github.com/bae-fm/bae#building-baeium-yourself) பார்க்கவும்.

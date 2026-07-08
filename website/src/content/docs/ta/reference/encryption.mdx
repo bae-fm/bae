@@ -1,0 +1,28 @@
+---
+title: மறைகுறியாக்கம்
+description: Library விசை என்ன, அது எங்கே வாழ்கிறது, provider எந்த ciphertext வைத்திருக்கிறான்
+---
+
+opaque மேகம் home இல் bae வைக்கும் அனைத்தும் சாதனம் ஐ விட்டு வெளியேறுவதற்கு முன் encrypted. bae தனக்கென cryptography செயல்படுத்தவில்லை: முழு scheme [coven](https://coven.bae.fm) உடையது; bae அதை எப்படி அணிகிறது என்பதை இந்தப் பக்கம் விவரிக்கிறது. Browsable homes இதிலிருந்து opt out செய்கின்றன; கீழே உள்ளவை அவற்றுக்கு பொருந்தாது.
+
+## Library விசை
+
+opaque நூலகம் க்கு ஒரு root secret: home உருவாக்கும்போது mint செய்யப்படும் random 256-bit விசை. அது OS keyring இல் வாழ்கிறது, கோப்பு இல் ஒருபோதும் இல்லை; Apple platforms இல் keyring entry iCloud Keychain வழியாக ஒத்திசைவு ஆகும். bae config விசை இன் fingerprint மட்டும் சேமிக்கும்; unlock போது secret வைத்திருக்காமல் wrong விசை யையும் right விசை யையும் வேறுபடுத்த அது போதும்.
+
+விசை சாதனங்களுக்கு இடையில் இரண்டு வழிகளில் பயணிக்கும்; இரண்டும் [அடையாளமும் உறுப்பினர் நிலையும்](/ta/reference/membership) இல் விவரிக்கப்பட்டவை: invite போது approved சாதனம் இன் public விசை க்கு sealed, மற்றும் recovery code உள்ளே carried.
+
+## தலைமுறைகள்
+
+நூலகம் விசை உண்மையில் numbered generations கொண்ட keyring. உறுப்பினர் ஐ நீக்குவது removed உறுப்பினர் பெறாத புதிய generation ஐ append செய்கிறது: பின்னர் எழுதப்படும் அனைத்தும் புதிய generation பயன்படுத்தும், அவர்களுக்கு படிக்க முடியாது; மீதமுள்ள உறுப்பினர்கள் ஒவ்வொரு generation ஐயும் வைத்திருந்து எல்லா history யையும் படிக்க முடியும். ஒவ்வொரு sealed object உம், clear ஆக, எந்த generation அதைத் திறக்கும் என்பதைப் பதிவு செய்கிறது.
+
+## எது sealed ஆகிறது
+
+home இல் உள்ள ஒவ்வொரு object: changesets, snapshots, audio blobs, படவகை, membership records, control objects. Objects XChaCha20-Poly1305 கொண்டு 64 KB chunks ஆக sealed; ஒவ்வொரு chunk authenticated; தன் context உடன் bound: sealed object இந்த நூலகம் க்காக, இந்த விசை யில், அது எழுதப்பட்ட object ஆக மட்டுமே decrypt ஆகும். Chunking காரணமாக streaming இயங்குகிறது; player fetch செய்யும் பைட் ranges ஐத் துல்லியமாக decrypt செய்ய முடியும்.
+
+## Provider பார்க்கக்கூடியவை
+
+Object count, object sizes, பதிவேற்றம் timing, access patterns. Names இல்லை, மேதரவு இல்லை, audio இல்லை, படவகை இல்லை, membership இல்லை. server-side recovery இல்லை: ஒவ்வொரு சாதனம் ஐயும் விசை இன் ஒவ்வொரு copy யையும் இழந்த பயனர் நூலகம் ciphertext ஐ என்றும் இழந்துவிட்டார்; அதுவே design intended.
+
+## Unlock மற்றும் lock
+
+நூலகம் திறக்கும் போது keyring இலிருந்து விசை படிக்கப்படும். நூலகம் விசை எதிர்பார்த்தும் keyring இல் இல்லையெனில், bae நூலகம் யை locked ஆக நடத்தும்: திறப்பதற்கு முன் விசை கேட்கும், entry ஐ stored fingerprint எதிராக validate செய்து பின்னர் keyring இல் save செய்யும். நூலகம் யை lock செய்வது keyring இலிருந்து விசை ஐ நோக்கமுடன் நீக்கும்; மீண்டும் உள்ளிடும் வரை மேகம் home இல் எதையும் படிக்கவோ எழுதவோ முடியாது.

@@ -1,0 +1,43 @@
+---
+title: இறக்குமதி வழிச்சரம்
+description: Scanning, evidence, triangulation, atomic commit
+---
+
+Import ஒரு கோப்புகள் கோப்புறை ஐ, அந்த கோப்புகள் இன் ஒரு பைட் கூட மாற்றாமல், வெளியீடு-accurate catalog entry ஆக மாற்றுகிறது. [பயன்பாட்டு வழிகாட்டி](/ta/guide/importing) விவரிக்கும் flow க்கு பின்னுள்ள pipeline இந்தப் பக்கம்.
+
+## Scanning
+
+Watched கோப்புறைகள் தளம் இன் கோப்பு-system events மூலம் கண்காணிக்கப்படுகின்றன, debounced செய்யப்படுகின்றன, change இல் மீண்டும் scanned; scans existing candidate list எதிராக reconcile செய்கின்றன, புதிதாகத் தொடங்குவதில்லை. scanner ஒரு கோப்புறை ஐ ஒரு வெளியீடு ஆக வகைப்படுத்துகிறது (audio நேரடியாக உள்ளே, அல்லது `CD1`/`CD2` போன்ற disc-shaped subfolders), அல்லது collection ஆக அதற்குள் இறங்குகிறது. Files extension மூலம் audio, படவகை, documents ஆக வகைப்படுத்தப்படுகின்றன; பின்னர் audio probed செய்யப்படுகிறது: முக்கியமான codec பைட்டுகள் இல் FFmpeg கண்டுபிடிப்பதே, கோப்பு extension அல்ல. partial-பதிவிறக்கம் markers கொண்ட கோப்புறைகள் பதிவிறக்கம் முடியும் வரை விலக்கப்படுகின்றன.
+
+CUE sheet ஒரு audio image ஐ பாதை list ஆக மாற்றுகிறது. parser pregaps மற்றும் postgaps, per-பாதை performers மற்றும் ISRCs, single-கோப்பு images மற்றும் one-கோப்பு-per-பாதை CUE layouts ஆகியவற்றை கையாள்கிறது. Track எல்லைகள் CUE frames இலிருந்து (ஒரு second இன் 1/75) exact மாதிரி நிலைகள் ஆக மாறுகின்றன; பின்னர் அவையே playback பயன்படுத்தும் பைட் மற்றும் மாதிரி சாளரங்கள் ஆகின்றன.
+
+## Evidence, tags அல்ல
+
+Identification ஒரே pass இல் கோப்புறை இலிருந்து மூன்று வித evidence படிக்கிறது:
+
+- ஒரு **disc ID**, CD இன் துல்லிய பாதை layout க்கான MusicBrainz fingerprint; rip log அல்லது CUE sheet இலிருந்து கணக்கிடப்படும்;
+- **barcodes**, தளம் vision framework மூலம் படவகை scans இலிருந்து குறிமாற்றப்பட்டது செய்யப்பட்டவை மற்றும் CUE catalog புலங்கள் இலிருந்து படிக்கப்பட்டவை;
+- **text**: படவகை OCR, கோப்புறை மற்றும் கோப்பு names, rip இல் உள்ள text கோப்புகள் ஆகியவற்றிலிருந்து catalog numbers மற்றும் free text.
+
+Embedded audio tags திட்டமிட்டு evidence ஆகாது: அவை tagger நம்பியதை விவரிக்கின்றன, அச்சு என்ன என்பதை அல்ல. (பயனர் வெளியீடு ஐ unknown ஆக இறக்குமதி செய்தால் fallback மேதரவு க்கு அவை seed ஆகும்.)
+
+Disc ID மற்றும் barcode concurrently looked up செய்யப்படும்; disc ID MusicBrainz எதிராக, barcode MusicBrainz மற்றும் Discogs இரண்டிலும் ஒரே நேரத்தில். Results triangulated செய்யப்படும்: வெளியீடு group மீது ஒத்துக்கொள்ளும் results converge செய்கின்றன, catalog-number matches அச்சு list ஐச் சுருக்குகின்றன, signals இடையிலான disagreement silent best guess ஆகாமல் பயனர் க்கு explicit conflict ஆகத் தெரியும். ஒவ்வொரு result இலும் provenance இருக்கும் (disc ID மூலம், barcode மூலம், catalog match மூலம் கண்டது); அதனால் UI ஏன் ஒரு வரி வழங்கப்படுகிறது என்று சொல்ல முடியும்.
+
+## Sources
+
+MusicBrainz strict one-request-per-second pace உடன் anonymously queried செய்யப்படும். Discogs keyring இல் உள்ள பயனர்'s personal டோக்கன் கொண்டு authenticate செய்கிறது; அதன் rate limits உள்ளே paced மற்றும் retried செய்யப்படும்; rejected டோக்கன் UI அமைதியாக searches fail ஆகாமல் flag செய்ய reported ஆகும். Responses per session cached; வென்ற மூலம் இன் raw JSON எதிர்கால re-interpretation க்கு தரவுத்தளம் இல் archived செய்யப்படும்.
+
+## Commit
+
+Import உறுதிப்படுத்தினால், வரிசையாக நடப்பவை:
+
+1. **Decode verification**: ஒவ்வொரு பாதை end to end குறிமாற்றப்பட்டது செய்யப்படும்; முழுமையாக குறிமாற்று ஆகாத rip எதுவும் எழுதப்படும் முன் இறக்குமதி ஐ fail செய்கிறது (config flag இதை disable செய்யலாம்).
+2. **ஒலி-அளவு பகுப்பாய்வு**: அதே குறிமாற்று pass இல் per பாதை மற்றும் per ஆல்பம் integrated loudness மற்றும் true peak அளக்கப்பட்டு, replay-gain பயன்பாட்டுக்காக stored.
+3. **Cover selection**: தேர்ந்தெடுத்த art (remote, கோப்புறை image, அல்லது embedded) display thumbnail ஆக மீண்டும் rendered செய்யப்படும்; அது கோப்புறை இலிருந்து வந்திருந்தால் அசல் வெளியீடு கோப்புகள் இடையில் வைக்கப்படும்.
+4. **அணுக்கமான எழுத்து**: வெளியீடு, பாதைகள், credits, identities, வடிவங்கள், segments, கோப்புகள், அட்டை அனைத்தும் ஒரே transaction இல் commit ஆகும். half-imported state இல்லை.
+
+Release பயனர்'s கோப்புகள் இருக்கும் இடத்தையே reference செய்து land ஆகும். பயனர் மேகம்-managed தேர்ந்தெடுத்திருந்தால், பதிவேற்றம் commit க்கு பிறகு சேமிப்பு transition ஆக நடக்கும்; கோப்புகள் இன் அசல் பைட்டுகள் முழுவதும் மூலம் of truth ஆகவே இருக்கும்; பயனர் bae க்கு கொடுத்த எதுவும் ஒருபோதும் delete அல்லது alter செய்யப்படாது.
+
+## Rips ஐ அடையாளம் காணுதல்
+
+ஒவ்வொரு வெளியீடு உம் imported கோப்புறை அமைப்பு மீது content hash பதிவு செய்கிறது (relative paths மற்றும் sizes, location-independent). Re-scans அதைப் பயன்படுத்தி ஏற்கனவே நூலகம் இல் உள்ள கோப்புறைகள் ஐ mark செய்கின்றன; அதே rip இன் re-imports duplicate செய்வதற்குப் பதிலாக prior வெளியீடு ஐ கண்டுபிடித்து replace செய்கின்றன.

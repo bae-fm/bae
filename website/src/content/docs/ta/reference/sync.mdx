@@ -1,0 +1,40 @@
+---
+title: ஒத்திசைவு
+description: Changes சாதனங்களுக்கு இடையில் எப்படி நகர்கின்றன, எப்படி merge ஆகின்றன
+---
+
+bae இன் ஒத்திசைவு என்பது [coven](https://coven.bae.fm) இன் ஒத்திசைவு: bae தன் அட்டவணைகள் மற்றும் blobs ஐ declare செய்கிறது, மீதியை coven செய்கிறது. bae க்கு பொருந்தும் mechanics இந்தப் பக்கம்; coven இன் சொந்த docs ஒவ்வொரு பகுதியையும் முழு ஆழத்தில் விவரிக்கின்றன.
+
+## Capture
+
+coven SQLite connection ஐ own செய்கிறது; எனவே bae commit செய்யும் ஒவ்வொரு write உம் அதன் வழியாகச் செல்கிறது. SQLite இன் session extension ஒவ்வொரு transaction இலும் மாறியதைத் துல்லியமாகப் பதிவு செய்கிறது; synced அட்டவணைகள் இன் changes ஒரு **changeset** ஆகின்றன, நூலகம் விசை கொண்டு sealed, சாதனம் identity விசை கொண்டு signed. diffing இல்லை, dirty flags இல்லை: capture connection இன் property; write ஒன்று தவறவிடப்பட முடியாது.
+
+## Streams
+
+ஒவ்வொரு சாதனம் உம் மேகம் home இல் தன் சொந்த stream க்கு changesets append செய்கிறது, sequentially numbered. Devices மற்றவர்களின் streams க்கு எழுதாது; எனவே சேமிப்பு இல் write conflicts இல்லை. ஒவ்வொரு சாதனம் உம் peer stream ஒன்றுக்கு cursor வைத்திருக்கும். ஒத்திசைவு cycle உள்ளூர் outbox ஐ push செய்து, பின்னர் ஒவ்வொரு peer stream ஐ அதன் cursor இலிருந்து முன்னோக்கி pull செய்து, changeset signature மற்றும் author membership ஐ verify செய்து பிறகு apply செய்கிறது.
+
+cycle உள்ளூர் changes பிறகு, backoff கொண்ட idle timer இல் (polls க்கு இடையில் அதிகபட்சம் five minutes), மற்றும் **Sync Now** இல் உடனே இயங்கும். Failures back off செய்து retry செய்யும்; loop ஒவ்வொரு cycle outcome ஐ UI க்கு status, error text, applied வரிகள் எண்ணிக்கை ஆக report செய்கிறது.
+
+## Merge
+
+இரண்டு சாதனங்கள் பிரிந்திருக்கும்போது அதே நூலகம் யை edit செய்வது சாதாரண நிலை; விதிவிலக்கு அல்ல. அவற்றின் changes சந்திக்கும் போது:
+
+- **வேறு வரிகள் அல்லது வேறு columns** க்கான edits இரண்டும் apply ஆகும். laptop இல் வெளியீடு year ஐ edit செய்து desktop இல் label ஐ edit செய்தால், இரண்டும் கிடைக்கும்.
+- **அதே வரி இன் அதே column** க்கான edits வரி இன் `_updated_at` hybrid logical clock மூலம் ordered: later edit wins, deterministic ஆகவும் ஒவ்வொரு சாதனம் இலும் ஒரேபடி.
+- concurrent edits மீது **Deletes win**: ஒரு சாதனம் இல் வெளியீடு deleted ஆனது, அதே interval இல் வேறு சாதனம் edit செய்திருந்தாலும் deleted ஆகவே இருக்கும்.
+
+unresolved state இல்லாததால் conflict UI இல்லை: எந்த application order இலிருந்தும் ஒவ்வொரு சாதனம் உம் ஒரே result க்கு converge செய்கிறது.
+
+## Bootstrap
+
+சாதனம் joining அல்லது restoring history ஐ ஆரம்பத்திலிருந்து replay செய்யாது. அது மேகம் home க்கு காலம்காலமாக published செய்யப்படும் full SQLite image ஆன **snapshot** ஐ பதிவிறக்கம் செய்கிறது; பின்னர் ஒவ்வொரு stream இலும் அதன் பிறகு accumulated ஆன changesets மட்டும் apply செய்கிறது. Snapshot மேதரவு schema version மற்றும் அது embody செய்யும் per-stream cursors ஐ பதிவு செய்கிறது.
+
+## Schema versions
+
+bae இன் schema numbered ladder வழியாக migrate செய்கிறது; ladder இன் top rung ஒவ்வொரு changeset இலும் stamp செய்யப்படும். சாதனம் தனது schema ஐ விட புதிய schema இல் இருந்து changeset pull செய்தால், app update ஆகும் வரை அந்த stream ஐ park செய்கிறது; அதற்கு அப்பால் எதையும் apply செய்யாது; எதுவும் இழக்கப்படாது, தவறாக apply ஆகாது. தரவுத்தளம் கோப்பு தன்னுடைய schema வை விட பழைய binary கீழ் open ஆக மறுக்கும்.
+
+schema version ஐ விட coarse ஆனது **compatibility era**: ஒவ்வொரு binary யிலும் baked செய்யப்பட்ட pinned coven revision. இரண்டு builds ஒரே era உட்பட்டால் மட்டுமே ஒத்திசைவு செய்யும்; coven wire-வடிவம் break புதிய era மற்றும் ஒவ்வொரு app க்கும் major version bump. Pre-1.0 இல், ஒவ்வொரு build உம் era zero; வடிவங்கள் migration இன்றி மாறும்.
+
+## Provider பார்க்கக்கூடியவை
+
+opaque home இல் provider ciphertext changesets, ciphertext blobs, signed membership records ஆகியவற்றைச் சேமிக்கிறான்; objects எண்ணிக்கை, sizes, timing ஆகியவற்றைப் பார்க்க முடியும், ஒன்றையும் படிக்க முடியாது. சாதனம் pull செய்யும் ஒவ்வொரு object உம் தரவுத்தளம் ஐத் தொடுவதற்கு முன் signature மற்றும் membership verify செய்யப்படும்: சேமிப்பு என்பது dumb, untrusted mailbox. [மறைகுறியாக்கம்](/ta/reference/encryption) மற்றும் [அடையாளமும் உறுப்பினர் நிலையும்](/ta/reference/membership) பார்க்கவும்.

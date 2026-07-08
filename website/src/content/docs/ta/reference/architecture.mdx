@@ -1,0 +1,41 @@
+---
+title: கட்டமைப்பு
+description: coven மீது, ஒரே Rust core உடன் native apps
+---
+
+bae என்பது நான்கு native apps அணிந்த ஒரே Rust core. product ஐ வரையறுக்கும் அனைத்தும், நூலகம் model, இறக்குமதி, playback, ஒத்திசைவு, encryption, Rust இல் வாழ்கின்றன மற்றும் ஒவ்வொரு தளம் இலும் ஒரேபடி நடக்கின்றன; ஒவ்வொரு app உம் அதன் மேல் உள்ள thin native UI.
+
+## Layers
+
+- **`bae-core`**: product. Library மற்றும் மேதரவு model, இறக்குமதி மற்றும் identify pipelines, FFmpeg playback engine, loudness analysis, ஏற்றுமதி, மேலும் கீழே உள்ள coven உடன் integration. Import மற்றும் identify desktop இல் மட்டும் compile ஆகும்; mobile builds ஒத்திசைவு மற்றும் playback clients.
+- **[coven](https://coven.bae.fm)**: தரவு layer, தனி நூலகம். coven SQLite connection ஐ own செய்கிறது, bae commit செய்யும் ஒவ்வொரு change ஐ capture செய்கிறது, அந்த changes ஐ பயனர்'s மேகம் சேமிப்பு வழியாக end-to-end encrypted ஆக ஒத்திசைவு செய்கிறது. blob சேமிப்பு (audio பைட்டுகள், படவகை), உள்ளூர் இடைநினைவகம், identity விசைகள், membership ஆகியவையும் அதுவே own செய்கிறது. bae துல்லிய coven revision ஒன்றை pin செய்து ஒவ்வொரு binary இலும் stamp செய்கிறது; builds இடையிலான ஒத்திசைவு-compatibility generation ஐ அது வரையறுக்கிறது.
+- **`bae-bridge`**: UniFFI எல்லை. Bridge types ஒருமுறை Rust இல் defined செய்து build time இல் Swift மற்றும் Kotlin ஆக generated.
+- **The apps**: macOS மற்றும் iOS இல் SwiftUI, Android இல் Jetpack Compose, மற்றும் native Windows app. core கேட்கும் தளம் pieces ஐ ஒவ்வொன்றும் செயல்படுத்தும்: audio வெளியீடு, படவகை text recognition, media controls, keychain access, crash reporting.
+
+apps உடன்: `bae-mcp` (MCP server), `bae-cli` (command line), மற்றும் `bae-automation` (இரண்டும் பயன்படுத்தும் shared tool layer).
+
+## Disk இல் ஒரு நூலகம்
+
+நூலகம் `~/.bae/libraries/<நூலகம்-id>/` இல் வாழ்கிறது (mobile இல் தளம் தரவு directory):
+
+```
+~/.bae/libraries/<id>/
+  நூலகம்.db        # SQLite: catalog, credits, playback specs
+  config.yaml       # சாதனம்-உள்ளூர் அமைப்புகள், never synced
+  சேமிப்பு/
+    உள்ளூர்/          # blobs this சாதனம் owns (அட்டைகள், கலைஞர் images)
+    இடைநினைவகம்/          # evictable copies of மேகம் blobs
+    pinned/         # pinned-for-offline copies, never evicted
+```
+
+தரவுத்தளம் coven வழியாக மட்டுமே open செய்யப்படும்; அது bae schema அருகே தன் bookkeeping அட்டவணைகள் (ஒத்திசைவு cursors, outbox, blob state) சேர்த்து, bae migrations ஐ இயக்கும். unmanaged ஆக imported audio கோப்புகள் `~/.bae` கீழ் இல்லை: தரவுத்தளம் அவை imported செய்யப்பட்ட paths ஐ reference செய்கிறது.
+
+Secrets ஒருபோதும் இந்த கோப்புகள் இல் வாழாது. Identity விசைகள், நூலகம் encryption விசை, மேகம் credentials, API டோக்கன்கள் ஆகியவை OS keyring இல் வாழ்கின்றன (Apple platforms இல் Keychain, iCloud Keychain வழியாக synced; மற்ற இடங்களில் தளம் equivalents).
+
+## Editions
+
+ஒவ்வொரு தளம் இலும் build-time editions இரண்டு. **bae** OAuth providers (Google Drive, Dropbox, OneDrive), CloudKit, telemetry ஆகியவற்றை compile செய்கிறது. **baeium** இவை அனைத்தையும் compile செய்யாது: S3-compatible சேமிப்பு மட்டும், telemetry இல்லை, dependency tree இல் proprietary எதுவும் இல்லை. editions ஒரே மூலம் மற்றும் ஒரே core; feature flag provider list மற்றும் diagnostics wiring ஐ முடிவு செய்கிறது.
+
+## Versioning
+
+Apps `MAJOR.MINOR` ஆக ஒவ்வொரு தளம் க்கும் version செய்யப்படும். major என்பது compatibility era, ஒவ்வொரு app உம் பகிர்கிறது: அதே major இல் உள்ள சாதனங்கள் நூலகம் யை ஒத்திசைவு செய்ய முடியும். wire அல்லது on-disk வடிவம் break ஆனால்தான் அது bump ஆகும், பெரும்பாலும் pinned coven revision. Minors ஒவ்வொரு app க்கும் வெளியீடுகள் எண்ணும்; platforms இடையே ஒப்பிட முடியாது.

@@ -1,0 +1,34 @@
+---
+title: இயக்க இயந்திரம்
+description: Decoding, gapless, pregaps, loudness ஆகியவை துல்லியமாக
+---
+
+இயக்க இயந்திரத்தின் ஒப்பந்தம் மூலம் க்கு உண்மையாக இருப்பது: பயனரின் அசல் பைட்டுகள் ஐ, மூலம் இன் சொந்த rate இல், வெளியீடு அமைப்பு குலையாமல் குறிமாற்று செய்தல். அதன் பின்னுள்ள specification இந்தப் பக்கம்.
+
+## Decoding
+
+ஒவ்வொரு தளம் இலும், process உள்ளேயே, எல்லா குறிமாற்றம் உம் FFmpeg: FLAC, MP3, APE, ALAC, AAC, PCM (WAV/AIFF), Ogg Vorbis, Opus, WavPack, DSD ஆகியவையே இறக்குமதி ஏற்கும் வடிவங்கள்; பைட்டுகள் இலிருந்து FFmpeg report செய்வதே பதிவு செய்யப்படும் codec, கோப்பு extension அல்ல. Output நிலை க்கு மாதிரிகள் 32-bit float ஆக வரும்; மாதிரி வடிவம் மாற்றம் மட்டுமே செய்யப்படும் மாற்றம்.
+
+Output என்பது தளம் இன் native audio API (desktop மற்றும் iOS இல் cpal வழியாக Core Audio, Android இல் AAudio). வெளியீடு stream **மூலம் இன் மாதிரி rate மற்றும் channel count** க்கு configure செய்யப்படும்: 96 kHz கோப்பு 96 kHz ஆக play ஆகும். resampling நிலை இல்லை. ஒவ்வொரு stream build இலும் இயல்பு வெளியீடு சாதனம் resolve செய்யப்படும்; அதனால் system சாதனம் switches ஐ playback பின்பற்றும். Android இல், hardware-supported codecs offloaded குறிமாற்றம் க்கு FFmpeg ஐ முழுவதும் bypass செய்யலாம்.
+
+## Streaming reads
+
+Playback க்கு முழு கோப்புகள் தேவையில்லை. sparse buffer மூலம் audio படிக்கப்படுகிறது; அது உள்ளூர் கோப்பு, இடைநினைவகம், அல்லது மேகம் இலிருந்து பைட் ranges ஐ demand இல் fetch செய்கிறது. seeking இலக்கு மாதிரி ஐ பைட் நிலை ஆக map செய்கிறது; fetch செய்யப்படாத region க்கு seek செய்தால் அங்கிருந்தே fetch தொடங்கும். fetch arbiter playing பாதை இன் reads க்கு preloading ஐ விட முன்னுரிமை தருகிறது; அதனால் upcoming பாதை தற்போதைய பாதை ஐ தாமதப்படுத்தாது.
+
+## Tracks as சாளரங்கள்
+
+Track என்பது கோப்பு அல்ல; CUE sheet அல்லது கோப்பு இன் சொந்த extent இலிருந்து இறக்குமதி போது கட்டப்பட்ட, ஒன்று அல்லது பல கோப்புகள் மீது உள்ள மாதிரி சாளரங்கள் இன் ordered list. இந்த ஒரு representation ஒவ்வொரு disc shape ஐயும் தாங்குகிறது: பாதை ஒன்றுக்கு கோப்பு, முழு disc ஒரு image ஆக, ஒரு கோப்பு முடிவிலும் இன்னொரு கோப்பு தொடக்கத்திலும் இருக்கும் pregap, மற்றும் lossy rips பாதை ஒன்றுக்கு கோப்பு ஆக வெட்டப்பட்டவை.
+
+Pregap சாளரங்கள் அப்படியே குறிக்கப்படும். Track க்கு pregap இருந்தால் playback அதில் நுழைகிறது (index 00, hidden-பாதை audio உட்பட), ஆனால் clock பாதை time காட்டும்: பாதை proper தொடங்கும் வரை நிலை zero இல் clamp ஆகும்; displayed duration pregap ஐத் தவிர்க்கும், CD player நடத்தை போல.
+
+## Gapless
+
+தற்போதைய பாதை play ஆகும் போதே அடுத்த பாதை திறந்து buffered செய்யப்படும். இரண்டும் மாதிரி rate மற்றும் channel count பகிர்ந்தால், engine அவற்றை live audio callback உள்ளே chain செய்கிறது: stream நிற்காது, எல்லை மாதிரி-exact. வடிவங்கள் வேறுபட்டால் stream மீண்டும் build செய்யப்படும்; வடிவம் change தானே எல்லை கேட்கும் நிலை அது.
+
+## Loudness
+
+Import குறிமாற்று-verification pass இல் per பாதை மற்றும் per ஆல்பம் integrated loudness (EBU R128) மற்றும் true peak அளக்கிறது. Replay gain இவைமூலம் play time இல் பெறப்படும்; கோப்புகள் இல் bake செய்யப்படாது: இலக்கு −18 LUFS, true peak clip ஆகாதபடி cap செய்யப்பட்டு, per பாதை அல்லது per ஆல்பம் பயன்படுத்தப்படும், gapless எல்லைகள் இல் சுத்தமாக மாறும். இந்த mode தற்போது அமைப்புகள் UI இன்றி ships ஆகிறது, இயல்பு off; நூலகம் config கோப்பு இல் அமைக்கலாம்.
+
+## Side pauses
+
+Track lists தங்கள் side மற்றும் disc அமைப்பு ஐக் கொண்டிருக்கும்; பயனர் pause-between-sides இயக்கும்போது engine side எல்லை இல் hold செய்து continue prompt காட்டலாம். hold என்பது playback-service state; குறிமாற்றப்பட்டது silence அல்ல, எனவே resume உடனே நடக்கும்.

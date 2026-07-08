@@ -1,0 +1,37 @@
+---
+title: மேகச் சேமிப்பு
+description: Providers, authentication, மேகம் home இன் வடிவம்
+---
+
+மேகம் home என்பது பயனர் ஏற்கனவே own செய்யும் சேமிப்பு இல் ஒரு இடம். ஒவ்வொரு provider உம் [coven](https://coven.bae.fm) இல் உள்ள அதே சேமிப்பு interface வழியாக இயக்கப்படும்; provider ஒன்றுக்கு மாறுவது authentication மற்றும் இரண்டாவது சாதனம் க்கு access எப்படி வழங்கப்படுகிறது என்பதில்தான்.
+
+## Providers
+
+| Provider | Auth | Access for a new சாதனம் |
+|---|---|---|
+| S3-compatible | Access விசை + secret | Credentials embedded in the invite |
+| Google Drive | OAuth (PKCE) | Folder shared to the joiner's கணக்கு |
+| Dropbox | OAuth (PKCE) | Folder shared to the joiner's கணக்கு |
+| OneDrive | OAuth (PKCE) | Folder shared to the joiner's கணக்கு |
+| iCloud (CloudKit) | Apple ID, no sign-in | CloudKit share accepted by the joiner |
+
+S3-compatible என்பது AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, மற்றும் அந்த API பேசும் எதையும் உள்ளடக்கும்; bucket, region, endpoint, விசை prefix ஆகியவை configurable. config save ஆகும் முன் bucket probed செய்யப்படும்; typo முதல் ஒத்திசைவு இல் அல்ல setup இல் fail ஆகும். OAuth providers முழு **bae** edition இல் மட்டும் உள்ளன; **baeium** builds அவற்றை compile செய்யாது.
+
+## OAuth
+
+Sign-in என்பது public client ஆக PKCE உடன் authorization-code flow. desktop இல் redirect ஒரு callback க்காக உள்ளூர் port இல் bound loopback server க்கு வரும்; mobile இல் app custom-scheme redirect ஐ capture செய்கிறது. provider job க்கு வழங்கும் மிகச் சுருக்கமான scope ஐ bae கேட்கும்; Google Drive இல் அது app தானே உருவாக்கும் கோப்புகள் க்கு மட்டும் access. Tokens OS keyring இல் stored, provider இன் refresh grant கொண்டு refreshed, rejected refresh silent retry loop ஆகாமல் reconnect prompt ஆகத் தெரியும்.
+
+CloudKit க்கு flow தேவையில்லை: app இல் implemented ஆகி core க்கு handed ஆன தளம் CloudKit driver, signed-in Apple ID ஆக இயங்கும்.
+
+## Home layout
+
+home உள்ளே coven per-சாதனம் changeset streams, snapshot generations, membership records, blob namespaces ஆகியவற்றை அமைக்கிறது. bae மூன்று blob namespaces அளிக்கிறது: `release_files`, `covers`, `artist_images`.
+
+Objects எப்படி keyed செய்யப்படுகின்றன என்பது home உருவாக்கும்போது fixed ஆன சேமிப்பு mode மீது சார்ந்தது:
+
+- **Opaque**: objects encrypted செய்து எதையும் reveal செய்யாத content-derived விசைகள் கீழ் stored. இது cryptography மீது முழு நம்பிக்கை வைக்கும் mode; [மறைகுறியாக்கம்](/ta/reference/encryption) பார்க்கவும்.
+- **Browsable**: objects readable paths இல் plaintext ஆக இருக்கும்; பதிவேற்றம் time இல் per blob record செய்யப்படும்: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. bucket usable கோப்பு tree ஆகவும் இருக்கும்; tradeoff encryption இல்லை, membership இல்லை, எனவே browsable homes பிறருடன் share செய்ய முடியாது.
+
+## உண்மையான networks இல் நடத்தை
+
+Playback reads ranged: player முழு கோப்புகள் அல்ல, தேவைப்படும் பைட் சாளரங்கள் ஐ stream செய்கிறது. provider ஆதரித்தால் size threshold மேல் பதிவேற்றங்கள் multipart ஆகும். Rate limiting மற்றும் transient provider errors exponential backoff உடன் retry செய்யும்; provider retry-after கொடுத்தால் அதை மதிக்கும்; expired OAuth டோக்கன்கள் in place refresh ஆகும். ஒத்திசைவு outbox restarts ஐத் தாங்கும்: app quit ஆனதால் interrupted ஆன பதிவேற்றம் மீண்டும் தொடங்காமல் resume ஆகும்.

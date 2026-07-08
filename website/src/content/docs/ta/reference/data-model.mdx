@@ -1,0 +1,43 @@
+---
+title: தரவு மாதிரி
+description: Schema, என்ன ஒத்திசைவு ஆகிறது, என்ன சாதனத்தில் தங்குகிறது
+---
+
+bae இன் catalog சாதாரண SQLite; அட்டவணை by அட்டவணை ஆக [coven](https://coven.bae.fm) க்கு declared: synced அட்டவணைகள் conflict clock கொண்டு ஒவ்வொரு சாதனம் க்கும் பயணிக்கின்றன; undeclared அட்டவணைகள் சாதனம் ஐ விட்டு வெளியேறாது. இந்தப் பிளவு தரவு model இன் மிகவும் load-bearing decision; அதனால் இந்தப் பக்கம் அதனைச் சுற்றி அமைக்கப்பட்டுள்ளது.
+
+## Catalog graph
+
+schema வின் synced heart:
+
+- **`artists`**, **`albums`**, **`works`**: grouping layer. ஆல்பம் அதன் வெளியீடுகள் ஐ aggregate செய்து primary ஒன்றைச் சுட்டுகிறது; classical அமைப்பு க்கு works parent/child graph ஆகும்.
+- **`releases`**: central entity, அச்சு ஒன்றுக்கு ஒரு வரி. Pressing facts (label, catalog number, barcode, country, வடிவம், year), மேதரவு மூலம், imported கோப்புறை content hash, measured ஆல்பம் loudness ஆகியவற்றைக் கொண்டிருக்கும்.
+- **`release_identities`**: ஒரு வெளியீடு *எது*, மூலம் ஒன்றுக்கு. வரிகள் இல்லையெனில் unknown; வெளியீடு ID உடன் MusicBrainz அல்லது Discogs வரி இருந்தால் exact; அது இல்லையெனில் approximate. ஒரு வெளியீடு இரு sources இலும் identities வைத்திருக்கலாம்.
+- **`tracks`** with **`track_artists`**, plus **`release_artist_roles`** and **`track_artist_roles`**: பாதை lists மற்றும் credits; ஒவ்வொரு credit தன் மூலம் உடன் tagged.
+- **`track_works`**, **`work_parts`**, **`work_artists`**: அவை perform செய்யும் works உடன் linked recordings.
+- **`audio_formats`** and **`audio_format_segments`**: playback specs. Per பாதை: codec, மாதிரி rate, bit depth, channels, measured loudness and peak, pregap lengths. Segments பாதை ஐ மூலம் கோப்புகள் இன் ordered பைட் மற்றும் மாதிரி சாளரங்கள் மீது map செய்கின்றன; இதுவே CUE rip பாதை, pregap உட்பட, ஒரு பெரிய கோப்பு இன் regions அல்லது பல கோப்புகள் ஐ span செய்ய உதவும்.
+- **`release_files`**, **`covers`**, **`artist_images`**: blob-bearing அட்டவணைகள். Rows catalog entries; பைட்டுகள் coven இன் blob layer இல் வாழ்கின்றன (கீழே பார்க்கவும்).
+
+## Synced, gated, உள்ளூர்
+
+மேலே உள்ளவை அனைத்தும் ஒத்திசைவு ஆகும், ஆனால் நிபந்தனையின்றி அல்ல. `releases` அதன் `remote` column மீது gated root ஆக declared: வெளியீடு வரி மற்றும் அதன் முழு subtree (பாதைகள், கோப்புகள், credits, வடிவங்கள், அட்டை) `remote` true இருக்கும் போது மட்டும் ஒத்திசைவு ஆகும், அதாவது வெளியீடு மேகம்-managed ஆக இருக்கும் போது. வெளியீடு ஐ managed ஆக மாற்றுவது subtree ஐ publish செய்கிறது; unmanaged வெளியீடு, அதன் schema synced ஆனாலும், importing சாதனம் இல் முழுவதும் தங்கும். ancestor அட்டவணைகள் (`artists`, `albums`, `works`) ஏதாவது synced வெளியீடு அவற்றை இன்னும் reference செய்யும் வரை மட்டும் ஒத்திசைவு ஆகும்; அதனால் கீழே எதுவும் இல்லாத கலைஞர் ஐ சாதனம் பெறாது.
+
+முழுவதும் உள்ளூர் அட்டவணைகள், coven க்கு ஒருபோதும் declared இல்லை:
+
+- **`playback_state`**: தற்போதைய பாதை, நிலை, வரிசை, volume, shuffle and repeat. Playback என்பது சாதனம் fact.
+- **`imports`**: இறக்குமதி operation tracking.
+- **`release_metadata`**: MusicBrainz மற்றும் Discogs இலிருந்து archived raw JSON, எதிர்கால re-interpretation க்கு.
+- **`attribution_names`**: உறுப்பினர் விசைகள் க்கான display names.
+
+ஒவ்வொரு synced அட்டவணை உம் `_updated_at` hybrid-logical-clock column கொண்டிருக்கும்; concurrent edits ஐ coven புலம்-by-புலம் merge செய்ய அதுவே register. synced set மற்றும் clock-carrying set துல்லியமாக equal என்பதைக் test enforce செய்கிறது.
+
+## Blobs
+
+Audio மற்றும் images coven இன் blob layer வழியாக மூன்று namespaces இல் செல்கின்றன; ஒவ்வொன்றுக்கும் தனி சாதனம் இடைநினைவகம் budget: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+
+Release கோப்புகள் பயனர்-provided மற்றும் lazily cached: unmanaged வெளியீடு க்கு blob பயனரின் கோப்பு அசல் path க்கு external reference; managed வெளியீடு க்கு first read இல் இடைநினைவகம் க்கு fetched uploaded object. Covers மற்றும் கலைஞர் images host-provided மற்றும் eagerly cached: bae பைட்டுகள் உருவாக்குகிறது (அட்டைகள் அதிகபட்சம் 600px அகலமான JPEG thumbnails ஆக re-rendered), ஒவ்வொரு சாதனம் உம் pull இல் அவற்றை fetch செய்கிறது; grids உள்ளூர் ஆக render ஆக.
+
+opaque home இல், blobs பொருளற்ற content விசைகள் கீழ் பதிவேற்றம் ஆகும். browsable home இல் ஒவ்வொரு blob வரி readable மேகம் path பதிவு செய்கிறது (audio க்கு `{artist}/{album}/{filename}`, அட்டைகள் க்கு `{album}/{release}/cover.{ext}`), பதிவேற்றம் போது ஒருமுறை computed; பின்னர் rename object ஐ move செய்யாது.
+
+## Rip இன் அடையாளம்
+
+`releases.content_hash` imported கோப்புறை இன் கோப்பு அமைப்பு (relative paths மற்றும் sizes) மீது SHA-256; கோப்புறை disk இல் எங்கே இருக்கிறது என்பதிலிருந்து independent. watched கோப்புறை இல் ஏற்கனவே imported rip மீண்டும் தோன்றும்போது bae அதை அடையாளம் காண இதுவே வழி; re-imports எந்த வெளியீடு ஐ replace செய்ய வேண்டும் என்பதையும் இதுவே கண்டுபிடிக்கிறது.
