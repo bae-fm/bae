@@ -502,7 +502,7 @@ private struct OutboxSection: View {
                 }
                 header(snapshot)
                 if !collapsed {
-                    if snapshot.activeBytesTotal > 0 {
+                    if snapshot.total.bytesTotal > 0 {
                         OutboxTotalProgress(snapshot: snapshot)
                     }
                     Divider()
@@ -682,46 +682,68 @@ private struct OutboxTotalProgress: View {
     }
 }
 
-/// One queue-pane row per release (matching the storage table): the release
-/// title, its file count and total size, and an aggregate state badge.
+/// One expandable queue-pane row per release (matching the storage table):
+/// the release title, its file count and cumulative byte progress, a
+/// determinate progress bar, and an aggregate state badge. Expanded (the
+/// default), it lists every file with its own state and live progress.
 /// Right-click to cancel the release's transition. The orphaned-files bucket
 /// (no release id) renders without a cancel — there's no release to act on.
 private struct OutboxReleaseRow: View {
     let group: BridgeUploadReleaseGroup
     let onCancel: () -> Void
 
+    /// Per-row disclosure, keyed by the `ForEach` identity (the release id).
+    /// Expanded by default: the per-file list is the pane's point.
+    @State
+    private var expanded = true
+
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "arrow.up.circle")
-                .foregroundStyle(.secondary)
-                .frame(width: 16)
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Button {
+                    expanded.toggle()
+                } label: {
+                    Image(
+                        systemName: expanded ? "chevron.down" : "chevron.right"
+                    )
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16)
+                }
+                .buttonStyle(.plain)
+                .help(expanded ? "Hide files" : "Show files")
 
-            Text(group.displayTitle)
-                .lineLimit(1)
+                Text(group.displayTitle)
+                    .lineLimit(1)
 
-            Text("\(Int(group.fileCount)) files · \(sizeText)")
-                .font(.caption)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
+                Text("\(group.files.count) files · \(group.progress.bytesText)")
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
 
-            Spacer()
+                Spacer()
 
-            stateBadge
-                .font(.caption)
-                .frame(width: 130, alignment: .leading)
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 6)
-        .contentShape(Rectangle())
-        .contextMenu {
-            if group.releaseId != nil {
-                Button("Cancel", role: .destructive, action: onCancel)
+                ProgressView(value: group.progress.fraction)
+                    .progressViewStyle(.linear)
+                    .frame(width: 140)
+
+                stateBadge
+                    .font(.caption)
+                    .frame(width: 130, alignment: .leading)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+            .contextMenu {
+                if group.releaseId != nil {
+                    Button("Cancel", role: .destructive, action: onCancel)
+                }
+            }
+            if expanded {
+                ForEach(group.files, id: \.fileId) { file in
+                    OutboxFileRow(file: file)
+                }
             }
         }
-    }
-
-    private var sizeText: String {
-        Int64(group.progress.bytesTotal).formatted(.byteCount(style: .file))
     }
 
     @ViewBuilder
@@ -743,9 +765,91 @@ private struct OutboxReleaseRow: View {
                 systemImage: "exclamationmark.triangle.fill"
             )
             .foregroundStyle(.red)
+        case .done:
+            Label("Done", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
         case .none:
             EmptyView()
         }
+    }
+}
+
+/// One file inside an expanded release row: state icon, name, and — while the
+/// file transfers — a live determinate bar with its byte progress. Completed
+/// files read as a checkmark with their size; a failed file carries its error
+/// as a tooltip and waits for the next retry.
+private struct OutboxFileRow: View {
+    let file: BridgeUploadFileOp
+
+    var body: some View {
+        HStack(spacing: 12) {
+            stateIcon
+                .frame(width: 16)
+
+            Text(file.displayName)
+                .font(.caption)
+                .lineLimit(1)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            if file.activity == .uploading {
+                ProgressView(value: fraction)
+                    .progressViewStyle(.linear)
+                    .frame(width: 140)
+            }
+
+            Text(bytesText)
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.tertiary)
+                .frame(width: 130, alignment: .leading)
+        }
+        .padding(.leading, 44)
+        .padding(.trailing)
+        .padding(.vertical, 3)
+    }
+
+    @ViewBuilder
+    private var stateIcon: some View {
+        switch file.activity {
+        case .queued:
+            Image(systemName: "clock")
+                .foregroundStyle(.secondary)
+        case .uploading:
+            Image(systemName: "arrow.up.circle.fill")
+                .foregroundStyle(.orange)
+        case .retrying:
+            // The converter sets `lastError` for every retrying file; the
+            // conditional only spares a hypothetical empty tooltip.
+            let icon = Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+            if let error = file.lastError {
+                icon.help(error)
+            }
+            else {
+                icon
+            }
+        case .done:
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+        }
+    }
+
+    private var fraction: Double {
+        guard file.bytesTotal > 0 else { return 0 }
+        return Double(file.bytesDone) / Double(file.bytesTotal)
+    }
+
+    /// "6.2 MB of 12.4 MB" while transferring; just the size otherwise.
+    private var bytesText: String {
+        let total = Int64(file.bytesTotal).formatted(.byteCount(style: .file))
+        guard file.activity == .uploading else { return total }
+        return String(
+            format: QueueSummary.message("core.outbox.bytes_progress"),
+            Int64(file.bytesDone).formatted(.byteCount(style: .file)),
+            total
+        )
     }
 }
 

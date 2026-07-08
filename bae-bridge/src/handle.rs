@@ -1539,11 +1539,19 @@ impl AppHandle {
 /// Falling behind the bus (`Lagged`) drops the lagged events but must not kill
 /// the subscription — this loop is the UI's only event feed for the whole
 /// library session, and the callback is a synchronous FFI call, so a slow
-/// consumer during an event burst is exactly when lag happens.
+/// consumer during an event burst is exactly when lag happens. The dropped
+/// events can't be replayed, so the pump synthesizes every coarse invalidation
+/// instead: the UI re-reads each domain and lands on current state, rather
+/// than freezing on whatever the last delivered snapshot said. (Mirrors the
+/// core bus's own lag recovery in `UiEventBus::wire_library_events`.) Dropped
+/// playback pushes aren't recoverable by invalidation, but the next progress
+/// tick refreshes them within a second.
 async fn pump_ui_events(
     mut rx: tokio::sync::broadcast::Receiver<bae_core::ui::UiBusEvent>,
     callback: Box<dyn crate::types::UiEventCallback>,
 ) {
+    use crate::types::{BridgeInvalidation, BridgeUiEvent};
+
     loop {
         match rx.recv().await {
             Ok(event) => {
@@ -1552,7 +1560,23 @@ async fn pump_ui_events(
                 }
             }
             Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                tracing::warn!("UI event subscription lagged; dropped {n} events");
+                tracing::warn!(
+                    "UI event subscription lagged; dropped {n} events; re-invalidating all domains"
+                );
+                for invalidation in [
+                    BridgeInvalidation::AlbumList,
+                    BridgeInvalidation::ComposerList,
+                    BridgeInvalidation::Queue,
+                    BridgeInvalidation::Config,
+                    BridgeInvalidation::SyncStatus,
+                    BridgeInvalidation::Outbox,
+                    BridgeInvalidation::DownloadQueue,
+                    BridgeInvalidation::ExportQueue,
+                    BridgeInvalidation::ImportCandidateList,
+                    BridgeInvalidation::WatchedFolders,
+                ] {
+                    callback.on_event(BridgeUiEvent::Invalidated { invalidation });
+                }
             }
             Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
         }
@@ -1564,14 +1588,54 @@ impl crate::types::BridgeUploadReleaseGroup {
         let bae_core::library::UploadReleaseGroup {
             release_id,
             display_title,
-            file_count,
+            files,
             progress,
         } = g;
         Self {
             release_id,
             display_title,
-            file_count,
+            files: files
+                .into_iter()
+                .map(crate::types::BridgeUploadFileOp::from_core)
+                .collect(),
             progress: crate::types::BridgeUploadProgress::from_core(progress),
+        }
+    }
+}
+
+impl crate::types::BridgeUploadFileOp {
+    /// Flatten core's per-file `UploadState` into `activity` + `bytes_done` +
+    /// `last_error`, so the UI reads plain fields instead of switching on
+    /// associated data.
+    fn from_core(f: bae_core::library::UploadFileOp) -> Self {
+        use bae_core::library::UploadState;
+        let bae_core::library::UploadFileOp {
+            file_id,
+            display_name,
+            bytes_total,
+            state,
+        } = f;
+        let (activity, bytes_done, last_error) = match state {
+            UploadState::Queued => (crate::types::BridgeUploadActivity::Queued, 0, None),
+            UploadState::Active { bytes_done } => (
+                crate::types::BridgeUploadActivity::Uploading,
+                bytes_done,
+                None,
+            ),
+            UploadState::Failed { last_error } => (
+                crate::types::BridgeUploadActivity::Retrying,
+                0,
+                Some(last_error),
+            ),
+            UploadState::Done => (crate::types::BridgeUploadActivity::Done, bytes_total, None),
+        };
+        Self {
+            file_id,
+            display_name,
+            bytes_done,
+            bytes_total,
+            activity,
+            last_error,
         }
     }
 }
@@ -1615,7 +1679,6 @@ impl crate::types::BridgeOutboxSnapshot {
             upload_groups,
             deletes,
             total,
-            active_bytes_total,
             paused,
             throughput_bps,
             eta_seconds,
@@ -1632,7 +1695,6 @@ impl crate::types::BridgeOutboxSnapshot {
                 .collect(),
             per_release,
             total: crate::types::BridgeUploadProgress::from_core(total),
-            active_bytes_total,
             pending_deletes,
             paused,
             throughput_bps,
@@ -1651,6 +1713,7 @@ impl crate::types::BridgeUploadProgress {
             queued,
             active,
             failed,
+            done,
             bytes_done,
             bytes_total,
         } = p;
@@ -1658,6 +1721,7 @@ impl crate::types::BridgeUploadProgress {
             queued,
             active,
             failed,
+            done,
             bytes_done,
             bytes_total,
             activity,
@@ -1673,6 +1737,7 @@ impl crate::types::BridgeUploadActivity {
             UploadActivity::Uploading => BridgeUploadActivity::Uploading,
             UploadActivity::Retrying => BridgeUploadActivity::Retrying,
             UploadActivity::Queued => BridgeUploadActivity::Queued,
+            UploadActivity::Done => BridgeUploadActivity::Done,
         }
     }
 }
@@ -3113,11 +3178,12 @@ mod tests {
     }
 
     /// A consumer that falls behind the broadcast bus gets `Lagged`, not
-    /// `Closed`. The pump must keep delivering events after the gap — a lag
-    /// during an event burst must not freeze the UI for the rest of the
-    /// session.
+    /// `Closed`. The dropped events can't be replayed, so the pump synthesizes
+    /// every coarse invalidation (the UI re-reads each domain instead of
+    /// freezing on the last delivered snapshot) and keeps delivering the
+    /// events behind the gap.
     #[tokio::test]
-    async fn pump_ui_events_survives_broadcast_lag() {
+    async fn pump_ui_events_recovers_from_broadcast_lag_by_invalidating() {
         let (tx, rx) = tokio::sync::broadcast::channel(1);
 
         // Two sends into a capacity-1 channel before the pump runs: the first
@@ -3138,13 +3204,76 @@ mod tests {
         pump.await.unwrap();
 
         let events = events.lock().unwrap();
+        let (last, recovery) = events.split_last().expect("events delivered");
         assert!(
             matches!(
-                events.as_slice(),
-                [crate::types::BridgeUiEvent::MuteChanged { is_muted: true }]
+                last,
+                crate::types::BridgeUiEvent::MuteChanged { is_muted: true }
             ),
             "expected the event behind the lag to still be delivered, got: {events:?}",
         );
+        // Every recovery event is an invalidation, and the set covers the
+        // snapshot-backed domains — outbox included, so a lagged-away final
+        // OutboxChanged can't leave the queue pane frozen.
+        let invalidations: Vec<_> = recovery
+            .iter()
+            .map(|event| match event {
+                crate::types::BridgeUiEvent::Invalidated { invalidation } => invalidation,
+                other => {
+                    panic!("expected only invalidations before the queued event, got {other:?}")
+                }
+            })
+            .collect();
+        for expected in [
+            crate::types::BridgeInvalidation::AlbumList,
+            crate::types::BridgeInvalidation::Outbox,
+            crate::types::BridgeInvalidation::DownloadQueue,
+            crate::types::BridgeInvalidation::ExportQueue,
+            crate::types::BridgeInvalidation::SyncStatus,
+            crate::types::BridgeInvalidation::Queue,
+            crate::types::BridgeInvalidation::Config,
+        ] {
+            assert!(
+                invalidations.iter().any(|i| **i == expected),
+                "lag recovery missing {expected:?}: {invalidations:?}",
+            );
+        }
+    }
+
+    /// The per-file converter flattens core's `UploadState` into plain fields:
+    /// live bytes ride `Uploading`, `Done` reads as fully transferred, and the
+    /// failure message lands in `last_error` under `Retrying`.
+    #[test]
+    fn upload_file_op_flattens_state_into_fields() {
+        use crate::types::BridgeUploadActivity;
+        use bae_core::library::{UploadFileOp, UploadState};
+
+        let convert = |state: UploadState| {
+            crate::types::BridgeUploadFileOp::from_core(UploadFileOp {
+                file_id: "file-1".into(),
+                display_name: "01 Track Title.flac".into(),
+                bytes_total: 1000,
+                state,
+            })
+        };
+
+        let queued = convert(UploadState::Queued);
+        assert_eq!(queued.activity, BridgeUploadActivity::Queued);
+        assert_eq!((queued.bytes_done, queued.last_error), (0, None));
+
+        let active = convert(UploadState::Active { bytes_done: 400 });
+        assert_eq!(active.activity, BridgeUploadActivity::Uploading);
+        assert_eq!(active.bytes_done, 400);
+
+        let failed = convert(UploadState::Failed {
+            last_error: "cloud write failed".into(),
+        });
+        assert_eq!(failed.activity, BridgeUploadActivity::Retrying);
+        assert_eq!(failed.last_error.as_deref(), Some("cloud write failed"));
+
+        let done = convert(UploadState::Done);
+        assert_eq!(done.activity, BridgeUploadActivity::Done);
+        assert_eq!(done.bytes_done, 1000);
     }
 
     #[test]

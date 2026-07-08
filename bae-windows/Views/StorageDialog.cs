@@ -484,24 +484,103 @@ internal sealed class StorageDialog
                 return menu;
             }
 
-            // Uploads: one row per release (matching the storage table) — title,
-            // aggregate progress, and a right-click "Cancel" that stops the
-            // release's transition. The orphaned-files bucket (no release id) has
-            // no release to cancel.
+            // Uploads: one expandable row per release (matching the storage
+            // table and the macOS queue pane) — title, file count, cumulative
+            // byte progress with a bar, an aggregate state badge, and the
+            // per-file list inside. Right-click cancels the release's
+            // transition; the orphaned-files bucket (no release id) has no
+            // release to cancel.
             foreach (var group in snapshot.UploadGroups)
             {
-                ProgressBar? progress = group.Progress is { Active: > 0, BytesTotal: > 0 }
-                    ? new ProgressBar
+                var header = new StackPanel { Spacing = 2 };
+                var titleLine = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+                titleLine.Children.Add(new TextBlock
+                {
+                    Text = group.DisplayTitle,
+                    VerticalAlignment = VerticalAlignment.Center,
+                });
+                titleLine.Children.Add(new TextBlock
+                {
+                    Text = $"{Loc.Chrome("storage.files", "count", group.Files.Length)} · {UploadBytesLabel(group.Progress)}",
+                    FontSize = 12,
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                    VerticalAlignment = VerticalAlignment.Center,
+                });
+                titleLine.Children.Add(new TextBlock
+                {
+                    Text = UploadBadgeLabel(group.Progress),
+                    FontSize = 12,
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                    VerticalAlignment = VerticalAlignment.Center,
+                });
+                header.Children.Add(titleLine);
+                if (group.Progress.BytesTotal > 0)
+                {
+                    header.Children.Add(new ProgressBar
                     {
                         Minimum = 0,
                         Maximum = checked((long)group.Progress.BytesTotal),
                         Value = checked((long)group.Progress.BytesDone),
+                    });
+                }
+
+                var filesPanel = new StackPanel { Spacing = 2 };
+                foreach (var file in group.Files)
+                {
+                    var fileGrid = new Grid { ColumnSpacing = 8 };
+                    fileGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    fileGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                    var fileColumn = new StackPanel { Spacing = 2 };
+                    fileColumn.Children.Add(new TextBlock
+                    {
+                        Text = $"{file.DisplayName} · {FileBytesLabel(file)}",
+                        FontSize = 12,
+                        TextWrapping = TextWrapping.Wrap,
+                    });
+                    if (file.Activity == BridgeUploadActivity.Uploading && file.BytesTotal > 0)
+                    {
+                        fileColumn.Children.Add(new ProgressBar
+                        {
+                            Minimum = 0,
+                            Maximum = checked((long)file.BytesTotal),
+                            Value = checked((long)file.BytesDone),
+                        });
                     }
-                    : null;
-                MenuFlyout? menu = group.ReleaseId is string releaseId
-                    ? CancelFlyout(handle => NativeBae.CancelReleaseTransition(handle, releaseId))
-                    : null;
-                AddOutboxRow(group.DisplayTitle, progress, trailing: null, contextMenu: menu);
+                    Grid.SetColumn(fileColumn, 0);
+                    fileGrid.Children.Add(fileColumn);
+
+                    var state = new TextBlock
+                    {
+                        Text = FileStateLabel(file.Activity),
+                        FontSize = 12,
+                        Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                        VerticalAlignment = VerticalAlignment.Center,
+                    };
+                    if (file.Activity == BridgeUploadActivity.Retrying && file.LastError is string lastError)
+                    {
+                        ToolTipService.SetToolTip(state, lastError);
+                    }
+                    Grid.SetColumn(state, 1);
+                    fileGrid.Children.Add(state);
+                    filesPanel.Children.Add(fileGrid);
+                }
+
+                var expander = new Expander
+                {
+                    Header = header,
+                    Content = filesPanel,
+                    // Expanded by default: the per-file list is the pane's point.
+                    IsExpanded = true,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                };
+                if (group.ReleaseId is string releaseId)
+                {
+                    expander.ContextFlyout = CancelFlyout(
+                        handle => NativeBae.CancelReleaseTransition(handle, releaseId));
+                }
+                outboxPanel.Children.Add(expander);
             }
             // A pending delete is genuinely a single-file operation, so it keeps
             // its own per-file cancel button.
@@ -709,6 +788,62 @@ internal sealed class StorageDialog
             {
                 ["done"] = Loc.Bytes(checked((long)snapshot.Total.BytesDone)),
                 ["total"] = Loc.Bytes(checked((long)snapshot.Total.BytesTotal)),
+            });
+    }
+
+    // A release group's aggregate badge, mirroring the macOS queue pane: the
+    // dominant activity plus the unshipped file count, or "Done" once every
+    // file shipped. Empty for a group core would never emit (no activity).
+    private static string UploadBadgeLabel(BridgeUploadProgress progress)
+    {
+        var pending = progress.Queued + progress.Active + progress.Failed;
+        return progress.Activity switch
+        {
+            BridgeUploadActivity.Uploading => Loc.Chrome("outbox.badge.uploading", "count", pending),
+            BridgeUploadActivity.Queued => Loc.Chrome("outbox.badge.queued", "count", pending),
+            BridgeUploadActivity.Retrying => Loc.Chrome("outbox.badge.retrying", "count", pending),
+            BridgeUploadActivity.Done => Loc.Chrome("outbox.state.done"),
+            _ => string.Empty,
+        };
+    }
+
+    // A release group's byte progress: "45.2 MB of 103.1 MB" while work
+    // remains, or just the total once everything shipped. Cumulative over the
+    // queue burst, matching the bar beside it.
+    private static string UploadBytesLabel(BridgeUploadProgress progress)
+    {
+        var total = Loc.Bytes(checked((long)progress.BytesTotal));
+        if (progress.Queued + progress.Active + progress.Failed == 0) return total;
+        return Loc.Core(
+            "core.outbox.bytes_progress",
+            new Dictionary<string, object?>
+            {
+                ["done"] = Loc.Bytes(checked((long)progress.BytesDone)),
+                ["total"] = total,
+            });
+    }
+
+    private static string FileStateLabel(BridgeUploadActivity activity) => activity switch
+    {
+        BridgeUploadActivity.Uploading => Loc.Chrome("outbox.state.uploading"),
+        BridgeUploadActivity.Queued => Loc.Chrome("outbox.state.queued"),
+        BridgeUploadActivity.Retrying => Loc.Chrome("outbox.state.retrying"),
+        BridgeUploadActivity.Done => Loc.Chrome("outbox.state.done"),
+        _ => throw new ArgumentOutOfRangeException(nameof(activity), activity, "Unknown upload activity"),
+    };
+
+    // A file's byte text: "6.2 MB of 12.4 MB" while transferring; just the
+    // size otherwise.
+    private static string FileBytesLabel(BridgeUploadFileOp file)
+    {
+        var total = Loc.Bytes(checked((long)file.BytesTotal));
+        if (file.Activity != BridgeUploadActivity.Uploading) return total;
+        return Loc.Core(
+            "core.outbox.bytes_progress",
+            new Dictionary<string, object?>
+            {
+                ["done"] = Loc.Bytes(checked((long)file.BytesDone)),
+                ["total"] = total,
             });
     }
 

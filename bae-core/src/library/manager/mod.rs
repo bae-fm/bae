@@ -693,11 +693,13 @@ impl LibraryManager {
     ) -> Result<Self, coven::DbError> {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
         let outbox_in_flight = Arc::new(Mutex::new(HashMap::new()));
+        let upload_sessions = Arc::new(crate::library::UploadSessions::new());
         let upload_throughput = Arc::new(crate::library::UploadThroughput::new());
         let sync_paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
         let observer = Arc::new(crate::sync::upload_observer::ReleaseUploadObserver::new(
             outbox_in_flight.clone(),
+            upload_sessions.clone(),
             upload_throughput.clone(),
             sync_paused.clone(),
             event_tx.clone(),
@@ -728,6 +730,7 @@ impl LibraryManager {
             event_tx.clone(),
             database.clone(),
             outbox_in_flight,
+            upload_sessions,
             upload_throughput,
             sync_paused,
             cloudkit_ops,
@@ -776,6 +779,7 @@ impl LibraryManager {
             event_tx.clone(),
             database.clone(),
             Arc::new(Mutex::new(HashMap::new())),
+            Arc::new(crate::library::UploadSessions::new()),
             Arc::new(crate::library::UploadThroughput::new()),
             Arc::new(std::sync::atomic::AtomicBool::new(false)),
             None,

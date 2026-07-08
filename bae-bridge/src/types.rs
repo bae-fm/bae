@@ -1662,13 +1662,15 @@ pub enum BridgeUiEvent {
     ErrorCleared,
 }
 
-/// The dominant activity of a slice of the upload queue, for the storage-row
-/// badge. Mirror of bae-core's `UploadActivity`.
+/// The dominant activity of a slice of the upload queue (a release's uploads,
+/// a single file, or the whole queue), for the storage-row badge and the
+/// queue pane's per-file state. Mirror of bae-core's `UploadActivity`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadActivity {
     Uploading,
     Retrying,
     Queued,
+    Done,
 }
 
 /// One pending cloud delete.
@@ -1683,11 +1685,14 @@ pub struct BridgeDeleteOp {
 /// Per-state counts, byte progress, and a derived badge `activity`. Used
 /// per-release (the storage-row badge reads `activity`; storage-action gates
 /// read the counts) and as the overall total (queue counts, ETA, summary band).
+/// Files completed during the current queue burst count in `done`,
+/// `bytes_done`, and `bytes_total`, so the fractions are cumulative.
 #[derive(Debug, Clone, Default, uniffi::Record)]
 pub struct BridgeUploadProgress {
     pub queued: u32,
     pub active: u32,
     pub failed: u32,
+    pub done: u32,
     pub bytes_done: u64,
     pub bytes_total: u64,
     /// The badge activity for this slice; `None` when idle. Per-release entries
@@ -1808,14 +1813,34 @@ pub enum BridgeExportLocation {
     Fixed { dir: String },
 }
 
-/// A release's pending uploads, grouped for the queue pane's per-release rows.
-/// Mirror of bae-core's `UploadReleaseGroup`. `release_id` is `None` for the
-/// orphaned-files bucket; `display_title` is the row's label, resolved by core.
+/// One file in a release's upload group: what the queue pane's per-file rows
+/// render. Mirror of bae-core's `UploadFileOp`, with the state flattened into
+/// `activity` + `bytes_done` + `last_error` so the UI doesn't switch on
+/// associated data: `bytes_done` is the live count while `Uploading`, equal to
+/// `bytes_total` when `Done`, and 0 otherwise; `last_error` is set only when
+/// `Retrying`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeUploadFileOp {
+    pub file_id: String,
+    /// The file's original name, resolved by core (its cloud key / file id
+    /// when no release-file row backs it).
+    pub display_name: String,
+    pub bytes_done: u64,
+    pub bytes_total: u64,
+    pub activity: BridgeUploadActivity,
+    pub last_error: Option<String>,
+}
+
+/// A release's uploads, grouped for the queue pane's expandable per-release
+/// rows. Mirror of bae-core's `UploadReleaseGroup`. `release_id` is `None` for
+/// the orphaned-files bucket; `display_title` is the row's label, resolved by
+/// core. `files` runs completed files first (in completion order), then the
+/// remaining queue in order.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadReleaseGroup {
     pub release_id: Option<String>,
     pub display_title: String,
-    pub file_count: u32,
+    pub files: Vec<BridgeUploadFileOp>,
     pub progress: BridgeUploadProgress,
 }
 
@@ -1824,17 +1849,18 @@ pub struct BridgeUploadReleaseGroup {
 /// are computed from bae-core's grouped snapshot; the UI renders them verbatim.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeOutboxSnapshot {
-    /// Pending uploads grouped by release for the queue pane's per-release rows.
+    /// Uploads grouped by release for the queue pane's rows. Groups whose
+    /// files all completed stay listed (as done rows) until the whole queue
+    /// drains.
     pub upload_groups: Vec<BridgeUploadReleaseGroup>,
     pub deletes: Vec<BridgeDeleteOp>,
     /// Per-release aggregate derived from `upload_groups`, keyed by release id.
-    /// Releases with no pending work are absent from the map.
+    /// Releases with no work this burst are absent from the map.
     pub per_release: std::collections::HashMap<String, BridgeUploadProgress>,
+    /// Sum across all uploads. The master progress bar shows
+    /// `total.bytes_done` of `total.bytes_total` — cumulative over the burst,
+    /// completed files included.
     pub total: BridgeUploadProgress,
-    /// Total bytes of the files uploading right now. The master progress bar
-    /// shows `total.bytes_done` of this — the live transfer — rather than
-    /// progress against the whole backlog.
-    pub active_bytes_total: u64,
     /// Derived from `deletes.len()`.
     pub pending_deletes: u32,
     /// True when the user has paused the upload pipeline. Drives the

@@ -5,18 +5,17 @@ import Foundation
 /// delete". Empty when the queue is idle so the band stays hidden. bae-core owns
 /// the counts; the UI composes and localizes them.
 public enum QueueSummary {
+    /// A raw `Core`-table format string for a storage-queue message, e.g. the
+    /// "{done} of {total}" byte-progress line. Callers apply their own
+    /// arguments.
+    public static func message(_ key: String) -> String {
+        NSLocalizedString(key, tableName: "Core", bundle: .main, comment: "")
+    }
+
     /// Localized "{count} <state>" — or the pluralized pending-delete line —
     /// resolved against the `Core` table with a locale-formatted count.
     public static func countLabel(_ key: String, _ count: UInt32) -> String {
-        String.localizedStringWithFormat(
-            NSLocalizedString(
-                key,
-                tableName: "Core",
-                bundle: .main,
-                comment: ""
-            ),
-            Int(count)
-        )
+        String.localizedStringWithFormat(message(key), Int(count))
     }
 }
 

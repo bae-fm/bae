@@ -316,4 +316,11 @@
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-ബിറ്റ്</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>ബിറ്റ് നിരക്ക്</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>കയറ്റുമതി ക്രമീകരണങ്ങൾ സംരക്ഷിക്കാനായില്ല</value></data>
+  <data name="outbox.state.uploading" xml:space="preserve"><value>അപ്ലോഡ് ചെയ്യുന്നു</value></data>
+  <data name="outbox.state.queued" xml:space="preserve"><value>ക്യൂവിൽ</value></data>
+  <data name="outbox.state.retrying" xml:space="preserve"><value>വീണ്ടും ശ്രമിക്കുന്നു</value></data>
+  <data name="outbox.state.done" xml:space="preserve"><value>പൂർത്തിയായി</value></data>
+  <data name="outbox.badge.uploading" xml:space="preserve"><value>അപ്ലോഡ് ചെയ്യുന്നു ({count})</value></data>
+  <data name="outbox.badge.queued" xml:space="preserve"><value>ക്യൂവിൽ ({count})</value></data>
+  <data name="outbox.badge.retrying" xml:space="preserve"><value>വീണ്ടും ശ്രമിക്കുന്നു ({count})</value></data>
 </root>

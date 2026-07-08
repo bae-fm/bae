@@ -406,6 +406,40 @@ impl Database {
         })
         .await
     }
+
+    /// Album titles for the given release ids. Backs the outbox snapshot's
+    /// fully-uploaded groups, whose rows are gone and so no longer carry the
+    /// title the `outbox_items` join supplies. A release that no longer exists
+    /// is simply absent from the map.
+    pub async fn album_titles_for_releases(
+        &self,
+        release_ids: &[String],
+    ) -> Result<HashMap<String, String>, DbError> {
+        let release_ids = release_ids.to_vec();
+        self.call(move |conn| {
+            let placeholders = (0..release_ids.len())
+                .map(|_| "?")
+                .collect::<Vec<_>>()
+                .join(",");
+            let sql = format!(
+                "SELECT r.id, a.title FROM releases r \
+                 JOIN albums a ON a.id = r.album_id \
+                 WHERE r.id IN ({placeholders})"
+            );
+            let mut stmt = conn.prepare(&sql)?;
+            let rows = stmt.query_map(
+                coven::rusqlite::params_from_iter(release_ids.iter()),
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            )?;
+            let mut map = HashMap::new();
+            for row in rows {
+                let (id, title) = row?;
+                map.insert(id, title);
+            }
+            Ok(map)
+        })
+        .await
+    }
 }
 
 fn row_to_db_outbox_row(row: &Row<'_>) -> coven::rusqlite::Result<DbOutboxRow> {

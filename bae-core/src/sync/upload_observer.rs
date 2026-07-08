@@ -30,10 +30,13 @@ use crate::library::LibraryEvent;
 /// `in_flight` maps each currently-uploading `file_id` to the live count of
 /// encrypted bytes that have reached the cloud for it, shared with the
 /// `LibraryManager` so its outbox snapshot reports the "uploading" state and
-/// drives the per-file bar. `throughput` records the byte deltas as they transfer
-/// so the snapshot can surface a rolling-window rate. `handle` lets the observer
-/// rebuild `ReleaseDetail` payloads (via `find_release_detail_with`, whose
-/// pin-state query routes through it) so a completed transition emits a
+/// drives the per-file bar. `sessions` tallies each completed upload under its
+/// release, so the snapshot keeps finished files in the cumulative progress and
+/// never re-derives a completed file as queued while coven's post-upload commit
+/// hasn't removed its row yet. `throughput` records the byte deltas as they
+/// transfer so the snapshot can surface a rolling-window rate. `handle` lets the
+/// observer rebuild `ReleaseDetail` payloads (via `find_release_detail_with`,
+/// whose pin-state query routes through it) so a completed transition emits a
 /// `ReleaseUpdated` event. It is filled by [`set_handle`](Self::set_handle) right
 /// after the handle is built — the handle owns this observer, so it can't be
 /// passed at construction.
@@ -41,6 +44,7 @@ pub struct ReleaseUploadObserver {
     db: OnceLock<Arc<Database>>,
     handle: OnceLock<CovenHandle>,
     in_flight: Arc<Mutex<HashMap<String, u64>>>,
+    sessions: Arc<crate::library::UploadSessions>,
     throughput: Arc<crate::library::UploadThroughput>,
     sync_paused: Arc<std::sync::atomic::AtomicBool>,
     events: broadcast::Sender<LibraryEvent>,
@@ -49,6 +53,7 @@ pub struct ReleaseUploadObserver {
 impl ReleaseUploadObserver {
     pub fn new(
         in_flight: Arc<Mutex<HashMap<String, u64>>>,
+        sessions: Arc<crate::library::UploadSessions>,
         throughput: Arc<crate::library::UploadThroughput>,
         sync_paused: Arc<std::sync::atomic::AtomicBool>,
         events: broadcast::Sender<LibraryEvent>,
@@ -57,6 +62,7 @@ impl ReleaseUploadObserver {
             db: OnceLock::new(),
             handle: OnceLock::new(),
             in_flight,
+            sessions,
             throughput,
             sync_paused,
             events,
@@ -137,6 +143,7 @@ impl ReleaseUploadObserver {
         match crate::library::outbox_snapshot::build_outbox_snapshot(
             self.db(),
             &in_flight,
+            &self.sessions,
             &self.throughput,
             paused,
         )
@@ -215,20 +222,41 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
                 0
             }
         };
+        // Tally the completion under its release, so the snapshot derives this
+        // file as done (its outbox row lingers until coven's post-upload commit
+        // removes it) and keeps its bytes in the cumulative progress.
         match self.db().find_file_by_id(file_id).await {
             Ok(Some(file)) => {
                 let remaining = (file.file_size as u64).saturating_sub(already_counted);
                 if remaining > 0 {
                     self.throughput.record(remaining);
                 }
+                self.sessions.record_done(
+                    Some(file.release_id),
+                    crate::library::upload_sessions::DoneFile {
+                        file_id: file_id.to_string(),
+                        display_name: file.original_filename,
+                        bytes: file.file_size as u64,
+                    },
+                );
             }
-            // Missing row / DB error: the throughput credit is approximate UI
-            // bookkeeping, so a miss only loses a little rate accuracy — log it
-            // rather than swallow it.
+            // No release-file row backs this blob: tally it in the
+            // unattributed bucket, labelled by its id, with the encrypted byte
+            // count the transfer reported.
             Ok(None) => {
-                warn!("on_blob_uploaded: no file row for {file_id}; skipping throughput credit")
+                warn!("on_blob_uploaded: no file row for {file_id}; tallying unattributed");
+                self.sessions.record_done(
+                    None,
+                    crate::library::upload_sessions::DoneFile {
+                        file_id: file_id.to_string(),
+                        display_name: file_id.to_string(),
+                        bytes: already_counted,
+                    },
+                );
             }
-            Err(e) => warn!("on_blob_uploaded: looking up {file_id} for throughput credit: {e}"),
+            // DB error: the tally and throughput credit are UI bookkeeping, so
+            // a miss only degrades the display — log it rather than swallow it.
+            Err(e) => warn!("on_blob_uploaded: looking up {file_id}: {e}"),
         }
         self.emit_outbox_changed().await;
     }

@@ -42,6 +42,10 @@ pub(crate) struct SyncController {
     /// of encrypted bytes that have reached the cloud for that file. Shared with
     /// the sync loop's `ReleaseUploadObserver`. Read by `outbox_snapshot`.
     outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,
+    /// Per-release tallies of uploads completed during the current queue burst.
+    /// The observer records completions; the snapshot builder merges them with
+    /// the remaining rows and clears them when the queue idles.
+    upload_sessions: Arc<crate::library::UploadSessions>,
     /// Rolling-window upload-throughput tracker. The observer records bytes; the
     /// snapshot builder reads the rate.
     upload_throughput: Arc<UploadThroughput>,
@@ -59,6 +63,7 @@ impl SyncController {
         event_tx: broadcast::Sender<LibraryEvent>,
         database: Database,
         outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,
+        upload_sessions: Arc<crate::library::UploadSessions>,
         upload_throughput: Arc<UploadThroughput>,
         sync_paused: Arc<AtomicBool>,
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
@@ -70,6 +75,7 @@ impl SyncController {
             event_tx,
             database,
             outbox_in_flight,
+            upload_sessions,
             upload_throughput,
             sync_paused,
             cloudkit_ops,
@@ -111,6 +117,13 @@ impl SyncController {
     #[cfg(test)]
     pub(crate) fn sync_paused(&self) -> Arc<AtomicBool> {
         self.sync_paused.clone()
+    }
+
+    /// The shared completed-upload tallies, so the observer records into the
+    /// same state the controller's snapshot reads, and the cancel path can
+    /// drop a release's tally.
+    pub(crate) fn upload_sessions(&self) -> Arc<crate::library::UploadSessions> {
+        self.upload_sessions.clone()
     }
 
     // =========================================================================
@@ -168,6 +181,7 @@ impl SyncController {
         crate::library::outbox_snapshot::build_outbox_snapshot(
             &self.database,
             &in_flight,
+            &self.upload_sessions,
             &self.upload_throughput,
             paused,
         )

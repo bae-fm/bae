@@ -8,6 +8,7 @@ pub mod outbox_snapshot;
 pub mod release_queue;
 pub(crate) mod sync_controller;
 pub mod sync_events;
+pub mod upload_sessions;
 pub mod upload_throughput;
 pub use app_services::*;
 pub use download_snapshot::{
@@ -18,9 +19,11 @@ pub use export::ExportService;
 pub use export_snapshot::{ExportOp, ExportProgress, ExportSnapshot, ExportState};
 pub use manager::*;
 pub use outbox_snapshot::{
-    DeleteOp, OutboxSnapshot, UploadActivity, UploadProgress, UploadReleaseGroup, UploadState,
+    DeleteOp, OutboxSnapshot, UploadActivity, UploadFileOp, UploadProgress, UploadReleaseGroup,
+    UploadState,
 };
 pub use release_queue::ReleaseQueue;
+pub use upload_sessions::UploadSessions;
 pub use upload_throughput::UploadThroughput;
 
 use crate::config::{Config, ConfigError};

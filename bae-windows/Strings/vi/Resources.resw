@@ -316,4 +316,11 @@
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>Tốc độ bit</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>Không thể lưu cài đặt xuất</value></data>
+  <data name="outbox.state.uploading" xml:space="preserve"><value>Đang tải lên</value></data>
+  <data name="outbox.state.queued" xml:space="preserve"><value>Đang chờ</value></data>
+  <data name="outbox.state.retrying" xml:space="preserve"><value>Đang thử lại</value></data>
+  <data name="outbox.state.done" xml:space="preserve"><value>Xong</value></data>
+  <data name="outbox.badge.uploading" xml:space="preserve"><value>Đang tải lên ({count})</value></data>
+  <data name="outbox.badge.queued" xml:space="preserve"><value>Đang chờ ({count})</value></data>
+  <data name="outbox.badge.retrying" xml:space="preserve"><value>Đang thử lại ({count})</value></data>
 </root>

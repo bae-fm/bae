@@ -1660,6 +1660,7 @@ async fn upload_observer_processes_transition_after_deleted_release() {
 
     let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
         manager.sync.outbox_in_flight(),
+        manager.sync.upload_sessions(),
         manager.sync.upload_throughput(),
         manager.sync.sync_paused(),
         manager.event_tx.clone(),
@@ -2512,7 +2513,7 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     let group = &snap.upload_groups[0];
     assert_eq!(group.display_title, "Test Album");
     assert_eq!(group.release_id.as_deref(), Some(release.id.as_str()));
-    assert_eq!(group.file_count, 1);
+    assert_eq!(group.files.len(), 1);
     assert_eq!(group.progress.queued, 1);
     assert_eq!(group.progress.bytes_total, 1000);
     let item_id = manager.database.get_pending_cloud_uploads().await.unwrap()[0].id;
@@ -2612,6 +2613,7 @@ async fn observer_progress_advances_snapshot_bytes_done() {
     // exactly as production wires it in `build_sync_manager`.
     let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
         manager.sync.outbox_in_flight(),
+        manager.sync.upload_sessions(),
         manager.sync.upload_throughput(),
         manager.sync.sync_paused(),
         manager.event_tx.clone(),
@@ -2635,13 +2637,72 @@ async fn observer_progress_advances_snapshot_bytes_done() {
     // non-zero before the file even finishes.
     assert!(manager.sync.upload_throughput().bytes_per_sec() > 0);
 
-    // Completion clears the in-flight entry; the row's still queued in the
-    // DB (this test drives only the observer, not coven's removal), so it
-    // reads back as queued with bytes_done reset to 0.
+    // Completion clears the in-flight entry and tallies the file as done;
+    // the row's still in the DB (this test drives only the observer, not
+    // coven's removal), but the snapshot keeps reporting the file as shipped
+    // with its bytes in the cumulative progress.
     observer.on_blob_uploaded(&file.id).await;
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.total.active, 0);
-    assert_eq!(snap.upload_groups[0].progress.queued, 1);
+    assert_eq!(snap.upload_groups[0].progress.queued, 0);
+    assert_eq!(snap.upload_groups[0].progress.done, 1);
+    assert_eq!(snap.upload_groups[0].progress.bytes_done, 1000);
+}
+
+/// A file that finished uploading but whose outbox row hasn't been removed yet
+/// (coven reports completion first, then deletes the row inside the post-upload
+/// commit) must read as done work — never as freshly queued. The Storage
+/// Manager renders whatever the last emitted snapshot says, so a completed
+/// upload re-deriving as "Queued" is a lie the UI can end up frozen on.
+#[tokio::test]
+async fn completed_upload_with_lingering_row_is_not_queued() {
+    use coven::BlobTransitionObserver;
+
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    let file = DbFile {
+        id: format!("{}-file", release.id),
+        release_id: release.id.clone(),
+        original_filename: "a.flac".to_string(),
+        file_size: 1000,
+        content_type: crate::util::content_type::ContentType::Flac,
+        cloud_path: None,
+        created_at: Utc::now(),
+    };
+    manager.database.insert_file(&file).await.unwrap();
+    manager
+        .add_cloud_outbox_upload(&file.id, "cloud-key", None, false)
+        .await
+        .unwrap();
+
+    let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
+        manager.sync.outbox_in_flight(),
+        manager.sync.upload_sessions(),
+        manager.sync.upload_throughput(),
+        manager.sync.sync_paused(),
+        manager.event_tx.clone(),
+    );
+    observer.set_database(Arc::new(manager.database.clone()));
+
+    observer.on_blob_upload_started(&file.id).await;
+    observer.on_blob_upload_progress(&file.id, 1000, 1000).await;
+    observer.on_blob_uploaded(&file.id).await;
+
+    // The outbox row is still present — only coven's commit removes it — but
+    // the upload finished: nothing queued, nothing active, nothing failed,
+    // and the completed bytes stay in the release's cumulative progress.
+    let snap = manager.outbox_snapshot().await.unwrap();
+    assert_eq!(
+        snap.total.queued, 0,
+        "a completed upload must not re-derive as queued"
+    );
+    assert_eq!(snap.total.active, 0);
+    assert_eq!(snap.total.failed, 0);
+    assert_eq!(snap.total.bytes_done, 1000);
+    assert_eq!(snap.total.bytes_total, 1000);
 }
 
 /// Insert a remote, not-pinned release with one file and return its id.

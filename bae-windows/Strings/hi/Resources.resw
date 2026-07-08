@@ -316,4 +316,11 @@
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-बिट</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>बिट दर</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>निर्यात सेटिंग्स सहेजी नहीं जा सकीं</value></data>
+  <data name="outbox.state.uploading" xml:space="preserve"><value>अपलोड हो रहा है</value></data>
+  <data name="outbox.state.queued" xml:space="preserve"><value>कतार में</value></data>
+  <data name="outbox.state.retrying" xml:space="preserve"><value>पुनः प्रयास हो रहा है</value></data>
+  <data name="outbox.state.done" xml:space="preserve"><value>पूर्ण</value></data>
+  <data name="outbox.badge.uploading" xml:space="preserve"><value>अपलोड हो रहा है ({count})</value></data>
+  <data name="outbox.badge.queued" xml:space="preserve"><value>कतार में ({count})</value></data>
+  <data name="outbox.badge.retrying" xml:space="preserve"><value>पुनः प्रयास हो रहा है ({count})</value></data>
 </root>

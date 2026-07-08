@@ -93,6 +93,10 @@ impl LibraryManager {
     /// Local — its files are still the external refs coven holds, untouched.
     pub async fn cancel_release_upload(&self, release_id: &str) -> Result<(), LibraryError> {
         self.coven_cancel_make_remote(release_id).await?;
+        // The cancel tombstones the blobs that already reached the cloud, so
+        // the release's completed-upload tally would now report done work that
+        // isn't — drop it before re-deriving the snapshot.
+        self.sync.upload_sessions().clear_group(Some(release_id));
         self.emit_outbox_changed().await;
         // Refresh the release row (it no longer reads as "uploading"). A
         // best-effort UI nudge — the cancel itself already succeeded above.

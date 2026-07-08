@@ -316,4 +316,11 @@
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>பிட் வீதம்</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>ஏற்றுமதி அமைப்புகளைச் சேமிக்க முடியவில்லை</value></data>
+  <data name="outbox.state.uploading" xml:space="preserve"><value>பதிவேற்றுகிறது</value></data>
+  <data name="outbox.state.queued" xml:space="preserve"><value>வரிசையில்</value></data>
+  <data name="outbox.state.retrying" xml:space="preserve"><value>மீண்டும் முயற்சிக்கிறது</value></data>
+  <data name="outbox.state.done" xml:space="preserve"><value>முடிந்தது</value></data>
+  <data name="outbox.badge.uploading" xml:space="preserve"><value>பதிவேற்றுகிறது ({count})</value></data>
+  <data name="outbox.badge.queued" xml:space="preserve"><value>வரிசையில் ({count})</value></data>
+  <data name="outbox.badge.retrying" xml:space="preserve"><value>மீண்டும் முயற்சிக்கிறது ({count})</value></data>
 </root>

@@ -996,9 +996,10 @@ private struct StorageStateLabel: View {
     }
 
     /// The per-release upload badge: only a release with a file in flight reads
-    /// as "Uploading"; one with work still waiting reads as "Queued", and one
-    /// stalled on failures awaiting retry as "Retrying". `remaining` is the
-    /// release's total unshipped file count.
+    /// as "Uploading"; one with work still waiting reads as "Queued", one
+    /// stalled on failures awaiting retry as "Retrying", and one whose files
+    /// all shipped this burst as "Done" (until the queue idles and the resting
+    /// state takes over). `remaining` is the release's unshipped file count.
     @ViewBuilder
     private func uploadBadge(
         _ activity: BridgeUploadActivity,
@@ -1020,6 +1021,10 @@ private struct StorageStateLabel: View {
             )
             .foregroundStyle(.red)
             .lineLimit(1)
+        case .done:
+            Label("Done", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+                .lineLimit(1)
         }
     }
 }

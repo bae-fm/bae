@@ -316,4 +316,11 @@
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>位元率</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>無法儲存匯出設定</value></data>
+  <data name="outbox.state.uploading" xml:space="preserve"><value>上傳中</value></data>
+  <data name="outbox.state.queued" xml:space="preserve"><value>排隊中</value></data>
+  <data name="outbox.state.retrying" xml:space="preserve"><value>重試中</value></data>
+  <data name="outbox.state.done" xml:space="preserve"><value>已完成</value></data>
+  <data name="outbox.badge.uploading" xml:space="preserve"><value>上傳中 ({count})</value></data>
+  <data name="outbox.badge.queued" xml:space="preserve"><value>排隊中 ({count})</value></data>
+  <data name="outbox.badge.retrying" xml:space="preserve"><value>重試中 ({count})</value></data>
 </root>

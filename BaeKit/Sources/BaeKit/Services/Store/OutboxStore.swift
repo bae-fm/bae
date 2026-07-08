@@ -28,17 +28,22 @@ public class OutboxStore {
 
     /// Whether the release has upload work queued or in flight. Drives the
     /// storage row's "Cancel Upload" affordance and the suppression of other
-    /// storage actions while a transfer is mid-flight. Idle releases are absent
-    /// from the per-release map, so presence is the signal.
+    /// storage actions while a transfer is mid-flight. A release whose files
+    /// all shipped stays in the per-release map (its done row lingers in the
+    /// pane until the queue idles) but has nothing left to cancel or wait for.
     public func isUploading(forRelease releaseId: String) -> Bool {
-        snapshot.perRelease[releaseId] != nil
+        guard let progress = snapshot.perRelease[releaseId] else {
+            return false
+        }
+        return !progress.isIdle
     }
 
     /// Whether any cloud writes are still queued or in flight — uploads or
     /// deletes that haven't reached the cloud home. Drives the extra
-    /// data-loss warning on the remove-library confirmation.
+    /// data-loss warning on the remove-library confirmation. Fully-uploaded
+    /// groups lingering as done rows carry no pending work.
     public var hasPendingCloudWork: Bool {
-        !snapshot.uploadGroups.isEmpty || snapshot.pendingDeletes > 0
+        !snapshot.total.isIdle || snapshot.pendingDeletes > 0
     }
 
     /// The idle (empty) queue. Seeds the store before the first snapshot read
@@ -52,11 +57,11 @@ public class OutboxStore {
                 queued: 0,
                 active: 0,
                 failed: 0,
+                done: 0,
                 bytesDone: 0,
                 bytesTotal: 0,
                 activity: nil,
             ),
-            activeBytesTotal: 0,
             pendingDeletes: 0,
             paused: false,
             throughputBps: 0,

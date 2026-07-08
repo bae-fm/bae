@@ -316,4 +316,11 @@
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32 بت</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>معدل البت</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>تعذر حفظ إعدادات التصدير</value></data>
+  <data name="outbox.state.uploading" xml:space="preserve"><value>جارٍ الرفع</value></data>
+  <data name="outbox.state.queued" xml:space="preserve"><value>في قائمة الانتظار</value></data>
+  <data name="outbox.state.retrying" xml:space="preserve"><value>تجري إعادة المحاولة</value></data>
+  <data name="outbox.state.done" xml:space="preserve"><value>تم</value></data>
+  <data name="outbox.badge.uploading" xml:space="preserve"><value>جارٍ الرفع ({count})</value></data>
+  <data name="outbox.badge.queued" xml:space="preserve"><value>في قائمة الانتظار ({count})</value></data>
+  <data name="outbox.badge.retrying" xml:space="preserve"><value>تجري إعادة المحاولة ({count})</value></data>
 </root>

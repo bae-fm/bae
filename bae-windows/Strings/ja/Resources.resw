@@ -316,4 +316,11 @@
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32ビット</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>ビットレート</value></data>
   <data name="settings.export.save_failed" xml:space="preserve"><value>書き出し設定を保存できませんでした</value></data>
+  <data name="outbox.state.uploading" xml:space="preserve"><value>アップロード中</value></data>
+  <data name="outbox.state.queued" xml:space="preserve"><value>待機中</value></data>
+  <data name="outbox.state.retrying" xml:space="preserve"><value>再試行中</value></data>
+  <data name="outbox.state.done" xml:space="preserve"><value>完了</value></data>
+  <data name="outbox.badge.uploading" xml:space="preserve"><value>アップロード中 ({count})</value></data>
+  <data name="outbox.badge.queued" xml:space="preserve"><value>待機中 ({count})</value></data>
+  <data name="outbox.badge.retrying" xml:space="preserve"><value>再試行中 ({count})</value></data>
 </root>
