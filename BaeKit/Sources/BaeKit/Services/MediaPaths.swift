@@ -117,6 +117,25 @@ public final class MediaPaths: Sendable, Observable {
                 fetchCoverBytes: { try await handle.fetchCoverBytes(url: $0) }
             )
         }
+    #else
+        // `fetchCoverBytes` (remote cover-art search) backs the desktop import
+        // flow and is absent from the iOS bindings; iOS also never reads
+        // arbitrary library images by ref (`fetchImageBytes`). This wires the
+        // path/cover/gallery reads iOS makes; the rest keep their defaults.
+        public convenience init(handle: any AppHandleProtocol) {
+            self.init(
+                filePath: { try await handle.filePath(fileId: $0) },
+                fetchCoverImageBytes: {
+                    try await handle.fetchCoverImageBytes(releaseId: $0)
+                },
+                fetchGalleryBytes: {
+                    try await handle.fetchGalleryBytes(
+                        releaseId: $0,
+                        source: $1
+                    )
+                }
+            )
+        }
     #endif
 
     // periphery:ignore

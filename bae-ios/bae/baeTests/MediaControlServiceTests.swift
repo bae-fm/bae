@@ -1,7 +1,6 @@
+import BaeKit
 import MediaPlayer
 import Testing
-
-@testable import bae
 
 /// Exercises the parts of `MediaControlService` that read and write the
 /// process-global Now Playing info center and remote command center. These

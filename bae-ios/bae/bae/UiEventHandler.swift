@@ -281,7 +281,7 @@ private func updateMediaControls(
     appService: AppService
 ) {
     appService.mediaControlService.updateNowPlaying(
-        update.metadata(),
+        update.metadata(isPlaying: isPlaying),
         isPlaying: isPlaying,
         appHandle: appService.appHandle
     )
@@ -457,13 +457,14 @@ struct PlaybackNowPlayingUpdate {
     let track: NowPlayingTrack
     let albumTitle: String
 
-    func metadata() -> NowPlayingMetadata {
+    func metadata(isPlaying: Bool) -> NowPlayingMetadata {
         NowPlayingMetadata(
             trackTitle: track.trackTitle,
             artistNames: track.artistNames,
             albumTitle: albumTitle,
+            durationMs: track.durationMs,
             coverImageId: track.coverImageId,
-            durationMs: track.durationMs
+            playbackRate: isPlaying ? 1.0 : 0.0
         )
     }
 }

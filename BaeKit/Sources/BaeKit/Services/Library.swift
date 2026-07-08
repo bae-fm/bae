@@ -179,6 +179,43 @@ public final class Library: Sendable, Observable {
                 }
             )
         }
+    #else
+        // iOS has no desktop import/metadata-prefetch flow, so `prefetchRelease`
+        // is absent from its bindings; `getAlbumIndex`, `storageCount`, and
+        // `storagePage` back desktop-only surfaces (album-index scrolling, the
+        // Storage Manager) and go unused here. This wires only the reads iOS
+        // actually makes; the rest keep their throwing stub defaults.
+        public convenience init(handle: any AppHandleProtocol) {
+            self.init(
+                getAlbumCount: { try await handle.getAlbumCount() },
+                getAlbumPage: {
+                    try await handle.getAlbumPage(
+                        sortCriteria: $0,
+                        offset: $1,
+                        limit: $2
+                    )
+                },
+                getComposerCount: { try await handle.getComposerCount() },
+                getComposerPage: {
+                    try await handle.getComposerPage(
+                        sortCriterion: $0,
+                        offset: $1,
+                        limit: $2
+                    )
+                },
+                getComposerDetail: {
+                    try await handle.getComposerDetail(artistId: $0)
+                },
+                getWorkDetail: { try await handle.getWorkDetail(workId: $0) },
+                searchLibrary: { try await handle.searchLibrary(query: $0) },
+                findReleaseDetail: {
+                    try await handle.findReleaseDetail(releaseId: $0)
+                },
+                resolveToTrackIds: {
+                    try await handle.resolveToTrackIds(ids: $0)
+                }
+            )
+        }
     #endif
 
     // periphery:ignore

@@ -33,7 +33,7 @@ struct PlaybackTransportEventTests {
         #expect(update.track.albumId == "album-1")
         #expect(update.albumTitle == "Album Title")
 
-        let metadata = update.metadata()
+        let metadata = update.metadata(isPlaying: true)
         #expect(metadata.trackTitle == "Track Title")
         // `artistNames` is the display string; the event's separate `artistId`
         // has no metadata slot and is dropped.
@@ -41,6 +41,7 @@ struct PlaybackTransportEventTests {
         #expect(metadata.albumTitle == "Album Title")
         #expect(metadata.coverImageId == "cover-1")
         #expect(metadata.durationMs == 210_000)
+        #expect(metadata.playbackRate == 1.0)
     }
 
     @Test("a Paused event carries its pause reason")
@@ -62,7 +63,7 @@ struct PlaybackTransportEventTests {
             return
         }
         #expect(update.track.trackId == "t1")
-        #expect(update.metadata().coverImageId == nil)
+        #expect(update.metadata(isPlaying: false).coverImageId == nil)
         #expect(reason == .manual)
     }
 

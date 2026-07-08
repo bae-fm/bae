@@ -1,246 +1,41 @@
 import BaeKit
 import Foundation
-import Observation
 
-/// Root application object for one unlocked library. Not `@Observable` — the
-/// reactive state lives on the contained stores. Conforms to `Observable`
-/// (empty) so it can sit in SwiftUI's `@Environment`.
-///
-/// The iOS counterpart of the macOS `AppService`, minus the desktop-only wiring
-/// (import / export / preview / release-editor / discogs and the Vision artwork
-/// analyzer) — those bridge methods are gated off the iOS xcframework, so
-/// referencing them wouldn't compile.
+/// iOS `AppService`: the shared `BaeKit.AppService` base with the iOS wiring.
+/// It adds no stored state of its own — the desktop import/export/preview layer
+/// the macOS subclass carries has no iOS counterpart — so this is just the
+/// platform's `init` (no `mediaControlService`/`uiStore` to inject) and
+/// `wireUp` (audio-session remote commands instead of the preview session).
+/// Named to shadow the base so `@Environment(AppService.self)` reads resolve to
+/// it.
 @MainActor
-final class AppService: Observable {
-    /// Handle to bae-core via the uniffi bridge. All library, playback, and
-    /// sync requests go through this.
-    let appHandle: AppHandle
-
-    /// Drives the iOS Now Playing info and lock-screen / Control-Center
-    /// remote commands, and owns the `AVAudioSession` the cpal sink needs.
-    let mediaControlService = MediaControlService()
-
-    // ── Stores ───────────────────────────────────────────────────────────
-
-    let playbackStore = PlaybackStore()
-    let configStore: ConfigStore
-    let libraryStore = LibraryStore()
-    let downloadStore: DownloadStore
-    let outboxStore: OutboxStore
-    let projectionRegistry = ProjectionRegistry()
-    private var projectionRegistrations: [ProjectionRegistration] = []
-
-    // ── Domain services (narrow projections of `AppHandle`) ───────────────
-
-    let library: Library
-    let playback: Playback
-    let queue: Queue
-    let mediaPaths: MediaPaths
-    let sync: Sync
-    let downloads: Downloads
-
+final class AppService: BaeKit.AppService {
     init(
         appHandle: AppHandle,
         config: BridgeConfig,
         initialOutbox: BridgeOutboxSnapshot
     ) {
-        self.appHandle = appHandle
-        configStore = ConfigStore(
-            config: Config(bridge: config),
-            syncReady: appHandle.isSyncReady()
-        )
-        downloadStore = DownloadStore(snapshot: appHandle.getDownloadSnapshot())
-        outboxStore = OutboxStore(snapshot: initialOutbox)
-        // `prefetchRelease` (desktop import flow) is unavailable on iOS, so
-        // build the read services from the iOS-available closures explicitly
-        // rather than the `init(handle:)` convenience that wires it.
-        library = Library(
-            getAlbumCount: { try await appHandle.getAlbumCount() },
-            getAlbumPage: {
-                try await appHandle.getAlbumPage(
-                    sortCriteria: $0,
-                    offset: $1,
-                    limit: $2
-                )
-            },
-            getComposerCount: { try await appHandle.getComposerCount() },
-            getComposerPage: {
-                try await appHandle.getComposerPage(
-                    sortCriterion: $0,
-                    offset: $1,
-                    limit: $2
-                )
-            },
-            getComposerDetail: {
-                try await appHandle.getComposerDetail(artistId: $0)
-            },
-            getWorkDetail: { try await appHandle.getWorkDetail(workId: $0) },
-            searchLibrary: { try await appHandle.searchLibrary(query: $0) },
-            findReleaseDetail: {
-                try await appHandle.findReleaseDetail(releaseId: $0)
-            },
-            resolveToTrackIds: { try await appHandle.resolveToTrackIds(ids: $0) }
-        )
-        playback = Playback(handle: appHandle)
-        // All nine queue ops are in the common impl block (present on iOS), so
-        // the convenience init wires them directly.
-        queue = Queue(handle: appHandle)
-        // `fetchCoverBytes` (remote cover-art search) is desktop-only; iOS has
-        // no import flow, so build `MediaPaths` without it.
-        mediaPaths = MediaPaths(
-            filePath: { try await appHandle.filePath(fileId: $0) },
-            fetchCoverImageBytes: {
-                try await appHandle.fetchCoverImageBytes(releaseId: $0)
-            },
-            fetchGalleryBytes: {
-                try await appHandle.fetchGalleryBytes(releaseId: $0, source: $1)
-            }
-        )
-        sync = Sync(handle: appHandle)
-        // Every pin/unpin/queue-control bridge method is present on iOS, so the
-        // convenience init wires them all — unlike `Library`/`MediaPaths`, which
-        // are built from closures because some of their methods are desktop-only.
-        downloads = Downloads(handle: appHandle)
+        super
+            .init(
+                appHandle: appHandle,
+                mediaControlService: MediaControlService(),
+                config: config,
+                initialOutbox: initialOutbox
+            )
     }
 
-    /// Subscribe to the live event stream and register media-control remote
-    /// commands. Called once after construction.
+    /// Register the common projections, subscribe to the live event stream, and
+    /// set up the lock-screen / Control-Center remote commands. Called once
+    /// after construction. Errors route through the base's default `showError`
+    /// (the `ConfigStore` banner).
     func wireUp() {
-        registerRootProjections()
+        registerCommonProjections()
         appHandle.subscribeUiEvents(
-            callback: UiEventHandler(
-                appService: self
-            )
+            callback: UiEventHandler(appService: self)
         )
         mediaControlService.setupRemoteCommands(
             playback: playback,
             playbackStore: playbackStore
-        )
-    }
-
-    private func registerRootProjections() {
-        precondition(projectionRegistrations.isEmpty)
-        projectionRegistrations = [
-            projectionRegistry.register(makeConfigProjection()),
-            projectionRegistry.register(makeSyncStatusProjection()),
-            projectionRegistry.register(makeOutboxProjection()),
-            projectionRegistry.register(makeDownloadProjection()),
-            projectionRegistry.register(makeReleaseDetailProjection()),
-        ]
-    }
-
-    private func makeOutboxProjection() -> Projection<BridgeOutboxSnapshot> {
-        Projection(
-            domain: .outbox,
-            query: { [appHandle] _ in
-                try await appHandle.getOutboxSnapshot()
-            },
-            apply: { [outboxStore] snapshot in
-                outboxStore.applySnapshot(snapshot)
-            },
-            onError: { [configStore] error in configStore.showError(error) }
-        )
-    }
-
-    private struct ConfigProjectionValue: Sendable {
-        let config: BridgeConfig
-        let syncReady: Bool
-    }
-
-    private func makeConfigProjection() -> Projection<ConfigProjectionValue> {
-        Projection(
-            domain: .config,
-            query: { [appHandle] _ in
-                try await DetachedWork.run {
-                    ConfigProjectionValue(
-                        config: appHandle.getConfig(),
-                        syncReady: appHandle.isSyncReady()
-                    )
-                }
-            },
-            apply: { [configStore] value in
-                configStore.applyConfigSnapshot(
-                    value.config,
-                    syncReady: value.syncReady
-                )
-            },
-            onError: { [configStore] error in configStore.showError(error) }
-        )
-    }
-
-    private func makeSyncStatusProjection()
-        -> Projection<BridgeSyncStatusSnapshot>
-    {
-        Projection(
-            domain: .syncStatus,
-            query: { [appHandle] _ in
-                try await DetachedWork.run {
-                    appHandle.getSyncStatus()
-                }
-            },
-            apply: { [configStore] snapshot in
-                configStore.applySyncStatusSnapshot(snapshot)
-            },
-            onError: { [configStore] error in configStore.showError(error) }
-        )
-    }
-
-    private func makeDownloadProjection()
-        -> Projection<BridgeDownloadSnapshot>
-    {
-        Projection(
-            domain: .downloadQueue,
-            query: { [appHandle] _ in
-                try await DetachedWork.run {
-                    appHandle.getDownloadSnapshot()
-                }
-            },
-            apply: { [downloadStore] snapshot in
-                downloadStore.applySnapshot(snapshot)
-            },
-            onError: { [configStore] error in configStore.showError(error) }
-        )
-    }
-
-    private struct ReleaseDetailProjectionValue: Sendable {
-        let releaseId: String
-        let release: BridgeRelease?
-    }
-
-    private func makeReleaseDetailProjection()
-        -> Projection<ReleaseDetailProjectionValue>
-    {
-        Projection(
-            domain: .release,
-            query: { [appHandle] invalidation in
-                guard case .release(let releaseId) = invalidation else {
-                    preconditionFailure(
-                        "Release projection received \(invalidation)"
-                    )
-                }
-                let release = try await appHandle.findReleaseDetail(
-                    releaseId: releaseId
-                )
-                return ReleaseDetailProjectionValue(
-                    releaseId: releaseId,
-                    release: release
-                )
-            },
-            apply: { [libraryStore] value in
-                libraryStore.applyReleaseDetailSnapshot(
-                    releaseId: value.releaseId,
-                    bridge: value.release
-                )
-            },
-            onError: { [configStore] error in configStore.showError(error) }
-        )
-    }
-
-    func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
-        playbackStore.applyQueueSnapshot(snapshot)
-        mediaControlService.updateCommandAvailability(
-            hasNext: snapshot.hasNext,
-            hasPrevious: snapshot.hasPrevious
         )
     }
 }
