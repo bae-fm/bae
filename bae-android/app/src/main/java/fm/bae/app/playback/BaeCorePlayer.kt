@@ -419,6 +419,17 @@ class BaeCorePlayer(
         val coverImageId: String?,
     )
 
+    /** The context lane (what the queue plays from): the [kind] it plays from
+     *  (release vs library), whether it was ordered by shuffle, and its mapped
+     *  not-yet-played tail. Held as one value so the whole lane is present or
+     *  absent together — the bridge's nullable context maps straight onto it,
+     *  with no discriminator re-derived from parallel fields. */
+    internal data class ContextLane(
+        val kind: BridgePlaybackSourceKind,
+        val shuffled: Boolean,
+        val entries: List<Meta>,
+    )
+
     internal companion object {
         /**
          * The MediaSession playlist projection: the now-playing track followed
@@ -535,19 +546,14 @@ class BaeCorePlayer(
     /** The flat up-next playlist (manual lane then the context tail), hydrated
      *  from the latest `QueueUpdated` event. This is the linear order the Media3
      *  session and skip-by-index need; the in-app two-section projection reads
-     *  [manualEntries] / [contextEntries] separately. */
+     *  [manualEntries] / [contextLane] separately. */
     private var entries: List<Meta> = emptyList()
 
-    /** The manual lane and the context tail, kept separate for the in-app
-     *  two-section projection (`publish` builds `_queue` from these). */
+    /** The manual lane and the context lane, kept separate for the in-app
+     *  two-section projection (`publish` builds `_queue` from these). The context
+     *  lane is null when nothing plays from a release/library. */
     private var manualEntries: List<Meta> = emptyList()
-    private var contextEntries: List<Meta> = emptyList()
-    private var contextShuffled: Boolean = false
-    private var hasContext: Boolean = false
-
-    /** What the context plays from (release vs library), null when no context.
-     *  Read only inside the `hasContext` branch of `publish`, where it is set. */
-    private var contextKind: BridgePlaybackSourceKind? = null
+    private var contextLane: ContextLane? = null
 
     /** Authoritative now-playing metadata from the latest Playing/Paused payload. */
     private var currentMeta: Meta? = null
@@ -875,21 +881,18 @@ class BaeCorePlayer(
         hasNext: Boolean,
         hasPrevious: Boolean,
     ) {
-        // No context (nothing playing from a release) resolves to an empty context
-        // lane with no shuffle — a normal state, named here rather than defaulted
-        // around the absent value.
-        val contextMetas =
-            when (context) {
-                null -> emptyList()
-                else -> context.upcoming.map { it.toEntry() }
-            }
         val manualMetas = manual.map { it.toEntry() }
+        val lane =
+            context?.let {
+                ContextLane(
+                    kind = it.kind,
+                    shuffled = it.shuffled,
+                    entries = it.upcoming.map { entry -> entry.toEntry() },
+                )
+            }
         manualEntries = manualMetas
-        contextEntries = contextMetas
-        contextShuffled = context?.shuffled == true
-        contextKind = context?.kind
-        hasContext = context != null
-        entries = manualMetas + contextMetas
+        contextLane = lane
+        entries = manualMetas + (lane?.entries ?: emptyList())
         this.hasNext = hasNext
         this.hasPrevious = hasPrevious
         publish()
@@ -914,14 +917,12 @@ class BaeCorePlayer(
             QueueProjection(
                 manual = manualEntries.mapNotNull { it.toQueueItem() },
                 context =
-                    if (hasContext) {
+                    contextLane?.let { lane ->
                         QueueContext(
-                            kind = requireNotNull(contextKind) { "a context has a source kind" },
-                            shuffled = contextShuffled,
-                            upcoming = contextEntries.mapNotNull { it.toQueueItem() },
+                            kind = lane.kind,
+                            shuffled = lane.shuffled,
+                            upcoming = lane.entries.mapNotNull { it.toQueueItem() },
                         )
-                    } else {
-                        null
                     },
             )
     }
