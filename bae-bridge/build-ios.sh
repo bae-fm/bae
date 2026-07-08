@@ -65,7 +65,7 @@ rustup target add aarch64-apple-ios aarch64-apple-ios-sim 2>/dev/null || true
 # iOS minimum deployment target. Must be >= the prebuilt FFmpeg static libs'
 # minos (16.0); a lower target makes the linker reach for runtime symbols
 # (`___chkstk_darwin`) that the SDK only vends for the negotiated minimum.
-export IPHONEOS_DEPLOYMENT_TARGET=16.0
+IOS_DEPLOYMENT_TARGET=16.0
 
 # FFmpeg for in-core audio decode. ffmpeg-sys-next locates the libs/headers via
 # FFMPEG_DIR (set per-arch on each build below) and emits the -lavcodec/-lavformat
@@ -82,19 +82,34 @@ fi
 
 DEVICE_SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
 SIM_SDK="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+HOST_SDK="$(xcrun --sdk macosx --show-sdk-path)"
 
 # FFmpeg pulls zlib (`uncompress`); the SDK vends it as -lz. The cdylib link step
 # (crate-type includes cdylib) needs it spelled out — the staticlib we ship
 # defers it to the consuming app, but the cargo build links the cdylib too.
-export RUSTFLAGS="${RUSTFLAGS:-} -C link-arg=-lz"
+IOS_RUSTFLAGS="${RUSTFLAGS:-} -C link-arg=-lz"
+
+run_host_cargo() {
+    env -u IPHONEOS_DEPLOYMENT_TARGET \
+        -u RUSTFLAGS \
+        -u CARGO_ENCODED_RUSTFLAGS \
+        -u BINDGEN_EXTRA_CLANG_ARGS \
+        SDKROOT="$HOST_SDK" \
+        MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-14.0}" \
+        cargo "$@"
+}
 
 echo "Building for iOS device (arm64, $CARGO_PROFILE, features: $BAE_BRIDGE_FEATURES)..."
 FFMPEG_DIR="$FFMPEG_DEVICE" \
+IPHONEOS_DEPLOYMENT_TARGET="$IOS_DEPLOYMENT_TARGET" \
+RUSTFLAGS="$IOS_RUSTFLAGS" \
 BINDGEN_EXTRA_CLANG_ARGS="--target=arm64-apple-ios16.0 -isysroot $DEVICE_SDK -I$FFMPEG_DEVICE/include" \
 cargo build $CARGO_FLAGS --target aarch64-apple-ios -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
 
 echo "Building for iOS simulator (arm64, $CARGO_PROFILE, features: $BAE_BRIDGE_FEATURES)..."
 FFMPEG_DIR="$FFMPEG_SIM" \
+IPHONEOS_DEPLOYMENT_TARGET="$IOS_DEPLOYMENT_TARGET" \
+RUSTFLAGS="$IOS_RUSTFLAGS" \
 SDKROOT="$SIM_SDK" \
 BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$SIM_SDK -target arm64-apple-ios16.0-simulator -I$FFMPEG_SIM/include" \
 cargo build $CARGO_FLAGS --target aarch64-apple-ios-sim -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
@@ -142,13 +157,13 @@ touch BaeKit/Package.swift
 echo "Generating Swift bindings..."
 SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-ios"
 mkdir -p "$SWIFT_BINDINGS_DIR"
-cargo run --bin uniffi-bindgen generate \
+run_host_cargo run --bin uniffi-bindgen generate \
     --library "$CARGO_TARGET_DIR/aarch64-apple-ios/$CARGO_PROFILE/libbae_bridge.a" \
     --language swift \
     --out-dir "$SWIFT_BINDINGS_DIR/"
 
 echo "Generating localization String Catalog (Apple)..."
-cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-ios/bae/bae
+run_host_cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-ios/bae/bae
 
 # Install the iOS-flavored bindings into the BaeBridge target (os(iOS)-gated).
 # The iOS app must compile against the bindings whose checksum symbols the iOS
