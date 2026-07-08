@@ -45,15 +45,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="../bae-windows/Loc.cs" Link="Loc.cs" />
-    <Compile Include="../bae-windows/MediaControlState.cs" Link="MediaControlState.cs" />
-    <Compile Include="../bae-windows/Stores/PlaybackPositionModel.cs" Link="PlaybackPositionModel.cs" />
-    <Compile Include="../bae-windows/Stores/SyncIndicatorModel.cs" Link="SyncIndicatorModel.cs" />
-    <Compile Include="../bae-windows/UpdateFlow.cs" Link="UpdateFlow.cs" />
-    <Compile Include="../bae-windows/Stores/SortState.cs" Link="SortState.cs" />
-    <Compile Include="../bae-windows/TextTruncation.cs" Link="TextTruncation.cs" />
-    <Compile Include="../bae-windows/Stores/QueueReorderModel.cs" Link="QueueReorderModel.cs" />
-    <Compile Include="../bae-windows/Stores/OrderedIntersection.cs" Link="OrderedIntersection.cs" />
+    <Compile Include="../Loc.cs" Link="Loc.cs" />
+    <Compile Include="../MediaControlState.cs" Link="MediaControlState.cs" />
+    <Compile Include="../Stores/PlaybackPositionModel.cs" Link="PlaybackPositionModel.cs" />
+    <Compile Include="../Stores/SyncIndicatorModel.cs" Link="SyncIndicatorModel.cs" />
+    <Compile Include="../UpdateFlow.cs" Link="UpdateFlow.cs" />
+    <Compile Include="../Stores/SortState.cs" Link="SortState.cs" />
+    <Compile Include="../TextTruncation.cs" Link="TextTruncation.cs" />
+    <Compile Include="../Stores/QueueReorderModel.cs" Link="QueueReorderModel.cs" />
+    <Compile Include="../Stores/OrderedIntersection.cs" Link="OrderedIntersection.cs" />
   </ItemGroup>
 
   <ItemGroup>

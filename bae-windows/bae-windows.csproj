@@ -60,6 +60,13 @@
          *.resw files as PRIResource, duplicating our explicit glob below.
          Disable the default to keep our explicit <PRIResource> in control. -->
     <EnableDefaultPriItems>false</EnableDefaultPriItems>
+
+    <!--
+      The unit-test project lives inside this folder as its own SDK project;
+      keep every default glob (Compile/None/Content) out of it so its sources
+      aren't swept into the app build.
+    -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);bae-windows.Tests/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <PropertyGroup>
