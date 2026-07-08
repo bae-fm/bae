@@ -53,6 +53,7 @@
     <Compile Include="../bae-windows/Stores/SortState.cs" Link="SortState.cs" />
     <Compile Include="../bae-windows/TextTruncation.cs" Link="TextTruncation.cs" />
     <Compile Include="../bae-windows/Stores/QueueReorderModel.cs" Link="QueueReorderModel.cs" />
+    <Compile Include="../bae-windows/Stores/OrderedIntersection.cs" Link="OrderedIntersection.cs" />
   </ItemGroup>
 
   <ItemGroup>
