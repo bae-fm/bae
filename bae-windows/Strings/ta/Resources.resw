@@ -376,4 +376,6 @@
   <data name="settings.export.location" xml:space="preserve"><value>இடம்</value></data>
   <data name="settings.export.change_folder" xml:space="preserve"><value>மாற்று</value></data>
   <data name="settings.export.no_folder" xml:space="preserve"><value>கோப்புறை தேர்வு செய்யப்படவில்லை</value></data>
+  <data name="import.documents" xml:space="preserve"><value>ஆவணங்கள்</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>{name} ஐப் படிக்க முடியவில்லை: {error}</value></data>
 </root>

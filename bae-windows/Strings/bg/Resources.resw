@@ -376,4 +376,6 @@
   <data name="settings.export.location" xml:space="preserve"><value>Местоположение</value></data>
   <data name="settings.export.change_folder" xml:space="preserve"><value>Промяна</value></data>
   <data name="settings.export.no_folder" xml:space="preserve"><value>Няма избрана папка</value></data>
+  <data name="import.documents" xml:space="preserve"><value>Документи</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>Не можа да се прочете {name}: {error}</value></data>
 </root>

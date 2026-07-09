@@ -376,4 +376,6 @@
   <data name="settings.export.location" xml:space="preserve"><value>Konum</value></data>
   <data name="settings.export.change_folder" xml:space="preserve"><value>Değiştir</value></data>
   <data name="settings.export.no_folder" xml:space="preserve"><value>Klasör seçilmedi</value></data>
+  <data name="import.documents" xml:space="preserve"><value>Belgeler</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>{name} okunamadı: {error}</value></data>
 </root>

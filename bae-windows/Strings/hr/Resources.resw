@@ -376,4 +376,6 @@
   <data name="settings.export.location" xml:space="preserve"><value>Lokacija</value></data>
   <data name="settings.export.change_folder" xml:space="preserve"><value>Promijeni</value></data>
   <data name="settings.export.no_folder" xml:space="preserve"><value>Nije odabrana mapa</value></data>
+  <data name="import.documents" xml:space="preserve"><value>Dokumenti</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>Nije moguće pročitati {name}: {error}</value></data>
 </root>

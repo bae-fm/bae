@@ -376,4 +376,6 @@
   <data name="settings.export.location" xml:space="preserve"><value>מיקום</value></data>
   <data name="settings.export.change_folder" xml:space="preserve"><value>שינוי</value></data>
   <data name="settings.export.no_folder" xml:space="preserve"><value>לא נבחרה תיקייה</value></data>
+  <data name="import.documents" xml:space="preserve"><value>מסמכים</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>לא ניתן לקרוא את {name}: {error}</value></data>
 </root>

@@ -376,4 +376,6 @@
   <data name="settings.export.location" xml:space="preserve"><value>ಸ್ಥಳ</value></data>
   <data name="settings.export.change_folder" xml:space="preserve"><value>ಬದಲಿಸಿ</value></data>
   <data name="settings.export.no_folder" xml:space="preserve"><value>ಯಾವುದೇ ಫೋಲ್ಡರ್ ಆಯ್ಕೆ ಮಾಡಿಲ್ಲ</value></data>
+  <data name="import.documents" xml:space="preserve"><value>ದಾಖಲೆಗಳು</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>{name} ಓದಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: {error}</value></data>
 </root>

@@ -376,4 +376,6 @@
   <data name="settings.export.location" xml:space="preserve"><value>Location</value></data>
   <data name="settings.export.change_folder" xml:space="preserve"><value>Change</value></data>
   <data name="settings.export.no_folder" xml:space="preserve"><value>No folder chosen</value></data>
+  <data name="import.documents" xml:space="preserve"><value>Documents</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>Could not read {name}: {error}</value></data>
 </root>

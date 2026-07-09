@@ -582,6 +582,11 @@ internal static class NativeBae
         return (ImportCandidateRows(snapshot), snapshot.WatchedFolders);
     }
 
+    /// <summary>A text file's decoded contents (bridge-side encoding detection),
+    /// or the error line. No session handle: the read is a free bridge call.</summary>
+    internal static (string? Text, string? Error) ReadTextFile(string path) =>
+        CaptureBridgeValue(() => BaeBridgeMethods.ReadTextFile(path));
+
     internal static void AutoIdentifyFolder(AppHandle handle, string candidateKey, string folderPath) =>
         handle.AutoIdentifyFolder(candidateKey, folderPath);
 
@@ -922,6 +927,7 @@ internal static class NativeBae
             Matches = ImportMatches(runtime.IdentifyState),
             Signals = runtime.SignalsToolbar.Signals.Select(SignalBadge).ToList(),
             AudioPaths = AudioPaths(candidate.Files.Audio).ToList(),
+            Documents = ImportDocuments(candidate.Files),
             FolderPath = candidate.FolderPath,
             Skipped = candidate.Skipped,
             IsAdded = candidate.IsAdded,
@@ -942,6 +948,7 @@ internal static class NativeBae
             Matches = [],
             Signals = [],
             AudioPaths = [],
+            Documents = [],
             FolderPath = candidate.FolderPath,
             Invalid = true,
         };
@@ -1023,6 +1030,32 @@ internal static class NativeBae
             BridgeAudioContent.TrackFiles tracks => tracks.Files.Select(file => file.LocalPath).ToArray(),
             _ => throw new ArgumentOutOfRangeException(nameof(audio), audio, "Unknown audio content"),
         };
+
+    // A candidate's readable evidence files: paired CUE sheets first (they live
+    // on the audio content as CUE/FLAC pairs), then core's path-sorted document
+    // files (logs, unpaired CUEs, text). The same visual order as the file pane
+    // on other platforms, where the CUE rows sit above the documents section.
+    private static List<ImportDocument> ImportDocuments(BridgeCandidateFiles files)
+    {
+        var cues = files.Audio switch
+        {
+            BridgeAudioContent.CueFlacPairs cue => cue.Pairs.Select(pair => new ImportDocument
+            {
+                Name = pair.CueName,
+                Path = pair.CueLocalPath,
+                SizeBytes = checked((long)pair.CueSize),
+            }),
+            BridgeAudioContent.TrackFiles => Enumerable.Empty<ImportDocument>(),
+            _ => throw new ArgumentOutOfRangeException(nameof(files), files.Audio, "Unknown audio content"),
+        };
+        var documents = files.Documents.Select(file => new ImportDocument
+        {
+            Name = file.Name,
+            Path = file.LocalPath,
+            SizeBytes = checked((long)file.Size),
+        });
+        return cues.Concat(documents).ToList();
+    }
 
     private static string ImportFormat(BridgeAudioContent audio) =>
         audio is BridgeAudioContent.CueFlacPairs ? "CUE/FLAC" : string.Empty;

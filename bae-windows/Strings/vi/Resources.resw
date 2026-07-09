@@ -376,4 +376,6 @@
   <data name="settings.export.location" xml:space="preserve"><value>Vị trí</value></data>
   <data name="settings.export.change_folder" xml:space="preserve"><value>Thay đổi</value></data>
   <data name="settings.export.no_folder" xml:space="preserve"><value>Chưa chọn thư mục</value></data>
+  <data name="import.documents" xml:space="preserve"><value>Tài liệu</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>Không thể đọc {name}: {error}</value></data>
 </root>

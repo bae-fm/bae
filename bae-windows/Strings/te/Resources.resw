@@ -376,4 +376,6 @@
   <data name="settings.export.location" xml:space="preserve"><value>స్థానం</value></data>
   <data name="settings.export.change_folder" xml:space="preserve"><value>మార్చు</value></data>
   <data name="settings.export.no_folder" xml:space="preserve"><value>ఫోల్డర్ ఎంచుకోలేదు</value></data>
+  <data name="import.documents" xml:space="preserve"><value>పత్రాలు</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>{name} చదవలేకపోయింది: {error}</value></data>
 </root>

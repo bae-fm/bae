@@ -175,6 +175,7 @@ internal sealed class ImportStore
             Matches = existing.Matches,
             Signals = existing.Signals,
             AudioPaths = existing.AudioPaths,
+            Documents = existing.Documents,
             FolderPath = existing.FolderPath,
             RowStatus = existing.RowStatus,
             StatusOverride = status,

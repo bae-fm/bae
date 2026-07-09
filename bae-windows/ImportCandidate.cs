@@ -42,6 +42,11 @@ public sealed class ImportCandidate
     /// <summary>The candidate's playable audio files, for pre-import preview.</summary>
     public List<string> AudioPaths { get; set; } = new();
 
+    /// <summary>The candidate's readable evidence files — paired CUE sheets
+    /// first, then core's document files (logs, unpaired CUEs, text) in scan
+    /// order.</summary>
+    public List<ImportDocument> Documents { get; set; } = new();
+
     /// <summary>The on-disk folder to identify/import.</summary>
     public string FolderPath { get; set; } = string.Empty;
 
@@ -69,6 +74,15 @@ public sealed class ImportCandidate
         var line = string.Join("  ·  ", parts);
         return string.IsNullOrEmpty(Status) ? line : $"{line}  —  {Status}";
     }
+}
+
+/// <summary>A candidate's readable evidence file (CUE sheet, rip log, info
+/// text): its display name, absolute path, and size.</summary>
+public sealed class ImportDocument
+{
+    public string Name { get; set; } = string.Empty;
+    public string Path { get; set; } = string.Empty;
+    public long SizeBytes { get; set; }
 }
 
 public sealed class ImportCandidateRowStatus

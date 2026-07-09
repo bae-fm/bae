@@ -101,6 +101,45 @@ internal sealed class ImportPickerDialog
             IsPrimaryButtonEnabled = false,
         };
 
+        // The candidate's readable evidence files (paired CUE sheets, rip logs,
+        // info text). Clicking one hides the picker to make room for the viewer
+        // (one ContentDialog shows at a time) and hands the decoded text to the
+        // loop below; a failed read renders in the picker's status block instead.
+        (string Name, string Text)? pendingDocument = null;
+        if (candidate.Documents.Count > 0)
+        {
+            var documentsSection = new StackPanel { Spacing = 8 };
+            documentsSection.Children.Add(new TextBlock
+            {
+                Text = Loc.Chrome("import.documents"),
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+            });
+            foreach (var document in candidate.Documents)
+            {
+                var docButton = new Button
+                {
+                    Content = $"{document.Name}  ·  {Loc.Bytes(document.SizeBytes)}",
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                };
+                docButton.Click += (_, _) =>
+                {
+                    var (text, error) = NativeBae.ReadTextFile(document.Path);
+                    if (error is not null)
+                    {
+                        status.Text = Loc.Chrome("import.document.read_failed",
+                            new Dictionary<string, object?> { ["name"] = document.Name, ["error"] = error });
+                        status.Visibility = Visibility.Visible;
+                        return;
+                    }
+                    pendingDocument = (document.Name, text!);
+                    dialog.Hide();
+                };
+                documentsSection.Children.Add(docButton);
+            }
+            // Below the candidate name and audio-preview row, above the results.
+            content.Children.Insert(renderPreview is null ? 1 : 2, documentsSection);
+        }
+
         searchButton.Click += async (_, _) =>
         {
             var source = (string)sourceBox.SelectedItem;
@@ -144,6 +183,18 @@ internal sealed class ImportPickerDialog
             while (true)
             {
                 var pickerResult = await dialog.ShowAsync();
+
+                // A document click hid the picker to make room for the viewer;
+                // present it, then re-open the picker with its search results and
+                // selection intact. The audio preview keeps playing underneath, so
+                // this path leaves the preview session untouched.
+                if (pendingDocument is { } doc)
+                {
+                    pendingDocument = null;
+                    await ShowDocument(doc.Name, doc.Text);
+                    continue;
+                }
+
                 _session.WithCurrentHandle(NativeBae.PreviewStop);
 
                 ReleaseCandidateChoice? chosen;
@@ -180,5 +231,31 @@ internal sealed class ImportPickerDialog
             }
             _import.ClearPreview();
         }
+    }
+
+    // The document viewer: the file's decoded text, monospace and selectable, in
+    // a scrollable modal — the Windows shape of the macOS document overlay. The
+    // title is the raw file name; ContentDialog's built-in max width caps the
+    // wrapped text.
+    private async System.Threading.Tasks.Task ShowDocument(string name, string text)
+    {
+        var viewer = new ContentDialog
+        {
+            Title = name,
+            Content = new ScrollViewer
+            {
+                Content = new TextBlock
+                {
+                    Text = text,
+                    FontFamily = new FontFamily("Consolas"),
+                    TextWrapping = TextWrapping.Wrap,
+                    IsTextSelectionEnabled = true,
+                },
+                MaxHeight = 480,
+            },
+            CloseButtonText = Loc.Chrome("action.close"),
+            XamlRoot = _xamlRoot(),
+        };
+        await viewer.ShowAsync();
     }
 }

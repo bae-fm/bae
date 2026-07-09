@@ -376,4 +376,6 @@
   <data name="settings.export.location" xml:space="preserve"><value>위치</value></data>
   <data name="settings.export.change_folder" xml:space="preserve"><value>변경</value></data>
   <data name="settings.export.no_folder" xml:space="preserve"><value>선택한 폴더 없음</value></data>
+  <data name="import.documents" xml:space="preserve"><value>문서</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>{name}을(를) 읽을 수 없음: {error}</value></data>
 </root>
