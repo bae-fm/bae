@@ -328,4 +328,18 @@
   <data name="outbox.badge.uploading" xml:space="preserve"><value>अपलोड हो रहा है ({count})</value></data>
   <data name="outbox.badge.queued" xml:space="preserve"><value>कतार में ({count})</value></data>
   <data name="outbox.badge.retrying" xml:space="preserve"><value>पुनः प्रयास हो रहा है ({count})</value></data>
+  <data name="edit.field.album_title" xml:space="preserve"><value>एल्बम शीर्षक</value></data>
+  <data name="edit.field.album_artists" xml:space="preserve"><value>एल्बम कलाकार (कॉमा से अलग)</value></data>
+  <data name="edit.field.year" xml:space="preserve"><value>वर्ष</value></data>
+  <data name="edit.field.format" xml:space="preserve"><value>प्रारूप</value></data>
+  <data name="edit.field.label" xml:space="preserve"><value>लेबल</value></data>
+  <data name="edit.field.catalog_number" xml:space="preserve"><value>कैटलॉग संख्या</value></data>
+  <data name="edit.field.country" xml:space="preserve"><value>देश</value></data>
+  <data name="edit.field.barcode" xml:space="preserve"><value>बारकोड</value></data>
+  <data name="edit.tracks.header" xml:space="preserve"><value>ट्रैक</value></data>
+  <data name="edit.tracks.col_title" xml:space="preserve"><value>शीर्षक</value></data>
+  <data name="edit.tracks.col_artist" xml:space="preserve"><value>कलाकार</value></data>
+  <data name="edit.tracks.col_side" xml:space="preserve"><value>साइड</value></data>
+  <data name="edit.tracks.col_number" xml:space="preserve"><value>क्र.</value></data>
+  <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>एल्बम कलाकार</value></data>
 </root>

@@ -328,4 +328,18 @@
   <data name="outbox.badge.uploading" xml:space="preserve"><value>اپ لوڈ ہو رہا ہے ({count})</value></data>
   <data name="outbox.badge.queued" xml:space="preserve"><value>قطار میں ({count})</value></data>
   <data name="outbox.badge.retrying" xml:space="preserve"><value>دوبارہ کوشش جاری ہے ({count})</value></data>
+  <data name="edit.field.album_title" xml:space="preserve"><value>البم کا عنوان</value></data>
+  <data name="edit.field.album_artists" xml:space="preserve"><value>البم کے فنکار (کاما سے جدا)</value></data>
+  <data name="edit.field.year" xml:space="preserve"><value>سال</value></data>
+  <data name="edit.field.format" xml:space="preserve"><value>ساخت</value></data>
+  <data name="edit.field.label" xml:space="preserve"><value>لیبل</value></data>
+  <data name="edit.field.catalog_number" xml:space="preserve"><value>کیٹلاگ نمبر</value></data>
+  <data name="edit.field.country" xml:space="preserve"><value>ملک</value></data>
+  <data name="edit.field.barcode" xml:space="preserve"><value>بارکوڈ</value></data>
+  <data name="edit.tracks.header" xml:space="preserve"><value>نغمے</value></data>
+  <data name="edit.tracks.col_title" xml:space="preserve"><value>عنوان</value></data>
+  <data name="edit.tracks.col_artist" xml:space="preserve"><value>فنکار</value></data>
+  <data name="edit.tracks.col_side" xml:space="preserve"><value>سائیڈ</value></data>
+  <data name="edit.tracks.col_number" xml:space="preserve"><value>نمبر</value></data>
+  <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>البم فنکار</value></data>
 </root>

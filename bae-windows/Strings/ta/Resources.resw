@@ -328,4 +328,18 @@
   <data name="outbox.badge.uploading" xml:space="preserve"><value>பதிவேற்றுகிறது ({count})</value></data>
   <data name="outbox.badge.queued" xml:space="preserve"><value>வரிசையில் ({count})</value></data>
   <data name="outbox.badge.retrying" xml:space="preserve"><value>மீண்டும் முயற்சிக்கிறது ({count})</value></data>
+  <data name="edit.field.album_title" xml:space="preserve"><value>ஆல்பம் தலைப்பு</value></data>
+  <data name="edit.field.album_artists" xml:space="preserve"><value>ஆல்பம் கலைஞர்கள் (கமாவால் பிரிக்கப்பட்டவை)</value></data>
+  <data name="edit.field.year" xml:space="preserve"><value>ஆண்டு</value></data>
+  <data name="edit.field.format" xml:space="preserve"><value>வடிவம்</value></data>
+  <data name="edit.field.label" xml:space="preserve"><value>லேபிள்</value></data>
+  <data name="edit.field.catalog_number" xml:space="preserve"><value>பட்டியல் எண்</value></data>
+  <data name="edit.field.country" xml:space="preserve"><value>நாடு</value></data>
+  <data name="edit.field.barcode" xml:space="preserve"><value>பட்டைக் குறியீடு</value></data>
+  <data name="edit.tracks.header" xml:space="preserve"><value>பாடல்கள்</value></data>
+  <data name="edit.tracks.col_title" xml:space="preserve"><value>தலைப்பு</value></data>
+  <data name="edit.tracks.col_artist" xml:space="preserve"><value>கலைஞர்</value></data>
+  <data name="edit.tracks.col_side" xml:space="preserve"><value>பக்கம்</value></data>
+  <data name="edit.tracks.col_number" xml:space="preserve"><value>எண்</value></data>
+  <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>ஆல்பம் கலைஞர்</value></data>
 </root>

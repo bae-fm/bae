@@ -328,4 +328,18 @@
   <data name="outbox.badge.uploading" xml:space="preserve"><value>Enviando ({count})</value></data>
   <data name="outbox.badge.queued" xml:space="preserve"><value>Na fila ({count})</value></data>
   <data name="outbox.badge.retrying" xml:space="preserve"><value>Tentando novamente ({count})</value></data>
+  <data name="edit.field.album_title" xml:space="preserve"><value>título do álbum</value></data>
+  <data name="edit.field.album_artists" xml:space="preserve"><value>artistas do álbum (separados por vírgula)</value></data>
+  <data name="edit.field.year" xml:space="preserve"><value>ano</value></data>
+  <data name="edit.field.format" xml:space="preserve"><value>formato</value></data>
+  <data name="edit.field.label" xml:space="preserve"><value>gravadora</value></data>
+  <data name="edit.field.catalog_number" xml:space="preserve"><value>número de catálogo</value></data>
+  <data name="edit.field.country" xml:space="preserve"><value>país</value></data>
+  <data name="edit.field.barcode" xml:space="preserve"><value>código de barras</value></data>
+  <data name="edit.tracks.header" xml:space="preserve"><value>faixas</value></data>
+  <data name="edit.tracks.col_title" xml:space="preserve"><value>título</value></data>
+  <data name="edit.tracks.col_artist" xml:space="preserve"><value>artista</value></data>
+  <data name="edit.tracks.col_side" xml:space="preserve"><value>lado</value></data>
+  <data name="edit.tracks.col_number" xml:space="preserve"><value>n.º</value></data>
+  <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>artista do álbum</value></data>
 </root>

@@ -328,4 +328,18 @@
   <data name="outbox.badge.uploading" xml:space="preserve"><value>അപ്ലോഡ് ചെയ്യുന്നു ({count})</value></data>
   <data name="outbox.badge.queued" xml:space="preserve"><value>ക്യൂവിൽ ({count})</value></data>
   <data name="outbox.badge.retrying" xml:space="preserve"><value>വീണ്ടും ശ്രമിക്കുന്നു ({count})</value></data>
+  <data name="edit.field.album_title" xml:space="preserve"><value>ആൽബം ശീർഷകം</value></data>
+  <data name="edit.field.album_artists" xml:space="preserve"><value>ആൽബം ആർട്ടിസ്റ്റുകൾ (കോമകൊണ്ട് വേർതിരിച്ചത്)</value></data>
+  <data name="edit.field.year" xml:space="preserve"><value>വർഷം</value></data>
+  <data name="edit.field.format" xml:space="preserve"><value>ഫോർമാറ്റ്</value></data>
+  <data name="edit.field.label" xml:space="preserve"><value>ലേബൽ</value></data>
+  <data name="edit.field.catalog_number" xml:space="preserve"><value>കാറ്റലോഗ് നമ്പർ</value></data>
+  <data name="edit.field.country" xml:space="preserve"><value>രാജ്യം</value></data>
+  <data name="edit.field.barcode" xml:space="preserve"><value>ബാർകോഡ്</value></data>
+  <data name="edit.tracks.header" xml:space="preserve"><value>ട്രാക്കുകൾ</value></data>
+  <data name="edit.tracks.col_title" xml:space="preserve"><value>ശീർഷകം</value></data>
+  <data name="edit.tracks.col_artist" xml:space="preserve"><value>കലാകാരൻ</value></data>
+  <data name="edit.tracks.col_side" xml:space="preserve"><value>വശം</value></data>
+  <data name="edit.tracks.col_number" xml:space="preserve"><value>നം.</value></data>
+  <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>ആൽബം ആർട്ടിസ്റ്റ്</value></data>
 </root>

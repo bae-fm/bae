@@ -328,4 +328,18 @@
   <data name="outbox.badge.uploading" xml:space="preserve"><value>Yükleniyor ({count})</value></data>
   <data name="outbox.badge.queued" xml:space="preserve"><value>Sırada ({count})</value></data>
   <data name="outbox.badge.retrying" xml:space="preserve"><value>Yeniden deneniyor ({count})</value></data>
+  <data name="edit.field.album_title" xml:space="preserve"><value>albüm adı</value></data>
+  <data name="edit.field.album_artists" xml:space="preserve"><value>albüm sanatçıları (virgülle ayrılmış)</value></data>
+  <data name="edit.field.year" xml:space="preserve"><value>yıl</value></data>
+  <data name="edit.field.format" xml:space="preserve"><value>biçim</value></data>
+  <data name="edit.field.label" xml:space="preserve"><value>etiket</value></data>
+  <data name="edit.field.catalog_number" xml:space="preserve"><value>katalog numarası</value></data>
+  <data name="edit.field.country" xml:space="preserve"><value>ülke</value></data>
+  <data name="edit.field.barcode" xml:space="preserve"><value>barkod</value></data>
+  <data name="edit.tracks.header" xml:space="preserve"><value>parçalar</value></data>
+  <data name="edit.tracks.col_title" xml:space="preserve"><value>başlık</value></data>
+  <data name="edit.tracks.col_artist" xml:space="preserve"><value>sanatçı</value></data>
+  <data name="edit.tracks.col_side" xml:space="preserve"><value>yüz</value></data>
+  <data name="edit.tracks.col_number" xml:space="preserve"><value>no.</value></data>
+  <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>albüm sanatçısı</value></data>
 </root>

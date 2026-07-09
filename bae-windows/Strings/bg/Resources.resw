@@ -328,4 +328,18 @@
   <data name="outbox.badge.uploading" xml:space="preserve"><value>Качване ({count})</value></data>
   <data name="outbox.badge.queued" xml:space="preserve"><value>В опашка ({count})</value></data>
   <data name="outbox.badge.retrying" xml:space="preserve"><value>Повторен опит ({count})</value></data>
+  <data name="edit.field.album_title" xml:space="preserve"><value>заглавие на албума</value></data>
+  <data name="edit.field.album_artists" xml:space="preserve"><value>изпълнители на албума (разделени със запетая)</value></data>
+  <data name="edit.field.year" xml:space="preserve"><value>година</value></data>
+  <data name="edit.field.format" xml:space="preserve"><value>формат</value></data>
+  <data name="edit.field.label" xml:space="preserve"><value>лейбъл</value></data>
+  <data name="edit.field.catalog_number" xml:space="preserve"><value>каталожен номер</value></data>
+  <data name="edit.field.country" xml:space="preserve"><value>държава</value></data>
+  <data name="edit.field.barcode" xml:space="preserve"><value>баркод</value></data>
+  <data name="edit.tracks.header" xml:space="preserve"><value>песни</value></data>
+  <data name="edit.tracks.col_title" xml:space="preserve"><value>заглавие</value></data>
+  <data name="edit.tracks.col_artist" xml:space="preserve"><value>изпълнител</value></data>
+  <data name="edit.tracks.col_side" xml:space="preserve"><value>страна</value></data>
+  <data name="edit.tracks.col_number" xml:space="preserve"><value>№</value></data>
+  <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>изпълнител на албума</value></data>
 </root>

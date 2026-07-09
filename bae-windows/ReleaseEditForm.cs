@@ -26,14 +26,14 @@ internal sealed class ReleaseEditForm
     /// </summary>
     internal TextBlock ErrorText { get; }
 
-    private readonly TextBox _titleBox = new() { Header = "album title" };
-    private readonly TextBox _artistBox = new() { Header = "album artists (comma-separated)" };
-    private readonly TextBox _yearBox = new() { Header = "year" };
-    private readonly TextBox _formatBox = new() { Header = "format" };
-    private readonly TextBox _labelBox = new() { Header = "label" };
-    private readonly TextBox _catalogBox = new() { Header = "catalog number" };
-    private readonly TextBox _countryBox = new() { Header = "country" };
-    private readonly TextBox _barcodeBox = new() { Header = "barcode" };
+    private readonly TextBox _titleBox = new() { Header = Loc.Chrome("edit.field.album_title") };
+    private readonly TextBox _artistBox = new() { Header = Loc.Chrome("edit.field.album_artists") };
+    private readonly TextBox _yearBox = new() { Header = Loc.Chrome("edit.field.year") };
+    private readonly TextBox _formatBox = new() { Header = Loc.Chrome("edit.field.format") };
+    private readonly TextBox _labelBox = new() { Header = Loc.Chrome("edit.field.label") };
+    private readonly TextBox _catalogBox = new() { Header = Loc.Chrome("edit.field.catalog_number") };
+    private readonly TextBox _countryBox = new() { Header = Loc.Chrome("edit.field.country") };
+    private readonly TextBox _barcodeBox = new() { Header = Loc.Chrome("edit.field.barcode") };
 
     private readonly List<(BridgeRawTrackEdit Track, TextBox Title, TextBox Artist, TextBox Side, TextBox Number)> _trackBoxes = new();
     private readonly List<Grid> _trackRows = new();
@@ -71,13 +71,13 @@ internal sealed class ReleaseEditForm
         // Per-track editing: title, artist (empty = shares the album artist), side,
         // and track number. Rows align positionally with the seeded tracks and ride
         // back through the same RawReleaseEdit the form round-trips.
-        Panel.Children.Add(new TextBlock { Text = "tracks", Margin = new Thickness(0, 8, 0, 0) });
+        Panel.Children.Add(new TextBlock { Text = Loc.Chrome("edit.tracks.header"), Margin = new Thickness(0, 8, 0, 0) });
         var trackHeader = new Grid { ColumnSpacing = 6 };
         AddTrackColumns(trackHeader);
-        HeaderCell(trackHeader, "title", 0);
-        HeaderCell(trackHeader, "artist", 1);
-        HeaderCell(trackHeader, "side", 2);
-        HeaderCell(trackHeader, "no.", 3);
+        HeaderCell(trackHeader, Loc.Chrome("edit.tracks.col_title"), 0);
+        HeaderCell(trackHeader, Loc.Chrome("edit.tracks.col_artist"), 1);
+        HeaderCell(trackHeader, Loc.Chrome("edit.tracks.col_side"), 2);
+        HeaderCell(trackHeader, Loc.Chrome("edit.tracks.col_number"), 3);
         Panel.Children.Add(trackHeader);
 
         // ErrorText terminates the panel; track rows are inserted just before it so
@@ -137,7 +137,7 @@ internal sealed class ReleaseEditForm
             var row = new Grid { ColumnSpacing = 6 };
             AddTrackColumns(row);
             var titleCell = new TextBox { Text = track.Title };
-            var artistCell = new TextBox { Text = track.ArtistText, PlaceholderText = "album artist" };
+            var artistCell = new TextBox { Text = track.ArtistText, PlaceholderText = Loc.Chrome("edit.tracks.artist_placeholder") };
             var sideCell = new TextBox { Text = track.Side.ToString() };
             var numberCell = new TextBox { Text = track.TrackNumber?.ToString() ?? string.Empty };
             Grid.SetColumn(titleCell, 0);
