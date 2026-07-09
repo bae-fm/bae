@@ -65,7 +65,8 @@
             Padding="24"
             SelectionMode="None"
             IsItemClickEnabled="True"
-            ItemClick="OnAlbumClick">
+            ItemClick="OnAlbumClick"
+            RightTapped="OnAlbumGridRightTapped">
             <GridView.ItemTemplate>
                 <DataTemplate x:DataType="local:Album">
                     <StackPanel Width="180" Margin="8" Spacing="6">
@@ -169,11 +170,13 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Border
+                    x:Name="NpCoverFrame"
                     Grid.Column="0"
                     Width="48"
                     Height="48"
                     CornerRadius="4"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    Tapped="OnNowPlayingInfoTapped">
                     <Image x:Name="NpCover" Stretch="UniformToFill" />
                 </Border>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
@@ -181,7 +184,8 @@
                         x:Name="NpTitle"
                         MaxLines="1"
                         TextTrimming="CharacterEllipsis"
-                        Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        Tapped="OnNowPlayingInfoTapped" />
                     <TextBlock
                         x:Name="NpArtist"
                         MaxLines="1"

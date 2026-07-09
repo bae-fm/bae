@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>approbation de l’appareil…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>impossible d’approuver cet appareil</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>saisissez ce code sur le nouvel appareil.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>aller à l'album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>supprimer</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>annuler</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>impossible de charger la file d'envoi</value></data>

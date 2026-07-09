@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>zatwierdzanie urządzenia…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>nie udało się zatwierdzić tego urządzenia</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>wpisz ten kod na nowym urządzeniu.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>przejdź do albumu</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>usuń</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>anuluj</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nie udało się wczytać skrzynki nadawczej</value></data>

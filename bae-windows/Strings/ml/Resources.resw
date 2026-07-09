@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>ഉപകരണം അംഗീകരിക്കുന്നു…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>ഈ ഉപകരണം അംഗീകരിക്കാനായില്ല</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>ഈ കോഡ് പുതിയ ഉപകരണത്തിൽ നൽകുക.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>ആൽബത്തിലേക്ക് പോകുക</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>ഇല്ലാതാക്കുക</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>റദ്ദാക്കുക</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>ഔട്ട്‌ബോക്സ് ലോഡ് ചെയ്യാനായില്ല</value></data>

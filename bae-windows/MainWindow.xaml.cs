@@ -138,6 +138,10 @@ public sealed partial class MainWindow : Window
             QueueAddBadge,
             QueueAddBadgeScale,
             QueueAddBadgeText);
+        // The bar's art and title open the playing album; the tooltip is the
+        // affordance that they're clickable.
+        ToolTipService.SetToolTip(NpCoverFrame, Loc.Chrome("nowplaying.go_to_album"));
+        ToolTipService.SetToolTip(NpTitle, Loc.Chrome("nowplaying.go_to_album"));
         _import = new ImportStore(_session, _shell, _mediaControls);
         _projections = new ProjectionRegistry();
         _router = new UiEventRouter(_playback, _shell, _projections, _mediaControls, _import.HandlePreviewEvent);
@@ -693,6 +697,21 @@ public sealed partial class MainWindow : Window
     private async void OnGoToNowPlaying(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
+        await OpenNowPlayingAlbum();
+    }
+
+    // Clicking the bar's album art or track title jumps to the playing album —
+    // the pointer version of the go-to-now-playing accelerator.
+    private async void OnNowPlayingInfoTapped(object sender, TappedRoutedEventArgs e)
+    {
+        e.Handled = true;
+        await OpenNowPlayingAlbum();
+    }
+
+    // Open the playing track's album and scroll it into view. No-op when nothing
+    // is playing.
+    private async System.Threading.Tasks.Task OpenNowPlayingAlbum()
+    {
         var albumId = _playback.NowPlayingAlbumId;
         if (CurrentHandleOrNull() == null || string.IsNullOrEmpty(albumId))
         {
@@ -783,6 +802,29 @@ public sealed partial class MainWindow : Window
         }
 
         await _albumDetail.Show(album.Id);
+    }
+
+    // Right-click / long-press on an album card: play or queue the album's
+    // canonical release without opening the detail dialog.
+    private void OnAlbumGridRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (CurrentHandleOrNull() == null
+            || (e.OriginalSource as FrameworkElement)?.DataContext is not Album album)
+        {
+            return;
+        }
+        var releaseId = album.PrimaryReleaseId;
+        if (string.IsNullOrEmpty(releaseId))
+        {
+            return;
+        }
+        e.Handled = true;
+        var element = (FrameworkElement)e.OriginalSource;
+        var menu = AlbumCardMenu.Build(
+            onPlay: () => WithCurrentHandle(handle => NativeBae.PlayRelease(handle, releaseId, -1, false)),
+            onPlayNext: () => WithCurrentHandle(handle => NativeBae.AddReleaseNext(handle, releaseId)),
+            onAddToQueue: () => WithCurrentHandle(handle => NativeBae.AddReleaseToQueue(handle, releaseId)));
+        menu.ShowAt(element, new FlyoutShowOptions { Position = e.GetPosition(element) });
     }
 
     private async void OnStorageClick(object sender, RoutedEventArgs e)

@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>डिव्हाइस मंजूर करत आहे…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>हे डिव्हाइस मंजूर करता आले नाही</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>हा संकेत नवीन डिव्हाइसवर प्रविष्ट करा.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>अल्बमवर जा</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>हटवा</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>रद्द करा</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>आउटबॉक्स लोड करता आला नाही</value></data>

@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>ਡਿਵਾਈਸ ਮਨਜ਼ੂਰ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>ਇਸ ਡਿਵਾਈਸ ਨੂੰ ਮਨਜ਼ੂਰ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>ਨਵੇਂ ਡਿਵਾਈਸ ਉੱਤੇ ਇਹ ਕੋਡ ਦਾਖਲ ਕਰੋ।</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>ਐਲਬਮ 'ਤੇ ਜਾਓ</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>ਮਿਟਾਓ</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>ਰੱਦ ਕਰੋ</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>ਆਉਟਬਾਕਸ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ</value></data>

@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>పరికరాన్ని ఆమోదిస్తోంది…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>ఈ పరికరాన్ని ఆమోదించలేకపోయింది</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>ఈ కోడ్‌ను కొత్త పరికరంలో నమోదు చేయండి.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>ఆల్బమ్‌కు వెళ్లండి</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>తొలగించు</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>రద్దు చేయి</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>బయటికి పంపే పెట్టెను లోడ్ చేయలేకపోయింది</value></data>

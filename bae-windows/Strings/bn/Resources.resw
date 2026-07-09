@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>ডিভাইস অনুমোদন করা হচ্ছে…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>এই ডিভাইসটি অনুমোদন করা যায়নি</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>নতুন ডিভাইসে এই কোড লিখুন।</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>অ্যালবামে যান</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>মুছুন</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>বাতিল করুন</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>আউটবক্স লোড করা যায়নি</value></data>

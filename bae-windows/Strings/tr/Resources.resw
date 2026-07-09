@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>cihaz onaylanıyor…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>bu cihaz onaylanamadı</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>bu kodu yeni cihazda girin.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>albüme git</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>sil</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>iptal</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>giden kutusu yüklenemedi</value></data>

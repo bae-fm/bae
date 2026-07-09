@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>正在核准裝置…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>無法核准此裝置</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>在新裝置輸入此代碼。</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>前往專輯</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>刪除</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>取消</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>無法載入寄件匣</value></data>

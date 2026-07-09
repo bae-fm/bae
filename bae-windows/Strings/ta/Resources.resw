@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>சாதனத்துக்கு ஒப்புதல் அளிக்கப்படுகிறது…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>இந்த சாதனத்துக்கு ஒப்புதல் அளிக்க முடியவில்லை</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>இந்த குறியீட்டை புதிய சாதனத்தில் உள்ளிடவும்.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>ஆல்பத்திற்குச் செல்</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>நீக்கு</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>ரத்து செய்</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>வெளிச்செல்லும் பெட்டியை ஏற்ற முடியவில்லை</value></data>

@@ -19,6 +19,7 @@ public sealed class Album : INotifyPropertyChanged
 
     internal Album(BridgeAlbum album) : this(album.Id, album.Title, album.ArtistNames, album.Cover)
     {
+        PrimaryReleaseId = album.PrimaryReleaseId;
     }
 
     private Album(string id, string title, string artist, BridgeImageRef? cover)
@@ -35,6 +36,10 @@ public sealed class Album : INotifyPropertyChanged
     public string Id => _id;
     public string Title => _title;
     public string Artist => _artist;
+
+    /// <summary>The album's canonical release — the default play/queue target.
+    /// Null for search-result albums, whose bridge type doesn't carry it.</summary>
+    internal string? PrimaryReleaseId { get; }
 
     internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
         _cover.Attach(handle, dispatcherQueue);

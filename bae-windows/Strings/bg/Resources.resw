@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>одобряване на устройството…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>това устройство не можа да бъде одобрено</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>въведете този код на новото устройство.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>отиди към албума</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>изтриване</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>отказ</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>изходящата опашка не може да бъде заредена</value></data>

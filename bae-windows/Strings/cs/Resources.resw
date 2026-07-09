@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>zařízení se schvaluje…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>toto zařízení se nepodařilo schválit</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>zadejte tento kód na novém zařízení.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>přejít na album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>smazat</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>zrušit</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nelze načíst odchozí frontu</value></data>

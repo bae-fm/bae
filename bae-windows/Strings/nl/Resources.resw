@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>apparaat goedkeuren…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>kan dit apparaat niet goedkeuren</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>voer deze code in op het nieuwe apparaat.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>ga naar album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>verwijderen</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>annuleren</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>kan de outbox niet laden</value></data>

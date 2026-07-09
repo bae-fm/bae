@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>odobravanje uređaja…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>nije moguće odobriti ovaj uređaj</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>unesite ovaj kod na novom uređaju.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>idi na album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>izbriši</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>odustani</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nije moguće učitati izlazni red</value></data>

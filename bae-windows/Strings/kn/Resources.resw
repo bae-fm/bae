@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>ಸಾಧನ ಅನುಮೋದಿಸಲಾಗುತ್ತಿದೆ…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>ಈ ಸಾಧನವನ್ನು ಅನುಮೋದಿಸಲಾಗಲಿಲ್ಲ</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>ಈ ಕೋಡ್ ಅನ್ನು ಹೊಸ ಸಾಧನದಲ್ಲಿ ನಮೂದಿಸಿ.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>ಆಲ್ಬಂಗೆ ಹೋಗಿ</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>ಅಳಿಸಿ</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>ರದ್ದುಮಾಡಿ</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>ಹೊರಪೆಟ್ಟಿಗೆ ಲೋಡ್ ಆಗಲಿಲ್ಲ</value></data>

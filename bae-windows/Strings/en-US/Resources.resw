@@ -142,6 +142,7 @@
   <data name="members.approve.in_progress" xml:space="preserve"><value>approving device…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>couldn't approve this device</value></data>
   <data name="members.approve.invited_hint" xml:space="preserve"><value>enter this code on the new device.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>go to album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>delete</value></data>
   <data name="outbox.cancel_item" xml:space="preserve"><value>cancel</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>couldn't load the outbox</value></data>
