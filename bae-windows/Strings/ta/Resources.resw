@@ -367,4 +367,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>பெயர் (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>சேர்த்த தேதி (புதியது)</value></data>
   <data name="import.sort.oldest" xml:space="preserve"><value>சேர்த்த தேதி (பழையது)</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>மீதமுள்ள நேரத்தைக் காட்டு</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>கடந்த நேரத்தைக் காட்டு</value></data>
 </root>

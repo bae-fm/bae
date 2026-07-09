@@ -367,4 +367,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>الاسم (ي–أ)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>تاريخ الإضافة (الأحدث)</value></data>
   <data name="import.sort.oldest" xml:space="preserve"><value>تاريخ الإضافة (الأقدم)</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>عرض الوقت المتبقي</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>عرض الوقت المنقضي</value></data>
 </root>

@@ -24,7 +24,7 @@ internal sealed class NowPlayingBarController
     private readonly TextBlock _title;
     private readonly TextBlock _artist;
     private readonly TextBlock _elapsed;
-    private readonly TextBlock _remaining;
+    private readonly TextBlock _duration;
     private readonly Slider _progress;
     private readonly Slider _volume;
     private readonly Button _playPause;
@@ -49,6 +49,16 @@ internal sealed class NowPlayingBarController
     // restarts it, replacing the count and resetting the timer.
     private DispatcherTimer? _queueBadgeTimer;
 
+    // Whether the leading time label shows a remaining countdown instead of
+    // elapsed time. Seeded from the persisted choice; the user flips it by
+    // clicking the label, and the choice persists across launches.
+    private bool _showRemaining;
+
+    // The last rendered position, so a label toggle re-renders immediately from
+    // it instead of waiting for the next progress tick. Cleared when the bar
+    // hides, so a stale position can't resurrect via a later toggle.
+    private PlaybackPositionRender? _lastPosition;
+
     public NowPlayingBarController(
         SessionStore session,
         PlaybackStore playback,
@@ -58,7 +68,7 @@ internal sealed class NowPlayingBarController
         TextBlock title,
         TextBlock artist,
         TextBlock elapsed,
-        TextBlock remaining,
+        TextBlock duration,
         Slider progress,
         Slider volume,
         Button playPause,
@@ -79,7 +89,7 @@ internal sealed class NowPlayingBarController
         _title = title;
         _artist = artist;
         _elapsed = elapsed;
-        _remaining = remaining;
+        _duration = duration;
         _progress = progress;
         _volume = volume;
         _playPause = playPause;
@@ -114,6 +124,13 @@ internal sealed class NowPlayingBarController
                     _session.WithCurrentHandle(handle => NativeBae.SeekByRatio(handle, _progress.Value));
                 }
             }), true);
+
+        // The leading label click-toggles between elapsed and remaining. The
+        // tooltip is the affordance that it's clickable, and it names the mode a
+        // click switches to, so it tracks the current state.
+        _showRemaining = TimeLabelStore.Load();
+        _elapsed.Tapped += (_, _) => ToggleTimeLabel();
+        ToolTipService.SetToolTip(_elapsed, Loc.Chrome(PlaybackPositionModel.TimeLabelTooltipKey(_showRemaining)));
 
         _playback.NowPlayingChanged += OnNowPlayingChanged;
         _playback.PlaybackStopped += OnPlaybackStopped;
@@ -152,6 +169,7 @@ internal sealed class NowPlayingBarController
     {
         _nowPlayingBar.Visibility = Visibility.Collapsed;
         _userSeeking = false;
+        _lastPosition = null;
     }
 
     private void OnNowPlayingChanged(NowPlayingBarTrack track)
@@ -176,6 +194,7 @@ internal sealed class NowPlayingBarController
     {
         _nowPlayingBar.Visibility = Visibility.Collapsed;
         _userSeeking = false;
+        _lastPosition = null;
         _loading.IsActive = false;
         _loading.Visibility = Visibility.Collapsed;
         _playPause.Visibility = Visibility.Visible;
@@ -198,15 +217,39 @@ internal sealed class NowPlayingBarController
         {
             _progress.Value = render.Progress;
         }
-        _elapsed.Text = PlaybackPositionModel.DurationLabel(render.PositionMs);
-        _remaining.Text = PlaybackPositionModel.DurationLabel(PlaybackPositionModel.RemainingDurationMs(render.PositionMs, render.DurationMs));
+        RenderTimeLabels(render);
     }
 
     private void RenderSeekPosition(double progress, ulong positionMs, ulong durationMs)
     {
         _progress.Value = progress;
-        _elapsed.Text = PlaybackPositionModel.DurationLabel(positionMs);
-        _remaining.Text = PlaybackPositionModel.DurationLabel(PlaybackPositionModel.RemainingDurationMs(positionMs, durationMs));
+        RenderTimeLabels(new PlaybackPositionRender(progress, positionMs, durationMs));
+    }
+
+    // Write both time labels: the leading label shows elapsed or a minus-prefixed
+    // remaining countdown per the current mode; the trailing label is always the
+    // track total. Remembers the position so a label toggle re-renders from it.
+    private void RenderTimeLabels(PlaybackPositionRender render)
+    {
+        _lastPosition = render;
+        _elapsed.Text = PlaybackPositionModel.PositionLabel(_showRemaining, render.PositionMs, render.DurationMs);
+        _duration.Text = PlaybackPositionModel.DurationLabel(render.DurationMs);
+    }
+
+    // Flip the leading label between elapsed and remaining, persist the choice,
+    // update the tooltip to name the new target mode, and re-render immediately
+    // from the last position so the label changes without waiting for the next
+    // progress tick. With no position yet there is nothing to re-render — the
+    // next tick picks the mode up.
+    private void ToggleTimeLabel()
+    {
+        _showRemaining = !_showRemaining;
+        TimeLabelStore.Save(_showRemaining);
+        ToolTipService.SetToolTip(_elapsed, Loc.Chrome(PlaybackPositionModel.TimeLabelTooltipKey(_showRemaining)));
+        if (_lastPosition is { } position)
+        {
+            RenderTimeLabels(position);
+        }
     }
 
     private void OnVolumeChanged(double volume)

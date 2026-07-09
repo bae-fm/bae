@@ -367,4 +367,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>పేరు (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>జోడించిన తేదీ (కొత్తవి)</value></data>
   <data name="import.sort.oldest" xml:space="preserve"><value>జోడించిన తేదీ (పాతవి)</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>మిగిలిన సమయాన్ని చూపించు</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>గడిచిన సమయాన్ని చూపించు</value></data>
 </root>

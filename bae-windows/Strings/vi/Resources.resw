@@ -367,4 +367,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>Tên (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>Ngày thêm (mới nhất)</value></data>
   <data name="import.sort.oldest" xml:space="preserve"><value>Ngày thêm (cũ nhất)</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>hiện thời gian còn lại</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>hiện thời gian đã phát</value></data>
 </root>

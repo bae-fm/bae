@@ -226,7 +226,7 @@
                             StepFrequency="0.001"
                             VerticalAlignment="Center" />
                         <TextBlock
-                            x:Name="NpRemaining"
+                            x:Name="NpDuration"
                             Grid.Column="2"
                             Text="0:00"
                             VerticalAlignment="Center"

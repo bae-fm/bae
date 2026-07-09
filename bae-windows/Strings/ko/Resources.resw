@@ -367,4 +367,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>이름(Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>추가한 날짜(최신)</value></data>
   <data name="import.sort.oldest" xml:space="preserve"><value>추가한 날짜(오래된 순)</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>남은 시간 표시</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>경과 시간 표시</value></data>
 </root>

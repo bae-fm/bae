@@ -367,4 +367,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>نام (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>شامل ہونے کی تاریخ (نیا پہلے)</value></data>
   <data name="import.sort.oldest" xml:space="preserve"><value>شامل ہونے کی تاریخ (پرانا پہلے)</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>باقی وقت دکھائیں</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>گزرا ہوا وقت دکھائیں</value></data>
 </root>

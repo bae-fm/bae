@@ -126,7 +126,7 @@ public sealed partial class MainWindow : Window
             NpTitle,
             NpArtist,
             NpElapsed,
-            NpRemaining,
+            NpDuration,
             NpProgress,
             NpVolume,
             NpPlayPause,

@@ -116,6 +116,68 @@ public sealed class PlaybackPositionModelTests
     public void Remaining_PositionBeyondDurationThrows() =>
         Assert.Throws<InvalidOperationException>(() => PlaybackPositionModel.RemainingDurationMs(200_001, 200_000));
 
+    // ── PositionLabel: elapsed, or a minus-prefixed remaining countdown ──
+
+    [Fact]
+    public void PositionLabel_ElapsedShowsPosition() =>
+        Assert.Equal(PlaybackPositionModel.DurationLabel(50_000), PlaybackPositionModel.PositionLabel(false, 50_000, 200_000));
+
+    [Fact]
+    public void PositionLabel_RemainingCountsDownWithMinusPrefix() =>
+        Assert.Equal("-2:30", PlaybackPositionModel.PositionLabel(true, 50_000, 200_000));
+
+    [Fact]
+    public void PositionLabel_RemainingAtTrackEndIsMinusZero() =>
+        Assert.Equal("-0:00", PlaybackPositionModel.PositionLabel(true, 200_000, 200_000));
+
+    [Fact]
+    public void PositionLabel_RemainingBeyondDurationThrows() =>
+        Assert.Throws<InvalidOperationException>(() => PlaybackPositionModel.PositionLabel(true, 200_001, 200_000));
+
+    // ── TimeLabelToken / ShowRemainingFromToken: round-trip and fallback ──
+
+    [Fact]
+    public void TimeLabelToken_RoundTripsRemaining() =>
+        Assert.True(PlaybackPositionModel.ShowRemainingFromToken(PlaybackPositionModel.TimeLabelToken(true)));
+
+    [Fact]
+    public void TimeLabelToken_RoundTripsElapsed() =>
+        Assert.False(PlaybackPositionModel.ShowRemainingFromToken(PlaybackPositionModel.TimeLabelToken(false)));
+
+    [Fact]
+    public void ShowRemainingFromToken_RemainingIsTrue() =>
+        Assert.True(PlaybackPositionModel.ShowRemainingFromToken("remaining"));
+
+    [Fact]
+    public void ShowRemainingFromToken_ElapsedIsFalse() =>
+        Assert.False(PlaybackPositionModel.ShowRemainingFromToken("elapsed"));
+
+    [Fact]
+    public void ShowRemainingFromToken_NullIsFalse() =>
+        Assert.False(PlaybackPositionModel.ShowRemainingFromToken(null));
+
+    [Fact]
+    public void ShowRemainingFromToken_EmptyIsFalse() =>
+        Assert.False(PlaybackPositionModel.ShowRemainingFromToken(""));
+
+    [Fact]
+    public void ShowRemainingFromToken_GarbageIsFalse() =>
+        Assert.False(PlaybackPositionModel.ShowRemainingFromToken("xyzzy"));
+
+    [Fact]
+    public void ShowRemainingFromToken_TrimsWhitespace() =>
+        Assert.True(PlaybackPositionModel.ShowRemainingFromToken(" remaining\n"));
+
+    // ── TimeLabelTooltipKey: names the mode a click switches to ──
+
+    [Fact]
+    public void TimeLabelTooltipKey_ElapsedOffersRemaining() =>
+        Assert.Equal("nowplaying.show_remaining", PlaybackPositionModel.TimeLabelTooltipKey(false));
+
+    [Fact]
+    public void TimeLabelTooltipKey_RemainingOffersElapsed() =>
+        Assert.Equal("nowplaying.show_elapsed", PlaybackPositionModel.TimeLabelTooltipKey(true));
+
     // ── ClearProjection: drop the projection, keep the snapshot ──
 
     [Fact]

@@ -367,4 +367,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>नाम (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>जोड़े जाने की तारीख (सबसे नया)</value></data>
   <data name="import.sort.oldest" xml:space="preserve"><value>जोड़े जाने की तारीख (सबसे पुराना)</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>शेष समय दिखाएँ</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>बीता हुआ समय दिखाएँ</value></data>
 </root>

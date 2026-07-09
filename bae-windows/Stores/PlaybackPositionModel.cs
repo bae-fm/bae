@@ -107,6 +107,26 @@ public static class PlaybackPositionModel
         return Loc.Duration((long)milliseconds);
     }
 
+    // The leading time label: elapsed, or a minus-prefixed remaining countdown
+    // when the user has toggled it (the trailing label is always the total).
+    public static string PositionLabel(bool showRemaining, ulong positionMs, ulong durationMs) =>
+        showRemaining
+            ? "-" + DurationLabel(RemainingDurationMs(positionMs, durationMs))
+            : DurationLabel(positionMs);
+
+    // The persisted time-label mode, as the token the store writes to disk and
+    // reads back. Unknown or missing tokens fall back to elapsed.
+    public static string TimeLabelToken(bool showRemaining) =>
+        showRemaining ? "remaining" : "elapsed";
+
+    public static bool ShowRemainingFromToken(string? token) =>
+        string.Equals(token?.Trim(), "remaining", StringComparison.Ordinal);
+
+    // The leading label's tooltip names the action a click performs, so it follows
+    // the current mode.
+    public static string TimeLabelTooltipKey(bool showRemaining) =>
+        showRemaining ? "nowplaying.show_elapsed" : "nowplaying.show_remaining";
+
     // Fold a fresh snapshot into the now-playing state, keeping the album when a
     // state already exists, or creating one for the track when it doesn't.
     public static NowPlayingState WithPosition(

@@ -367,4 +367,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>Име (Я–А)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>Дата на добавяне (най-нови)</value></data>
   <data name="import.sort.oldest" xml:space="preserve"><value>Дата на добавяне (най-стари)</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>показване на оставащото време</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>показване на изминалото време</value></data>
 </root>

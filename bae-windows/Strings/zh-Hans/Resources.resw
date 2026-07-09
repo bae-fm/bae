@@ -367,4 +367,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>名称（Z–A）</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>添加日期（最新）</value></data>
   <data name="import.sort.oldest" xml:space="preserve"><value>添加日期（最早）</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>显示剩余时间</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>显示已播放时间</value></data>
 </root>

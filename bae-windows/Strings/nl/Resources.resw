@@ -367,4 +367,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>Naam (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>Toegevoegd op (nieuwste)</value></data>
   <data name="import.sort.oldest" xml:space="preserve"><value>Toegevoegd op (oudste)</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>resterende tijd tonen</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>verstreken tijd tonen</value></data>
 </root>

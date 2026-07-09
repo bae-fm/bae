@@ -367,4 +367,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>ਨਾਂ (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>ਸ਼ਾਮਲ ਮਿਤੀ (ਸਭ ਤੋਂ ਨਵੀਂ)</value></data>
   <data name="import.sort.oldest" xml:space="preserve"><value>ਸ਼ਾਮਲ ਮਿਤੀ (ਸਭ ਤੋਂ ਪੁਰਾਣੀ)</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>ਬਾਕੀ ਸਮਾਂ ਦਿਖਾਓ</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>ਬੀਤਿਆ ਸਮਾਂ ਦਿਖਾਓ</value></data>
 </root>

@@ -367,4 +367,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>Název (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>Datum přidání (nejnovější)</value></data>
   <data name="import.sort.oldest" xml:space="preserve"><value>Datum přidání (nejstarší)</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>zobrazit zbývající čas</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>zobrazit uplynulý čas</value></data>
 </root>
