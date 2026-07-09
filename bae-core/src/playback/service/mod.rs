@@ -955,6 +955,36 @@ impl PlaybackService {
         }
     }
 
+    /// Direct selection of `track_id`: its release becomes the playing context,
+    /// with the cursor at the chosen track. `get_play_context`'s `Err` covers
+    /// only DB failures and data-inconsistency (`release_id` is a required
+    /// column, so there is no legitimate "track with no context" case) — fail
+    /// loud rather than silently falling back to a single-track queue.
+    async fn handle_play(&mut self, track_id: String) {
+        self.stop_preview_for_main_playback();
+        let context = match self.library_manager.get_play_context(&track_id).await {
+            Ok(context) => context,
+            Err(e) => {
+                error!("Failed to load play context for {track_id}: {e}");
+                emit_progress(
+                    &self.progress_tx,
+                    PlaybackProgress::PlaybackError {
+                        reason: PlaybackError::database(e).into_ui_reason(),
+                    },
+                );
+                return;
+            }
+        };
+        self.playback_queue.play_release(
+            ContextSource::Release(context.release_id),
+            context.track_ids,
+            ContextStart::Index(context.index),
+        );
+        self.emit_queue_update();
+        self.play_track(&track_id, TrackStart::Direct, PlayTarget::Playing)
+            .await;
+    }
+
     /// Manual skip to the next track (skip pregap). A side-pause forces the next
     /// side to start playing; any other state carries the outgoing track's
     /// play/pause intent forward (a naturally-completed track carries Playing, so
@@ -1317,26 +1347,7 @@ impl PlaybackService {
                 Some(command) = self.command_rx.recv() => {
             match command {
                 PlaybackCommand::Play(track_id) => {
-                    self.stop_preview_for_main_playback();
-                    // Direct selection: the track's release becomes the playing
-                    // context, with the cursor at the chosen track.
-                    match self.library_manager.get_play_context(&track_id).await {
-                        Ok(context) => {
-                            self.playback_queue.play_release(
-                                ContextSource::Release(context.release_id),
-                                context.track_ids,
-                                ContextStart::Index(context.index),
-                            );
-                        }
-                        Err(e) => {
-                            warn!(
-                                "Failed to load play context for {track_id}: {e}; playing the single track"
-                            );
-                            self.playback_queue.play_single(track_id.clone());
-                        }
-                    }
-                    self.emit_queue_update();
-                    self.play_track(&track_id, TrackStart::Direct, PlayTarget::Playing).await;
+                    self.handle_play(track_id).await;
                 }
                 PlaybackCommand::PlayRelease { release_id, start_track_index, shuffle } => {
                     let track_ids = match self.library_manager.get_track_ids(&release_id).await {

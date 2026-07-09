@@ -1110,3 +1110,52 @@ async fn fetch_source_tracks_concatenates_a_releases_source() {
 
     assert_eq!(tracks, vec!["t1a", "t1b", "t2a"]);
 }
+
+/// A `Play` whose context load fails (here: the track doesn't exist) must
+/// fail loud — a `PlaybackError` and nothing else — rather than silently
+/// falling back to a single-track queue. `get_play_context`'s `Err` covers
+/// only DB failures and data-inconsistency (a track missing, or absent from
+/// its own release's track list — `release_id` is a required column, so
+/// there is no legitimate "track with no context" case), so there is no
+/// absence value to preserve a fallback for.
+///
+/// The discriminator from the old silently-degrading behavior: the old code
+/// unconditionally called `emit_queue_update()` after the match (mutating the
+/// queue to a bogus single-track entry even on failure); the fix returns
+/// before ever touching the queue, so no `QueueUpdated` fires at all.
+#[tokio::test]
+async fn play_context_load_failure_surfaces_error_without_touching_the_queue() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+
+    service.handle_play("missing-track".to_string()).await;
+
+    let mut saw_error = false;
+    let mut saw_queue_update = false;
+    let mut saw_playing = false;
+    while let Ok(progress) = progress_rx.try_recv() {
+        match progress {
+            PlaybackProgress::PlaybackError { .. } => saw_error = true,
+            PlaybackProgress::QueueUpdated(_) => saw_queue_update = true,
+            PlaybackProgress::StateChanged {
+                state: PlaybackState::Playing { .. },
+            } => saw_playing = true,
+            _ => {}
+        }
+    }
+    assert!(
+        saw_error,
+        "a failed context load must surface a PlaybackError"
+    );
+    assert!(
+        !saw_queue_update,
+        "a failed context load must not mutate the queue with a fallback single-track entry"
+    );
+    assert!(
+        !saw_playing,
+        "a failed context load must never reach Playing"
+    );
+    assert!(
+        matches!(service.slot, PlaybackSlot::Stopped),
+        "the slot must stay Stopped, not start loading a track whose context failed"
+    );
+}
