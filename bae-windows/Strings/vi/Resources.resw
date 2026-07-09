@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>Ngày thêm (cũ nhất)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>hiện thời gian còn lại</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>hiện thời gian đã phát</value></data>
+  <data name="export.title" xml:space="preserve"><value>đang xuất</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>đang xuất {percent}%</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>Lưu vào thư mục</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>Hỏi mỗi lần</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>Vị trí</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>Thay đổi</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>Chưa chọn thư mục</value></data>
 </root>

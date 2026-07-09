@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>Eklenme Tarihi (En Eski)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>kalan süreyi göster</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>geçen süreyi göster</value></data>
+  <data name="export.title" xml:space="preserve"><value>dışa aktarılıyor</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>dışa aktarılıyor {percent}%</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>Bir klasöre kaydet</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>Her seferinde sor</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>Konum</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>Değiştir</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>Klasör seçilmedi</value></data>
 </root>

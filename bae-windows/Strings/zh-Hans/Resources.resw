@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>添加日期（最早）</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>显示剩余时间</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>显示已播放时间</value></data>
+  <data name="export.title" xml:space="preserve"><value>正在导出</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>正在导出 {percent}%</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>保存到文件夹</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>每次询问</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>位置</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>更改</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>未选择文件夹</value></data>
 </root>

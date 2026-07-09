@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>Дата на добавяне (най-стари)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>показване на оставащото време</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>показване на изминалото време</value></data>
+  <data name="export.title" xml:space="preserve"><value>експортиране</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>експортиране {percent}%</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>Запазване в папка</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>Питай всеки път</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>Местоположение</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>Промяна</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>Няма избрана папка</value></data>
 </root>

@@ -422,6 +422,17 @@ internal static class NativeBae
 
     internal static void RetryDownloads(AppHandle handle) => handle.RetryDownloads();
 
+    internal static BridgeExportSnapshot ExportSnapshot(AppHandle handle) =>
+        handle.GetExportSnapshot();
+
+    internal static void SetExportsPaused(AppHandle handle, bool paused) =>
+        handle.SetExportsPaused(paused);
+
+    internal static void CancelExport(AppHandle handle, string releaseId) =>
+        handle.CancelExport(releaseId);
+
+    internal static void RetryExports(AppHandle handle) => handle.RetryExports();
+
     internal static string? RetryOutbox(AppHandle handle) => CaptureError(() => Await(handle.RetryOutbox()));
 
     internal static string? SetSyncPaused(AppHandle handle, bool paused) =>
@@ -461,6 +472,9 @@ internal static class NativeBae
 
     internal static string? SetExportFilenameTemplate(AppHandle handle, string template) =>
         CaptureError(() => handle.SetExportFilenameTemplate(template));
+
+    internal static string? SetExportLocation(AppHandle handle, BridgeExportLocation location) =>
+        CaptureError(() => handle.SetExportLocation(location));
 
     internal static string? SetExportPresets(AppHandle handle, IEnumerable<ExportPreset> presets) =>
         CaptureError(() => handle.SetExportPresets(
@@ -831,6 +845,7 @@ internal static class NativeBae
             SyncAccount = config.Sync?.CloudAccountDisplay,
             SyncReady = syncStatus.SyncReady,
             PauseBetweenSides = config.PauseBetweenSides,
+            ExportLocation = config.ExportLocation,
             ExportFilenameTemplate = config.ExportFilenameTemplate,
             ExportPresets = config.ExportPresets.Select(ExportPreset).ToList(),
             DefaultTrackExportSelection = config.DefaultTrackExportSelection,

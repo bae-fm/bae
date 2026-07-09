@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>जोडल्याची तारीख (सर्वात जुनी)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>उर्वरित वेळ दाखवा</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>झालेला वेळ दाखवा</value></data>
+  <data name="export.title" xml:space="preserve"><value>निर्यात करत आहे</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>{percent}% निर्यात करत आहे</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>फोल्डरमध्ये जतन करा</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>प्रत्येक वेळी विचारा</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>स्थान</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>बदला</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>कोणतेही फोल्डर निवडले नाही</value></data>
 </root>

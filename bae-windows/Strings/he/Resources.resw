@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>תאריך הוספה (הישן ביותר)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>הצגת הזמן שנותר</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>הצגת הזמן שחלף</value></data>
+  <data name="export.title" xml:space="preserve"><value>מייצא</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>מייצא {percent}%</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>שמירה בתיקייה</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>שאל בכל פעם</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>מיקום</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>שינוי</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>לא נבחרה תיקייה</value></data>
 </root>

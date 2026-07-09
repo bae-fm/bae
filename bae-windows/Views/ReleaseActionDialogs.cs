@@ -97,17 +97,25 @@ internal sealed class ReleaseActionDialogs
             return;
         }
 
-        var picker = new global::Windows.Storage.Pickers.FolderPicker();
-        picker.FileTypeFilter.Add("*");
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, _windowHandle());
-        var folder = await picker.PickSingleFolderAsync();
-        if (folder is null)
+        // The destination follows the export-location config: a fixed folder
+        // enqueues straight there, ask-each-time prompts for a folder.
+        var fixedLocation = settings.ExportLocation as BridgeExportLocation.Fixed;
+        var targetDir = ExportQueueModel.DestinationFor(fixedLocation is not null, fixedLocation?.Dir);
+        if (targetDir is null)
         {
-            return;
+            var picker = new global::Windows.Storage.Pickers.FolderPicker();
+            picker.FileTypeFilter.Add("*");
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, _windowHandle());
+            var folder = await picker.PickSingleFolderAsync();
+            if (folder is null)
+            {
+                return;
+            }
+            targetDir = folder.Path;
         }
 
         var (exportCurrent, error) = await _session.RunForCurrentHandle(
-            handle => NativeBae.ExportRelease(handle, releaseId, folder.Path, selection));
+            handle => NativeBae.ExportRelease(handle, releaseId, targetDir, selection));
         if (!exportCurrent)
         {
             return;

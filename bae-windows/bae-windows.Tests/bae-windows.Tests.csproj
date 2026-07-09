@@ -25,6 +25,11 @@
       round-trip, split out as plain BCL types (the stores that hold bridge
       snapshots and the WinUI views and dialogs that render them are verified by
       compilation).
+    - The export-queue decision layer (ExportQueueModel) — the Exporting
+      section's band/state catalog keys, count summary, retry/pause gating and
+      percent clamping, plus the export destination and settings Location-row
+      resolution, over plain BCL types (the storage dialog and settings dialog
+      that render bridge snapshots through it are verified by compilation).
     - The update-flow layer (UpdateFlow) — the state machine and display mapping
       behind the settings "updates" section (status keys, percent clamping,
       button gating, version-string normalization), over plain BCL types with no
@@ -64,6 +69,7 @@
     <Compile Include="../Stores/ImportIdentityModel.cs" Link="ImportIdentityModel.cs" />
     <Compile Include="../Stores/ReidentifyResultsModel.cs" Link="ReidentifyResultsModel.cs" />
     <Compile Include="../Stores/ImportListModel.cs" Link="ImportListModel.cs" />
+    <Compile Include="../Stores/ExportQueueModel.cs" Link="ExportQueueModel.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -24,6 +24,9 @@ public sealed class Settings
     public bool SyncReady { get; set; }
     public bool PauseBetweenSides { get; set; }
 
+    /// <summary>Where release exports write: a fixed folder, or prompt each time.</summary>
+    internal BridgeExportLocation ExportLocation { get; set; } = new BridgeExportLocation.AskEachTime();
+
     /// <summary>Template rendering a single-track export's suggested filename.</summary>
     public string ExportFilenameTemplate { get; set; } = string.Empty;
 

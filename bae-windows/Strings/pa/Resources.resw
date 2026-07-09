@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>ਸ਼ਾਮਲ ਮਿਤੀ (ਸਭ ਤੋਂ ਪੁਰਾਣੀ)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>ਬਾਕੀ ਸਮਾਂ ਦਿਖਾਓ</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>ਬੀਤਿਆ ਸਮਾਂ ਦਿਖਾਓ</value></data>
+  <data name="export.title" xml:space="preserve"><value>ਨਿਰਯਾਤ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ਨਿਰਯਾਤ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>ਫੋਲਡਰ ਵਿੱਚ ਸੰਭਾਲੋ</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>ਹਰ ਵਾਰ ਪੁੱਛੋ</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>ਟਿਕਾਣਾ</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>ਬਦਲੋ</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>ਕੋਈ ਫੋਲਡਰ ਨਹੀਂ ਚੁਣਿਆ ਗਿਆ</value></data>
 </root>

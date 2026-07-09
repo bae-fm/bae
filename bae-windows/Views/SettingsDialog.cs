@@ -24,6 +24,7 @@ internal sealed class SettingsDialog
 {
     private readonly SessionStore _session;
     private readonly Func<XamlRoot?> _xamlRoot;
+    private readonly Func<IntPtr> _windowHandle;
     private readonly DispatcherQueue _dispatcher;
     private readonly SettingsStore _settings;
     private readonly MembersPane _membersPane;
@@ -36,6 +37,7 @@ internal sealed class SettingsDialog
     public SettingsDialog(
         SessionStore session,
         Func<XamlRoot?> xamlRoot,
+        Func<IntPtr> windowHandle,
         DispatcherQueue dispatcher,
         SettingsStore settings,
         MembersPane membersPane,
@@ -47,6 +49,7 @@ internal sealed class SettingsDialog
     {
         _session = session;
         _xamlRoot = xamlRoot;
+        _windowHandle = windowHandle;
         _dispatcher = dispatcher;
         _settings = settings;
         _membersPane = membersPane;
@@ -343,16 +346,47 @@ internal sealed class SettingsDialog
         pauseBetweenSides.Checked += async (_, _) => await SetPauseBetweenSides(true);
         pauseBetweenSides.Unchecked += async (_, _) => await SetPauseBetweenSides(false);
 
-        // Export: the single-track "Save As…" suggested-filename template and the
-        // metadata tags an export embeds. Windows has no release export, so this is
-        // the per-track section only. Writes round-trip through config invalidation into
-        // the settings re-read (RenderExport); the checkboxes send the whole seven-
-        // bool set (set-state), never one mutated field.
+        // Export: the release-export destination policy (a fixed folder or a
+        // prompt each time), then the single-track "Save As…" suggested-filename
+        // template and the export presets. Writes round-trip through config
+        // invalidation into the settings re-read (RenderExport) with no optimistic
+        // mutation; the checkboxes send the whole set (set-state), never one
+        // mutated field.
         var exportLabel = new TextBlock
         {
             Text = Loc.Chrome("settings.export.label"),
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
         };
+        // Where release exports write. The authoritative destination is core's
+        // export-location config, written through set_export_location and settled
+        // by the config re-read; the remembered folder is a local convenience
+        // memory (the greyed path under "ask each time", the folder restored when
+        // re-selecting "save to a folder").
+        var saveToFolder = new RadioButton
+        {
+            Content = Loc.Chrome("settings.export.save_to_folder"),
+            GroupName = "exportLocation",
+        };
+        var askEachTime = new RadioButton
+        {
+            Content = Loc.Chrome("settings.export.ask_each_time"),
+            GroupName = "exportLocation",
+        };
+        var locationPath = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var changeFolder = new Button { Content = Loc.Chrome("settings.export.change_folder") };
+        var locationRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        locationRow.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("settings.export.location"),
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        locationRow.Children.Add(locationPath);
+        locationRow.Children.Add(changeFolder);
         var exportTemplate = new TextBox
         {
             Header = Loc.Chrome("settings.export.filename_format"),
@@ -387,12 +421,105 @@ internal sealed class SettingsDialog
             }
 
             refreshingSettings = true;
+            RenderExportLocation(settings);
             exportTemplate.Text = settings.ExportFilenameTemplate;
             PopulateExportSelection(defaultTrackExport, settings, release: false);
             PopulateExportSelection(defaultReleaseExport, settings, release: true);
             RenderExportPresets(settings);
             refreshingSettings = false;
         }
+
+        // Drive the export-location controls from the config: which radio is
+        // checked, the Location-row path (the fixed folder, or the remembered
+        // folder greyed under "ask each time"), and whether Change is available.
+        void RenderExportLocation(Settings settings)
+        {
+            var fixedLocation = settings.ExportLocation as BridgeExportLocation.Fixed;
+            var isFixed = fixedLocation is not null;
+            saveToFolder.IsChecked = isFixed;
+            askEachTime.IsChecked = !isFixed;
+            locationPath.Text = ExportQueueModel.LocationRowPath(isFixed, fixedLocation?.Dir, ExportFolderStore.Load())
+                ?? Loc.Chrome("settings.export.no_folder");
+            changeFolder.IsEnabled = isFixed;
+            locationPath.Opacity = isFixed ? 1.0 : 0.5;
+        }
+
+        // The folder picker for a fixed export location, run in the app window.
+        // Returns the chosen path, or null when the user cancelled.
+        async System.Threading.Tasks.Task<string?> PickExportFolder()
+        {
+            var picker = new global::Windows.Storage.Pickers.FolderPicker();
+            picker.FileTypeFilter.Add("*");
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, _windowHandle());
+            var folder = await picker.PickSingleFolderAsync();
+            return folder?.Path;
+        }
+
+        // Write the export location through the bridge and let the config
+        // invalidation re-read settle the controls. A fixed folder is remembered
+        // only after the write lands; an error snaps the controls back.
+        async System.Threading.Tasks.Task SaveExportLocation(BridgeExportLocation location)
+        {
+            ClearSettingsError();
+            var (current, error) = await _session.RunForCurrentHandle(
+                handle => NativeBae.SetExportLocation(handle, location));
+            if (!current)
+            {
+                return;
+            }
+            if (error is not null)
+            {
+                ShowSettingsError(error);
+                _settings.Reload();
+                return;
+            }
+            if (location is BridgeExportLocation.Fixed fixedLocation)
+            {
+                ExportFolderStore.Save(fixedLocation.Dir);
+            }
+        }
+
+        askEachTime.Checked += async (_, _) =>
+        {
+            if (refreshingSettings)
+            {
+                return;
+            }
+            await SaveExportLocation(new BridgeExportLocation.AskEachTime());
+        };
+        saveToFolder.Checked += async (_, _) =>
+        {
+            if (refreshingSettings)
+            {
+                return;
+            }
+            var remembered = ExportFolderStore.Load();
+            if (ExportQueueModel.FixedSelectionNeedsPrompt(remembered))
+            {
+                var dir = await PickExportFolder();
+                if (dir is null)
+                {
+                    // Cancelled with no remembered folder: snap the radio back to
+                    // the stored location.
+                    _settings.Reload();
+                    return;
+                }
+                await SaveExportLocation(new BridgeExportLocation.Fixed(dir));
+            }
+            else
+            {
+                await SaveExportLocation(new BridgeExportLocation.Fixed(remembered!));
+            }
+        };
+        changeFolder.Click += async (_, _) =>
+        {
+            var dir = await PickExportFolder();
+            if (dir is null)
+            {
+                return;
+            }
+            await SaveExportLocation(new BridgeExportLocation.Fixed(dir));
+        };
 
         void PopulateExportSelection(ComboBox combo, Settings settings, bool release)
         {
@@ -936,6 +1063,9 @@ internal sealed class SettingsDialog
         content.Children.Add(libraryLabel);
         content.Children.Add(pauseBetweenSides);
         content.Children.Add(exportLabel);
+        content.Children.Add(saveToFolder);
+        content.Children.Add(askEachTime);
+        content.Children.Add(locationRow);
         content.Children.Add(exportTemplate);
         content.Children.Add(exportTokensHelp);
         content.Children.Add(defaultTrackExport);

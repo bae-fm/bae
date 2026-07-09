@@ -316,6 +316,126 @@ internal sealed class StorageDialog
             }
         }
 
+        // Exporting: the release-export queue with a summary band (Retry-failed
+        // and Pause/Resume) and per-item progress plus Cancel. Hidden (empty
+        // panel) when nothing is queued. The queue renders from the snapshot and
+        // actions never optimistically mutate — each reload (and the export-queue
+        // invalidation) re-renders the section.
+        var exportsPanel = new StackPanel { Spacing = 4 };
+        async System.Threading.Tasks.Task LoadExports()
+        {
+            exportsPanel.Children.Clear();
+            var (current, snapshot) = await _session.RunForCurrentHandle(NativeBae.ExportSnapshot);
+            if (!current)
+            {
+                return;
+            }
+
+            // Hidden when the export queue is idle, like the downloads panel.
+            if (snapshot.Exports.Length == 0)
+            {
+                return;
+            }
+
+            string StateLabel(BridgeExportOp op) => op.State switch
+            {
+                BridgeExportState.Active active => Loc.Chrome(
+                    "export.state.exporting", "percent", ExportQueueModel.ClampPercent((int)active.Percent)),
+                BridgeExportState.Failed => Loc.Chrome(ExportQueueModel.StateKey(ExportRowKind.Failed)),
+                _ => Loc.Chrome(ExportQueueModel.StateKey(ExportRowKind.Queued)),
+            };
+
+            // Header: a label (or "paused"), the count summary, Retry (only with
+            // failures), and a pause/resume toggle — mirroring the downloads band.
+            var paused = snapshot.Paused;
+            var band = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            band.Children.Add(new TextBlock
+            {
+                Text = Loc.Chrome(ExportQueueModel.BandTitleKey(paused)),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+            var summaryParts = ExportQueueModel.SummaryParts(
+                snapshot.Total.Active, snapshot.Total.Failed, snapshot.Total.Queued);
+            if (!paused && summaryParts.Count > 0)
+            {
+                band.Children.Add(new TextBlock
+                {
+                    Text = string.Join(" · ", summaryParts.Select(part => Loc.Core(part.Key, "count", part.Count))),
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                    VerticalAlignment = VerticalAlignment.Center,
+                });
+            }
+            var retry = new Button
+            {
+                Content = Loc.Chrome("outbox.retry_now"),
+                IsEnabled = ExportQueueModel.RetryEnabled(snapshot.Total.Failed),
+            };
+            retry.Click += async (_, _) =>
+            {
+                retry.IsEnabled = false;
+                await _session.RunForCurrentHandle(NativeBae.RetryExports);
+                await LoadExports();
+            };
+            band.Children.Add(retry);
+            var pause = new Button { Content = Loc.Chrome(ExportQueueModel.PauseToggleKey(paused)) };
+            pause.Click += async (_, _) =>
+            {
+                pause.IsEnabled = false;
+                await _session.RunForCurrentHandle(handle => NativeBae.SetExportsPaused(handle, !paused));
+                await LoadExports();
+            };
+            band.Children.Add(pause);
+            exportsPanel.Children.Add(band);
+
+            // One row per export: title, "N files · size · state", an optional
+            // progress bar while active, and a cancel.
+            foreach (var op in snapshot.Exports)
+            {
+                var itemGrid = new Grid { ColumnSpacing = 8 };
+                itemGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                itemGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var labelColumn = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+                labelColumn.Children.Add(new TextBlock { Text = op.Title, TextWrapping = TextWrapping.Wrap });
+                var detail = new TextBlock
+                {
+                    Text = $"{Loc.Chrome("storage.files", "count", op.FileCount)} · {Loc.Bytes(op.TotalSize)} · {StateLabel(op)}",
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                };
+                // A failed export carries its error on the detail line's tooltip,
+                // like the outbox file rows.
+                if (op.State is BridgeExportState.Failed failed)
+                {
+                    ToolTipService.SetToolTip(detail, failed.Error);
+                }
+                labelColumn.Children.Add(detail);
+                if (op.State is BridgeExportState.Active active)
+                {
+                    labelColumn.Children.Add(new ProgressBar
+                    {
+                        Minimum = 0,
+                        Maximum = 100,
+                        Value = ExportQueueModel.ClampPercent((int)active.Percent),
+                        Height = 4,
+                    });
+                }
+                Grid.SetColumn(labelColumn, 0);
+                itemGrid.Children.Add(labelColumn);
+
+                var releaseId = op.ReleaseId;
+                var cancel = new Button { Content = Loc.Chrome("action.cancel") };
+                cancel.Click += async (_, _) =>
+                {
+                    cancel.IsEnabled = false;
+                    await _session.RunForCurrentHandle(handle => NativeBae.CancelExport(handle, releaseId));
+                    await LoadExports();
+                };
+                Grid.SetColumn(cancel, 1);
+                itemGrid.Children.Add(cancel);
+                exportsPanel.Children.Add(itemGrid);
+            }
+        }
+
         var outboxPanel = new StackPanel { Spacing = 4 };
         async System.Threading.Tasks.Task LoadOutbox()
         {
@@ -595,11 +715,13 @@ internal sealed class StorageDialog
         }
 
         await LoadDownloads();
+        await LoadExports();
         await LoadOutbox();
 
         var content = new StackPanel { Spacing = 8 };
         content.Children.Add(storageStatus);
         content.Children.Add(downloadsPanel);
+        content.Children.Add(exportsPanel);
         content.Children.Add(outboxPanel);
         content.Children.Add(listPanel);
 
@@ -626,6 +748,7 @@ internal sealed class StorageDialog
                 _ = LoadDownloads();
                 _ = LoadStorageRows();
             }),
+            _projections.Register(typeof(BridgeInvalidation.ExportQueue), () => _ = LoadExports()),
             _projections.Register(typeof(BridgeInvalidation.Album), () => _ = LoadStorageRows()),
             _projections.Register(typeof(BridgeInvalidation.Release), () => _ = LoadStorageRows()),
         };

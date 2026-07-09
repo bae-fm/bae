@@ -238,6 +238,7 @@ public sealed partial class MainWindow : Window
         _settingsDialog = new SettingsDialog(
             _session,
             () => Content.XamlRoot,
+            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
             DispatcherQueue,
             _settings,
             _membersPane,

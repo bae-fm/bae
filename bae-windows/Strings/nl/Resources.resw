@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>Toegevoegd op (oudste)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>resterende tijd tonen</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>verstreken tijd tonen</value></data>
+  <data name="export.title" xml:space="preserve"><value>exporteren</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>exporteren {percent}%</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>Bewaar in een map</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>Elke keer vragen</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>Locatie</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>Wijzig</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>Geen map gekozen</value></data>
 </root>

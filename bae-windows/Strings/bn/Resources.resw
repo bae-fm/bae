@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>যোগের তারিখ (পুরনোতম)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>অবশিষ্ট সময় দেখান</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>অতিবাহিত সময় দেখান</value></data>
+  <data name="export.title" xml:space="preserve"><value>এক্সপোর্ট করা হচ্ছে</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>{percent}% এক্সপোর্ট হচ্ছে</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>একটি ফোল্ডারে সংরক্ষণ করুন</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>প্রতিবার জিজ্ঞাসা করুন</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>অবস্থান</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>পরিবর্তন করুন</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>কোনো ফোল্ডার বেছে নেওয়া হয়নি</value></data>
 </root>

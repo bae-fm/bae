@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>சேர்த்த தேதி (பழையது)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>மீதமுள்ள நேரத்தைக் காட்டு</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>கடந்த நேரத்தைக் காட்டு</value></data>
+  <data name="export.title" xml:space="preserve"><value>ஏற்றுமதி செய்யப்படுகிறது</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ஏற்றுமதி செய்யப்படுகிறது</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>கோப்புறையில் சேமி</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>ஒவ்வொரு முறையும் கேள்</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>இடம்</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>மாற்று</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>கோப்புறை தேர்வு செய்யப்படவில்லை</value></data>
 </root>

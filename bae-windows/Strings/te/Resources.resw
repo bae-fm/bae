@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>జోడించిన తేదీ (పాతవి)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>మిగిలిన సమయాన్ని చూపించు</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>గడిచిన సమయాన్ని చూపించు</value></data>
+  <data name="export.title" xml:space="preserve"><value>ఎగుమతి చేస్తోంది</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>ఎగుమతి చేస్తోంది {percent}%</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>ఫోల్డర్‌లో సేవ్ చేయి</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>ప్రతిసారీ అడుగు</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>స్థానం</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>మార్చు</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>ఫోల్డర్ ఎంచుకోలేదు</value></data>
 </root>

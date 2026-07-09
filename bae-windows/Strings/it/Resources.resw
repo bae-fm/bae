@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>Data di aggiunta (meno recente)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>mostra il tempo rimanente</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>mostra il tempo trascorso</value></data>
+  <data name="export.title" xml:space="preserve"><value>esportazione</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>esportazione {percent}%</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>Salva in una cartella</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>Chiedi ogni volta</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>Posizione</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>Cambia</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>Nessuna cartella scelta</value></data>
 </root>

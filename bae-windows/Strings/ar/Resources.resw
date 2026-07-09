@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>تاريخ الإضافة (الأقدم)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>عرض الوقت المتبقي</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>عرض الوقت المنقضي</value></data>
+  <data name="export.title" xml:space="preserve"><value>جارٍ التصدير</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>جارٍ التصدير {percent}%</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>حفظ في مجلد</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>السؤال في كل مرة</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>الموقع</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>تغيير</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>لم يتم اختيار مجلد</value></data>
 </root>

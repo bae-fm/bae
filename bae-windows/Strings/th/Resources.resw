@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>วันที่เพิ่ม (เก่าสุด)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>แสดงเวลาที่เหลือ</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>แสดงเวลาที่ผ่านไป</value></data>
+  <data name="export.title" xml:space="preserve"><value>กำลังส่งออก</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>กำลังส่งออก {percent}%</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>บันทึกไปยังโฟลเดอร์</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>ถามทุกครั้ง</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>ตำแหน่ง</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>เปลี่ยน</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>ยังไม่ได้เลือกโฟลเดอร์</value></data>
 </root>

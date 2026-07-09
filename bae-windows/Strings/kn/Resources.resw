@@ -369,4 +369,11 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>ಸೇರಿಸಿದ ದಿನಾಂಕ (ಹಳೆಯದು)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>ಉಳಿದಿರುವ ಸಮಯವನ್ನು ತೋರಿಸಿ</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>ಕಳೆದ ಸಮಯವನ್ನು ತೋರಿಸಿ</value></data>
+  <data name="export.title" xml:space="preserve"><value>ರಫ್ತು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ರಫ್ತು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
+  <data name="settings.export.save_to_folder" xml:space="preserve"><value>ಫೋಲ್ಡರ್‌ಗೆ ಉಳಿಸಿ</value></data>
+  <data name="settings.export.ask_each_time" xml:space="preserve"><value>ಪ್ರತಿ ಬಾರಿ ಕೇಳಿ</value></data>
+  <data name="settings.export.location" xml:space="preserve"><value>ಸ್ಥಳ</value></data>
+  <data name="settings.export.change_folder" xml:space="preserve"><value>ಬದಲಿಸಿ</value></data>
+  <data name="settings.export.no_folder" xml:space="preserve"><value>ಯಾವುದೇ ಫೋಲ್ಡರ್ ಆಯ್ಕೆ ಮಾಡಿಲ್ಲ</value></data>
 </root>
