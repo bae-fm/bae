@@ -167,6 +167,83 @@ impl Database {
         .await
     }
 
+    pub async fn get_artist_count(&self) -> Result<u64, DbError> {
+        self.call(move |conn| {
+            let query = format!(
+                "SELECT COUNT(*) FROM ({})",
+                artist_summary_query(None, None)
+            );
+            conn.query_row(&query, [], |row| row.get::<_, i64>(0))
+                .map(|count| count as u64)
+                .map_err(DbError::from)
+        })
+        .await
+    }
+
+    pub async fn get_artist_page(
+        &self,
+        sort: ArtistSortCriterion,
+        offset: u64,
+        limit: u64,
+    ) -> Result<Vec<DbArtistSummary>, DbError> {
+        let order_by = artist_order_by(sort);
+        let tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
+        let query = artist_summary_query(None, Some(&tail));
+        self.call(move |conn| {
+            let mut stmt = conn.prepare(&query)?;
+            let rows =
+                stmt.query_map(params![limit as i64, offset as i64], row_to_artist_summary)?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
+    }
+
+    /// The artist's summary row plus every album it is an album artist of
+    /// (primary FK or `album_artists` junction), in discography order: year
+    /// ascending with unknown years last, then title (case-insensitive), then
+    /// id. `None` when the artist doesn't exist or has no album links —
+    /// exactly the artists `get_artist_page` never lists.
+    pub async fn find_artist_detail(
+        &self,
+        artist_id: &str,
+    ) -> Result<Option<DbArtistDetail>, DbError> {
+        let artist_id = artist_id.to_string();
+        self.call(move |conn| {
+            let artist = conn
+                .query_row(
+                    &artist_summary_query(Some("WHERE ar.id = ?"), None),
+                    params![artist_id],
+                    row_to_artist_summary,
+                )
+                .optional()?;
+            let Some(artist) = artist else {
+                return Ok(None);
+            };
+
+            let albums_query = format!(
+                "{select} \
+                 FROM albums a \
+                 WHERE a.artist_id = ?1 \
+                    OR EXISTS ( \
+                        SELECT 1 FROM album_artists aa \
+                        WHERE aa.album_id = a.id AND aa.artist_id = ?1 \
+                    ) \
+                 ORDER BY CASE WHEN a.year IS NULL THEN 1 ELSE 0 END, \
+                          a.year, a.title COLLATE NOCASE, a.id",
+                select = album_summary_select()
+            );
+            let mut stmt = conn.prepare(&albums_query)?;
+            let mut rows = stmt.query(params![artist_id])?;
+            let mut albums = Vec::new();
+            while let Some(row) = rows.next()? {
+                albums.push(parse_album_summary_row(row)?);
+            }
+            Ok(Some(DbArtistDetail { artist, albums }))
+        })
+        .await
+    }
+
     pub async fn find_composer_detail(
         &self,
         artist_id: &str,

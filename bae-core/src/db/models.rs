@@ -1070,6 +1070,23 @@ pub struct DbComposerSummary {
     pub unlinked_credit_count: i64,
 }
 
+/// Raw artist-summary aggregate: the artist row plus its distinct album
+/// count over both album-artist links (the primary `albums.artist_id` FK
+/// and `album_artists` junction rows).
+#[derive(Debug, Clone)]
+pub struct DbArtistSummary {
+    pub artist: DbArtist,
+    pub album_count: i64,
+}
+
+/// Raw artist-detail aggregate. The resolver in `LibraryManager` produces
+/// the display-ready `crate::album_detail::ArtistDetail`.
+#[derive(Debug, Clone)]
+pub struct DbArtistDetail {
+    pub artist: DbArtistSummary,
+    pub albums: Vec<DbAlbumSummary>,
+}
+
 #[derive(Debug, Clone)]
 pub struct DbWorkSummary {
     pub work: DbWork,
@@ -1194,6 +1211,18 @@ pub enum ComposerSortField {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ComposerSortCriterion {
     pub field: ComposerSortField,
+    pub direction: SortDirection,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArtistSortField {
+    Name,
+    AlbumCount,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ArtistSortCriterion {
+    pub field: ArtistSortField,
     pub direction: SortDirection,
 }
 

@@ -17,7 +17,8 @@ use crate::types::BridgeHomeStorage;
 #[cfg(feature = "desktop")]
 use crate::types::BridgeRemoteCover;
 use crate::types::{
-    BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeComposerDetail,
+    BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
+    BridgeArtistSortCriterion, BridgeArtistSummary, BridgeComposerDetail,
     BridgeComposerSortCriterion, BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig,
     BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource,
     BridgeMetadataSource, BridgeQueueSnapshot, BridgeRelease, BridgeReleaseRoleSummary,
@@ -161,6 +162,46 @@ impl AppHandle {
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
         Ok(detail.map(BridgeWorkDetail::from_core))
+    }
+
+    pub async fn get_artist_count(&self) -> Result<u64, BridgeError> {
+        self.services
+            .library_manager()
+            .get_artist_count()
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))
+    }
+
+    pub async fn get_artist_page(
+        &self,
+        sort_criterion: BridgeArtistSortCriterion,
+        offset: u64,
+        limit: u64,
+    ) -> Result<Vec<BridgeArtistSummary>, BridgeError> {
+        let sort = sort_criterion.into_core();
+        let artists = self
+            .services
+            .library_manager()
+            .get_artist_page(sort, offset, limit)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))?;
+        Ok(artists
+            .into_iter()
+            .map(BridgeArtistSummary::from_core)
+            .collect())
+    }
+
+    pub async fn get_artist_detail(
+        &self,
+        artist_id: String,
+    ) -> Result<Option<BridgeArtistDetail>, BridgeError> {
+        let detail = self
+            .services
+            .library_manager()
+            .get_artist_detail(&artist_id)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))?;
+        Ok(detail.map(BridgeArtistDetail::from_core))
     }
 
     /// Filesystem path for the user's own external file behind a library file
@@ -1549,6 +1590,7 @@ async fn pump_ui_events(
                 for invalidation in [
                     BridgeInvalidation::AlbumList,
                     BridgeInvalidation::ComposerList,
+                    BridgeInvalidation::ArtistList,
                     BridgeInvalidation::Queue,
                     BridgeInvalidation::Config,
                     BridgeInvalidation::SyncStatus,
@@ -2680,6 +2722,42 @@ impl BridgeComposerSummary {
             linked_release_count,
             unlinked_credit_count,
             image: image.map(crate::types::BridgeImageRef::from_core),
+        }
+    }
+}
+
+impl BridgeArtistSummary {
+    fn from_core(s: bae_core::album_detail::ArtistSummary) -> Self {
+        let bae_core::album_detail::ArtistSummary { raw, image } = s;
+        let bae_core::db::DbArtistSummary {
+            artist,
+            album_count,
+        } = raw;
+        let bae_core::db::DbArtist {
+            id: artist_id,
+            name,
+            // The MB-only sort name, per-source dedup ids, and the row
+            // timestamp don't cross to the UI.
+            sort_name: _,
+            discogs_artist_id: _,
+            musicbrainz_artist_id: _,
+            created_at: _,
+        } = artist;
+        BridgeArtistSummary {
+            artist_id,
+            name,
+            album_count,
+            image: image.map(crate::types::BridgeImageRef::from_core),
+        }
+    }
+}
+
+impl BridgeArtistDetail {
+    fn from_core(d: bae_core::album_detail::ArtistDetail) -> Self {
+        let bae_core::album_detail::ArtistDetail { artist, albums } = d;
+        BridgeArtistDetail {
+            artist: BridgeArtistSummary::from_core(artist),
+            albums: albums.into_iter().map(BridgeAlbum::from_core).collect(),
         }
     }
 }

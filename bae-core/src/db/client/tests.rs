@@ -1984,6 +1984,233 @@ mod composer_mode_tests {
 }
 
 #[cfg(test)]
+mod artist_mode_tests {
+    use super::super::*;
+    use coven::SystemClock;
+
+    /// Artists covering every membership case: a primary-FK artist that is
+    /// also a junction artist elsewhere, a junction-only artist, the Various
+    /// Artists row as a compilation's primary, a work-only composer (no album
+    /// links), and a fully unlinked artist.
+    async fn seeded_db() -> (Database, tempfile::TempDir) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        db.call(|conn| {
+            conn.execute_batch(
+                "
+                INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+                VALUES
+                    ('artist-primary', 'Artist Name B', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('artist-extra', 'Artist Name A', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('artist-various', 'Various Artists', NULL, '194', NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('artist-work-only', 'Composer Name A', NULL, NULL, 'mb-artist-work-only', 'stamp', '2026-01-01T00:00:00Z'),
+                    ('artist-unlinked', 'Artist Name C', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
+                VALUES
+                    ('album-a', 'Album Title A', 'artist-primary', 2001, NULL, 0, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('album-b', 'Album Title B', 'artist-primary', 1999, NULL, 0, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('album-compilation', 'Compilation Title A', 'artist-various', 2005, NULL, 1, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+                VALUES
+                    ('release-a', 'album-a', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('release-b', 'album-b', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('release-compilation', 'album-compilation', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z');
+
+                -- artist-extra joins album-b; artist-primary's junction row on
+                -- album-a duplicates its primary FK and must not double-count.
+                INSERT INTO album_artists (id, album_id, artist_id, position, _updated_at, created_at)
+                VALUES
+                    ('aa-extra-b', 'album-b', 'artist-extra', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('aa-primary-a', 'album-a', 'artist-primary', 1, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO works (id, title, disambiguation, work_type, _updated_at, created_at)
+                VALUES ('work-a', 'Work Title A', NULL, 'work', 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
+                VALUES ('work-artist-a', 'work-a', 'artist-work-only', 0, 'musicbrainz', 'stamp', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+        (db, tmp)
+    }
+
+    #[tokio::test]
+    async fn artist_page_lists_album_artists_with_distinct_album_counts() {
+        let (db, _tmp) = seeded_db().await;
+
+        let sort = ArtistSortCriterion {
+            field: ArtistSortField::Name,
+            direction: SortDirection::Ascending,
+        };
+        let page = db.get_artist_page(sort, 0, 10).await.unwrap();
+
+        let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec!["artist-extra", "artist-primary", "artist-various"]
+        );
+
+        let counts: Vec<i64> = page.iter().map(|a| a.album_count).collect();
+        assert_eq!(counts, vec![1, 2, 1]);
+
+        assert_eq!(db.get_artist_count().await.unwrap(), 3);
+    }
+
+    #[tokio::test]
+    async fn artist_page_sorts_by_album_count() {
+        let (db, _tmp) = seeded_db().await;
+
+        let sort = ArtistSortCriterion {
+            field: ArtistSortField::AlbumCount,
+            direction: SortDirection::Descending,
+        };
+        let page = db.get_artist_page(sort, 0, 10).await.unwrap();
+
+        let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec!["artist-primary", "artist-extra", "artist-various"]
+        );
+    }
+
+    #[tokio::test]
+    async fn artist_page_uses_id_tiebreaker() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        db.call(|conn| {
+            conn.execute_batch(
+                "
+                INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+                VALUES
+                    ('artist-c', 'Artist Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('artist-a', 'Artist Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('artist-b', 'Artist Name Shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
+                VALUES
+                    ('album-c', 'Album Title C', 'artist-c', 2026, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('album-a', 'Album Title A', 'artist-a', 2026, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('album-b', 'Album Title B', 'artist-b', 2026, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+                VALUES
+                    ('release-c', 'album-c', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('release-a', 'album-a', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('release-b', 'album-b', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+
+        let sort = ArtistSortCriterion {
+            field: ArtistSortField::AlbumCount,
+            direction: SortDirection::Descending,
+        };
+        let mut page_ids = Vec::new();
+        for offset in 0..3 {
+            let page = db.get_artist_page(sort, offset, 1).await.unwrap();
+            assert_eq!(page.len(), 1);
+            page_ids.push(page[0].artist.id.clone());
+        }
+
+        assert_eq!(page_ids, vec!["artist-a", "artist-b", "artist-c"]);
+    }
+
+    #[tokio::test]
+    async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        db.call(|conn| {
+            conn.execute_batch(
+                "
+                INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+                VALUES
+                    ('artist-a', 'Artist Name A', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('artist-other', 'Artist Name B', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
+                VALUES
+                    ('album-null', 'Album Title Null', 'artist-a', NULL, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('album-2001-upper', 'Album Title B', 'artist-a', 2001, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('album-2001-lower', 'album title a', 'artist-a', 2001, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('album-1999', 'Album Title 1999', 'artist-a', 1999, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('album-junction', 'Album Title Junction', 'artist-other', 2005, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('album-unrelated', 'Album Title Unrelated', 'artist-other', 1990, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+                VALUES
+                    ('release-null', 'album-null', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('release-2001-upper', 'album-2001-upper', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('release-2001-lower', 'album-2001-lower', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('release-1999', 'album-1999', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('release-junction', 'album-junction', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('release-unrelated', 'album-unrelated', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO album_artists (id, album_id, artist_id, position, _updated_at, created_at)
+                VALUES ('aa-junction', 'album-junction', 'artist-a', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+
+        let detail = db.find_artist_detail("artist-a").await.unwrap();
+        let detail = detail.expect("artist-a has album links and must resolve");
+
+        assert_eq!(detail.artist.artist.id, "artist-a");
+        assert_eq!(detail.artist.album_count, 5);
+
+        let album_ids: Vec<&str> = detail.albums.iter().map(|a| a.id.as_str()).collect();
+        assert_eq!(
+            album_ids,
+            vec![
+                "album-1999",
+                "album-2001-lower",
+                "album-2001-upper",
+                "album-junction",
+                "album-null",
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn artist_detail_absent_or_album_less_artist_is_none() {
+        let (db, _tmp) = seeded_db().await;
+
+        assert!(db
+            .find_artist_detail("artist-absent")
+            .await
+            .unwrap()
+            .is_none());
+        assert!(db
+            .find_artist_detail("artist-work-only")
+            .await
+            .unwrap()
+            .is_none());
+    }
+}
+
+#[cfg(test)]
 mod playback_state_load_tests {
     use super::super::*;
     use coven::SystemClock;

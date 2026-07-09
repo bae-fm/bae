@@ -48,12 +48,14 @@
 use crate::db::{DbArtist, LibraryImageType};
 
 mod album;
+mod artist;
 mod composer;
 mod release;
 mod search;
 mod storage;
 
 pub use album::*;
+pub use artist::*;
 pub use composer::*;
 pub use release::*;
 pub use search::*;

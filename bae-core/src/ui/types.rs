@@ -106,6 +106,7 @@ pub enum Invalidation {
     Release { release_id: String },
     ComposerList,
     Composer { composer_id: String },
+    ArtistList,
     Queue,
     Config,
     SyncStatus,

@@ -22,6 +22,7 @@ public enum BridgeInvalidationDomain: Hashable {
     case release
     case composerList
     case composer
+    case artistList
     case queue
     case config
     case syncStatus
@@ -46,6 +47,8 @@ extension BridgeInvalidation {
             return .composerList
         case .composer:
             return .composer
+        case .artistList:
+            return .artistList
         case .queue:
             return .queue
         case .config:

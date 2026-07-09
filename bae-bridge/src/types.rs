@@ -1498,6 +1498,7 @@ pub enum BridgeInvalidation {
     Release { release_id: String },
     ComposerList,
     Composer { composer_id: String },
+    ArtistList,
     Queue,
     Config,
     SyncStatus,
@@ -1519,6 +1520,7 @@ impl BridgeInvalidation {
             CoreInvalidation::Release { release_id } => Self::Release { release_id },
             CoreInvalidation::ComposerList => Self::ComposerList,
             CoreInvalidation::Composer { composer_id } => Self::Composer { composer_id },
+            CoreInvalidation::ArtistList => Self::ArtistList,
             CoreInvalidation::Queue => Self::Queue,
             CoreInvalidation::Config => Self::Config,
             CoreInvalidation::SyncStatus => Self::SyncStatus,
@@ -2269,6 +2271,36 @@ pub enum BridgeComposerSortField {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeComposerSortCriterion {
     pub field: BridgeComposerSortField,
+    pub direction: BridgeSortDirection,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeArtistSummary {
+    pub artist_id: String,
+    pub name: String,
+    /// Distinct albums this artist is an album artist of (primary FK or
+    /// `album_artists` junction).
+    pub album_count: i64,
+    pub image: Option<BridgeImageRef>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeArtistDetail {
+    pub artist: BridgeArtistSummary,
+    /// The artist's albums in discography order: year ascending with unknown
+    /// years last, then title.
+    pub albums: Vec<BridgeAlbum>,
+}
+
+#[derive(Debug, Clone, Copy, uniffi::Enum)]
+pub enum BridgeArtistSortField {
+    Name,
+    AlbumCount,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeArtistSortCriterion {
+    pub field: BridgeArtistSortField,
     pub direction: BridgeSortDirection,
 }
 
@@ -3062,6 +3094,19 @@ impl BridgeComposerSortCriterion {
                 BridgeComposerSortField::LinkedReleaseCount => {
                     bae_core::db::ComposerSortField::LinkedReleaseCount
                 }
+            },
+            direction: direction.into_core(),
+        }
+    }
+}
+
+impl BridgeArtistSortCriterion {
+    pub(crate) fn into_core(self) -> bae_core::db::ArtistSortCriterion {
+        let BridgeArtistSortCriterion { field, direction } = self;
+        bae_core::db::ArtistSortCriterion {
+            field: match field {
+                BridgeArtistSortField::Name => bae_core::db::ArtistSortField::Name,
+                BridgeArtistSortField::AlbumCount => bae_core::db::ArtistSortField::AlbumCount,
             },
             direction: direction.into_core(),
         }

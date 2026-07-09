@@ -30,8 +30,8 @@ use tokio::sync::broadcast;
 use tracing::{debug, error, info, warn};
 
 use crate::album_detail::{
-    join_artist_names, AlbumDetail, AlbumSummary, ComposerDetail, ComposerSummary,
-    ComposerWorkGroup, GallerySource, ImageRef, ReleaseDetail, ReleaseResolveCtx,
+    join_artist_names, AlbumDetail, AlbumSummary, ArtistDetail, ArtistSummary, ComposerDetail,
+    ComposerSummary, ComposerWorkGroup, GallerySource, ImageRef, ReleaseDetail, ReleaseResolveCtx,
     ReleaseStorageAction, ReleaseStorageState, ReleaseStorageSummary, SearchResults, StorageFilter,
     StoragePage, StorageRow, StorageSort, StorageSortDirection, StorageSortField, WorkDetail,
     WorkReleaseSummary, WorkSummary,

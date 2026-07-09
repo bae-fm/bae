@@ -259,6 +259,43 @@ fn composer_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
     query
 }
 
+/// The artist-browser summary query: every artist with at least one album
+/// link, with its distinct album count. Membership is album-artist links
+/// only — the primary `albums.artist_id` FK unioned with `album_artists`
+/// junction rows; track-level credits (`track_artists`) don't confer
+/// membership. No Various Artists special case: it is a real `artists` row
+/// that compilation albums point at, and it lists like any other artist.
+fn artist_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
+    let mut query = String::from(
+        "SELECT ar.id AS artist_id,
+                ar.name AS artist_name,
+                ar.sort_name AS artist_sort_name,
+                ar.discogs_artist_id AS artist_discogs_artist_id,
+                ar.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
+                ar.created_at AS artist_created_at,
+                COUNT(DISTINCT link.album_id) AS album_count
+         FROM artists ar
+         JOIN (
+             SELECT artist_id, id AS album_id FROM albums
+             UNION
+             SELECT artist_id, album_id FROM album_artists
+         ) link ON link.artist_id = ar.id
+         ",
+    );
+    if let Some(filter) = filter {
+        query.push_str(filter);
+    }
+    query.push_str(
+        "
+         GROUP BY ar.id, ar.name, ar.sort_name, ar.discogs_artist_id, ar.musicbrainz_artist_id, ar.created_at",
+    );
+    if let Some(tail) = tail {
+        query.push('\n');
+        query.push_str(tail);
+    }
+    query
+}
+
 fn unlinked_release_composer_role_predicate(role_alias: &str) -> String {
     unlinked_composer_role_predicate(
         role_alias,
@@ -370,6 +407,13 @@ fn row_to_composer_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbComposerS
     })
 }
 
+fn row_to_artist_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbArtistSummary> {
+    Ok(DbArtistSummary {
+        artist: row_to_joined_artist(row)?,
+        album_count: row.get("album_count")?,
+    })
+}
+
 fn work_summary_sort_key(work: &DbWorkSummary) -> String {
     work.work.title.to_lowercase()
 }
@@ -463,6 +507,19 @@ fn composer_order_by(sort: ComposerSortCriterion) -> String {
     };
     // Pagination needs a total order; composer.name is not unique.
     format!("{field} {direction}, composer.name ASC, composer.id ASC")
+}
+
+fn artist_order_by(sort: ArtistSortCriterion) -> String {
+    let field = match sort.field {
+        ArtistSortField::Name => "ar.name",
+        ArtistSortField::AlbumCount => "album_count",
+    };
+    let direction = match sort.direction {
+        SortDirection::Ascending => "ASC",
+        SortDirection::Descending => "DESC",
+    };
+    // Pagination needs a total order; ar.name is not unique.
+    format!("{field} {direction}, ar.name ASC, ar.id ASC")
 }
 
 #[cfg(any(test, feature = "test-utils"))]

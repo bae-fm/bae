@@ -93,6 +93,56 @@ impl LibraryManager {
         Ok(self.database.find_artist_by_id(artist_id).await?)
     }
 
+    pub async fn get_artist_count(&self) -> Result<u64, LibraryError> {
+        Ok(self.database.get_artist_count().await?)
+    }
+
+    pub async fn get_artist_page(
+        &self,
+        sort: crate::db::ArtistSortCriterion,
+        offset: u64,
+        limit: u64,
+    ) -> Result<Vec<ArtistSummary>, LibraryError> {
+        let raw = self.database.get_artist_page(sort, offset, limit).await?;
+        let artist_ids: Vec<String> = raw.iter().map(|a| a.artist.id.clone()).collect();
+        let images = self.artist_image_refs(&artist_ids).await?;
+        Ok(raw
+            .into_iter()
+            .map(|artist| {
+                let image = images.get(&artist.artist.id).cloned();
+                ArtistSummary::from_raw(artist, image)
+            })
+            .collect())
+    }
+
+    pub async fn get_artist_detail(
+        &self,
+        artist_id: &str,
+    ) -> Result<Option<ArtistDetail>, LibraryError> {
+        let Some(raw) = self.database.find_artist_detail(artist_id).await? else {
+            return Ok(None);
+        };
+        let images = self
+            .artist_image_refs(std::slice::from_ref(&raw.artist.artist.id))
+            .await?;
+        let release_ids: Vec<String> = raw
+            .albums
+            .iter()
+            .flat_map(|a| a.release_ids.iter().cloned())
+            .collect();
+        let covers = self.cover_refs(&release_ids).await?;
+        let albums = raw
+            .albums
+            .into_iter()
+            .map(|album| AlbumSummary::from_raw(album, |rid| covers.get(rid).cloned()))
+            .collect();
+        let image = images.get(&raw.artist.artist.id).cloned();
+        Ok(Some(ArtistDetail {
+            artist: ArtistSummary::from_raw(raw.artist, image),
+            albums,
+        }))
+    }
+
     /// Resolve each parsed artist to an existing DB row or a row to insert at
     /// finalize.
     ///

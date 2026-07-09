@@ -264,6 +264,7 @@ object UiEventAdapter {
             is BridgeInvalidation.ImportCandidate,
             BridgeInvalidation.WatchedFolders,
             is BridgeInvalidation.Composer,
+            BridgeInvalidation.ArtistList,
             -> {
                 logger.debug("ignoring ${invalidation::class.simpleName}")
             }

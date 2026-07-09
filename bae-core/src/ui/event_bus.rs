@@ -27,6 +27,7 @@ impl UiEventBus {
         for invalidation in [
             Invalidation::AlbumList,
             Invalidation::ComposerList,
+            Invalidation::ArtistList,
             Invalidation::SyncStatus,
             Invalidation::Outbox,
             Invalidation::DownloadQueue,
@@ -385,6 +386,7 @@ impl UiEventBus {
                         let album_id = album.album.id.clone();
                         bus.invalidate(Invalidation::AlbumList);
                         bus.invalidate(Invalidation::ComposerList);
+                        bus.invalidate(Invalidation::ArtistList);
                         bus.invalidate(Invalidation::Album { album_id });
                         tracing::info!("wire_library: AlbumAdded for album {}", album.album.id);
                     }
@@ -392,6 +394,7 @@ impl UiEventBus {
                         let album_id = album.album.id.clone();
                         bus.invalidate(Invalidation::AlbumList);
                         bus.invalidate(Invalidation::ComposerList);
+                        bus.invalidate(Invalidation::ArtistList);
                         bus.invalidate(Invalidation::Album { album_id });
                     }
                     Ok(LibraryEvent::AlbumRemoved {
@@ -400,6 +403,7 @@ impl UiEventBus {
                     }) => {
                         bus.invalidate(Invalidation::AlbumList);
                         bus.invalidate(Invalidation::ComposerList);
+                        bus.invalidate(Invalidation::ArtistList);
                         bus.invalidate(Invalidation::Album {
                             album_id: album_id.clone(),
                         });
@@ -412,6 +416,7 @@ impl UiEventBus {
                     Ok(LibraryEvent::ReleaseAdded { album, release }) => {
                         bus.invalidate(Invalidation::AlbumList);
                         bus.invalidate(Invalidation::ComposerList);
+                        bus.invalidate(Invalidation::ArtistList);
                         bus.invalidate(Invalidation::Album {
                             album_id: album.id.clone(),
                         });
@@ -422,6 +427,7 @@ impl UiEventBus {
                     Ok(LibraryEvent::ReleaseUpdated { album_id, release }) => {
                         bus.invalidate(Invalidation::AlbumList);
                         bus.invalidate(Invalidation::ComposerList);
+                        bus.invalidate(Invalidation::ArtistList);
                         bus.invalidate(Invalidation::Album {
                             album_id: album_id.clone(),
                         });
@@ -436,6 +442,7 @@ impl UiEventBus {
                     }) => {
                         bus.invalidate(Invalidation::AlbumList);
                         bus.invalidate(Invalidation::ComposerList);
+                        bus.invalidate(Invalidation::ArtistList);
                         bus.invalidate(Invalidation::Album {
                             album_id: album_id.clone(),
                         });
@@ -601,6 +608,7 @@ mod tests {
         let expected = [
             Invalidation::AlbumList,
             Invalidation::ComposerList,
+            Invalidation::ArtistList,
             Invalidation::SyncStatus,
             Invalidation::Outbox,
             Invalidation::DownloadQueue,
@@ -652,6 +660,7 @@ mod tests {
         let expected = [
             Invalidation::AlbumList,
             Invalidation::ComposerList,
+            Invalidation::ArtistList,
             Invalidation::Album {
                 album_id: "album-1".to_string(),
             },
