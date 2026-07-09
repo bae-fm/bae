@@ -402,6 +402,15 @@ internal sealed class QueuePane
         await ResolveAndApply(ids, (handle, trackIds) => NativeBae.AddToQueue(handle, trackIds));
     }
 
+    // The album grid's bulk Add to Queue / Play Next: resolves album ids to
+    // tracks and applies them, sharing the drag-drop resolve-then-apply route
+    // and its error banner (the same route macOS's QueueActions gives both the
+    // now-playing-bar drop and the grid's bulk menu).
+    public Task AddAlbumsToQueue(IReadOnlyList<string> albumIds, bool addNext) =>
+        ResolveAndApply(albumIds, (handle, trackIds) => addNext
+            ? NativeBae.AddNext(handle, trackIds)
+            : NativeBae.AddToQueue(handle, trackIds));
+
     // Read and decode the drag payload, releasing the drop as soon as the data is
     // read. Null when the payload carries no ids (a Text drag that isn't ours).
     private static async Task<IReadOnlyList<string>?> ReadDropPayload(DragEventArgs e)

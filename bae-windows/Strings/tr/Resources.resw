@@ -408,4 +408,9 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Bazı değişikliklerin yüklenmesi tamamlanmadı ve kaybolacak.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Onaylamak için düğmeye tekrar tıklayın.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>Kitaplık kaldırılamadı: {error}</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Çevrimdışı için sabitle</value></data>
+  <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {# albümü çal} other {# albümü çal}}</value></data>
+  <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {# albümü sırada çal} other {# albümü sırada çal}}</value></data>
+  <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {# albümü kuyruğa ekle} other {# albümü kuyruğa ekle}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# albümü çevrimdışı için sabitle} other {# albümü çevrimdışı için sabitle}}</value></data>
 </root>

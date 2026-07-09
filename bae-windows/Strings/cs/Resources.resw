@@ -408,4 +408,9 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Některé změny se ještě nenahrály a budou ztraceny.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Potvrďte dalším kliknutím na tlačítko.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>Knihovnu se nepodařilo odebrat: {error}</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Připnout pro offline</value></data>
+  <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {Přehrát # album} few {Přehrát # alba} many {Přehrát # alba} other {Přehrát # alb}}</value></data>
+  <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Přehrát # album jako další} few {Přehrát # alba jako další} many {Přehrát # alba jako další} other {Přehrát # alb jako další}}</value></data>
+  <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Přidat # album do fronty} few {Přidat # alba do fronty} many {Přidat # alba do fronty} other {Přidat # alb do fronty}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Připnout # album pro offline} few {Připnout # alba pro offline} many {Připnout # alba pro offline} other {Připnout # alb pro offline}}</value></data>
 </root>

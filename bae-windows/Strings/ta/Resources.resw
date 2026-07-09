@@ -408,4 +408,9 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>சில மாற்றங்கள் இன்னும் பதிவேற்றம் முடிக்கவில்லை, அவை இழக்கப்படும்.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>உறுதிப்படுத்த பொத்தானை மீண்டும் கிளிக் செய்யவும்.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>நூலகத்தை அகற்ற முடியவில்லை: {error}</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>இணையமில்லா பயன்பாட்டுக்கு நிலைநிறுத்து</value></data>
+  <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {# ஆல்பத்தை இயக்கு} other {# ஆல்பங்களை இயக்கு}}</value></data>
+  <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {# ஆல்பத்தை அடுத்து இயக்கு} other {# ஆல்பங்களை அடுத்து இயக்கு}}</value></data>
+  <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {# ஆல்பத்தை வரிசையில் சேர்க்கவும்} other {# ஆல்பங்களை வரிசையில் சேர்க்கவும்}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# ஆல்பத்தை இணையமில்லா பயன்பாட்டுக்கு நிலைநிறுத்து} other {# ஆல்பங்களை இணையமில்லா பயன்பாட்டுக்கு நிலைநிறுத்து}}</value></data>
 </root>

@@ -408,4 +408,9 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>ചില മാറ്റങ്ങൾ ഇതുവരെ അപ്‌ലോഡ് പൂർത്തിയായിട്ടില്ല, അവ നഷ്ടപ്പെടും.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>സ്ഥിരീകരിക്കാൻ ബട്ടൺ വീണ്ടും ക്ലിക്ക് ചെയ്യുക.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>ലൈബ്രറി നീക്കം ചെയ്യാനായില്ല: {error}</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക</value></data>
+  <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {# ആൽബം പ്ലേ ചെയ്യുക} other {# ആൽബങ്ങൾ പ്ലേ ചെയ്യുക}}</value></data>
+  <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {# ആൽബം അടുത്തതായി പ്ലേ ചെയ്യുക} other {# ആൽബങ്ങൾ അടുത്തതായി പ്ലേ ചെയ്യുക}}</value></data>
+  <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {# ആൽബം നിരയിലേക്ക് ചേർക്കുക} other {# ആൽബങ്ങൾ നിരയിലേക്ക് ചേർക്കുക}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# ആൽബം ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക} other {# ആൽബങ്ങൾ ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക}}</value></data>
 </root>

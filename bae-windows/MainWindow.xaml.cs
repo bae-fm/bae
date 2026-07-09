@@ -33,6 +33,11 @@ public sealed partial class MainWindow : Window
     // The library session (handle + event subscription) and the stores it drives.
     private readonly SessionStore _session;
     private readonly LibraryBrowserStore _browser;
+    // The album grid's multi-selection, a browsing-session concern owned here
+    // like the browser store itself. Modifier clicks/Esc/Ctrl+A mutate it; the
+    // window syncs Album.IsSelected over the loaded collection after every
+    // mutation so the card tint (bound OneWay) stays current.
+    private readonly AlbumGridSelectionModel _albumSelection = new();
     private readonly LibrarySortControls _sortControls;
     private readonly BrowserPanes _browserPanes;
     private readonly WelcomeView _welcomeView;
@@ -375,6 +380,12 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
+        // A reload replaces Albums wholesale (sort/mode change, invalidation,
+        // library open), so the prior selection's ids no longer resolve to
+        // anything on screen — clear it rather than prune, which also
+        // subsumes macOS's per-id deleted-album pruning.
+        _albumSelection.Clear();
+        SyncAlbumSelectionTint();
         ShowAlbumBrowser();
         RenderGridStatus(load);
     }
@@ -544,6 +555,7 @@ public sealed partial class MainWindow : Window
         _queuePane.Hide();
         _import.Reset();
         _browser.Reset();
+        _albumSelection.Clear();
         _transferProgress.Reset();
         SearchBox.Text = string.Empty;
         StatusText.Text = string.Empty;
@@ -692,7 +704,9 @@ public sealed partial class MainWindow : Window
     }
 
     // Start a drag from an album card: carry the album ids as the newline-joined
-    // payload the queue pane decodes. Cancelled when no library is open.
+    // payload the queue pane decodes — the whole multi-selection (visible order)
+    // when the pressed card is part of it, else just that card. Cancelled when no
+    // library is open. Never mutates the selection.
     private void OnAlbumDragStarting(object sender, DragItemsStartingEventArgs e)
     {
         if (CurrentHandleOrNull() == null)
@@ -700,7 +714,10 @@ public sealed partial class MainWindow : Window
             e.Cancel = true;
             return;
         }
-        var ids = e.Items.OfType<Album>().Select(album => album.Id).ToList();
+        var pressed = e.Items.OfType<Album>().FirstOrDefault();
+        var ids = pressed is null
+            ? e.Items.OfType<Album>().Select(album => album.Id).ToList()
+            : _albumSelection.OrderedTargets(pressed.Id, AlbumPosition);
         e.Data.SetText(QueueDragPayload.Encode(ids));
         e.Data.RequestedOperation = DataPackageOperation.Copy;
     }
@@ -834,7 +851,9 @@ public sealed partial class MainWindow : Window
     private void OnGlobalKeyDown(object sender, KeyRoutedEventArgs e)
     {
         // Escape closes the queue pane when it's open. Dialogs capture their own
-        // input layer, so their Escape never reaches this root handler.
+        // input layer, so their Escape never reaches this root handler. The
+        // queue pane keeps priority: the album-grid selection only clears once
+        // it isn't open.
         if (e.Key == VirtualKey.Escape && _queuePane.IsOpen)
         {
             _queuePane.Hide();
@@ -842,13 +861,29 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (e.Key != VirtualKey.Space)
+        if (e.Key == VirtualKey.Escape && AlbumGrid.Visibility == Visibility.Visible && !_albumSelection.IsEmpty)
         {
+            _albumSelection.Clear();
+            SyncAlbumSelectionTint();
+            e.Handled = true;
             return;
         }
 
         var focused = FocusManager.GetFocusedElement(Content.XamlRoot);
-        if (focused is TextBox || focused is AutoSuggestBox)
+        var focusedTextInput = focused is TextBox || focused is AutoSuggestBox;
+
+        // Ctrl+A selects every loaded album, guarded by the same focused-text-input
+        // check as Space so Ctrl+A in the search box still selects its text.
+        if (e.Key == VirtualKey.A && !focusedTextInput
+            && AlbumGrid.Visibility == Visibility.Visible && IsModifierDown(VirtualKey.Control))
+        {
+            _albumSelection.SelectAll(Albums.Select(album => album.Id).ToList());
+            SyncAlbumSelectionTint();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key != VirtualKey.Space || focusedTextInput)
         {
             return;
         }
@@ -892,6 +927,9 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        // The album grid leaves the screen for the search results pane.
+        _albumSelection.Clear();
+        SyncAlbumSelectionTint();
         ShowSearchBrowser();
         _browserPanes.RenderSearchResults(search.Results, search.Error);
     }
@@ -906,6 +944,10 @@ public sealed partial class MainWindow : Window
         await _browserPanes.ShowComposerDetail(composer.ArtistId);
     }
 
+    // Dispatch by the modifiers held at click time: Ctrl toggles the clicked
+    // album, Shift extends the range from the anchor, and a plain click clears
+    // the multi-selection and opens the detail dialog. Modifier clicks never
+    // open the dialog.
     private async void OnAlbumClick(object sender, ItemClickEventArgs e)
     {
         if (CurrentHandleOrNull() == null || e.ClickedItem is not Album album)
@@ -913,11 +955,27 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        if (IsModifierDown(VirtualKey.Control))
+        {
+            _albumSelection.Toggle(album.Id);
+            SyncAlbumSelectionTint();
+            return;
+        }
+        if (IsModifierDown(VirtualKey.Shift))
+        {
+            _albumSelection.ExtendRange(album.Id, AlbumPosition, AlbumIdAt);
+            SyncAlbumSelectionTint();
+            return;
+        }
+
+        _albumSelection.Clear();
+        SyncAlbumSelectionTint();
         await _albumDetail.Show(album.Id);
     }
 
-    // Right-click / long-press on an album card: play or queue the album's
-    // canonical release without opening the detail dialog.
+    // Right-click / long-press on an album card: the bulk-action menu for
+    // whatever the card targets — the whole multi-selection (visible order)
+    // for a member card, else just that card. Never mutates the selection.
     private void OnAlbumGridRightTapped(object sender, RightTappedRoutedEventArgs e)
     {
         if (CurrentHandleOrNull() == null
@@ -925,19 +983,126 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
-        var releaseId = album.PrimaryReleaseId;
-        if (string.IsNullOrEmpty(releaseId))
+
+        var targets = _albumSelection.OrderedTargets(album.Id, AlbumPosition);
+        var menu = targets.Count == 1
+            ? BuildSingleAlbumCardMenu(album)
+            : BuildBulkAlbumCardMenu(targets);
+        if (menu is null)
         {
             return;
         }
+
         e.Handled = true;
         var element = (FrameworkElement)e.OriginalSource;
-        var menu = AlbumCardMenu.Build(
-            onPlay: () => WithCurrentHandle(handle => NativeBae.PlayRelease(handle, releaseId, -1, false)),
-            onPlayNext: () => WithCurrentHandle(handle => NativeBae.AddReleaseNext(handle, releaseId)),
-            onAddToQueue: () => WithCurrentHandle(handle => NativeBae.AddReleaseToQueue(handle, releaseId)));
         menu.ShowAt(element, new FlyoutShowOptions { Position = e.GetPosition(element) });
     }
+
+    // The pre-existing single-album menu: release-based actions on the card's
+    // primary release. Null when the album carries none (defensive — every
+    // grid-loaded album has one; only a search-result album wouldn't).
+    private MenuFlyout? BuildSingleAlbumCardMenu(Album album)
+    {
+        var releaseId = album.PrimaryReleaseId;
+        if (string.IsNullOrEmpty(releaseId))
+        {
+            return null;
+        }
+        return AlbumCardMenu.Build(
+            targetCount: 1,
+            onPlay: () =>
+            {
+                WithCurrentHandle(handle => NativeBae.PlayRelease(handle, releaseId, -1, false));
+                return System.Threading.Tasks.Task.CompletedTask;
+            },
+            onPlayNext: () =>
+            {
+                WithCurrentHandle(handle => NativeBae.AddReleaseNext(handle, releaseId));
+                return System.Threading.Tasks.Task.CompletedTask;
+            },
+            onAddToQueue: () =>
+            {
+                WithCurrentHandle(handle => NativeBae.AddReleaseToQueue(handle, releaseId));
+                return System.Threading.Tasks.Task.CompletedTask;
+            },
+            onPin: () => PinReleases(new[] { releaseId }));
+    }
+
+    // The bulk menu for a multi-selected card: batch actions over every
+    // targeted album, in visible grid order.
+    private MenuFlyout BuildBulkAlbumCardMenu(IReadOnlyList<string> targets)
+    {
+        var primaryReleaseIds = PrimaryReleaseIds(targets);
+        return AlbumCardMenu.Build(
+            targetCount: targets.Count,
+            onPlay: () =>
+            {
+                WithCurrentHandle(handle => NativeBae.PlayReleases(handle, primaryReleaseIds));
+                return System.Threading.Tasks.Task.CompletedTask;
+            },
+            onPlayNext: () => _queuePane.AddAlbumsToQueue(targets, addNext: true),
+            onAddToQueue: () => _queuePane.AddAlbumsToQueue(targets, addNext: false),
+            onPin: () => PinReleases(primaryReleaseIds));
+    }
+
+    // Enqueue releases to pin for offline, surfacing a failure through the
+    // shell error banner. Runs off the UI thread: the pin enqueue awaits core's
+    // async library-manager call.
+    private async System.Threading.Tasks.Task PinReleases(IReadOnlyList<string> releaseIds)
+    {
+        var (current, error) = await _session.RunForCurrentHandle(handle => releaseIds.Count == 1
+            ? NativeBae.PinRelease(handle, releaseIds[0])
+            : NativeBae.PinReleases(handle, releaseIds));
+        if (current && error is not null)
+        {
+            _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.title"), error);
+        }
+    }
+
+    // The targeted albums' primary release ids, in target order, dropping any
+    // target with none (a search-result album would have none; grid albums
+    // always do).
+    private List<string> PrimaryReleaseIds(IReadOnlyList<string> albumIds)
+    {
+        var albumsById = Albums.ToDictionary(album => album.Id);
+        return albumIds
+            .Select(id => albumsById.TryGetValue(id, out var album) ? album.PrimaryReleaseId : null)
+            .Where(releaseId => !string.IsNullOrEmpty(releaseId))
+            .Select(releaseId => releaseId!)
+            .ToList();
+    }
+
+    // The clicked album's index in the loaded grid, or null if it isn't loaded —
+    // the position delegate AlbumGridSelectionModel needs for range-extend and
+    // ordered targets.
+    private int? AlbumPosition(string id)
+    {
+        for (var i = 0; i < Albums.Count; i++)
+        {
+            if (Albums[i].Id == id)
+            {
+                return i;
+            }
+        }
+        return null;
+    }
+
+    private string? AlbumIdAt(int index) =>
+        index >= 0 && index < Albums.Count ? Albums[index].Id : null;
+
+    // Sync every loaded album's tint from the selection model. Called after
+    // every mutation; O(loaded count), which is at most the first page (500).
+    private void SyncAlbumSelectionTint()
+    {
+        foreach (var album in Albums)
+        {
+            album.IsSelected = _albumSelection.Contains(album.Id);
+        }
+    }
+
+    private static bool IsModifierDown(VirtualKey key) =>
+        Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
     private async void OnStorageClick(object sender, RoutedEventArgs e)
     {

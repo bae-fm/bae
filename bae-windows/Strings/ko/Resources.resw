@@ -408,4 +408,9 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>일부 변경 사항이 아직 업로드되지 않았으며 손실됩니다.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>확인하려면 버튼을 다시 클릭하세요.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>라이브러리를 제거할 수 없습니다: {error}</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>오프라인용으로 고정</value></data>
+  <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {앨범 #개 재생} other {앨범 #개 재생}}</value></data>
+  <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {앨범 #개 다음에 재생} other {앨범 #개 다음에 재생}}</value></data>
+  <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {앨범 #개 대기열에 추가} other {앨범 #개 대기열에 추가}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {앨범 #개 오프라인용으로 고정} other {앨범 #개 오프라인용으로 고정}}</value></data>
 </root>

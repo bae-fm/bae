@@ -427,6 +427,11 @@ internal static class NativeBae
     internal static string? PinRelease(AppHandle handle, string releaseId) =>
         CaptureError(() => Await(handle.QueuePinReleases([releaseId])));
 
+    // The album grid's bulk pin: the same enqueue as PinRelease, over every
+    // targeted album's primary release.
+    internal static string? PinReleases(AppHandle handle, IReadOnlyList<string> releaseIds) =>
+        CaptureError(() => Await(handle.QueuePinReleases(releaseIds.ToArray())));
+
     internal static string? UnpinRelease(AppHandle handle, string releaseId) =>
         CaptureError(() => Await(handle.UnpinRelease(releaseId)));
 
@@ -706,6 +711,11 @@ internal static class NativeBae
 
     internal static void PlayRelease(AppHandle handle, string releaseId, long startTrackIndex, bool shuffle) =>
         handle.PlayRelease(releaseId, startTrackIndex < 0 ? null : checked((uint)startTrackIndex), shuffle);
+
+    // The album grid's bulk play: replaces the queue with every targeted
+    // album's primary release, in the given order.
+    internal static void PlayReleases(AppHandle handle, IReadOnlyList<string> releaseIds) =>
+        handle.PlayReleases(releaseIds.ToArray());
 
     internal static void PlayLibraryShuffled(AppHandle handle) => handle.PlayLibraryShuffled();
 

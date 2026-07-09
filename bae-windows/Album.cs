@@ -12,6 +12,7 @@ public sealed class Album : INotifyPropertyChanged
     private readonly string _title;
     private readonly string _artist;
     private readonly CoverImage.Binding _cover;
+    private bool _isSelected;
 
     internal Album(BridgeAlbumSearchResult album) : this(album.Id, album.Title, album.ArtistName, album.Cover)
     {
@@ -45,4 +46,21 @@ public sealed class Album : INotifyPropertyChanged
         _cover.Attach(handle, dispatcherQueue);
 
     public ImageSource? Cover => _cover.Source;
+
+    /// <summary>Whether the grid's multi-selection contains this album. The
+    /// window syncs this from <see cref="AlbumGridSelectionModel"/> after every
+    /// selection mutation; the card's tint binds to it OneWay.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value)
+            {
+                return;
+            }
+            _isSelected = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+        }
+    }
 }

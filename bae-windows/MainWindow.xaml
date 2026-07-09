@@ -5,6 +5,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Bae.Windows"
     Title="bae">
+    <Window.Resources>
+        <local:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+    </Window.Resources>
     <!-- Background="Transparent" makes the whole window a hit-testable drop target,
          so a folder can be dropped over empty areas (e.g. the empty-library state),
          not just over the grid. -->
@@ -82,25 +85,37 @@
             RightTapped="OnAlbumGridRightTapped">
             <GridView.ItemTemplate>
                 <DataTemplate x:DataType="local:Album">
-                    <StackPanel Width="180" Margin="8" Spacing="6">
+                    <Grid>
+                        <!-- The multi-selection tint: always in the layout tree, toggled by
+                             Opacity (not Visibility), so a selection change never re-measures
+                             the row — required in a virtualized, container-recycling GridView. -->
                         <Border
-                            Width="180"
-                            Height="180"
-                            CornerRadius="6"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                            <Image Source="{x:Bind Cover, Mode=OneWay}" Stretch="UniformToFill" />
+                            CornerRadius="10"
+                            Opacity="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}">
+                            <Border.Background>
+                                <SolidColorBrush Color="{ThemeResource SystemAccentColor}" Opacity="0.18" />
+                            </Border.Background>
                         </Border>
-                        <TextBlock
-                            Text="{x:Bind Title}"
-                            MaxLines="1"
-                            TextTrimming="CharacterEllipsis"
-                            Style="{StaticResource BodyStrongTextBlockStyle}" />
-                        <TextBlock
-                            Text="{x:Bind Artist}"
-                            MaxLines="1"
-                            TextTrimming="CharacterEllipsis"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </StackPanel>
+                        <StackPanel Width="180" Margin="8" Spacing="6">
+                            <Border
+                                Width="180"
+                                Height="180"
+                                CornerRadius="6"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                                <Image Source="{x:Bind Cover, Mode=OneWay}" Stretch="UniformToFill" />
+                            </Border>
+                            <TextBlock
+                                Text="{x:Bind Title}"
+                                MaxLines="1"
+                                TextTrimming="CharacterEllipsis"
+                                Style="{StaticResource BodyStrongTextBlockStyle}" />
+                            <TextBlock
+                                Text="{x:Bind Artist}"
+                                MaxLines="1"
+                                TextTrimming="CharacterEllipsis"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </Grid>
                 </DataTemplate>
             </GridView.ItemTemplate>
         </GridView>

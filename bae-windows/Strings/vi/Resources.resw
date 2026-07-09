@@ -408,4 +408,9 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Một số thay đổi vẫn chưa tải lên xong và sẽ bị mất.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Nhấp lại vào nút để xác nhận.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>Không thể xóa thư viện: {error}</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Ghim để dùng ngoại tuyến</value></data>
+  <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {Phát # album} other {Phát # album}}</value></data>
+  <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Phát # album tiếp theo} other {Phát # album tiếp theo}}</value></data>
+  <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Thêm # album vào hàng đợi} other {Thêm # album vào hàng đợi}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Ghim # album để dùng ngoại tuyến} other {Ghim # album để dùng ngoại tuyến}}</value></data>
 </root>

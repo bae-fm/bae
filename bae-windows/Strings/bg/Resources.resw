@@ -408,4 +408,9 @@
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Някои промени все още не са качени и ще бъдат загубени.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Натиснете бутона отново, за да потвърдите.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>Библиотеката не можа да бъде премахната: {error}</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>Закачане за офлайн</value></data>
+  <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {Възпроизведи # албум} other {Възпроизведи # албума}}</value></data>
+  <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Възпроизведи # албум като следващ} other {Възпроизведи # албума като следващи}}</value></data>
+  <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Добави # албум в опашката} other {Добави # албума в опашката}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Закачи # албум за офлайн} other {Закачи # албума за офлайн}}</value></data>
 </root>
