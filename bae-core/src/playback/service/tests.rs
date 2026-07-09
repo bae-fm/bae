@@ -194,19 +194,14 @@ fn test_track_info(track_id: &str) -> PlaybackTrackInfo {
     }
 }
 
-fn test_prepared_track(
-    track_id: &str,
-    buffer: SharedSparseBuffer,
-    buffer_shared: bool,
-) -> PlaybackPreparedTrack {
-    test_prepared_track_with_file(track_id, track_id, buffer, buffer_shared)
+fn test_prepared_track(track_id: &str, buffer: SharedSparseBuffer) -> PlaybackPreparedTrack {
+    test_prepared_track_with_file(track_id, track_id, buffer)
 }
 
 fn test_prepared_track_with_file(
     track_id: &str,
     file_id: &str,
     buffer: SharedSparseBuffer,
-    buffer_shared: bool,
 ) -> PlaybackPreparedTrack {
     PlaybackPreparedTrack {
         track_info: test_track_info(track_id),
@@ -214,7 +209,6 @@ fn test_prepared_track_with_file(
             role: DbAudioSegmentRole::Main,
             file_id: file_id.to_string(),
             buffer,
-            buffer_shared,
             start_sample: 0,
             end_sample: None,
             start_byte: None,
@@ -270,24 +264,30 @@ fn test_track_fmt(track_id: &str) -> TrackFmt {
 }
 
 #[test]
-fn clear_preloaded_next_cancels_held_unshared_buffer() {
+fn discard_preloaded_next_stops_decoder_but_keeps_buffer_alive() {
     let buffer = create_sparse_buffer(1_024);
     let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
+    let cancel_token = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let mut preloaded = Some(PreloadedNext {
-        prepared: test_prepared_track("next-track", buffer.clone(), false),
+        prepared: test_prepared_track("next-track", buffer.clone()),
         decoder_handle: finished_decoder_handle(),
-        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        cancel_token: cancel_token.clone(),
         source: PreloadedNextSource::Held(source),
     });
 
-    clear_preloaded_next(&mut preloaded, None);
+    let prepared = discard_preloaded_next(&mut preloaded, None);
 
     assert!(preloaded.is_none());
-    assert!(buffer.is_cancelled());
+    let prepared = prepared.expect("the prepared track is handed back for buffer release");
+    assert_eq!(prepared.track_info.track_id, "next-track");
+    assert!(cancel_token.load(std::sync::atomic::Ordering::Acquire));
+    // The buffer stays alive: whether it survives is the caller's release
+    // decision (release_buffers / stop), not the discard's.
+    assert!(!buffer.is_cancelled());
 }
 
 #[test]
-fn clear_preloaded_next_removes_staged_source() {
+fn discard_preloaded_next_removes_staged_source() {
     let (_current_sink, current_source, _current_ready) = create_track_stream_pair(44_100, 2);
     let (_next_sink, next_source, _next_ready) = create_track_stream_pair(44_100, 2);
     let gapless = Arc::new(Mutex::new(source::PlaybackSource::new(
@@ -301,17 +301,18 @@ fn clear_preloaded_next_removes_staged_source() {
 
     let buffer = create_sparse_buffer(1_024);
     let mut preloaded = Some(PreloadedNext {
-        prepared: test_prepared_track("next-track", buffer.clone(), false),
+        prepared: test_prepared_track("next-track", buffer.clone()),
         decoder_handle: finished_decoder_handle(),
         cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         source: PreloadedNextSource::Staged,
     });
 
-    clear_preloaded_next(&mut preloaded, Some(&gapless));
+    let prepared = discard_preloaded_next(&mut preloaded, Some(&gapless));
 
     assert!(preloaded.is_none());
+    assert!(prepared.is_some());
     assert!(!gapless.lock().unwrap().has_next());
-    assert!(buffer.is_cancelled());
+    assert!(!buffer.is_cancelled());
 }
 
 #[tokio::test]
@@ -338,7 +339,7 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
         test_track_fmt("finished-track"),
     ))));
     service.slot = PlaybackSlot::Active(CurrentTrack {
-        prepared: test_prepared_track("finished-track", finished_buffer.clone(), false),
+        prepared: test_prepared_track("finished-track", finished_buffer.clone()),
         pipeline,
         audio_events: audio_rx,
         phase: TrackPhase::Playing,
@@ -346,7 +347,7 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
     service.current_position_shared =
         Arc::new(std::sync::Mutex::new(Some(std::time::Duration::ZERO)));
     service.preloaded_next = Some(PreloadedNext {
-        prepared: test_prepared_track("incoming-track", incoming_buffer, false),
+        prepared: test_prepared_track("incoming-track", incoming_buffer),
         decoder_handle: finished_decoder_handle(),
         cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         source: PreloadedNextSource::Staged,
@@ -386,7 +387,7 @@ async fn seek_after_natural_completion_resumes_audibly() {
     // The track drained: phase is Completed with its bookkeeping retained, and
     // the audio callback already flipped the atomic to Stopped.
     service.slot = active_slot(
-        test_prepared_track("finished-track", buffer.clone(), false),
+        test_prepared_track("finished-track", buffer.clone()),
         TrackPhase::Completed,
     );
     service.current_position_shared =
@@ -424,7 +425,7 @@ async fn next_after_natural_completion_resumes_audibly() {
     // callback already flipped the atomic to Stopped.
     let finished_buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
-        test_prepared_track("finished-track", finished_buffer, false),
+        test_prepared_track("finished-track", finished_buffer),
         TrackPhase::Completed,
     );
     service.current_position_shared =
@@ -437,7 +438,7 @@ async fn next_after_natural_completion_resumes_audibly() {
     let (_next_sink, next_source, _next_ready) = create_track_stream_pair(44_100, 2);
     let next_buffer = create_sparse_buffer(1_024);
     service.preloaded_next = Some(PreloadedNext {
-        prepared: test_prepared_track("next-track", next_buffer, false),
+        prepared: test_prepared_track("next-track", next_buffer),
         decoder_handle: finished_decoder_handle(),
         cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         source: PreloadedNextSource::Held(next_source),
@@ -479,21 +480,11 @@ async fn gapless_crossing_evicts_finished_track_file_buffer() {
         .shared_file_buffers
         .insert("incoming-file".to_string(), incoming_buffer.clone());
     service.slot = active_slot(
-        test_prepared_track_with_file(
-            "finished-track",
-            "finished-file",
-            finished_buffer.clone(),
-            false,
-        ),
+        test_prepared_track_with_file("finished-track", "finished-file", finished_buffer.clone()),
         TrackPhase::Playing,
     );
     service.preloaded_next = Some(PreloadedNext {
-        prepared: test_prepared_track_with_file(
-            "incoming-track",
-            "incoming-file",
-            incoming_buffer,
-            false,
-        ),
+        prepared: test_prepared_track_with_file("incoming-track", "incoming-file", incoming_buffer),
         decoder_handle: finished_decoder_handle(),
         cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         source: PreloadedNextSource::Staged,
@@ -527,12 +518,7 @@ async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
         .shared_file_buffers
         .insert("shared-file".to_string(), shared_buffer.clone());
     service.slot = active_slot(
-        test_prepared_track_with_file(
-            "finished-track",
-            "shared-file",
-            shared_buffer.clone(),
-            false,
-        ),
+        test_prepared_track_with_file("finished-track", "shared-file", shared_buffer.clone()),
         TrackPhase::Playing,
     );
     service.preloaded_next = Some(PreloadedNext {
@@ -540,7 +526,6 @@ async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
             "incoming-track",
             "shared-file",
             shared_buffer.clone(),
-            true,
         ),
         decoder_handle: finished_decoder_handle(),
         cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
@@ -571,7 +556,7 @@ async fn track_ready_with_stale_generation_is_ignored() {
     let live = service.next_load_generation();
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
-        test_prepared_track("t", buffer, false),
+        test_prepared_track("t", buffer),
         TrackPhase::Loading {
             generation: live,
             target: PlayTarget::Playing,
@@ -612,7 +597,7 @@ async fn pause_during_load_emits_paused_and_supersedes_track_ready() {
     let generation = service.next_load_generation();
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
-        test_prepared_track("t", buffer, false),
+        test_prepared_track("t", buffer),
         TrackPhase::Loading {
             generation,
             target: PlayTarget::Playing,
@@ -662,7 +647,7 @@ async fn preview_completed_tears_down_and_emits_idle() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
 
     let buffer = create_sparse_buffer(1_024);
-    let prepared = test_prepared_track("preview-file", buffer.clone(), false);
+    let prepared = test_prepared_track("preview-file", buffer.clone());
     let pipeline = test_pipeline(&prepared);
     service
         .preview
@@ -711,7 +696,7 @@ async fn playback_state_mapping() {
 
     let generation = service.next_load_generation();
     service.slot = active_slot(
-        test_prepared_track("t", buffer.clone(), false),
+        test_prepared_track("t", buffer.clone()),
         TrackPhase::Loading {
             generation,
             target: PlayTarget::Playing,
@@ -726,7 +711,7 @@ async fn playback_state_mapping() {
     ));
 
     service.slot = active_slot(
-        test_prepared_track("t", buffer.clone(), false),
+        test_prepared_track("t", buffer.clone()),
         TrackPhase::Playing,
     );
     assert!(matches!(
@@ -735,7 +720,7 @@ async fn playback_state_mapping() {
     ));
 
     service.slot = active_slot(
-        test_prepared_track("t", buffer.clone(), false),
+        test_prepared_track("t", buffer.clone()),
         TrackPhase::Paused(PausePhase::Manual),
     );
     assert!(matches!(
@@ -753,7 +738,7 @@ async fn playback_state_mapping() {
         message_key: SIDE_PAUSE_VINYL_MESSAGE_KEY,
     };
     service.slot = active_slot(
-        test_prepared_track("t", buffer, false),
+        test_prepared_track("t", buffer),
         TrackPhase::Paused(PausePhase::SideEnded(SidePauseDecision {
             track_id: "next".to_string(),
             prompt,
@@ -831,7 +816,7 @@ fn resolved_audio_format_rejects_zero_sample_rate() {
 fn direct_start_skips_audio_and_generated_pregap_segments() {
     let pregap_buffer = create_sparse_buffer(1_024);
     let main_buffer = create_sparse_buffer(2_048);
-    let mut prepared = test_prepared_track("track", main_buffer.clone(), false);
+    let mut prepared = test_prepared_track("track", main_buffer.clone());
     prepared.generated_pregap_samples = Some(441);
     prepared.generated_pregap_ms = Some(10);
     prepared.pregap_ms = Some(1010);
@@ -840,7 +825,6 @@ fn direct_start_skips_audio_and_generated_pregap_segments() {
             role: DbAudioSegmentRole::AudioPregap,
             file_id: "pregap-file".to_string(),
             buffer: pregap_buffer,
-            buffer_shared: false,
             start_sample: 1_000,
             end_sample: None,
             start_byte: Some(100),
@@ -850,7 +834,6 @@ fn direct_start_skips_audio_and_generated_pregap_segments() {
             role: DbAudioSegmentRole::Main,
             file_id: "main-file".to_string(),
             buffer: main_buffer.clone(),
-            buffer_shared: false,
             start_sample: 44_100,
             end_sample: Some(88_200),
             start_byte: Some(2_000),
@@ -871,7 +854,7 @@ fn direct_start_skips_audio_and_generated_pregap_segments() {
 fn natural_start_includes_audio_and_generated_pregap_segments() {
     let pregap_buffer = create_sparse_buffer(1_024);
     let main_buffer = create_sparse_buffer(2_048);
-    let mut prepared = test_prepared_track("track", main_buffer.clone(), false);
+    let mut prepared = test_prepared_track("track", main_buffer.clone());
     prepared.generated_pregap_samples = Some(441);
     prepared.generated_pregap_ms = Some(10);
     prepared.pregap_ms = Some(1010);
@@ -880,7 +863,6 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
             role: DbAudioSegmentRole::AudioPregap,
             file_id: "pregap-file".to_string(),
             buffer: pregap_buffer.clone(),
-            buffer_shared: false,
             start_sample: 1_000,
             end_sample: None,
             start_byte: Some(100),
@@ -890,7 +872,6 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
             role: DbAudioSegmentRole::Main,
             file_id: "main-file".to_string(),
             buffer: main_buffer,
-            buffer_shared: false,
             start_sample: 44_100,
             end_sample: Some(88_200),
             start_byte: Some(2_000),
@@ -910,7 +891,7 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
 #[test]
 fn generated_pregap_samples_clamps_negative_sample_value() {
     let buffer = create_sparse_buffer(1_024);
-    let mut prepared = test_prepared_track("track", buffer, false);
+    let mut prepared = test_prepared_track("track", buffer);
     prepared.generated_pregap_samples = Some(-1);
     prepared.generated_pregap_ms = Some(10);
 
@@ -920,7 +901,7 @@ fn generated_pregap_samples_clamps_negative_sample_value() {
 #[test]
 fn generated_pregap_samples_clamps_negative_millisecond_value() {
     let buffer = create_sparse_buffer(1_024);
-    let mut prepared = test_prepared_track("track", buffer, false);
+    let mut prepared = test_prepared_track("track", buffer);
     prepared.generated_pregap_samples = None;
     prepared.generated_pregap_ms = Some(-10);
 

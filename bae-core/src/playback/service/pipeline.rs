@@ -3,21 +3,21 @@ use super::*;
 impl PlaybackService {
     /// Tear down the current track, whatever phase it is in, leaving the slot
     /// Stopped. The pipeline's `cancel()` silences the audio callback, signals the
-    /// decoder token, and drops the stream; cancelling the prepared track's
-    /// unshared buffers stops the data reader and lets the decoder thread exit its
-    /// park loop.
+    /// decoder token, and drops the stream. The decoder thread is not joined —
+    /// joining would block the command loop; a fresh load's decoder replaces it.
     ///
-    /// A shared buffer is spared (the same-source reuse path appends into it via
-    /// `uncancel`); `stop()` drops the shared-buffer cache wholesale instead. The
-    /// decoder thread is not joined — joining would block the command loop, and
-    /// the cancel token plus buffer cancel already make it exit promptly; a fresh
-    /// load's decoder replaces it.
-    pub(super) fn teardown_current_track(&mut self) {
+    /// Returns the outgoing prepared track: its file buffers are still cached
+    /// and live, and the caller releases them (`release_buffers`) once it knows
+    /// which files the incoming track keeps — or lets `stop()`'s cache-wide
+    /// cancel cover them.
+    pub(super) fn teardown_current_track(&mut self) -> Option<PlaybackPreparedTrack> {
         if let PlaybackSlot::Active(cur) = std::mem::replace(&mut self.slot, PlaybackSlot::Stopped)
         {
             cur.pipeline.cancel();
-            cur.prepared.cancel_unshared_buffers();
             // Dropping `cur` drops the audio-events receiver.
+            Some(cur.prepared)
+        } else {
+            None
         }
     }
 
@@ -51,9 +51,10 @@ impl PlaybackService {
     /// returns without racing the watcher.
     ///
     /// On stream-build failure `start_stream_pipeline` has already cancelled the
-    /// just-spawned decoder; here we cancel the prepared track's unshared buffers
-    /// and wake their readers (so a read-blocked decoder sees the token), then
-    /// return the error for the caller to resolve.
+    /// just-spawned decoder; here we wake the prepared track's buffer readers so
+    /// a read-blocked decoder sees the token, then return the error for the
+    /// caller to resolve (both callers `stop()`, whose cache-wide cancel then
+    /// releases the buffers themselves).
     pub(super) async fn start_decoder_and_watch(
         &mut self,
         prepared: &PlaybackPreparedTrack,
@@ -80,7 +81,6 @@ impl PlaybackService {
         {
             Ok(start) => start,
             Err(e) => {
-                prepared.cancel_unshared_buffers();
                 for segment in &prepared.segments {
                     segment.buffer.wake_readers();
                 }
@@ -138,12 +138,14 @@ impl PlaybackService {
             track_id, start, target
         );
 
-        // Tear down the outgoing track up front so a manual switch silences the
-        // old audio immediately and frees the old decoder + reader, instead of
-        // leaving them running until this method assembles the new track at the
-        // end. Spares a shared source buffer the incoming track reuses.
-        self.teardown_current_track();
-        self.clear_next_track_state();
+        // Tear down the outgoing track and preload up front so a manual switch
+        // silences the old audio immediately and stops the old decoders. Their
+        // file buffers stay cached and live until the incoming track is
+        // prepared — only then is it known which files it shares (a CUE album's
+        // tracks all play from one file, whose buffer and fill task must
+        // survive the switch).
+        let outgoing = self.teardown_current_track();
+        let outgoing_preload = self.take_preloaded_prepared();
 
         // First Loading emission: bare, before the metadata lookup.
         self.slot = PlaybackSlot::Loading {
@@ -172,10 +174,20 @@ impl PlaybackService {
                         reason: e.into_ui_reason(),
                     },
                 );
+                // stop()'s cache-wide cancel releases the outgoing tracks'
+                // buffers.
                 self.stop().await;
                 return;
             }
         };
+
+        // The incoming track's files are known now: release the outgoing
+        // current and preload buffers, keeping any file the new track also
+        // plays.
+        let retained_file_ids = prepared.file_ids();
+        for old in [outgoing, outgoing_preload].into_iter().flatten() {
+            old.release_buffers(&retained_file_ids, &mut self.shared_file_buffers);
+        }
 
         // Second Loading emission: carries the target track's metadata so the bar
         // switches from the prior track to the target while audio still downloads.
@@ -239,13 +251,19 @@ impl PlaybackService {
         // Stop any active preview first (without resuming main, since we're stopping)
         self.stop_preview_for_main_playback();
 
-        // Tear down the current track (stream, source, buffer, decoder,
-        // listeners) — the half `stop()` shares with a manual track switch.
+        // Tear down the current track (stream, source, decoder, listeners) —
+        // the half `stop()` shares with a manual track switch. The returned
+        // prepared track's buffers are covered by the cache-wide cancel below.
         self.teardown_current_track();
 
         // Stop-specific teardown beyond the current track:
         self.clear_next_track_state();
-        // Drop shared buffer cache — stop means we're done with this album
+        // Stop means we're done with this album: cancel every cached file
+        // buffer (stopping its fill task and unblocking its readers) and drop
+        // the cache.
+        for buffer in self.shared_file_buffers.values() {
+            buffer.cancel();
+        }
         self.shared_file_buffers.clear();
         *self.current_position_shared.lock().unwrap() = None;
         // The slot is Stopped; project that onto the atomic and emit Stopped.

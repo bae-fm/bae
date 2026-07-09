@@ -319,11 +319,27 @@ impl PlaybackService {
         }
     }
 
-    pub(super) fn clear_next_track_state(&mut self) {
+    /// Discard the preloaded decoder and hand back its prepared track without
+    /// releasing its file buffers — for callers that release them later, once
+    /// the retained files are known (`play_track`).
+    pub(super) fn take_preloaded_prepared(&mut self) -> Option<PlaybackPreparedTrack> {
         // Clone the Arc so the borrow of the slot ends before we mutate
         // `preloaded_next` (both are fields of self).
         let current_source = self.current_source().cloned();
-        clear_preloaded_next(&mut self.preloaded_next, current_source.as_ref());
+        discard_preloaded_next(&mut self.preloaded_next, current_source.as_ref())
+    }
+
+    pub(super) fn clear_next_track_state(&mut self) {
+        let Some(prepared) = self.take_preloaded_prepared() else {
+            return;
+        };
+        // Release the preload's buffers; files the current track still plays
+        // stay cached and alive.
+        let retained_file_ids = match &self.slot {
+            PlaybackSlot::Active(cur) => cur.prepared.file_ids(),
+            _ => HashSet::new(),
+        };
+        prepared.release_buffers(&retained_file_ids, &mut self.shared_file_buffers);
     }
 
     /// Whether a preloaded next-track source is available.
@@ -396,9 +412,10 @@ impl PlaybackService {
             );
             return;
         };
-        // Release the previous track's buffer (unless shared with the new one).
+        // Release the previous track's buffers (files shared with the new one
+        // stay cached and alive).
         cur.prepared
-            .release_buffers_not_used_by(&next_prepared, &mut self.shared_file_buffers);
+            .release_buffers(&next_prepared.file_ids(), &mut self.shared_file_buffers);
         cur.prepared = next_prepared;
         cur.pipeline
             .adopt_crossed_decoder(decoder_handle, cancel_token);
@@ -451,8 +468,9 @@ impl PlaybackService {
             self.play_preloaded_track(natural, target).await;
         } else {
             // Preload started but the streaming source isn't ready yet.
+            // play_track discards the half-ready preload itself and keeps its
+            // file buffers — it is about to play the same track.
             self.advance_to_preloaded();
-            self.clear_next_track_state();
             self.play_track(
                 preloaded_track_id,
                 TrackStart::from_natural_transition(natural),
@@ -522,7 +540,7 @@ impl PlaybackService {
                 guard.cancel();
             }
             cur.prepared
-                .release_buffers_not_used_by(&next_prepared, &mut self.shared_file_buffers);
+                .release_buffers(&next_prepared.file_ids(), &mut self.shared_file_buffers);
             // Dropping `cur` drops the old pipeline (stream + source, detaching the
             // decoder) and the old audio-events receiver.
         }

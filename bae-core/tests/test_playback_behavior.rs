@@ -5080,3 +5080,137 @@ async fn mid_flight_cloud_read_failure_ends_in_stopped() {
         "playback must stay stopped after the failure, not flip back to Playing"
     );
 }
+
+/// A 3-track CUE album over one FLAC large enough that the streaming reader's
+/// fetch windows (4 MiB each) cover only slices of it. White noise compresses
+/// poorly, so 2 minutes of it encodes to ~20 MiB — playing one track buffers
+/// the file head (container probe) and a window at that track's byte offset,
+/// leaving the other tracks' regions unfetched.
+fn generate_multi_window_cue_flac_files(dir: &std::path::Path) {
+    use rand::{Rng, SeedableRng};
+
+    bae_core::audio_codec::init();
+
+    const SAMPLE_RATE: u32 = 44_100;
+    const TRACK_SECONDS: u32 = 40;
+    const TRACKS: u32 = 3;
+
+    let frames = (SAMPLE_RATE * TRACK_SECONDS * TRACKS) as usize;
+    let mut rng = rand::rngs::StdRng::seed_from_u64(0x0bae);
+    let samples: Vec<i32> = (0..frames * 2)
+        .map(|_| (rng.random::<i16>() as i32) << 16)
+        .collect();
+    let cancel = std::sync::atomic::AtomicBool::new(false);
+    let flac = bae_core::audio_codec::encode_to_flac(&samples, SAMPLE_RATE, 2, 16, &cancel)
+        .expect("encode the multi-window noise FLAC");
+    assert!(
+        flac.len() > 12 * 1024 * 1024,
+        "the fixture must span several 4 MiB fetch windows, got {} bytes",
+        flac.len()
+    );
+    std::fs::write(dir.join("Multi Window Album.flac"), &flac)
+        .expect("write the multi-window FLAC");
+
+    let cue = "\
+PERFORMER \"Test Artist\"
+TITLE \"Multi Window Album\"
+FILE \"Multi Window Album.flac\" WAVE
+  TRACK 01 AUDIO
+    TITLE \"Multi Window One\"
+    PERFORMER \"Test Artist\"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE \"Multi Window Two\"
+    PERFORMER \"Test Artist\"
+    INDEX 01 00:40:00
+  TRACK 03 AUDIO
+    TITLE \"Multi Window Three\"
+    PERFORMER \"Test Artist\"
+    INDEX 01 01:20:00
+";
+    std::fs::write(dir.join("Multi Window Album.cue"), cue).expect("write the multi-window CUE");
+}
+
+fn create_multi_window_cue_album() -> DiscogsRelease {
+    let track = |position: &str, title: &str| DiscogsTrack {
+        type_: "track".to_string(),
+        position: position.to_string(),
+        title: title.to_string(),
+        duration: Some("0:40".to_string()),
+        artists: vec![],
+        extraartists: None,
+    };
+    DiscogsRelease {
+        id: "multi-window-cue-release".to_string(),
+        title: "Multi Window Album".to_string(),
+        year: Some(2024),
+        genre: vec![],
+        style: vec![],
+        format: vec![],
+        country: Some("US".to_string()),
+        label: vec!["Test Label".to_string()],
+        cover_image: None,
+        thumb: None,
+        catno: None,
+        artists: vec![DiscogsArtist {
+            name: "Test Artist".to_string(),
+            id: "test-artist-1".to_string(),
+        }],
+        extraartists: Some(vec![]),
+        tracklist: vec![
+            track("1", "Multi Window One"),
+            track("2", "Multi Window Two"),
+            track("3", "Multi Window Three"),
+        ],
+        master_id: Some("multi-window-cue-master".to_string()),
+    }
+}
+
+/// Switching tracks within a single multi-window file must keep the shared
+/// file buffer streaming. Playing the last track buffers the file head and a
+/// window at that track's offset; the middle track's bytes are in neither, so
+/// reaching Playing after the switch requires the buffer's fill task to still
+/// be fetching on demand. A fill task killed by the switch leaves the decoder
+/// waiting forever on bytes that never arrive: no Playing, position pinned at
+/// the start.
+#[tokio::test(flavor = "multi_thread")]
+async fn switching_tracks_within_a_multi_window_file_keeps_streaming() {
+    let import_ids = SequentialIdProvider::new("multi-window-import");
+    let setup = imported_release_setup(
+        create_multi_window_cue_album(),
+        "multi-window",
+        import_ids.new_id(),
+        generate_multi_window_cue_flac_files,
+        |_| Ok(()),
+    )
+    .await
+    .expect("import the multi-window CUE release");
+    assert_eq!(setup.track_ids.len(), 3, "the CUE album imports 3 tracks");
+
+    let (playback_handle, _capture_stream_rx) =
+        start_capture_service(setup.library_manager.clone(), setup.runtime_handle.clone());
+    let mut progress_rx = playback_handle.subscribe_progress();
+
+    let last_track = setup.track_ids[2].clone();
+    playback_handle.play(last_track.clone());
+    let playing = wait_for_state_on(
+        &mut progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == last_track),
+        Duration::from_secs(20),
+    )
+    .await;
+    assert!(playing.is_some(), "the last track reaches Playing");
+
+    let middle_track = setup.track_ids[1].clone();
+    playback_handle.play(middle_track.clone());
+    let playing = wait_for_state_on(
+        &mut progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == middle_track),
+        Duration::from_secs(20),
+    )
+    .await;
+    assert!(
+        playing.is_some(),
+        "the middle track reaches Playing after the switch — its bytes must be fetched on demand"
+    );
+}

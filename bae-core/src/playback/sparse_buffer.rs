@@ -411,12 +411,6 @@ impl SparseStreamingBuffer {
         self.data_available.notify_all();
     }
 
-    /// Clear the full-cancel state so the buffer can be reused.
-    pub fn uncancel(&self) {
-        let mut inner = self.inner.lock().unwrap();
-        inner.cancelled = false;
-    }
-
     /// Wake up all readers blocked in `read()`.
     /// Used when a per-decoder cancel token is set, to unblock readers
     /// so they can check the token on their next loop iteration.
@@ -1166,27 +1160,6 @@ mod tests {
         reader.seek(100);
         assert_eq!(reader.read(&mut buf), Some(4));
         assert_eq!(&buf, b"bbbb");
-    }
-
-    /// `uncancel` clears the full-cancel flag so the buffer can be reused: a read
-    /// that returned `None` while cancelled serves bytes again afterward.
-    #[test]
-    fn uncancel_clears_cancel_so_the_buffer_reads_again() {
-        let buffer = create_sparse_buffer(5);
-        buffer.append_at(0, b"hello");
-
-        buffer.cancel();
-        assert!(buffer.is_cancelled());
-        let mut reader = buffer.new_reader();
-        let mut buf = [0u8; 5];
-        assert_eq!(reader.read(&mut buf), None, "a cancelled buffer reads None");
-
-        buffer.uncancel();
-        assert!(!buffer.is_cancelled());
-        let mut reader = buffer.new_reader();
-        reader.seek(0);
-        assert_eq!(reader.read(&mut buf), Some(5));
-        assert_eq!(&buf, b"hello");
     }
 
     /// An empty append is a no-op: no range is created and no bytes are counted

@@ -12,14 +12,23 @@
 //!
 //! ## Seek Flow
 //!
-//! 1. Cancel old streaming source (makes callback output silence)
-//! 2. Cancel buffer to unblock old decoder
-//! 3. Wait for old decoder to exit cleanly
-//! 4. Uncancel buffer for reuse, reset read position to 0
-//! 5. Spawn new decoder on same buffer with `seek_to` (FFmpeg-level seek)
-//! 6. Call `init_streaming()` which drops old stream and creates new one
-//! 7. State remains unchanged (Playing or Paused) - new stream inherits it
-//! 8. Send `Seeked` progress event
+//! 1. Cancel old streaming source (makes callback output silence) and the old
+//!    decoder's token; wake the byte buffers' readers so a read-blocked decoder
+//!    observes the token, and join the decoder (`shutdown_for_seek`)
+//! 2. The byte buffers stay alive and cached — the rebuilt decoder reuses them
+//! 3. Spawn new decoder on the same buffers with `seek_to` (FFmpeg-level seek)
+//! 4. Build a fresh stream over it; the phase stays Loading until the
+//!    ready-watcher's `TrackReady` resolves it to the preserved Playing/Paused
+//! 5. Send `Seeked` progress event
+//!
+//! ## File-buffer ownership
+//!
+//! `shared_file_buffers` (one sparse byte buffer per release file, shared by
+//! every track that plays from that file) is the buffers' single owner. A
+//! buffer is cancelled — stopping its on-demand fill task for good — exactly
+//! when it leaves the cache: `release_buffers` evicts the files a departing
+//! track no longer shares with the retained one, and `stop` cancels the whole
+//! cache. A cached buffer is therefore always live; prepare reuses it as-is.
 
 use super::RepeatMode;
 use super::{
@@ -579,30 +588,32 @@ impl PlaybackPreparedTrack {
         ((ms as f64 / 1000.0) * self.sample_rate as f64) as u64
     }
 
-    fn cancel_unshared_buffers(&self) {
-        for segment in &self.segments {
-            if !segment.buffer_shared {
-                segment.buffer.cancel();
-            }
-        }
-    }
-
-    fn release_buffers_not_used_by(
-        &self,
-        retained: &PlaybackPreparedTrack,
-        shared_file_buffers: &mut HashMap<String, SharedSparseBuffer>,
-    ) {
-        let retained_file_ids: HashSet<&str> = retained
-            .segments
+    /// The distinct release files this track plays from.
+    fn file_ids(&self) -> HashSet<&str> {
+        self.segments
             .iter()
             .map(|segment| segment.file_id.as_str())
-            .collect();
+            .collect()
+    }
+
+    /// Release this track's file buffers as it leaves the pipeline. A file the
+    /// retained track(s) still play stays cached and alive — its readers are
+    /// woken so this track's cancelled decoder observes its token instead of
+    /// staying parked on a read. The rest leave the shared cache and are
+    /// cancelled, which stops their fill task and unblocks anything reading
+    /// them.
+    fn release_buffers(
+        &self,
+        retained_file_ids: &HashSet<&str>,
+        shared_file_buffers: &mut HashMap<String, SharedSparseBuffer>,
+    ) {
         for segment in &self.segments {
             if retained_file_ids.contains(segment.file_id.as_str()) {
-                continue;
+                segment.buffer.wake_readers();
+            } else {
+                segment.buffer.cancel();
+                shared_file_buffers.remove(&segment.file_id);
             }
-            segment.buffer.cancel();
-            shared_file_buffers.remove(&segment.file_id);
         }
     }
 }
@@ -612,7 +623,6 @@ struct PreparedAudioSegment {
     role: DbAudioSegmentRole,
     file_id: String,
     buffer: SharedSparseBuffer,
-    buffer_shared: bool,
     start_sample: u64,
     end_sample: Option<u64>,
     start_byte: Option<u64>,
@@ -693,13 +703,14 @@ impl PreloadedNext {
     }
 }
 
-fn clear_preloaded_next(
+/// Discard the preloaded next track's decoder and hand back its prepared track,
+/// so the caller decides which of its file buffers survive (`release_buffers`
+/// with whatever files the pipeline still plays, or nothing on a full stop).
+fn discard_preloaded_next(
     preloaded_next: &mut Option<PreloadedNext>,
     current_playback_source: Option<&Arc<Mutex<source::PlaybackSource>>>,
-) {
-    let Some(preloaded) = preloaded_next.take() else {
-        return;
-    };
+) -> Option<PlaybackPreparedTrack> {
+    let preloaded = preloaded_next.take()?;
 
     let PreloadedNext {
         prepared,
@@ -710,19 +721,18 @@ fn clear_preloaded_next(
 
     let detached = detach_preloaded_source(current_playback_source, source);
     discard_preloaded_decoder(&prepared, detached, &cancel_token);
+    Some(prepared)
 }
 
-/// Stop a preloaded (not-yet-promoted) decoder and free its byte buffers. Three
-/// mechanisms, one per place the decoder can be blocked:
+/// Stop a preloaded (not-yet-promoted) decoder. Three mechanisms, one per place
+/// the decoder can be blocked:
 /// - cancel the output source: sets the sink's cancel flag and unparks the
 ///   decoder, so one blocked writing a full ring exits;
-/// - set the per-decoder token: stops a decoder blocked reading a *shared* buffer
-///   — `cancel_unshared_buffers` deliberately spares shared buffers (cancelling
-///   one would kill the other decoder still reading it), and `source.cancel()`
-///   only reaches the sink/write side, so the token is that decoder's only
-///   read-side stop;
-/// - cancel the unshared byte buffers: stops their reader and wakes a decoder
-///   blocked reading one.
+/// - set the per-decoder token: the decoder's read-side stop signal;
+/// - wake the byte buffers' readers: a decoder blocked reading one wakes and
+///   observes the token. The buffers themselves stay alive — releasing them is
+///   the caller's decision, since the pipeline may still play from the same
+///   files.
 fn discard_preloaded_decoder(
     prepared: &PlaybackPreparedTrack,
     detached_source: Option<TrackStream>,
@@ -732,7 +742,9 @@ fn discard_preloaded_decoder(
         source.cancel();
     }
     cancel_token.store(true, std::sync::atomic::Ordering::Release);
-    prepared.cancel_unshared_buffers();
+    for segment in &prepared.segments {
+        segment.buffer.wake_readers();
+    }
 }
 
 fn detach_preloaded_source(
@@ -813,11 +825,12 @@ async fn prepare_track_for_playback(
 
     let mut prepared_segments = Vec::with_capacity(resolved.segments.len());
     for segment in &resolved.segments {
+        // A cached buffer is live by construction: buffers are cancelled only
+        // when they leave the cache (release_buffers / stop), so its fill task
+        // is still serving demand.
         let cached = shared_file_buffers.get(&segment.file_id).cloned();
-        let buffer_shared = cached.is_some();
         let buffer = if let Some(buf) = cached {
             info!("Reusing cached file buffer");
-            buf.uncancel();
             buf
         } else {
             let buffer = create_sparse_buffer(segment.file_size);
@@ -838,7 +851,6 @@ async fn prepare_track_for_playback(
             role: segment.role.clone(),
             file_id: segment.file_id.clone(),
             buffer,
-            buffer_shared,
             start_sample: segment.start_sample,
             end_sample: segment.end_sample,
             start_byte: segment.start_byte,
