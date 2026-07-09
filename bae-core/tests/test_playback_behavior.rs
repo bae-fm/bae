@@ -101,6 +101,80 @@ async fn position_after(
     latest.expect("a position update should arrive during playback")
 }
 
+/// Wait for the next `Seeked` event and return its adjusted `position_ms`, or
+/// `None` on timeout. Shared by `PlaybackTestFixture::wait_for_seeked` and any
+/// fixture that only has a raw progress receiver (no wrapper method).
+async fn wait_for_seeked_on(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    timeout_duration: Duration,
+) -> Option<u64> {
+    let deadline = Instant::now() + timeout_duration;
+    while Instant::now() < deadline {
+        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::Seeked { position_ms, .. })) => {
+                return Some(position_ms);
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) => break,
+            Err(_) => continue,
+        }
+    }
+    None
+}
+
+/// Drain progress events up to the Playing state, returning whether Playing
+/// arrived and the entries from the most recent `QueueUpdated` seen (each
+/// carrying a per-instance id). `play` rebuilds the queue with fresh ids, so a
+/// mutation must target those — captured here, after play settles. Shared by
+/// `PlaybackTestFixture::wait_for_playing_capturing_queue` and any fixture
+/// with only a raw progress receiver.
+async fn wait_for_playing_capturing_queue_on(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    timeout_duration: Duration,
+) -> (bool, Vec<bae_core::playback::QueueEntry>) {
+    let deadline = Instant::now() + timeout_duration;
+    let mut entries = Vec::new();
+    while Instant::now() < deadline {
+        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::QueueUpdated(projection))) => {
+                // The mutation targets entries in either lane, so flatten the
+                // two lanes into one play-order list for id lookup.
+                entries = projection.manual;
+                if let Some(ctx) = projection.context {
+                    entries.extend(ctx.upcoming);
+                }
+            }
+            Ok(Some(PlaybackProgress::StateChanged {
+                state: PlaybackState::Playing { .. },
+            })) => {
+                return (true, entries);
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) => break,
+            Err(_) => continue,
+        }
+    }
+    (false, entries)
+}
+
+/// Assert that audio keeps flowing: two `position_after` readings, `settle`
+/// apart, with the second strictly greater than the first. A regression that
+/// leaves the queue/context projection correct but silences the actual audio
+/// stream (an unrefreshed preload decoder, a promotion that never rebuilds
+/// the stream) would leave the position pinned rather than climbing, and
+/// this catches it where a projection-only assertion would not.
+async fn assert_position_advances(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    settle: Duration,
+) {
+    let first = position_after(progress_rx, settle).await;
+    let second = position_after(progress_rx, settle).await;
+    assert!(
+        second > first,
+        "position must keep advancing while playing: {first}ms then {second}ms"
+    );
+}
+
 /// Return the first `PositionUpdate` seen for `track_id` (its adjusted
 /// position_ms), or `None` on timeout. Distinct from `wait_for_position_update`
 /// in that it ignores position ticks belonging to a different track — needed
@@ -388,29 +462,7 @@ impl PlaybackTestFixture {
         &mut self,
         timeout_duration: Duration,
     ) -> (bool, Vec<bae_core::playback::QueueEntry>) {
-        let deadline = Instant::now() + timeout_duration;
-        let mut entries = Vec::new();
-        while Instant::now() < deadline {
-            match timeout(Duration::from_millis(100), self.progress_rx.recv()).await {
-                Ok(Some(PlaybackProgress::QueueUpdated(projection))) => {
-                    // The mutation targets entries in either lane, so flatten the
-                    // two lanes into one play-order list for id lookup.
-                    entries = projection.manual;
-                    if let Some(ctx) = projection.context {
-                        entries.extend(ctx.upcoming);
-                    }
-                }
-                Ok(Some(PlaybackProgress::StateChanged {
-                    state: PlaybackState::Playing { .. },
-                })) => {
-                    return (true, entries);
-                }
-                Ok(Some(_)) => continue,
-                Ok(None) => break,
-                Err(_) => continue,
-            }
-        }
-        (false, entries)
+        wait_for_playing_capturing_queue_on(&mut self.progress_rx, timeout_duration).await
     }
     /// Wait for a position update with timeout (returns position in ms)
     async fn wait_for_position_update(&mut self, timeout_duration: Duration) -> Option<u64> {
@@ -429,18 +481,7 @@ impl PlaybackTestFixture {
     }
     /// Wait for a Seeked event with timeout (returns position in ms)
     async fn wait_for_seeked(&mut self, timeout_duration: Duration) -> Option<u64> {
-        let deadline = Instant::now() + timeout_duration;
-        while Instant::now() < deadline {
-            match timeout(Duration::from_millis(100), self.progress_rx.recv()).await {
-                Ok(Some(PlaybackProgress::Seeked { position_ms, .. })) => {
-                    return Some(position_ms);
-                }
-                Ok(Some(_)) => continue,
-                Ok(None) => break,
-                Err(_) => continue,
-            }
-        }
-        None
+        wait_for_seeked_on(&mut self.progress_rx, timeout_duration).await
     }
     /// Collect every `StateChanged` state in arrival order until one satisfies
     /// `done` (that final state is included) or the timeout elapses.
@@ -2208,6 +2249,12 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
         _ => unreachable!(),
     };
     assert_eq!(playing_id, expected);
+
+    // The queue/context projection landing on `expected` isn't proof audio is
+    // actually flowing on it — assert the position keeps climbing too.
+    if matches!(state, PlaybackState::Playing { .. }) {
+        assert_position_advances(&mut fixture.progress_rx, Duration::from_millis(300)).await;
+    }
 }
 
 #[tokio::test]
@@ -2354,6 +2401,10 @@ async fn set_shuffle_materializes_then_re_derives_context_order() {
         vec![second, third],
         "sequential upcoming is source order after the current track"
     );
+
+    // Re-deriving the context order projects correctly, but that alone
+    // doesn't prove the currently-playing track's audio survived the churn.
+    assert_position_advances(&mut fixture.progress_rx, Duration::from_millis(300)).await;
 }
 
 #[tokio::test]
@@ -2464,6 +2515,9 @@ async fn skip_to_entry_jumps_to_that_queue_entry() {
         )
         .await
         .expect("SkipTo jumps to the targeted entry");
+
+    // Landing on the right track's state isn't proof its audio is flowing.
+    assert_position_advances(&mut fixture.progress_rx, Duration::from_millis(300)).await;
 }
 
 #[tokio::test]
@@ -5086,6 +5140,110 @@ fn create_multi_window_cue_album() -> DiscogsRelease {
     }
 }
 
+/// The multi-window CUE album, imported once (decode-verify + loudness over
+/// ~30 MiB) into a template library directory that outlives every test. Each
+/// `MultiWindowPlayback` clones the template's small DB/library files into
+/// its own `TempDir` instead of re-importing, so porting many behaviors onto
+/// this fixture doesn't multiply the import cost by the number of tests.
+///
+/// The audio file itself is never cloned: `local_blob_refs` stores an
+/// absolute path, so a clone's DB rows point straight back at the template's
+/// stable `album/` directory, which is held alive for the process's lifetime.
+struct MultiWindowTemplate {
+    dir: TempDir,
+    track_ids: Vec<String>,
+}
+
+static MULTI_WINDOW_TEMPLATE: std::sync::LazyLock<MultiWindowTemplate> =
+    std::sync::LazyLock::new(|| {
+        // A dedicated runtime, not the calling test's: the import must finish
+        // and every task/connection it spawned must be torn down (dropping
+        // the runtime blocks until they are) before the template directory
+        // is safe to copy — coven opens SQLite in WAL mode, so a copy taken
+        // while a connection is still live could catch an unmerged -wal file.
+        let rt = tokio::runtime::Runtime::new().expect("build the template import's runtime");
+        let template = rt.block_on(async {
+            let import_ids = SequentialIdProvider::new("multi-window-template");
+            let setup = imported_release_setup(
+                create_multi_window_cue_album(),
+                "multi-window-template",
+                import_ids.new_id(),
+                generate_multi_window_cue_flac_files,
+                |_| Ok(()),
+            )
+            .await
+            .expect("import the multi-window template release");
+            assert_eq!(setup.track_ids.len(), 3, "the CUE album imports 3 tracks");
+            MultiWindowTemplate {
+                dir: setup.temp_dir,
+                track_ids: setup.track_ids,
+            }
+        });
+        drop(rt);
+        template
+    });
+
+/// Recursively copy `src` into `dst` (which must not yet exist).
+fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) {
+    std::fs::create_dir_all(dst).expect("create cloned directory");
+    for entry in std::fs::read_dir(src).expect("read directory to clone") {
+        let entry = entry.expect("directory entry to clone");
+        let dest = dst.join(entry.file_name());
+        let file_type = entry.file_type().expect("entry file type");
+        if file_type.is_dir() {
+            copy_dir_recursive(&entry.path(), &dest);
+        } else {
+            std::fs::copy(entry.path(), &dest).expect("clone file");
+        }
+    }
+}
+
+/// SQLite's WAL-mode sidecar files: present only while a connection has
+/// uncommitted WAL data, and reclaimed by SQLite itself around a connection's
+/// close. A file matching one of these suffixes disappearing between
+/// `read_dir` and `copy` is that reclaim, not a real race on the template's
+/// stable content — its absence at clone time means "fully checkpointed,"
+/// exactly the state a fresh open of the (always-present) main `.db` file
+/// needs.
+fn is_sqlite_wal_sidecar(name: &std::ffi::OsStr) -> bool {
+    let Some(name) = name.to_str() else {
+        return false;
+    };
+    name.ends_with("-wal") || name.ends_with("-shm") || name.ends_with("-journal")
+}
+
+/// Clone the template's DB/library files into a fresh `TempDir`, skipping the
+/// `album/` directory — the multi-window FLAC stays at the template's own
+/// path, which the cloned DB's `local_blob_refs` rows already point at.
+/// Blocking (file I/O only); callers run it on a blocking thread.
+fn clone_multi_window_library() -> (TempDir, Vec<String>) {
+    let template = &*MULTI_WINDOW_TEMPLATE;
+    let fresh = TempDir::new().expect("fresh multi-window library dir");
+    for entry in std::fs::read_dir(template.dir.path()).expect("read template dir") {
+        let entry = entry.expect("template dir entry");
+        if entry.file_name() == "album" {
+            continue;
+        }
+        let dest = fresh.path().join(entry.file_name());
+        let file_type = entry.file_type().expect("template entry file type");
+        if file_type.is_dir() {
+            copy_dir_recursive(&entry.path(), &dest);
+        } else if let Err(e) = std::fs::copy(entry.path(), &dest) {
+            if e.kind() == std::io::ErrorKind::NotFound && is_sqlite_wal_sidecar(&entry.file_name())
+            {
+                debug!(
+                    "multi-window template clone: {:?} was reclaimed before copy (fully \
+                     checkpointed); skipping",
+                    entry.file_name()
+                );
+            } else {
+                panic!("clone template file {:?}: {e}", entry.path());
+            }
+        }
+    }
+    (fresh, template.track_ids.clone())
+}
+
 /// An imported multi-window CUE album with a real-time-paced playback service
 /// over it, for tests that drive switches, advances, and boundaries against a
 /// sparsely buffered file.
@@ -5093,33 +5251,52 @@ struct MultiWindowPlayback {
     playback_handle: bae_core::playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
+    library_manager: LibraryManager,
+    runtime_handle: tokio::runtime::Handle,
     _capture_stream_rx: CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
 impl MultiWindowPlayback {
+    /// Build against a fresh clone of the shared multi-window template. `name`
+    /// only labels the clone in test failure output — the import itself runs
+    /// once per process, in `MULTI_WINDOW_TEMPLATE`.
     async fn new(name: &str) -> Self {
-        let import_ids = SequentialIdProvider::new(name);
-        let setup = imported_release_setup(
-            create_multi_window_cue_album(),
-            name,
-            import_ids.new_id(),
-            generate_multi_window_cue_flac_files,
-            |_| Ok(()),
+        let (temp_dir, track_ids) = tokio::task::spawn_blocking(clone_multi_window_library)
+            .await
+            .expect("clone the multi-window template library");
+        tracing::debug!("multi-window clone ready for {name}");
+
+        let db_path = temp_dir.path().join("test.db");
+        let database = Database::new_test(
+            db_path.to_str().expect("db path is valid UTF-8"),
+            std::sync::Arc::new(coven::SystemClock),
         )
         .await
-        .expect("import the multi-window CUE release");
-        assert_eq!(setup.track_ids.len(), 3, "the CUE album imports 3 tracks");
+        .expect("open the cloned multi-window database");
+        let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+        let (config_handle, key_service) = test_config_and_keys(&library_dir);
+        let runtime_handle = tokio::runtime::Handle::current();
+        let library_manager = LibraryManager::new(
+            database,
+            config_handle,
+            key_service,
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+            runtime_handle.clone(),
+        );
 
         let (playback_handle, capture_stream_rx) =
-            start_capture_service(setup.library_manager.clone(), setup.runtime_handle.clone());
+            start_capture_service(library_manager.clone(), runtime_handle.clone());
         let progress_rx = playback_handle.subscribe_progress();
         Self {
             playback_handle,
             progress_rx,
-            track_ids: setup.track_ids,
+            track_ids,
+            library_manager,
+            runtime_handle,
             _capture_stream_rx: capture_stream_rx,
-            _temp_dir: setup.temp_dir,
+            _temp_dir: temp_dir,
         }
     }
 
@@ -5306,5 +5483,909 @@ async fn manual_next_into_a_clean_track_promotes_the_preload() {
     assert!(
         position > 0,
         "the promoted track's position advances — its bytes are fetched on demand"
+    );
+}
+
+/// Every seek test elsewhere in this suite runs on a single-window fixture
+/// that is fully buffered the moment it opens — seeking has never been
+/// exercised against a sparse, multi-range buffer. Playing the last track
+/// buffers only the file head and this track's own region (the other
+/// tracks' regions, including everywhere earlier in the track's own raw
+/// timeline that a backward seek can reach, are untouched); seeking backward
+/// and then forward within it runs the real seek machinery — decoder
+/// rebuild, byte-seek, demand publication, window fetch — over holes in the
+/// buffer, not a fully-populated one.
+#[tokio::test(flavor = "multi_thread")]
+async fn seek_within_the_last_track_lands_and_keeps_streaming_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-seek-sparse").await;
+    let last_track = playback.track_ids[2].clone();
+    playback.play_and_wait(&last_track).await;
+
+    // Seek backward toward the start of the track's own raw timeline — into a
+    // region the initial fetch (which lands at the track's start byte) may
+    // already partly cover, but well behind wherever playback has since moved.
+    let backward_target = Duration::from_secs(5);
+    playback.playback_handle.seek(backward_target);
+    let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        .await
+        .expect("a backward seek within the last track emits Seeked");
+    assert!(
+        Duration::from_millis(landed).abs_diff(backward_target) < Duration::from_secs(2),
+        "backward seek should land near {backward_target:?}, got {landed}ms"
+    );
+    let p1 = position_after(&mut playback.progress_rx, Duration::from_millis(800)).await;
+    let p2 = position_after(&mut playback.progress_rx, Duration::from_millis(1600)).await;
+    assert!(
+        p2 > p1,
+        "audio keeps flowing after the backward seek (got {p1}ms then {p2}ms)"
+    );
+
+    // Seek forward, well past the backward target and into territory the fill
+    // has not fetched — the fill's demand-driven window fetch must catch up.
+    let forward_target = Duration::from_secs(40);
+    playback.playback_handle.seek(forward_target);
+    let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        .await
+        .expect("a forward seek within the last track emits Seeked");
+    assert!(
+        Duration::from_millis(landed).abs_diff(forward_target) < Duration::from_secs(2),
+        "forward seek should land near {forward_target:?}, got {landed}ms"
+    );
+    let p1 = position_after(&mut playback.progress_rx, Duration::from_millis(800)).await;
+    let p2 = position_after(&mut playback.progress_rx, Duration::from_millis(1600)).await;
+    assert!(
+        p2 > p1,
+        "audio keeps flowing after the forward seek (got {p1}ms then {p2}ms)"
+    );
+}
+
+/// A seek issued the instant Playing arrives — before the fill has had any
+/// settle time to buffer ahead of the startup window — must still land and
+/// produce audio rather than deadlock waiting on bytes the sparse buffer
+/// hasn't fetched yet.
+#[tokio::test(flavor = "multi_thread")]
+async fn seek_immediately_after_playing_lands_and_plays_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-seek-immediate").await;
+    let last_track = playback.track_ids[2].clone();
+
+    playback.playback_handle.play(last_track.clone());
+    let playing = wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == last_track),
+        Duration::from_secs(20),
+    )
+    .await;
+    assert!(playing.is_some(), "the last track reaches Playing");
+
+    // Seek immediately — no settle time for the fill to get ahead.
+    let target = Duration::from_secs(20);
+    playback.playback_handle.seek(target);
+    let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        .await
+        .expect("a seek issued right after Playing still emits Seeked");
+    assert!(
+        Duration::from_millis(landed).abs_diff(target) < Duration::from_secs(2),
+        "should land near {target:?}, got {landed}ms"
+    );
+    let p1 = position_after(&mut playback.progress_rx, Duration::from_millis(800)).await;
+    let p2 = position_after(&mut playback.progress_rx, Duration::from_millis(1600)).await;
+    assert!(
+        p2 > p1,
+        "audio plays after an immediate seek (got {p1}ms then {p2}ms)"
+    );
+}
+
+// ============================================================================
+// Port matrix: behaviors that involve more than decode, run against the real
+// sparse multi-window fixture instead of only the fully-buffered single-window
+// one. Each ports an existing single-window test's assertion; see that test's
+// name in this section's doc comments for the source. The single-window
+// originals stay — they are the fast decode-correctness/XLD-alignment
+// coverage — this only adds the streaming-relevant coverage they never had.
+// ============================================================================
+
+/// Multi-window port of `seek_past_end_of_track_signals_rather_than_hanging`:
+/// a seek well past the last track's end must still SIGNAL (`Seeked` or
+/// `PlaybackError`), not freeze — over the sparse buffer, the target is past
+/// everything the fill has fetched, so the end-of-stream resolution has to
+/// happen without the byte-fetch machinery ever landing more data.
+#[tokio::test(flavor = "multi_thread")]
+async fn seek_past_end_of_track_signals_rather_than_hanging_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-seek-past-end").await;
+    let last_track = playback.track_ids[2].clone();
+    playback.play_and_wait(&last_track).await;
+
+    // Track 3's raw timeline is 60s; 600s is far past the end.
+    playback.playback_handle.seek(Duration::from_secs(600));
+
+    let deadline = Instant::now() + Duration::from_secs(15);
+    let mut signaled = false;
+    while Instant::now() < deadline {
+        match timeout(Duration::from_millis(200), playback.progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::Seeked { .. }))
+            | Ok(Some(PlaybackProgress::PlaybackError { .. })) => {
+                signaled = true;
+                break;
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) => break,
+            Err(_) => continue,
+        }
+    }
+    assert!(
+        signaled,
+        "a seek past the end must signal (Seeked or PlaybackError), not freeze silently, \
+         even when the target is well past everything the sparse buffer has fetched"
+    );
+}
+
+/// Multi-window port of `seek_by_ratio_maps_to_a_proportional_position`:
+/// `SeekByRatio`'s position math runs down through the same `seek()` this
+/// suite already drives directly, but over the sparse buffer instead of a
+/// fully-buffered file.
+#[tokio::test(flavor = "multi_thread")]
+async fn seek_by_ratio_maps_to_a_proportional_position_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-seek-ratio").await;
+    let last_track = playback.track_ids[2].clone();
+    playback.play_and_wait(&last_track).await;
+
+    playback.playback_handle.seek_by_ratio(0.25);
+    let quarter = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        .await
+        .expect("Seeked for ratio 0.25");
+    playback.playback_handle.seek_by_ratio(0.75);
+    let three_quarter = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        .await
+        .expect("Seeked for ratio 0.75");
+
+    assert!(
+        quarter > 1_000,
+        "ratio 0.25 should land well past the start, got {quarter}ms"
+    );
+    assert!(
+        three_quarter > quarter + 1_000,
+        "ratio 0.75 should land clearly later than 0.25 (quarter={quarter}ms three_quarter={three_quarter}ms)"
+    );
+}
+
+/// Multi-window port of `test_pause_seek_resume_advances_position`: seeking
+/// while paused must not auto-play, and resuming afterward must produce
+/// audio — over the sparse buffer, the resumed decoder has to fetch the seek
+/// target's window on demand rather than reading it out of an
+/// already-fully-buffered file.
+#[tokio::test(flavor = "multi_thread")]
+async fn pause_seek_resume_advances_position_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-pause-seek-resume").await;
+    let last_track = playback.track_ids[2].clone();
+    playback.play_and_wait(&last_track).await;
+
+    playback.playback_handle.pause();
+    wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Paused { .. }),
+        Duration::from_secs(5),
+    )
+    .await
+    .expect("playback should pause");
+
+    let seek_target = Duration::from_secs(20);
+    playback.playback_handle.seek(seek_target);
+    let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        .await
+        .expect("Seeked after seeking while paused");
+    assert!(
+        Duration::from_millis(landed).abs_diff(seek_target) < Duration::from_secs(2),
+        "should land near {seek_target:?}, got {landed}ms"
+    );
+
+    let auto_played = wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { .. }),
+        Duration::from_millis(500),
+    )
+    .await;
+    assert!(
+        auto_played.is_none(),
+        "should still be paused after seek, not auto-playing"
+    );
+
+    playback.playback_handle.resume();
+    wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { .. }),
+        Duration::from_secs(5),
+    )
+    .await
+    .expect("resume should start playing");
+
+    let p1 = position_after(&mut playback.progress_rx, Duration::from_millis(800)).await;
+    let p2 = position_after(&mut playback.progress_rx, Duration::from_millis(1600)).await;
+    assert!(
+        p2 > p1,
+        "audio advances after resuming a paused sparse-buffer seek (got {p1}ms then {p2}ms)"
+    );
+}
+
+/// Multi-window port of `test_direct_play_skips_pregap`: a direct selection
+/// of the pregapped track (track 2) must skip its 2s pregap and let position
+/// climb from the very start — over the sparse buffer, this is the decoder's
+/// first read landing on a window the fill has to fetch fresh, not one
+/// already sitting in a fully-buffered file.
+#[tokio::test(flavor = "multi_thread")]
+async fn direct_play_skips_pregap_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-direct-skip-pregap").await;
+    let pregapped_track = playback.track_ids[1].clone();
+    playback.play_and_wait(&pregapped_track).await;
+
+    let position_ms = position_after(&mut playback.progress_rx, Duration::from_millis(1200)).await;
+    assert!(
+        position_ms > 600,
+        "direct play should skip the 2s pregap and let position climb from 0; \
+         got {position_ms}ms ~1.2s in (a played pregap would keep it pinned at 0)",
+    );
+}
+
+/// Multi-window port of `test_auto_advance_plays_pregap`'s "position pinned
+/// during the pregap" assertion — `auto_advance_crosses_gaplessly_within_a_multi_window_file`
+/// already proves the crossing happens and that audio keeps flowing
+/// afterward, but never checks that the pregap itself is actually played
+/// (position pinned near 0) rather than silently skipped.
+#[tokio::test(flavor = "multi_thread")]
+async fn auto_advance_plays_pregap_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-auto-advance-pregap").await;
+    let first = playback.track_ids[0].clone();
+    let second = playback.track_ids[1].clone();
+    playback.play_and_wait(&first).await;
+
+    // Track 1 runs 0–58s; seek near the end so the crossing arrives soon.
+    playback.playback_handle.seek(Duration::from_secs(56));
+    wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
+        Duration::from_secs(25),
+    )
+    .await
+    .expect("playback should auto-advance into the pregapped track");
+
+    // ~1s into track 2 the 2s pregap is still playing: position pinned at 0.
+    let during_pregap =
+        position_after(&mut playback.progress_rx, Duration::from_millis(1000)).await;
+    assert!(
+        during_pregap < 600,
+        "auto-advance should play the pregap: position stays pinned at 0 across it, \
+         got {during_pregap}ms ~1s in (a skipped pregap would already be climbing)",
+    );
+}
+
+/// Multi-window analog of `assert_skip_preserves_play_state`: Next/Previous
+/// must land on the adjacent track in the same play/pause state — exercised
+/// here against the sparse buffer's promotion/rebuild paths (the single-window
+/// fixture's file is fully buffered before either test ever seeks).
+async fn assert_skip_preserves_play_state_over_sparse_buffer(
+    direction: SkipDirection,
+    start_paused: bool,
+) {
+    let mut playback = MultiWindowPlayback::new("multi-window-skip-state").await;
+    let first = playback.track_ids[0].clone();
+    let second = playback.track_ids[1].clone();
+
+    let (start_track_id, target_track_id) = match direction {
+        SkipDirection::Next => (first, second),
+        SkipDirection::Previous => (second, first),
+    };
+
+    playback.play_and_wait(&start_track_id).await;
+
+    if start_paused {
+        playback.playback_handle.pause();
+        wait_for_state_on(
+            &mut playback.progress_rx,
+            |s| matches!(s, PlaybackState::Paused { .. }),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("playback should pause");
+    }
+
+    // Previous needs to land inside its 3s "step back" window; Next has no
+    // such window. Pressed immediately after play_and_wait/pause either way.
+    match direction {
+        SkipDirection::Next => playback.playback_handle.next(),
+        SkipDirection::Previous => playback.playback_handle.previous(),
+    }
+
+    let landed = wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| {
+            let (track_info, is_paused) = match s {
+                PlaybackState::Playing { track_info, .. } => (track_info, false),
+                PlaybackState::Paused { track_info, .. } => (track_info, true),
+                _ => return false,
+            };
+            track_info.track_id == target_track_id && is_paused == start_paused
+        },
+        Duration::from_secs(25),
+    )
+    .await;
+    assert!(
+        landed.is_some(),
+        "{} while {} should land on the adjacent track in the same play/pause state",
+        direction.label(),
+        if start_paused { "paused" } else { "playing" },
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn next_while_paused_stays_paused_over_sparse_buffer() {
+    assert_skip_preserves_play_state_over_sparse_buffer(SkipDirection::Next, true).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn next_while_playing_stays_playing_over_sparse_buffer() {
+    assert_skip_preserves_play_state_over_sparse_buffer(SkipDirection::Next, false).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn previous_while_paused_stays_paused_over_sparse_buffer() {
+    assert_skip_preserves_play_state_over_sparse_buffer(SkipDirection::Previous, true).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn previous_while_playing_stays_playing_over_sparse_buffer() {
+    assert_skip_preserves_play_state_over_sparse_buffer(SkipDirection::Previous, false).await;
+}
+
+/// Multi-window port of `test_previous_track_navigation`: pressed promptly,
+/// Previous steps back a track; pressed later in the track, it restarts the
+/// current one instead — both outcomes rebuild the decoder over the sparse
+/// buffer rather than a fully-buffered file.
+#[tokio::test(flavor = "multi_thread")]
+async fn previous_navigation_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-previous-nav").await;
+    let first = playback.track_ids[0].clone();
+    let second = playback.track_ids[1].clone();
+    playback.play_and_wait(&first).await;
+
+    playback.playback_handle.next();
+    wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
+        Duration::from_secs(25),
+    )
+    .await
+    .expect("Next should switch to the second track");
+
+    // Pressed promptly (well inside the 3s window): Previous steps back.
+    playback.playback_handle.seek(Duration::from_secs(1));
+    position_after(&mut playback.progress_rx, Duration::from_millis(500)).await;
+    playback.playback_handle.previous();
+    wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+        Duration::from_secs(25),
+    )
+    .await
+    .expect("Previous called early in the track should go to the previous track");
+
+    // Pressed late in the track: Previous restarts the current one.
+    playback.playback_handle.seek(Duration::from_secs(10));
+    position_after(&mut playback.progress_rx, Duration::from_millis(500)).await;
+    playback.playback_handle.previous();
+    wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+        Duration::from_secs(25),
+    )
+    .await
+    .expect("Previous called late in the track should restart it");
+    let restart_position =
+        position_after(&mut playback.progress_rx, Duration::from_millis(800)).await;
+    assert!(
+        restart_position < 3_000,
+        "restart should reset position near 0, got {restart_position}ms",
+    );
+}
+
+/// Multi-window port of `seek_preserves_staged_next_for_a_gapless_advance`:
+/// a seek rebuilds the stream, but the staged gapless next must survive it —
+/// exercised here where re-staging must also survive the sparse buffer's
+/// on-demand fetch rather than reading an already-buffered preload.
+#[tokio::test(flavor = "multi_thread")]
+async fn seek_preserves_staged_next_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-seek-preserves-next").await;
+    let first = playback.track_ids[0].clone();
+    let second = playback.track_ids[1].clone();
+    playback.play_and_wait(&first).await;
+
+    // Seek twice to stress the take-out/re-stage across an already-re-staged
+    // source, then let the boundary arrive.
+    playback.playback_handle.seek(Duration::from_secs(30));
+    wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        .await
+        .expect("first seek lands");
+    playback.playback_handle.seek(Duration::from_secs(56));
+    wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        .await
+        .expect("second seek lands");
+
+    let outcome = observe_boundary(
+        &mut playback.progress_rx,
+        &first,
+        &second,
+        Duration::from_secs(25),
+    )
+    .await;
+    assert!(
+        outcome.reached_incoming,
+        "playback crosses into the second track after two re-staging seeks"
+    );
+    assert!(
+        outcome.decode_stats_for_finishing && !outcome.completed_for_finishing,
+        "the boundary stays gapless: the staged next survived both seeks"
+    );
+}
+
+/// Multi-window port of `test_restore_populates_last_position_display` over
+/// the shared-buffer resume path: persist mid-track, restart the service, and
+/// confirm the restored track resumes and streams from the saved position
+/// rather than starving on a stale/cancelled buffer.
+#[tokio::test(flavor = "multi_thread")]
+async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
+    let mut playback = MultiWindowPlayback::new("multi-window-restore").await;
+    let last_track = playback.track_ids[2].clone();
+    playback.play_and_wait(&last_track).await;
+
+    let target = Duration::from_secs(20);
+    playback.playback_handle.seek(target);
+    wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        .await
+        .expect("the seek before shutdown lands");
+
+    // Persist and tear the service down. The second service below starts
+    // completely cold — no shared file buffer cache, no preload — the same
+    // as a real app relaunch reopening the same library.
+    playback.playback_handle.shutdown().await;
+
+    let (handle, _capture_rx) = start_capture_service(
+        playback.library_manager.clone(),
+        playback.runtime_handle.clone(),
+    );
+    let mut progress_rx = handle.subscribe_progress();
+
+    wait_for_state_on(
+        &mut progress_rx,
+        |s| matches!(s, PlaybackState::Paused { track_info, .. } if track_info.track_id == last_track),
+        Duration::from_secs(20),
+    )
+    .await
+    .expect("restart should restore paused at the saved track");
+
+    handle.resume();
+    wait_for_state_on(
+        &mut progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == last_track),
+        Duration::from_secs(20),
+    )
+    .await
+    .expect("resume after restore should start playing");
+
+    let p1 = position_after(&mut progress_rx, Duration::from_millis(800)).await;
+    let p2 = position_after(&mut progress_rx, Duration::from_millis(1600)).await;
+    assert!(
+        p2 > p1,
+        "resumed playback must keep advancing from the restored position, got {p1}ms then {p2}ms"
+    );
+}
+
+/// Multi-window analog of `assert_preload_refreshed_after_queue_mutation`,
+/// covering `add_next` (an insertion ahead of the stale preload) and
+/// `remove_entry` (removing it outright) — the two structurally distinct
+/// mutation shapes; `reorder_entry`/`insert_in_queue` share `add_next`'s code
+/// path (`refresh_preload_for_queue_front`) and aren't ported separately.
+async fn assert_preload_refreshed_over_sparse_buffer<F>(
+    playback: &mut MultiWindowPlayback,
+    initial_queue: Vec<String>,
+    track0: &str,
+    expected: &str,
+    mutate: F,
+) where
+    F: FnOnce(&bae_core::playback::PlaybackHandle, &[bae_core::playback::QueueEntry]),
+{
+    playback.playback_handle.add_to_queue(initial_queue);
+    playback.playback_handle.play(track0.to_string());
+
+    let (played, entries) =
+        wait_for_playing_capturing_queue_on(&mut playback.progress_rx, Duration::from_secs(25))
+            .await;
+    assert!(played, "track0 should start playing");
+
+    mutate(&playback.playback_handle, &entries);
+    playback.playback_handle.next();
+
+    let next_state = wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| match s {
+            PlaybackState::Playing { track_info, .. }
+            | PlaybackState::Paused { track_info, .. } => track_info.track_id != track0,
+            _ => false,
+        },
+        Duration::from_secs(25),
+    )
+    .await;
+    let state = next_state.expect("Next should switch off track0 after the queue mutation");
+    let playing_id = match &state {
+        PlaybackState::Playing { track_info, .. } => track_info.track_id.clone(),
+        PlaybackState::Paused { track_info, .. } => track_info.track_id.clone(),
+        _ => unreachable!(),
+    };
+    assert_eq!(playing_id, expected);
+
+    if matches!(state, PlaybackState::Playing { .. }) {
+        assert_position_advances(&mut playback.progress_rx, Duration::from_millis(500)).await;
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn add_next_displaces_preloaded_track_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-add-next-displace").await;
+    let (track0, track1, track2) = (
+        playback.track_ids[0].clone(),
+        playback.track_ids[1].clone(),
+        playback.track_ids[2].clone(),
+    );
+    let t2 = track2.clone();
+    assert_preload_refreshed_over_sparse_buffer(
+        &mut playback,
+        vec![track1],
+        &track0,
+        &track2,
+        move |h, _entries| h.add_next(vec![t2]),
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn remove_entry_refreshes_preloaded_track_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-remove-entry-refresh").await;
+    let (track0, track1, track2) = (
+        playback.track_ids[0].clone(),
+        playback.track_ids[1].clone(),
+        playback.track_ids[2].clone(),
+    );
+    assert_preload_refreshed_over_sparse_buffer(
+        &mut playback,
+        vec![track1, track2.clone()],
+        &track0,
+        &track2,
+        |h, entries| h.remove_entry(entries[0].id.clone()),
+    )
+    .await;
+}
+
+/// Multi-window port of `skip_to_entry_jumps_to_that_queue_entry`: SkipTo
+/// must land on the targeted entry and actually stream it, not just project
+/// it as current.
+#[tokio::test(flavor = "multi_thread")]
+async fn skip_to_entry_jumps_to_that_queue_entry_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-skip-to-entry").await;
+    let first = playback.track_ids[0].clone();
+    let third = playback.track_ids[2].clone();
+    playback.playback_handle.play(first.clone());
+    let (played, entries) =
+        wait_for_playing_capturing_queue_on(&mut playback.progress_rx, Duration::from_secs(25))
+            .await;
+    assert!(played, "the release starts playing");
+    let target = entries
+        .iter()
+        .find(|e| e.track_id == third)
+        .expect("the third track is queued in the context");
+    playback.playback_handle.skip_to_entry(target.id.clone());
+    wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == third),
+        Duration::from_secs(25),
+    )
+    .await
+    .expect("SkipTo jumps to the targeted entry");
+
+    assert_position_advances(&mut playback.progress_rx, Duration::from_millis(500)).await;
+}
+
+/// Multi-window port of `set_shuffle_materializes_then_re_derives_context_order`:
+/// re-deriving the context order must not disturb the currently-playing
+/// track's audio.
+#[tokio::test(flavor = "multi_thread")]
+async fn set_shuffle_re_derives_context_order_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-set-shuffle").await;
+    let first = playback.track_ids[0].clone();
+    playback.play_and_wait(&first).await;
+
+    playback.playback_handle.set_shuffle(true);
+    let shuffled = playback
+        .playback_handle
+        .queue_projection()
+        .await
+        .expect("queue projection");
+    assert!(
+        shuffled.context.as_ref().is_some_and(|c| c.shuffled),
+        "SetShuffle(true) materializes a shuffled context"
+    );
+
+    playback.playback_handle.set_shuffle(false);
+    let sequential = playback
+        .playback_handle
+        .queue_projection()
+        .await
+        .expect("queue projection");
+    assert!(
+        !sequential
+            .context
+            .expect("still a playing context")
+            .shuffled,
+        "SetShuffle(false) re-derives the sequential order"
+    );
+
+    assert_position_advances(&mut playback.progress_rx, Duration::from_millis(500)).await;
+}
+
+// ============================================================================
+// Remote (cloud-path) variant: local files make the fill near-instant, so the
+// tests above never exercise a real ranged read. This imports the same
+// multi-window CUE album as remote-unpinned against a MockCloudHome (in-memory,
+// range-read counting) and deletes the local originals, so every byte the fill
+// touches comes from an actual ranged cloud read — the fetch arbiter and window
+// fetches over the real remote path, not just the local-disk fast path.
+//
+// Not template-cloned: the cloud upload + encryption setup doesn't fit the
+// directory-clone scheme the local fixture uses (the MockCloudHome's blob
+// store isn't a plain directory to copy), so this is a fresh multi-window
+// import per test. It's used by only the five tests below, and each import is
+// the full multi-window import cost that the local `MultiWindowPlayback` fixture
+// avoids by cloning a shared imported template — not a regression, just not free.
+// ============================================================================
+
+/// The multi-window CUE album imported remote-unpinned against a
+/// `MockCloudHome`, with the local originals deleted so every read resolves
+/// through an actual ranged cloud fetch.
+struct RemoteMultiWindowPlayback {
+    playback_handle: bae_core::playback::PlaybackHandle,
+    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    track_ids: Vec<String>,
+    _capture_stream_rx: CaptureStreamRx,
+    _temp_dir: TempDir,
+}
+
+impl RemoteMultiWindowPlayback {
+    async fn new(name: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        tracing_init();
+        let temp_dir = TempDir::new()?;
+        let db_path = temp_dir.path().join("test.db");
+        let album_dir = temp_dir.path().join("album");
+        std::fs::create_dir_all(&album_dir)?;
+        let database = Database::new_test(
+            db_path.to_str().unwrap(),
+            std::sync::Arc::new(coven::SystemClock),
+        )
+        .await?;
+        let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+        let (config_handle, key_service) = test_config_and_keys(&library_dir);
+        let library_manager = LibraryManager::new(
+            database,
+            config_handle,
+            key_service,
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+            tokio::runtime::Handle::current(),
+        );
+        let master_key = [17u8; 32];
+        let cloud = Arc::new(support::MockCloudHome::new());
+        library_manager
+            .connect_test_cloud_home(
+                cloud,
+                bae_core::sync::CloudCipher::Encrypted(coven::EncryptionService::from_key(
+                    master_key,
+                )),
+            )
+            .await?;
+
+        let runtime_handle = tokio::runtime::Handle::current();
+        let discogs_release = create_multi_window_cue_album();
+        let release_id_key = seed_discogs_test_release(discogs_release);
+        generate_multi_window_cue_flac_files(&album_dir);
+
+        let import_ids = SequentialIdProvider::new(name);
+        let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+        let import_id = import_ids.new_id();
+        import_handle
+            .send_command(ImportCommand {
+                import_id: import_id.clone(),
+                candidate_key: name.to_string(),
+                folder: album_dir.clone(),
+                selected_cover: None,
+                storage_mode: StorageMode::Remote,
+                pin: false,
+                identity_choice: IdentityChoice::Exact {
+                    release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+                },
+                user_edit: None,
+            })
+            .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+        let mut import_rx = import_handle.subscribe_import(import_id);
+        let (release_id, _album_id) = wait_for_import_complete(&mut import_rx).await;
+
+        // Run the upload so the encrypted blob lands in the cloud and the
+        // outbox clears — after this the track resolves cloud-only.
+        while library_manager.drain_uploads_for_test().await? > 0 {}
+
+        // Delete the import original so file resolution can't fall back to it.
+        std::fs::remove_dir_all(&album_dir)?;
+
+        let tracks = library_manager.get_tracks(&release_id).await?;
+        let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
+        assert_eq!(track_ids.len(), 3, "the CUE album imports 3 tracks");
+
+        let (playback_handle, capture_stream_rx) =
+            start_capture_service(library_manager, runtime_handle);
+        let progress_rx = playback_handle.subscribe_progress();
+        Ok(Self {
+            playback_handle,
+            progress_rx,
+            track_ids,
+            _capture_stream_rx: capture_stream_rx,
+            _temp_dir: temp_dir,
+        })
+    }
+
+    /// Play `track_id` and wait for its Playing state.
+    async fn play_and_wait(&mut self, track_id: &str) {
+        self.playback_handle.play(track_id.to_string());
+        let playing = wait_for_state_on(
+            &mut self.progress_rx,
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == track_id),
+            Duration::from_secs(20),
+        )
+        .await;
+        assert!(playing.is_some(), "track {track_id} reaches Playing");
+    }
+}
+
+/// Remote-cloud port of `switching_tracks_within_a_multi_window_file_keeps_streaming`:
+/// switching to the middle track needs bytes fetched by an actual ranged
+/// cloud read, not a local-disk read.
+#[tokio::test(flavor = "multi_thread")]
+async fn switching_tracks_within_a_multi_window_file_over_remote_cloud() {
+    let mut playback = RemoteMultiWindowPlayback::new("multi-window-remote-switch")
+        .await
+        .expect("set up the remote multi-window fixture");
+
+    let last_track = playback.track_ids[2].clone();
+    playback.play_and_wait(&last_track).await;
+
+    let middle_track = playback.track_ids[1].clone();
+    playback.playback_handle.play(middle_track.clone());
+    let playing = wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == middle_track),
+        Duration::from_secs(30),
+    )
+    .await;
+    assert!(
+        playing.is_some(),
+        "the middle track reaches Playing after the switch over a real ranged cloud read"
+    );
+}
+
+/// Remote-cloud port of `auto_advance_crosses_gaplessly_within_a_multi_window_file`:
+/// the gapless crossing's preload decodes bytes fetched over a real ranged
+/// cloud read.
+#[tokio::test(flavor = "multi_thread")]
+async fn auto_advance_crosses_gaplessly_over_remote_cloud() {
+    let mut playback = RemoteMultiWindowPlayback::new("multi-window-remote-gapless")
+        .await
+        .expect("set up the remote multi-window fixture");
+    let first = playback.track_ids[0].clone();
+    let second = playback.track_ids[1].clone();
+    playback.play_and_wait(&first).await;
+
+    playback.playback_handle.seek(Duration::from_secs(54));
+    let outcome = observe_boundary(
+        &mut playback.progress_rx,
+        &first,
+        &second,
+        Duration::from_secs(30),
+    )
+    .await;
+    assert!(
+        outcome.reached_incoming,
+        "playback crosses into the second track over a real ranged cloud read"
+    );
+    assert!(
+        outcome.decode_stats_for_finishing && !outcome.completed_for_finishing,
+        "the boundary is gapless: decode stats without TrackCompleted"
+    );
+
+    let p1 = position_after(&mut playback.progress_rx, Duration::from_secs(2)).await;
+    let p2 = position_after(&mut playback.progress_rx, Duration::from_secs(4)).await;
+    assert!(
+        p2 > p1,
+        "track 2's position advances after the crossing (got {p1}ms then {p2}ms)"
+    );
+}
+
+/// Remote-cloud port of `manual_next_into_a_pregap_track_rebuilds_and_keeps_streaming`.
+#[tokio::test(flavor = "multi_thread")]
+async fn manual_next_into_a_pregap_track_over_remote_cloud() {
+    let mut playback = RemoteMultiWindowPlayback::new("multi-window-remote-next-pregap")
+        .await
+        .expect("set up the remote multi-window fixture");
+    let [first, second] = [playback.track_ids[0].clone(), playback.track_ids[1].clone()];
+    playback.play_and_wait(&first).await;
+
+    playback.playback_handle.next();
+    wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
+        Duration::from_secs(30),
+    )
+    .await
+    .expect("the second track reaches Playing after a manual Next over a real ranged cloud read");
+
+    let position = position_after(&mut playback.progress_rx, Duration::from_secs(3)).await;
+    assert!(
+        position > 0,
+        "the rebuilt track's position advances — its bytes are fetched over the real cloud path"
+    );
+}
+
+/// Remote-cloud port of `manual_next_into_a_clean_track_promotes_the_preload`.
+#[tokio::test(flavor = "multi_thread")]
+async fn manual_next_into_a_clean_track_over_remote_cloud() {
+    let mut playback = RemoteMultiWindowPlayback::new("multi-window-remote-next-preload")
+        .await
+        .expect("set up the remote multi-window fixture");
+    let [second, third] = [playback.track_ids[1].clone(), playback.track_ids[2].clone()];
+    playback.play_and_wait(&second).await;
+
+    playback.playback_handle.next();
+    wait_for_state_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == third),
+        Duration::from_secs(30),
+    )
+    .await
+    .expect("the third track reaches Playing after a manual Next over a real ranged cloud read");
+
+    let position = position_after(&mut playback.progress_rx, Duration::from_secs(3)).await;
+    assert!(
+        position > 0,
+        "the promoted track's position advances — its bytes are fetched over the real cloud path"
+    );
+}
+
+/// Remote-cloud seek port: seeking within the last track over a real ranged
+/// cloud read must still land near the target and keep streaming.
+#[tokio::test(flavor = "multi_thread")]
+async fn seek_within_the_last_track_over_remote_cloud() {
+    let mut playback = RemoteMultiWindowPlayback::new("multi-window-remote-seek")
+        .await
+        .expect("set up the remote multi-window fixture");
+    let last_track = playback.track_ids[2].clone();
+    playback.play_and_wait(&last_track).await;
+
+    let target = Duration::from_secs(20);
+    playback.playback_handle.seek(target);
+    let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(30))
+        .await
+        .expect("a seek within the last track emits Seeked over a real ranged cloud read");
+    assert!(
+        Duration::from_millis(landed).abs_diff(target) < Duration::from_secs(2),
+        "should land near {target:?}, got {landed}ms"
+    );
+
+    let p1 = position_after(&mut playback.progress_rx, Duration::from_secs(2)).await;
+    let p2 = position_after(&mut playback.progress_rx, Duration::from_secs(4)).await;
+    assert!(
+        p2 > p1,
+        "audio keeps flowing after the seek over a real ranged cloud read (got {p1}ms then {p2}ms)"
     );
 }
