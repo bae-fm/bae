@@ -14,13 +14,8 @@ struct LibraryModeHeading: View {
                 uiStore.setLibraryBrowserMode(mode)
             }
         } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(uiStore.libraryBrowserMode.displayName)
-                    .font(.system(size: 36, weight: .bold))
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.secondary)
-            }
+            Text(uiStore.libraryBrowserMode.displayName)
+                .font(.system(size: 36, weight: .bold))
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
