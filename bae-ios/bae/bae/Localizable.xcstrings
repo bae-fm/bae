@@ -4129,25 +4129,25 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connecting to your Libreria"
+            "value": "Connessione alla tua libreria"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connecting to your Kitaplık"
+            "value": "Kitaplığınıza bağlanılıyor"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connecting to your Thư viện"
+            "value": "Đang kết nối với thư viện của bạn"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connecting to your Bibliotheek"
+            "value": "Verbinden met je bibliotheek"
           }
         },
         "hi": {
@@ -4509,25 +4509,25 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not add Metadati output to session"
+            "value": "Impossibile aggiungere l'output dei metadati alla sessione"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not add Üst veri output to session"
+            "value": "Oturuma üst veri çıkışı eklenemedi"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not add Siêu dữ liệu output to session"
+            "value": "Không thể thêm đầu ra siêu dữ liệu vào phiên"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not add Metadata output to session"
+            "value": "Kan metadata-uitvoer niet aan sessie toevoegen"
           }
         },
         "hi": {
@@ -6790,25 +6790,25 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Crittografia key (64 hex characters)"
+            "value": "Chiave di crittografia (64 caratteri esadecimali)"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Şifreleme key (64 hex characters)"
+            "value": "Şifreleme anahtarı (64 onaltılık karakter)"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mã hóa key (64 hex characters)"
+            "value": "Khóa mã hóa (64 ký tự thập lục phân)"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Versleuteling key (64 hex characters)"
+            "value": "Versleutelingssleutel (64 hexadecimale tekens)"
           }
         },
         "hi": {
@@ -8881,25 +8881,25 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "No albums yet. Sincronizzazioneing from the cloud…"
+            "value": "Ancora nessun album. Sincronizzazione dal cloud…"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "No albums yet. Eşzamanlamaing from the cloud…"
+            "value": "Henüz albüm yok. Buluttan eşzamanlanıyor…"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "No albums yet. Đồng bộing from the cloud…"
+            "value": "Chưa có album nào. Đang đồng bộ từ đám mây…"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "No albums yet. Synchronisatieing from the cloud…"
+            "value": "Nog geen albums. Synchroniseren vanuit de cloud…"
           }
         },
         "hi": {
@@ -13635,25 +13635,25 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remove this Libreria from this device"
+            "value": "Rimuovi questa libreria da questo dispositivo"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remove this Kitaplık from this device"
+            "value": "Bu kitaplığı bu cihazdan kaldır"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remove this Thư viện from this device"
+            "value": "Gỡ thư viện này khỏi thiết bị này"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remove this Bibliotheek from this device"
+            "value": "Verwijder deze bibliotheek van dit apparaat"
           }
         },
         "hi": {
@@ -13825,25 +13825,25 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remove this Libreria from this device?"
+            "value": "Rimuovere questa libreria da questo dispositivo?"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remove this Kitaplık from this device?"
+            "value": "Bu kitaplık bu cihazdan kaldırılsın mı?"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remove this Thư viện from this device?"
+            "value": "Gỡ thư viện này khỏi thiết bị này?"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remove this Bibliotheek from this device?"
+            "value": "Deze bibliotheek van dit apparaat verwijderen?"
           }
         },
         "hi": {
@@ -14015,25 +14015,25 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Removes this Libreria and its downloaded files from this device. Your Libreria in the cloud is untouched — you can re-pair this device later."
+            "value": "Rimuove questa libreria e i relativi file scaricati da questo dispositivo. La tua libreria nel cloud rimane intatta — potrai riabbinare questo dispositivo in seguito."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Removes this Kitaplık and its downloaded files from this device. Your Kitaplık in the cloud is untouched — you can re-pair this device later."
+            "value": "Bu kitaplığı ve indirilen dosyalarını bu cihazdan kaldırır. Buluttaki kitaplığınıza dokunulmaz — bu cihazı daha sonra yeniden eşleyebilirsiniz."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Removes this Thư viện and its downloaded files from this device. Your Thư viện in the cloud is untouched — you can re-pair this device later."
+            "value": "Gỡ thư viện này và các tệp đã tải xuống của nó khỏi thiết bị này. Thư viện của bạn trên đám mây vẫn được giữ nguyên — bạn có thể ghép nối lại thiết bị này sau."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Removes this Bibliotheek and its downloaded files from this device. Your Bibliotheek in the cloud is untouched — you can re-pair this device later."
+            "value": "Verwijdert deze bibliotheek en de gedownloade bestanden van dit apparaat. Je bibliotheek in de cloud blijft ongewijzigd — je kunt dit apparaat later opnieuw koppelen."
           }
         },
         "hi": {
@@ -16297,25 +16297,25 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "The Crittografia key for this Libreria is not in the keyring. Enter the 64-character hex key to unlock."
+            "value": "La chiave di crittografia per questa libreria non è nel portachiavi. Inserisci la chiave esadecimale a 64 caratteri per sbloccare."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The Şifreleme key for this Kitaplık is not in the keyring. Enter the 64-character hex key to unlock."
+            "value": "Bu kitaplığın şifreleme anahtarı anahtarlıkta yok. Kilidi açmak için 64 karakterlik onaltılık anahtarı girin."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "The Mã hóa key for this Thư viện is not in the keyring. Enter the 64-character hex key to unlock."
+            "value": "Khóa mã hóa của thư viện này không có trong chuỗi khóa. Nhập khóa thập lục phân 64 ký tự để mở khóa."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "The Versleuteling key for this Bibliotheek is not in the keyring. Enter the 64-character hex key to unlock."
+            "value": "De versleutelingssleutel voor deze bibliotheek staat niet in de sleutelhanger. Voer de hexadecimale sleutel van 64 tekens in om te ontgrendelen."
           }
         },
         "hi": {
@@ -16677,25 +16677,25 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "This Libreria needs cloud sign-in, which isn't configured on this build."
+            "value": "Questa libreria richiede l'accesso cloud, che non è configurato in questa build."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This Kitaplık needs cloud sign-in, which isn't configured on this build."
+            "value": "Bu kitaplık, bu derlemede yapılandırılmamış bir bulut oturumu gerektirir."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "This Thư viện needs cloud sign-in, which isn't configured on this build."
+            "value": "Thư viện này cần đăng nhập đám mây, nhưng chưa được cấu hình trong bản dựng này."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "This Bibliotheek needs cloud sign-in, which isn't configured on this build."
+            "value": "Deze bibliotheek heeft cloudaanmelding nodig, die niet is geconfigureerd in deze build."
           }
         },
         "hi": {
@@ -18770,25 +18770,25 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your Libreria in the cloud is untouched."
+            "value": "La tua libreria nel cloud rimane intatta."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your Kitaplık in the cloud is untouched."
+            "value": "Buluttaki kitaplığınıza dokunulmaz."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your Thư viện in the cloud is untouched."
+            "value": "Thư viện của bạn trên đám mây vẫn được giữ nguyên."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your Bibliotheek in the cloud is untouched."
+            "value": "Je bibliotheek in de cloud blijft ongewijzigd."
           }
         },
         "hi": {
@@ -19720,25 +19720,25 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sincronizzazioneed"
+            "value": "sincronizzato"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Eşzamanlamaed"
+            "value": "eşzamanlandı"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Đồng bộed"
+            "value": "đã đồng bộ"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Synchronisatieed"
+            "value": "gesynchroniseerd"
           }
         },
         "hi": {
@@ -19910,25 +19910,25 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sincronizzazioneing…"
+            "value": "sincronizzazione…"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Eşzamanlamaing…"
+            "value": "eşzamanlanıyor…"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Đồng bộing…"
+            "value": "đang đồng bộ…"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Synchronisatieing…"
+            "value": "synchroniseren…"
           }
         },
         "hi": {

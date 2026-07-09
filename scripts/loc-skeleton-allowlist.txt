@@ -1,0 +1,123 @@
+# Adjudicated-legitimate hits for scripts/loc-english-skeleton.py.
+#
+# One entry per line: locale<TAB>key (or locale<TAB>key<TAB>plural-form for a
+# plural variation). These are values a detector flags but a human read
+# confirmed are real, grammatically correct target-language sentences —
+# usually a loanword the locale's other good entries already use, or a short
+# string whose token overlap with English is incidental. Placeholder-multiset
+# mismatches are never allowlisted here; those are always real defects.
+#
+# Applies across both xcstrings catalogs: a (locale, key) pair suppresses the
+# hit wherever that key exists (macOS, iOS, or both).
+
+# Established loanwords / technical terms kept identical to en (confirmed
+# against the locale's other good entries using the same term).
+it	Access Key
+it	Account
+it	Album
+it	Audio
+it	Bucket
+it	Cloud
+it	Disc ID
+it	DiscID
+it	Endpoint
+it	OK
+it	Provider
+it	S3-compatible
+it	Secret Key
+it	Volume
+nl	Account
+nl	Album
+nl	Albums
+nl	Audio
+nl	Barcode
+nl	Bucket
+nl	Cloud
+nl	Credits
+nl	Details
+nl	Disc
+nl	Disc ID
+nl	DiscID
+nl	Downloads
+nl	Endpoint
+nl	Filter
+nl	Filter...
+nl	Label
+nl	OK
+nl	Presets
+nl	Provider
+nl	Release
+nl	Release %lld
+nl	Releases
+nl	S3-compatible
+nl	Shuffle
+nl	Status
+nl	Volume
+tr	Bucket
+tr	Disc ID
+tr	DiscID
+tr	OK
+tr	S3-compatible
+vi	Album
+vi	Bucket
+vi	Disc ID
+vi	Disc TOC
+vi	DiscID
+vi	Endpoint
+vi	OK
+vi	S3-compatible
+
+# Audio-format / bit-depth technical tokens — not translated in any locale.
+it	16-bit
+it	24-bit
+it	32-bit
+it	AIFF
+it	Bitrate
+it	MP3
+it	Opus
+tr	16-bit
+tr	24-bit
+tr	32-bit
+tr	AIFF
+tr	MP3
+tr	Opus
+vi	16-bit
+vi	24-bit
+vi	32-bit
+vi	AIFF
+vi	MP3
+vi	Opus
+nl	16-bit
+nl	24-bit
+nl	32-bit
+nl	AIFF
+nl	CUE sheet
+nl	MP3
+nl	Metadata
+nl	Opus
+
+# Numeric/placeholder-only example values — identical across locales by
+# construction (a barcode digit string, a catalog-number example).
+it	e.g. 4943674251780
+it	e.g. WPCR-80001
+tr	e.g. 4943674251780
+tr	e.g. WPCR-80001
+vi	e.g. 4943674251780
+vi	e.g. WPCR-80001
+nl	e.g. 4943674251780
+nl	e.g. WPCR-80001
+
+# it "file" plural: Italian loanwords don't inflect for number, so the
+# singular form is correct for both plural-rule categories.
+it	%lld files	one
+
+# Word-order-only or compounding differences the detector can't distinguish
+# from an unmoved English skeleton.
+it	Cloud provider
+nl	Release exports
+nl	Disc TOC
+
+# "provider" is an established it/nl loanword (see "Cloud provider" and the
+# "Provider" key above); the sentence around it is a real translation.
+it	This library needs a signed-in provider. Go back and choose the provider it uses.
+nl	This library needs a signed-in provider. Go back and choose the provider it uses.

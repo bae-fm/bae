@@ -173,6 +173,7 @@ check "cargo test (bae-cli)"           cargo test -p bae-cli
 # on unreferenced, un-allowlisted catalog keys so dead/renamed keys are caught
 # locally, not only in CI.
 check "loc chrome orphans"             python3 scripts/loc-chrome-orphans.py
+check "loc english skeleton"           python3 scripts/loc-english-skeleton.py
 
 # ── macOS ──────────────────────────────────────────────────────────────────────
 section "macOS"
