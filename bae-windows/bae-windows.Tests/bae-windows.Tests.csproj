@@ -15,10 +15,12 @@
       behind the system transport controls, expressed over plain BCL types with
       no WinRT dependency (the WinRT shell that applies its decisions lives in
       MediaControlService and is verified by compilation).
-    - The store models (PlaybackPositionModel / SyncIndicatorModel) — the
-      now-playing-bar seek/position math and the sync-indicator precedence, split
-      out of MainWindow as plain BCL types (the stores that hold bridge snapshots
-      and the WinUI views that render them are verified by compilation).
+    - The store models (PlaybackPositionModel / SyncIndicatorModel /
+      ImportIdentityModel) — the now-playing-bar seek/position math, the
+      sync-indicator precedence, and the import identity-claim state (exact vs
+      metadata-only, its note and pressing-field enablement), split out as plain
+      BCL types (the stores that hold bridge snapshots and the WinUI views and
+      dialogs that render them are verified by compilation).
     - The update-flow layer (UpdateFlow) — the state machine and display mapping
       behind the settings "updates" section (status keys, percent clamping,
       button gating, version-string normalization), over plain BCL types with no
@@ -54,6 +56,7 @@
     <Compile Include="../TextTruncation.cs" Link="TextTruncation.cs" />
     <Compile Include="../Stores/QueueReorderModel.cs" Link="QueueReorderModel.cs" />
     <Compile Include="../Stores/OrderedIntersection.cs" Link="OrderedIntersection.cs" />
+    <Compile Include="../Stores/ImportIdentityModel.cs" Link="ImportIdentityModel.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -343,4 +343,10 @@
   <data name="edit.tracks.col_side" xml:space="preserve"><value>strona</value></data>
   <data name="edit.tracks.col_number" xml:space="preserve"><value>nr</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>wykonawca albumu</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>Pomiń identyfikację</value></data>
+  <data name="identify.import_as" xml:space="preserve"><value>Importuj jako</value></data>
+  <data name="identify.exact_pressing" xml:space="preserve"><value>Dokładne tłoczenie</value></data>
+  <data name="identify.metadata_only" xml:space="preserve"><value>Tylko metadane</value></data>
+  <data name="identify.metadata_only_note" xml:space="preserve"><value>Tylko metadane — pola tłoczenia pozostają puste; zapisywana jest jedynie grupa albumu.</value></data>
+  <data name="album.reidentify.claim_header" xml:space="preserve"><value>Ustaw tożsamość na to tłoczenie</value></data>
 </root>

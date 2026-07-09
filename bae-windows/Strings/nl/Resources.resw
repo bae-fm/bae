@@ -343,4 +343,10 @@
   <data name="edit.tracks.col_side" xml:space="preserve"><value>kant</value></data>
   <data name="edit.tracks.col_number" xml:space="preserve"><value>nr.</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>albumartiest</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>Identificeren overslaan</value></data>
+  <data name="identify.import_as" xml:space="preserve"><value>Importeren als</value></data>
+  <data name="identify.exact_pressing" xml:space="preserve"><value>Exacte persing</value></data>
+  <data name="identify.metadata_only" xml:space="preserve"><value>Alleen metadata</value></data>
+  <data name="identify.metadata_only_note" xml:space="preserve"><value>Alleen metadata — persingsvelden blijven leeg; alleen de albumgroep wordt vastgelegd.</value></data>
+  <data name="album.reidentify.claim_header" xml:space="preserve"><value>Identiteit instellen op deze persing</value></data>
 </root>

@@ -343,4 +343,10 @@
   <data name="edit.tracks.col_side" xml:space="preserve"><value>yüz</value></data>
   <data name="edit.tracks.col_number" xml:space="preserve"><value>no.</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>albüm sanatçısı</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>Tanımlamayı atla</value></data>
+  <data name="identify.import_as" xml:space="preserve"><value>Şu şekilde içe aktar</value></data>
+  <data name="identify.exact_pressing" xml:space="preserve"><value>Tam baskı</value></data>
+  <data name="identify.metadata_only" xml:space="preserve"><value>Yalnızca üst veri</value></data>
+  <data name="identify.metadata_only_note" xml:space="preserve"><value>Yalnızca üst veri — baskı alanları boş kalır; yalnızca albüm grubu kaydedilir.</value></data>
+  <data name="album.reidentify.claim_header" xml:space="preserve"><value>Kimliği bu baskı olarak ayarla</value></data>
 </root>

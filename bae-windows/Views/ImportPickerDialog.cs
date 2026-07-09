@@ -95,6 +95,7 @@ internal sealed class ImportPickerDialog
             Title = Loc.Chrome("import.release_title"),
             Content = new ScrollViewer { Content = content },
             PrimaryButtonText = Loc.Chrome("action.import"),
+            SecondaryButtonText = Loc.Chrome("identify.skip"),
             CloseButtonText = Loc.Chrome("action.cancel"),
             XamlRoot = _xamlRoot(),
             IsPrimaryButtonEnabled = false,
@@ -133,27 +134,38 @@ internal sealed class ImportPickerDialog
         // Clicking Import here doesn't commit — it advances to the metadata edit
         // step. A second ContentDialog can't open while this one shows, so the
         // picker closes on Primary (the selection + storage mode are captured) and
-        // the confirm step opens after ShowAsync returns. The loop re-opens this
-        // picker — with its search results and selection intact — when the confirm
-        // step's "Back to Search" is chosen; Import or Cancel ends the flow.
+        // the confirm step opens after ShowAsync returns. "Skip identifying"
+        // (Secondary) advances the same way but with no picked release — a
+        // skip-identify import seeded from the rip's file tags. The loop re-opens
+        // this picker — with its search results and selection intact — when the
+        // confirm step's "Back to Search" is chosen; Import or Cancel ends the flow.
         try
         {
             while (true)
             {
                 var pickerResult = await dialog.ShowAsync();
                 _session.WithCurrentHandle(NativeBae.PreviewStop);
-                if (pickerResult != ContentDialogResult.Primary)
+
+                ReleaseCandidateChoice? chosen;
+                if (pickerResult == ContentDialogResult.Primary)
+                {
+                    var index = resultsList.SelectedIndex;
+                    if (index < 0 || index >= results.Count)
+                    {
+                        return;
+                    }
+                    chosen = results[index];
+                }
+                else if (pickerResult == ContentDialogResult.Secondary)
+                {
+                    chosen = null;
+                }
+                else
                 {
                     return;
                 }
 
-                var index = resultsList.SelectedIndex;
-                if (index < 0 || index >= results.Count)
-                {
-                    return;
-                }
-
-                var backToSearch = await _confirm.Show(candidate, results[index]);
+                var backToSearch = await _confirm.Show(candidate, chosen);
                 if (!backToSearch)
                 {
                     return;

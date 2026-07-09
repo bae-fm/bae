@@ -18,6 +18,13 @@ internal sealed class PrefetchedEdit
         []);
     public List<BridgeRemoteCover> RemoteCovers { get; set; } = new();
     public List<LocalArtwork> LocalArtwork { get; set; } = new();
+
+    /// <summary>
+    /// The picked release's detail, kept so the exactness flip (exact ↔ metadata
+    /// only) can re-shape the editor without another fetch. Null for a
+    /// skip-identify import, which has no source release.
+    /// </summary>
+    public BridgeReleaseDetail? Detail { get; set; }
 }
 
 /// <summary>

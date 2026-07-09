@@ -343,4 +343,10 @@
   <data name="edit.tracks.col_side" xml:space="preserve"><value>mặt</value></data>
   <data name="edit.tracks.col_number" xml:space="preserve"><value>số</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>nghệ sĩ album</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>Bỏ qua nhận dạng</value></data>
+  <data name="identify.import_as" xml:space="preserve"><value>Nhập dưới dạng</value></data>
+  <data name="identify.exact_pressing" xml:space="preserve"><value>Bản ép chính xác</value></data>
+  <data name="identify.metadata_only" xml:space="preserve"><value>Chỉ siêu dữ liệu</value></data>
+  <data name="identify.metadata_only_note" xml:space="preserve"><value>Chỉ siêu dữ liệu — các trường bản ép để trống; chỉ ghi lại nhóm album.</value></data>
+  <data name="album.reidentify.claim_header" xml:space="preserve"><value>Đặt danh tính thành bản ép này</value></data>
 </root>

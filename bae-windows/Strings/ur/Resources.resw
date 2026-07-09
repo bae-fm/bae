@@ -343,4 +343,10 @@
   <data name="edit.tracks.col_side" xml:space="preserve"><value>سائیڈ</value></data>
   <data name="edit.tracks.col_number" xml:space="preserve"><value>نمبر</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>البم فنکار</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>شناخت چھوڑیں</value></data>
+  <data name="identify.import_as" xml:space="preserve"><value>بطور درآمد کریں</value></data>
+  <data name="identify.exact_pressing" xml:space="preserve"><value>عین پریسنگ</value></data>
+  <data name="identify.metadata_only" xml:space="preserve"><value>صرف میٹا ڈیٹا</value></data>
+  <data name="identify.metadata_only_note" xml:space="preserve"><value>صرف میٹا ڈیٹا — پریسنگ خانے خالی رہتے ہیں؛ صرف البم گروپ ریکارڈ کیا جاتا ہے۔</value></data>
+  <data name="album.reidentify.claim_header" xml:space="preserve"><value>شناخت اس پریسنگ پر مقرر کریں</value></data>
 </root>

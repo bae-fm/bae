@@ -29,22 +29,25 @@ internal sealed class ImportConfirmDialog
     }
 
     // Returns true when the user chose "Back to Search" — the caller re-opens the
-    // picker so they can pick or search for a different release.
+    // picker so they can pick or search for a different release. A null chosen is
+    // the skip-identify import: no source release, seeded from the rip's file tags.
     public async System.Threading.Tasks.Task<bool> Show(
-        ImportCandidate candidate, ReleaseCandidateChoice chosen)
+        ImportCandidate candidate, ReleaseCandidateChoice? chosen)
     {
-        var (current, prefetched) = await _session.RunForCurrentHandle(
-            handle => NativeBae.PrefetchCandidateEdit(
-                handle, chosen.ReleaseId, chosen.Source, candidate.FolderPath).Prefetched);
+        var (current, seed) = await _session.RunForCurrentHandle(
+            handle => chosen is null
+                ? NativeBae.PrefetchUnknownEdit(handle, candidate.FolderPath)
+                : NativeBae.PrefetchCandidateEdit(handle, chosen.ReleaseId, chosen.Source, candidate.FolderPath));
         if (!current)
         {
             return false;
         }
-        if (prefetched is null)
+        if (seed.Prefetched is null)
         {
-            await DialogPrimitives.ShowError(_xamlRoot(), Loc.Chrome("import.error.load_release"));
+            await DialogPrimitives.ShowError(_xamlRoot(), Loc.Chrome("import.error.load_release"), seed.Error);
             return false;
         }
+        var prefetched = seed.Prefetched;
 
         var (settingsCurrent, settings) = await _session.RunForCurrentHandle(NativeBae.GetSettings);
         if (!settingsCurrent)
@@ -101,6 +104,65 @@ internal sealed class ImportConfirmDialog
         }
         panel.Children.Add(BuildCoverPicker(
             prefetched.RemoteCovers, prefetched.LocalArtwork, picked => selectedCover = picked));
+
+        // A source-backed pick claims the exact pressing by default, or metadata
+        // only (just the album group). Flipping re-shapes the form from the kept
+        // release detail with no re-fetch, overwriting in-progress edits, and
+        // disables the pressing fields when metadata-only so the core-side blanking
+        // is visible. A skip-identify import has no source release and no choice.
+        var identity = new ImportIdentityModel(chosen is not null);
+        if (identity.ShowsExactnessChoice)
+        {
+            var note = new TextBlock
+            {
+                Text = Loc.Chrome("identify.metadata_only_note"),
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                TextWrapping = TextWrapping.Wrap,
+                Visibility = identity.ShowsMetadataOnlyNote ? Visibility.Visible : Visibility.Collapsed,
+            };
+
+            void ApplyClaim(bool metadataOnly)
+            {
+                identity.SetMetadataOnly(metadataOnly);
+                note.Visibility = identity.ShowsMetadataOnlyNote ? Visibility.Visible : Visibility.Collapsed;
+                form.Seed(NativeBae.ShapeCandidateEdit(
+                    prefetched.Detail!,
+                    NativeBae.SourceIdentityChoice(!identity.MetadataOnly, chosen!.ReleaseId, chosen.Source)));
+                form.SetPressingFieldsEnabled(identity.PressingFieldsEnabled);
+            }
+
+            var exactRadio = new RadioButton
+            {
+                Content = Loc.Chrome("identify.exact_pressing"),
+                GroupName = "importIdentityClaim",
+                IsChecked = true,
+            };
+            var metadataRadio = new RadioButton
+            {
+                Content = Loc.Chrome("identify.metadata_only"),
+                GroupName = "importIdentityClaim",
+            };
+            exactRadio.Checked += (_, _) => ApplyClaim(false);
+            metadataRadio.Checked += (_, _) => ApplyClaim(true);
+
+            var claimRow = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            claimRow.Children.Add(new TextBlock
+            {
+                Text = Loc.Chrome("identify.import_as"),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+            claimRow.Children.Add(exactRadio);
+            claimRow.Children.Add(metadataRadio);
+
+            panel.Children.Add(claimRow);
+            panel.Children.Add(note);
+        }
+
         panel.Children.Add(form.Panel);
 
         var dialog = new ContentDialog
@@ -124,20 +186,24 @@ internal sealed class ImportConfirmDialog
         // flow has no group id), so it reports the exact pressing — album_in_library
         // tracks release_in_library here. Reads the database — run it off the UI
         // thread. A failure leaves the banner absent; the import still proceeds
-        // (the banner is advisory, not a gate).
-        var (statusCurrent, libraryStatus) = await _session.RunForCurrentHandle(
-            handle => NativeBae.CheckReleaseInLibrary(handle, chosen.ReleaseId).Status);
-        if (!statusCurrent)
+        // (the banner is advisory, not a gate). A skip-identify import has no
+        // release to check, so there is nothing to warn about.
+        if (chosen is not null)
         {
-            return false;
-        }
-        if (libraryStatus is not null && libraryStatus.ReleaseInLibrary)
-        {
-            panel.Children.Insert(0, BuildLibraryStatusBanner(libraryStatus, () =>
+            var (statusCurrent, libraryStatus) = await _session.RunForCurrentHandle(
+                handle => NativeBae.CheckReleaseInLibrary(handle, chosen.ReleaseId).Status);
+            if (!statusCurrent)
             {
-                viewInLibraryAlbumId = libraryStatus.AlbumId;
-                dialog.Hide();
-            }));
+                return false;
+            }
+            if (libraryStatus is not null && libraryStatus.ReleaseInLibrary)
+            {
+                panel.Children.Insert(0, BuildLibraryStatusBanner(libraryStatus, () =>
+                {
+                    viewInLibraryAlbumId = libraryStatus.AlbumId;
+                    dialog.Hide();
+                }));
+            }
         }
 
         // The import runs in the background; its result updates the candidate row
@@ -150,9 +216,12 @@ internal sealed class ImportConfirmDialog
             var payload = form.ReadBack();
             var storageMode = StorageModeTag();
             var pin = StoragePinSelected();
+            BridgeIdentityChoice claim = chosen is null
+                ? new BridgeIdentityChoice.Unknown()
+                : NativeBae.SourceIdentityChoice(!identity.MetadataOnly, chosen.ReleaseId, chosen.Source);
             var (importCurrent, error) = await _session.RunForCurrentHandle(
                 handle => NativeBae.ImportCandidate(
-                    handle, candidate.Key, candidate.FolderPath, chosen.ReleaseId, chosen.Source, storageMode, pin, payload, selectedCover));
+                    handle, candidate.Key, candidate.FolderPath, claim, storageMode, pin, payload, selectedCover));
             if (!importCurrent)
             {
                 args.Cancel = true;

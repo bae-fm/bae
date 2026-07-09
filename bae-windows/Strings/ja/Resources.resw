@@ -343,4 +343,10 @@
   <data name="edit.tracks.col_side" xml:space="preserve"><value>面</value></data>
   <data name="edit.tracks.col_number" xml:space="preserve"><value>番号</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>アルバムアーティスト</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>識別をスキップ</value></data>
+  <data name="identify.import_as" xml:space="preserve"><value>取り込み方法</value></data>
+  <data name="identify.exact_pressing" xml:space="preserve"><value>正確なプレス</value></data>
+  <data name="identify.metadata_only" xml:space="preserve"><value>メタデータのみ</value></data>
+  <data name="identify.metadata_only_note" xml:space="preserve"><value>メタデータのみ — プレス欄は空欄のまま、アルバムグループだけが記録されます。</value></data>
+  <data name="album.reidentify.claim_header" xml:space="preserve"><value>このプレスを識別情報に設定</value></data>
 </root>

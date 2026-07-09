@@ -343,4 +343,10 @@
   <data name="edit.tracks.col_side" xml:space="preserve"><value>side</value></data>
   <data name="edit.tracks.col_number" xml:space="preserve"><value>no.</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>album artist</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>Skip identifying</value></data>
+  <data name="identify.import_as" xml:space="preserve"><value>Import as</value></data>
+  <data name="identify.exact_pressing" xml:space="preserve"><value>Exact pressing</value></data>
+  <data name="identify.metadata_only" xml:space="preserve"><value>Metadata only</value></data>
+  <data name="identify.metadata_only_note" xml:space="preserve"><value>Metadata only — pressing fields stay blank; just the album group is recorded.</value></data>
+  <data name="album.reidentify.claim_header" xml:space="preserve"><value>Set identity to this pressing</value></data>
 </root>

@@ -343,4 +343,10 @@
   <data name="edit.tracks.col_side" xml:space="preserve"><value>সাইড</value></data>
   <data name="edit.tracks.col_number" xml:space="preserve"><value>নং</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>অ্যালবাম শিল্পী</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>শনাক্ত করা এড়িয়ে যান</value></data>
+  <data name="identify.import_as" xml:space="preserve"><value>এই হিসেবে ইম্পোর্ট করুন</value></data>
+  <data name="identify.exact_pressing" xml:space="preserve"><value>সঠিক প্রেসিং</value></data>
+  <data name="identify.metadata_only" xml:space="preserve"><value>শুধু মেটাডেটা</value></data>
+  <data name="identify.metadata_only_note" xml:space="preserve"><value>শুধু মেটাডেটা — প্রেসিং ক্ষেত্রগুলো ফাঁকা থাকে; শুধু অ্যালবাম গ্রুপ রেকর্ড করা হয়।</value></data>
+  <data name="album.reidentify.claim_header" xml:space="preserve"><value>এই প্রেসিংকে পরিচয় হিসেবে সেট করুন</value></data>
 </root>

@@ -343,4 +343,10 @@
   <data name="edit.tracks.col_side" xml:space="preserve"><value>lato</value></data>
   <data name="edit.tracks.col_number" xml:space="preserve"><value>n.</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>artista album</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>Salta identificazione</value></data>
+  <data name="identify.import_as" xml:space="preserve"><value>Importa come</value></data>
+  <data name="identify.exact_pressing" xml:space="preserve"><value>Stampa esatta</value></data>
+  <data name="identify.metadata_only" xml:space="preserve"><value>Solo metadati</value></data>
+  <data name="identify.metadata_only_note" xml:space="preserve"><value>Solo metadati — i campi di stampa restano vuoti; viene registrato solo il gruppo dell'album.</value></data>
+  <data name="album.reidentify.claim_header" xml:space="preserve"><value>Imposta identità su questa stampa</value></data>
 </root>

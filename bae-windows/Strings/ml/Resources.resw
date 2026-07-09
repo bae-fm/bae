@@ -343,4 +343,10 @@
   <data name="edit.tracks.col_side" xml:space="preserve"><value>വശം</value></data>
   <data name="edit.tracks.col_number" xml:space="preserve"><value>നം.</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>ആൽബം ആർട്ടിസ്റ്റ്</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>തിരിച്ചറിയൽ ഒഴിവാക്കുക</value></data>
+  <data name="identify.import_as" xml:space="preserve"><value>ഇങ്ങനെ ഇറക്കുമതി ചെയ്യുക</value></data>
+  <data name="identify.exact_pressing" xml:space="preserve"><value>കൃത്യമായ പ്രസ്സിംഗ്</value></data>
+  <data name="identify.metadata_only" xml:space="preserve"><value>മെറ്റാഡാറ്റ മാത്രം</value></data>
+  <data name="identify.metadata_only_note" xml:space="preserve"><value>മെറ്റാഡാറ്റ മാത്രം — പ്രസ്സിംഗ് ഫീൽഡുകൾ ശൂന്യമായി തുടരും; ആൽബം ഗ്രൂപ്പ് മാത്രം രേഖപ്പെടുത്തും.</value></data>
+  <data name="album.reidentify.claim_header" xml:space="preserve"><value>തിരിച്ചറിയൽ ഈ പ്രസ്സിംഗായി സജ്ജമാക്കുക</value></data>
 </root>

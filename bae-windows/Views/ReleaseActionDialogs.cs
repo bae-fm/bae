@@ -260,12 +260,47 @@ internal sealed class ReleaseActionDialogs
             Visibility = Visibility.Collapsed,
         };
 
+        // The identity claim for the selected pressing: exact by default, or
+        // metadata only. Hidden until a result is picked, and reset to exact on
+        // every new pick. A skip-identify re-identify (the Secondary button) claims
+        // nothing here — core reseeds the rows from the rip's file tags.
+        var exactRadio = new RadioButton
+        {
+            Content = Loc.Chrome("identify.exact_pressing"),
+            GroupName = "reidentifyIdentityClaim",
+            IsChecked = true,
+        };
+        var metadataRadio = new RadioButton
+        {
+            Content = Loc.Chrome("identify.metadata_only"),
+            GroupName = "reidentifyIdentityClaim",
+        };
+        var claimRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            VerticalAlignment = VerticalAlignment.Center,
+            Visibility = Visibility.Collapsed,
+        };
+        claimRow.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("album.reidentify.claim_header"),
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        claimRow.Children.Add(exactRadio);
+        claimRow.Children.Add(metadataRadio);
+
+        var identity = new ImportIdentityModel(hasSourceRelease: true);
+        exactRadio.Checked += (_, _) => identity.SetMetadataOnly(false);
+        metadataRadio.Checked += (_, _) => identity.SetMetadataOnly(true);
+
         var form = new StackPanel { Spacing = 8, Width = 420 };
         form.Children.Add(artistBox);
         form.Children.Add(albumBox);
         form.Children.Add(sourceBox);
         form.Children.Add(searchButton);
         form.Children.Add(resultsList);
+        form.Children.Add(claimRow);
         form.Children.Add(status);
 
         var dialog = new ContentDialog
@@ -273,6 +308,7 @@ internal sealed class ReleaseActionDialogs
             Title = Loc.Chrome("album.reidentify.title"),
             Content = new ScrollViewer { Content = form },
             PrimaryButtonText = Loc.Chrome("album.reidentify.confirm"),
+            SecondaryButtonText = Loc.Chrome("identify.skip"),
             CloseButtonText = Loc.Chrome("action.cancel"),
             XamlRoot = _xamlRoot(),
             IsPrimaryButtonEnabled = false,
@@ -312,7 +348,12 @@ internal sealed class ReleaseActionDialogs
 
         resultsList.SelectionChanged += (_, _) =>
         {
-            dialog.IsPrimaryButtonEnabled = resultsList.SelectedIndex >= 0;
+            var selected = resultsList.SelectedIndex >= 0;
+            dialog.IsPrimaryButtonEnabled = selected;
+            claimRow.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
+            // Each new pick resets the claim to exact.
+            identity = new ImportIdentityModel(hasSourceRelease: true);
+            exactRadio.IsChecked = true;
         };
 
         dialog.PrimaryButtonClick += async (_, args) =>
@@ -327,7 +368,32 @@ internal sealed class ReleaseActionDialogs
             var chosen = candidates[index];
             var deferral = args.GetDeferral();
             var (current, error) = await _session.RunForCurrentHandle(
-                handle => NativeBae.ReidentifyRelease(handle, releaseId, chosen.ReleaseId, chosen.Source));
+                handle => NativeBae.ReidentifyRelease(handle, releaseId,
+                    NativeBae.SourceIdentityChoice(!identity.MetadataOnly, chosen.ReleaseId, chosen.Source)));
+            if (!current)
+            {
+                args.Cancel = true;
+                deferral.Complete();
+                return;
+            }
+            if (error is not null)
+            {
+                status.Text = error;
+                status.Visibility = Visibility.Visible;
+                args.Cancel = true;
+            }
+
+            deferral.Complete();
+        };
+
+        // "Skip identifying" clears any source identity in one click: core reseeds
+        // the release's rows from the rip's file tags, so there is no editable seed
+        // page and no follow-up refresh prompt.
+        dialog.SecondaryButtonClick += async (_, args) =>
+        {
+            var deferral = args.GetDeferral();
+            var (current, error) = await _session.RunForCurrentHandle(
+                handle => NativeBae.ReidentifyRelease(handle, releaseId, new BridgeIdentityChoice.Unknown()));
             if (!current)
             {
                 args.Cancel = true;

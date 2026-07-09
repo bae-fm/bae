@@ -550,8 +550,8 @@ internal static class NativeBae
         CaptureBridgeValue(() => CandidateChoices(Await(handle.SearchForCandidate(
             new BridgeSearchQuery.General(artist, album, MetadataSource(source))))));
 
-    internal static string? ReidentifyRelease(AppHandle handle, string releaseId, string chosenReleaseId, BridgeMetadataSource source) =>
-        CaptureError(() => Await(handle.ReIdentifyRelease(releaseId, new BridgeIdentityChoice.Exact(chosenReleaseId, source))));
+    internal static string? ReidentifyRelease(AppHandle handle, string releaseId, BridgeIdentityChoice choice) =>
+        CaptureError(() => Await(handle.ReIdentifyRelease(releaseId, choice)));
 
     internal static string? ScanFolder(AppHandle handle, string path, bool clearFirst) =>
         CaptureError(() => handle.AddWatchedFolder(path));
@@ -581,6 +581,20 @@ internal static class NativeBae
         string folderPath) =>
         CaptureBridgeValue(() => PrefetchedEdit(handle, releaseId, source, folderPath));
 
+    /// <summary>
+    /// The skip-identify confirm seed: project the folder's embedded file tags
+    /// into the edit form. No source release, so no remote covers and no kept
+    /// detail — only the folder's local artwork is offered.
+    /// </summary>
+    internal static (PrefetchedEdit? Prefetched, string? Error) PrefetchUnknownEdit(
+        AppHandle handle, string folderPath) =>
+        CaptureBridgeValue(() => new PrefetchedEdit
+        {
+            Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(
+                Await(handle.PreviewFileTagsForFolder(folderPath)), "unknown-track"),
+            LocalArtwork = LocalArtwork(handle.GetCandidate(folderPath)),
+        });
+
     internal static (BridgeLibraryStatus? Status, string? Error) CheckReleaseInLibrary(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() =>
         {
@@ -591,14 +605,14 @@ internal static class NativeBae
         });
 
     internal static string? ImportCandidate(
-        AppHandle handle, string candidateKey, string folderPath, string chosenReleaseId, BridgeMetadataSource source, string storageMode, bool pin, BridgeRawReleaseEdit userEdit, BridgeCoverSelection? selectedCover) =>
+        AppHandle handle, string candidateKey, string folderPath, BridgeIdentityChoice identity, string storageMode, bool pin, BridgeRawReleaseEdit userEdit, BridgeCoverSelection? selectedCover) =>
         CaptureError(() => handle.StartImport(
             candidateKey,
             folderPath,
             selectedCover,
             StorageMode(storageMode),
             pin,
-            new BridgeIdentityChoice.Exact(chosenReleaseId, source),
+            identity,
             ReleaseUserEdit(userEdit)));
 
     internal static byte[]? ImageBytes(AppHandle? handle, BridgeImageRef image) =>
@@ -796,15 +810,15 @@ internal static class NativeBae
     {
         var localTrackCount = LocalTrackCount(handle.GetCandidate(folderPath));
         var detail = Await(handle.PrefetchRelease(releaseId, source, localTrackCount));
-        var choice = new BridgeIdentityChoice.Exact(releaseId, source);
-        var edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(
-            BaeBridgeMethods.ShapeUserEditFromReleaseDetail(detail, choice),
-            "prefetch-track");
+        // A picked release claims the exact pressing by default; the confirm
+        // dialog re-shapes this seed if the user switches to metadata only.
+        var edit = ShapeCandidateEdit(detail, new BridgeIdentityChoice.Exact(releaseId, source));
         return new PrefetchedEdit
         {
             Edit = edit,
             RemoteCovers = detail.CoverArt.ToList(),
             LocalArtwork = LocalArtwork(handle.GetCandidate(folderPath)),
+            Detail = detail,
         };
     }
 
@@ -1060,6 +1074,26 @@ internal static class NativeBae
             "barcode" => new BridgeExcludedSignal.Barcode(),
             _ => new BridgeExcludedSignal.Catalog(value),
         };
+
+    /// <summary>
+    /// The identity claim for a source-backed pick: <c>Exact</c> keeps the picked
+    /// pressing's fields, <c>Approximate</c> claims only the album group (core
+    /// blanks the pressing fields). The only place these two variants are built.
+    /// </summary>
+    internal static BridgeIdentityChoice SourceIdentityChoice(bool exact, string releaseId, BridgeMetadataSource source) =>
+        exact
+            ? new BridgeIdentityChoice.Exact(releaseId, source)
+            : new BridgeIdentityChoice.Approximate(releaseId, source);
+
+    /// <summary>
+    /// Re-shape the confirm-form seed from a kept release detail under a new
+    /// identity claim — used when the user flips exact ↔ metadata only, with no
+    /// re-fetch. Approximate nils the pressing fields; Exact keeps them.
+    /// </summary>
+    internal static BridgeRawReleaseEdit ShapeCandidateEdit(BridgeReleaseDetail detail, BridgeIdentityChoice choice) =>
+        BaeBridgeMethods.RawReleaseEditFromUserEdit(
+            BaeBridgeMethods.ShapeUserEditFromReleaseDetail(detail, choice),
+            "prefetch-track");
 
     private static BridgeReleaseUserEdit ReleaseUserEdit(BridgeRawReleaseEdit edit) =>
         BaeBridgeMethods.ShapeReleaseEdit(edit) switch
