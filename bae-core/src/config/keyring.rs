@@ -1,4 +1,4 @@
-use tracing::{info, warn};
+use tracing::warn;
 
 /// Initialize the keyring credential store.
 ///
@@ -10,6 +10,7 @@ pub fn init_keyring() {
     #[cfg(target_os = "macos")]
     {
         use std::collections::HashMap;
+        use tracing::info;
         let config = HashMap::from([("cloud-sync", "true")]);
         match apple_native_keyring_store::protected::Store::new_with_configuration(&config) {
             Ok(store) => {
@@ -28,6 +29,7 @@ pub fn init_keyring() {
 
     #[cfg(target_os = "android")]
     {
+        use tracing::info;
         if let Ok(store) = android_native_keyring_store::Store::new() {
             keyring_core::set_default_store(store);
             info!("Keyring initialized (Android keystore)");
@@ -38,6 +40,7 @@ pub fn init_keyring() {
 
     #[cfg(target_os = "windows")]
     {
+        use tracing::info;
         match windows_native_keyring_store::Store::new() {
             Ok(store) => {
                 keyring_core::set_default_store(store);
