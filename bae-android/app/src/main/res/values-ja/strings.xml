@@ -65,6 +65,11 @@
     <string name="library_empty_composers">作曲者がありません</string>
     <string name="library_mode_composers">作曲者</string>
     <string name="library_mode_albums">アルバム</string>
+    <string name="library_mode_artists">アーティスト</string>
+    <string name="library_empty_artists">アーティストがいません</string>
+    <string name="album_count">%1$d枚のアルバム</string>
+    <string name="artist_detail_load_failed">このアーティストを読み込めませんでした。</string>
+    <string name="artist_detail_not_found">アーティストの詳細が見つかりません</string>
     <string name="sort_name">名前</string>
     <string name="gallery_load_failed">画像を読み込めませんでした</string>
     <string name="settings_library">ライブラリ</string>

@@ -222,6 +222,10 @@ object UiEventAdapter {
                 stores.library.invalidateComposerList()
             }
 
+            BridgeInvalidation.ArtistList -> {
+                stores.library.invalidateArtistList()
+            }
+
             is BridgeInvalidation.Album -> {
                 val detail = withContext(Dispatchers.IO) { appHandle.getAlbumDetail(invalidation.albumId) }
                 stores.library.replaceAlbumDetail(detail)
@@ -264,7 +268,6 @@ object UiEventAdapter {
             is BridgeInvalidation.ImportCandidate,
             BridgeInvalidation.WatchedFolders,
             is BridgeInvalidation.Composer,
-            BridgeInvalidation.ArtistList,
             -> {
                 logger.debug("ignoring ${invalidation::class.simpleName}")
             }

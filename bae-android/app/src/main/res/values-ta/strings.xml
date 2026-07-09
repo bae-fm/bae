@@ -65,6 +65,11 @@
     <string name="library_empty_composers">இசையமைப்பாளர்கள் இல்லை</string>
     <string name="library_mode_composers">இசையமைப்பாளர்கள்</string>
     <string name="library_mode_albums">ஆல்பங்கள்</string>
+    <string name="library_mode_artists">கலைஞர்கள்</string>
+    <string name="library_empty_artists">கலைஞர்கள் இல்லை</string>
+    <string name="album_count">%1$d ஆல்பங்கள்</string>
+    <string name="artist_detail_load_failed">இந்தக் கலைஞரை ஏற்ற முடியவில்லை.</string>
+    <string name="artist_detail_not_found">கலைஞர் விவரம் கிடைக்கவில்லை</string>
     <string name="sort_name">பெயர்</string>
     <string name="gallery_load_failed">படத்தை ஏற்ற முடியவில்லை</string>
     <string name="settings_library">நூலகம்</string>

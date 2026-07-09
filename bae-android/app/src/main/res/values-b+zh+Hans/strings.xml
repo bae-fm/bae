@@ -65,6 +65,11 @@
     <string name="library_empty_composers">没有作曲家</string>
     <string name="library_mode_composers">作曲家</string>
     <string name="library_mode_albums">专辑</string>
+    <string name="library_mode_artists">艺人</string>
+    <string name="library_empty_artists">没有艺人</string>
+    <string name="album_count">%1$d 张专辑</string>
+    <string name="artist_detail_load_failed">无法加载此艺人。</string>
+    <string name="artist_detail_not_found">未找到艺人详情</string>
     <string name="sort_name">名称</string>
     <string name="gallery_load_failed">无法加载图片</string>
     <string name="settings_library">库</string>

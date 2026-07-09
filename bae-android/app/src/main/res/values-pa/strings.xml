@@ -65,6 +65,11 @@
     <string name="library_empty_composers">ਕੋਈ ਸੰਗੀਤਕਾਰ ਨਹੀਂ</string>
     <string name="library_mode_composers">ਸੰਗੀਤਕਾਰ</string>
     <string name="library_mode_albums">ਐਲਬਮਾਂ</string>
+    <string name="library_mode_artists">ਕਲਾਕਾਰ</string>
+    <string name="library_empty_artists">ਕੋਈ ਕਲਾਕਾਰ ਨਹੀਂ</string>
+    <string name="album_count">%1$d ਐਲਬਮਾਂ</string>
+    <string name="artist_detail_load_failed">ਇਹ ਕਲਾਕਾਰ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ।</string>
+    <string name="artist_detail_not_found">ਕਲਾਕਾਰ ਵੇਰਵਾ ਨਹੀਂ ਮਿਲਿਆ</string>
     <string name="sort_name">ਨਾਂ</string>
     <string name="gallery_load_failed">ਚਿੱਤਰ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ</string>
     <string name="settings_library">ਲਾਇਬ੍ਰੇਰੀ</string>

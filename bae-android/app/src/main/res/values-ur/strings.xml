@@ -65,6 +65,11 @@
     <string name="library_empty_composers">کوئی موسیقار نہیں</string>
     <string name="library_mode_composers">موسیقار</string>
     <string name="library_mode_albums">البمز</string>
+    <string name="library_mode_artists">فنکار</string>
+    <string name="library_empty_artists">کوئی فنکار نہیں</string>
+    <string name="album_count">%1$d البمز</string>
+    <string name="artist_detail_load_failed">یہ فنکار لوڈ نہیں ہو سکا۔</string>
+    <string name="artist_detail_not_found">فنکار کی تفصیل نہیں ملی</string>
     <string name="sort_name">نام</string>
     <string name="gallery_load_failed">تصویر لوڈ نہیں ہو سکی</string>
     <string name="settings_library">لائبریری</string>

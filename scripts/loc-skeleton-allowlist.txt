@@ -147,6 +147,7 @@ nl	search_section_albums
 nl	search_section_credits
 nl	search_section_releases
 nl	library_mode_albums
+nl	album_count
 nl	settings_provider
 nl	settings_account
 nl	settings_bucket

@@ -65,6 +65,11 @@
     <string name="library_empty_composers">ಸಂಗೀತ ಸಂಯೋಜಕರು ಇಲ್ಲ</string>
     <string name="library_mode_composers">ಸಂಗೀತ ಸಂಯೋಜಕರು</string>
     <string name="library_mode_albums">ಆಲ್ಬಮ್‌ಗಳು</string>
+    <string name="library_mode_artists">ಕಲಾವಿದರು</string>
+    <string name="library_empty_artists">ಕಲಾವಿದರು ಇಲ್ಲ</string>
+    <string name="album_count">%1$d ಆಲ್ಬಮ್‌ಗಳು</string>
+    <string name="artist_detail_load_failed">ಈ ಕಲಾವಿದ ಲೋಡ್ ಆಗಲಿಲ್ಲ.</string>
+    <string name="artist_detail_not_found">ಕಲಾವಿದರ ವಿವರ ಸಿಕ್ಕಿಲ್ಲ</string>
     <string name="sort_name">ಹೆಸರು</string>
     <string name="gallery_load_failed">ಚಿತ್ರ ಲೋಡ್ ಆಗಲಿಲ್ಲ</string>
     <string name="settings_library">ಗ್ರಂಥಾಲಯ</string>

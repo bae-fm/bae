@@ -65,6 +65,11 @@
     <string name="library_empty_composers">ไม่มีผู้ประพันธ์</string>
     <string name="library_mode_composers">ผู้ประพันธ์</string>
     <string name="library_mode_albums">อัลบั้ม</string>
+    <string name="library_mode_artists">ศิลปิน</string>
+    <string name="library_empty_artists">ไม่มีศิลปิน</string>
+    <string name="album_count">อัลบั้ม %1$d รายการ</string>
+    <string name="artist_detail_load_failed">โหลดศิลปินนี้ไม่ได้</string>
+    <string name="artist_detail_not_found">ไม่พบรายละเอียดศิลปิน</string>
     <string name="sort_name">ชื่อ</string>
     <string name="gallery_load_failed">โหลดภาพไม่ได้</string>
     <string name="settings_library">คลัง</string>

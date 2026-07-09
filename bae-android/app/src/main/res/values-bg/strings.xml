@@ -65,6 +65,11 @@
     <string name="library_empty_composers">Няма композитори</string>
     <string name="library_mode_composers">Композитори</string>
     <string name="library_mode_albums">Албуми</string>
+    <string name="library_mode_artists">Изпълнители</string>
+    <string name="library_empty_artists">Няма изпълнители</string>
+    <string name="album_count">%1$d албума</string>
+    <string name="artist_detail_load_failed">Този изпълнител не можа да бъде зареден.</string>
+    <string name="artist_detail_not_found">Данните за изпълнителя не са намерени</string>
     <string name="sort_name">Име</string>
     <string name="gallery_load_failed">Изображението не може да бъде заредено</string>
     <string name="settings_library">Библиотека</string>

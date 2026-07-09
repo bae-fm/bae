@@ -94,6 +94,11 @@
     <string name="library_empty_composers">No composers</string>
     <string name="library_mode_composers">Composers</string>
     <string name="library_mode_albums">Albums</string>
+    <string name="library_mode_artists">Artists</string>
+    <string name="library_empty_artists">No artists</string>
+    <string name="album_count">%1$d Albums</string>
+    <string name="artist_detail_load_failed">Couldn\'t load this artist.</string>
+    <string name="artist_detail_not_found">Artist detail not found</string>
     <string name="sort_name">Name</string>
 
     <!-- Gallery -->

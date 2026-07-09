@@ -3,6 +3,9 @@ package fm.bae.app.data
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeArtistDetail
+import uniffi.bae_bridge.BridgeArtistSortCriterion
+import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
@@ -43,6 +46,16 @@ class Library(
     ): List<BridgeComposerSummary> = handle.getComposerPage(sortCriterion, offset, limit)
 
     suspend fun composerDetail(artistId: String): BridgeComposerDetail? = handle.getComposerDetail(artistId)
+
+    suspend fun artistCount(): ULong = handle.getArtistCount()
+
+    suspend fun artistPage(
+        sortCriterion: BridgeArtistSortCriterion,
+        offset: ULong,
+        limit: ULong,
+    ): List<BridgeArtistSummary> = handle.getArtistPage(sortCriterion, offset, limit)
+
+    suspend fun artistDetail(artistId: String): BridgeArtistDetail? = handle.getArtistDetail(artistId)
 
     suspend fun workDetail(workId: String): BridgeWorkDetail? = handle.getWorkDetail(workId)
 

@@ -311,7 +311,7 @@ private fun WorkSummaryRow(
 }
 
 @Composable
-private fun TwoLineText(
+internal fun TwoLineText(
     title: String,
     subtitle: String?,
 ) {
@@ -329,7 +329,7 @@ private fun TwoLineText(
 }
 
 @Composable
-private fun LibraryDetailTopBar(onBack: () -> Unit) {
+internal fun LibraryDetailTopBar(onBack: () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
@@ -344,7 +344,7 @@ private fun LibraryDetailTopBar(onBack: () -> Unit) {
 }
 
 @Composable
-private fun LibrarySectionHeader(title: String) {
+internal fun LibrarySectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall,

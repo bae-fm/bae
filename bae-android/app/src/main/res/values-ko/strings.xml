@@ -65,6 +65,11 @@
     <string name="library_empty_composers">작곡가 없음</string>
     <string name="library_mode_composers">작곡가</string>
     <string name="library_mode_albums">앨범</string>
+    <string name="library_mode_artists">아티스트</string>
+    <string name="library_empty_artists">아티스트 없음</string>
+    <string name="album_count">앨범 %1$d개</string>
+    <string name="artist_detail_load_failed">이 아티스트를 불러올 수 없습니다.</string>
+    <string name="artist_detail_not_found">아티스트 세부 정보를 찾을 수 없음</string>
     <string name="sort_name">이름</string>
     <string name="gallery_load_failed">이미지를 불러올 수 없습니다</string>
     <string name="settings_library">라이브러리</string>

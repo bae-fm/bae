@@ -65,6 +65,11 @@
     <string name="library_empty_composers">Nema skladatelja</string>
     <string name="library_mode_composers">Skladatelji</string>
     <string name="library_mode_albums">Albumi</string>
+    <string name="library_mode_artists">Izvođači</string>
+    <string name="library_empty_artists">Nema izvođača</string>
+    <string name="album_count">%1$d albuma</string>
+    <string name="artist_detail_load_failed">Nije moguće učitati ovog izvođača.</string>
+    <string name="artist_detail_not_found">Detalji izvođača nisu pronađeni</string>
     <string name="sort_name">Naziv</string>
     <string name="gallery_load_failed">Nije moguće učitati sliku</string>
     <string name="settings_library">Fonoteka</string>

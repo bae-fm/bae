@@ -24,6 +24,10 @@ internal sealed interface LibraryDestination {
         val artistId: String,
     ) : LibraryDestination
 
+    data class Artist(
+        val artistId: String,
+    ) : LibraryDestination
+
     data object Members : LibraryDestination
 
     data object Settings : LibraryDestination
@@ -108,6 +112,15 @@ internal fun LibraryDestinationScreen(
                 onBack = onBack,
                 onSelectWork = pushWork,
                 onSelectAlbum = pushAlbum,
+            )
+        }
+
+        is LibraryDestination.Artist -> {
+            ArtistDetailScreen(
+                session = session,
+                artistId = destination.artistId,
+                onBack = onBack,
+                onSelectAlbum = { onPush(LibraryDestination.Album(AlbumTarget(it))) },
             )
         }
 

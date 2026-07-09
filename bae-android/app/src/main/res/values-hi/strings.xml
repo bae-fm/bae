@@ -65,6 +65,11 @@
     <string name="library_empty_composers">कोई संगीतकार नहीं</string>
     <string name="library_mode_composers">संगीतकार</string>
     <string name="library_mode_albums">एल्बम</string>
+    <string name="library_mode_artists">कलाकार</string>
+    <string name="library_empty_artists">कोई कलाकार नहीं</string>
+    <string name="album_count">%1$d एल्बम</string>
+    <string name="artist_detail_load_failed">यह कलाकार लोड नहीं हो सका।</string>
+    <string name="artist_detail_not_found">कलाकार विवरण नहीं मिला</string>
     <string name="sort_name">नाम</string>
     <string name="gallery_load_failed">छवि लोड नहीं हो सकी</string>
     <string name="settings_library">लाइब्रेरी</string>

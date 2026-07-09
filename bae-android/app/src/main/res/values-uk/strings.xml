@@ -65,6 +65,11 @@
     <string name="library_empty_composers">Немає композиторів</string>
     <string name="library_mode_composers">Композитори</string>
     <string name="library_mode_albums">Альбоми</string>
+    <string name="library_mode_artists">Виконавці</string>
+    <string name="library_empty_artists">Немає виконавців</string>
+    <string name="album_count">%1$d альбомів</string>
+    <string name="artist_detail_load_failed">Не вдалося завантажити цього виконавця.</string>
+    <string name="artist_detail_not_found">Відомості про виконавця не знайдено</string>
     <string name="sort_name">Назва</string>
     <string name="gallery_load_failed">Не вдалося завантажити зображення</string>
     <string name="settings_library">Бібліотека</string>

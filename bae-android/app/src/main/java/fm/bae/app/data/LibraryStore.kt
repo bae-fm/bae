@@ -32,6 +32,9 @@ class LibraryStore {
     private val _composerGeneration = MutableStateFlow(0L)
     val composerGeneration: StateFlow<Long> = _composerGeneration.asStateFlow()
 
+    private val _artistGeneration = MutableStateFlow(0L)
+    val artistGeneration: StateFlow<Long> = _artistGeneration.asStateFlow()
+
     fun albumDetail(albumId: String): BridgeAlbumDetail? = _albumDetails.value[albumId]
 
     /**
@@ -57,6 +60,10 @@ class LibraryStore {
 
     fun invalidateComposerList() {
         _composerGeneration.update { it + 1 }
+    }
+
+    fun invalidateArtistList() {
+        _artistGeneration.update { it + 1 }
     }
 
     fun replaceAlbumDetail(album: BridgeAlbumDetail) {

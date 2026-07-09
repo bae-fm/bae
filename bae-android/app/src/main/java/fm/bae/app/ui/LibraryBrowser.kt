@@ -29,6 +29,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import uniffi.bae_bridge.BridgeArtistSortCriterion
+import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeSortCriterion
@@ -41,6 +43,8 @@ private val DEFAULT_ALBUM_SORT =
     BridgeSortCriterion(BridgeSortField.DATE_ADDED, BridgeSortDirection.DESCENDING)
 private val DEFAULT_COMPOSER_SORT =
     BridgeComposerSortCriterion(BridgeComposerSortField.NAME, BridgeSortDirection.ASCENDING)
+private val DEFAULT_ARTIST_SORT =
+    BridgeArtistSortCriterion(BridgeArtistSortField.NAME, BridgeSortDirection.ASCENDING)
 
 /**
  * Browser chrome state, owned above the stack in [LibraryScreen] so tab, sort,
@@ -52,6 +56,7 @@ internal class LibraryBrowserState {
     var mode by mutableStateOf(LibraryBrowserMode.ALBUMS)
     var sortCriterion by mutableStateOf(DEFAULT_ALBUM_SORT)
     var composerSortCriterion by mutableStateOf(DEFAULT_COMPOSER_SORT)
+    var artistSortCriterion by mutableStateOf(DEFAULT_ARTIST_SORT)
     val gridState = LazyGridState()
 
     fun closeSearch() {
@@ -67,12 +72,14 @@ internal fun LibraryBrowser(
     state: LibraryBrowserState,
     onSelectAlbum: (String) -> Unit,
     onSelectComposer: (String) -> Unit,
+    onSelectArtist: (String) -> Unit,
     onSelectWork: (String) -> Unit,
     onSettings: () -> Unit,
     onDownloads: () -> Unit,
 ) {
     val generation by session.libraryStore.generation.collectAsState()
     val composerGeneration by session.libraryStore.composerGeneration.collectAsState()
+    val artistGeneration by session.libraryStore.artistGeneration.collectAsState()
     val syncing by session.configStore.syncing.collectAsState()
     val syncError by session.configStore.syncError.collectAsState()
     val appError by session.configStore.error.collectAsState()
@@ -93,6 +100,8 @@ internal fun LibraryBrowser(
             onSortChange = { state.sortCriterion = it },
             composerSortCriterion = state.composerSortCriterion,
             onComposerSortChange = { state.composerSortCriterion = it },
+            artistSortCriterion = state.artistSortCriterion,
+            onArtistSortChange = { state.artistSortCriterion = it },
             syncing = syncing,
             onShuffleLibrary = { session.playLibraryShuffledOrReport(appContext, coroutineScope) },
             onSettings = onSettings,
@@ -105,13 +114,16 @@ internal fun LibraryBrowser(
             mode = state.mode,
             generation = generation,
             composerGeneration = composerGeneration,
+            artistGeneration = artistGeneration,
             sortCriterion = state.sortCriterion,
             composerSortCriterion = state.composerSortCriterion,
+            artistSortCriterion = state.artistSortCriterion,
             appError = appError,
             syncError = syncError,
             gridState = state.gridState,
             onSelectAlbum = onSelectAlbum,
             onSelectComposer = onSelectComposer,
+            onSelectArtist = onSelectArtist,
             onSelectWork = onSelectWork,
             appContext = appContext,
         )
@@ -154,13 +166,16 @@ private fun LibraryBrowserContent(
     mode: LibraryBrowserMode,
     generation: Long,
     composerGeneration: Long,
+    artistGeneration: Long,
     sortCriterion: BridgeSortCriterion,
     composerSortCriterion: BridgeComposerSortCriterion,
+    artistSortCriterion: BridgeArtistSortCriterion,
     appError: String?,
     syncError: String?,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
     onSelectComposer: (String) -> Unit,
+    onSelectArtist: (String) -> Unit,
     onSelectWork: (String) -> Unit,
     appContext: Context,
 ) {
@@ -196,6 +211,18 @@ private fun LibraryBrowserContent(
                         appError = appError,
                         syncError = syncError,
                         onSelectComposer = onSelectComposer,
+                        appContext = appContext,
+                    )
+                }
+
+                LibraryBrowserMode.ARTISTS -> {
+                    ArtistBrowserContent(
+                        session = session,
+                        generation = artistGeneration,
+                        sortCriterion = artistSortCriterion,
+                        appError = appError,
+                        syncError = syncError,
+                        onSelectArtist = onSelectArtist,
                         appContext = appContext,
                     )
                 }
@@ -271,6 +298,37 @@ private fun ComposerBrowserContent(
 }
 
 @Composable
+private fun ArtistBrowserContent(
+    session: OpenLibrary,
+    generation: Long,
+    sortCriterion: BridgeArtistSortCriterion,
+    appError: String?,
+    syncError: String?,
+    onSelectArtist: (String) -> Unit,
+    appContext: Context,
+) {
+    val page =
+        rememberArtistPage(
+            session = session,
+            generation = generation,
+            sortCriterion = sortCriterion,
+            appContext = appContext,
+        )
+    Column(modifier = Modifier.fillMaxSize()) {
+        LibraryGlobalErrorBanner(
+            appError = appError,
+            syncError = syncError,
+            session = session,
+        )
+        ArtistListContent(
+            page = page,
+            loadImage = session.library::imageBytes,
+            onSelectArtist = onSelectArtist,
+        )
+    }
+}
+
+@Composable
 private fun LibraryBrowserChrome(
     searchOpen: Boolean,
     searchQuery: String,
@@ -283,6 +341,8 @@ private fun LibraryBrowserChrome(
     onSortChange: (BridgeSortCriterion) -> Unit,
     composerSortCriterion: BridgeComposerSortCriterion,
     onComposerSortChange: (BridgeComposerSortCriterion) -> Unit,
+    artistSortCriterion: BridgeArtistSortCriterion,
+    onArtistSortChange: (BridgeArtistSortCriterion) -> Unit,
     syncing: Boolean,
     onShuffleLibrary: () -> Unit,
     onSettings: () -> Unit,
@@ -302,6 +362,8 @@ private fun LibraryBrowserChrome(
             onSortChange = onSortChange,
             composerSortCriterion = composerSortCriterion,
             onComposerSortChange = onComposerSortChange,
+            artistSortCriterion = artistSortCriterion,
+            onArtistSortChange = onArtistSortChange,
             onSettings = onSettings,
         )
     }

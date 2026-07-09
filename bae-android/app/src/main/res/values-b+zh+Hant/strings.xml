@@ -65,6 +65,11 @@
     <string name="library_empty_composers">沒有作曲者</string>
     <string name="library_mode_composers">作曲者</string>
     <string name="library_mode_albums">專輯</string>
+    <string name="library_mode_artists">藝人</string>
+    <string name="library_empty_artists">沒有藝人</string>
+    <string name="album_count">%1$d 張專輯</string>
+    <string name="artist_detail_load_failed">無法載入此藝人。</string>
+    <string name="artist_detail_not_found">找不到藝人詳細資料</string>
     <string name="sort_name">名稱</string>
     <string name="gallery_load_failed">無法載入影像</string>
     <string name="settings_library">資料庫</string>

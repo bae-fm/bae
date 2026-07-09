@@ -73,6 +73,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeAlbum
+import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeSortCriterion
@@ -93,6 +94,7 @@ internal class PageError(
 internal enum class LibraryBrowserMode {
     ALBUMS,
     COMPOSERS,
+    ARTISTS,
 }
 
 /**
@@ -230,6 +232,7 @@ fun LibraryScreen(
                 state = browserState,
                 onSelectAlbum = { navigator.push(LibraryDestination.Album(AlbumTarget(it))) },
                 onSelectComposer = { navigator.push(LibraryDestination.Composer(it)) },
+                onSelectArtist = { navigator.push(LibraryDestination.Artist(it)) },
                 onSelectWork = { navigator.push(LibraryDestination.Work(it)) },
                 onSettings = { navigator.push(LibraryDestination.Settings) },
                 onDownloads = { navigator.push(LibraryDestination.Downloads) },
@@ -360,6 +363,8 @@ internal fun LibraryTopBar(
     onSortChange: (BridgeSortCriterion) -> Unit,
     composerSortCriterion: BridgeComposerSortCriterion,
     onComposerSortChange: (BridgeComposerSortCriterion) -> Unit,
+    artistSortCriterion: BridgeArtistSortCriterion,
+    onArtistSortChange: (BridgeArtistSortCriterion) -> Unit,
     onSettings: () -> Unit,
 ) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
@@ -389,6 +394,13 @@ internal fun LibraryTopBar(
                         onChange = onComposerSortChange,
                     )
                 }
+
+                LibraryBrowserMode.ARTISTS -> {
+                    ArtistSortMenu(
+                        criterion = artistSortCriterion,
+                        onChange = onArtistSortChange,
+                    )
+                }
             }
             IconButton(onClick = onSettings) {
                 Icon(imageVector = Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
@@ -416,6 +428,12 @@ internal fun LibraryModeBar(
             Text(
                 text = stringResource(R.string.library_mode_composers),
                 fontWeight = if (mode == LibraryBrowserMode.COMPOSERS) FontWeight.Bold else FontWeight.Normal,
+            )
+        }
+        TextButton(onClick = { onModeChange(LibraryBrowserMode.ARTISTS) }) {
+            Text(
+                text = stringResource(R.string.library_mode_artists),
+                fontWeight = if (mode == LibraryBrowserMode.ARTISTS) FontWeight.Bold else FontWeight.Normal,
             )
         }
     }

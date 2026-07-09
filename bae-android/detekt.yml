@@ -23,6 +23,12 @@ complexity:
     # god-interface, and grows as core adds events. The default cap of 11 forces
     # an artificial split of that cohesive list.
     thresholdInInterfaces: 20
+    # Library is the class-side twin: a narrow projection of AppHandle's library
+    # read surface (count/page/detail per browse mode — albums, composers,
+    # artists — plus image and search), each method a thin delegating call. It
+    # is a cohesive facade that grows one triad per browse mode, not a
+    # god-class, so the default cap of 11 forces the same artificial split.
+    thresholdInClasses: 20
 
 naming:
   # Jetpack Compose @Composable functions use PascalCase by convention

@@ -65,6 +65,11 @@
     <string name="library_empty_composers">సంగీతరచయితలు లేరు</string>
     <string name="library_mode_composers">సంగీతరచయితలు</string>
     <string name="library_mode_albums">ఆల్బమ్‌లు</string>
+    <string name="library_mode_artists">కళాకారులు</string>
+    <string name="library_empty_artists">కళాకారులు లేరు</string>
+    <string name="album_count">%1$d ఆల్బమ్‌లు</string>
+    <string name="artist_detail_load_failed">ఈ కళాకారుని లోడ్ చేయలేకపోయింది.</string>
+    <string name="artist_detail_not_found">కళాకారుని వివరాలు కనబడలేదు</string>
     <string name="sort_name">పేరు</string>
     <string name="gallery_load_failed">చిత్రాన్ని లోడ్ చేయలేకపోయింది</string>
     <string name="settings_library">లైబ్రరీ</string>

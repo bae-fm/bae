@@ -65,6 +65,11 @@
     <string name="library_empty_composers">Nenhum compositor</string>
     <string name="library_mode_composers">Compositores</string>
     <string name="library_mode_albums">Álbuns</string>
+    <string name="library_mode_artists">Artistas</string>
+    <string name="library_empty_artists">Nenhum artista</string>
+    <string name="album_count">%1$d álbuns</string>
+    <string name="artist_detail_load_failed">Não foi possível carregar este artista.</string>
+    <string name="artist_detail_not_found">Detalhes do artista não encontrados</string>
     <string name="sort_name">Nome</string>
     <string name="gallery_load_failed">Não foi possível carregar a imagem</string>
     <string name="settings_library">Biblioteca</string>

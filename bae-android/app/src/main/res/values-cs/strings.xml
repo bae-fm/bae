@@ -65,6 +65,11 @@
     <string name="library_empty_composers">Žádní skladatelé</string>
     <string name="library_mode_composers">Skladatelé</string>
     <string name="library_mode_albums">Alba</string>
+    <string name="library_mode_artists">Interpreti</string>
+    <string name="library_empty_artists">Žádní interpreti</string>
+    <string name="album_count">%1$d alb</string>
+    <string name="artist_detail_load_failed">Tohoto interpreta se nepodařilo načíst.</string>
+    <string name="artist_detail_not_found">Detail interpreta nebyl nalezen</string>
     <string name="sort_name">Název</string>
     <string name="gallery_load_failed">Nelze načíst obrázek</string>
     <string name="settings_library">Knihovna</string>

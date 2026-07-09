@@ -65,6 +65,11 @@
     <string name="library_empty_composers">Geen componisten</string>
     <string name="library_mode_composers">Componisten</string>
     <string name="library_mode_albums">Albums</string>
+    <string name="library_mode_artists">Artiesten</string>
+    <string name="library_empty_artists">Geen artiesten</string>
+    <string name="album_count">%1$d albums</string>
+    <string name="artist_detail_load_failed">Kan deze artiest niet laden.</string>
+    <string name="artist_detail_not_found">Artiestdetails niet gevonden</string>
     <string name="sort_name">Naam</string>
     <string name="gallery_load_failed">Kan afbeelding niet laden</string>
     <string name="settings_library">Bibliotheek</string>

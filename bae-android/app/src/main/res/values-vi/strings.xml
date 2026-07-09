@@ -65,6 +65,11 @@
     <string name="library_empty_composers">Không có nhà soạn nhạc</string>
     <string name="library_mode_composers">Nhà soạn nhạc</string>
     <string name="library_mode_albums">Album</string>
+    <string name="library_mode_artists">Nghệ sĩ</string>
+    <string name="library_empty_artists">Không có nghệ sĩ</string>
+    <string name="album_count">%1$d album</string>
+    <string name="artist_detail_load_failed">Không thể tải nghệ sĩ này.</string>
+    <string name="artist_detail_not_found">Không tìm thấy chi tiết nghệ sĩ</string>
     <string name="sort_name">Tên</string>
     <string name="gallery_load_failed">Không thể tải hình ảnh</string>
     <string name="settings_library">Thư viện</string>

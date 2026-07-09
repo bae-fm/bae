@@ -65,6 +65,11 @@
     <string name="library_empty_composers">Besteci yok</string>
     <string name="library_mode_composers">Besteciler</string>
     <string name="library_mode_albums">Albümler</string>
+    <string name="library_mode_artists">Sanatçılar</string>
+    <string name="library_empty_artists">Sanatçı yok</string>
+    <string name="album_count">%1$d Albüm</string>
+    <string name="artist_detail_load_failed">Bu sanatçı yüklenemedi.</string>
+    <string name="artist_detail_not_found">Sanatçı ayrıntısı bulunamadı</string>
     <string name="sort_name">Ad</string>
     <string name="gallery_load_failed">Görüntü yüklenemedi</string>
     <string name="settings_library">Kitaplık</string>
