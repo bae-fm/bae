@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>خطأ في التشغيل</value></data>
   <data name="error.title" xml:space="preserve"><value>خطأ</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>تعذّر تحميل المعرض</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>المعرض</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>تعارض</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, zero {تم العثور على (#)} one {تم العثور على (#)} two {تم العثور على (#)} few {تم العثور على (#)} many {تم العثور على (#)} other {تم العثور على (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>جارٍ التحديد…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>تعذّر فتح مجلد المكتبة</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>الاستعادة عند التشغيل</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>يحفظ المقطوعة الحالية والموضع وقائمة الانتظار ومستوى الصوت عند الخروج ويستعيدها عند التشغيل التالي.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} من {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>لم يتمكن من تحميل الصورة</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>الصورة السابقة</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>الصورة التالية</value></data>
 </root>

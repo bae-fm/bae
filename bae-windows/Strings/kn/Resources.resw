@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>ಪ್ಲೇಬ್ಯಾಕ್ ದೋಷ</value></data>
   <data name="error.title" xml:space="preserve"><value>ದೋಷ</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>ಗ್ಯಾಲರಿ ಲೋಡ್ ಆಗಲಿಲ್ಲ</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>ಗ್ಯಾಲರಿ</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>ಘರ್ಷಣೆ</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {ಸಿಕ್ಕಿದೆ (#)} other {ಸಿಕ್ಕಿವೆ (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>ಗುರುತಿಸಲಾಗುತ್ತಿದೆ…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>ಲೈಬ್ರರಿ ಫೋಲ್ಡರ್ ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>ಪ್ರಾರಂಭಿಸುವಾಗ ಮರುಸ್ಥಾಪಿಸಿ</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>ಮುಚ್ಚುವಾಗ ಪ್ರಸ್ತುತ ಹಾಡು, ಸ್ಥಾನ, ಸರದಿ ಮತ್ತು ಧ್ವನಿಮಟ್ಟವನ್ನು ಉಳಿಸಿ, ಮುಂದಿನ ಪ್ರಾರಂಭದಲ್ಲಿ ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} ನ {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>ಚಿತ್ರವನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>ಹಿಂದಿನ ಚಿತ್ರ</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>ಮುಂದಿನ ಚಿತ್ರ</value></data>
 </root>

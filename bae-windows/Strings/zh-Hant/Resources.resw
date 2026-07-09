@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>播放錯誤</value></data>
   <data name="error.title" xml:space="preserve"><value>錯誤</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>無法載入圖庫</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>圖庫</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>衝突</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {找到 (#)} other {找到 (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>正在識別…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>無法開啟資料庫資料夾</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>啟動時還原</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>結束時儲存目前曲目、位置、佇列與音量，並在下次啟動時還原。</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index}/{count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>無法載入圖像</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>上一個圖像</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>下一個圖像</value></data>
 </root>

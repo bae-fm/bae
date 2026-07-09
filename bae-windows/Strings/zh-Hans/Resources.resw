@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>播放错误</value></data>
   <data name="error.title" xml:space="preserve"><value>错误</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>无法加载图库</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>图库</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>冲突</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, other {找到 (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>识别中…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>无法打开库文件夹</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>启动时恢复</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>退出时保存当前曲目、播放位置、队列和音量，并在下次启动时恢复。</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index}/{count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>无法加载图像</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>上一张图像</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>下一张图像</value></data>
 </root>

@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>ข้อผิดพลาดในการเล่น</value></data>
   <data name="error.title" xml:space="preserve"><value>ข้อผิดพลาด</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>โหลดแกลเลอรีไม่ได้</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>แกลเลอรี</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>ขัดแย้ง</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {พบ (#)} other {พบ (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>กำลังระบุ…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>เปิดโฟลเดอร์คลังไม่ได้</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>คืนค่าเมื่อเปิดแอป</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>บันทึกแทร็กปัจจุบัน ตำแหน่ง คิว และระดับเสียงเมื่อออก แล้วคืนค่าเมื่อเปิดครั้งถัดไป</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} จาก {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>ไม่สามารถโหลดรูปภาพได้</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>รูปภาพก่อนหน้า</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>รูปภาพถัดไป</value></data>
 </root>

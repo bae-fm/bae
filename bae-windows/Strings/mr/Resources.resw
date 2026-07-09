@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>वाजवण्याची त्रुटी</value></data>
   <data name="error.title" xml:space="preserve"><value>त्रुटी</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>दालन लोड करता आले नाही</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>दालन</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>संघर्ष</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {सापडले (#)} other {सापडले (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>ओळखत आहे…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>संग्रहालय फोल्डर उघडता आले नाही</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>सुरुवातीला पुनर्संचयित करा</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>बाहेर पडताना सध्याचे गाणे, स्थिती, रांग आणि आवाजपातळी जतन करते आणि पुढच्या सुरुवातीला ते पुनर्संचयित करते.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} का {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>प्रतिमा लोड करू शकलो नाही</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>मागील प्रतिमा</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>पुढील प्रतिमा</value></data>
 </root>

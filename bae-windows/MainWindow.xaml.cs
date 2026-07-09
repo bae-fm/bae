@@ -54,6 +54,7 @@ public sealed partial class MainWindow : Window
     private readonly ReleaseActionDialogs _releaseActions;
     private readonly AlbumDetailDialog _albumDetail;
     private readonly QueuePane _queuePane;
+    private readonly LightboxOverlay _lightbox;
     private readonly StorageStore _storage;
     private readonly StorageDialog _storageDialog;
     private readonly SettingsStore _settings;
@@ -164,6 +165,10 @@ public sealed partial class MainWindow : Window
         _router = new UiEventRouter(_playback, _shell, _projections, _mediaControls, _import.HandlePreviewEvent);
         _session.UiEvent += _router.Route;
 
+        // The artwork lightbox: opened from the album gallery and the import
+        // confirmation's local artwork tiles.
+        _lightbox = new LightboxOverlay(() => Content.XamlRoot);
+
         // Album detail and the per-release action dialogs it opens, plus the queue
         // dialog. Album detail is the shared entry point from the grid, the panes,
         // the now-playing jump, and the import "view in library" banner.
@@ -172,7 +177,8 @@ public sealed partial class MainWindow : Window
             () => Content.XamlRoot,
             () => WinRT.Interop.WindowNative.GetWindowHandle(this),
             text => StatusText.Text = text,
-            _projections);
+            _projections,
+            _lightbox);
         _albumDetail = new AlbumDetailDialog(
             _session,
             () => Content.XamlRoot,
@@ -238,7 +244,7 @@ public sealed partial class MainWindow : Window
         // The import flow: the confirm step (which can open an album), the picker
         // that leads to it, and the folder-scan dialog that opens the picker.
         _importConfirm = new ImportConfirmDialog(
-            _session, () => Content.XamlRoot, albumId => _albumDetail.Show(albumId));
+            _session, () => Content.XamlRoot, albumId => _albumDetail.Show(albumId), _lightbox);
         _importPicker = new ImportPickerDialog(_session, () => Content.XamlRoot, _import, _importConfirm);
         _importDialog = new ImportDialog(
             _session,

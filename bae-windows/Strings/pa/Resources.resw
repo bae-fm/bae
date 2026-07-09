@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>ਪਲੇਬੈਕ ਗਲਤੀ</value></data>
   <data name="error.title" xml:space="preserve"><value>ਗਲਤੀ</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>ਗੈਲਰੀ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕੀ</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>ਗੈਲਰੀ</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>ਟਕਰਾਅ</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {ਮਿਲਿਆ (#)} other {ਮਿਲੇ (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>ਪਛਾਣ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਫੋਲਡਰ ਨਹੀਂ ਖੁੱਲ੍ਹ ਸਕਿਆ</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>ਸ਼ੁਰੂ ਹੋਣ ਤੇ ਮੁੜ-ਬਹਾਲ ਕਰੋ</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>ਬੰਦ ਕਰਦੇ ਸਮੇਂ ਮੌਜੂਦਾ ਟ੍ਰੈਕ, ਸਥਿਤੀ, ਕਤਾਰ ਅਤੇ ਆਵਾਜ਼ ਸੰਭਾਲਦਾ ਹੈ ਅਤੇ ਅਗਲੀ ਸ਼ੁਰੂਆਤ ਤੇ ਉਹਨਾਂ ਨੂੰ ਮੁੜ-ਬਹਾਲ ਕਰਦਾ ਹੈ।</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{count} ਵਿੱਚੋਂ {index}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>ਤਸਵੀਰ ਲੋਡ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕੀ</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>ਪਿਛਲੀ ਤਸਵੀਰ</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>ਅਗਲੀ ਤਸਵੀਰ</value></data>
 </root>

@@ -21,19 +21,22 @@ internal sealed class ReleaseActionDialogs
     private readonly Func<IntPtr> _windowHandle;
     private readonly Action<string> _setStatus;
     private readonly ProjectionRegistry _projections;
+    private readonly LightboxOverlay _lightbox;
 
     public ReleaseActionDialogs(
         SessionStore session,
         Func<XamlRoot?> xamlRoot,
         Func<IntPtr> windowHandle,
         Action<string> setStatus,
-        ProjectionRegistry projections)
+        ProjectionRegistry projections,
+        LightboxOverlay lightbox)
     {
         _session = session;
         _xamlRoot = xamlRoot;
         _windowHandle = windowHandle;
         _setStatus = setStatus;
         _projections = projections;
+        _lightbox = lightbox;
     }
 
     public async System.Threading.Tasks.Task ShowExportRelease(string releaseId)
@@ -583,68 +586,48 @@ internal sealed class ReleaseActionDialogs
         await dialog.ShowAsync();
     }
 
-    public async System.Threading.Tasks.Task ShowGallery(string releaseId)
+    public System.Threading.Tasks.Task ShowGallery(string releaseId)
     {
         var (current, images) = _session.WithCurrentHandle(
             handle => NativeBae.Gallery(handle, releaseId).Items);
         if (!current)
         {
-            return;
+            return System.Threading.Tasks.Task.CompletedTask;
         }
         if (images is null)
         {
             _setStatus(Loc.Chrome("gallery.load_failed"));
-            return;
+            return System.Threading.Tasks.Task.CompletedTask;
         }
 
         if (images.Length == 0)
         {
-            return;
+            return System.Threading.Tasks.Task.CompletedTask;
         }
 
-        var index = 0;
-        var image = new Image { Stretch = Stretch.Uniform, MinHeight = 360, MinWidth = 360 };
-        var label = new TextBlock { HorizontalAlignment = HorizontalAlignment.Center };
-        void Show()
+        var entries = new List<LightboxEntry>();
+        foreach (var item in images)
         {
-            var item = images[index];
-            var handle = _session.CurrentHandleOrNull();
-            if (handle == null)
-            {
-                return;
-            }
-            image.Source = CoverImage.LoadGalleryBytes(handle, releaseId, item.Source);
-            label.Text = $"{item.Label} ({index + 1}/{images.Length})";
+            var capturedReleaseId = releaseId;
+            var capturedSource = item.Source;
+            var capturedLabel = item.Label;
+
+            entries.Add(new LightboxEntry(
+                item.Id,
+                capturedLabel,
+                () =>
+                {
+                    var handle = _session.CurrentHandleOrNull();
+                    if (handle is null)
+                    {
+                        return null;
+                    }
+                    return NativeBae.GalleryBytes(handle, capturedReleaseId, capturedSource);
+                }));
         }
-        Show();
 
-        var prev = new Button { Content = "‹" };
-        var next = new Button { Content = "›" };
-        prev.Click += (_, _) => { index = (index - 1 + images.Length) % images.Length; Show(); };
-        next.Click += (_, _) => { index = (index + 1) % images.Length; Show(); };
-
-        var nav = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Spacing = 12,
-        };
-        nav.Children.Add(prev);
-        nav.Children.Add(label);
-        nav.Children.Add(next);
-
-        var content = new StackPanel { Spacing = 8 };
-        content.Children.Add(image);
-        content.Children.Add(nav);
-
-        var dialog = new ContentDialog
-        {
-            Title = Loc.Chrome("gallery.title"),
-            Content = content,
-            CloseButtonText = Loc.Chrome("action.close"),
-            XamlRoot = _xamlRoot(),
-        };
-        await dialog.ShowAsync();
+        _lightbox.Show(entries, 0);
+        return System.Threading.Tasks.Task.CompletedTask;
     }
 
     // Pick a new cover for the release: its own image files plus remote candidates

@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>چلانے کی خرابی</value></data>
   <data name="error.title" xml:space="preserve"><value>خرابی</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>گیلری لوڈ نہیں ہو سکی</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>گیلری</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>ٹکراؤ</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {found (#)} other {found (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>شناخت ہو رہی ہے…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>لائبریری فولڈر نہیں کھل سکا</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>شروع ہونے پر بحال کریں</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>بند کرتے وقت موجودہ نغمہ، پوزیشن، قطار، اور آواز محفوظ کرتا ہے اور اگلی شروعات پر بحال کرتا ہے۔</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{count} میں سے {index}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>تصویر لوڈ نہیں کی جا سکی</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>پچھلی تصویر</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>اگلی تصویر</value></data>
 </root>

@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>שגיאת ניגון</value></data>
   <data name="error.title" xml:space="preserve"><value>שגיאה</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>לא ניתן לטעון את הגלריה</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>גלריה</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>התנגשות</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {נמצאה (#)} two {נמצאו (#)} many {נמצאו (#)} other {נמצאו (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>מזהה…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>לא ניתן לפתוח את תיקיית הספרייה</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>שחזר בהפעלה</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>שומר את הרצועה הנוכחית, המיקום, התור והעוצמה ביציאה ומשחזר אותם בהפעלה הבאה.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} מתוך {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>לא ניתן היה לטעון את התמונה</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>תמונה קודמת</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>תמונה הבאה</value></data>
 </root>

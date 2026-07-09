@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>प्लेबैक त्रुटि</value></data>
   <data name="error.title" xml:space="preserve"><value>त्रुटि</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>गैलरी लोड नहीं हो सकी</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>गैलरी</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>टकराव</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {मिला (#)} other {मिले (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>पहचान की जा रही है…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>लाइब्रेरी फ़ोल्डर नहीं खुल सका</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>शुरू होने पर बहाल करें</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>बंद करने पर मौजूदा ट्रैक, स्थिति, कतार और वॉल्यूम सहेजता है और अगली शुरुआत पर उन्हें बहाल करता है।</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} में से {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>छवि लोड नहीं कर सके</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>पिछली छवि</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>अगली छवि</value></data>
 </root>

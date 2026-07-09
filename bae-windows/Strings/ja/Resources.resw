@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>再生エラー</value></data>
   <data name="error.title" xml:space="preserve"><value>エラー</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>ギャラリーを読み込めませんでした</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>ギャラリー</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>競合</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, other {検出 (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>識別中…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>ライブラリフォルダーを開けませんでした</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>起動時に復元</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>終了時に現在のトラック、再生位置、キュー、音量を保存し、次回起動時に復元します。</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index}/{count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>画像を読み込めませんでした</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>前の画像</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>次の画像</value></data>
 </root>

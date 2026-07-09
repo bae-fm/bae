@@ -17,15 +17,18 @@ internal sealed class ImportConfirmDialog
     private readonly SessionStore _session;
     private readonly Func<XamlRoot?> _xamlRoot;
     private readonly Func<string, System.Threading.Tasks.Task> _openAlbum;
+    private readonly LightboxOverlay _lightbox;
 
     public ImportConfirmDialog(
         SessionStore session,
         Func<XamlRoot?> xamlRoot,
-        Func<string, System.Threading.Tasks.Task> openAlbum)
+        Func<string, System.Threading.Tasks.Task> openAlbum,
+        LightboxOverlay lightbox)
     {
         _session = session;
         _xamlRoot = xamlRoot;
         _openAlbum = openAlbum;
+        _lightbox = lightbox;
     }
 
     // Returns true when the user chose "Back to Search" — the caller re-opens the
@@ -279,10 +282,11 @@ internal sealed class ImportConfirmDialog
     // The import confirmation's cover-art picker: a gallery of the chosen release's
     // remote covers (thumbnails by URL) and the candidate folder's local artwork
     // (thumbnails by disk path). Clicking a tile selects it, highlights it, and
-    // reports its cover selection via onPick; nothing is picked by default, so the
-    // import uses its own default cover. Renders inline (not a nested dialog, which
-    // can't open over the confirm dialog).
-    private static StackPanel BuildCoverPicker(
+    // reports its cover selection via onPick; double-tapping local artwork opens
+    // the lightbox. Nothing is picked by default, so the import uses its own default
+    // cover. Renders inline (not a nested dialog, which can't open over the confirm
+    // dialog).
+    private StackPanel BuildCoverPicker(
         List<BridgeRemoteCover> remoteCovers, List<LocalArtwork> localArtwork, Action<BridgeCoverSelection> onPick)
     {
         var section = new StackPanel { Spacing = 4 };
@@ -328,10 +332,14 @@ internal sealed class ImportConfirmDialog
             onPick(selection);
         }
 
-        void AddTile(ImageSource? source, string caption, BridgeCoverSelection selection)
+        void AddTile(ImageSource? source, string caption, BridgeCoverSelection selection, bool isLocal = false, int localIndex = 0)
         {
             var tile = DialogPrimitives.CoverTile(source, caption);
             tile.Click += (_, _) => Select(tile, selection);
+            if (isLocal)
+            {
+                tile.DoubleTapped += (_, _) => OpenLocalArtworkLightbox(localArtwork, localIndex);
+            }
             tiles.Add(tile);
             grid.Children.Add(tile);
         }
@@ -352,9 +360,10 @@ internal sealed class ImportConfirmDialog
             }
 
             var selection = NativeBae.RemoteCoverSelection(cover);
-            AddTile(source, cover.Label, selection);
+            AddTile(source, cover.Label, selection, isLocal: false);
         }
 
+        var localArtworkCount = 0;
         foreach (var art in localArtwork)
         {
             BitmapImage source;
@@ -368,10 +377,37 @@ internal sealed class ImportConfirmDialog
             }
 
             var selection = new BridgeCoverSelection.ReleaseImage(art.FileId);
-            AddTile(source, System.IO.Path.GetFileName(art.FileId), selection);
+            var currentIndex = localArtworkCount;
+            AddTile(source, System.IO.Path.GetFileName(art.FileId), selection, isLocal: true, localIndex: currentIndex);
+            localArtworkCount++;
         }
 
         section.Children.Add(grid);
         return section;
+    }
+
+    private void OpenLocalArtworkLightbox(List<LocalArtwork> localArtwork, int startIndex)
+    {
+        var entries = new List<LightboxEntry>();
+        foreach (var art in localArtwork)
+        {
+            var capturedPath = art.Path;
+            entries.Add(new LightboxEntry(
+                art.FileId,
+                System.IO.Path.GetFileName(art.Path),
+                () =>
+                {
+                    try
+                    {
+                        return System.IO.File.ReadAllBytes(capturedPath);
+                    }
+                    catch (Exception)
+                    {
+                        return null;
+                    }
+                }));
+        }
+
+        _lightbox.Show(entries, startIndex);
     }
 }

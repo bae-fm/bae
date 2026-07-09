@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>помилка відтворення</value></data>
   <data name="error.title" xml:space="preserve"><value>помилка</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>не вдалося завантажити галерею</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>галерея</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>конфлікт</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {знайдено (#)} few {знайдено (#)} many {знайдено (#)} other {знайдено (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>ідентифікація…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>не вдалося відкрити папку бібліотеки</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Відновлювати під час запуску</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Зберігає поточний трек, позицію, чергу та гучність під час виходу й відновлює їх під час наступного запуску.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} з {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>не вдалося завантажити зображення</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>попереднє зображення</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>наступне зображення</value></data>
 </root>

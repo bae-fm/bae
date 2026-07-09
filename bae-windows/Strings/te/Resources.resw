@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>ప్లేబ్యాక్ లోపం</value></data>
   <data name="error.title" xml:space="preserve"><value>లోపం</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>గ్యాలరీని లోడ్ చేయలేకపోయింది</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>గ్యాలరీ</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>ఘర్షణ</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {కనబడింది (#)} other {కనబడ్డాయి (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>గుర్తిస్తోంది…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>లైబ్రరీ ఫోల్డర్‌ను తెరవడం సాధ్యం కాలేదు</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>ప్రారంభంలో పునరుద్ధరించు</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>మూసివేసేటప్పుడు ప్రస్తుత ట్రాక్, స్థానం, క్యూ, వాల్యూమ్‌ను సేవ్ చేసి తదుపరి ప్రారంభంలో పునరుద్ధరిస్తుంది.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{count} లో {index}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>చిత్రాన్ని లోడ్ చేయలేకపోయాను</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>మునుపటి చిత్రం</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>తదుపరి చిత్రం</value></data>
 </root>

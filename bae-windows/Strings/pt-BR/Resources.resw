@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>erro de reprodução</value></data>
   <data name="error.title" xml:space="preserve"><value>erro</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>não foi possível carregar a galeria</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>galeria</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>conflito</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {encontrado (#)} other {encontrados (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>identificando…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>não foi possível abrir a pasta da biblioteca</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Restaurar ao abrir</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Salva a faixa, posição, fila e volume atuais ao sair e os restaura na próxima abertura.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} de {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>não foi possível carregar a imagem</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>imagem anterior</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>próxima imagem</value></data>
 </root>

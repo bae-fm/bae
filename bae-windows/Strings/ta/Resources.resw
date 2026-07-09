@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>இயக்கல் பிழை</value></data>
   <data name="error.title" xml:space="preserve"><value>பிழை</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>காட்சியகத்தை ஏற்ற முடியவில்லை</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>காட்சியகம்</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>முரண்பாடு</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {கிடைத்தது (#)} other {கிடைத்தது (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>அடையாளம் காணப்படுகிறது…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>நூலக கோப்புறையைத் திறக்க முடியவில்லை</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>தொடக்கத்தில் மீட்டமை</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>வெளியேறும் போது தற்போதைய பாடல், நிலை, வரிசை, ஒலியளவைச் சேமித்து, அடுத்த தொடக்கத்தில் மீட்டெடுக்கும்.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{count} இல் {index}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>படத்தைப் பதிவிறக்க முடியவில்லை</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>முந்தைய படம்</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>அடுத்த படம்</value></data>
 </root>

@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>playback error</value></data>
   <data name="error.title" xml:space="preserve"><value>error</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>couldn't load the gallery</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>gallery</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>conflict</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {found (#)} other {found (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>identifying…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>couldn't open the library folder</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Restore on launch</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Saves the current track, position, queue, and volume on quit and restores them on next launch.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} of {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>couldn't load image</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>previous image</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>next image</value></data>
 </root>

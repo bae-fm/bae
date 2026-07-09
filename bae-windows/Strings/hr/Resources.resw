@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>pogreška reprodukcije</value></data>
   <data name="error.title" xml:space="preserve"><value>pogreška</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>nije moguće učitati galeriju</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>galerija</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>sukob</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {pronađeno (#)} few {pronađeno (#)} other {pronađeno (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>identifikacija…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>mapu fonoteke nije moguće otvoriti</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Vrati pri pokretanju</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Sprema trenutnu skladbu, položaj, red i glasnoću pri izlasku te ih vraća pri sljedećem pokretanju.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} od {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>nije moguće učitati sliku</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>prethodna slika</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>sljedeća slika</value></data>
 </root>

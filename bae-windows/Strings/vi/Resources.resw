@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>lỗi phát lại</value></data>
   <data name="error.title" xml:space="preserve"><value>lỗi</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>không thể tải thư viện ảnh</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>thư viện ảnh</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>xung đột</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {tìm thấy (#)} other {tìm thấy (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>đang nhận dạng…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>không thể mở thư mục thư viện</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Khôi phục khi khởi chạy</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Lưu bản nhạc hiện tại, vị trí, hàng đợi và âm lượng khi thoát rồi khôi phục ở lần mở tiếp theo.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} trong {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>không thể tải hình ảnh</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>hình ảnh trước</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>hình ảnh tiếp theo</value></data>
 </root>

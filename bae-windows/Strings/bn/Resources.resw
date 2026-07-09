@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>প্লেব্যাক ত্রুটি</value></data>
   <data name="error.title" xml:space="preserve"><value>ত্রুটি</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>গ্যালারি লোড করা যায়নি</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>গ্যালারি</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>দ্বন্দ্ব</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {পাওয়া গেছে (#)} other {পাওয়া গেছে (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>শনাক্ত করা হচ্ছে…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>লাইব্রেরি ফোল্ডার খোলা যায়নি</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>চালু হলে রিস্টোর করুন</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>বন্ধ করার সময় বর্তমান ট্র্যাক, অবস্থান, সারি ও ভলিউম সংরক্ষণ করে এবং পরেরবার চালু হলে সেগুলো ফিরিয়ে আনে।</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} এর {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>ছবি লোড করা যায়নি</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>আগের ছবি</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>পরবর্তী ছবি</value></data>
 </root>

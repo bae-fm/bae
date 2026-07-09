@@ -59,7 +59,6 @@
   <data name="error.playback_title" xml:space="preserve"><value>chyba přehrávání</value></data>
   <data name="error.title" xml:space="preserve"><value>chyba</value></data>
   <data name="gallery.load_failed" xml:space="preserve"><value>nelze načíst galerii</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>galerie</value></data>
   <data name="identify.conflict" xml:space="preserve"><value>konflikt</value></data>
   <data name="identify.found" xml:space="preserve"><value>{count, plural, one {nalezeno (#)} few {nalezeno (#)} many {nalezeno (#)} other {nalezeno (#)}}</value></data>
   <data name="identify.identifying" xml:space="preserve"><value>identifikace…</value></data>
@@ -384,4 +383,8 @@
   <data name="libraries.reveal_failed" xml:space="preserve"><value>složku knihovny se nepodařilo otevřít</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Obnovit při spuštění</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Při ukončení uloží aktuální skladbu, pozici, frontu a hlasitost a při příštím spuštění je obnoví.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} z {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>obrázek se nepodařilo načíst</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>předchozí obrázek</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>další obrázek</value></data>
 </root>
