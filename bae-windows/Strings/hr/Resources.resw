@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>Samo metapodaci</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>Samo metapodaci — polja izdanja ostaju prazna; bilježi se samo grupa albuma.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>Postavi identitet na ovo izdanje</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>umetni na položaj {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>red je prazan</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>povucite albume ovamo ili pustite album</value></data>
 </root>

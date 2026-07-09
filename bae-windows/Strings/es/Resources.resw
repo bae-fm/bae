@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>Solo metadatos</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>Solo metadatos — los campos del prensaje quedan en blanco; solo se registra el grupo del álbum.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>Establecer la identidad en este prensaje</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>insertar en la posición {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>la cola está vacía</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>arrastra álbumes aquí o reproduce un álbum</value></data>
 </root>

@@ -55,6 +55,7 @@
     <Compile Include="../Stores/LibrarySort.cs" Link="LibrarySort.cs" />
     <Compile Include="../TextTruncation.cs" Link="TextTruncation.cs" />
     <Compile Include="../Stores/QueueReorderModel.cs" Link="QueueReorderModel.cs" />
+    <Compile Include="../Stores/QueueInsertModel.cs" Link="QueueInsertModel.cs" />
     <Compile Include="../Stores/OrderedIntersection.cs" Link="OrderedIntersection.cs" />
     <Compile Include="../Stores/ImportIdentityModel.cs" Link="ImportIdentityModel.cs" />
   </ItemGroup>

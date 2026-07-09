@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>เฉพาะเมทาดาทา</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>เฉพาะเมทาดาทา — ช่องข้อมูลรุ่นกดแผ่นจะเว้นว่าง บันทึกเฉพาะกลุ่มอัลบั้ม</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>ตั้งข้อมูลระบุตัวตนเป็นการผลิตแผ่นนี้</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>แทรกที่ตำแหน่ง {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>คิวว่างเปล่า</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>ลากอัลบั้มมาที่นี่หรือเล่นอัลบั้ม</value></data>
 </root>

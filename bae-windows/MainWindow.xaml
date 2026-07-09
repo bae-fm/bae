@@ -65,6 +65,8 @@
             Padding="24"
             SelectionMode="None"
             IsItemClickEnabled="True"
+            CanDragItems="True"
+            DragItemsStarting="OnAlbumDragStarting"
             ItemClick="OnAlbumClick"
             RightTapped="OnAlbumGridRightTapped">
             <GridView.ItemTemplate>
@@ -155,6 +157,18 @@
             <InfoBar x:Name="Banner" IsOpen="False" IsClosable="True" />
             <InfoBar x:Name="SyncBanner" IsOpen="False" IsClosable="True" />
         </StackPanel>
+        <!-- The non-modal queue pane. A right-aligned in-tree panel (not a Flyout
+             or Popup) so the album grid behind it can source a drag while the pane
+             stays open; the queue button toggles its visibility. -->
+        <Border
+            x:Name="QueuePaneHost"
+            Grid.Row="1"
+            HorizontalAlignment="Right"
+            Width="360"
+            Visibility="Collapsed"
+            BorderThickness="1,0,0,0"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            Background="{ThemeResource LayerFillColorDefaultBrush}" />
         <Border
             x:Name="NowPlayingBar"
             Grid.Row="2"
@@ -262,7 +276,8 @@
                         VerticalAlignment="Center"
                         ValueChanged="OnVolumeChanged" />
                     <Grid>
-                        <Button x:Name="NpQueue" Content="☰" Click="OnQueueClick">
+                        <Button x:Name="NpQueue" Content="☰" Click="OnQueueClick"
+                                AllowDrop="True" DragOver="OnQueueButtonDragOver" Drop="OnQueueButtonDrop">
                             <Button.KeyboardAccelerators>
                                 <KeyboardAccelerator Modifiers="Control,Shift" Key="Q" />
                             </Button.KeyboardAccelerators>

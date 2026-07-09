@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>Само метаданни</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>Само метаданни — полетата за издание остават празни; записва се само групата на албума.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>Задаване на идентичност към това издание</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>вмъкване на позиция {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>опашката е празна</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>плъзнете албуми тук или пуснете албум</value></data>
 </root>

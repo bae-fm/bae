@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>மெட்டாடேட்டா மட்டும்</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>மெட்டாடேட்டா மட்டும் — பதிப்பு புலங்கள் காலியாகவே இருக்கும்; ஆல்பக் குழு மட்டும் பதிவு செய்யப்படும்.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>அடையாளத்தை இந்த அச்சு பதிப்பாக அமை</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>இடம் {position} இல் சேர்</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>வரிசை காலியாக உள்ளது</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>ஆல்பங்களை இங்கே இழுக்கவும் அல்லது ஒரு ஆல்பத்தை இயக்கவும்</value></data>
 </root>

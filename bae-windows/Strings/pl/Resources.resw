@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>Tylko metadane</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>Tylko metadane — pola tłoczenia pozostają puste; zapisywana jest jedynie grupa albumu.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>Ustaw tożsamość na to tłoczenie</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>wstaw na pozycji {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>kolejka jest pusta</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>przeciągnij tu albumy albo odtwórz album</value></data>
 </root>

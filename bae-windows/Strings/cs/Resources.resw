@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>Pouze metadata</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>Pouze metadata — pole lisu zůstanou prázdná; zaznamená se jen skupina alba.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>Nastavit identitu na tento lis</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>vložit na pozici {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>fronta je prázdná</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>přetáhněte sem alba, nebo nějaké přehrajte</value></data>
 </root>

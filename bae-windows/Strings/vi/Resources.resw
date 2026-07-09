@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>Chỉ siêu dữ liệu</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>Chỉ siêu dữ liệu — các trường bản ép để trống; chỉ ghi lại nhóm album.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>Đặt danh tính thành bản ép này</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>chèn vào vị trí {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>hàng đợi trống</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>kéo album vào đây hoặc phát một album</value></data>
 </root>

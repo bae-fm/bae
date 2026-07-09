@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>फक्त मेटाडेटा</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>फक्त मेटाडेटा — प्रेसिंग फील्ड रिकामे राहतात; फक्त अल्बम गट नोंदवला जातो.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>ओळख या प्रेसिंगवर सेट करा</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>स्थान {position} वर जोडा</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>रांग रिकामी आहे</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>अल्बम इथे ओढा किंवा एखादा अल्बम वाजवा</value></data>
 </root>

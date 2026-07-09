@@ -672,6 +672,15 @@ internal static class NativeBae
     internal static string? AddNext(AppHandle handle, IReadOnlyList<string> trackIds) =>
         CaptureError(() => handle.AddNext(trackIds.ToArray()));
 
+    // Expand a list of album or track ids to track ids (album ids resolve to the
+    // primary release's tracks), for a queue insert that carries a drag payload.
+    internal static (List<string>? Value, string? Error) ResolveToTrackIds(AppHandle handle, IReadOnlyList<string> ids) =>
+        CaptureBridgeValue(() => Await(handle.ResolveToTrackIds(ids.ToArray())).ToList());
+
+    // Insert tracks into the manual lane at index (core clamps to the lane length).
+    internal static void InsertInQueue(AppHandle handle, IReadOnlyList<string> trackIds, int index) =>
+        handle.InsertInQueue(trackIds.ToArray(), checked((uint)index));
+
     internal static string? DeleteRelease(AppHandle handle, string releaseId) =>
         CaptureError(() => Await(handle.DeleteRelease(releaseId)));
 

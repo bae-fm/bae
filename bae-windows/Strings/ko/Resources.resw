@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>메타데이터만</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>메타데이터만 — 프레싱 필드는 비워 두고 앨범 그룹만 기록합니다.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>이 프레싱으로 신원 설정</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>{position}번 위치에 삽입</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>대기열이 비어 있습니다</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>앨범을 여기로 끌어오거나 앨범을 재생하세요</value></data>
 </root>

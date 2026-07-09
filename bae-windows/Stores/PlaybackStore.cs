@@ -51,6 +51,10 @@ internal sealed class PlaybackStore
     public event Action<bool, bool>? TransportChanged;
     public event Action<int>? QueueItemsAdded;
 
+    // The lanes changed (from a mutation on any source). The non-modal queue pane
+    // re-renders on this while visible; the now-playing bar reads only transport.
+    public event Action? QueueChanged;
+
     public void ApplyPlaying(string albumId, string trackId, string trackTitle, string artistNames, string? coverImageId)
     {
         _nowPlaying = new NowPlayingState(albumId, trackId, KeptPositionFor(trackId));
@@ -116,6 +120,7 @@ internal sealed class PlaybackStore
         _queueManual = snapshot.Manual.ToList();
         _queueContext = snapshot.Context;
         TransportChanged?.Invoke(snapshot.HasPrevious, snapshot.HasNext);
+        QueueChanged?.Invoke();
     }
 
     public void ApplyQueueItemsAdded(int count)

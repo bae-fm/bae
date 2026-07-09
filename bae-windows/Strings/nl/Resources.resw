@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>Alleen metadata</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>Alleen metadata — persingsvelden blijven leeg; alleen de albumgroep wordt vastgelegd.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>Identiteit instellen op deze persing</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>invoegen op positie {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>wachtrij is leeg</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>sleep albums hierheen of speel een album af</value></data>
 </root>

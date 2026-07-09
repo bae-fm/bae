@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>Nur Metadaten</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>Nur Metadaten — Pressungsfelder bleiben leer; nur die Albumgruppe wird erfasst.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>Identität auf diese Pressung festlegen</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>an Position {position} einfügen</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>Warteschlange ist leer</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>Alben hierher ziehen oder ein Album abspielen</value></data>
 </root>

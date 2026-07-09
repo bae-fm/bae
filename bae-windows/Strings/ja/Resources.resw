@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>メタデータのみ</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>メタデータのみ — プレス欄は空欄のまま、アルバムグループだけが記録されます。</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>このプレスを識別情報に設定</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>位置 {position} に挿入</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>キューは空です</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>ここにアルバムをドラッグするか、アルバムを再生してください</value></data>
 </root>

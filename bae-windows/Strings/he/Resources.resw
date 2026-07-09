@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>מטא-נתונים בלבד</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>מטא-נתונים בלבד — שדות התקליט נשארים ריקים; נרשמת רק קבוצת האלבום.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>הגדר זהות לתקליט זה</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>הוספה במיקום {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>התור ריק</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>גררו אלבומים לכאן או נגנו אלבום</value></data>
 </root>

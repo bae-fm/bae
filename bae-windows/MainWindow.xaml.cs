@@ -51,7 +51,7 @@ public sealed partial class MainWindow : Window
     private readonly ImportConfirmDialog _importConfirm;
     private readonly ReleaseActionDialogs _releaseActions;
     private readonly AlbumDetailDialog _albumDetail;
-    private readonly QueueDialog _queueDialog;
+    private readonly QueuePane _queuePane;
     private readonly StorageStore _storage;
     private readonly StorageDialog _storageDialog;
     private readonly SettingsStore _settings;
@@ -161,7 +161,11 @@ public sealed partial class MainWindow : Window
             () => WinRT.Interop.WindowNative.GetWindowHandle(this),
             text => StatusText.Text = text,
             _releaseActions);
-        _queueDialog = new QueueDialog(_session, _playback, () => Content.XamlRoot);
+        _queuePane = new QueuePane(
+            _session,
+            _playback,
+            QueuePaneHost,
+            message => _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.playback_title"), message));
 
         // The storage sheet and its non-UI operations. The dialog registers its
         // live-refresh handlers on the projection registry while open.
@@ -497,6 +501,7 @@ public sealed partial class MainWindow : Window
 
         _playback.Reset();
         _nowPlayingBar.Reset();
+        _queuePane.Hide();
         _import.Reset();
         _browser.Reset();
         SearchBox.Text = string.Empty;
@@ -640,9 +645,50 @@ public sealed partial class MainWindow : Window
         _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("import.error_title"), message);
     }
 
-    private async void OnQueueClick(object sender, RoutedEventArgs e)
+    private void OnQueueClick(object sender, RoutedEventArgs e)
     {
-        await _queueDialog.Show();
+        _queuePane.Toggle();
+    }
+
+    // Start a drag from an album card: carry the album ids as the newline-joined
+    // payload the queue pane decodes. Cancelled when no library is open.
+    private void OnAlbumDragStarting(object sender, DragItemsStartingEventArgs e)
+    {
+        if (CurrentHandleOrNull() == null)
+        {
+            e.Cancel = true;
+            return;
+        }
+        var ids = e.Items.OfType<Album>().Select(album => album.Id).ToList();
+        e.Data.SetText(QueueDragPayload.Encode(ids));
+        e.Data.RequestedOperation = DataPackageOperation.Copy;
+    }
+
+    // The queue button is also an append drop target: a card dropped on it adds
+    // the album's tracks to the end of the manual lane, and the +N badge animates
+    // from core's queue-items-added event.
+    private void OnQueueButtonDragOver(object sender, DragEventArgs e)
+    {
+        if (CurrentHandleOrNull() == null || !e.DataView.Contains(StandardDataFormats.Text))
+        {
+            return;
+        }
+        e.AcceptedOperation = DataPackageOperation.Copy;
+        if (e.DragUIOverride is not null)
+        {
+            e.DragUIOverride.Caption = Loc.Chrome("menu.add_to_queue");
+        }
+        e.Handled = true;
+    }
+
+    private async void OnQueueButtonDrop(object sender, DragEventArgs e)
+    {
+        if (CurrentHandleOrNull() == null || !e.DataView.Contains(StandardDataFormats.Text))
+        {
+            return;
+        }
+        e.Handled = true;
+        await _queuePane.HandleButtonAppendDrop(e);
     }
 
     private void OnPlayPause(object sender, RoutedEventArgs e)
@@ -730,6 +776,15 @@ public sealed partial class MainWindow : Window
     // the welcome chooser's restore-code box.
     private void OnGlobalKeyDown(object sender, KeyRoutedEventArgs e)
     {
+        // Escape closes the queue pane when it's open. Dialogs capture their own
+        // input layer, so their Escape never reaches this root handler.
+        if (e.Key == VirtualKey.Escape && _queuePane.IsOpen)
+        {
+            _queuePane.Hide();
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key != VirtualKey.Space)
         {
             return;

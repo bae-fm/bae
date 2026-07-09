@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>మెటాడేటా మాత్రమే</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>మెటాడేటా మాత్రమే — ప్రెస్సింగ్ ఫీల్డ్‌లు ఖాళీగా ఉంటాయి; ఆల్బమ్ సమూహం మాత్రమే నమోదు చేయబడుతుంది.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>గుర్తింపును ఈ ముద్రణకు సెట్ చేయి</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>స్థానం {position} వద్ద చేర్చండి</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>క్యూ ఖాళీగా ఉంది</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>ఆల్బమ్‌లను ఇక్కడికి లాగండి లేదా ఒక ఆల్బమ్ ప్లే చేయండి</value></data>
 </root>

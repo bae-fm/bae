@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>صرف میٹا ڈیٹا</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>صرف میٹا ڈیٹا — پریسنگ خانے خالی رہتے ہیں؛ صرف البم گروپ ریکارڈ کیا جاتا ہے۔</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>شناخت اس پریسنگ پر مقرر کریں</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>پوزیشن {position} پر شامل کریں</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>قطار خالی ہے</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>البمز یہاں گھسیٹیں یا کوئی البم چلائیں</value></data>
 </root>

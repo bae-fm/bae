@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>البيانات الوصفية فقط</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>البيانات الوصفية فقط — تبقى حقول الطبعة فارغة؛ يُسجَّل مجموعة الألبوم فقط.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>تعيين الهوية إلى هذه الطبعة</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>إدراج في الموضع {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>قائمة الانتظار فارغة</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>اسحب الألبومات إلى هنا أو شغّل ألبومًا</value></data>
 </root>

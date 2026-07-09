@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>Metadata only</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>Metadata only — pressing fields stay blank; just the album group is recorded.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>Set identity to this pressing</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>insert at position {position}</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>queue is empty</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>drag albums here or play an album</value></data>
 </root>

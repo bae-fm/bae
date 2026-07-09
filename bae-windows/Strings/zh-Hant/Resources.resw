@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>僅中繼資料</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>僅中繼資料 — 壓片欄位會保持空白；只會記錄專輯群組。</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>將身分設定為此版本</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>插入到第 {position} 位</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>佇列是空的</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>將專輯拖曳到這裡，或播放一張專輯</value></data>
 </root>

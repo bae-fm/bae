@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>ಮೆಟಾಡೇಟಾ ಮಾತ್ರ</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>ಮೆಟಾಡೇಟಾ ಮಾತ್ರ — ಪ್ರೆಸ್ಸಿಂಗ್ ಕ್ಷೇತ್ರಗಳು ಖಾಲಿಯಾಗಿಯೇ ಇರುತ್ತವೆ; ಆಲ್ಬಮ್ ಗುಂಪು ಮಾತ್ರ ದಾಖಲಿಸಲಾಗುತ್ತದೆ.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>ಈ ಒತ್ತುವಿಕೆಗೆ ಗುರುತು ಹೊಂದಿಸಿ</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>ಸ್ಥಾನ {position} ರಲ್ಲಿ ಸೇರಿಸಿ</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>ಸರತಿ ಖಾಲಿಯಾಗಿದೆ</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>ಆಲ್ಬಮ್‌ಗಳನ್ನು ಇಲ್ಲಿಗೆ ಎಳೆಯಿರಿ ಅಥವಾ ಒಂದು ಆಲ್ಬಮ್ ಪ್ಲೇ ಮಾಡಿ</value></data>
 </root>

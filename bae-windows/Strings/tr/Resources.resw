@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>Yalnızca üst veri</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>Yalnızca üst veri — baskı alanları boş kalır; yalnızca albüm grubu kaydedilir.</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>Kimliği bu baskı olarak ayarla</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>{position}. konuma ekle</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>kuyruk boş</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>albümleri buraya sürükleyin veya bir albüm çalın</value></data>
 </root>

@@ -349,4 +349,7 @@
   <data name="identify.metadata_only" xml:space="preserve"><value>শুধু মেটাডেটা</value></data>
   <data name="identify.metadata_only_note" xml:space="preserve"><value>শুধু মেটাডেটা — প্রেসিং ক্ষেত্রগুলো ফাঁকা থাকে; শুধু অ্যালবাম গ্রুপ রেকর্ড করা হয়।</value></data>
   <data name="album.reidentify.claim_header" xml:space="preserve"><value>এই প্রেসিংকে পরিচয় হিসেবে সেট করুন</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>{position} নম্বর অবস্থানে যোগ করুন</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>সারি খালি</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>অ্যালবাম এখানে টেনে আনুন বা একটি অ্যালবাম চালান</value></data>
 </root>
