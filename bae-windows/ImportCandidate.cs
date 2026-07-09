@@ -45,6 +45,16 @@ public sealed class ImportCandidate
     /// <summary>The on-disk folder to identify/import.</summary>
     public string FolderPath { get; set; } = string.Empty;
 
+    /// <summary>The user manually skipped this candidate; it lists under Skipped.</summary>
+    public bool Skipped { get; set; }
+
+    /// <summary>Already imported (content-hash match); it lists under Added.</summary>
+    public bool IsAdded { get; set; }
+
+    /// <summary>A folder that failed validation: not importable, always under
+    /// Skipped, and it has no skip/unskip action.</summary>
+    public bool Invalid { get; set; }
+
     /// <summary>The list row, omitting absent fields. Used as the default item text.</summary>
     public override string ToString()
     {

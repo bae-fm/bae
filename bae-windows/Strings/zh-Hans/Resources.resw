@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>从新识别的来源拉取专辑、曲目和压制版字段？你所做的编辑将被覆盖。</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>从新来源刷新</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>保留当前元数据</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>新 ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>已添加 ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>已跳过 ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>跳过</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>移至“新”</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>移除文件夹</value></data>
+  <data name="import.sort" xml:space="preserve"><value>排序</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>名称（A–Z）</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>名称（Z–A）</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>添加日期（最新）</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>添加日期（最早）</value></data>
 </root>

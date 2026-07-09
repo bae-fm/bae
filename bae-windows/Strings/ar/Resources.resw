@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>هل تريد سحب حقول الألبوم والمقطوعة والطبعة من المصدر المحدَّد حديثًا؟ ستُستبدل التعديلات التي أجريتها.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>تحديث من مصدر جديد</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>الإبقاء على البيانات الوصفية الحالية</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>جديد ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>مُستورد ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>تم التخطّي ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>تخطّي</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>نقل إلى الجديد</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>إزالة المجلد</value></data>
+  <data name="import.sort" xml:space="preserve"><value>فرز</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>الاسم (أ–ي)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>الاسم (ي–أ)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>تاريخ الإضافة (الأحدث)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>تاريخ الإضافة (الأقدم)</value></data>
 </root>

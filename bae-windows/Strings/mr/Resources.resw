@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>नव्याने ओळखलेल्या स्रोतामधून अल्बम, गाणे आणि प्रेसिंग क्षेत्रे आणायची का? तुम्ही केलेली संपादने अधिलिखित होतील.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>नवीन स्रोतामधून ताजे करा</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>सध्याचा मेटाडेटा ठेवा</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>नवीन ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>जोडले ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>वगळले ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>वगळा</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>नवीनमध्ये हलवा</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>फोल्डर काढा</value></data>
+  <data name="import.sort" xml:space="preserve"><value>क्रम लावा</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>नाव (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>नाव (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>जोडल्याची तारीख (नवीनतम)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>जोडल्याची तारीख (सर्वात जुनी)</value></data>
 </root>

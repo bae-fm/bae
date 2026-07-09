@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Načíst pole alba, skladby a lisu z nově identifikovaného zdroje? Vaše úpravy budou přepsány.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Obnovit z nového zdroje</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Zachovat stávající metadata</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>Nové ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>Přidané ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Přeskočené ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>Přeskočit</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Přesunout do Nových</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>Odebrat složku</value></data>
+  <data name="import.sort" xml:space="preserve"><value>Řazení</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Název (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Název (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>Datum přidání (nejnovější)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>Datum přidání (nejstarší)</value></data>
 </root>

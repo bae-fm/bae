@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Preuzeti polja albuma, skladbe i izdanja iz novoidentificiranog izvora? Vaše izmjene bit će prepisane.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Osvježi iz novog izvora</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Zadrži trenutne metapodatke</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>Novo ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>Dodano ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Preskočeno ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>Preskoči</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Premjesti u nove</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>Ukloni mapu</value></data>
+  <data name="import.sort" xml:space="preserve"><value>Sortiraj</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Naziv (A–Ž)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Naziv (Ž–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>Datum dodavanja (najnovije)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>Datum dodavanja (najstarije)</value></data>
 </root>

@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>പുതുതായി തിരിച്ചറിഞ്ഞ ഉറവിടത്തിൽ നിന്ന് ആൽബം, ട്രാക്ക്, പ്രസ്സിംഗ് ഫീൽഡുകൾ എടുക്കണോ? നിങ്ങൾ ചെയ്ത തിരുത്തലുകൾ മായും.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>പുതിയ ഉറവിടത്തിൽ നിന്ന് പുതുക്കുക</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>നിലവിലെ മെറ്റാഡാറ്റ നിലനിർത്തുക</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>പുതിയത് ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>ചേർത്തു ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>ഒഴിവാക്കി ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>ഒഴിവാക്കുക</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>പുതിയതിലേക്ക് നീക്കുക</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>ഫോൾഡർ നീക്കം ചെയ്യുക</value></data>
+  <data name="import.sort" xml:space="preserve"><value>ക്രമപ്പെടുത്തുക</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>പേര് (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>പേര് (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>ചേർത്ത തീയതി (പുതിയത്)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>ചേർത്ത തീയതി (പഴയത്)</value></data>
 </root>

@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>새로 식별한 소스에서 앨범, 트랙, 프레싱 필드를 가져올까요? 수정한 내용은 덮어씁니다.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>새 소스에서 새로 고침</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>현재 메타데이터 유지</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>신규 ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>추가됨 ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>건너뜀 ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>건너뛰기</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>신규로 이동</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>폴더 제거</value></data>
+  <data name="import.sort" xml:space="preserve"><value>정렬</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>이름(A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>이름(Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>추가한 날짜(최신)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>추가한 날짜(오래된 순)</value></data>
 </root>

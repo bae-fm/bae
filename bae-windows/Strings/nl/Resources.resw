@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Album-, nummer- en persingsvelden uit de nieuw geïdentificeerde bron halen? Je bewerkingen worden overschreven.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Vernieuwen vanuit nieuwe bron</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Huidige metadata behouden</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>Nieuw ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>Toegevoegd ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Overgeslagen ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>Overslaan</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Naar nieuw verplaatsen</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>Map verwijderen</value></data>
+  <data name="import.sort" xml:space="preserve"><value>Sorteren</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Naam (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Naam (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>Toegevoegd op (nieuwste)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>Toegevoegd op (oudste)</value></data>
 </root>

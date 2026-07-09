@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Recuperare i campi di album, brani e stampa dalla sorgente appena identificata? Le modifiche fatte verranno sovrascritte.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Aggiorna da nuova sorgente</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Mantieni i metadati attuali</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>Nuovo ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>Aggiunto ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Saltato ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>Salta</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Sposta in nuovo</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>Rimuovi cartella</value></data>
+  <data name="import.sort" xml:space="preserve"><value>Ordina</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Nome (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Nome (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>Data di aggiunta (più recente)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>Data di aggiunta (meno recente)</value></data>
 </root>

@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>புதிதாக அடையாளம் காணப்பட்ட மூலத்திலிருந்து ஆல்பம், பாடல், அச்சு பதிப்பு புலங்களை எடுக்கவா? நீங்கள் செய்த திருத்தங்கள் மேலெழுதப்படும்.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>புதிய மூலத்திலிருந்து புதுப்பி</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>தற்போதைய மெட்டாடேட்டாவை வைத்திரு</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>புதியது ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>சேர்க்கப்பட்டது ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>தவிர்க்கப்பட்டது ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>தவிர்</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>புதியதற்கு நகர்த்து</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>கோப்புறையை நீக்கு</value></data>
+  <data name="import.sort" xml:space="preserve"><value>வரிசைப்படுத்து</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>பெயர் (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>பெயர் (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>சேர்த்த தேதி (புதியது)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>சேர்த்த தேதி (பழையது)</value></data>
 </root>

@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>নতুন শনাক্ত করা উৎস থেকে অ্যালবাম, ট্র্যাক ও প্রেসিং ক্ষেত্রগুলো আনবেন? আপনার করা সম্পাদনা মুছে যাবে।</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>নতুন উৎস থেকে রিফ্রেশ করুন</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>বর্তমান মেটাডেটা রাখুন</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>নতুন ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>যোগ করা হয়েছে ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>এড়ানো হয়েছে ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>এড়িয়ে যান</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>নতুনে সরান</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>ফোল্ডার সরান</value></data>
+  <data name="import.sort" xml:space="preserve"><value>সাজান</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>নাম (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>নাম (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>যোগের তারিখ (নতুনতম)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>যোগের তারিখ (পুরনোতম)</value></data>
 </root>

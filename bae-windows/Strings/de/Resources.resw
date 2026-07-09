@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Album-, Titel- und Pressungsfelder aus der neu identifizierten Quelle übernehmen? Deine Änderungen werden überschrieben.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Aus neuer Quelle aktualisieren</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Aktuelle Metadaten behalten</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>Neu ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>Importiert ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Übersprungen ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>Überspringen</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Zu „Neu“ verschieben</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>Ordner entfernen</value></data>
+  <data name="import.sort" xml:space="preserve"><value>Sortieren</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Name (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Name (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>Hinzugefügt (neueste zuerst)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>Hinzugefügt (älteste zuerst)</value></data>
 </root>

@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>新しく識別されたソースからアルバム、トラック、プレスの各項目を取得しますか？加えた編集は上書きされます。</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>新しいソースから更新</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>現在のメタデータを保持</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>新規 ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>取り込み済み ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>スキップ済み ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>スキップ</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>新規に移動</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>フォルダを削除</value></data>
+  <data name="import.sort" xml:space="preserve"><value>並べ替え</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>名前（A–Z）</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>名前（Z–A）</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>追加日（新しい順）</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>追加日（古い順）</value></data>
 </root>

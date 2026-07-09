@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Puxar os campos de álbum, faixa e prensagem da fonte recém-identificada? As edições que você fez serão sobrescritas.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Atualizar a partir da nova fonte</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Manter metadados atuais</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>Novos ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>Adicionados ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Ignorados ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>Ignorar</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Mover para Novos</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>Remover pasta</value></data>
+  <data name="import.sort" xml:space="preserve"><value>Ordenar</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Nome (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Nome (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>Data de adição (mais recente)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>Data de adição (mais antiga)</value></data>
 </root>

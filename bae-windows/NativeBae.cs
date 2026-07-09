@@ -556,8 +556,17 @@ internal static class NativeBae
     internal static string? ScanFolder(AppHandle handle, string path, bool clearFirst) =>
         CaptureError(() => handle.AddWatchedFolder(path));
 
-    internal static List<ImportCandidate> ImportCandidates(AppHandle handle) =>
-        ImportCandidateRows(handle.GetImportCandidates());
+    internal static string? RemoveWatchedFolder(AppHandle handle, string path) =>
+        CaptureError(() => handle.RemoveWatchedFolder(path));
+
+    internal static string? SetCandidateSkipped(AppHandle handle, string path, bool skipped) =>
+        CaptureError(() => handle.SetCandidateSkipped(path, skipped));
+
+    internal static (List<ImportCandidate> Rows, List<BridgeWatchedFolder> Folders) ImportCandidates(AppHandle handle)
+    {
+        var snapshot = handle.GetImportCandidates();
+        return (ImportCandidateRows(snapshot), snapshot.WatchedFolders);
+    }
 
     internal static void AutoIdentifyFolder(AppHandle handle, string candidateKey, string folderPath) =>
         handle.AutoIdentifyFolder(candidateKey, folderPath);
@@ -899,6 +908,8 @@ internal static class NativeBae
             Signals = runtime.SignalsToolbar.Signals.Select(SignalBadge).ToList(),
             AudioPaths = AudioPaths(candidate.Files.Audio).ToList(),
             FolderPath = candidate.FolderPath,
+            Skipped = candidate.Skipped,
+            IsAdded = candidate.IsAdded,
         };
 
     private static ImportCandidate InvalidImportCandidateRow(BridgeInvalidCandidate candidate) =>
@@ -917,6 +928,7 @@ internal static class NativeBae
             Signals = [],
             AudioPaths = [],
             FolderPath = candidate.FolderPath,
+            Invalid = true,
         };
 
     private static ImportCandidateRowStatus ImportRowStatus(BridgeCandidateRuntimeSnapshot runtime)

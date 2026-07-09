@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>ಹೊಸದಾಗಿ ಗುರುತಿಸಿದ ಮೂಲದಿಂದ ಆಲ್ಬಮ್, ಹಾಡು ಮತ್ತು ಒತ್ತುವಿಕೆ ಕ್ಷೇತ್ರಗಳನ್ನು ತೆಗೆದುಕೊಳ್ಳಬೇಕೇ? ನೀವು ಮಾಡಿದ ತಿದ್ದುಪಡಿಗಳು ಮೇಲೆಯಾಗಿ ಬರೆಯಲ್ಪಡುತ್ತವೆ.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>ಹೊಸ ಮೂಲದಿಂದ ತಾಜಾಗೊಳಿಸಿ</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>ಪ್ರಸ್ತುತ ಮೆಟಾಡೇಟಾವನ್ನು ಉಳಿಸಿ</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>ಹೊಸ ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>ಸೇರಿಸಲಾಗಿದೆ ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>ಬಿಡಲಾಗಿದೆ ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>ಬಿಟ್ಟುಬಿಡಿ</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>ಹೊಸದಕ್ಕೆ ಸರಿಸಿ</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>ಫೋಲ್ಡರ್ ತೆಗೆದುಹಾಕಿ</value></data>
+  <data name="import.sort" xml:space="preserve"><value>ಕ್ರಮಗೊಳಿಸಿ</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>ಹೆಸರು (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>ಹೆಸರು (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>ಸೇರಿಸಿದ ದಿನಾಂಕ (ಹೊಸದು)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>ಸೇರಿಸಿದ ದಿನಾಂಕ (ಹಳೆಯದು)</value></data>
 </root>

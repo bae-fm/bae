@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>نئے شناخت شدہ ماخذ سے البم، نغمہ، اور پریسنگ خانے لیں؟ آپ کی کی گئی تبدیلیاں مٹ جائیں گی۔</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>نئے ماخذ سے تازہ کریں</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>موجودہ میٹا ڈیٹا رکھیں</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>نیا ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>شامل ہو گیا ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>چھوڑا گیا ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>چھوڑیں</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>نئے میں منتقل کریں</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>پوشہ ہٹائیں</value></data>
+  <data name="import.sort" xml:space="preserve"><value>ترتیب دیں</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>نام (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>نام (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>شامل ہونے کی تاریخ (نیا پہلے)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>شامل ہونے کی تاریخ (پرانا پہلے)</value></data>
 </root>

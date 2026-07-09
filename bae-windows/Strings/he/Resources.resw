@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>למשוך את שדות האלבום, הרצועה והתקליט מהמקור שזוהה מחדש? עריכות שביצעתם יידרסו.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>רענן מהמקור החדש</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>שמור על המטא-נתונים הנוכחיים</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>חדש ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>נוסף ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>דולגו ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>דלג</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>העבר לחדשים</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>הסר תיקייה</value></data>
+  <data name="import.sort" xml:space="preserve"><value>מיון</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>שם (א׳–ת׳)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>שם (ת׳–א׳)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>תאריך הוספה (החדש ביותר)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>תאריך הוספה (הישן ביותר)</value></data>
 </root>

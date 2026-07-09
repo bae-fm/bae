@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Да се извлекат полетата за албум, песни и издание от новоидентифицирания източник? Направените от вас редакции ще бъдат презаписани.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Обновяване от нов източник</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Запазване на текущите метаданни</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>Нови ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>Добавени ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Пропуснати ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>Пропускане</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Преместване в Нови</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>Премахване на папката</value></data>
+  <data name="import.sort" xml:space="preserve"><value>Подреждане</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Име (А–Я)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Име (Я–А)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>Дата на добавяне (най-нови)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>Дата на добавяне (най-стари)</value></data>
 </root>

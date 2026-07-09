@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>ดึงฟิลด์อัลบั้ม แทร็ก และการผลิตแผ่นจากแหล่งที่เพิ่งระบุหรือไม่ การแก้ไขที่คุณทำไว้จะถูกเขียนทับ</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>รีเฟรชจากแหล่งใหม่</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>เก็บเมทาดาทาปัจจุบันไว้</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>ใหม่ ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>เพิ่มแล้ว ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>ข้ามแล้ว ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>ข้าม</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>ย้ายไปใหม่</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>ลบโฟลเดอร์</value></data>
+  <data name="import.sort" xml:space="preserve"><value>จัดเรียง</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>ชื่อ (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>ชื่อ (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>วันที่เพิ่ม (ใหม่สุด)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>วันที่เพิ่ม (เก่าสุด)</value></data>
 </root>

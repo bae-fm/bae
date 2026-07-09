@@ -356,4 +356,15 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>ਨਵੇਂ ਪਛਾਣੇ ਸਰੋਤ ਤੋਂ ਐਲਬਮ, ਟ੍ਰੈਕ ਅਤੇ ਛਪਾਈ ਖੇਤਰ ਲੈਣੇ ਹਨ? ਤੁਹਾਡੀਆਂ ਕੀਤੀਆਂ ਸੋਧਾਂ ਉੱਤੇ ਲਿਖ ਦਿੱਤਾ ਜਾਵੇਗਾ।</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>ਨਵੇਂ ਸਰੋਤ ਤੋਂ ਤਾਜ਼ਾ ਕਰੋ</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>ਮੌਜੂਦਾ ਮੈਟਾਡਾਟਾ ਰੱਖੋ</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>ਨਵਾਂ ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>ਸ਼ਾਮਲ ਕੀਤਾ ਗਿਆ ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>ਛੱਡਿਆ ਗਿਆ ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>ਛੱਡੋ</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>ਨਵੇਂ ਵਿੱਚ ਹਿਲਾਓ</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>ਫੋਲਡਰ ਹਟਾਓ</value></data>
+  <data name="import.sort" xml:space="preserve"><value>ਕ੍ਰਮਬੱਧ ਕਰੋ</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>ਨਾਂ (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>ਨਾਂ (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>ਸ਼ਾਮਲ ਮਿਤੀ (ਸਭ ਤੋਂ ਨਵੀਂ)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>ਸ਼ਾਮਲ ਮਿਤੀ (ਸਭ ਤੋਂ ਪੁਰਾਣੀ)</value></data>
 </root>
