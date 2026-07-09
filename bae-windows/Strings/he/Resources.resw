@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>העתק מזהה</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>מזהה הספרייה הועתק</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>לא ניתן לפתוח את תיקיית הספרייה</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>שחזר בהפעלה</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>שומר את הרצועה הנוכחית, המיקום, התור והעוצמה ביציאה ומשחזר אותם בהפעלה הבאה.</value></data>
 </root>

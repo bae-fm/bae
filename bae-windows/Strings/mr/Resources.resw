@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>ID कॉपी करा</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>संग्रहालय ID कॉपी केली</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>संग्रहालय फोल्डर उघडता आले नाही</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>सुरुवातीला पुनर्संचयित करा</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>बाहेर पडताना सध्याचे गाणे, स्थिती, रांग आणि आवाजपातळी जतन करते आणि पुढच्या सुरुवातीला ते पुनर्संचयित करते.</value></data>
 </root>

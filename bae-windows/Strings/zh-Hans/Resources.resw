@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>复制 ID</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>已复制库 ID</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>无法打开库文件夹</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>启动时恢复</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>退出时保存当前曲目、播放位置、队列和音量，并在下次启动时恢复。</value></data>
 </root>

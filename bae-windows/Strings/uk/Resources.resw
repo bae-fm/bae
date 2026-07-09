@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>копіювати ID</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>ID бібліотеки скопійовано</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>не вдалося відкрити папку бібліотеки</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Відновлювати під час запуску</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Зберігає поточний трек, позицію, чергу та гучність під час виходу й відновлює їх під час наступного запуску.</value></data>
 </root>

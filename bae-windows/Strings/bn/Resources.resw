@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>আইডি কপি করুন</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>লাইব্রেরি আইডি কপি হয়েছে</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>লাইব্রেরি ফোল্ডার খোলা যায়নি</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>চালু হলে রিস্টোর করুন</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>বন্ধ করার সময় বর্তমান ট্র্যাক, অবস্থান, সারি ও ভলিউম সংরক্ষণ করে এবং পরেরবার চালু হলে সেগুলো ফিরিয়ে আনে।</value></data>
 </root>

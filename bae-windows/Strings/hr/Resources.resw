@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>kopiraj ID</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>ID fonoteke kopiran</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>mapu fonoteke nije moguće otvoriti</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Vrati pri pokretanju</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Sprema trenutnu skladbu, položaj, red i glasnoću pri izlasku te ih vraća pri sljedećem pokretanju.</value></data>
 </root>

@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>ID કૉપિ કરો</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>લાઇબ્રેરી ID કૉપિ થઈ</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>લાઇબ્રેરી ફોલ્ડર ખોલી શકાયું નહીં</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>શરૂઆત પર પુનઃસ્થાપિત કરો</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>બંધ કરતી વખતે હાલનો ટ્રૅક, સ્થિતિ, કતાર અને અવાજ સાચવે છે અને આગામી શરૂઆત પર પુનઃસ્થાપિત કરે છે.</value></data>
 </root>

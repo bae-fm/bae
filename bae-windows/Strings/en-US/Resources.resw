@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>copy ID</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>library ID copied</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>couldn't open the library folder</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Restore on launch</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Saves the current track, position, queue, and volume on quit and restores them on next launch.</value></data>
 </root>

@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>複製 ID</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>已複製資料庫 ID</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>無法開啟資料庫資料夾</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>啟動時還原</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>結束時儲存目前曲目、位置、佇列與音量，並在下次啟動時還原。</value></data>
 </root>

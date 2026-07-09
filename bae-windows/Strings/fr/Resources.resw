@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>copier l'ID</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>ID de la bibliothèque copié</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>impossible d'ouvrir le dossier de la bibliothèque</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Restaurer au lancement</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Enregistre la piste, la position, la file et le volume actuels à la fermeture et les restaure au prochain lancement.</value></data>
 </root>

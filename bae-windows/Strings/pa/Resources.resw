@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>ID ਕਾਪੀ ਕਰੋ</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ID ਕਾਪੀ ਕੀਤੀ</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਫੋਲਡਰ ਨਹੀਂ ਖੁੱਲ੍ਹ ਸਕਿਆ</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>ਸ਼ੁਰੂ ਹੋਣ ਤੇ ਮੁੜ-ਬਹਾਲ ਕਰੋ</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>ਬੰਦ ਕਰਦੇ ਸਮੇਂ ਮੌਜੂਦਾ ਟ੍ਰੈਕ, ਸਥਿਤੀ, ਕਤਾਰ ਅਤੇ ਆਵਾਜ਼ ਸੰਭਾਲਦਾ ਹੈ ਅਤੇ ਅਗਲੀ ਸ਼ੁਰੂਆਤ ਤੇ ਉਹਨਾਂ ਨੂੰ ਮੁੜ-ਬਹਾਲ ਕਰਦਾ ਹੈ।</value></data>
 </root>

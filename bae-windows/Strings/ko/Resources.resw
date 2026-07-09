@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>ID 복사</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>라이브러리 ID 복사됨</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>라이브러리 폴더를 열 수 없습니다</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>시작 시 복원</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>종료 시 현재 트랙, 위치, 대기열, 음량을 저장하고 다음 실행 때 복원합니다.</value></data>
 </root>

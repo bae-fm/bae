@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>आईडी कॉपी करें</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>लाइब्रेरी आईडी कॉपी की गई</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>लाइब्रेरी फ़ोल्डर नहीं खुल सका</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>शुरू होने पर बहाल करें</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>बंद करने पर मौजूदा ट्रैक, स्थिति, कतार और वॉल्यूम सहेजता है और अगली शुरुआत पर उन्हें बहाल करता है।</value></data>
 </root>

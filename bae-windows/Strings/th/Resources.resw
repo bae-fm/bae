@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>คัดลอก ID</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>คัดลอก ID คลังแล้ว</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>เปิดโฟลเดอร์คลังไม่ได้</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>คืนค่าเมื่อเปิดแอป</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>บันทึกแทร็กปัจจุบัน ตำแหน่ง คิว และระดับเสียงเมื่อออก แล้วคืนค่าเมื่อเปิดครั้งถัดไป</value></data>
 </root>

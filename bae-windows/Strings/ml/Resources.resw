@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>ID പകർത്തുക</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>ലൈബ്രറി ID പകർത്തി</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>ലൈബ്രറി ഫോൾഡർ തുറക്കാനായില്ല</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>ആരംഭിക്കുമ്പോൾ പുനഃസ്ഥാപിക്കുക</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>പുറത്തുകടക്കുമ്പോൾ നിലവിലെ ട്രാക്ക്, സ്ഥാനം, നിര, ശബ്ദനില എന്നിവ സംരക്ഷിച്ച് അടുത്ത ആരംഭത്തിൽ പുനഃസ്ഥാപിക്കുന്നു.</value></data>
 </root>

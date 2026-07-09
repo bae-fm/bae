@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>ID కాపీ చేయి</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>లైబ్రరీ ID కాపీ చేయబడింది</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>లైబ్రరీ ఫోల్డర్‌ను తెరవడం సాధ్యం కాలేదు</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>ప్రారంభంలో పునరుద్ధరించు</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>మూసివేసేటప్పుడు ప్రస్తుత ట్రాక్, స్థానం, క్యూ, వాల్యూమ్‌ను సేవ్ చేసి తదుపరి ప్రారంభంలో పునరుద్ధరిస్తుంది.</value></data>
 </root>

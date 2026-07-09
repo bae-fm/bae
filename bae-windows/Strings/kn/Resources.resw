@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>ID ನಕಲಿಸಿ</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>ಲೈಬ್ರರಿ ID ನಕಲಿಸಲಾಗಿದೆ</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>ಲೈಬ್ರರಿ ಫೋಲ್ಡರ್ ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>ಪ್ರಾರಂಭಿಸುವಾಗ ಮರುಸ್ಥಾಪಿಸಿ</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>ಮುಚ್ಚುವಾಗ ಪ್ರಸ್ತುತ ಹಾಡು, ಸ್ಥಾನ, ಸರದಿ ಮತ್ತು ಧ್ವನಿಮಟ್ಟವನ್ನು ಉಳಿಸಿ, ಮುಂದಿನ ಪ್ರಾರಂಭದಲ್ಲಿ ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ.</value></data>
 </root>

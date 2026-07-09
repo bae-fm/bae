@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>ID kopiëren</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>bibliotheek-ID gekopieerd</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>kan de bibliotheekmap niet openen</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Herstellen bij starten</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Bewaart het huidige nummer, de positie, wachtrij en volume bij afsluiten en herstelt ze bij de volgende start.</value></data>
 </root>

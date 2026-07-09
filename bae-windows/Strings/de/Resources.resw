@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>ID kopieren</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>Bibliotheks-ID kopiert</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>Bibliotheksordner konnte nicht geöffnet werden</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Beim Start wiederherstellen</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Speichert beim Beenden den aktuellen Titel, die Position, die Warteschlange und die Lautstärke und stellt sie beim nächsten Start wieder her.</value></data>
 </root>

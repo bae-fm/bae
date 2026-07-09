@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>نسخ المعرّف</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>تم نسخ معرّف المكتبة</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>تعذّر فتح مجلد المكتبة</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>الاستعادة عند التشغيل</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>يحفظ المقطوعة الحالية والموضع وقائمة الانتظار ومستوى الصوت عند الخروج ويستعيدها عند التشغيل التالي.</value></data>
 </root>

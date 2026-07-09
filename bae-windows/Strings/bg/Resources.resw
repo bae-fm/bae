@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>копиране на ИД</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>ИД на библиотеката е копиран</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>папката на библиотеката не може да се отвори</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Възстановяване при стартиране</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Запазва текущата песен, позиция, опашка и сила на звука при изход и ги възстановява при следващото стартиране.</value></data>
 </root>

@@ -346,6 +346,24 @@ internal sealed class SettingsDialog
         pauseBetweenSides.Checked += async (_, _) => await SetPauseBetweenSides(true);
         pauseBetweenSides.Unchecked += async (_, _) => await SetPauseBetweenSides(false);
 
+        // Whether quitting performs the graceful shutdown that saves the
+        // current track, position, queue, and volume for the next launch to
+        // restore. Device-local (no bridge round-trip), so no error snap-back
+        // and no Refresh() involvement — a config invalidation doesn't carry it.
+        var restoreOnLaunch = new CheckBox
+        {
+            Content = Loc.Chrome("settings.playback.restore_on_launch"),
+            IsChecked = PersistPlaybackStore.Load(),
+        };
+        restoreOnLaunch.Checked += (_, _) => PersistPlaybackStore.Save(true);
+        restoreOnLaunch.Unchecked += (_, _) => PersistPlaybackStore.Save(false);
+        var restoreOnLaunchHelp = new TextBlock
+        {
+            Text = Loc.Chrome("settings.playback.restore_on_launch_help"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+        };
+
         // Export: the release-export destination policy (a fixed folder or a
         // prompt each time), then the single-track "Save As…" suggested-filename
         // template and the export presets. Writes round-trip through config
@@ -1062,6 +1080,8 @@ internal sealed class SettingsDialog
         var discogsLabel = new TextBlock { Text = Loc.Chrome("settings.discogs.label") };
         content.Children.Add(libraryLabel);
         content.Children.Add(pauseBetweenSides);
+        content.Children.Add(restoreOnLaunch);
+        content.Children.Add(restoreOnLaunchHelp);
         content.Children.Add(exportLabel);
         content.Children.Add(saveToFolder);
         content.Children.Add(askEachTime);
@@ -1334,9 +1354,14 @@ internal sealed class SettingsDialog
 
         if (restartUpdateRequested)
         {
-            // ApplyUpdatesAndRestart exits the process, so persist playback state
-            // and flush diagnostics first — the work OnClosed would otherwise do.
-            await _session.ShutdownAndFreeCurrentHandle();
+            // ApplyUpdatesAndRestart exits the process, so this is a second
+            // app-exit path: gate the state-saving shutdown on the same
+            // restore-on-launch preference OnClosed does, then flush
+            // diagnostics unconditionally — the work OnClosed would otherwise do.
+            if (PersistPlaybackStore.Load())
+            {
+                await _session.ShutdownAndFreeCurrentHandle();
+            }
             BaeDiagnostics.Flush();
             _updateService.ApplyAndRestart();
             return;

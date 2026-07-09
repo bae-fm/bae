@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>ID کاپی کریں</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>لائبریری ID کاپی ہو گئی</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>لائبریری فولڈر نہیں کھل سکا</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>شروع ہونے پر بحال کریں</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>بند کرتے وقت موجودہ نغمہ، پوزیشن، قطار، اور آواز محفوظ کرتا ہے اور اگلی شروعات پر بحال کرتا ہے۔</value></data>
 </root>

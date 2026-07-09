@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>copia ID</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>ID della libreria copiato</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>impossibile aprire la cartella della libreria</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Ripristina all'avvio</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Salva brano corrente, posizione, coda e volume all'uscita e li ripristina al prossimo avvio.</value></data>
 </root>

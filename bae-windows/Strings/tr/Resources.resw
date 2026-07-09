@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>kimliği kopyala</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>arşiv kimliği kopyalandı</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>arşiv klasörü açılamadı</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Açılışta geri yükle</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Çıkarken geçerli parçayı, konumu, sırayı ve ses düzeyini kaydeder; sonraki açılışta geri yükler.</value></data>
 </root>

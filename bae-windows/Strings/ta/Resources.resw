@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>ID நகலெடு</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>நூலக ID நகலெடுக்கப்பட்டது</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>நூலக கோப்புறையைத் திறக்க முடியவில்லை</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>தொடக்கத்தில் மீட்டமை</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>வெளியேறும் போது தற்போதைய பாடல், நிலை, வரிசை, ஒலியளவைச் சேமித்து, அடுத்த தொடக்கத்தில் மீட்டெடுக்கும்.</value></data>
 </root>

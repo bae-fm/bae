@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>sao chép ID</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>đã sao chép ID thư viện</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>không thể mở thư mục thư viện</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Khôi phục khi khởi chạy</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Lưu bản nhạc hiện tại, vị trí, hàng đợi và âm lượng khi thoát rồi khôi phục ở lần mở tiếp theo.</value></data>
 </root>

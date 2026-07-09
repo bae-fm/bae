@@ -382,4 +382,6 @@
   <data name="libraries.copy_id" xml:space="preserve"><value>kopírovat ID</value></data>
   <data name="libraries.id_copied" xml:space="preserve"><value>ID knihovny zkopírováno</value></data>
   <data name="libraries.reveal_failed" xml:space="preserve"><value>složku knihovny se nepodařilo otevřít</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Obnovit při spuštění</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Při ukončení uloží aktuální skladbu, pozici, frontu a hlasitost a při příštím spuštění je obnoví.</value></data>
 </root>
