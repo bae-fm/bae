@@ -5081,18 +5081,16 @@ async fn mid_flight_cloud_read_failure_ends_in_stopped() {
     );
 }
 
-/// A 3-track CUE album over one FLAC large enough that the streaming reader's
-/// fetch windows (4 MiB each) cover only slices of it. White noise compresses
-/// poorly, so 2 minutes of it encodes to ~20 MiB — playing one track buffers
-/// the file head (container probe) and a window at that track's byte offset,
-/// leaving the other tracks' regions unfetched.
-fn generate_multi_window_cue_flac_files(dir: &std::path::Path) {
+/// One ~30 MiB noise FLAC shared by every multi-window test. Encoded once —
+/// per-test encoding would dominate the suite's wall time. White noise
+/// compresses poorly, so 3 minutes of it stays near raw PCM size.
+static MULTI_WINDOW_FLAC: std::sync::LazyLock<Vec<u8>> = std::sync::LazyLock::new(|| {
     use rand::{Rng, SeedableRng};
 
     bae_core::audio_codec::init();
 
     const SAMPLE_RATE: u32 = 44_100;
-    const TRACK_SECONDS: u32 = 40;
+    const TRACK_SECONDS: u32 = 60;
     const TRACKS: u32 = 3;
 
     let frames = (SAMPLE_RATE * TRACK_SECONDS * TRACKS) as usize;
@@ -5104,12 +5102,30 @@ fn generate_multi_window_cue_flac_files(dir: &std::path::Path) {
     let flac = bae_core::audio_codec::encode_to_flac(&samples, SAMPLE_RATE, 2, 16, &cancel)
         .expect("encode the multi-window noise FLAC");
     assert!(
-        flac.len() > 12 * 1024 * 1024,
+        flac.len() > 24 * 1024 * 1024,
         "the fixture must span several 4 MiB fetch windows, got {} bytes",
         flac.len()
     );
-    std::fs::write(dir.join("Multi Window Album.flac"), &flac)
-        .expect("write the multi-window FLAC");
+    flac
+});
+
+/// A 3-track CUE album over one FLAC large enough that the streaming reader's
+/// fetch windows (4 MiB each) cover only slices of it — playing one track
+/// buffers the file head (container probe) and a window at that track's byte
+/// offset, leaving the other tracks' regions unfetched.
+///
+/// The boundaries are deliberately mixed: track 2 has a 2-second pregap
+/// (INDEX 00 at 0:58), so a manual Next into it takes the pregap-skip rebuild
+/// path; track 3 has none, so a manual Next into it promotes the preloaded
+/// stream. Raw in-track timelines by construction: track 1 spans 0:00–0:58
+/// (ends at track 2's INDEX 00), track 2 spans 0:58–2:00 (62 s including its
+/// pregap), track 3 spans 2:00–3:00.
+fn generate_multi_window_cue_flac_files(dir: &std::path::Path) {
+    std::fs::write(
+        dir.join("Multi Window Album.flac"),
+        MULTI_WINDOW_FLAC.as_slice(),
+    )
+    .expect("write the multi-window FLAC");
 
     let cue = "\
 PERFORMER \"Test Artist\"
@@ -5122,11 +5138,12 @@ FILE \"Multi Window Album.flac\" WAVE
   TRACK 02 AUDIO
     TITLE \"Multi Window Two\"
     PERFORMER \"Test Artist\"
-    INDEX 01 00:40:00
+    INDEX 00 00:58:00
+    INDEX 01 01:00:00
   TRACK 03 AUDIO
     TITLE \"Multi Window Three\"
     PERFORMER \"Test Artist\"
-    INDEX 01 01:20:00
+    INDEX 01 02:00:00
 ";
     std::fs::write(dir.join("Multi Window Album.cue"), cue).expect("write the multi-window CUE");
 }
@@ -5136,7 +5153,7 @@ fn create_multi_window_cue_album() -> DiscogsRelease {
         type_: "track".to_string(),
         position: position.to_string(),
         title: title.to_string(),
-        duration: Some("0:40".to_string()),
+        duration: Some("1:00".to_string()),
         artists: vec![],
         extraartists: None,
     };
@@ -5166,6 +5183,56 @@ fn create_multi_window_cue_album() -> DiscogsRelease {
     }
 }
 
+/// An imported multi-window CUE album with a real-time-paced playback service
+/// over it, for tests that drive switches, advances, and boundaries against a
+/// sparsely buffered file.
+struct MultiWindowPlayback {
+    playback_handle: bae_core::playback::PlaybackHandle,
+    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    track_ids: Vec<String>,
+    _capture_stream_rx: CaptureStreamRx,
+    _temp_dir: TempDir,
+}
+
+impl MultiWindowPlayback {
+    async fn new(name: &str) -> Self {
+        let import_ids = SequentialIdProvider::new(name);
+        let setup = imported_release_setup(
+            create_multi_window_cue_album(),
+            name,
+            import_ids.new_id(),
+            generate_multi_window_cue_flac_files,
+            |_| Ok(()),
+        )
+        .await
+        .expect("import the multi-window CUE release");
+        assert_eq!(setup.track_ids.len(), 3, "the CUE album imports 3 tracks");
+
+        let (playback_handle, capture_stream_rx) =
+            start_capture_service(setup.library_manager.clone(), setup.runtime_handle.clone());
+        let progress_rx = playback_handle.subscribe_progress();
+        Self {
+            playback_handle,
+            progress_rx,
+            track_ids: setup.track_ids,
+            _capture_stream_rx: capture_stream_rx,
+            _temp_dir: setup.temp_dir,
+        }
+    }
+
+    /// Play `track_id` and wait for its Playing state.
+    async fn play_and_wait(&mut self, track_id: &str) {
+        self.playback_handle.play(track_id.to_string());
+        let playing = wait_for_state_on(
+            &mut self.progress_rx,
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == track_id),
+            Duration::from_secs(20),
+        )
+        .await;
+        assert!(playing.is_some(), "track {track_id} reaches Playing");
+    }
+}
+
 /// Switching tracks within a single multi-window file must keep the shared
 /// file buffer streaming. Playing the last track buffers the file head and a
 /// window at that track's offset; the middle track's bytes are in neither, so
@@ -5175,36 +5242,15 @@ fn create_multi_window_cue_album() -> DiscogsRelease {
 /// the start.
 #[tokio::test(flavor = "multi_thread")]
 async fn switching_tracks_within_a_multi_window_file_keeps_streaming() {
-    let import_ids = SequentialIdProvider::new("multi-window-import");
-    let setup = imported_release_setup(
-        create_multi_window_cue_album(),
-        "multi-window",
-        import_ids.new_id(),
-        generate_multi_window_cue_flac_files,
-        |_| Ok(()),
-    )
-    .await
-    .expect("import the multi-window CUE release");
-    assert_eq!(setup.track_ids.len(), 3, "the CUE album imports 3 tracks");
+    let mut playback = MultiWindowPlayback::new("multi-window-switch").await;
 
-    let (playback_handle, _capture_stream_rx) =
-        start_capture_service(setup.library_manager.clone(), setup.runtime_handle.clone());
-    let mut progress_rx = playback_handle.subscribe_progress();
+    let last_track = playback.track_ids[2].clone();
+    playback.play_and_wait(&last_track).await;
 
-    let last_track = setup.track_ids[2].clone();
-    playback_handle.play(last_track.clone());
+    let middle_track = playback.track_ids[1].clone();
+    playback.playback_handle.play(middle_track.clone());
     let playing = wait_for_state_on(
-        &mut progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == last_track),
-        Duration::from_secs(20),
-    )
-    .await;
-    assert!(playing.is_some(), "the last track reaches Playing");
-
-    let middle_track = setup.track_ids[1].clone();
-    playback_handle.play(middle_track.clone());
-    let playing = wait_for_state_on(
-        &mut progress_rx,
+        &mut playback.progress_rx,
         |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == middle_track),
         Duration::from_secs(20),
     )
@@ -5212,5 +5258,139 @@ async fn switching_tracks_within_a_multi_window_file_keeps_streaming() {
     assert!(
         playing.is_some(),
         "the middle track reaches Playing after the switch — its bytes must be fetched on demand"
+    );
+}
+
+/// Natural track ends within a multi-window file cross gaplessly, twice in a
+/// row. Each crossing proves the preload actually decoded the next track's
+/// bytes — regions no earlier fetch buffered, so the shared buffer's fill task
+/// must serve the preload decoder's demand while the current track plays. The
+/// seeks that pull each boundary closer land in unbuffered regions too, so
+/// mid-track sparse seeking is exercised on the way.
+#[tokio::test(flavor = "multi_thread")]
+async fn auto_advance_crosses_gaplessly_within_a_multi_window_file() {
+    let mut playback = MultiWindowPlayback::new("multi-window-gapless").await;
+    let [first, second, third] = [
+        playback.track_ids[0].clone(),
+        playback.track_ids[1].clone(),
+        playback.track_ids[2].clone(),
+    ];
+
+    playback.play_and_wait(&first).await;
+
+    // Track 1's raw timeline is 58 s (it ends at track 2's INDEX 00); seek near
+    // the end so the boundary arrives in a few real-time seconds.
+    playback.playback_handle.seek(Duration::from_secs(54));
+    let outcome = observe_boundary(
+        &mut playback.progress_rx,
+        &first,
+        &second,
+        Duration::from_secs(25),
+    )
+    .await;
+    assert!(
+        outcome.reached_incoming,
+        "playback crosses into the second track (through its pregap)"
+    );
+    assert!(
+        outcome.decode_stats_for_finishing && !outcome.completed_for_finishing,
+        "the first boundary is gapless: decode stats without TrackCompleted"
+    );
+
+    // Track 2's raw timeline is 62 s (2 s pregap + 60 s).
+    playback.playback_handle.seek(Duration::from_secs(58));
+    let outcome = observe_boundary(
+        &mut playback.progress_rx,
+        &second,
+        &third,
+        Duration::from_secs(25),
+    )
+    .await;
+    assert!(
+        outcome.reached_incoming,
+        "playback crosses into the third track"
+    );
+    assert!(
+        outcome.decode_stats_for_finishing && !outcome.completed_for_finishing,
+        "the second boundary is gapless: the crossing handler re-preloaded track 3"
+    );
+
+    let position = position_after(&mut playback.progress_rx, Duration::from_secs(1)).await;
+    assert!(
+        position > 0,
+        "the third track's position advances — samples are flowing after two crossings"
+    );
+}
+
+/// A manual Next into a track WITH a pregap can't use the preloaded stream
+/// (it was decoded from INDEX 00; a manual skip starts at INDEX 01), so it
+/// discards the preload and rebuilds through play_track. The rebuild re-reads
+/// the same file — its shared buffer and fill task must survive the discard
+/// for the skip to ever produce audio.
+#[tokio::test(flavor = "multi_thread")]
+async fn manual_next_into_a_pregap_track_rebuilds_and_keeps_streaming() {
+    let mut playback = MultiWindowPlayback::new("multi-window-next-pregap").await;
+    let [first, second] = [playback.track_ids[0].clone(), playback.track_ids[1].clone()];
+
+    playback.play_and_wait(&first).await;
+
+    playback.playback_handle.next();
+    let states = collect_states_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
+        Duration::from_secs(20),
+    )
+    .await;
+    assert!(
+        matches!(&states.last(), Some(PlaybackState::Playing { track_info, .. }) if track_info.track_id == second),
+        "the second track reaches Playing after a manual Next, got {states:?}"
+    );
+    assert!(
+        states
+            .iter()
+            .any(|s| matches!(s, PlaybackState::Loading { track_id, .. } if *track_id == second)),
+        "a pregap skip rebuilds through play_track, which surfaces a Loading arc"
+    );
+
+    let position = position_after(&mut playback.progress_rx, Duration::from_secs(1)).await;
+    assert!(
+        position > 0,
+        "the rebuilt track's position advances — its bytes are fetched on demand"
+    );
+}
+
+/// A manual Next into a track WITHOUT a pregap promotes the preloaded stream:
+/// no rebuild, so no Loading arc — Playing lands directly. The promoted
+/// decoder then streams bytes from an unbuffered region of the shared file,
+/// which only works while the buffer's fill task is alive.
+#[tokio::test(flavor = "multi_thread")]
+async fn manual_next_into_a_clean_track_promotes_the_preload() {
+    let mut playback = MultiWindowPlayback::new("multi-window-next-preload").await;
+    let [second, third] = [playback.track_ids[1].clone(), playback.track_ids[2].clone()];
+
+    playback.play_and_wait(&second).await;
+
+    playback.playback_handle.next();
+    let states = collect_states_on(
+        &mut playback.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == third),
+        Duration::from_secs(20),
+    )
+    .await;
+    assert!(
+        matches!(&states.last(), Some(PlaybackState::Playing { track_info, .. }) if track_info.track_id == third),
+        "the third track reaches Playing after a manual Next, got {states:?}"
+    );
+    assert!(
+        !states
+            .iter()
+            .any(|s| matches!(s, PlaybackState::Loading { .. })),
+        "a pregap-free Next promotes the preloaded stream — no Loading arc, got {states:?}"
+    );
+
+    let position = position_after(&mut playback.progress_rx, Duration::from_secs(1)).await;
+    assert!(
+        position > 0,
+        "the promoted track's position advances — its bytes are fetched on demand"
     );
 }
