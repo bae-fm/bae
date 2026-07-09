@@ -45,9 +45,11 @@ internal sealed class LibraryBrowserStore
         _session = session;
         _dispatcher = dispatcher;
         Sort = LibrarySortStore.Load();
-        // The album sort persists like macOS's: write the criteria back on every
-        // change. The composer sort is in-memory only, so it needs no hook.
+        // All three sorts persist like macOS's: write the criteria back on every
+        // change.
         Sort.Albums.Changed += () => LibrarySortStore.SaveAlbums(Sort.Albums);
+        Sort.Composers.Changed += () => LibrarySortStore.SaveComposers(Sort.Composers);
+        Sort.Artists.Changed += () => LibrarySortStore.SaveArtists(Sort.Artists);
     }
 
     // Load the album grid, ordered by the active album sort criteria, from the
@@ -87,9 +89,8 @@ internal sealed class LibraryBrowserStore
     public BrowserGridLoad LoadComposers()
     {
         Composers.Clear();
-        var composerSort = Sort.Composer;
         var (current, page) = _session.WithCurrentHandle(
-            handle => NativeBae.ComposerPage(handle, 0, FirstPageSize, composerSort.Field, composerSort.Direction));
+            handle => NativeBae.ComposerPage(handle, 0, FirstPageSize, Sort.Composers.Items));
         if (!current)
         {
             return new BrowserGridLoad(BrowserMode.Composers, BrowserLoadResult.HandleGone, null, false);
@@ -119,9 +120,8 @@ internal sealed class LibraryBrowserStore
     public BrowserGridLoad LoadArtists()
     {
         Artists.Clear();
-        var artistSort = Sort.Artist;
         var (current, page) = _session.WithCurrentHandle(
-            handle => NativeBae.ArtistPage(handle, 0, FirstPageSize, artistSort.Field, artistSort.Direction));
+            handle => NativeBae.ArtistPage(handle, 0, FirstPageSize, Sort.Artists.Items));
         if (!current)
         {
             return new BrowserGridLoad(BrowserMode.Artists, BrowserLoadResult.HandleGone, null, false);

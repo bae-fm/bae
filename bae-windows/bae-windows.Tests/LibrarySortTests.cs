@@ -1,21 +1,20 @@
-﻿using System.Linq;
+using System.Linq;
 using Bae.Windows;
 using Xunit;
 
 namespace Bae.Windows.Tests;
 
 /// <summary>
-/// Locks the library sort model: the album criteria's defaults, invariants
-/// (unique fields, never empty), add/remove/direction manipulation, the composer
-/// and artist sorts, and the JSON round-trip that persists the album sort like
-/// macOS does.
+/// Locks the library sort model: the per-mode criteria's defaults, invariants
+/// (unique fields, never empty), add/remove/direction manipulation, and the
+/// JSON round-trip that persists all three sorts like macOS does.
 /// </summary>
 public sealed class LibrarySortTests
 {
     [Fact]
     public void Albums_DefaultToDateAddedDescending()
     {
-        var criteria = new AlbumSortCriteria();
+        var criteria = new SortCriteria<AlbumSortField>(LibrarySortVocab.Album);
         var only = Assert.Single(criteria.Items);
         Assert.Equal(AlbumSortField.DateAdded, only.Field);
         Assert.Equal(SortDirection.Descending, only.Direction);
@@ -26,14 +25,24 @@ public sealed class LibrarySortTests
     {
         var sort = new LibrarySort();
         Assert.Equal(BrowserMode.Albums, sort.Mode);
-        Assert.Equal(ComposerSortField.Name, sort.Composer.Field);
-        Assert.Equal(SortDirection.Ascending, sort.Composer.Direction);
+        var only = Assert.Single(sort.Composers.Items);
+        Assert.Equal(ComposerSortField.Name, only.Field);
+        Assert.Equal(SortDirection.Ascending, only.Direction);
+    }
+
+    [Fact]
+    public void LibrarySort_DefaultsArtistToNameAscending()
+    {
+        var sort = new LibrarySort();
+        var only = Assert.Single(sort.Artists.Items);
+        Assert.Equal(ArtistSortField.Name, only.Field);
+        Assert.Equal(SortDirection.Ascending, only.Direction);
     }
 
     [Fact]
     public void Add_AppendsUnusedFieldAscending_AndIgnoresDuplicates()
     {
-        var criteria = new AlbumSortCriteria();
+        var criteria = new SortCriteria<AlbumSortField>(LibrarySortVocab.Album);
         criteria.Add(AlbumSortField.Artist);
 
         Assert.Equal(
@@ -49,16 +58,32 @@ public sealed class LibrarySortTests
     [Fact]
     public void AvailableToAdd_ExcludesUsedFields_InCanonicalOrder()
     {
-        var criteria = new AlbumSortCriteria();
+        var criteria = new SortCriteria<AlbumSortField>(LibrarySortVocab.Album);
         Assert.Equal(
             new[] { AlbumSortField.Title, AlbumSortField.Artist, AlbumSortField.Year },
             criteria.AvailableToAdd);
     }
 
     [Fact]
+    public void ComposerCriteria_AvailableToAdd_InCanonicalOrder()
+    {
+        var criteria = new SortCriteria<ComposerSortField>(LibrarySortVocab.Composer);
+        Assert.Equal(
+            new[] { ComposerSortField.WorkCount, ComposerSortField.LinkedReleaseCount },
+            criteria.AvailableToAdd);
+    }
+
+    [Fact]
+    public void ArtistCriteria_AvailableToAdd_InCanonicalOrder()
+    {
+        var criteria = new SortCriteria<ArtistSortField>(LibrarySortVocab.Artist);
+        Assert.Equal(new[] { ArtistSortField.AlbumCount }, criteria.AvailableToAdd);
+    }
+
+    [Fact]
     public void Remove_KeepsAtLeastOneCriterion()
     {
-        var criteria = new AlbumSortCriteria();
+        var criteria = new SortCriteria<AlbumSortField>(LibrarySortVocab.Album);
         Assert.False(criteria.CanRemove);
 
         // Removing the last remaining criterion is refused.
@@ -74,7 +99,7 @@ public sealed class LibrarySortTests
     [Fact]
     public void SetDirection_ChangesOnlyTheNamedCriterion()
     {
-        var criteria = new AlbumSortCriteria();
+        var criteria = new SortCriteria<AlbumSortField>(LibrarySortVocab.Album);
         criteria.Add(AlbumSortField.Title);
 
         criteria.SetDirection(AlbumSortField.Title, SortDirection.Descending);
@@ -85,7 +110,7 @@ public sealed class LibrarySortTests
     [Fact]
     public void Changed_FiresOnRealMutationsOnly()
     {
-        var criteria = new AlbumSortCriteria();
+        var criteria = new SortCriteria<AlbumSortField>(LibrarySortVocab.Album);
         var count = 0;
         criteria.Changed += () => count++;
 
@@ -100,10 +125,10 @@ public sealed class LibrarySortTests
     [Fact]
     public void ToJson_MatchesTheMacOsPersistShape()
     {
-        var criteria = new AlbumSortCriteria(new[]
+        var criteria = new SortCriteria<AlbumSortField>(LibrarySortVocab.Album, new[]
         {
-            new AlbumSortCriterion(AlbumSortField.Artist, SortDirection.Ascending),
-            new AlbumSortCriterion(AlbumSortField.Year, SortDirection.Descending),
+            new SortCriterion<AlbumSortField>(AlbumSortField.Artist, SortDirection.Ascending),
+            new SortCriterion<AlbumSortField>(AlbumSortField.Year, SortDirection.Descending),
         });
 
         Assert.Equal(
@@ -114,13 +139,13 @@ public sealed class LibrarySortTests
     [Fact]
     public void FromJson_RoundTripsThroughToJson()
     {
-        var original = new AlbumSortCriteria(new[]
+        var original = new SortCriteria<AlbumSortField>(LibrarySortVocab.Album, new[]
         {
-            new AlbumSortCriterion(AlbumSortField.Title, SortDirection.Descending),
-            new AlbumSortCriterion(AlbumSortField.DateAdded, SortDirection.Ascending),
+            new SortCriterion<AlbumSortField>(AlbumSortField.Title, SortDirection.Descending),
+            new SortCriterion<AlbumSortField>(AlbumSortField.DateAdded, SortDirection.Ascending),
         });
 
-        var restored = AlbumSortCriteria.FromJson(original.ToJson());
+        var restored = SortCriteria<AlbumSortField>.FromJson(LibrarySortVocab.Album, original.ToJson());
         Assert.Equal(original.ToJson(), restored.ToJson());
     }
 
@@ -134,7 +159,7 @@ public sealed class LibrarySortTests
     [InlineData("[{\"field\":\"unknown\",\"direction\":\"ascending\"}]")]
     public void FromJson_FallsBackToDefault_OnMissingOrUnusable(string? json)
     {
-        var criteria = AlbumSortCriteria.FromJson(json);
+        var criteria = SortCriteria<AlbumSortField>.FromJson(LibrarySortVocab.Album, json);
         var only = Assert.Single(criteria.Items);
         Assert.Equal(AlbumSortField.DateAdded, only.Field);
         Assert.Equal(SortDirection.Descending, only.Direction);
@@ -143,7 +168,8 @@ public sealed class LibrarySortTests
     [Fact]
     public void FromJson_SkipsUnknownAndDuplicateEntries()
     {
-        var criteria = AlbumSortCriteria.FromJson(
+        var criteria = SortCriteria<AlbumSortField>.FromJson(
+            LibrarySortVocab.Album,
             "[{\"field\":\"artist\",\"direction\":\"ascending\"}," +
             "{\"field\":\"bogus\",\"direction\":\"ascending\"}," +
             "{\"field\":\"artist\",\"direction\":\"descending\"}," +
@@ -157,39 +183,63 @@ public sealed class LibrarySortTests
     }
 
     [Fact]
-    public void SetComposer_ReplacesTheWholeCriterion()
+    public void ComposerCriteria_ToJson_UsesComposerPersistKeys()
     {
-        var sort = new LibrarySort();
-        sort.SetComposer(ComposerSortField.WorkCount, SortDirection.Descending);
-        Assert.Equal(ComposerSortField.WorkCount, sort.Composer.Field);
-        Assert.Equal(SortDirection.Descending, sort.Composer.Direction);
+        var criteria = new SortCriteria<ComposerSortField>(LibrarySortVocab.Composer, new[]
+        {
+            new SortCriterion<ComposerSortField>(ComposerSortField.WorkCount, SortDirection.Descending),
+            new SortCriterion<ComposerSortField>(ComposerSortField.LinkedReleaseCount, SortDirection.Ascending),
+        });
+
+        var json = criteria.ToJson();
+        Assert.Equal(
+            "[{\"field\":\"workCount\",\"direction\":\"descending\"},{\"field\":\"linkedReleaseCount\",\"direction\":\"ascending\"}]",
+            json);
+
+        var restored = SortCriteria<ComposerSortField>.FromJson(LibrarySortVocab.Composer, json);
+        Assert.Equal(json, restored.ToJson());
     }
 
     [Fact]
-    public void LibrarySort_DefaultsArtistToNameAscending()
+    public void ArtistCriteria_JsonRoundTrips()
     {
-        var sort = new LibrarySort();
-        Assert.Equal(ArtistSortField.Name, sort.Artist.Field);
-        Assert.Equal(SortDirection.Ascending, sort.Artist.Direction);
+        var original = new SortCriteria<ArtistSortField>(LibrarySortVocab.Artist, new[]
+        {
+            new SortCriterion<ArtistSortField>(ArtistSortField.AlbumCount, SortDirection.Descending),
+            new SortCriterion<ArtistSortField>(ArtistSortField.Name, SortDirection.Ascending),
+        });
+
+        var restored = SortCriteria<ArtistSortField>.FromJson(LibrarySortVocab.Artist, original.ToJson());
+        Assert.Equal(original.ToJson(), restored.ToJson());
     }
 
     [Fact]
-    public void SetArtist_ReplacesTheWholeCriterion()
+    public void ComposerCriteria_FromJson_FallsBackToNameAscending()
     {
-        var sort = new LibrarySort();
-        sort.SetArtist(ArtistSortField.AlbumCount, SortDirection.Descending);
-        Assert.Equal(ArtistSortField.AlbumCount, sort.Artist.Field);
-        Assert.Equal(SortDirection.Descending, sort.Artist.Direction);
+        foreach (var json in new[] { null, "garbage", "[{\"field\":\"unknown\",\"direction\":\"ascending\"}]" })
+        {
+            var criteria = SortCriteria<ComposerSortField>.FromJson(LibrarySortVocab.Composer, json);
+            var only = Assert.Single(criteria.Items);
+            Assert.Equal(ComposerSortField.Name, only.Field);
+            Assert.Equal(SortDirection.Ascending, only.Direction);
+        }
     }
 
     [Fact]
     public void Vocab_PersistKeysAreStable()
     {
-        Assert.Equal("dateAdded", LibrarySortVocab.PersistKey(AlbumSortField.DateAdded));
-        Assert.Equal("title", LibrarySortVocab.PersistKey(AlbumSortField.Title));
-        Assert.Equal("artist", LibrarySortVocab.PersistKey(AlbumSortField.Artist));
-        Assert.Equal("year", LibrarySortVocab.PersistKey(AlbumSortField.Year));
+        Assert.Equal("dateAdded", LibrarySortVocab.Album.PersistKey(AlbumSortField.DateAdded));
+        Assert.Equal("title", LibrarySortVocab.Album.PersistKey(AlbumSortField.Title));
+        Assert.Equal("artist", LibrarySortVocab.Album.PersistKey(AlbumSortField.Artist));
+        Assert.Equal("year", LibrarySortVocab.Album.PersistKey(AlbumSortField.Year));
         Assert.Equal("ascending", LibrarySortVocab.PersistKey(SortDirection.Ascending));
         Assert.Equal("descending", LibrarySortVocab.PersistKey(SortDirection.Descending));
+
+        Assert.Equal("name", LibrarySortVocab.Composer.PersistKey(ComposerSortField.Name));
+        Assert.Equal("workCount", LibrarySortVocab.Composer.PersistKey(ComposerSortField.WorkCount));
+        Assert.Equal("linkedReleaseCount", LibrarySortVocab.Composer.PersistKey(ComposerSortField.LinkedReleaseCount));
+
+        Assert.Equal("name", LibrarySortVocab.Artist.PersistKey(ArtistSortField.Name));
+        Assert.Equal("albumCount", LibrarySortVocab.Artist.PersistKey(ArtistSortField.AlbumCount));
     }
 }

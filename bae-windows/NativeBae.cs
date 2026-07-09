@@ -385,24 +385,24 @@ internal static class NativeBae
     internal static string? ChangeCover(AppHandle handle, string albumId, string releaseId, BridgeCoverSelection selection) =>
         CaptureError(() => Await(handle.ChangeCover(albumId, releaseId, selection)));
 
-    internal static (List<Album>? Albums, string? Error) AlbumPage(AppHandle handle, ulong offset, ulong limit, IReadOnlyList<AlbumSortCriterion> criteria) =>
-        CaptureBridgeValue(() => Await(handle.GetAlbumPage(SortCriteria(criteria), offset, limit))
+    internal static (List<Album>? Albums, string? Error) AlbumPage(AppHandle handle, ulong offset, ulong limit, IReadOnlyList<SortCriterion<AlbumSortField>> criteria) =>
+        CaptureBridgeValue(() => Await(handle.GetAlbumPage(ToBridge(criteria), offset, limit))
             .Select(album => new Album(album))
             .ToList());
 
     internal static long ComposerCount(AppHandle handle) =>
         checked((long)Await(handle.GetComposerCount()));
 
-    internal static (List<ComposerSummary>? Composers, string? Error) ComposerPage(AppHandle handle, ulong offset, ulong limit, ComposerSortField field, SortDirection direction) =>
-        CaptureBridgeValue(() => Await(handle.GetComposerPage(new[] { ComposerSort(field, direction) }, offset, limit))
+    internal static (List<ComposerSummary>? Composers, string? Error) ComposerPage(AppHandle handle, ulong offset, ulong limit, IReadOnlyList<SortCriterion<ComposerSortField>> criteria) =>
+        CaptureBridgeValue(() => Await(handle.GetComposerPage(ToBridge(criteria), offset, limit))
             .Select(composer => new ComposerSummary(composer))
             .ToList());
 
     internal static long ArtistCount(AppHandle handle) =>
         checked((long)Await(handle.GetArtistCount()));
 
-    internal static (List<ArtistSummary>? Artists, string? Error) ArtistPage(AppHandle handle, ulong offset, ulong limit, ArtistSortField field, SortDirection direction) =>
-        CaptureBridgeValue(() => Await(handle.GetArtistPage(new[] { ArtistSort(field, direction) }, offset, limit))
+    internal static (List<ArtistSummary>? Artists, string? Error) ArtistPage(AppHandle handle, ulong offset, ulong limit, IReadOnlyList<SortCriterion<ArtistSortField>> criteria) =>
+        CaptureBridgeValue(() => Await(handle.GetArtistPage(ToBridge(criteria), offset, limit))
             .Select(artist => new ArtistSummary(artist))
             .ToList());
 
@@ -857,15 +857,17 @@ internal static class NativeBae
         }
     }
 
-    private static BridgeSortCriterion[] SortCriteria(IReadOnlyList<AlbumSortCriterion> criteria) =>
+    private static BridgeSortCriterion[] ToBridge(IReadOnlyList<SortCriterion<AlbumSortField>> criteria) =>
         criteria.Select(criterion =>
             new BridgeSortCriterion(ToBridge(criterion.Field), ToBridge(criterion.Direction))).ToArray();
 
-    private static BridgeComposerSortCriterion ComposerSort(ComposerSortField field, SortDirection direction) =>
-        new(ToBridge(field), ToBridge(direction));
+    private static BridgeComposerSortCriterion[] ToBridge(IReadOnlyList<SortCriterion<ComposerSortField>> criteria) =>
+        criteria.Select(criterion =>
+            new BridgeComposerSortCriterion(ToBridge(criterion.Field), ToBridge(criterion.Direction))).ToArray();
 
-    private static BridgeArtistSortCriterion ArtistSort(ArtistSortField field, SortDirection direction) =>
-        new(ToBridge(field), ToBridge(direction));
+    private static BridgeArtistSortCriterion[] ToBridge(IReadOnlyList<SortCriterion<ArtistSortField>> criteria) =>
+        criteria.Select(criterion =>
+            new BridgeArtistSortCriterion(ToBridge(criterion.Field), ToBridge(criterion.Direction))).ToArray();
 
     private static BridgeSortField ToBridge(AlbumSortField field) => field switch
     {
