@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -12,6 +13,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using uniffi.bae_bridge;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Graphics;
 using Windows.Storage;
 using Windows.System;
 
@@ -68,6 +70,13 @@ public sealed partial class MainWindow : Window
     // loose-zip copy (IsAvailable is false).
     private readonly UpdateService _updateService = new();
 
+    // The window's last-seen normal (restored-state) bounds and whether it is
+    // maximized, tracked from AppWindow.Changed and written once in OnClosed.
+    // Normal bounds are recorded even while maximized, so restoring down after a
+    // relaunch lands on the user's chosen size rather than a display-sized rect.
+    private PixelRect? _lastNormalBounds;
+    private bool _maximized;
+
     // x:Bind Albums/Composers in the shell resolve here; the collections live in
     // the browser store (constructed before InitializeComponent so these are
     // non-null when the bindings first evaluate).
@@ -84,6 +93,14 @@ public sealed partial class MainWindow : Window
 
         InitializeComponent();
         Closed += OnClosed;
+
+        // Restore the window to its last-used position, size, and maximized state
+        // before the app activates it, so it appears already in place with no
+        // flicker. The saved bounds are clamped to the current displays; anything
+        // unusable leaves the system's default placement. Track later moves and
+        // resizes so OnClosed can persist the final normal bounds.
+        RestoreWindowBounds();
+        AppWindow.Changed += OnAppWindowChanged;
 
         // The window's HWND exists at construction, so bind the transport controls
         // to it now — before LoadLibrary starts the event stream that drives them.
@@ -894,6 +911,82 @@ public sealed partial class MainWindow : Window
         await _settingsDialog.Show();
     }
 
+    // Place the window at its saved bounds and maximized state. Wrapped whole:
+    // placement must never take down launch, so any failure logs and leaves the
+    // system's default placement.
+    private void RestoreWindowBounds()
+    {
+        try
+        {
+            var plan = WindowBoundsModel.PlanRestore(WindowBoundsStore.Load(), WorkAreasPrimaryFirst());
+            if (plan is null)
+            {
+                return;
+            }
+
+            AppWindow.MoveAndResize(new RectInt32(
+                plan.Bounds.X, plan.Bounds.Y, plan.Bounds.Width, plan.Bounds.Height));
+
+            // Apply the bounds first, then maximize, so AppWindow records the sane
+            // normal bounds as its restore-down target.
+            if (plan.Maximized && AppWindow.Presenter is OverlappedPresenter presenter)
+            {
+                presenter.Maximize();
+            }
+        }
+        catch (Exception exception)
+        {
+            BaeDiagnostics.Logger.Warning("Could not restore the saved window bounds.", exception);
+        }
+    }
+
+    // The current work areas, with the primary display first so a saved rect that
+    // overlaps no display falls back to it.
+    private static List<PixelRect> WorkAreasPrimaryFirst()
+    {
+        var workAreas = new List<PixelRect>();
+        var primary = DisplayArea.Primary;
+        if (primary is not null)
+        {
+            workAreas.Add(ToPixelRect(primary.WorkArea));
+        }
+
+        foreach (var display in DisplayArea.FindAll())
+        {
+            if (primary is null || display.DisplayId.Value != primary.DisplayId.Value)
+            {
+                workAreas.Add(ToPixelRect(display.WorkArea));
+            }
+        }
+
+        return workAreas;
+    }
+
+    private static PixelRect ToPixelRect(RectInt32 rect) =>
+        new(rect.X, rect.Y, rect.Width, rect.Height);
+
+    // Track the window's normal bounds and maximized state as it moves and
+    // resizes. A field assignment per event, no I/O: OnClosed does the single
+    // write. A minimized window carries no bounds worth saving, so it leaves the
+    // last-seen normal bounds and maximized flag untouched.
+    private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
+    {
+        if (sender.Presenter is not OverlappedPresenter presenter
+            || presenter.State == OverlappedPresenterState.Minimized)
+        {
+            return;
+        }
+
+        _maximized = presenter.State == OverlappedPresenterState.Maximized;
+
+        if ((args.DidPositionChange || args.DidSizeChange)
+            && presenter.State == OverlappedPresenterState.Restored)
+        {
+            _lastNormalBounds = new PixelRect(
+                sender.Position.X, sender.Position.Y, sender.Size.Width, sender.Size.Height);
+        }
+    }
+
     private async void OnClosed(object sender, WindowEventArgs args)
     {
         // Clear the transport controls first so no ghost entry lingers during
@@ -905,6 +998,14 @@ public sealed partial class MainWindow : Window
             // handle, so the next launch can restore where playback left off.
             await ShutdownAndFreeCurrentHandle();
         }
+
+        // Persist the last-seen normal bounds and maximized state, if the window
+        // ever settled into a restored position, so the next launch reopens here.
+        if (_lastNormalBounds is PixelRect normalBounds)
+        {
+            WindowBoundsStore.Save(WindowBoundsModel.Serialize(normalBounds, _maximized));
+        }
+
         BaeDiagnostics.Flush();
     }
 }

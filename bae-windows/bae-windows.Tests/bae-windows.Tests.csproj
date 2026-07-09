@@ -22,7 +22,9 @@
       pressing-field enablement), the re-identify results-list arbitration
       between the auto-identify pipeline and a manual search, and the import
       candidate-list tab assignment / counts / sort orders / persisted-token
-      round-trip, split out as plain BCL types (the stores that hold bridge
+      round-trip, and the main-window bounds clamp (validation of the saved rect
+      plus the fit-onto-the-current-displays math that keeps a restored window
+      reachable), split out as plain BCL types (the stores that hold bridge
       snapshots and the WinUI views and dialogs that render them are verified by
       compilation).
     - The export-queue decision layer (ExportQueueModel) — the Exporting
@@ -70,6 +72,7 @@
     <Compile Include="../Stores/ReidentifyResultsModel.cs" Link="ReidentifyResultsModel.cs" />
     <Compile Include="../Stores/ImportListModel.cs" Link="ImportListModel.cs" />
     <Compile Include="../Stores/ExportQueueModel.cs" Link="ExportQueueModel.cs" />
+    <Compile Include="../Stores/WindowBoundsModel.cs" Link="WindowBoundsModel.cs" />
   </ItemGroup>
 
   <ItemGroup>
