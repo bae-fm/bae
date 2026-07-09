@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>vložit na pozici {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>fronta je prázdná</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>přetáhněte sem alba, nebo nějaké přehrajte</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Identita aktualizována.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Načíst pole alba, skladby a lisu z nově identifikovaného zdroje? Vaše úpravy budou přepsány.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Obnovit z nového zdroje</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Zachovat stávající metadata</value></data>
 </root>

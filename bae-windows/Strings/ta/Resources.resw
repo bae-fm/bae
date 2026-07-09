@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>இடம் {position} இல் சேர்</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>வரிசை காலியாக உள்ளது</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>ஆல்பங்களை இங்கே இழுக்கவும் அல்லது ஒரு ஆல்பத்தை இயக்கவும்</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>அடையாளம் புதுப்பிக்கப்பட்டது.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>புதிதாக அடையாளம் காணப்பட்ட மூலத்திலிருந்து ஆல்பம், பாடல், அச்சு பதிப்பு புலங்களை எடுக்கவா? நீங்கள் செய்த திருத்தங்கள் மேலெழுதப்படும்.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>புதிய மூலத்திலிருந்து புதுப்பி</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>தற்போதைய மெட்டாடேட்டாவை வைத்திரு</value></data>
 </root>

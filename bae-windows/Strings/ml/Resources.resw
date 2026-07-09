@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>സ്ഥാനം {position}-ൽ ചേർക്കുക</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>ക്യൂ ശൂന്യമാണ്</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>ആൽബങ്ങൾ ഇവിടേക്ക് വലിച്ചിടുക, അല്ലെങ്കിൽ ഒരു ആൽബം പ്ലേ ചെയ്യുക</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>തിരിച്ചറിയൽ പുതുക്കി.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>പുതുതായി തിരിച്ചറിഞ്ഞ ഉറവിടത്തിൽ നിന്ന് ആൽബം, ട്രാക്ക്, പ്രസ്സിംഗ് ഫീൽഡുകൾ എടുക്കണോ? നിങ്ങൾ ചെയ്ത തിരുത്തലുകൾ മായും.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>പുതിയ ഉറവിടത്തിൽ നിന്ന് പുതുക്കുക</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>നിലവിലെ മെറ്റാഡാറ്റ നിലനിർത്തുക</value></data>
 </root>

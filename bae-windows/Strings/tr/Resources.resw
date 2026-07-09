@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>{position}. konuma ekle</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>kuyruk boş</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>albümleri buraya sürükleyin veya bir albüm çalın</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Kimlik güncellendi.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Albüm, parça ve baskı alanları yeni tanımlanan kaynaktan alınsın mı? Yaptığınız düzenlemelerin üzerine yazılır.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Yeni kaynaktan yenile</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Mevcut üst veriyi koru</value></data>
 </root>

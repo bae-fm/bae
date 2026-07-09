@@ -20,17 +20,20 @@ internal sealed class ReleaseActionDialogs
     private readonly Func<XamlRoot?> _xamlRoot;
     private readonly Func<IntPtr> _windowHandle;
     private readonly Action<string> _setStatus;
+    private readonly ProjectionRegistry _projections;
 
     public ReleaseActionDialogs(
         SessionStore session,
         Func<XamlRoot?> xamlRoot,
         Func<IntPtr> windowHandle,
-        Action<string> setStatus)
+        Action<string> setStatus,
+        ProjectionRegistry projections)
     {
         _session = session;
         _xamlRoot = xamlRoot;
         _windowHandle = windowHandle;
         _setStatus = setStatus;
+        _projections = projections;
     }
 
     public async System.Threading.Tasks.Task ShowExportRelease(string releaseId)
@@ -240,6 +243,22 @@ internal sealed class ReleaseActionDialogs
             return;
         }
 
+        // The candidate key the identify pipeline runs under for this release.
+        // Core treats it as an opaque key; the same string drives the toolbar
+        // toggle/re-run wrappers and the snapshot read-back.
+        var key = "reidentify:" + releaseId;
+
+        // The live pipeline status line (gray) and the signals-toolbar host,
+        // shown above the manual-search fallback. The pipeline starts with the
+        // dialog, so the status seeds to "identifying…" until its first event.
+        var pipelineStatus = new TextBlock
+        {
+            Text = Loc.Chrome("identify.identifying"),
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+            TextWrapping = TextWrapping.Wrap,
+        };
+        var badgeHost = new StackPanel();
+
         var artistBox = new TextBox { Header = Loc.Chrome("search.field.artist"), Text = seedArtist };
         var albumBox = new TextBox { Header = Loc.Chrome("search.field.album"), Text = seedAlbum };
         var sourceBox = new ComboBox { Header = Loc.Chrome("search.field.source") };
@@ -294,13 +313,17 @@ internal sealed class ReleaseActionDialogs
         exactRadio.Checked += (_, _) => identity.SetMetadataOnly(false);
         metadataRadio.Checked += (_, _) => identity.SetMetadataOnly(true);
 
+        // Auto-first, like the import picker: the pipeline status, its signal
+        // badges, and the live match list sit above the manual-search fallback.
         var form = new StackPanel { Spacing = 8, Width = 420 };
+        form.Children.Add(pipelineStatus);
+        form.Children.Add(badgeHost);
+        form.Children.Add(resultsList);
+        form.Children.Add(claimRow);
         form.Children.Add(artistBox);
         form.Children.Add(albumBox);
         form.Children.Add(sourceBox);
         form.Children.Add(searchButton);
-        form.Children.Add(resultsList);
-        form.Children.Add(claimRow);
         form.Children.Add(status);
 
         var dialog = new ContentDialog
@@ -315,6 +338,62 @@ internal sealed class ReleaseActionDialogs
         };
 
         var candidates = new List<ReleaseCandidateChoice>();
+
+        // Arbitrates who owns the match list: the auto-identify pipeline until a
+        // manual search takes it over, and a change-gate so a pipeline refresh
+        // that replays the same matches doesn't rebuild the list (which would
+        // drop the user's current pick).
+        var results = new ReidentifyResultsModel();
+
+        // A signal toggle / re-run asks the pipeline for results again, so it
+        // reclaims the list on its next refresh. The re-derived state arrives
+        // through the same candidate invalidation the refresh reads.
+        void ToggleSignal(string kind, string value)
+        {
+            results.ResumePipeline();
+            _ = _session.RunForCurrentHandle(
+                handle => NativeBae.ToggleSignalForCandidate(handle, key, kind, value));
+        }
+
+        void Rerun()
+        {
+            results.ResumePipeline();
+            _ = _session.RunForCurrentHandle(
+                handle => NativeBae.RerunIdentifyForCandidate(handle, key));
+        }
+
+        // Re-read the pipeline snapshot for this key and render its status line,
+        // signal badges, and (when it owns the list) match list. Invalidations
+        // for other candidates also land here — the registry dispatches by kind,
+        // not key — so a missing snapshot for our key is a no-op.
+        void RefreshFromPipeline()
+        {
+            var (current, snapshot) = _session.WithCurrentHandle(
+                handle => NativeBae.ReidentifyPipeline(handle, key));
+            if (!current || snapshot is null)
+            {
+                return;
+            }
+
+            var (rowStatus, matches, signals) = snapshot.Value;
+            pipelineStatus.Text = rowStatus.LocalizedLine;
+            pipelineStatus.Visibility = string.IsNullOrEmpty(rowStatus.LocalizedLine)
+                ? Visibility.Collapsed : Visibility.Visible;
+            badgeHost.Children.Clear();
+            if (signals.Count > 0)
+            {
+                badgeHost.Children.Add(SignalBadgeRow.Build(signals, ToggleSignal, Rerun));
+            }
+            if (results.ApplyPipelineMatches(matches.Select(match => match.ReleaseId).ToList()))
+            {
+                candidates = matches;
+                resultsList.ItemsSource = candidates.Select(candidate => candidate.Summary).ToList();
+            }
+        }
+
+        // Start the pipeline against the release's own files; its events flow
+        // through the candidate invalidation the registration below reads.
+        _session.WithCurrentHandle(handle => NativeBae.AutoIdentifyRelease(handle, key, releaseId));
 
         // The generated bridge search and commit both block on network/DB work; run them off
         // the UI thread so the dialog stays responsive.
@@ -339,6 +418,10 @@ internal sealed class ReleaseActionDialogs
                 return;
             }
 
+            // A successful manual search takes the results list over; later
+            // pipeline refreshes keep the status line and badges live but leave
+            // these results in place.
+            results.ApplyManualResults();
             candidates = search.Candidates ?? [];
             resultsList.ItemsSource = candidates.Select(candidate => candidate.Summary).ToList();
             status.Text = Loc.Chrome("search.no_matches");
@@ -404,6 +487,85 @@ internal sealed class ReleaseActionDialogs
             {
                 status.Text = error;
                 status.Visibility = Visibility.Visible;
+                args.Cancel = true;
+            }
+
+            deferral.Complete();
+        };
+
+        // The pipeline emits a candidate invalidation for every identify/signals
+        // event; refresh from each while the dialog is open, disposing the
+        // registration when it closes.
+        var registration = _projections.Register(
+            typeof(BridgeInvalidation.ImportCandidate), RefreshFromPipeline);
+        ContentDialogResult result;
+        try
+        {
+            result = await dialog.ShowAsync();
+        }
+        finally
+        {
+            registration.Dispose();
+        }
+
+        // A Primary result means a source-backed commit succeeded (the error
+        // paths cancel the close). Offer to reseed the metadata from the newly
+        // pointed source. The Secondary (Unknown) commit reseeds rows from the
+        // rip's file tags itself, so it has nothing to confirm.
+        if (result == ContentDialogResult.Primary)
+        {
+            await ShowRefreshPrompt(releaseId);
+        }
+    }
+
+    // After a source-backed identity commit, offer to reseed the release's
+    // metadata from the newly-pointed source. Refresh overwrites the user's
+    // prior edits by design; Keep leaves the stored metadata as-is. The identity
+    // itself is already committed either way.
+    private async System.Threading.Tasks.Task ShowRefreshPrompt(string releaseId)
+    {
+        var body = new TextBlock
+        {
+            Text = Loc.Chrome("album.reidentify.refresh_body"),
+            TextWrapping = TextWrapping.Wrap,
+        };
+        var error = new TextBlock
+        {
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
+            TextWrapping = TextWrapping.Wrap,
+            Visibility = Visibility.Collapsed,
+        };
+        var content = new StackPanel { Spacing = 8, Width = 420 };
+        content.Children.Add(body);
+        content.Children.Add(error);
+
+        var dialog = new ContentDialog
+        {
+            Title = Loc.Chrome("album.reidentify.updated"),
+            Content = content,
+            PrimaryButtonText = Loc.Chrome("album.reidentify.refresh_confirm"),
+            CloseButtonText = Loc.Chrome("album.reidentify.keep_current"),
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = _xamlRoot(),
+        };
+
+        // Refresh runs off the UI thread behind a deferral. On error keep the
+        // prompt open with the reason shown — the identity commit already
+        // succeeded, so the user can retry Refresh or fall back to Keep.
+        dialog.PrimaryButtonClick += async (_, args) =>
+        {
+            var deferral = args.GetDeferral();
+            var (current, refreshError) = await _session.RunForCurrentHandle(
+                handle => NativeBae.RefreshMetadataFromSource(handle, releaseId));
+            if (!current)
+            {
+                deferral.Complete();
+                return;
+            }
+            if (refreshError is not null)
+            {
+                error.Text = refreshError;
+                error.Visibility = Visibility.Visible;
                 args.Cancel = true;
             }
 

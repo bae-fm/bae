@@ -562,6 +562,31 @@ internal static class NativeBae
     internal static void AutoIdentifyFolder(AppHandle handle, string candidateKey, string folderPath) =>
         handle.AutoIdentifyFolder(candidateKey, folderPath);
 
+    internal static void AutoIdentifyRelease(AppHandle handle, string candidateKey, string releaseId) =>
+        handle.AutoIdentifyRelease(candidateKey, releaseId);
+
+    /// <summary>
+    /// The live identify-pipeline state for a re-identify candidate key: the
+    /// localizable row status, the found pressings, and the signals-toolbar
+    /// badges. Null until the pipeline's first event lands for the key.
+    /// </summary>
+    internal static (ImportCandidateRowStatus RowStatus, List<ReleaseCandidateChoice> Matches, List<SignalBadge> Signals)?
+        ReidentifyPipeline(AppHandle handle, string candidateKey) =>
+        handle.GetCandidate(candidateKey) is BridgeImportCandidateSnapshot.Runtime runtime
+            ? (ImportRowStatus(runtime.RuntimeSnapshot),
+               ImportMatches(runtime.RuntimeSnapshot.IdentifyState),
+               runtime.RuntimeSnapshot.SignalsToolbar.Signals.Select(SignalBadge).ToList())
+            : null;
+
+    /// <summary>
+    /// Reseed a release's metadata from its (just re-pointed) metadata source:
+    /// re-project via reset, then write the projection back. Identity rows are
+    /// untouched; the user's prior edits are overwritten by design.
+    /// </summary>
+    internal static string? RefreshMetadataFromSource(AppHandle handle, string releaseId) =>
+        CaptureError(() => Await(handle.UpdateReleaseMetadataUserEdit(
+            releaseId, Await(handle.ResetMetadataToSource(releaseId)))));
+
     internal static void ToggleSignalForCandidate(AppHandle handle, string candidateKey, string kind, string value) =>
         handle.ToggleSignalForCandidate(candidateKey, ExcludedSignal(kind, value));
 

@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>הוספה במיקום {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>התור ריק</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>גררו אלבומים לכאן או נגנו אלבום</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>הזהות עודכנה.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>למשוך את שדות האלבום, הרצועה והתקליט מהמקור שזוהה מחדש? עריכות שביצעתם יידרסו.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>רענן מהמקור החדש</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>שמור על המטא-נתונים הנוכחיים</value></data>
 </root>

@@ -154,7 +154,8 @@ public sealed partial class MainWindow : Window
             _session,
             () => Content.XamlRoot,
             () => WinRT.Interop.WindowNative.GetWindowHandle(this),
-            text => StatusText.Text = text);
+            text => StatusText.Text = text,
+            _projections);
         _albumDetail = new AlbumDetailDialog(
             _session,
             () => Content.XamlRoot,

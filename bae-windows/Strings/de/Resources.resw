@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>an Position {position} einfügen</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>Warteschlange ist leer</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>Alben hierher ziehen oder ein Album abspielen</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Identität aktualisiert.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Album-, Titel- und Pressungsfelder aus der neu identifizierten Quelle übernehmen? Deine Änderungen werden überschrieben.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Aus neuer Quelle aktualisieren</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Aktuelle Metadaten behalten</value></data>
 </root>

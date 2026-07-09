@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>insert at position {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>queue is empty</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>drag albums here or play an album</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Identity updated.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Pull the album, track, and pressing fields from the newly-identified source? Edits you've made are overwritten.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Refresh from new source</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Keep current metadata</value></data>
 </root>

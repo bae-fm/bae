@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>स्थान {position} पर जोड़ें</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>कतार खाली है</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>एल्बम यहाँ खींचें या कोई एल्बम चलाएँ</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>पहचान अपडेट हुई।</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>नए पहचाने गए स्रोत से एल्बम, ट्रैक और प्रेसिंग फील्ड लें? आपके किए बदलाव अधिलेखित हो जाएंगे।</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>नए स्रोत से रीफ्रेश करें</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>मौजूदा मेटाडेटा रखें</value></data>
 </root>

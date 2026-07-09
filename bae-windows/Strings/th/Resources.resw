@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>แทรกที่ตำแหน่ง {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>คิวว่างเปล่า</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>ลากอัลบั้มมาที่นี่หรือเล่นอัลบั้ม</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>อัปเดตข้อมูลระบุตัวตนแล้ว</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>ดึงฟิลด์อัลบั้ม แทร็ก และการผลิตแผ่นจากแหล่งที่เพิ่งระบุหรือไม่ การแก้ไขที่คุณทำไว้จะถูกเขียนทับ</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>รีเฟรชจากแหล่งใหม่</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>เก็บเมทาดาทาปัจจุบันไว้</value></data>
 </root>

@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>ಸ್ಥಾನ {position} ರಲ್ಲಿ ಸೇರಿಸಿ</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>ಸರತಿ ಖಾಲಿಯಾಗಿದೆ</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>ಆಲ್ಬಮ್‌ಗಳನ್ನು ಇಲ್ಲಿಗೆ ಎಳೆಯಿರಿ ಅಥವಾ ಒಂದು ಆಲ್ಬಮ್ ಪ್ಲೇ ಮಾಡಿ</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>ಗುರುತು ನವೀಕರಿಸಲಾಗಿದೆ.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>ಹೊಸದಾಗಿ ಗುರುತಿಸಿದ ಮೂಲದಿಂದ ಆಲ್ಬಮ್, ಹಾಡು ಮತ್ತು ಒತ್ತುವಿಕೆ ಕ್ಷೇತ್ರಗಳನ್ನು ತೆಗೆದುಕೊಳ್ಳಬೇಕೇ? ನೀವು ಮಾಡಿದ ತಿದ್ದುಪಡಿಗಳು ಮೇಲೆಯಾಗಿ ಬರೆಯಲ್ಪಡುತ್ತವೆ.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>ಹೊಸ ಮೂಲದಿಂದ ತಾಜಾಗೊಳಿಸಿ</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>ಪ್ರಸ್ತುತ ಮೆಟಾಡೇಟಾವನ್ನು ಉಳಿಸಿ</value></data>
 </root>

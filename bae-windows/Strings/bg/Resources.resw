@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>вмъкване на позиция {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>опашката е празна</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>плъзнете албуми тук или пуснете албум</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Идентичността е обновена.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Да се извлекат полетата за албум, песни и издание от новоидентифицирания източник? Направените от вас редакции ще бъдат презаписани.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Обновяване от нов източник</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Запазване на текущите метаданни</value></data>
 </root>

@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>位置 {position} に挿入</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>キューは空です</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>ここにアルバムをドラッグするか、アルバムを再生してください</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>識別情報を更新しました。</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>新しく識別されたソースからアルバム、トラック、プレスの各項目を取得しますか？加えた編集は上書きされます。</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>新しいソースから更新</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>現在のメタデータを保持</value></data>
 </root>

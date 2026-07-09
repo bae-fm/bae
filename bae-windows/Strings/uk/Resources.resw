@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>вставити на позицію {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>черга порожня</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>перетягніть альбоми сюди або відтворіть альбом</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Ідентифікацію оновлено.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Підтягнути поля альбому, треків і видання з нового ідентифікованого джерела? Внесені вами зміни буде перезаписано.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Оновити з нового джерела</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Зберегти поточні метадані</value></data>
 </root>

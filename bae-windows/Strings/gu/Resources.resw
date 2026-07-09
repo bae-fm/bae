@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>સ્થાન {position} પર ઉમેરો</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>કતાર ખાલી છે</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>આલ્બમ અહીં ખેંચો અથવા કોઈ આલ્બમ વગાડો</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>ઓળખ અપડેટ થઈ.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>નવા ઓળખાયેલા સ્રોતમાંથી આલ્બમ, ટ્રૅક અને પ્રેસિંગ ક્ષેત્રો ખેંચવા? તમે કરેલા ફેરફારો પર લખાઈ જશે.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>નવા સ્રોત પરથી તાજું કરો</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>વર્તમાન મેટાડેટા રાખો</value></data>
 </root>

@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>إدراج في الموضع {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>قائمة الانتظار فارغة</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>اسحب الألبومات إلى هنا أو شغّل ألبومًا</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>تم تحديث الهوية.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>هل تريد سحب حقول الألبوم والمقطوعة والطبعة من المصدر المحدَّد حديثًا؟ ستُستبدل التعديلات التي أجريتها.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>تحديث من مصدر جديد</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>الإبقاء على البيانات الوصفية الحالية</value></data>
 </root>

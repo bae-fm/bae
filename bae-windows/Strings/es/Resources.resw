@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>insertar en la posición {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>la cola está vacía</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>arrastra álbumes aquí o reproduce un álbum</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Identidad actualizada.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>¿Traer los campos del álbum, la pista y el prensaje desde la fuente recién identificada? Se sobrescribirán los cambios que hayas hecho.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Actualizar desde la nueva fuente</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Mantener los metadatos actuales</value></data>
 </root>

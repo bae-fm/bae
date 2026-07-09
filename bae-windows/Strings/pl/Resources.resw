@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>wstaw na pozycji {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>kolejka jest pusta</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>przeciągnij tu albumy albo odtwórz album</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Tożsamość zaktualizowana.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Pobrać pola albumu, utworów i tłoczenia z nowo zidentyfikowanego źródła? Wprowadzone zmiany zostaną nadpisane.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Odśwież z nowego źródła</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Zachowaj obecne metadane</value></data>
 </root>

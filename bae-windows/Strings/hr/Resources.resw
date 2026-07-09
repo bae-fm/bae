@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>umetni na položaj {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>red je prazan</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>povucite albume ovamo ili pustite album</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Identitet ažuriran.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Preuzeti polja albuma, skladbe i izdanja iz novoidentificiranog izvora? Vaše izmjene bit će prepisane.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Osvježi iz novog izvora</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Zadrži trenutne metapodatke</value></data>
 </root>

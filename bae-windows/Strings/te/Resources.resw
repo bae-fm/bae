@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>స్థానం {position} వద్ద చేర్చండి</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>క్యూ ఖాళీగా ఉంది</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>ఆల్బమ్‌లను ఇక్కడికి లాగండి లేదా ఒక ఆల్బమ్ ప్లే చేయండి</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>గుర్తింపు నవీకరించబడింది.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>కొత్తగా గుర్తించిన మూలం నుంచి ఆల్బమ్, ట్రాక్, ముద్రణ ఫీల్డ్‌లను తీసుకురావాలా? మీరు చేసిన మార్పులు భర్తీ చేయబడతాయి.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>కొత్త మూలం నుంచి రిఫ్రెష్ చేయి</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>ప్రస్తుత మెటాడేటాను ఉంచండి</value></data>
 </root>

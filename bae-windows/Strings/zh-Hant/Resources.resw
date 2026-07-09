@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>插入到第 {position} 位</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>佇列是空的</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>將專輯拖曳到這裡，或播放一張專輯</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>身分已更新。</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>要從新識別的來源取得專輯、曲目與版本欄位嗎？你所做的編輯會被覆寫。</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>從新來源重新整理</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>保留目前中繼資料</value></data>
 </root>

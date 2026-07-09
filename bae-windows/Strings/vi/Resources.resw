@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>chèn vào vị trí {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>hàng đợi trống</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>kéo album vào đây hoặc phát một album</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Đã cập nhật danh tính.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Lấy các trường album, bản nhạc và bản ép từ nguồn vừa nhận dạng? Các chỉnh sửa bạn đã thực hiện sẽ bị ghi đè.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Làm mới từ nguồn mới</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Giữ siêu dữ liệu hiện tại</value></data>
 </root>

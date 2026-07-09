@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>invoegen op positie {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>wachtrij is leeg</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>sleep albums hierheen of speel een album af</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>Identiteit bijgewerkt.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Album-, nummer- en persingsvelden uit de nieuw geïdentificeerde bron halen? Je bewerkingen worden overschreven.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Vernieuwen vanuit nieuwe bron</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>Huidige metadata behouden</value></data>
 </root>

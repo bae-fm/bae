@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>स्थान {position} वर जोडा</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>रांग रिकामी आहे</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>अल्बम इथे ओढा किंवा एखादा अल्बम वाजवा</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>ओळख अद्यतनित झाली.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>नव्याने ओळखलेल्या स्रोतामधून अल्बम, गाणे आणि प्रेसिंग क्षेत्रे आणायची का? तुम्ही केलेली संपादने अधिलिखित होतील.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>नवीन स्रोतामधून ताजे करा</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>सध्याचा मेटाडेटा ठेवा</value></data>
 </root>

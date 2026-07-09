@@ -352,4 +352,8 @@
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>ਸਥਿਤੀ {position} 'ਤੇ ਜੋੜੋ</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>ਕਤਾਰ ਖਾਲੀ ਹੈ</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>ਐਲਬਮਾਂ ਇੱਥੇ ਖਿੱਚੋ ਜਾਂ ਕੋਈ ਐਲਬਮ ਚਲਾਓ</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>ਪਛਾਣ ਅਪਡੇਟ ਹੋਈ।</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>ਨਵੇਂ ਪਛਾਣੇ ਸਰੋਤ ਤੋਂ ਐਲਬਮ, ਟ੍ਰੈਕ ਅਤੇ ਛਪਾਈ ਖੇਤਰ ਲੈਣੇ ਹਨ? ਤੁਹਾਡੀਆਂ ਕੀਤੀਆਂ ਸੋਧਾਂ ਉੱਤੇ ਲਿਖ ਦਿੱਤਾ ਜਾਵੇਗਾ।</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>ਨਵੇਂ ਸਰੋਤ ਤੋਂ ਤਾਜ਼ਾ ਕਰੋ</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>ਮੌਜੂਦਾ ਮੈਟਾਡਾਟਾ ਰੱਖੋ</value></data>
 </root>
