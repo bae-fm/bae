@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>ٹوکن تبدیل کر کے کاپی ہو گیا</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>البمز</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>موسیقار</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>فنکار</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>کوئی موسیقار نہیں</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>کوئی فنکار نہیں</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>البمز</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>نغمے</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>موسیقار</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>اعزازات</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>ریکارڈنگز</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>موسیقار کی تفصیل نہیں کھل سکی</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>فنکار کی تفصیل نہیں کھل سکی</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>کام کی تفصیل نہیں کھل سکی</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} کام</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} البمز</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>برآمد</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>طے شدہ نغمہ ساخت</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>طے شدہ اشاعت ساخت</value></data>

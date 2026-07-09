@@ -7,7 +7,8 @@ namespace Bae.Windows.Tests;
 /// <summary>
 /// Locks the library sort model: the album criteria's defaults, invariants
 /// (unique fields, never empty), add/remove/direction manipulation, the composer
-/// sort, and the JSON round-trip that persists the album sort like macOS does.
+/// and artist sorts, and the JSON round-trip that persists the album sort like
+/// macOS does.
 /// </summary>
 public sealed class LibrarySortTests
 {
@@ -162,6 +163,23 @@ public sealed class LibrarySortTests
         sort.SetComposer(ComposerSortField.WorkCount, SortDirection.Descending);
         Assert.Equal(ComposerSortField.WorkCount, sort.Composer.Field);
         Assert.Equal(SortDirection.Descending, sort.Composer.Direction);
+    }
+
+    [Fact]
+    public void LibrarySort_DefaultsArtistToNameAscending()
+    {
+        var sort = new LibrarySort();
+        Assert.Equal(ArtistSortField.Name, sort.Artist.Field);
+        Assert.Equal(SortDirection.Ascending, sort.Artist.Direction);
+    }
+
+    [Fact]
+    public void SetArtist_ReplacesTheWholeCriterion()
+    {
+        var sort = new LibrarySort();
+        sort.SetArtist(ArtistSortField.AlbumCount, SortDirection.Descending);
+        Assert.Equal(ArtistSortField.AlbumCount, sort.Artist.Field);
+        Assert.Equal(SortDirection.Descending, sort.Artist.Direction);
     }
 
     [Fact]

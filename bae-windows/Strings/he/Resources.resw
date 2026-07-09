@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>האסימון הוחלף והועתק</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>אלבומים</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>מלחינים</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>אמנים</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>אין מלחינים</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>אין אמנים</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>אלבומים</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>רצועות</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>מלחינים</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>קרדיטים</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>הקלטות</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>לא ניתן לפתוח את פרטי המלחין</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>לא ניתן לפתוח את פרטי האמן</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>לא ניתן לפתוח את פרטי היצירה</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} יצירות</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} אלבומים</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>ייצוא</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>פורמט ברירת מחדל לרצועה</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>פורמט ברירת מחדל להוצאה</value></data>

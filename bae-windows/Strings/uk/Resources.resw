@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>токен змінено й скопійовано</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>Альбоми</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>Композитори</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>Виконавці</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>Немає композиторів</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>Немає виконавців</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>Альбоми</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>Треки</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>Композитори</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>Автори</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>Записи</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>Не вдалося відкрити відомості про композитора</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>Не вдалося відкрити відомості про виконавця</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>Не вдалося відкрити відомості про твір</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} творів</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} альбомів</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>Експорт</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>Формат треку за замовчуванням</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>Формат релізу за замовчуванням</value></data>

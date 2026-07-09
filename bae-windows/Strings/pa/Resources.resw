@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>ਟੋਕਨ ਬਦਲਿਆ ਤੇ ਕਾਪੀ ਹੋਇਆ</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>ਐਲਬਮਾਂ</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>ਸੰਗੀਤਕਾਰ</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>ਕਲਾਕਾਰ</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>ਕੋਈ ਸੰਗੀਤਕਾਰ ਨਹੀਂ</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>ਕੋਈ ਕਲਾਕਾਰ ਨਹੀਂ</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>ਐਲਬਮਾਂ</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>ਟ੍ਰੈਕ</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>ਸੰਗੀਤਕਾਰ</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>ਕ੍ਰੈਡਿਟ</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>ਰਿਕਾਰਡਿੰਗਾਂ</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>ਸੰਗੀਤਕਾਰ ਵੇਰਵਾ ਖੋਲ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>ਕਲਾਕਾਰ ਵੇਰਵਾ ਖੋਲ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>ਰਚਨਾ ਵੇਰਵਾ ਖੋਲ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} ਰਚਨਾਵਾਂ</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} ਐਲਬਮਾਂ</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>ਨਿਰਯਾਤ</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>ਡਿਫਾਲਟ ਟ੍ਰੈਕ ਫਾਰਮੈਟ</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>ਡਿਫਾਲਟ ਰਿਲੀਜ਼ ਫਾਰਮੈਟ</value></data>

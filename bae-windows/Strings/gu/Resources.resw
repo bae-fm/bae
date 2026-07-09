@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>ટોકન ફેરવાયું અને કૉપિ થયું</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>આલ્બમો</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>સંગીતકારો</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>કલાકારો</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>સંગીતકારો નથી</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>કોઈ કલાકારો નથી</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>આલ્બમો</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>ટ્રૅક્સ</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>સંગીતકારો</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>શ્રેય</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>રેકોર્ડિંગ્સ</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>સંગીતકારની વિગત ખોલી શકાયી નહીં</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>કલાકારની વિગત ખોલી શકાયી નહીં</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>કૃતિની વિગત ખોલી શકાયી નહીં</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} કૃતિઓ</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} આલ્બમ</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>નિકાસ</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>મૂળભૂત ટ્રૅક બંધારણ</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>મૂળભૂત પ્રકાશન બંધારણ</value></data>

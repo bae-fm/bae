@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>Token erneuert und kopiert</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>Alben</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>Komponisten</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>Künstler</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>Keine Komponisten</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>Keine Künstler</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>Alben</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>Tracks</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>Komponisten</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>Credits</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>Aufnahmen</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>Komponistendetails konnten nicht geöffnet werden</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>Künstlerdetails konnten nicht geöffnet werden</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>Werkdetails konnten nicht geöffnet werden</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} Werke</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} Alben</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>Exportieren</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>Standardformat für Tracks</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>Standardformat für Releases</value></data>

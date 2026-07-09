@@ -22,11 +22,11 @@ internal sealed record BrowserGridLoad(BrowserMode Mode, BrowserLoadResult Resul
 // HandleGone means the session closed mid-search; the window leaves the pane as-is.
 internal sealed record BrowserSearch(bool HandleGone, LibrarySearchResults? Results, string? Error);
 
-// Mirror of the library grid: the albums and composers on screen, plus the
-// per-mode sort selections. The window binds x:Bind Albums/Composers to these
-// collections (through forwarders) and drives loads on sort / mode / search
-// changes; the store fetches from the current handle, attaches covers, and
-// populates the collections, returning an outcome the window renders.
+// Mirror of the library grid: the albums, composers, and artists on screen,
+// plus the per-mode sort selections. The window binds x:Bind Albums/Composers to
+// these collections (through forwarders) and drives loads on sort / mode /
+// search changes; the store fetches from the current handle, attaches covers,
+// and populates the collections, returning an outcome the window renders.
 internal sealed class LibraryBrowserStore
 {
     private const ulong FirstPageSize = 500;
@@ -38,6 +38,7 @@ internal sealed class LibraryBrowserStore
 
     public ObservableCollection<Album> Albums { get; } = new();
     public ObservableCollection<ComposerSummary> Composers { get; } = new();
+    public ObservableCollection<ArtistSummary> Artists { get; } = new();
 
     public LibraryBrowserStore(SessionStore session, DispatcherQueue dispatcher)
     {
@@ -113,6 +114,38 @@ internal sealed class LibraryBrowserStore
         return new BrowserGridLoad(BrowserMode.Composers, BrowserLoadResult.Loaded, null, page.Composers.Count == 0);
     }
 
+    // Load the artist list (per the active artist sort) into Artists. Clears
+    // the list up front so a failed or empty load leaves nothing stale behind.
+    public BrowserGridLoad LoadArtists()
+    {
+        Artists.Clear();
+        var artistSort = Sort.Artist;
+        var (current, page) = _session.WithCurrentHandle(
+            handle => NativeBae.ArtistPage(handle, 0, FirstPageSize, artistSort.Field, artistSort.Direction));
+        if (!current)
+        {
+            return new BrowserGridLoad(BrowserMode.Artists, BrowserLoadResult.HandleGone, null, false);
+        }
+        if (page.Error is not null || page.Artists is null)
+        {
+            return new BrowserGridLoad(BrowserMode.Artists, BrowserLoadResult.Failed, page.Error, false);
+        }
+
+        var handle = _session.CurrentHandleOrNull();
+        if (handle == null)
+        {
+            return new BrowserGridLoad(BrowserMode.Artists, BrowserLoadResult.HandleGone, null, false);
+        }
+
+        foreach (var artist in page.Artists)
+        {
+            artist.AttachCover(handle, _dispatcher);
+            Artists.Add(artist);
+        }
+
+        return new BrowserGridLoad(BrowserMode.Artists, BrowserLoadResult.Loaded, null, page.Artists.Count == 0);
+    }
+
     // Run a library search and attach covers to the results, for the search pane to
     // render. Covers are attached only when the search returned no error; an
     // error result passes through untouched.
@@ -155,5 +188,6 @@ internal sealed class LibraryBrowserStore
     {
         Albums.Clear();
         Composers.Clear();
+        Artists.Clear();
     }
 }

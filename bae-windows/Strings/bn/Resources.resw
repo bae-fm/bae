@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>টোকেন ঘোরানো হয়েছে এবং কপি হয়েছে</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>অ্যালবাম</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>সুরকার</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>শিল্পীরা</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>কোনো সুরকার নেই</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>কোনো শিল্পী নেই</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>অ্যালবাম</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>ট্র্যাক</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>সুরকার</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>ক্রেডিট</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>রেকর্ডিং</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>সুরকারের বিবরণ খোলা যায়নি</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>শিল্পীর বিবরণ খোলা যায়নি</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>কাজের বিবরণ খোলা যায়নি</value></data>
   <data name="work.count" xml:space="preserve"><value>{count}টি কাজ</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count}টি অ্যালবাম</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>এক্সপোর্ট</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>ডিফল্ট ট্র্যাক ফরম্যাট</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>ডিফল্ট রিলিজ ফরম্যাট</value></data>

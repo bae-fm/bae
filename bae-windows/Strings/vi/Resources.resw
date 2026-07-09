@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>đã đổi và sao chép mã thông báo</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>Album</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>Nhà soạn nhạc</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>Nghệ sĩ</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>Không có nhà soạn nhạc</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>Không có nghệ sĩ</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>Album</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>Bản nhạc</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>Nhà soạn nhạc</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>Công trạng</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>Bản thu</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>Không thể mở chi tiết nhà soạn nhạc</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>Không thể mở chi tiết nghệ sĩ</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>Không thể mở chi tiết tác phẩm</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} tác phẩm</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} album</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>Xuất</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>Định dạng bản nhạc mặc định</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>Định dạng bản phát hành mặc định</value></data>

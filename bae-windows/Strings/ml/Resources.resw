@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>ടോക്കൺ മാറ്റി പകർത്തി</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>ആൽബങ്ങൾ</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>സംഗീതരചയിതാക്കൾ</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>കലാകാരന്മാർ</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>സംഗീതരചയിതാക്കളില്ല</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>കലാകാരന്മാരില്ല</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>ആൽബങ്ങൾ</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>ട്രാക്കുകൾ</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>സംഗീതരചയിതാക്കൾ</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>ക്രെഡിറ്റുകൾ</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>റെക്കോർഡിംഗുകൾ</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>സംഗീതരചയിതാവിന്റെ വിശദാംശം തുറക്കാനായില്ല</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>കലാകാരന്റെ വിശദാംശം തുറക്കാനായില്ല</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>കൃതിയുടെ വിശദാംശം തുറക്കാനായില്ല</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} കൃതികൾ</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} ആൽബങ്ങൾ</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>കയറ്റുമതി</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>സ്ഥിര ട്രാക്ക് ഫോർമാറ്റ്</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>സ്ഥിര പതിപ്പ് ഫോർമാറ്റ്</value></data>

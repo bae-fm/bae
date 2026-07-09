@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>token rotiran i kopiran</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>Albumi</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>Skladatelji</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>Izvođači</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>Nema skladatelja</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>Nema izvođača</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>Albumi</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>Pjesme</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>Skladatelji</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>Zasluge</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>Snimke</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>Nije moguće otvoriti detalje skladatelja</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>Nije moguće otvoriti detalje izvođača</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>Nije moguće otvoriti detalje djela</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} djela</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} albuma</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>Izvoz</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>Zadani format pjesme</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>Zadani format izdanja</value></data>

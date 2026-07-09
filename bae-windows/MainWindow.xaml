@@ -169,6 +169,45 @@
                 <StackPanel x:Name="ComposerDetailPane" Spacing="10" />
             </ScrollViewer>
         </Grid>
+        <Grid
+            x:Name="ArtistBrowser"
+            Grid.Row="1"
+            Margin="24"
+            ColumnSpacing="16"
+            Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="320" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <ListView
+                x:Name="ArtistList"
+                Grid.Column="0"
+                ItemsSource="{x:Bind Artists}"
+                IsItemClickEnabled="True"
+                SelectionMode="Single"
+                ItemClick="OnArtistClick">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="local:ArtistSummary">
+                        <StackPanel Orientation="Horizontal" Spacing="10" Padding="4">
+                            <Border
+                                Width="42"
+                                Height="42"
+                                CornerRadius="6"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                                <Image Source="{x:Bind Cover, Mode=OneWay}" Stretch="UniformToFill" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind Name}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{x:Bind AlbumCountText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <ScrollViewer Grid.Column="1">
+                <StackPanel x:Name="ArtistDetailPane" Spacing="10" />
+            </ScrollViewer>
+        </Grid>
         <ScrollViewer
             x:Name="SearchResultsScroll"
             Grid.Row="1"

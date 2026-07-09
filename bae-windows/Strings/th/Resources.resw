@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>หมุนเวียนและคัดลอกโทเค็นแล้ว</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>อัลบั้ม</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>ผู้ประพันธ์</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>ศิลปิน</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>ไม่มีผู้ประพันธ์</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>ไม่มีศิลปิน</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>อัลบั้ม</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>แทร็ก</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>ผู้ประพันธ์</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>เครดิต</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>การบันทึกเสียง</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>ไม่สามารถเปิดรายละเอียดผู้ประพันธ์ได้</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>ไม่สามารถเปิดรายละเอียดศิลปินได้</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>ไม่สามารถเปิดรายละเอียดผลงานได้</value></data>
   <data name="work.count" xml:space="preserve"><value>ผลงาน {count} รายการ</value></data>
+  <data name="album.count" xml:space="preserve"><value>อัลบั้ม {count} รายการ</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>ส่งออก</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>รูปแบบแทร็กเริ่มต้น</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>รูปแบบรีลีสเริ่มต้น</value></data>

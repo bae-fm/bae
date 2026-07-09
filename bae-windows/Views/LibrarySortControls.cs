@@ -7,11 +7,11 @@ namespace Bae.Windows;
 // Renders the library sort surface into the toolbar: for albums, a pill per sort
 // criterion (a button that inverts that field's direction, plus an "x" button
 // that removes it) and a "+" button whose flyout adds an unused field; for
-// composers, a field-picker button and a direction-invert button. Field
-// switching and reordering are gone by design — the sort is built by adding and
-// removing pills. Every action mutates the LibrarySort model and asks the window
-// to reload. The window owns visibility and reload; this only builds controls,
-// so it stays a thin renderer of the model.
+// composers and artists, a field-picker button and a direction-invert button.
+// Field switching and reordering are gone by design — the sort is built by
+// adding and removing pills. Every action mutates the LibrarySort model and
+// asks the window to reload. The window owns visibility and reload; this only
+// builds controls, so it stays a thin renderer of the model.
 internal sealed class LibrarySortControls
 {
     private const string CheckmarkGlyph = "";
@@ -35,13 +35,17 @@ internal sealed class LibrarySortControls
     public void Render()
     {
         _host.Children.Clear();
-        if (_sort.Mode == BrowserMode.Composers)
+        switch (_sort.Mode)
         {
-            RenderComposer();
-        }
-        else
-        {
-            RenderAlbums();
+            case BrowserMode.Composers:
+                RenderComposer();
+                break;
+            case BrowserMode.Artists:
+                RenderArtist();
+                break;
+            default:
+                RenderAlbums();
+                break;
         }
     }
 
@@ -154,12 +158,41 @@ internal sealed class LibrarySortControls
     private void RenderComposer()
     {
         var composer = _sort.Composer;
+        RenderSingleCriterion(
+            LibrarySortVocab.ComposerFields,
+            composer.Field,
+            composer.Direction,
+            LibrarySortVocab.LabelKey,
+            (field, direction) => _sort.SetComposer(field, direction));
+    }
 
+    private void RenderArtist()
+    {
+        var artist = _sort.Artist;
+        RenderSingleCriterion(
+            LibrarySortVocab.ArtistFields,
+            artist.Field,
+            artist.Direction,
+            LibrarySortVocab.LabelKey,
+            (field, direction) => _sort.SetArtist(field, direction));
+    }
+
+    // The single-criterion sort surface shared by the composer and artist
+    // modes: a field-picker button whose flyout checkmarks the active field,
+    // and a capsule direction button that sets the opposite direction.
+    private void RenderSingleCriterion<TField>(
+        TField[] fields,
+        TField selected,
+        SortDirection direction,
+        Func<TField, string> labelKey,
+        Action<TField, SortDirection> set)
+        where TField : struct, Enum
+    {
         var fieldMenu = new MenuFlyout();
-        foreach (var field in LibrarySortVocab.ComposerFields)
+        foreach (var field in fields)
         {
-            var item = new MenuFlyoutItem { Text = Loc.Chrome(LibrarySortVocab.LabelKey(field)) };
-            if (field == composer.Field)
+            var item = new MenuFlyoutItem { Text = Loc.Chrome(labelKey(field)) };
+            if (field.Equals(selected))
             {
                 item.Icon = new FontIcon { Glyph = CheckmarkGlyph };
             }
@@ -167,7 +200,7 @@ internal sealed class LibrarySortControls
             var target = field;
             item.Click += (_, _) =>
             {
-                _sort.SetComposer(target, composer.Direction);
+                set(target, direction);
                 Mutated();
             };
             fieldMenu.Items.Add(item);
@@ -175,13 +208,13 @@ internal sealed class LibrarySortControls
 
         _host.Children.Add(new Button
         {
-            Content = Loc.Chrome(LibrarySortVocab.LabelKey(composer.Field)),
+            Content = Loc.Chrome(labelKey(selected)),
             VerticalAlignment = VerticalAlignment.Center,
             Flyout = fieldMenu,
         });
 
-        var opposite = LibrarySortVocab.Opposite(composer.Direction);
-        var arrow = composer.Direction == SortDirection.Ascending ? AscendingArrow : DescendingArrow;
+        var opposite = LibrarySortVocab.Opposite(direction);
+        var arrow = direction == SortDirection.Ascending ? AscendingArrow : DescendingArrow;
         var directionButton = new Button
         {
             Content = arrow,
@@ -191,7 +224,7 @@ internal sealed class LibrarySortControls
         ToolTipService.SetToolTip(directionButton, Loc.Chrome(LibrarySortVocab.DirectionActionKey(opposite)));
         directionButton.Click += (_, _) =>
         {
-            _sort.SetComposer(composer.Field, opposite);
+            set(selected, opposite);
             Mutated();
         };
         _host.Children.Add(directionButton);

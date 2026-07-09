@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>token obměněn a zkopírován</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>Alba</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>Skladatelé</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>Interpreti</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>Žádní skladatelé</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>Žádní interpreti</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>Alba</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>Stopy</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>Skladatelé</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>Kredity</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>Nahrávky</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>Nepodařilo se otevřít detail skladatele</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>Nepodařilo se otevřít detail interpreta</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>Nepodařilo se otevřít detail díla</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} děl</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} alb</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>Export</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>Výchozí formát stopy</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>Výchozí formát vydání</value></data>

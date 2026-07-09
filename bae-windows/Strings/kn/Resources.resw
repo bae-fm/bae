@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>ಟೋಕನ್ ಬದಲಿಸಿ ನಕಲಿಸಲಾಗಿದೆ</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>ಆಲ್ಬಮ್‌ಗಳು</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>ಸಂಗೀತ ಸಂಯೋಜಕರು</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>ಕಲಾವಿದರು</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>ಸಂಗೀತ ಸಂಯೋಜಕರು ಇಲ್ಲ</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>ಕಲಾವಿದರು ಇಲ್ಲ</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>ಆಲ್ಬಮ್‌ಗಳು</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>ಟ್ರ್ಯಾಕ್‌ಗಳು</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>ಸಂಗೀತ ಸಂಯೋಜಕರು</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>ಕ್ರೆಡಿಟ್‌ಗಳು</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>ಸಂಗೀತ ಸಂಯೋಜಕರ ವಿವರ ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>ಕಲಾವಿದರ ವಿವರ ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>ಕೃತಿ ವಿವರ ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} ಕೃತಿಗಳು</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} ಆಲ್ಬಮ್‌ಗಳು</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>ರಫ್ತು</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>ಪೂರ್ವನಿಯೋಜಿತ ಹಾಡು ಸ್ವರೂಪ</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>ಪೂರ್ವನಿಯೋಜಿತ ಬಿಡುಗಡೆ ಸ್ವರೂಪ</value></data>

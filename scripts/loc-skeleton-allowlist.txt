@@ -218,6 +218,7 @@ nl	signal.kind.disc_id
 nl	download.title
 nl	settings.automation.status.running
 nl	library.mode.albums
+nl	album.count
 nl	search.section.albums
 nl	search.section.releases
 nl	search.section.credits

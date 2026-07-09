@@ -97,17 +97,18 @@ public sealed partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
-    // x:Bind Albums/Composers in the shell resolve here; the collections live in
-    // the browser store (constructed before InitializeComponent so these are
-    // non-null when the bindings first evaluate).
+    // x:Bind Albums/Composers/Artists in the shell resolve here; the collections
+    // live in the browser store (constructed before InitializeComponent so
+    // these are non-null when the bindings first evaluate).
     public ObservableCollection<Album> Albums => _browser.Albums;
     public ObservableCollection<ComposerSummary> Composers => _browser.Composers;
+    public ObservableCollection<ArtistSummary> Artists => _browser.Artists;
 
     public MainWindow()
     {
-        // The browser store owns the Albums/Composers collections the shell binds
-        // to with x:Bind, so it (and the session it reads) must exist before
-        // InitializeComponent evaluates those bindings.
+        // The browser store owns the Albums/Composers/Artists collections the
+        // shell binds to with x:Bind, so it (and the session it reads) must
+        // exist before InitializeComponent evaluates those bindings.
         _session = new SessionStore(DispatcherQueue);
         _browser = new LibraryBrowserStore(_session, DispatcherQueue);
 
@@ -145,6 +146,7 @@ public sealed partial class MainWindow : Window
 
         BrowserModeBox.Items.Add(Loc.Chrome("library.mode.albums"));
         BrowserModeBox.Items.Add(Loc.Chrome("library.mode.composers"));
+        BrowserModeBox.Items.Add(Loc.Chrome("library.mode.artists"));
         _sortControls = new LibrarySortControls(SortControls, _browser.Sort, ReloadBrowserForSortChange);
         _sortControls.Render();
         BrowserModeBox.SelectedIndex = 0;
@@ -241,8 +243,10 @@ public sealed partial class MainWindow : Window
             DispatcherQueue,
             SearchResultsPanel,
             ComposerDetailPane,
+            ArtistDetailPane,
             text => StatusText.Text = text,
             ShowComposerBrowser,
+            ShowArtistBrowser,
             _albumDetail.Show);
         _unlockDialog = new UnlockDialog(() => Content.XamlRoot, text => StatusText.Text = text, OpenLibrary);
         _joinDialog = new JoinLibraryDialog(
@@ -322,6 +326,7 @@ public sealed partial class MainWindow : Window
     {
         _projections.Register(typeof(BridgeInvalidation.AlbumList), ReloadBrowserFromInvalidation);
         _projections.Register(typeof(BridgeInvalidation.ComposerList), ReloadBrowserFromInvalidation);
+        _projections.Register(typeof(BridgeInvalidation.ArtistList), ReloadBrowserFromInvalidation);
         _projections.Register(typeof(BridgeInvalidation.SyncStatus), _sync.Refresh);
         _projections.Register(typeof(BridgeInvalidation.ImportCandidateList), _import.RefreshCandidates);
         _projections.Register(typeof(BridgeInvalidation.ImportCandidate), _import.RefreshCandidates);
@@ -338,7 +343,12 @@ public sealed partial class MainWindow : Window
 
     private void OnBrowserModeChanged(object sender, SelectionChangedEventArgs e)
     {
-        _browser.Sort.SetMode(BrowserModeBox.SelectedIndex == 1 ? BrowserMode.Composers : BrowserMode.Albums);
+        _browser.Sort.SetMode(BrowserModeBox.SelectedIndex switch
+        {
+            1 => BrowserMode.Composers,
+            2 => BrowserMode.Artists,
+            _ => BrowserMode.Albums,
+        });
         _sortControls.Render();
         ReloadBrowserForSortChange();
     }
@@ -357,6 +367,7 @@ public sealed partial class MainWindow : Window
     {
         AlbumGrid.Visibility = Visibility.Visible;
         ComposerBrowser.Visibility = Visibility.Collapsed;
+        ArtistBrowser.Visibility = Visibility.Collapsed;
         SearchResultsScroll.Visibility = Visibility.Collapsed;
     }
 
@@ -364,6 +375,15 @@ public sealed partial class MainWindow : Window
     {
         AlbumGrid.Visibility = Visibility.Collapsed;
         ComposerBrowser.Visibility = Visibility.Visible;
+        ArtistBrowser.Visibility = Visibility.Collapsed;
+        SearchResultsScroll.Visibility = Visibility.Collapsed;
+    }
+
+    private void ShowArtistBrowser()
+    {
+        AlbumGrid.Visibility = Visibility.Collapsed;
+        ComposerBrowser.Visibility = Visibility.Collapsed;
+        ArtistBrowser.Visibility = Visibility.Visible;
         SearchResultsScroll.Visibility = Visibility.Collapsed;
     }
 
@@ -371,6 +391,7 @@ public sealed partial class MainWindow : Window
     {
         AlbumGrid.Visibility = Visibility.Collapsed;
         ComposerBrowser.Visibility = Visibility.Collapsed;
+        ArtistBrowser.Visibility = Visibility.Collapsed;
         SearchResultsScroll.Visibility = Visibility.Visible;
     }
 
@@ -385,6 +406,14 @@ public sealed partial class MainWindow : Window
             ShowComposerBrowser();
             _browserPanes.ClearComposerDetail();
             RenderGridStatus(_browser.LoadComposers());
+            return;
+        }
+
+        if (_browser.Sort.Mode == BrowserMode.Artists)
+        {
+            ShowArtistBrowser();
+            _browserPanes.ClearArtistDetail();
+            RenderGridStatus(_browser.LoadArtists());
             return;
         }
 
@@ -428,7 +457,12 @@ public sealed partial class MainWindow : Window
                 return;
             default:
                 StatusText.Text = load.IsEmpty
-                    ? Loc.Chrome(load.Mode == BrowserMode.Composers ? "library.no_composers" : "library.empty")
+                    ? Loc.Chrome(load.Mode switch
+                    {
+                        BrowserMode.Composers => "library.no_composers",
+                        BrowserMode.Artists => "library.no_artists",
+                        _ => "library.empty",
+                    })
                     : string.Empty;
                 return;
         }
@@ -1053,6 +1087,16 @@ public sealed partial class MainWindow : Window
         }
 
         await _browserPanes.ShowComposerDetail(composer.ArtistId);
+    }
+
+    private async void OnArtistClick(object sender, ItemClickEventArgs e)
+    {
+        if (CurrentHandleOrNull() == null || e.ClickedItem is not ArtistSummary artist)
+        {
+            return;
+        }
+
+        await _browserPanes.ShowArtistDetail(artist.ArtistId);
     }
 
     // Dispatch by the modifiers held at click time: Ctrl toggles the clicked

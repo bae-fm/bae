@@ -398,6 +398,14 @@ internal static class NativeBae
             .Select(composer => new ComposerSummary(composer))
             .ToList());
 
+    internal static long ArtistCount(AppHandle handle) =>
+        checked((long)Await(handle.GetArtistCount()));
+
+    internal static (List<ArtistSummary>? Artists, string? Error) ArtistPage(AppHandle handle, ulong offset, ulong limit, ArtistSortField field, SortDirection direction) =>
+        CaptureBridgeValue(() => Await(handle.GetArtistPage(ArtistSort(field, direction), offset, limit))
+            .Select(artist => new ArtistSummary(artist))
+            .ToList());
+
     internal static (BridgeGalleryItem[]? Items, string? Error) Gallery(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() =>
         {
@@ -487,6 +495,13 @@ internal static class NativeBae
         {
             var detail = Await(handle.GetComposerDetail(artistId));
             return detail is null ? null : new ComposerDetail(detail);
+        });
+
+    internal static (ArtistDetail? Detail, string? Error) GetArtistDetail(AppHandle handle, string artistId) =>
+        CaptureBridgeValue(() =>
+        {
+            var detail = Await(handle.GetArtistDetail(artistId));
+            return detail is null ? null : new ArtistDetail(detail);
         });
 
     internal static (WorkDetail? Detail, string? Error) GetWorkDetail(AppHandle handle, string workId) =>
@@ -849,6 +864,9 @@ internal static class NativeBae
     private static BridgeComposerSortCriterion ComposerSort(ComposerSortField field, SortDirection direction) =>
         new(ToBridge(field), ToBridge(direction));
 
+    private static BridgeArtistSortCriterion ArtistSort(ArtistSortField field, SortDirection direction) =>
+        new(ToBridge(field), ToBridge(direction));
+
     private static BridgeSortField ToBridge(AlbumSortField field) => field switch
     {
         AlbumSortField.DateAdded => BridgeSortField.DateAdded,
@@ -864,6 +882,13 @@ internal static class NativeBae
         ComposerSortField.WorkCount => BridgeComposerSortField.WorkCount,
         ComposerSortField.LinkedReleaseCount => BridgeComposerSortField.LinkedReleaseCount,
         _ => throw new ArgumentOutOfRangeException(nameof(field), field, "Unknown composer sort field"),
+    };
+
+    private static BridgeArtistSortField ToBridge(ArtistSortField field) => field switch
+    {
+        ArtistSortField.Name => BridgeArtistSortField.Name,
+        ArtistSortField.AlbumCount => BridgeArtistSortField.AlbumCount,
+        _ => throw new ArgumentOutOfRangeException(nameof(field), field, "Unknown artist sort field"),
     };
 
     private static BridgeSortDirection ToBridge(SortDirection direction) => direction switch

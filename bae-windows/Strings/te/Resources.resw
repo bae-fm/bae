@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>టోకెన్ మార్చి కాపీ చేయబడింది</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>ఆల్బమ్‌లు</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>సంగీతరచయితలు</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>కళాకారులు</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>సంగీతరచయితలు లేరు</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>కళాకారులు లేరు</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>ఆల్బమ్‌లు</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>ట్రాక్‌లు</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>సంగీతరచయితలు</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>క్రెడిట్‌లు</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>రికార్డింగ్‌లు</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>సంగీతరచయిత వివరాన్ని తెరవలేకపోయింది</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>కళాకారుని వివరాన్ని తెరవలేకపోయింది</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>కృతి వివరాన్ని తెరవలేకపోయింది</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} కృతులు</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} ఆల్బమ్‌లు</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>ఎగుమతి</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>డిఫాల్ట్ ట్రాక్ ఫార్మాట్</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>డిఫాల్ట్ విడుదల ఫార్మాట్</value></data>

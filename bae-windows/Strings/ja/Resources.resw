@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>トークンを更新してコピーしました</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>アルバム</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>作曲者</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>アーティスト</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>作曲者がありません</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>アーティストがいません</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>アルバム</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>トラック</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>作曲者</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>クレジット</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>録音</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>作曲者の詳細を開けませんでした</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>アーティストの詳細を開けませんでした</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>作品の詳細を開けませんでした</value></data>
   <data name="work.count" xml:space="preserve"><value>{count}作品</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count}枚のアルバム</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>エクスポート</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>デフォルトのトラック形式</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>デフォルトのリリース形式</value></data>

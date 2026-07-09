@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>權杖已輪替並複製</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>專輯</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>作曲者</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>藝人</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>沒有作曲者</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>沒有藝人</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>專輯</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>曲目</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>作曲者</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>製作名單</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>錄音</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>無法開啟作曲者詳細資料</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>無法開啟藝人詳細資料</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>無法開啟作品詳細資料</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} 部作品</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} 張專輯</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>匯出</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>預設曲目格式</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>預設發行格式</value></data>

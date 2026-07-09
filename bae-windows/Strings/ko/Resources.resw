@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>토큰이 교체되어 복사됨</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>앨범</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>작곡가</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>아티스트</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>작곡가 없음</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>아티스트 없음</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>앨범</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>트랙</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>작곡가</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>크레딧</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>녹음</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>작곡가 세부 정보를 열 수 없음</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>아티스트 세부 정보를 열 수 없음</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>작품 세부 정보를 열 수 없음</value></data>
   <data name="work.count" xml:space="preserve"><value>작품 {count}개</value></data>
+  <data name="album.count" xml:space="preserve"><value>앨범 {count}개</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>내보내기</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>기본 트랙 형식</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>기본 릴리스 형식</value></data>

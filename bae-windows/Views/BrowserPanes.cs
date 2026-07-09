@@ -8,19 +8,22 @@ using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
-// Renders the two library panes that aren't the album grid: the search-results
-// list and the composer/work detail column. Both read the current handle for
-// their fetches (composer/work detail) and covers; the window owns pane
-// visibility and the status line, passed in as callbacks. Opening an album is
-// injected because the album-detail dialog lives on the window.
+// Renders the three library panes that aren't the album grid: the
+// search-results list and the composer/work and artist detail columns. Both
+// read the current handle for their fetches (composer/work/artist detail) and
+// covers; the window owns pane visibility and the status line, passed in as
+// callbacks. Opening an album is injected because the album-detail dialog
+// lives on the window.
 internal sealed class BrowserPanes
 {
     private readonly SessionStore _session;
     private readonly DispatcherQueue _dispatcher;
     private readonly StackPanel _searchResultsPanel;
     private readonly StackPanel _composerDetailPane;
+    private readonly StackPanel _artistDetailPane;
     private readonly Action<string> _setStatus;
     private readonly Action _showComposerBrowser;
+    private readonly Action _showArtistBrowser;
     private readonly Func<string, string?, string?, System.Threading.Tasks.Task> _openAlbum;
 
     public BrowserPanes(
@@ -28,20 +31,26 @@ internal sealed class BrowserPanes
         DispatcherQueue dispatcher,
         StackPanel searchResultsPanel,
         StackPanel composerDetailPane,
+        StackPanel artistDetailPane,
         Action<string> setStatus,
         Action showComposerBrowser,
+        Action showArtistBrowser,
         Func<string, string?, string?, System.Threading.Tasks.Task> openAlbum)
     {
         _session = session;
         _dispatcher = dispatcher;
         _searchResultsPanel = searchResultsPanel;
         _composerDetailPane = composerDetailPane;
+        _artistDetailPane = artistDetailPane;
         _setStatus = setStatus;
         _showComposerBrowser = showComposerBrowser;
+        _showArtistBrowser = showArtistBrowser;
         _openAlbum = openAlbum;
     }
 
     public void ClearComposerDetail() => _composerDetailPane.Children.Clear();
+
+    public void ClearArtistDetail() => _artistDetailPane.Children.Clear();
 
     // Render the search-results list from the store's cover-attached results. The
     // window has already flipped to the search pane; this fills the panel and sets
@@ -160,7 +169,7 @@ internal sealed class BrowserPanes
         });
         if (detail.WorkGroups.Count > 0)
         {
-            AddPaneHeader(Loc.Chrome("search.section.works"));
+            AddPaneHeader(_composerDetailPane, Loc.Chrome("search.section.works"));
             foreach (var group in detail.WorkGroups)
             {
                 if (group.Parent is not null)
@@ -175,7 +184,7 @@ internal sealed class BrowserPanes
         }
         if (detail.UnlinkedReleaseRoles.Count > 0)
         {
-            AddPaneHeader(Loc.Chrome("search.section.credits"));
+            AddPaneHeader(_composerDetailPane, Loc.Chrome("search.section.credits"));
             foreach (var role in detail.UnlinkedReleaseRoles)
             {
                 _composerDetailPane.Children.Add(PaneButton(role.AlbumTitle, role.SourceCredit ?? string.Empty, () =>
@@ -184,7 +193,7 @@ internal sealed class BrowserPanes
         }
         if (detail.UnlinkedTrackRoles.Count > 0)
         {
-            AddPaneHeader(Loc.Chrome("search.section.recordings"));
+            AddPaneHeader(_composerDetailPane, Loc.Chrome("search.section.recordings"));
             foreach (var role in detail.UnlinkedTrackRoles)
             {
                 _composerDetailPane.Children.Add(PaneButton(role.TrackTitle, role.AlbumTitle, () => _openAlbum(role.AlbumId, null, null)));
@@ -196,12 +205,63 @@ internal sealed class BrowserPanes
         }
     }
 
+    public async System.Threading.Tasks.Task ShowArtistDetail(string artistId)
+    {
+        var (current, response) = await _session.RunForCurrentHandle(
+            handle => NativeBae.GetArtistDetail(handle, artistId));
+        if (!current)
+        {
+            return;
+        }
+        if (response.Error is not null || response.Detail is null)
+        {
+            _setStatus(response.Error ?? Loc.Chrome("artist.open_failed"));
+            return;
+        }
+
+        var detail = response.Detail;
+        var handle = _session.CurrentHandleOrNull();
+        if (handle == null)
+        {
+            return;
+        }
+        detail.Artist.AttachCover(handle, _dispatcher);
+        foreach (var album in detail.Albums)
+        {
+            album.AttachCover(handle, _dispatcher);
+        }
+
+        _showArtistBrowser();
+        _artistDetailPane.Children.Clear();
+        _artistDetailPane.Children.Add(new TextBlock
+        {
+            Text = detail.Artist.Name,
+            Style = (Style)Application.Current.Resources["TitleTextBlockStyle"],
+        });
+        _artistDetailPane.Children.Add(new TextBlock
+        {
+            Text = detail.Artist.AlbumCountText,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+        });
+        if (detail.Albums.Count > 0)
+        {
+            AddPaneHeader(_artistDetailPane, Loc.Chrome("search.section.albums"));
+            foreach (var album in detail.Albums)
+            {
+                _artistDetailPane.Children.Add(PaneButton(
+                    album.Title,
+                    album.Year?.ToString() ?? string.Empty,
+                    () => _openAlbum(album.Id, null, null)));
+            }
+        }
+    }
+
     private Button WorkButton(WorkSummary work) =>
         PaneButton(work.Title, work.ComposerNames ?? string.Empty, () => ShowWorkDetail(work.WorkId));
 
-    private void AddPaneHeader(string title)
+    private void AddPaneHeader(StackPanel pane, string title)
     {
-        _composerDetailPane.Children.Add(new TextBlock
+        pane.Children.Add(new TextBlock
         {
             Text = title,
             Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"],
@@ -274,7 +334,7 @@ internal sealed class BrowserPanes
         });
         if (detail.ChildWorks.Count > 0)
         {
-            AddPaneHeader(Loc.Chrome("search.section.works"));
+            AddPaneHeader(_composerDetailPane, Loc.Chrome("search.section.works"));
             foreach (var work in detail.ChildWorks)
             {
                 _composerDetailPane.Children.Add(WorkButton(work));
@@ -282,7 +342,7 @@ internal sealed class BrowserPanes
         }
         if (detail.Releases.Count > 0)
         {
-            AddPaneHeader(Loc.Chrome("search.section.releases"));
+            AddPaneHeader(_composerDetailPane, Loc.Chrome("search.section.releases"));
             foreach (var release in detail.Releases)
             {
                 _composerDetailPane.Children.Add(PaneButton(release.AlbumTitle, release.DisplaySubtitle, () =>
@@ -291,7 +351,7 @@ internal sealed class BrowserPanes
         }
         if (detail.Tracks.Count > 0)
         {
-            AddPaneHeader(Loc.Chrome("search.section.recordings"));
+            AddPaneHeader(_composerDetailPane, Loc.Chrome("search.section.recordings"));
             foreach (var track in detail.Tracks)
             {
                 _composerDetailPane.Children.Add(PaneButton(track.TrackTitle, track.AlbumTitle, () => _openAlbum(track.AlbumId, null, null)));

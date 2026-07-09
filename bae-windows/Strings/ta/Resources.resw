@@ -283,7 +283,9 @@
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>டோக்கன் மாற்றப்பட்டு நகலெடுக்கப்பட்டது</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>ஆல்பங்கள்</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>இசையமைப்பாளர்கள்</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>கலைஞர்கள்</value></data>
   <data name="library.no_composers" xml:space="preserve"><value>இசையமைப்பாளர்கள் இல்லை</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>கலைஞர்கள் இல்லை</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>ஆல்பங்கள்</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>பாடல்கள்</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>இசையமைப்பாளர்கள்</value></data>
@@ -292,8 +294,10 @@
   <data name="search.section.credits" xml:space="preserve"><value>பங்களிப்புகள்</value></data>
   <data name="search.section.recordings" xml:space="preserve"><value>பதிவுகள்</value></data>
   <data name="composer.open_failed" xml:space="preserve"><value>இசையமைப்பாளர் விவரத்தைத் திறக்க முடியவில்லை</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>கலைஞர் விவரத்தைத் திறக்க முடியவில்லை</value></data>
   <data name="work.open_failed" xml:space="preserve"><value>படைப்பு விவரத்தைத் திறக்க முடியவில்லை</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} படைப்புகள்</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} ஆல்பங்கள்</value></data>
   <data name="settings.export.label" xml:space="preserve"><value>ஏற்றுமதி</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>இயல்புநிலை பாடல் வடிவம்</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>இயல்புநிலை வெளியீட்டு வடிவம்</value></data>

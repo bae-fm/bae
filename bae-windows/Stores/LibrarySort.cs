@@ -10,6 +10,7 @@ public enum BrowserMode
 {
     Albums,
     Composers,
+    Artists,
 }
 
 // The library album sort keys. Names match the bridge sort fields the album page
@@ -27,6 +28,12 @@ public enum ComposerSortField
     Name,
     WorkCount,
     LinkedReleaseCount,
+}
+
+public enum ArtistSortField
+{
+    Name,
+    AlbumCount,
 }
 
 public enum SortDirection
@@ -57,6 +64,12 @@ public static class LibrarySortVocab
         ComposerSortField.LinkedReleaseCount,
     };
 
+    public static readonly ArtistSortField[] ArtistFields =
+    {
+        ArtistSortField.Name,
+        ArtistSortField.AlbumCount,
+    };
+
     public static string LabelKey(AlbumSortField field) => field switch
     {
         AlbumSortField.DateAdded => "sort.dateAdded",
@@ -72,6 +85,13 @@ public static class LibrarySortVocab
         ComposerSortField.WorkCount => "search.section.works",
         ComposerSortField.LinkedReleaseCount => "search.section.releases",
         _ => throw new ArgumentOutOfRangeException(nameof(field), field, "Unknown composer sort field"),
+    };
+
+    public static string LabelKey(ArtistSortField field) => field switch
+    {
+        ArtistSortField.Name => "sort.name",
+        ArtistSortField.AlbumCount => "search.section.albums",
+        _ => throw new ArgumentOutOfRangeException(nameof(field), field, "Unknown artist sort field"),
     };
 
     // The chrome key naming the action of switching to a direction: the direction
@@ -301,6 +321,10 @@ public sealed class AlbumSortCriteria
 // criterion and is not persisted — it resets to name-ascending each launch.
 public sealed record ComposerSortCriterion(ComposerSortField Field, SortDirection Direction);
 
+// One artist sort key and direction. Like the composer sort: a single
+// criterion, not persisted — it resets to name-ascending each launch.
+public sealed record ArtistSortCriterion(ArtistSortField Field, SortDirection Direction);
+
 // The browser's whole sort state: the current mode, the persisted album sort
 // criteria, and the in-memory composer sort. No WinUI, no bridge types.
 public sealed class LibrarySort
@@ -311,6 +335,9 @@ public sealed class LibrarySort
 
     public ComposerSortCriterion Composer { get; private set; } =
         new(ComposerSortField.Name, SortDirection.Ascending);
+
+    public ArtistSortCriterion Artist { get; private set; } =
+        new(ArtistSortField.Name, SortDirection.Ascending);
 
     public LibrarySort()
         : this(new AlbumSortCriteria())
@@ -326,4 +353,7 @@ public sealed class LibrarySort
 
     public void SetComposer(ComposerSortField field, SortDirection direction) =>
         Composer = new ComposerSortCriterion(field, direction);
+
+    public void SetArtist(ArtistSortField field, SortDirection direction) =>
+        Artist = new ArtistSortCriterion(field, direction);
 }

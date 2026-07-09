@@ -14,20 +14,21 @@ public sealed class Album : INotifyPropertyChanged
     private readonly CoverImage.Binding _cover;
     private bool _isSelected;
 
-    internal Album(BridgeAlbumSearchResult album) : this(album.Id, album.Title, album.ArtistName, album.Cover)
+    internal Album(BridgeAlbumSearchResult album) : this(album.Id, album.Title, album.ArtistName, album.Year, album.Cover)
     {
     }
 
-    internal Album(BridgeAlbum album) : this(album.Id, album.Title, album.ArtistNames, album.Cover)
+    internal Album(BridgeAlbum album) : this(album.Id, album.Title, album.ArtistNames, album.Year, album.Cover)
     {
         PrimaryReleaseId = album.PrimaryReleaseId;
     }
 
-    private Album(string id, string title, string artist, BridgeImageRef? cover)
+    private Album(string id, string title, string artist, int? year, BridgeImageRef? cover)
     {
         _id = id;
         _title = title;
         _artist = artist;
+        Year = year;
         _cover = new CoverImage.Binding(cover);
         _cover.SourceChanged += () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Cover)));
     }
@@ -37,6 +38,7 @@ public sealed class Album : INotifyPropertyChanged
     public string Id => _id;
     public string Title => _title;
     public string Artist => _artist;
+    public int? Year { get; }
 
     /// <summary>The album's canonical release — the default play/queue target.
     /// Null for search-result albums, whose bridge type doesn't carry it.</summary>
