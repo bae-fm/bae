@@ -790,6 +790,27 @@ impl Database {
             .expect("replacement outcomes mutex not poisoned"))
     }
 
+    /// Delete a release row, apply its cleanup plan, and remove the album when
+    /// this was its last release. Deliberately does NOT sweep now-orphaned
+    /// artists, works, work_parts, or artist-image blobs — retention is a
+    /// sync-safety invariant.
+    ///
+    /// This delete may target a remote (sync-visible) release, and artist/work
+    /// rows are shared across devices (import find-or-create reuses them by
+    /// Discogs/MusicBrainz id or name). Deleting a locally-orphaned artist or
+    /// work row here would emit the row DELETE to peers (coven propagates a
+    /// delete whose kept children die in the same changeset), and a peer that
+    /// concurrently imported a release referencing the same row either
+    /// cascade-loses those link rows (the link tables are ON DELETE CASCADE) or
+    /// hits a foreign-key violation (`albums.artist_id` has no delete action)
+    /// that rolls back the whole incoming changeset and holds that device's
+    /// pull cursor forever. The deleting device wedges the same way in reverse
+    /// when the peer's link-row INSERTs referencing the deleted row arrive.
+    /// Orphaned rows are inert instead: unreachable from the UI (artists and
+    /// works surface only through albums, tracks, and work links) and cut from
+    /// outgoing changesets and bootstrap snapshots by coven's descendant gate,
+    /// so they never reach new devices and are re-referenced in place if a
+    /// later import matches the same artist or work.
     pub async fn delete_release_with_cleanup(
         &self,
         release_id: &str,
@@ -820,7 +841,11 @@ impl Database {
     /// operation. Used when remote import upload setup fails after finalize: the
     /// release was never announced to the library, and its audio files are the
     /// user's in-place source files, so this clears coven's external refs without
-    /// queuing file deletion.
+    /// queuing file deletion. This is also why this path may sweep the orphaned
+    /// artists/works it finds (below) while `delete_release_with_cleanup` must
+    /// not: the rolled-back release was never remote, so the swept rows had no
+    /// kept descendants and coven's outbound gate cuts their DELETEs from the
+    /// changeset — the sweep never leaves this device.
     /// Returns the cover and artist-image blobs this rollback orphaned, so the
     /// caller can evict them from coven's on-device store (the transaction
     /// drops the rows but cannot reach the blob store).
