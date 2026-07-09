@@ -121,3 +121,42 @@ nl	Disc TOC
 # "Provider" key above); the sentence around it is a real translation.
 it	This library needs a signed-in provider. Go back and choose the provider it uses.
 nl	This library needs a signed-in provider. Go back and choose the provider it uses.
+
+# Android strings.xml — keyed by Android resource name (not the en value,
+# unlike the xcstrings entries above, since Android keys aren't the English
+# source text). Established loanwords, matching the xcstrings allowlist
+# rationale above and the locale's other good entries.
+it	settings_provider
+it	settings_account
+it	settings_bucket
+it	settings_endpoint
+it	members_role_follower
+it	cloud_provider_s3
+it	onboarding_invite_provider
+it	onboarding_invite_provider_mismatch
+it	download_file_count	one
+it	download_remove
+tr	settings_bucket
+tr	cloud_provider_s3
+vi	settings_bucket
+vi	settings_endpoint
+vi	cloud_provider_s3
+nl	shuffle
+nl	queue_shuffle_on
+nl	search_section_albums
+nl	search_section_credits
+nl	search_section_releases
+nl	library_mode_albums
+nl	settings_provider
+nl	settings_account
+nl	settings_bucket
+nl	settings_endpoint
+nl	cloud_provider_s3
+nl	onboarding_invite_provider
+nl	downloads
+nl	onboarding_invite_provider_mismatch
+nl	settings_copy_recovery_code
+nl	settings_pause_uploads
+nl	onboarding_join_copy_code
+nl	download_remove
+nl	downloads_empty

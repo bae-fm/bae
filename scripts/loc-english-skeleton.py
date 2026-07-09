@@ -5,12 +5,11 @@ glossary noun swapped in (sometimes with an English suffix glued onto a
 non-English stem, e.g. "Sincronizzazioneing", "Eşzamanlamaed", "Đồng bộed",
 "Importerened").
 
-Reads both xcstrings catalogs (strict — these gate CI) plus the Android
-values-{it,tr,vi,nl}/strings.xml and Windows Strings/{it,tr,vi,nl}/Resources.resw
-catalogs (report-only: the Android catalogs are audited by hand rather than
-gated here, and the Windows resw catalogs carry pre-existing rot that hasn't
-been swept, so gating on either would fail CI on defects this script cannot
-yet fix).
+Reads both xcstrings catalogs and the Android values-{it,tr,vi,nl}/strings.xml
+catalog (strict — these gate CI) plus the Windows
+Strings/{it,tr,vi,nl}/Resources.resw catalog (report-only: it carries
+pre-existing rot that hasn't been swept, so gating on it would fail CI on
+defects this script cannot yet fix).
 
 Detectors:
   - glued morphology: an English suffix (ing/ed/s) glued onto a non-English
@@ -38,8 +37,8 @@ translation defect regardless of what the other detectors say, so it is not
 allowlist-suppressible.
 
 Gates CI: exits non-zero if any strict-detector or placeholder-multiset hit in
-the two xcstrings catalogs is not allowlisted (placeholder mismatches are never
-allowlist-suppressible).
+the two xcstrings catalogs or the Android catalog is not allowlisted
+(placeholder mismatches are never allowlist-suppressible).
 """
 import json
 import pathlib
@@ -362,7 +361,7 @@ def main():
 
     total_gating_failures = 0
 
-    # ── Strict: the two xcstrings catalogs ──────────────────────────────────
+    # ── Strict: the two xcstrings catalogs and the Android catalog ──────────
     for label, path in (("macOS xcstrings", MAC_XCSTRINGS), ("iOS xcstrings", IOS_XCSTRINGS)):
         leaves = list(xcstrings_leaves(path))
         detector_hits, band_hits = scan_leaves(leaves)
@@ -382,14 +381,25 @@ def main():
         if verbose:
             print_hits(f"{label} (report-only band)", band_hits, allowed)
 
-    # ── Report-only: Android (strict coverage lands in its own sweep PR) ────
     android_leaves_all = []
     for loc, target_path in ANDROID_STRINGS.items():
         en_path = "bae-android/app/src/main/res/values/strings.xml"
         android_leaves_all.extend(android_leaves(en_path, target_path, loc))
     if android_leaves_all:
         detector_hits, band_hits = scan_leaves(android_leaves_all)
-        print_hits("Android strings.xml (report-only)", detector_hits, allowed)
+        unallowed = print_hits("Android strings.xml (strict)", detector_hits, allowed)
+        total_gating_failures += len(unallowed)
+
+        mismatches = placeholder_mismatches(android_leaves_all)
+        if mismatches:
+            print(f"=== Android strings.xml: {len(mismatches)} placeholder-multiset mismatch(es) ===")
+            for m in mismatches:
+                loc_label = m["key"] if not m["form"] else f"{m['key']} [{m['form']}]"
+                print(f"  [{m['locale']}] {loc_label!r}")
+                print(f"      en:  {m['en']!r} -> {m['en_placeholders']}")
+                print(f"      val: {m['value']!r} -> {m['value_placeholders']}")
+            total_gating_failures += len(mismatches)
+
         if verbose:
             print_hits("Android strings.xml (report-only band)", band_hits, allowed)
 
