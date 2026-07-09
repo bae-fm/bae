@@ -387,4 +387,16 @@
   <data name="gallery.image_load_failed" xml:space="preserve"><value>couldn't load image</value></data>
   <data name="gallery.previous" xml:space="preserve"><value>previous image</value></data>
   <data name="gallery.next" xml:space="preserve"><value>next image</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>All</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>Unmanaged</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>Managed</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>Uploading</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>Album</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>Artist</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>Format</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>Storage</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>Files</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>Size</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# release} other {# releases}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>Total: {size}</value></data>
 </root>

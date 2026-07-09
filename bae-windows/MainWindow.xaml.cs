@@ -45,6 +45,7 @@ public sealed partial class MainWindow : Window
     private readonly SyncStatusStore _sync;
     private readonly PlaybackStore _playback;
     private readonly ProjectionRegistry _projections;
+    private readonly TransferProgressStore _transferProgress;
     private readonly UiEventRouter _router;
     private readonly NowPlayingBarController _nowPlayingBar;
     private readonly ImportStore _import;
@@ -162,12 +163,22 @@ public sealed partial class MainWindow : Window
         ToolTipService.SetToolTip(NpTitle, Loc.Chrome("nowplaying.go_to_album"));
         _import = new ImportStore(_session, _shell, _mediaControls);
         _projections = new ProjectionRegistry();
-        _router = new UiEventRouter(_playback, _shell, _projections, _mediaControls, _import.HandlePreviewEvent);
+        // In-flight release transfers (pin/unpin/manage/unmanage), driven by core's
+        // ReleaseTransferProgress/Ended events the router routes, read by the
+        // storage dialog rows and the album-detail storage band. Constructed before
+        // the router so it can route into it, and shared with the stores below.
+        _transferProgress = new TransferProgressStore();
+        _router = new UiEventRouter(
+            _playback, _shell, _projections, _mediaControls, _import.HandlePreviewEvent, _transferProgress);
         _session.UiEvent += _router.Route;
 
         // The artwork lightbox: opened from the album gallery and the import
         // confirmation's local artwork tiles.
         _lightbox = new LightboxOverlay(() => Content.XamlRoot);
+
+        // The storage sheet's non-UI operations, shared by the storage dialog and
+        // the album-detail storage band so both run transitions the same way.
+        _storage = new StorageStore(_session, _transferProgress);
 
         // Album detail and the per-release action dialogs it opens, plus the queue
         // dialog. Album detail is the shared entry point from the grid, the panes,
@@ -184,22 +195,25 @@ public sealed partial class MainWindow : Window
             () => Content.XamlRoot,
             () => WinRT.Interop.WindowNative.GetWindowHandle(this),
             text => StatusText.Text = text,
-            _releaseActions);
+            _releaseActions,
+            _storage,
+            _transferProgress,
+            _projections);
         _queuePane = new QueuePane(
             _session,
             _playback,
             QueuePaneHost,
             message => _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.playback_title"), message));
 
-        // The storage sheet and its non-UI operations. The dialog registers its
-        // live-refresh handlers on the projection registry while open.
-        _storage = new StorageStore(_session);
+        // The storage sheet. The dialog registers its live-refresh handlers on the
+        // projection registry while open.
         _storageDialog = new StorageDialog(
             _session,
             () => Content.XamlRoot,
             () => WinRT.Interop.WindowNative.GetWindowHandle(this),
             _storage,
-            _projections);
+            _projections,
+            _transferProgress);
 
         // The composer/search panes and the library-lifecycle dialogs. The window
         // stays the navigation shell (open/close/switch); these render and drive
@@ -529,6 +543,7 @@ public sealed partial class MainWindow : Window
         _queuePane.Hide();
         _import.Reset();
         _browser.Reset();
+        _transferProgress.Reset();
         SearchBox.Text = string.Empty;
         StatusText.Text = string.Empty;
         _mediaControls.Deactivate();

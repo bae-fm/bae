@@ -387,4 +387,16 @@
   <data name="gallery.image_load_failed" xml:space="preserve"><value>无法加载图像</value></data>
   <data name="gallery.previous" xml:space="preserve"><value>上一张图像</value></data>
   <data name="gallery.next" xml:space="preserve"><value>下一张图像</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>全部</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>未托管</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>已托管</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>上传中</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>专辑</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>艺术家</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>格式</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>存储</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>文件</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>大小</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, other {# 个发行}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>总计：{size}</value></data>
 </root>

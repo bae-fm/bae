@@ -387,4 +387,16 @@
   <data name="gallery.image_load_failed" xml:space="preserve"><value>görüntü yüklenemedi</value></data>
   <data name="gallery.previous" xml:space="preserve"><value>önceki görüntü</value></data>
   <data name="gallery.next" xml:space="preserve"><value>sonraki görüntü</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>Tümü</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>Yönetilmeyen</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>Yönetilen</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>Yükleniyor</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>Albüm</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>Sanatçı</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>Biçim</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>Depolama</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>Dosyalar</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>Boyut</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# yayın} other {# yayın}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>Toplam: {size}</value></data>
 </root>

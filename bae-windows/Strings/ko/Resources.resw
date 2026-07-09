@@ -387,4 +387,16 @@
   <data name="gallery.image_load_failed" xml:space="preserve"><value>이미지를 로드할 수 없음</value></data>
   <data name="gallery.previous" xml:space="preserve"><value>이전 이미지</value></data>
   <data name="gallery.next" xml:space="preserve"><value>다음 이미지</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>전체</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>자체 관리형</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>관리형</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>업로드 중</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>앨범</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>아티스트</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>형식</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>저장소</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>파일</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>크기</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, other {#개 릴리스}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>합계: {size}</value></data>
 </root>

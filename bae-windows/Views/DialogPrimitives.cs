@@ -1,13 +1,52 @@
-﻿using Microsoft.UI.Xaml;
+﻿using System;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
-// Shared dialog building blocks used across the library-lifecycle, import, and
-// album-detail screens.
+// Shared dialog building blocks used across the library-lifecycle, import,
+// album-detail, and storage screens.
 internal static class DialogPrimitives
 {
+    // The folder picker for a make-local (unmanage) transition, run in the app
+    // window. Returns the chosen path, or null when the user cancelled. Shared by
+    // the storage dialog and the album-detail storage band so both take the same
+    // destination for the transfer.
+    internal static async System.Threading.Tasks.Task<string?> PickUnmanageFolder(IntPtr windowHandle)
+    {
+        var picker = new global::Windows.Storage.Pickers.FolderPicker();
+        picker.FileTypeFilter.Add("*");
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, windowHandle);
+        var folder = await picker.PickSingleFolderAsync();
+        return folder?.Path;
+    }
+
+    // The user-facing label for a storage transition, matching the macOS
+    // "Storage…" sheet / context menu wording. Shared by the storage row menu and
+    // the album-detail storage band.
+    internal static string StorageActionLabel(BridgeReleaseStorageAction action) => action switch
+    {
+        BridgeReleaseStorageAction.MakeRemote => Loc.Chrome("storage.action.manage"),
+        BridgeReleaseStorageAction.MakeLocal => Loc.Chrome("storage.action.unmanage"),
+        BridgeReleaseStorageAction.Pin => Loc.Chrome("storage.action.pin"),
+        BridgeReleaseStorageAction.Unpin => Loc.Chrome("storage.action.unpin"),
+        _ => throw new ArgumentOutOfRangeException(nameof(action), action, "Unknown storage action"),
+    };
+
+    // A release's resting storage state, mirroring macOS's precedence: unmanaged
+    // first, then pinned (kept offline), then managed (cloud). Shared by the
+    // storage row's Storage cell and the album-detail band's status line.
+    internal static string RestingStorageLabel(bool isManaged, bool pinned)
+    {
+        if (!isManaged)
+        {
+            return Loc.Chrome("storage.state.unmanaged");
+        }
+        return pinned ? Loc.Chrome("storage.pinned") : Loc.Chrome("storage.state.managed");
+    }
+
     // A dismiss-only error dialog: a title, an optional detail body, and a single
     // "OK" button that closes it.
     internal static async System.Threading.Tasks.Task ShowError(XamlRoot? xamlRoot, string title, string? message = null)

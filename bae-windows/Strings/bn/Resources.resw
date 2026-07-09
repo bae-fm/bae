@@ -387,4 +387,16 @@
   <data name="gallery.image_load_failed" xml:space="preserve"><value>ছবি লোড করা যায়নি</value></data>
   <data name="gallery.previous" xml:space="preserve"><value>আগের ছবি</value></data>
   <data name="gallery.next" xml:space="preserve"><value>পরবর্তী ছবি</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>সব</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>অপরিচালিত</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>পরিচালিত</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>আপলোড হচ্ছে</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>অ্যালবাম</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>শিল্পী</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>ফরম্যাট</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>স্টোরেজ</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>ফাইল</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>আকার</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {#টি রিলিজ} other {#টি রিলিজ}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>মোট: {size}</value></data>
 </root>

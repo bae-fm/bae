@@ -25,19 +25,28 @@ internal sealed class AlbumDetailDialog
     private readonly Func<IntPtr> _windowHandle;
     private readonly Action<string> _setStatus;
     private readonly ReleaseActionDialogs _releaseActions;
+    private readonly StorageStore _storage;
+    private readonly TransferProgressStore _transfers;
+    private readonly ProjectionRegistry _projections;
 
     public AlbumDetailDialog(
         SessionStore session,
         Func<XamlRoot?> xamlRoot,
         Func<IntPtr> windowHandle,
         Action<string> setStatus,
-        ReleaseActionDialogs releaseActions)
+        ReleaseActionDialogs releaseActions,
+        StorageStore storage,
+        TransferProgressStore transfers,
+        ProjectionRegistry projections)
     {
         _session = session;
         _xamlRoot = xamlRoot;
         _windowHandle = windowHandle;
         _setStatus = setStatus;
         _releaseActions = releaseActions;
+        _storage = storage;
+        _transfers = transfers;
+        _projections = projections;
     }
 
     public async System.Threading.Tasks.Task Show(
@@ -149,10 +158,10 @@ internal sealed class AlbumDetailDialog
         moreButton.Flyout = moreMenu;
         header.Children.Add(moreButton);
 
-        // Export failures surface here, inside the dialog: the window-level banner
-        // is occluded by this modal album-detail dialog, so a banner error would be
-        // invisible until the dialog is dismissed.
-        var exportStatus = new TextBlock
+        // Export and storage-action failures surface here, inside the dialog: the
+        // window-level banner is occluded by this modal album-detail dialog, so a
+        // banner error would be invisible until the dialog is dismissed.
+        var statusLine = new TextBlock
         {
             TextWrapping = TextWrapping.Wrap,
             Visibility = Visibility.Collapsed,
@@ -223,13 +232,126 @@ internal sealed class AlbumDetailDialog
             var addQueueTrack = new MenuFlyoutItem { Text = Loc.Chrome("menu.add_to_queue") };
             addQueueTrack.Click += (_, _) => QueueTrack(track, next: false);
             var exportTrack = new MenuFlyoutItem { Text = Loc.Chrome("menu.export") };
-            exportTrack.Click += async (_, _) => await ExportTrack(track, exportStatus);
+            exportTrack.Click += async (_, _) => await ExportTrack(track, statusLine);
             menu.Items.Add(play);
             menu.Items.Add(playNextTrack);
             menu.Items.Add(addQueueTrack);
             menu.Items.Add(exportTrack);
             menu.ShowAt(element, new FlyoutShowOptions { Position = args.GetPosition(element) });
         };
+
+        // The storage band, mirroring macOS's StorageStatusBand: the selected
+        // release's storage status, and while a transfer is in flight an
+        // indeterminate bar with the verb plus a Cancel; otherwise its storage
+        // action buttons. `storageRelease` carries the live storage fields the
+        // band renders — seeded from the picked release, refreshed on the Release/
+        // Album invalidations and transfer events core emits together.
+        var storageBand = new StackPanel { Spacing = 4 };
+        var storageRelease = selectedRelease;
+
+        void RenderStorageBand()
+        {
+            storageBand.Children.Clear();
+            var release = storageRelease;
+            if (string.IsNullOrEmpty(release.ReleaseId))
+            {
+                return;
+            }
+
+            storageBand.Children.Add(new TextBlock
+            {
+                Text = DialogPrimitives.RestingStorageLabel(release.IsManaged, release.Pinned),
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                FontSize = 12,
+            });
+
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            var releaseId = release.ReleaseId;
+            var token = _transfers.TokenFor(releaseId)
+                ?? (release.TransferAction is { } transferAction
+                    ? NativeBae.TransferActionToken(transferAction)
+                    : null);
+            if (token is not null && NativeBae.TransferActionKey(token) is { } verbKey)
+            {
+                row.Children.Add(new ProgressBar
+                {
+                    IsIndeterminate = true,
+                    Width = 120,
+                    VerticalAlignment = VerticalAlignment.Center,
+                });
+                row.Children.Add(new TextBlock
+                {
+                    Text = Loc.Core(verbKey),
+                    VerticalAlignment = VerticalAlignment.Center,
+                });
+                var cancel = new Button { Content = Loc.Chrome("action.cancel") };
+                cancel.Click += async (_, _) =>
+                {
+                    statusLine.Visibility = Visibility.Collapsed;
+                    var (cancelCurrent, error) = await _session.RunForCurrentHandle(
+                        handle => NativeBae.CancelReleaseTransition(handle, releaseId));
+                    if (!cancelCurrent)
+                    {
+                        return;
+                    }
+                    if (error is not null)
+                    {
+                        statusLine.Text = error;
+                        statusLine.Visibility = Visibility.Visible;
+                    }
+                };
+                row.Children.Add(cancel);
+            }
+            else
+            {
+                foreach (var action in release.StorageActions)
+                {
+                    var act = action;
+                    var button = new Button { Content = DialogPrimitives.StorageActionLabel(act) };
+                    button.Click += async (_, _) =>
+                    {
+                        statusLine.Visibility = Visibility.Collapsed;
+                        var error = await _storage.RunStorageActionForReleases(
+                            act,
+                            new List<string> { releaseId },
+                            () => DialogPrimitives.PickUnmanageFolder(_windowHandle()));
+                        if (error is not null)
+                        {
+                            statusLine.Text = error;
+                            statusLine.Visibility = Visibility.Visible;
+                        }
+                    };
+                    row.Children.Add(button);
+                }
+            }
+            storageBand.Children.Add(row);
+        }
+
+        // Re-fetch the selected release's storage fields and re-render the band.
+        // Skips when the release changed under the await (a newer refresh handles
+        // the new one).
+        async System.Threading.Tasks.Task RefreshStorageBand()
+        {
+            var releaseId = selectedRelease.ReleaseId;
+            if (string.IsNullOrEmpty(releaseId))
+            {
+                RenderStorageBand();
+                return;
+            }
+            var (current2, result2) = await _session.RunForCurrentHandle(
+                handle => NativeBae.ReleaseStorage(handle, releaseId));
+            if (!current2 || selectedRelease.ReleaseId != releaseId)
+            {
+                return;
+            }
+            if (result2.Release is { } fresh)
+            {
+                storageRelease = fresh;
+            }
+            RenderStorageBand();
+        }
+
+        RenderStorageBand();
 
         var content = new StackPanel { Spacing = 8 };
         content.Children.Add(header);
@@ -249,12 +371,15 @@ internal sealed class AlbumDetailDialog
                 {
                     selectedRelease = release;
                     trackList.ItemsSource = selectedRelease.Tracks;
+                    storageRelease = release;
+                    RenderStorageBand();
                 }
             };
             content.Children.Add(releasePicker);
         }
+        content.Children.Add(storageBand);
         content.Children.Add(trackList);
-        content.Children.Add(exportStatus);
+        content.Children.Add(statusLine);
 
         var dialog = new ContentDialog
         {
@@ -308,7 +433,32 @@ internal sealed class AlbumDetailDialog
             dialog.Hide();
         };
 
-        var result = await dialog.ShowAsync();
+        // Keep the storage band live while the dialog is open: a transfer event
+        // re-renders it (overlay-driven), and the Release/Album invalidation core
+        // emits alongside re-fetches its storage fields. Disposed once ShowAsync
+        // returns, the storage-dialog pattern.
+        var registrations = new List<IDisposable>
+        {
+            _projections.Register(typeof(BridgeInvalidation.Release), () => _ = RefreshStorageBand()),
+            _projections.Register(typeof(BridgeInvalidation.Album), () => _ = RefreshStorageBand()),
+        };
+        void OnTransfersChanged() => RenderStorageBand();
+        _transfers.Changed += OnTransfersChanged;
+
+        ContentDialogResult result;
+        try
+        {
+            result = await dialog.ShowAsync();
+        }
+        finally
+        {
+            _transfers.Changed -= OnTransfersChanged;
+            foreach (var registration in registrations)
+            {
+                registration.Dispose();
+            }
+        }
+
         if (editRequested)
         {
             await _releaseActions.ShowEditMetadata(selectedRelease.ReleaseId);
@@ -352,9 +502,9 @@ internal sealed class AlbumDetailDialog
     // track-applicable preset), seed the filename from the configured template,
     // then export to the picked path. Errors surface in the album-detail status
     // line, which the modal doesn't occlude here (the pickers are OS dialogs).
-    private async System.Threading.Tasks.Task ExportTrack(Track track, TextBlock exportStatus)
+    private async System.Threading.Tasks.Task ExportTrack(Track track, TextBlock statusLine)
     {
-        exportStatus.Visibility = Visibility.Collapsed;
+        statusLine.Visibility = Visibility.Collapsed;
         var picker = new global::Windows.Storage.Pickers.FileSavePicker();
         WinRT.Interop.InitializeWithWindow.Initialize(picker, _windowHandle());
         var (settingsCurrent, settings) = await _session.RunForCurrentHandle(NativeBae.GetSettings);
@@ -374,8 +524,8 @@ internal sealed class AlbumDetailDialog
         }
         if (originalExtension is null)
         {
-            exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
-            exportStatus.Visibility = Visibility.Visible;
+            statusLine.Text = Loc.Chrome("track.export.prepare_failed");
+            statusLine.Visibility = Visibility.Visible;
             return;
         }
         var choices = new List<(string Label, string Extension, BridgeExportSelection Selection)>
@@ -406,8 +556,8 @@ internal sealed class AlbumDetailDialog
         }
         if (defaultIndex < 0)
         {
-            exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
-            exportStatus.Visibility = Visibility.Visible;
+            statusLine.Text = Loc.Chrome("track.export.prepare_failed");
+            statusLine.Visibility = Visibility.Visible;
             return;
         }
         formatPicker.SelectedIndex = defaultIndex;
@@ -426,8 +576,8 @@ internal sealed class AlbumDetailDialog
         }
         if (formatPicker.SelectedIndex < 0)
         {
-            exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
-            exportStatus.Visibility = Visibility.Visible;
+            statusLine.Text = Loc.Chrome("track.export.prepare_failed");
+            statusLine.Visibility = Visibility.Visible;
             return;
         }
         var selectedChoice = choices[formatPicker.SelectedIndex];
@@ -458,8 +608,8 @@ internal sealed class AlbumDetailDialog
         }
         if (stem is null)
         {
-            exportStatus.Text = Loc.Chrome("track.export.prepare_failed");
-            exportStatus.Visibility = Visibility.Visible;
+            statusLine.Text = Loc.Chrome("track.export.prepare_failed");
+            statusLine.Visibility = Visibility.Visible;
             return;
         }
         picker.SuggestedFileName = stem;
@@ -478,8 +628,8 @@ internal sealed class AlbumDetailDialog
         }
         if (error is not null)
         {
-            exportStatus.Text = error;
-            exportStatus.Visibility = Visibility.Visible;
+            statusLine.Text = error;
+            statusLine.Visibility = Visibility.Visible;
         }
     }
 

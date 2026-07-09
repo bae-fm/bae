@@ -387,4 +387,16 @@
   <data name="gallery.image_load_failed" xml:space="preserve"><value>تصویر لوڈ نہیں کی جا سکی</value></data>
   <data name="gallery.previous" xml:space="preserve"><value>پچھلی تصویر</value></data>
   <data name="gallery.next" xml:space="preserve"><value>اگلی تصویر</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>تمام</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>غیر منظم</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>منظم</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>اپ لوڈ ہو رہا ہے</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>البم</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>فنکار</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>ساخت</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>اسٹوریج</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>فائلیں</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>سائز</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# اشاعت} other {# اشاعتیں}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>کل: {size}</value></data>
 </root>

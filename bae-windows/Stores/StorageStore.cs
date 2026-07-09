@@ -15,14 +15,32 @@ namespace Bae.Windows;
 internal sealed class StorageStore
 {
     private readonly SessionStore _session;
+    private readonly TransferProgressStore _transfers;
     private readonly HashSet<string> _unmanagingReleases = new();
 
-    public StorageStore(SessionStore session)
+    public StorageStore(SessionStore session, TransferProgressStore transfers)
     {
         _session = session;
+        _transfers = transfers;
     }
 
     public bool IsUnmanaging(string releaseId) => _unmanagingReleases.Contains(releaseId);
+
+    // Of the given releases, those with a transition in flight: an outbox upload,
+    // a queued/downloading pin, a running unmanage, or an event-reported transfer
+    // in the overlay. A release in this set offers only Cancel — the storage
+    // actions would race the transition. Returns the outbox read error, if any,
+    // so the caller can surface it like the panel load does.
+    public async System.Threading.Tasks.Task<(HashSet<string> Transitioning, string? Error)> TransitioningReleases(
+        List<string> releaseIds)
+    {
+        var (uploading, uploadError) = await UploadingReleases(releaseIds);
+        var transitioning = new HashSet<string>(uploading);
+        transitioning.UnionWith(await DownloadingReleases(releaseIds));
+        transitioning.UnionWith(releaseIds.Where(IsUnmanaging));
+        transitioning.UnionWith(releaseIds.Where(id => _transfers.TokenFor(id) is not null));
+        return (transitioning, uploadError);
+    }
 
     // The transitions every release in the selection allows, intersected so the
     // menu only offers actions applicable to all. Order follows the first release's

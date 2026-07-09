@@ -39,6 +39,21 @@ public sealed class Release
     public List<Track> Tracks { get; }
     public List<ReleaseFile> Files { get; }
 
+    /// <summary>Whether this release lives in the cloud (Remote) rather than
+    /// locally.</summary>
+    public bool IsManaged => _release.StorageState == BridgeReleaseStorageState.Remote;
+
+    /// <summary>Whether coven keeps this release's blobs pinned (kept offline) on
+    /// this device.</summary>
+    public bool Pinned => _release.Pinned;
+
+    /// <summary>The storage transitions available right now, gated on cloud-home
+    /// by the core; the album-detail storage band renders one button per entry.</summary>
+    public IReadOnlyList<BridgeReleaseStorageAction> StorageActions => _release.StorageActions;
+
+    /// <summary>The transition in flight for this release, or null when idle.</summary>
+    public BridgeReleaseStorageAction? TransferAction => _release.TransferAction;
+
     /// <summary>The picker label.</summary>
     public override string ToString() => DisplayName;
 }

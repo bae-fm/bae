@@ -387,4 +387,16 @@
   <data name="gallery.image_load_failed" xml:space="preserve"><value>ચિત્ર લોડ કરી શક્યા નહીં</value></data>
   <data name="gallery.previous" xml:space="preserve"><value>પાછલી ચિત્ર</value></data>
   <data name="gallery.next" xml:space="preserve"><value>આગલી ચિત્ર</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>બધા</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>અસંચાલિત</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>સંચાલિત</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>અપલોડ થઈ રહ્યું છે</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>આલ્બમ</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>કલાકાર</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>બંધારણ</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>સંગ્રહ</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>ફાઈલો</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>કદ</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# પ્રકાશન} other {# પ્રકાશનો}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>કુલ: {size}</value></data>
 </root>

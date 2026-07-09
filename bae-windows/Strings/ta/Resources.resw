@@ -387,4 +387,16 @@
   <data name="gallery.image_load_failed" xml:space="preserve"><value>படத்தைப் பதிவிறக்க முடியவில்லை</value></data>
   <data name="gallery.previous" xml:space="preserve"><value>முந்தைய படம்</value></data>
   <data name="gallery.next" xml:space="preserve"><value>அடுத்த படம்</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>அனைத்தும்</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>நிர்வகிக்கப்படாதது</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>நிர்வகிக்கப்படுகிறது</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>பதிவேற்றுகிறது</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>ஆல்பம்</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>கலைஞர்</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>வடிவம்</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>சேமிப்பு</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>கோப்புகள்</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>அளவு</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# வெளியீடு} other {# வெளியீடுகள்}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>மொத்தம்: {size}</value></data>
 </root>

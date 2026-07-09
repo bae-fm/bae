@@ -387,4 +387,16 @@
   <data name="gallery.image_load_failed" xml:space="preserve"><value>obrázek se nepodařilo načíst</value></data>
   <data name="gallery.previous" xml:space="preserve"><value>předchozí obrázek</value></data>
   <data name="gallery.next" xml:space="preserve"><value>další obrázek</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>Vše</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>Nespravované</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>Spravované</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>Nahrávání</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>Album</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>Interpret</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>Formát</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>Úložiště</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>Soubory</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>Velikost</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# vydání} few {# vydání} many {# vydání} other {# vydání}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>Celkem: {size}</value></data>
 </root>

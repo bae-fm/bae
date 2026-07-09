@@ -387,4 +387,16 @@
   <data name="gallery.image_load_failed" xml:space="preserve"><value>не вдалося завантажити зображення</value></data>
   <data name="gallery.previous" xml:space="preserve"><value>попереднє зображення</value></data>
   <data name="gallery.next" xml:space="preserve"><value>наступне зображення</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>Усі</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>Некероване</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>Кероване</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>Вивантаження</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>Альбом</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>Виконавець</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>Формат</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>Сховище</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>Файли</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>Розмір</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# реліз} few {# релізи} many {# релізів} other {# релізу}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>Усього: {size}</value></data>
 </root>

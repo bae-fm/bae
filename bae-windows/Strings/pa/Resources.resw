@@ -387,4 +387,16 @@
   <data name="gallery.image_load_failed" xml:space="preserve"><value>ਤਸਵੀਰ ਲੋਡ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕੀ</value></data>
   <data name="gallery.previous" xml:space="preserve"><value>ਪਿਛਲੀ ਤਸਵੀਰ</value></data>
   <data name="gallery.next" xml:space="preserve"><value>ਅਗਲੀ ਤਸਵੀਰ</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>ਸਭ</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>ਅਪਰਬੰਧਿਤ</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>ਪਰਬੰਧਿਤ</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>ਅੱਪਲੋਡ ਹੋ ਰਿਹਾ ਹੈ</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>ਐਲਬਮ</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>ਕਲਾਕਾਰ</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>ਫਾਰਮੈਟ</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>ਸਟੋਰੇਜ</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>ਫਾਈਲਾਂ</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>ਆਕਾਰ</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# ਰਿਲੀਜ਼} other {# ਰਿਲੀਜ਼ਾਂ}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>ਕੁੱਲ: {size}</value></data>
 </root>

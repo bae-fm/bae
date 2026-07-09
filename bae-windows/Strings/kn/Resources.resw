@@ -387,4 +387,16 @@
   <data name="gallery.image_load_failed" xml:space="preserve"><value>ಚಿತ್ರವನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ</value></data>
   <data name="gallery.previous" xml:space="preserve"><value>ಹಿಂದಿನ ಚಿತ್ರ</value></data>
   <data name="gallery.next" xml:space="preserve"><value>ಮುಂದಿನ ಚಿತ್ರ</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>ಎಲ್ಲಾ</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>ನಿರ್ವಹಿಸದ</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>ನಿರ್ವಹಿತ</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>ಅಪ್‌ಲೋಡ್ ಆಗುತ್ತಿದೆ</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>ಆಲ್ಬಮ್</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>ಕಲಾವಿದ</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>ಸ್ವರೂಪ</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>ಸಂಗ್ರಹಣೆ</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>ಫೈಲ್‌ಗಳು</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>ಗಾತ್ರ</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# ಬಿಡುಗಡೆ} other {# ಬಿಡುಗಡೆಗಳು}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>ಒಟ್ಟು: {size}</value></data>
 </root>

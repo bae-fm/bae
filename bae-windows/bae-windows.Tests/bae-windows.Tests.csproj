@@ -75,6 +75,7 @@
     <Compile Include="../Stores/ImportIdentityModel.cs" Link="ImportIdentityModel.cs" />
     <Compile Include="../Stores/ReidentifyResultsModel.cs" Link="ReidentifyResultsModel.cs" />
     <Compile Include="../Stores/ImportListModel.cs" Link="ImportListModel.cs" />
+    <Compile Include="../Stores/StorageListModel.cs" Link="StorageListModel.cs" />
     <Compile Include="../Stores/ExportQueueModel.cs" Link="ExportQueueModel.cs" />
     <Compile Include="../Stores/WindowBoundsModel.cs" Link="WindowBoundsModel.cs" />
     <Compile Include="../Stores/PersistPlaybackModel.cs" Link="PersistPlaybackModel.cs" />

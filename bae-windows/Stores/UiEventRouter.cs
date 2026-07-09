@@ -17,19 +17,22 @@ internal sealed class UiEventRouter
     private readonly ProjectionRegistry _projections;
     private readonly MediaControlService _mediaControls;
     private readonly Action<BridgeUiEvent> _importEvents;
+    private readonly TransferProgressStore _transfers;
 
     public UiEventRouter(
         PlaybackStore playback,
         ShellStore shell,
         ProjectionRegistry projections,
         MediaControlService mediaControls,
-        Action<BridgeUiEvent> importEvents)
+        Action<BridgeUiEvent> importEvents,
+        TransferProgressStore transfers)
     {
         _playback = playback;
         _shell = shell;
         _projections = projections;
         _mediaControls = mediaControls;
         _importEvents = importEvents;
+        _transfers = transfers;
     }
 
     public void Route(BridgeUiEvent evt)
@@ -106,11 +109,17 @@ internal sealed class UiEventRouter
             case BridgeUiEvent.CandidateImportLoudnessProgress:
                 _importEvents(evt);
                 break;
-            case BridgeUiEvent.ReleaseTransferProgress:
-            case BridgeUiEvent.ReleaseTransferEnded:
-                // Release-transfer progress/ended carry a pin/unpin/manage/unmanage
-                // in-flight indicator for a release row; the Windows release views
-                // don't render one, so there's no work to do here.
+            case BridgeUiEvent.ReleaseTransferProgress transfer:
+                // A pin/unpin/manage/unmanage transition started: light the
+                // in-flight indicator on the storage row and album-detail band
+                // until the matching ended event lands.
+                _transfers.Apply(transfer.ReleaseId, NativeBae.TransferActionToken(transfer.Action));
+                break;
+            case BridgeUiEvent.ReleaseTransferEnded ended:
+                // The transition finished (success or failure) — clear the
+                // indicator. Core's drop guard guarantees this event even on abort,
+                // so overlay entries cannot leak.
+                _transfers.Clear(ended.ReleaseId);
                 break;
             default:
                 // A BridgeUiEvent variant with no arm above: log the drift so a new

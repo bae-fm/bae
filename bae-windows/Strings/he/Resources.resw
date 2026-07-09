@@ -387,4 +387,16 @@
   <data name="gallery.image_load_failed" xml:space="preserve"><value>לא ניתן היה לטעון את התמונה</value></data>
   <data name="gallery.previous" xml:space="preserve"><value>תמונה קודמת</value></data>
   <data name="gallery.next" xml:space="preserve"><value>תמונה הבאה</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>הכול</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>לא מנוהל</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>מנוהל</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>מעלה</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>אלבום</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>אמן</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>פורמט</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>אחסון</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>קבצים</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>גודל</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {הוצאה #} two {# הוצאות} many {# הוצאות} other {# הוצאות}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>סה״כ: {size}</value></data>
 </root>

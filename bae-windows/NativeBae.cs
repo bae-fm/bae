@@ -205,6 +205,20 @@ internal static class NativeBae
         return bridgeAction is null ? null : BaeBridgeMethods.BridgeTransferActionKey(bridgeAction.Value);
     }
 
+    /// <summary>The wire tag for a storage action ("pin"/"unpin"/"manage"/
+    /// "unmanage") — the inverse of <see cref="TransferActionKey"/>, used to
+    /// carry a transfer action into the transfer overlay, which is bridge-type
+    /// free.</summary>
+    internal static string TransferActionToken(BridgeReleaseStorageAction action) =>
+        action switch
+        {
+            BridgeReleaseStorageAction.Pin => "pin",
+            BridgeReleaseStorageAction.Unpin => "unpin",
+            BridgeReleaseStorageAction.MakeRemote => "manage",
+            BridgeReleaseStorageAction.MakeLocal => "unmanage",
+            _ => throw new ArgumentOutOfRangeException(nameof(action), action, "Unknown storage action"),
+        };
+
     /// <summary>The libraries discovered on this device.</summary>
     internal static List<BridgeLibrary> Libraries() =>
         BaeBridgeMethods.DiscoverLibraries()
@@ -395,6 +409,16 @@ internal static class NativeBae
             var sort = new BridgeStorageSort(BridgeStorageSortField.AlbumTitle, BridgeStorageSortDirection.Ascending);
             var count = Await(handle.StorageCount(filter));
             return Await(handle.StoragePage(sort, filter, 0, count)).Rows;
+        });
+
+    /// <summary>A single release's live storage fields (state, pin, available
+    /// actions, in-flight transfer), for refreshing the album-detail storage
+    /// band. Null when the release is gone.</summary>
+    internal static (Release? Release, string? Error) ReleaseStorage(AppHandle handle, string releaseId) =>
+        CaptureBridgeValue(() =>
+        {
+            var release = Await(handle.FindReleaseDetail(releaseId));
+            return release is null ? null : new Release(release);
         });
 
     internal static string? PinRelease(AppHandle handle, string releaseId) =>
