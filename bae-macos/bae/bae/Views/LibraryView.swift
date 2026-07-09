@@ -64,8 +64,8 @@ struct LibraryView: View {
     @State
     private var sortCriteria: [BridgeSortCriterion] = Self.loadSortCriteria()
     @State
-    private var composerSortCriterion =
-        BridgeComposerSortCriterion(field: .name, direction: .ascending)
+    private var composerSortCriteria: [BridgeComposerSortCriterion] =
+        Self.loadComposerSortCriteria()
     @State
     private var composerPaneDetail: ComposerPaneDetail = .empty
     @State
@@ -75,8 +75,8 @@ struct LibraryView: View {
     @State
     private var artistListRegistration: ProjectionRegistration?
     @State
-    private var artistSortCriterion =
-        BridgeArtistSortCriterion(field: .name, direction: .ascending)
+    private var artistSortCriteria: [BridgeArtistSortCriterion] =
+        Self.loadArtistSortCriteria()
     @State
     private var selectedArtistId: String?
     @State
@@ -118,14 +118,16 @@ struct LibraryView: View {
         .task(id: detailSelection) {
             await loadWorkDetail()
         }
-        .task(id: composerSortCriterion) {
+        .task(id: composerSortCriteria) {
+            Self.saveComposerSortCriteria(composerSortCriteria)
             if uiStore.libraryBrowserMode == .composers {
-                await reloadComposerList(sort: composerSortCriterion)
+                await reloadComposerList(sort: composerSortCriteria)
             }
         }
-        .task(id: artistSortCriterion) {
+        .task(id: artistSortCriteria) {
+            Self.saveArtistSortCriteria(artistSortCriteria)
             if uiStore.libraryBrowserMode == .artists {
-                await reloadArtistList(sort: artistSortCriterion)
+                await reloadArtistList(sort: artistSortCriteria)
             }
         }
         .task(id: selectedArtistId) {
@@ -226,45 +228,8 @@ extension LibraryView {
         .padding(.bottom, 20)
     }
 
-    private var usedFields: Set<BridgeSortField> {
-        Set(sortCriteria.map(\.field))
-    }
-
     private var albumSortControls: some View {
-        HStack(spacing: 4) {
-            ForEach($sortCriteria, id: \.field) { $criterion in
-                let field = criterion.field
-                SortCriterionPill(
-                    criterion: $criterion,
-                    canRemove: sortCriteria.count > 1,
-                    onRemove: { sortCriteria.removeAll { $0.field == field } },
-                )
-            }
-            let unused = BridgeSortField.allCases.filter {
-                !usedFields.contains($0)
-            }
-            if !unused.isEmpty {
-                Menu {
-                    ForEach(unused, id: \.self) { field in
-                        Button(field.displayName) {
-                            sortCriteria.append(
-                                BridgeSortCriterion(
-                                    field: field,
-                                    direction: .ascending
-                                )
-                            )
-                        }
-                    }
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .help("Add sort criterion")
-            }
-        }
+        SortCriteriaRow(criteria: $sortCriteria)
     }
 
     private var albumContent: some View {
@@ -452,89 +417,11 @@ extension LibraryView {
     }
 
     private var composerSortControls: some View {
-        HStack(spacing: 8) {
-            Menu {
-                ForEach(BridgeComposerSortField.allCases, id: \.self) { field in
-                    Button(field.displayName) {
-                        composerSortCriterion = BridgeComposerSortCriterion(
-                            field: field,
-                            direction: composerSortCriterion.direction
-                        )
-                    }
-                }
-            } label: {
-                Text(composerSortCriterion.field.displayName)
-            }
-            .menuStyle(.borderlessButton)
-            Button {
-                let nextDirection: BridgeSortDirection =
-                    composerSortCriterion.direction == .ascending
-                    ? .descending : .ascending
-                composerSortCriterion = BridgeComposerSortCriterion(
-                    field: composerSortCriterion.field,
-                    direction: nextDirection
-                )
-            } label: {
-                Image(
-                    systemName: composerSortCriterion.direction == .ascending
-                        ? "arrow.up" : "arrow.down"
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(Theme.surfaceElevated, in: Capsule())
-            .help(
-                composerSortCriterion.direction == .ascending
-                    ? String(localized: "Sort Descending")
-                    : String(localized: "Sort Ascending")
-            )
-        }
+        SortCriteriaRow(criteria: $composerSortCriteria)
     }
 
     private var artistSortControls: some View {
-        HStack(spacing: 8) {
-            Menu {
-                ForEach(BridgeArtistSortField.allCases, id: \.self) { field in
-                    Button(field.displayName) {
-                        artistSortCriterion = BridgeArtistSortCriterion(
-                            field: field,
-                            direction: artistSortCriterion.direction
-                        )
-                    }
-                }
-            } label: {
-                Text(artistSortCriterion.field.displayName)
-            }
-            .menuStyle(.borderlessButton)
-            Button {
-                let nextDirection: BridgeSortDirection =
-                    artistSortCriterion.direction == .ascending
-                    ? .descending : .ascending
-                artistSortCriterion = BridgeArtistSortCriterion(
-                    field: artistSortCriterion.field,
-                    direction: nextDirection
-                )
-            } label: {
-                Image(
-                    systemName: artistSortCriterion.direction == .ascending
-                        ? "arrow.up" : "arrow.down"
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(Theme.surfaceElevated, in: Capsule())
-            .help(
-                artistSortCriterion.direction == .ascending
-                    ? String(localized: "Sort Descending")
-                    : String(localized: "Sort Ascending")
-            )
-        }
+        SortCriteriaRow(criteria: $artistSortCriteria)
     }
 
     private func composerRow(at index: Int, list: ComposerList) -> some View {
@@ -690,16 +577,14 @@ extension LibraryView {
         guard composerList == nil else {
             return
         }
-        let newList = makeComposerList(sort: composerSortCriterion)
-        await newList.loadInitial()
-        composerList = newList
+        await reloadComposerList(sort: composerSortCriteria)
     }
 
     private func ensureArtistListLoaded() async {
         guard artistList == nil else {
             return
         }
-        await reloadArtistList(sort: artistSortCriterion)
+        await reloadArtistList(sort: artistSortCriteria)
     }
 
     private func loadComposerDetail() async {
@@ -829,12 +714,12 @@ extension LibraryView {
     }
 
     private func makeComposerList(
-        sort: BridgeComposerSortCriterion
+        sort: [BridgeComposerSortCriterion]
     ) -> ComposerList {
         ComposerList(
             pageSource: LibraryComposerPageSource(
                 library: library,
-                sort: [sort]
+                sort: sort
             ),
             ingest: { [libraryStore] rows in
                 for row in rows {
@@ -847,11 +732,13 @@ extension LibraryView {
         )
     }
 
-    private func makeArtistList(sort: BridgeArtistSortCriterion) -> ArtistList {
+    private func makeArtistList(
+        sort: [BridgeArtistSortCriterion]
+    ) -> ArtistList {
         ArtistList(
             pageSource: LibraryArtistPageSource(
                 library: library,
-                sort: [sort]
+                sort: sort
             ),
             ingest: { [libraryStore] rows in
                 for row in rows {
@@ -864,7 +751,7 @@ extension LibraryView {
         )
     }
 
-    private func reloadComposerList(sort: BridgeComposerSortCriterion) async {
+    private func reloadComposerList(sort: [BridgeComposerSortCriterion]) async {
         let newList = makeComposerList(sort: sort)
         await newList.loadInitial()
         guard !Task.isCancelled else {
@@ -877,7 +764,7 @@ extension LibraryView {
         composerList = newList
     }
 
-    private func reloadArtistList(sort: BridgeArtistSortCriterion) async {
+    private func reloadArtistList(sort: [BridgeArtistSortCriterion]) async {
         let newList = makeArtistList(sort: sort)
         await newList.loadInitial()
         guard !Task.isCancelled else {
@@ -920,6 +807,62 @@ extension LibraryView {
     private static func saveSortCriteria(_ criteria: [BridgeSortCriterion]) {
         if let data = criteria.toJSON() {
             UserDefaults.standard.set(data, forKey: sortCriteriaKey)
+        }
+    }
+
+    private static let composerSortCriteriaKey = "libraryComposerSortCriteria"
+
+    private static func loadComposerSortCriteria()
+        -> [BridgeComposerSortCriterion]
+    {
+        guard
+            let data = UserDefaults.standard.data(
+                forKey: composerSortCriteriaKey
+            ),
+            let criteria = [BridgeComposerSortCriterion].fromJSON(data),
+            !criteria.isEmpty
+        else {
+            return [
+                BridgeComposerSortCriterion(
+                    field: .name,
+                    direction: .ascending
+                )
+            ]
+        }
+        return criteria
+    }
+
+    private static func saveComposerSortCriteria(
+        _ criteria: [BridgeComposerSortCriterion]
+    ) {
+        if let data = criteria.toJSON() {
+            UserDefaults.standard.set(data, forKey: composerSortCriteriaKey)
+        }
+    }
+
+    private static let artistSortCriteriaKey = "libraryArtistSortCriteria"
+
+    private static func loadArtistSortCriteria() -> [BridgeArtistSortCriterion]
+    {
+        guard
+            let data = UserDefaults.standard.data(
+                forKey: artistSortCriteriaKey
+            ),
+            let criteria = [BridgeArtistSortCriterion].fromJSON(data),
+            !criteria.isEmpty
+        else {
+            return [
+                BridgeArtistSortCriterion(field: .name, direction: .ascending)
+            ]
+        }
+        return criteria
+    }
+
+    private static func saveArtistSortCriteria(
+        _ criteria: [BridgeArtistSortCriterion]
+    ) {
+        if let data = criteria.toJSON() {
+            UserDefaults.standard.set(data, forKey: artistSortCriteriaKey)
         }
     }
 

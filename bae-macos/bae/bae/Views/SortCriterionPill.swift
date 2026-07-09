@@ -1,14 +1,15 @@
 import BaeKit
 import SwiftUI
 
-/// One album sort criterion, rendered as a capsule pill: the main button
-/// (field label + direction arrow) sets the opposite direction, and the
-/// trailing "x" removes the criterion. Field switching and reordering are
-/// gone by design — the sort is built by adding and removing pills. Used by
-/// `LibraryView`'s album sort controls in the pinned library header.
-struct SortCriterionPill: View {
+/// One sort criterion, rendered as a capsule pill: the main button (field
+/// label + direction arrow) sets the opposite direction, and the trailing
+/// "x" removes the criterion. Field switching and reordering are gone by
+/// design — the sort is built by adding and removing pills. Used by
+/// `SortCriteriaRow`, shared across the album, composer, and artist library
+/// modes.
+struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
     @Binding
-    var criterion: BridgeSortCriterion
+    var criterion: Criterion
     let canRemove: Bool
     let onRemove: () -> Void
 

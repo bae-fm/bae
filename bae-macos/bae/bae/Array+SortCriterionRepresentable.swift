@@ -2,10 +2,29 @@ import BaeKit
 import Foundation
 import os.log
 
-private let logger = Logger.bae("Array+BridgeSortCriterion")
+private let logger = Logger.bae("Array+SortCriterionRepresentable")
 
-/// Manual JSON since UniFFI types can't auto-synthesize Codable from another file
-extension [BridgeSortCriterion] {
+/// A sort field with a stable, locale-free string identity — the vocabulary
+/// UserDefaults persistence round-trips through. Shared by the album,
+/// composer, and artist sort fields so the codec below covers all three
+/// modes without a per-mode copy.
+protocol SortCriterionFieldCodable {
+    var codableKey: String { get }
+    static func fromCodableKey(_ key: String) -> Self?
+}
+
+extension BridgeSortField: SortCriterionFieldCodable {}
+extension BridgeComposerSortField: SortCriterionFieldCodable {}
+extension BridgeArtistSortField: SortCriterionFieldCodable {}
+
+/// Manual JSON since UniFFI types can't auto-synthesize Codable from another
+/// file. Generic over any sort-criteria list — album, composer, artist — so
+/// the three modes share one persistence implementation.
+extension Array
+where
+    Element: SortCriterionRepresentable,
+    Element.Field: SortCriterionFieldCodable
+{
     func toJSON() -> Data? {
         let dicts = map {
             [
@@ -24,7 +43,7 @@ extension [BridgeSortCriterion] {
         }
     }
 
-    static func fromJSON(_ data: Data) -> [BridgeSortCriterion]? {
+    static func fromJSON(_ data: Data) -> [Element]? {
         let raw: Any
         do {
             raw = try JSONSerialization.jsonObject(with: data)
@@ -42,13 +61,13 @@ extension [BridgeSortCriterion] {
         return array.compactMap { dict in
             guard
                 let field = dict["field"]
-                    .flatMap(BridgeSortField.fromCodableKey),
+                    .flatMap(Element.Field.fromCodableKey),
                 let direction = dict["direction"]
                     .flatMap(BridgeSortDirection.fromCodableKey)
             else {
                 return nil
             }
-            return BridgeSortCriterion(field: field, direction: direction)
+            return Element(field: field, direction: direction)
         }
     }
 }
