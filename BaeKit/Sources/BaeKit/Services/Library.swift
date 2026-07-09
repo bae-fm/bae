@@ -24,6 +24,14 @@ public final class Library: Sendable, Observable {
         @Sendable (_ artistId: String) async throws -> BridgeComposerDetail?
     public let getWorkDetail:
         @Sendable (_ workId: String) async throws -> BridgeWorkDetail?
+    public let getArtistCount: @Sendable () async throws -> UInt64
+    public let getArtistPage:
+        @Sendable (
+            _ sortCriterion: BridgeArtistSortCriterion, _ offset: UInt64,
+            _ limit: UInt64
+        ) async throws -> [BridgeArtistSummary]
+    public let getArtistDetail:
+        @Sendable (_ artistId: String) async throws -> BridgeArtistDetail?
     public let searchLibrary:
         @Sendable (_ query: String) async throws -> BridgeSearchResults
     public let storageCount:
@@ -75,6 +83,20 @@ public final class Library: Sendable, Observable {
                 _ in
                 throw StubError.notImplemented
             },
+        getArtistCount: @escaping @Sendable () async throws -> UInt64 = {
+            throw StubError.notImplemented
+        },
+        getArtistPage:
+            @escaping @Sendable (BridgeArtistSortCriterion, UInt64, UInt64)
+            async throws
+            -> [BridgeArtistSummary] = { _, _, _ in
+                throw StubError.notImplemented
+            },
+        getArtistDetail:
+            @escaping @Sendable (String) async throws -> BridgeArtistDetail? =
+            {
+                _ in throw StubError.notImplemented
+            },
         searchLibrary:
             @escaping @Sendable (String) async throws -> BridgeSearchResults = {
                 _ in
@@ -112,6 +134,9 @@ public final class Library: Sendable, Observable {
         self.getComposerPage = getComposerPage
         self.getComposerDetail = getComposerDetail
         self.getWorkDetail = getWorkDetail
+        self.getArtistCount = getArtistCount
+        self.getArtistPage = getArtistPage
+        self.getArtistDetail = getArtistDetail
         self.searchLibrary = searchLibrary
         self.storageCount = storageCount
         self.storagePage = storagePage
@@ -126,6 +151,10 @@ public final class Library: Sendable, Observable {
     // desktop-only; the iOS `AppService` builds `Library` via the designated
     // initializer with just the iOS-available closures.
     #if !os(iOS)
+        // Flat 1:1 argument forwarding from `AppHandleProtocol` to `Library`'s
+        // closures; its length tracks the number of Library reads, not
+        // logical complexity.
+        // swiftlint:disable:next function_body_length
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
                 getAlbumCount: { try await handle.getAlbumCount() },
@@ -154,6 +183,17 @@ public final class Library: Sendable, Observable {
                     try await handle.getComposerDetail(artistId: $0)
                 },
                 getWorkDetail: { try await handle.getWorkDetail(workId: $0) },
+                getArtistCount: { try await handle.getArtistCount() },
+                getArtistPage: {
+                    try await handle.getArtistPage(
+                        sortCriterion: $0,
+                        offset: $1,
+                        limit: $2
+                    )
+                },
+                getArtistDetail: {
+                    try await handle.getArtistDetail(artistId: $0)
+                },
                 searchLibrary: { try await handle.searchLibrary(query: $0) },
                 storageCount: { try await handle.storageCount(filter: $0) },
                 storagePage: {

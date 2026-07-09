@@ -70,6 +70,30 @@ extension BridgeComposerSummary: Identifiable {
     public var id: String { artistId }
 }
 
+public struct LibraryArtistPageSource: PageSource {
+    public let library: Library
+    public let sort: BridgeArtistSortCriterion
+
+    public init(library: Library, sort: BridgeArtistSortCriterion) {
+        self.library = library
+        self.sort = sort
+    }
+
+    public func count() async throws -> Int {
+        Int(try await library.getArtistCount())
+    }
+
+    public func page(offset: Int, limit: Int) async throws
+        -> [BridgeArtistSummary]
+    {
+        try await library.getArtistPage(sort, UInt64(offset), UInt64(limit))
+    }
+}
+
+extension BridgeArtistSummary: Identifiable {
+    public var id: String { artistId }
+}
+
 // MARK: - Storage page source
 
 /// Page source backed by `AppHandle` for the Storage Manager table.
@@ -124,6 +148,7 @@ extension BridgeStorageRow: Identifiable {
 /// store. Views resolve slots by reading `libraryStore.albumSummaries[id]`.
 public typealias AlbumList = PaginatedList<BridgeAlbum>
 public typealias ComposerList = PaginatedList<BridgeComposerSummary>
+public typealias ArtistList = PaginatedList<BridgeArtistSummary>
 
 // MARK: - StorageList
 
@@ -231,6 +256,8 @@ public final class LibraryStore {
     public private(set) var releaseDetails: [String: ReleaseDetail] = [:]
     public private(set) var composerSummaries: [String: BridgeComposerSummary] =
         [:]
+    public private(set) var artistSummaries: [String: BridgeArtistSummary] =
+        [:]
 
     /// Per-release detail-load failures, keyed by release id. `loadReleaseDetail`
     /// records the failure here instead of swallowing it, so the album detail
@@ -275,6 +302,14 @@ public final class LibraryStore {
         -> BridgeComposerSummary
     {
         composerSummaries[bridge.artistId] = bridge
+        return bridge
+    }
+
+    @discardableResult
+    public func internArtistSummary(_ bridge: BridgeArtistSummary)
+        -> BridgeArtistSummary
+    {
+        artistSummaries[bridge.artistId] = bridge
         return bridge
     }
 
@@ -342,6 +377,7 @@ public final class LibraryStore {
             releaseSummaries.removeValue(forKey: releaseId)
             releaseDetails.removeValue(forKey: releaseId)
             composerSummaries.removeAll()
+            artistSummaries.removeAll()
             return
         }
         _ = internReleaseDetail(bridge)

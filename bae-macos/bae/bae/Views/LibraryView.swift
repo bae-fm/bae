@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-private let composerLoadBatchSize = 50
+private let listLoadBatchSize = 50
 
 private enum ComposerPaneSelection: Equatable {
     case none
@@ -70,6 +70,17 @@ struct LibraryView: View {
     private var composerPaneDetail: ComposerPaneDetail = .empty
     @State
     private var detailSelection: ComposerPaneSelection = .none
+    @State
+    private var artistList: ArtistList?
+    @State
+    private var artistListRegistration: ProjectionRegistration?
+    @State
+    private var artistSortCriterion =
+        BridgeArtistSortCriterion(field: .name, direction: .ascending)
+    @State
+    private var selectedArtistId: String?
+    @State
+    private var artistDetail: BridgeArtistDetail?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -80,6 +91,8 @@ struct LibraryView: View {
                     albumContent
                 case .composers:
                     composerContent
+                case .artists:
+                    artistContent
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -90,8 +103,13 @@ struct LibraryView: View {
             await reloadAlbumList(sort: sortCriteria)
         }
         .task(id: uiStore.libraryBrowserMode) {
-            if uiStore.libraryBrowserMode == .composers {
+            switch uiStore.libraryBrowserMode {
+            case .albums:
+                break
+            case .composers:
                 await ensureComposerListLoaded()
+            case .artists:
+                await ensureArtistListLoaded()
             }
         }
         .task(id: detailSelection.composerId) {
@@ -104,6 +122,14 @@ struct LibraryView: View {
             if uiStore.libraryBrowserMode == .composers {
                 await reloadComposerList(sort: composerSortCriterion)
             }
+        }
+        .task(id: artistSortCriterion) {
+            if uiStore.libraryBrowserMode == .artists {
+                await reloadArtistList(sort: artistSortCriterion)
+            }
+        }
+        .task(id: selectedArtistId) {
+            await loadArtistDetail()
         }
         .task(id: uiStore.libraryNavigationRequest?.seq) {
             guard let request = uiStore.libraryNavigationRequest else {
@@ -191,6 +217,8 @@ extension LibraryView {
                 albumSortControls
             case .composers:
                 composerSortControls
+            case .artists:
+                artistSortControls
             }
         }
         .padding(.horizontal, 16)
@@ -315,6 +343,36 @@ extension LibraryView {
         }
     }
 
+    private var artistContent: some View {
+        Group {
+            if let artistList {
+                if let error = artistList.initialLoadError {
+                    LoadFailureView(line: error.line) {
+                        Task { await artistList.loadInitial() }
+                    }
+                }
+                else if artistList.totalCount == 0 {
+                    ContentUnavailableView(
+                        "No artists",
+                        systemImage: "music.mic",
+                        description: Text("Import some music to get started"),
+                    )
+                }
+                else {
+                    HSplitView {
+                        artistListView(artistList)
+                            .frame(minWidth: 260, idealWidth: 320)
+                        artistDetailView
+                            .frame(minWidth: 420)
+                    }
+                }
+            }
+            else {
+                ProgressView()
+            }
+        }
+    }
+
     private func applyLibraryNavigation(_ target: LibraryNavigationTarget) {
         switch target {
         case .composer(let artistId):
@@ -338,10 +396,10 @@ extension LibraryView {
                     ) {
                         let first = max(
                             0,
-                            index - composerLoadBatchSize / 2
+                            index - listLoadBatchSize / 2
                         )
                         let end = min(
-                            first + composerLoadBatchSize,
+                            first + listLoadBatchSize,
                             list.totalCount
                         )
                         await list.loadRange(
@@ -353,6 +411,44 @@ extension LibraryView {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
+    }
+
+    private func artistListView(_ list: ArtistList) -> some View {
+        List {
+            ForEach(0..<list.totalCount, id: \.self) { index in
+                artistRow(at: index, list: list)
+                    .task(
+                        id: RowLoadID(
+                            epoch: list.loadEpoch,
+                            index: index
+                        )
+                    ) {
+                        let first = max(0, index - listLoadBatchSize / 2)
+                        let end = min(
+                            first + listLoadBatchSize,
+                            list.totalCount
+                        )
+                        await list.loadRange(
+                            offset: first,
+                            limit: end - first
+                        )
+                    }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
+    }
+
+    private func artistRow(at index: Int, list: ArtistList) -> some View {
+        let id = list.idAt(index)
+        return ArtistListRow(
+            id: id,
+            isSelected: id != nil && selectedArtistId == id,
+            select: { id in
+                selectedArtistId = id
+                artistDetail = nil
+            }
+        )
     }
 
     private var composerSortControls: some View {
@@ -392,6 +488,49 @@ extension LibraryView {
             .background(Theme.surfaceElevated, in: Capsule())
             .help(
                 composerSortCriterion.direction == .ascending
+                    ? String(localized: "Sort Descending")
+                    : String(localized: "Sort Ascending")
+            )
+        }
+    }
+
+    private var artistSortControls: some View {
+        HStack(spacing: 8) {
+            Menu {
+                ForEach(BridgeArtistSortField.allCases, id: \.self) { field in
+                    Button(field.displayName) {
+                        artistSortCriterion = BridgeArtistSortCriterion(
+                            field: field,
+                            direction: artistSortCriterion.direction
+                        )
+                    }
+                }
+            } label: {
+                Text(artistSortCriterion.field.displayName)
+            }
+            .menuStyle(.borderlessButton)
+            Button {
+                let nextDirection: BridgeSortDirection =
+                    artistSortCriterion.direction == .ascending
+                    ? .descending : .ascending
+                artistSortCriterion = BridgeArtistSortCriterion(
+                    field: artistSortCriterion.field,
+                    direction: nextDirection
+                )
+            } label: {
+                Image(
+                    systemName: artistSortCriterion.direction == .ascending
+                        ? "arrow.up" : "arrow.down"
+                )
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Theme.surfaceElevated, in: Capsule())
+            .help(
+                artistSortCriterion.direction == .ascending
                     ? String(localized: "Sort Descending")
                     : String(localized: "Sort Ascending")
             )
@@ -512,6 +651,41 @@ extension LibraryView {
         .background(Theme.surface)
     }
 
+    private var artistDetailView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                if let artistDetail {
+                    ArtistDetailHeader(summary: artistDetail.artist)
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.adaptive(minimum: 140), spacing: 12)
+                        ],
+                        alignment: .leading,
+                        spacing: 12
+                    ) {
+                        ForEach(artistDetail.albums) { album in
+                            ArtistAlbumCard(album: album) {
+                                uiStore.navigateToAlbum(album.id)
+                            }
+                        }
+                    }
+                }
+                else if selectedArtistId == nil {
+                    ContentUnavailableView(
+                        "Artists",
+                        systemImage: "music.mic"
+                    )
+                }
+                else {
+                    ProgressView()
+                }
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(Theme.surface)
+    }
+
     private func ensureComposerListLoaded() async {
         guard composerList == nil else {
             return
@@ -519,6 +693,13 @@ extension LibraryView {
         let newList = makeComposerList(sort: composerSortCriterion)
         await newList.loadInitial()
         composerList = newList
+    }
+
+    private func ensureArtistListLoaded() async {
+        guard artistList == nil else {
+            return
+        }
+        await reloadArtistList(sort: artistSortCriterion)
     }
 
     private func loadComposerDetail() async {
@@ -549,6 +730,34 @@ extension LibraryView {
                     workId: defaultWorkId
                 )
             }
+        }
+        catch {
+            uiStore.showError(DisplayError(line: error.localizedDescription))
+        }
+    }
+
+    private func loadArtistDetail() async {
+        guard let requestedArtistId = selectedArtistId else {
+            return
+        }
+        do {
+            let getArtistDetail = library.getArtistDetail
+            let detail = try await getArtistDetail(requestedArtistId)
+            guard !Task.isCancelled else {
+                return
+            }
+            guard selectedArtistId == requestedArtistId else {
+                return
+            }
+            guard let detail else {
+                uiStore.showError(
+                    DisplayError(
+                        line: String(localized: "Artist detail not found")
+                    )
+                )
+                return
+            }
+            artistDetail = detail
         }
         catch {
             uiStore.showError(DisplayError(line: error.localizedDescription))
@@ -638,6 +847,23 @@ extension LibraryView {
         )
     }
 
+    private func makeArtistList(sort: BridgeArtistSortCriterion) -> ArtistList {
+        ArtistList(
+            pageSource: LibraryArtistPageSource(
+                library: library,
+                sort: sort
+            ),
+            ingest: { [libraryStore] rows in
+                for row in rows {
+                    _ = libraryStore.internArtistSummary(row)
+                }
+            },
+            onError: { [uiStore] error in
+                uiStore.showError(error)
+            },
+        )
+    }
+
     private func reloadComposerList(sort: BridgeComposerSortCriterion) async {
         let newList = makeComposerList(sort: sort)
         await newList.loadInitial()
@@ -649,6 +875,19 @@ extension LibraryView {
             domain: .composerList
         )
         composerList = newList
+    }
+
+    private func reloadArtistList(sort: BridgeArtistSortCriterion) async {
+        let newList = makeArtistList(sort: sort)
+        await newList.loadInitial()
+        guard !Task.isCancelled else {
+            return
+        }
+        artistListRegistration = projectionRegistry.registerList(
+            newList,
+            domain: .artistList
+        )
+        artistList = newList
     }
 
     private func reloadAlbumList(sort: [BridgeSortCriterion]) async {
@@ -705,7 +944,7 @@ private struct ComposerListRow: View {
             select(id)
         }) {
             ZStack(alignment: .leading) {
-                ComposerSummaryPlaceholder()
+                SummaryRowPlaceholder()
                     .opacity(summary == nil ? 1 : 0)
                     .allowsHitTesting(summary == nil)
                 ComposerSummaryRow(summary: summary, isSelected: isSelected)
@@ -756,6 +995,74 @@ private struct ComposerSummaryRow: View {
     }
 }
 
+private struct ArtistListRow: View {
+    @Environment(LibraryStore.self)
+    private var libraryStore
+
+    let id: String?
+    let isSelected: Bool
+    let select: (String) -> Void
+
+    var body: some View {
+        let summary = id.flatMap { libraryStore.artistSummaries[$0] }
+        Button(action: {
+            guard let id else {
+                return
+            }
+            select(id)
+        }) {
+            ZStack(alignment: .leading) {
+                SummaryRowPlaceholder()
+                    .opacity(summary == nil ? 1 : 0)
+                    .allowsHitTesting(summary == nil)
+                ArtistSummaryRow(summary: summary, isSelected: isSelected)
+                    .opacity(summary == nil ? 0 : 1)
+                    .allowsHitTesting(summary != nil)
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(summary == nil)
+    }
+}
+
+private struct ArtistSummaryRow: View {
+    let summary: BridgeArtistSummary?
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ImageView(imageRef: summary?.image, pointSize: 36)
+                .frame(width: 36, height: 36)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            VStack(alignment: .leading, spacing: 3) {
+                OptionalLineText(
+                    text: summary?.name,
+                    font: .body,
+                    foreground: .primary
+                )
+                OptionalLineText(
+                    text: albumCountText,
+                    font: .caption,
+                    foreground: .secondary
+                )
+            }
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isSelected ? Color.accentColor.opacity(0.18) : .clear)
+        )
+    }
+
+    private var albumCountText: String? {
+        guard let summary else {
+            return nil
+        }
+        return "\(summary.albumCount) \(String(localized: "Albums"))"
+    }
+}
+
 private struct OptionalLineText: View {
     let text: String?
     let font: Font
@@ -781,7 +1088,7 @@ private struct OptionalLineText: View {
     }
 }
 
-private struct ComposerSummaryPlaceholder: View {
+private struct SummaryRowPlaceholder: View {
     var body: some View {
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 6)
@@ -817,6 +1124,53 @@ private struct ComposerDetailHeader: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+private struct ArtistDetailHeader: View {
+    let summary: BridgeArtistSummary
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ImageView(imageRef: summary.image, pointSize: 72)
+                .frame(width: 72, height: 72)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            VStack(alignment: .leading, spacing: 6) {
+                Text(summary.name)
+                    .font(.title.bold())
+                    .lineLimit(2)
+                Text("\(summary.albumCount) \(String(localized: "Albums"))")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+private struct ArtistAlbumCard: View {
+    let album: BridgeAlbum
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 6) {
+                ImageView(imageRef: album.cover, pointSize: 140)
+                    .aspectRatio(1, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                Text(album.title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                StableOptionalText(
+                    text: album.year.map(String.init),
+                    font: .caption,
+                    foreground: .secondary,
+                    lineHeight: 12,
+                    lineLimit: 1
+                )
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -997,6 +1351,8 @@ private struct WorkDetailView: View {
                 getAlbumPage: { _, _, _ in [] },
                 getComposerCount: { 0 },
                 getComposerPage: { _, _, _ in [] },
+                getArtistCount: { 0 },
+                getArtistPage: { _, _, _ in [] },
             )
         }
     }
@@ -1017,6 +1373,21 @@ private struct WorkDetailView: View {
     #Preview("Composers \u{2014} Empty") {
         let uiStore = UiStore()
         uiStore.setLibraryBrowserMode(.composers)
+        return LibraryView()
+            .environment(Playback.stub)
+            .environment(Queue.stub)
+            .environment(Downloads.stub)
+            .environment(LibraryView.emptyLibrary)
+            .environment(LibraryStore())
+            .environment(uiStore)
+            .environment(ProjectionRegistry())
+            .frame(width: 1100, height: 700)
+            .windowBackground()
+    }
+
+    #Preview("Artists \u{2014} Empty") {
+        let uiStore = UiStore()
+        uiStore.setLibraryBrowserMode(.artists)
         return LibraryView()
             .environment(Playback.stub)
             .environment(Queue.stub)

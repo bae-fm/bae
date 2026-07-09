@@ -16,6 +16,9 @@ struct UiStoreLibraryBrowserModeTests {
         store.setLibraryBrowserMode(.composers)
         #expect(store.libraryBrowserMode == .composers)
 
+        store.setLibraryBrowserMode(.artists)
+        #expect(store.libraryBrowserMode == .artists)
+
         store.setLibraryBrowserMode(.albums)
         #expect(store.libraryBrowserMode == .albums)
     }
@@ -93,6 +96,15 @@ struct UiStoreLibraryBrowserModeTests {
         store.navigateToAlbum("album-1")
         #expect(store.libraryBrowserMode == .albums)
         #expect(store.activeSection == .library)
+        #expect(store.selectedAlbumId == "album-1")
+    }
+
+    @Test("navigateToAlbum from artists mode switches to albums mode")
+    func navigateToAlbumFromArtistsSwitchesToAlbumsMode() {
+        let store = UiStore()
+        store.setLibraryBrowserMode(.artists)
+        store.navigateToAlbum("album-1")
+        #expect(store.libraryBrowserMode == .albums)
         #expect(store.selectedAlbumId == "album-1")
     }
 
