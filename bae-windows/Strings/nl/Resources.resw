@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>Grootte</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# release} other {# releases}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Totaal: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>Verwijderen</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Verwijdert deze bibliotheek en de gedownloade bestanden ervan van deze pc. Je bibliotheek in de cloud blijft ongewijzigd — je kunt hem later vanaf hier herstellen.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Deze bibliotheek is niet gesynchroniseerd. Het verwijderen ervan wist de catalogus permanent — albums, metagegevenswijzigingen en afspeelgeschiedenis. Audiobestanden in je mappen worden niet verwijderd.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>deze bibliotheek van deze pc verwijderen</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Je bibliotheek in de cloud blijft ongewijzigd — je kunt hem later vanaf het welkomstscherm herstellen.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Deze bibliotheek is nooit gesynchroniseerd. De catalogus wordt permanent verwijderd; audiobestanden in je mappen worden niet verwijderd.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Sommige wijzigingen zijn nog niet volledig geüpload en gaan verloren.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>Klik opnieuw op de knop om te bevestigen.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>Kan bibliotheek niet verwijderen: {error}</value></data>
 </root>

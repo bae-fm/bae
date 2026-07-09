@@ -14,12 +14,12 @@ using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
 namespace Bae.Windows;
 
 // The settings dialog: Discogs key, cloud sync (disconnect / S3 / OAuth), export
-// template and presets, MCP automation, devices, recovery code, updates, and
-// lock. Reads the current settings through the settings store and re-renders when
-// a config invalidation (or an in-dialog connect/disconnect) reloads them; those
-// registrations live only while the dialog is open. The lock, add-device, and
-// apply-update flows close the dialog and run after it returns (a nested
-// ContentDialog can't open over it).
+// template and presets, MCP automation, devices, recovery code, updates, lock,
+// and remove. Reads the current settings through the settings store and
+// re-renders when a config invalidation (or an in-dialog connect/disconnect)
+// reloads them; those registrations live only while the dialog is open. The
+// lock, remove, add-device, and apply-update flows close the dialog and run
+// after it returns (a nested ContentDialog can't open over it).
 internal sealed class SettingsDialog
 {
     private readonly SessionStore _session;
@@ -33,6 +33,7 @@ internal sealed class SettingsDialog
     private readonly ProjectionRegistry _projections;
     private readonly Action<string> _setStatus;
     private readonly Action<string> _openLibrary;
+    private readonly Func<System.Threading.Tasks.Task> _closeToWelcome;
 
     public SettingsDialog(
         SessionStore session,
@@ -45,7 +46,8 @@ internal sealed class SettingsDialog
         UpdateService updateService,
         ProjectionRegistry projections,
         Action<string> setStatus,
-        Action<string> openLibrary)
+        Action<string> openLibrary,
+        Func<System.Threading.Tasks.Task> closeToWelcome)
     {
         _session = session;
         _xamlRoot = xamlRoot;
@@ -58,6 +60,7 @@ internal sealed class SettingsDialog
         _projections = projections;
         _setStatus = setStatus;
         _openLibrary = openLibrary;
+        _closeToWelcome = closeToWelcome;
     }
 
     public async System.Threading.Tasks.Task Show()
@@ -1280,6 +1283,39 @@ internal sealed class SettingsDialog
         var lockButton = new Button { Content = Loc.Chrome("settings.lock_library") };
         content.Children.Add(lockButton);
 
+        // Remove this library from this device: delete its local data directory,
+        // clear the active-library pointer, and drop its encryption key, leaving
+        // any cloud copy untouched. Two-step armed confirm, like disconnect: the
+        // first click reads the outbox snapshot off the UI thread to decide
+        // whether to call out unlanded cloud work, renders the confirmation body
+        // inline, and arms; the second click requests the forget and closes the
+        // dialog — the destructive work runs after ShowAsync returns (the
+        // post-close dance, like lock), because a nested ContentDialog can't
+        // open over this one.
+        var forgetRequested = false;
+        var removeArmed = false;
+        content.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("settings.remove.title"),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+        });
+        var removeFooter = new TextBlock
+        {
+            Text = Loc.Chrome(ForgetLibraryModel.FooterKey(s.HasCloudHome)),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+        };
+        content.Children.Add(removeFooter);
+        var removeButton = new Button { Content = Loc.Chrome("settings.remove.button") };
+        content.Children.Add(removeButton);
+        var removeConfirmText = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
+            Visibility = Visibility.Collapsed,
+        };
+        content.Children.Add(removeConfirmText);
+
         var dialog = new ContentDialog
         {
             Title = Loc.Chrome("settings.title"),
@@ -1290,6 +1326,37 @@ internal sealed class SettingsDialog
         lockButton.Click += (_, _) =>
         {
             lockRequested = true;
+            dialog.Hide();
+        };
+        removeButton.Click += async (_, _) =>
+        {
+            if (!removeArmed)
+            {
+                var (snapshotCurrent, snapshotResult) = await _session.RunForCurrentHandle(NativeBae.OutboxSnapshot);
+                if (!snapshotCurrent)
+                {
+                    return;
+                }
+                if (snapshotResult.Error is not null)
+                {
+                    // The outbox read only informs the confirmation copy; a
+                    // failure here doesn't block the confirm from arming, it
+                    // just can't call out pending cloud work.
+                    BaeDiagnostics.Logger.Warning(
+                        $"Could not read the outbox snapshot for the remove confirmation: {snapshotResult.Error}");
+                }
+                var hasPendingCloudWork = snapshotResult.Snapshot is { } snapshot
+                    && ForgetLibraryModel.HasPendingCloudWork(snapshot.UploadGroups.Length, snapshot.PendingDeletes);
+                var hasCloudHome = _settings.Current?.HasCloudHome ?? s.HasCloudHome;
+                removeConfirmText.Text = string.Join(
+                    " ",
+                    ForgetLibraryModel.ConfirmKeys(hasCloudHome, hasPendingCloudWork).Select(key => Loc.Chrome(key)));
+                removeConfirmText.Visibility = Visibility.Visible;
+                removeArmed = true;
+                return;
+            }
+
+            forgetRequested = true;
             dialog.Hide();
         };
 
@@ -1334,6 +1401,7 @@ internal sealed class SettingsDialog
             RenderExport(fresh);
             RenderMcp(fresh);
             RenderDiscogs(fresh);
+            removeFooter.Text = Loc.Chrome(ForgetLibraryModel.FooterKey(fresh.HasCloudHome));
         }
         _settings.Changed += Refresh;
         // A config invalidation reloads the store while the dialog is open; the
@@ -1384,6 +1452,25 @@ internal sealed class SettingsDialog
             await _session.ShutdownAndFreeCurrentHandle();
 
             _openLibrary(s.LibraryId);
+            return;
+        }
+
+        if (forgetRequested)
+        {
+            var (forgetCurrent, error) = await _session.RunForCurrentHandle(NativeBae.ForgetLibrary);
+            if (!forgetCurrent)
+            {
+                return;
+            }
+            if (error is not null)
+            {
+                _setStatus(Loc.Chrome("settings.remove.failed", "error", error));
+                return;
+            }
+
+            // The local directory is gone; tear the handle down and return to
+            // the welcome chooser, mirroring macOS's closeLibrary().
+            await _closeToWelcome();
             return;
         }
 

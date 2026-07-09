@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>Розмір</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# реліз} few {# релізи} many {# релізів} other {# релізу}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Усього: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>Вилучити</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Вилучає цю бібліотеку та її завантажені файли з цього комп'ютера. Ваша бібліотека в хмарі залишається недоторканою — пізніше ви зможете відновити її звідси.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Ця бібліотека не синхронізована. Її вилучення остаточно видалить каталог — альбоми, редагування метаданих і історію відтворення. Аудіофайли у ваших папках не будуть видалені.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>вилучити цю бібліотеку з цього комп'ютера</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Ваша бібліотека в хмарі залишається недоторканою — пізніше ви зможете відновити її з екрана привітання.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Ця бібліотека ніколи не синхронізувалася. Її каталог буде остаточно видалено; аудіофайли у ваших папках не будуть видалені.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Деякі зміни ще не завершили завантаження і будуть втрачені.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>Натисніть кнопку ще раз, щоб підтвердити.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>Не вдалося вилучити бібліотеку: {error}</value></data>
 </root>

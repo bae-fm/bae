@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>పరిమాణం</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# విడుదల} other {# విడుదలలు}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>మొత్తం: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>తీసివేయి</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>ఈ లైబ్రరీని మరియు దాని డౌన్‌లోడ్ చేసిన ఫైళ్లను ఈ పీసీ నుండి తీసివేస్తుంది. క్లౌడ్‌లో మీ లైబ్రరీ చెక్కుచెదరకుండా ఉంటుంది — మీరు తర్వాత దీన్ని ఇక్కడి నుండి పునరుద్ధరించవచ్చు.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ఈ లైబ్రరీ సింక్ చేయబడలేదు. దీన్ని తీసివేయడం వల్ల దాని కేటలాగ్ — ఆల్బమ్‌లు, మెటాడేటా మార్పులు మరియు ప్లే చరిత్ర — శాశ్వతంగా తొలగించబడుతుంది. మీ ఫోల్డర్‌లలోని ఆడియో ఫైళ్లు తొలగించబడవు.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>ఈ లైబ్రరీని ఈ పీసీ నుండి తీసివేయి</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>క్లౌడ్‌లో మీ లైబ్రరీ చెక్కుచెదరకుండా ఉంటుంది — మీరు తర్వాత స్వాగత స్క్రీన్ నుండి దీన్ని పునరుద్ధరించవచ్చు.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>ఈ లైబ్రరీ ఎప్పుడూ సింక్ చేయబడలేదు. దాని కేటలాగ్ శాశ్వతంగా తొలగించబడుతుంది; మీ ఫోల్డర్‌లలోని ఆడియో ఫైళ్లు తొలగించబడవు.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>కొన్ని మార్పులు ఇంకా అప్‌లోడ్ పూర్తి చేయలేదు, అవి పోతాయి.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>నిర్ధారించడానికి బటన్‌ను మళ్లీ క్లిక్ చేయండి.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>లైబ్రరీని తీసివేయలేకపోయింది: {error}</value></data>
 </root>

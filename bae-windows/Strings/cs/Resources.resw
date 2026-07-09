@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>Velikost</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# vydání} few {# vydání} many {# vydání} other {# vydání}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Celkem: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>Odebrat</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Odebere tuto knihovnu a její stažené soubory z tohoto počítače. Vaše knihovna v cloudu zůstane nedotčena — později ji můžete odsud obnovit.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Tato knihovna není synchronizována. Jejím odebráním trvale smažete její katalog — alba, úpravy metadat a historii přehrávání. Zvukové soubory ve vašich složkách smazány nebudou.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>odebrat tuto knihovnu z tohoto počítače</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Vaše knihovna v cloudu zůstane nedotčena — později ji můžete obnovit z uvítací obrazovky.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Tato knihovna nebyla nikdy synchronizována. Její katalog bude trvale smazán; zvukové soubory ve vašich složkách smazány nebudou.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Některé změny se ještě nenahrály a budou ztraceny.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>Potvrďte dalším kliknutím na tlačítko.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>Knihovnu se nepodařilo odebrat: {error}</value></data>
 </root>

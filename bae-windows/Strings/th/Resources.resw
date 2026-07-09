@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>ขนาด</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, other {# รีลีส}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>รวม: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>ลบ</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>ลบไลบรารีนี้และไฟล์ที่ดาวน์โหลดไว้ออกจากพีซีเครื่องนี้ ไลบรารีของคุณบนคลาวด์ยังคงอยู่ครบถ้วน — คุณสามารถกู้คืนจากที่นี่ได้ในภายหลัง</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ไลบรารีนี้ไม่ได้ซิงค์ การลบจะลบแคตตาล็อกของไลบรารีอย่างถาวร — อัลบั้ม การแก้ไขข้อมูลเมตา และประวัติการเล่น ไฟล์เสียงในโฟลเดอร์ของคุณจะไม่ถูกลบ</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>ลบไลบรารีนี้ออกจากพีซีเครื่องนี้</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>ไลบรารีของคุณบนคลาวด์ยังคงอยู่ครบถ้วน — คุณสามารถกู้คืนจากหน้าจอต้อนรับได้ในภายหลัง</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>ไลบรารีนี้ไม่เคยซิงค์มาก่อน แคตตาล็อกของไลบรารีจะถูกลบอย่างถาวร ไฟล์เสียงในโฟลเดอร์ของคุณจะไม่ถูกลบ</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>การเปลี่ยนแปลงบางอย่างยังอัปโหลดไม่เสร็จและจะสูญหาย</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>คลิกปุ่มอีกครั้งเพื่อยืนยัน</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>ไม่สามารถลบไลบรารีได้: {error}</value></data>
 </root>

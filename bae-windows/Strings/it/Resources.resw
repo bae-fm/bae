@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>Dimensione</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# pubblicazione} other {# pubblicazioni}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Totale: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>Rimuovi</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Rimuove questa libreria e i suoi file scaricati da questo PC. La tua libreria nel cloud resta intatta — potrai ripristinarla da qui in seguito.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Questa libreria non è sincronizzata. Rimuoverla eliminerà definitivamente il suo catalogo — album, modifiche ai metadati e cronologia di riproduzione. I file audio nelle tue cartelle non verranno eliminati.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>rimuovi questa libreria da questo PC</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>La tua libreria nel cloud resta intatta — potrai ripristinarla dalla schermata di benvenuto in seguito.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Questa libreria non è mai stata sincronizzata. Il suo catalogo verrà eliminato definitivamente; i file audio nelle tue cartelle non verranno eliminati.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Alcune modifiche non hanno ancora terminato il caricamento e andranno perse.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>Fai clic di nuovo sul pulsante per confermare.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>Impossibile rimuovere la libreria: {error}</value></data>
 </root>

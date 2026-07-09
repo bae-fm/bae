@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>الحجم</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, zero {# إصدار} one {إصدار واحد} two {إصداران} few {# إصدارات} many {# إصدارًا} other {# إصدار}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>الإجمالي: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>إزالة</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>يؤدي هذا إلى إزالة هذه المكتبة وملفاتها التي تم تنزيلها من هذا الكمبيوتر. تبقى مكتبتك في السحابة كما هي — يمكنك استعادتها من هنا لاحقًا.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>هذه المكتبة غير متزامنة. ستؤدي إزالتها إلى حذف فهرسها نهائيًا — الألبومات وتعديلات البيانات الوصفية وسجل التشغيل. لن يتم حذف ملفات الصوت الموجودة في مجلداتك.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>إزالة هذه المكتبة من هذا الكمبيوتر</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>تبقى مكتبتك في السحابة كما هي — يمكنك استعادتها من شاشة الترحيب لاحقًا.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>لم تتم مزامنة هذه المكتبة قط. سيتم حذف فهرسها نهائيًا؛ لن يتم حذف ملفات الصوت الموجودة في مجلداتك.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>بعض التغييرات لم تنتهِ من الرفع وستُفقد.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>انقر على الزر مرة أخرى للتأكيد.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>تعذّرت إزالة المكتبة: {error}</value></data>
 </root>

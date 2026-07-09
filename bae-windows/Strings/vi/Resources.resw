@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>Kích thước</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, other {# bản phát hành}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Tổng: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>Xóa</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Xóa thư viện này và các tệp đã tải xuống của nó khỏi máy tính này. Thư viện của bạn trên đám mây vẫn còn nguyên vẹn — bạn có thể khôi phục từ đây sau.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Thư viện này chưa được đồng bộ hóa. Xóa thư viện sẽ xóa vĩnh viễn danh mục của nó — album, chỉnh sửa siêu dữ liệu và lịch sử phát. Các tệp âm thanh trong thư mục của bạn sẽ không bị xóa.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>xóa thư viện này khỏi máy tính này</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Thư viện của bạn trên đám mây vẫn còn nguyên vẹn — bạn có thể khôi phục từ màn hình chào mừng sau.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Thư viện này chưa từng được đồng bộ hóa. Danh mục của nó sẽ bị xóa vĩnh viễn; các tệp âm thanh trong thư mục của bạn sẽ không bị xóa.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Một số thay đổi vẫn chưa tải lên xong và sẽ bị mất.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>Nhấp lại vào nút để xác nhận.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>Không thể xóa thư viện: {error}</value></data>
 </root>

@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>Размер</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# издание} other {# издания}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Общо: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>Премахване</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Премахва тази библиотека и изтеглените ѝ файлове от този компютър. Библиотеката ви в облака остава непокътната — можете да я възстановите оттук по-късно.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Тази библиотека не е синхронизирана. Премахването ѝ изтрива завинаги каталога ѝ — албуми, редакции на метаданни и история на възпроизвеждане. Аудио файловете в папките ви няма да бъдат изтрити.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>премахване на тази библиотека от този компютър</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Библиотеката ви в облака остава непокътната — можете да я възстановите от началния екран по-късно.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Тази библиотека никога не е била синхронизирана. Каталогът ѝ ще бъде изтрит завинаги; аудио файловете в папките ви няма да бъдат изтрити.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Някои промени все още не са качени и ще бъдат загубени.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>Натиснете бутона отново, за да потвърдите.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>Библиотеката не можа да бъде премахната: {error}</value></data>
 </root>

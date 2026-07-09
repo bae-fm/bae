@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>Size</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# release} other {# releases}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Total: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>Remove</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Removes this library and its downloaded files from this PC. Your library in the cloud is untouched — you can restore it here later.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>This library isn't synced. Removing it permanently deletes its catalog — albums, metadata edits, and play history. Audio files in your folders aren't deleted.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>remove this library from this PC</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Your library in the cloud is untouched — you can restore it from the welcome screen later.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>This library has never been synced. Its catalog will be permanently deleted; audio files in your folders aren't deleted.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Some changes haven't finished uploading and will be lost.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>Click the button again to confirm.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>Couldn't remove library: {error}</value></data>
 </root>

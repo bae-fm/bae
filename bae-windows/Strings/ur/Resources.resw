@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>سائز</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# اشاعت} other {# اشاعتیں}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>کل: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>ہٹائیں</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>یہ لائبریری اور اس کی ڈاؤن لوڈ شدہ فائلیں اس پی سی سے ہٹا دیتا ہے۔ کلاؤڈ میں آپ کی لائبریری محفوظ رہتی ہے — آپ بعد میں یہاں سے اسے بحال کر سکتے ہیں۔</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>یہ لائبریری سنک نہیں ہے۔ اسے ہٹانے سے اس کا کیٹلاگ — البمز، میٹا ڈیٹا میں ترامیم اور پلے کی تاریخ — مستقل طور پر حذف ہو جائے گا۔ آپ کے فولڈرز میں موجود آڈیو فائلیں حذف نہیں ہوں گی۔</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>اس لائبریری کو اس پی سی سے ہٹائیں</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>کلاؤڈ میں آپ کی لائبریری محفوظ رہتی ہے — آپ بعد میں خوش آمدید اسکرین سے اسے بحال کر سکتے ہیں۔</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>یہ لائبریری کبھی سنک نہیں ہوئی۔ اس کا کیٹلاگ مستقل طور پر حذف ہو جائے گا؛ آپ کے فولڈرز میں موجود آڈیو فائلیں حذف نہیں ہوں گی۔</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>کچھ تبدیلیاں ابھی اپ لوڈ مکمل نہیں کر پائیں اور ضائع ہو جائیں گی۔</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>تصدیق کے لیے بٹن دوبارہ دبائیں۔</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>لائبریری ہٹائی نہیں جا سکی: {error}</value></data>
 </root>

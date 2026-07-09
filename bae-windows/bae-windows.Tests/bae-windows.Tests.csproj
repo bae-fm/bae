@@ -39,6 +39,12 @@
       button gating, version-string normalization), over plain BCL types with no
       WinUI or Velopack dependency (the Velopack shell that produces its states
       lives in UpdateService and is verified by compilation).
+    - The Remove-library decision layer (ForgetLibraryModel) — the settings
+      Remove section's footer and confirmation-body catalog keys and the
+      pending-cloud-work derivation from the outbox snapshot's plain counts,
+      over plain BCL types (the armed two-step confirm and the post-close
+      forget dance that render it live in SettingsDialog and are verified by
+      compilation).
 
     The rest of bae-windows' pure logic (ReleaseCandidateChoice.Summary,
     ImportCandidate status/ToString, BridgeDisplay) depends on the generated
@@ -79,6 +85,7 @@
     <Compile Include="../Stores/ExportQueueModel.cs" Link="ExportQueueModel.cs" />
     <Compile Include="../Stores/WindowBoundsModel.cs" Link="WindowBoundsModel.cs" />
     <Compile Include="../Stores/PersistPlaybackModel.cs" Link="PersistPlaybackModel.cs" />
+    <Compile Include="../Stores/ForgetLibraryModel.cs" Link="ForgetLibraryModel.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -283,7 +283,8 @@ public sealed partial class MainWindow : Window
             _updateService,
             _projections,
             text => StatusText.Text = text,
-            OpenLibrary);
+            OpenLibrary,
+            CloseLibrary);
 
         RegisterProjections();
 

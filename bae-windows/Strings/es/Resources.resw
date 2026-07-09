@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>Tamaño</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# lanzamiento} other {# lanzamientos}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Total: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Elimina esta biblioteca y sus archivos descargados de este equipo. Tu biblioteca en la nube permanece intacta — podrás restaurarla desde aquí más tarde.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Esta biblioteca no está sincronizada. Al eliminarla se borrará permanentemente su catálogo — álbumes, ediciones de metadatos e historial de reproducción. Los archivos de audio de tus carpetas no se eliminarán.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>eliminar esta biblioteca de este equipo</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Tu biblioteca en la nube permanece intacta — podrás restaurarla desde la pantalla de bienvenida más tarde.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Esta biblioteca nunca se ha sincronizado. Su catálogo se eliminará permanentemente; los archivos de audio de tus carpetas no se eliminarán.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Algunos cambios aún no han terminado de subirse y se perderán.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>Haz clic en el botón de nuevo para confirmar.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>No se pudo eliminar la biblioteca: {error}</value></data>
 </root>

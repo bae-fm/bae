@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>大小</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, other {# 個發行}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>總計：{size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>移除</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>從此電腦移除此資料庫及其已下載的檔案。雲端中的資料庫保持不變——您稍後可以從這裡還原它。</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>此資料庫尚未同步。移除它將永久刪除其目錄——專輯、元資料編輯和播放紀錄。您資料夾中的音訊檔案不會被刪除。</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>從此電腦移除此資料庫</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>雲端中的資料庫保持不變——您稍後可以從歡迎畫面還原它。</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>此資料庫從未同步過。其目錄將被永久刪除；您資料夾中的音訊檔案不會被刪除。</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>部分變更尚未上傳完成，將會遺失。</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>再次點擊按鈕以確認。</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>無法移除資料庫：{error}</value></data>
 </root>

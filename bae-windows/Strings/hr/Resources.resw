@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>Veličina</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# izdanje} few {# izdanja} other {# izdanja}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>Ukupno: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>Ukloni</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>Uklanja ovu fonoteku i njezine preuzete datoteke s ovog računala. Vaša fonoteka u oblaku ostaje netaknuta — kasnije je možete obnoviti odavde.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Ova fonoteka nije sinkronizirana. Njezinim uklanjanjem trajno se briše njezin katalog — albumi, izmjene metapodataka i povijest reprodukcije. Audiodatoteke u vašim mapama neće biti izbrisane.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>ukloni ovu fonoteku s ovog računala</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Vaša fonoteka u oblaku ostaje netaknuta — kasnije je možete obnoviti s početnog zaslona.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Ova fonoteka nikada nije bila sinkronizirana. Njezin katalog bit će trajno izbrisan; audiodatoteke u vašim mapama neće biti izbrisane.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Neke se promjene još nisu dovršile prijenos i bit će izgubljene.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>Ponovno kliknite gumb za potvrdu.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>Fonoteku nije bilo moguće ukloniti: {error}</value></data>
 </root>

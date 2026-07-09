@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>আকার</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {#টি রিলিজ} other {#টি রিলিজ}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>মোট: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>সরান</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>এই লাইব্রেরি এবং এর ডাউনলোড করা ফাইলগুলো এই পিসি থেকে সরিয়ে দেয়। ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে — আপনি পরে এখান থেকে এটি পুনরুদ্ধার করতে পারবেন।</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>এই লাইব্রেরিটি সিঙ্ক করা নেই। এটি সরালে এর ক্যাটালগ — অ্যালবাম, মেটাডেটা সম্পাদনা এবং প্লে ইতিহাস — স্থায়ীভাবে মুছে যাবে। আপনার ফোল্ডারের অডিও ফাইলগুলো মুছে যাবে না।</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>এই লাইব্রেরিটি এই পিসি থেকে সরান</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে — আপনি পরে স্বাগত স্ক্রিন থেকে এটি পুনরুদ্ধার করতে পারবেন।</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>এই লাইব্রেরিটি কখনও সিঙ্ক করা হয়নি। এর ক্যাটালগ স্থায়ীভাবে মুছে যাবে; আপনার ফোল্ডারের অডিও ফাইলগুলো মুছে যাবে না।</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>কিছু পরিবর্তন এখনও আপলোড শেষ হয়নি এবং সেগুলো হারিয়ে যাবে।</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>নিশ্চিত করতে বোতামটি আবার ক্লিক করুন।</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>লাইব্রেরি সরানো যায়নি: {error}</value></data>
 </root>

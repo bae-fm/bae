@@ -399,4 +399,13 @@
   <data name="storage.column.size" xml:space="preserve"><value>サイズ</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, other {# 件のリリース}}</value></data>
   <data name="storage.footer.total" xml:space="preserve"><value>合計：{size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>削除</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>このライブラリとダウンロード済みファイルをこの PC から削除します。クラウド上のライブラリはそのまま残るため、後でここから復元できます。</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>このライブラリは同期されていません。削除すると、アルバム、メタデータの編集、再生履歴を含むカタログが完全に削除されます。フォルダー内のオーディオファイルは削除されません。</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>このライブラリをこの PC から削除</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>クラウド上のライブラリはそのまま残るため、後でようこそ画面から復元できます。</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>このライブラリは一度も同期されていません。カタログは完全に削除されます。フォルダー内のオーディオファイルは削除されません。</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>一部の変更のアップロードが完了しておらず、失われます。</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>確認するにはもう一度ボタンをクリックしてください。</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>ライブラリを削除できませんでした: {error}</value></data>
 </root>

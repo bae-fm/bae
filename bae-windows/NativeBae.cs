@@ -342,6 +342,9 @@ internal static class NativeBae
     internal static string? LockActiveLibrary(AppHandle handle) =>
         CaptureError(() => handle.LockActiveLibrary());
 
+    internal static string? ForgetLibrary(AppHandle handle) =>
+        CaptureError(() => handle.ForgetLibrary());
+
     internal static string? UnlockLibrary(string libraryId, string keyHex) =>
         CaptureError(() => BaeBridgeMethods.UnlockLibrary(libraryId, keyHex));
 
