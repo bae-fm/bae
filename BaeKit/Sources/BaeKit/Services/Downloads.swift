@@ -4,7 +4,8 @@ import Foundation
 /// pause/resume the queue, cancel a release's download, and retry failed ones.
 /// Mirrors the outbox controls on `Sync`, wrapping the corresponding
 /// `handle.*` methods. The queue itself lives in bae-core; the Downloads pane
-/// reads its state from `DownloadStore` (the reducer is the sole writer).
+/// reads its state from `DownloadStore` (the download projection is the sole
+/// writer).
 public final class Downloads: Sendable, Observable {
     /// Enqueue releases to pin for offline. They join the serial download
     /// queue; the worker drains them one at a time. Fire-and-forget — progress

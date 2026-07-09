@@ -187,8 +187,9 @@ struct FolderImportTab: View {
         importedSourceFolderNames = imported
     }
 
-    /// Mark the candidate at `key` skipped or unskipped. The reducer re-tabs the
-    /// row when the `candidateSkipChanged` event arrives.
+    /// Mark the candidate at `key` skipped or unskipped. The import-candidate
+    /// projection re-tabs the row once the skip toggle round-trips through
+    /// core.
     private func setCandidateSkipped(_ key: String, _ skipped: Bool) {
         do {
             try importer.setCandidateSkipped(key, skipped)
@@ -204,8 +205,8 @@ struct FolderImportTab: View {
     }
 
     /// Stop watching `path`. If the selected candidate lived in that folder,
-    /// clear the selection — the reducer drops the folder's candidates when the
-    /// new watched-folder list arrives.
+    /// clear the selection — the import-candidate projection drops the
+    /// folder's candidates when the new watched-folder list arrives.
     private func removeWatchedFolder(_ path: String) {
         if let key = selectedKey,
             importStore.folderCandidates[key]?.watchedFolderPath == path

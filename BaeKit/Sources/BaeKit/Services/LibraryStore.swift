@@ -283,9 +283,8 @@ public final class LibraryStore {
         return summary
     }
 
-    /// Upsert from the fat `BridgeRelease` wire shape. Used by event
-    /// reducers that receive a full album payload and want to populate
-    /// both the summary slice and the detail slice from one event.
+    /// Upsert from the fat `BridgeRelease` wire shape — the summary half of
+    /// `internReleaseDetail(_:)`'s two-slice write.
     @discardableResult
     public func internReleaseSummary(_ bridge: BridgeRelease) -> ReleaseSummary
     {

@@ -16,7 +16,7 @@ struct ImportLoudnessProgressEvent {
 
 /// AppKit view for the loudness-measurement bar shown during an import.
 ///
-/// Updated directly from the reducer's Combine signal, bypassing SwiftUI
+/// Updated directly from `DesktopUiEvents`' Combine signal, bypassing SwiftUI
 /// observation entirely — same pattern as `PreviewProgressNSView`, so the
 /// high-frequency sub-track ticks never re-render the confirm pane tree. The
 /// label is the localized `ui.import.loudness_progress` line ("Measuring
@@ -62,7 +62,7 @@ class ImportLoudnessProgressNSView: NSView {
         fatalError()
     }
 
-    // MARK: - Direct updates (called from the reducer signal, not SwiftUI)
+    // MARK: - Direct updates (called from DesktopUiEvents, not SwiftUI)
 
     func setProgress(tracksDone: UInt32, tracksTotal: UInt32, fraction: Double)
     {

@@ -32,7 +32,10 @@ final class AppService: BaeKit.AppService {
         registerCommonProjections()
         appHandle.subscribeUiEvents(
             callback: UiEventPump(
-                sink: UiEventRouter.makeSink(appService: self)
+                sink: UiEventDispatcher.makeSink(
+                    appService: self,
+                    onUnhandled: DesktopUiEvents.ignore
+                )
             )
         )
         mediaControlService.setupRemoteCommands(

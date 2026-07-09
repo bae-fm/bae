@@ -83,9 +83,9 @@ struct ResultProvenance: Equatable {
     }
 }
 
-/// Mirror of `bae_core::identify::IdentifyState`. The reducer assigns one
-/// of these onto a candidate for every bus emission; the UI switches on
-/// the variant to render banners and match lists.
+/// Mirror of `bae_core::identify::IdentifyState`. The import-candidate
+/// projection assigns one of these onto a candidate on every refresh; the UI
+/// switches on the variant to render banners and match lists.
 enum IdentifyState: Equatable {
     case idle
     /// Both signals running in parallel. Per-signal progress lets the UI

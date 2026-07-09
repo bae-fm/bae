@@ -74,9 +74,8 @@ public final class ReleaseSummary: Identifiable {
         transfer = Self.transferState(from: bridge.transferAction)
     }
 
-    /// Build a summary from the fat `BridgeRelease` wire type. Used by
-    /// reducers that receive a full album payload and need to populate
-    /// both the summary slice and the detail slice from one event.
+    /// Build a summary from the fat `BridgeRelease` wire type — the summary
+    /// half of `LibraryStore.internReleaseDetail(_:)`'s two-slice write.
     public init(from bridge: BridgeRelease) {
         id = bridge.id
         albumId = bridge.albumId

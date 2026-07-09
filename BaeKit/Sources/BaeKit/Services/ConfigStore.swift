@@ -1,24 +1,28 @@
 import SwiftUI
 
-/// Mirror of core's library configuration. The reducer is the sole writer:
-/// views read the current `Config` (including sync settings) and invoke bridge
-/// methods to change them; the resulting `configChanged` event flows back here.
+/// Mirror of core's library configuration. The config and sync-status
+/// projections are the sole writers: views read the current `Config`
+/// (including sync settings) and invoke bridge methods to change them; the
+/// resulting `.config` / `.syncStatus` invalidation refreshes this store
+/// through the projection registry.
 @Observable
 public class ConfigStore {
     public var config: Config
     /// Whether the sync loop is running right now. Runtime status, not
-    /// configuration: it rides the `configChanged` event alongside `config`
+    /// configuration: it rides the same `.config` invalidation as `config`
     /// but lands here, not on the `Config` mirror, since it changes
     /// independently of any persisted setting. Settings/pairing gate on this.
     public var syncReady: Bool
     /// Sync loop's latest error, or nil when sync is healthy. Set/cleared by
-    /// the reducer from the `syncError` UI event. The Library settings tab
-    /// surfaces this as a reconnect banner (generic line + copyable detail).
+    /// the sync-status projection from `getSyncStatus()`. The Library settings
+    /// tab surfaces this as a reconnect banner (generic line + copyable
+    /// detail).
     public var syncError: DisplayError?
     /// Wall-clock time of the most recent successful sync cycle, or nil before
-    /// the first cycle completes. The reducer parses the RFC 3339 string from
-    /// the `syncTimeChanged` UI event into a `Date` here, so the sidebar reads a
-    /// typed value and only has to format it relative to now.
+    /// the first cycle completes. The sync-status projection converts the
+    /// epoch-millisecond value from `getSyncStatus()` into a `Date` here, so
+    /// the sidebar reads a typed value and only has to format it relative to
+    /// now.
     public var lastSyncTime: Date?
     /// Whether the sync loop is currently mid-cycle. The sidebar reads this
     /// to overlay a spinner on the active library row from "Sync Now"
@@ -29,9 +33,10 @@ public class ConfigStore {
         /// Latest surfaced error from core's `error` event, or nil when
         /// cleared. iOS routes app errors here for the library banner; macOS
         /// surfaces them through its global alert (`UiStore`) instead. Typed:
-        /// the reducer builds a `DisplayError` from the bridge's `BridgeError`
-        /// (or a `BridgePlaybackErrorReason`) so the banner renders the
-        /// localized line for the device locale, never a pre-formatted string.
+        /// the shared event dispatcher builds a `DisplayError` from the
+        /// bridge's `BridgeError` (or a `BridgePlaybackErrorReason`) so the
+        /// banner renders the localized line for the device locale, never a
+        /// pre-formatted string.
         public var lastError: DisplayError?
 
         /// Surface a UI-originated error — prose the UI already localized (a

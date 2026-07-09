@@ -283,8 +283,9 @@ struct ReIdentifySheet: View {
 extension ReIdentifySheet {
     fileprivate func startReIdentify() async {
         // Seed the candidate so `ImportSearchFlow.buildSearchPane` has
-        // something to read. The reducer overwrites `identifyState` as
-        // events arrive; mode/error stay at their defaults.
+        // something to read. The import-candidate projection overwrites
+        // `identifyState` as refreshes arrive; mode/error stay at their
+        // defaults.
         if importStore.reIdentifyCandidates[key] == nil {
             importStore.reIdentifyCandidates[key] = Candidate(
                 reIdentifyKey: key,

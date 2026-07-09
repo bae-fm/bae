@@ -45,35 +45,15 @@ A consumer holding a `ReleaseDetail` reads `detail.summary.pinnedLocally` and `d
 
 ---
 
-## Reducer mutators
-
-`LibraryStore` exposes a `handle*` mutator per library event; the
-reducer invokes the matching one and writes one or more slices and
-nothing else.
-
-**Rule**: mutators do not read from one slice to decide what to write to another. Events carry everything they need — `handleAlbumAdded(album: BridgeAlbumDetail)` contains the album and every release (with tracks/files) for that album. Slice writes are a pure function of the event payload.
-
-**Rule**: mutators do not notify lists. Lists are views over a query at a point in time, not subscribers (see below). Content-only mutations (title rename, pin toggle) propagate to visible rows for free via `@Observable`. Shape-changing mutations broadcast on `libraryShapeSubject` (handled in the reducer right after the mutator call).
-
-Mutators today:
-
-- `handleAlbumAdded` / `handleAlbumUpdated` — write `albumSummaries`, `releaseSummaries`, `releaseDetails`. Unconditional upserts; no gate on prior state.
-- `handleAlbumRemoved` — remove album from `albumSummaries`; remove all of its releases from `releaseSummaries` + `releaseDetails`
-- `handleReleaseAdded` — write `releaseSummaries` + `releaseDetails` via `internReleaseDetail`, and upsert the parent album via `internAlbumSummary` so `releaseIds` reflects the authoritative DB-ordered list carried in the event
-- `handleReleaseUpdated` — write `releaseSummaries` + `releaseDetails` via `internReleaseDetail`
-- `handleReleaseRemoved` — remove release from `releaseSummaries` + `releaseDetails`
-
-### Exceptions and why
-
-`handleAlbumRemoved` filters `releaseSummaries.values` to find the releases that need to cascade. The wire event carries only the album id, and the slice is the source of truth for "which releases belong to this album." A future bae-core change — emitting child `ReleaseRemoved` events before `AlbumRemoved` — would let the reducer drop this read. Not worth pursuing until another reducer wants the same thing.
-
----
-
 ## Writer paths
 
 Three paths write into slices:
 
-1. **Event reducers** — above. The primary path for sync-driven and user-driven library changes.
+1. **The release-detail projection** — a `.release(releaseId)` invalidation
+   refetches via `AppHandle.findReleaseDetail` and applies through
+   `applyReleaseDetailSnapshot`: a hit upserts `releaseSummaries` +
+   `releaseDetails` via `internReleaseDetail`; a miss removes the release from
+   both slices.
 2. **Paginated list ingest** — page fetches from `PaginatedList.loadRange` call the per-list ingest closure, which interns each row into the appropriate slices. The list's ingest defines which slices a given row shape contributes to.
 3. **On-demand loaders** — `loadReleaseDetail(releaseId:)` / `reloadReleaseDetail(releaseId:)` fetch one release's fat data via `AppHandle.findReleaseDetail` and intern it.
 
@@ -107,26 +87,6 @@ final class PaginatedList<Row: Identifiable & Sendable> {
 
 A `PaginatedList` observes nothing. It holds a snapshot of the query's shape at the moment of the last `loadInitial` / `invalidate`. Slice mutations don't auto-grow the list; the list's `ids` array doesn't change on events. Currently-visible rows re-render via `@Observable` when their slice fields change, but the list's ordering / membership stay frozen until the mutator calls `invalidate()`.
 
-### `libraryShapeSubject` and typed change payloads
-
-`AppService.libraryShapeSubject` is a Combine `PassthroughSubject<LibraryShapeChange, Never>`. The reducer sends a typed variant for every shape-altering library event:
-
-```swift
-enum LibraryShapeChange {
-    case albumAdded(albumId: String)
-    case albumRemoved(albumId: String)
-    case releaseAdded(albumId: String, releaseId: String)
-    case releaseRemoved(albumId: String, releaseId: String)
-}
-```
-
-Subscribers filter on what matters to their list shape:
-
-- Library grid rows are albums, so it only invalidates on `.albumAdded` / `.albumRemoved`. Release-level changes don't move rows.
-- Storage grid rows are releases keyed by album, so it invalidates on every variant — album changes move groups of rows, release changes move individual rows.
-
----
-
 ## Composition diagram
 
 ```
@@ -149,7 +109,7 @@ Subscribers filter on what matters to their list shape:
 └────────────────────────────┘
 ```
 
-Storage rows write to two slices (releaseSummaries + albumSummaries) from one bridge call. Library grid rows write to one slice (albumSummaries). Album-detail reducers write to all three slices from one event.
+Storage rows write to two slices (releaseSummaries + albumSummaries) from one bridge call. Library grid rows write to one slice (albumSummaries). The release-detail projection writes releaseSummaries + releaseDetails from one refetch.
 
 ---
 
@@ -190,5 +150,5 @@ In practice this is a small difference — the parent is probably inside a `Lazy
 
 - `plans/reactive-library-store-v3.md` — the plan that introduced this architecture
 - `notes/library-manager-resolution.md` — the core-side corollary (LibraryManager returns pre-assembled types)
-- `bae-macos/bae/bae/Services/PaginatedList.swift` — the generic list
-- `bae-macos/bae/bae/Services/LibraryStore.swift` — the slices and reducers
+- `BaeKit/Sources/BaeKit/Services/PaginatedList.swift` — the generic list
+- `BaeKit/Sources/BaeKit/Services/LibraryStore.swift` — the slices and their writer paths

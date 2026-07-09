@@ -53,13 +53,13 @@
         /// opening bae doesn't interrupt audio the user has playing in another
         /// app before they hit play. Idempotent — the cpal AudioUnit produces no
         /// sound until this succeeds.
-        public func beginPlaybackSession() {
+        func beginPlaybackSession() {
             activateSession()
         }
 
         /// Deactivate the session on `playbackStopped` and notify other apps so
         /// they can resume. Re-activated on the next `beginPlaybackSession()`.
-        public func endPlaybackSession() {
+        func endPlaybackSession() {
             guard sessionActivated else {
                 return
             }
@@ -172,23 +172,28 @@
             }
         }
 
-        // MARK: - Now Playing entry point
+        // MARK: - Session/latch transition
 
-        /// iOS's library Now Playing entry: latch the play state for the
-        /// interruption handler, then push the metadata (whose `playbackRate`
-        /// the caller has already set from `isPlaying`) through the shared
-        /// writer.
-        public func updateNowPlaying(
-            _ metadata: NowPlayingMetadata,
-            isPlaying: Bool,
-            appHandle: AppHandle
-        ) {
-            lastKnownIsPlaying = isPlaying
-            setNowPlaying(
-                metadata,
-                appHandle: appHandle,
-                on: MPNowPlayingInfoCenter.default()
-            )
+        /// Transition the session and interruption latch for a library Now
+        /// Playing push, called from `updateNowPlaying(state:appHandle:)` before
+        /// the metadata write (preserving session-before-metadata ordering).
+        /// `.loading` counts as playing here — it mirrors `NowPlaying.isPlaying`
+        /// (`PlaybackStore.swift`) — so an interruption that arrives mid-track
+        /// transition still pauses core and auto-resumes on `.ended`.
+        /// `.stopped` is handled by the shared clear path instead: nothing to do
+        /// here.
+        func applyAudioSessionTransition(for state: BridgePlaybackState) {
+            switch state {
+            case .playing, .loading:
+                lastKnownIsPlaying = true
+                beginPlaybackSession()
+
+            case .paused:
+                lastKnownIsPlaying = false
+
+            case .stopped:
+                break
+            }
         }
     }
 #endif

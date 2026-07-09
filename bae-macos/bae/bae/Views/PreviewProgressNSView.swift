@@ -12,8 +12,9 @@ enum PreviewProgressEvent {
 
 /// AppKit view for the preview progress bar + time labels.
 ///
-/// Updated directly from the reducer, bypassing SwiftUI observation entirely.
-/// Same pattern as PlaybackProgressNSView — avoids SwiftUI re-renders on every tick.
+/// Updated directly from `DesktopUiEvents`' preview-progress arm, bypassing
+/// SwiftUI observation entirely. Same pattern as PlaybackProgressNSView —
+/// avoids SwiftUI re-renders on every tick.
 class PreviewProgressNSView: NSView {
     private let elapsedField: NSTextField
     private let slider: SeekSlider
@@ -77,7 +78,7 @@ class PreviewProgressNSView: NSView {
         fatalError()
     }
 
-    // MARK: - Direct position updates (called from reducer, not SwiftUI)
+    // MARK: - Direct position updates (called from DesktopUiEvents, not SwiftUI)
 
     func setPosition(progress: Double, elapsed: String) {
         currentElapsed = elapsed

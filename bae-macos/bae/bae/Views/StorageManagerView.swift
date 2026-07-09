@@ -201,9 +201,9 @@ private struct StorageFooter: View {
 /// band with the summary, a pause/resume toggle, and a "Retry now" action, plus
 /// one row per release (title, file count, size, a Queued/Active/Failed
 /// badge, and a cancel button). Hidden when the queue is idle. Reads
-/// `DownloadStore` at the leaf; the reducer is the sole writer, so actions don't
-/// optimistically mutate — the follow-up `downloadQueueChanged` event refreshes
-/// the section.
+/// `DownloadStore` at the leaf; the download projection is the sole writer, so
+/// actions don't optimistically mutate — a `.downloadQueue` invalidation
+/// refetches and refreshes the section.
 private struct DownloadsSection: View {
     @Environment(DownloadStore.self)
     private var downloadStore
@@ -338,9 +338,10 @@ private struct DownloadRow: View {
 
 /// Pane showing the in-memory export queue: a header with the summary and
 /// pause/retry controls, and a per-release row list. Hidden when the queue is
-/// idle. Reads `ExportStore` at the leaf; the reducer is the sole writer, so
-/// actions don't optimistically mutate — the follow-up `exportQueueChanged`
-/// event refreshes the section. Mirrors `DownloadsSection`.
+/// idle. Reads `ExportStore` at the leaf; the export projection is the sole
+/// writer, so actions don't optimistically mutate — an `.exportQueue`
+/// invalidation refetches and refreshes the section. Mirrors
+/// `DownloadsSection`.
 private struct ExportingSection: View {
     @Environment(ExportStore.self)
     private var exportStore
@@ -466,9 +467,9 @@ private struct ExportRow: View {
 /// row, a summary band with a "Retry now" action, and per-item lists for
 /// uploads and deletes. Hidden when the queue is idle. The user can drag the
 /// top edge to resize the item list (persisted) and collapse the pane to just
-/// its header. Reads `OutboxStore` at the leaf; the reducer is the sole writer,
-/// so actions don't optimistically mutate — the follow-up `outboxChanged` event
-/// refreshes the panel.
+/// its header. Reads `OutboxStore` at the leaf; the outbox projection is the
+/// sole writer, so actions don't optimistically mutate — an `.outbox`
+/// invalidation refetches and refreshes the panel.
 private struct OutboxSection: View {
     @Environment(OutboxStore.self)
     private var outboxStore

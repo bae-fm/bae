@@ -14,29 +14,15 @@ private let logger = Logger.bae("MediaControlService")
 /// `MPNowPlayingInfoCenter`, grouped so the call takes one metadata value rather
 /// than several positional parameters. `playbackRate` (1.0 playing, 0.0 paused)
 /// is the only field that differs between the playing and paused states.
-public struct NowPlayingMetadata {
-    public let trackTitle: String
-    public let artistNames: String
-    public let albumTitle: String
-    public let durationMs: UInt64
-    public let coverImageId: String?
-    public let playbackRate: Double
-
-    public init(
-        trackTitle: String,
-        artistNames: String,
-        albumTitle: String,
-        durationMs: UInt64,
-        coverImageId: String?,
-        playbackRate: Double
-    ) {
-        self.trackTitle = trackTitle
-        self.artistNames = artistNames
-        self.albumTitle = albumTitle
-        self.durationMs = durationMs
-        self.coverImageId = coverImageId
-        self.playbackRate = playbackRate
-    }
+/// Internal — construction happens only inside `updateNowPlaying(state:appHandle:)`
+/// via `libraryMetadata(for:)`, both in this module.
+struct NowPlayingMetadata {
+    let trackTitle: String
+    let artistNames: String
+    let albumTitle: String
+    let durationMs: UInt64
+    let coverImageId: String?
+    let playbackRate: Double
 }
 
 /// Transport intents the remote command center forwards to. macOS routes each
@@ -102,13 +88,22 @@ public final class MediaControlService: @unchecked Sendable {
         guard !isShowingPreview else {
             return
         }
-        let infoCenter = MPNowPlayingInfoCenter.default()
+        #if os(iOS)
+            applyAudioSessionTransition(for: state)
+        #endif
         if case .stopped = state {
             clearNowPlaying()
+            #if os(iOS)
+                endPlaybackSession()
+            #endif
             return
         }
         if let metadata = Self.libraryMetadata(for: state) {
-            setNowPlaying(metadata, appHandle: appHandle, on: infoCenter)
+            setNowPlaying(
+                metadata,
+                appHandle: appHandle,
+                on: MPNowPlayingInfoCenter.default()
+            )
         }
     }
 

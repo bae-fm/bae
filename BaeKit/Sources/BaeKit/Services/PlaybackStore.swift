@@ -4,11 +4,11 @@ import os.log
 
 private let logger = Logger.bae("PlaybackStore")
 
-/// Mirror of core's playback state. The reducer is the sole writer:
+/// Mirror of core's playback state. The event dispatcher is the sole writer:
 /// `nowPlaying`, `volume`, `isMuted`, `repeatMode`, `manualQueue`, and
 /// `queueContext` are all driven by `BridgeUiEvent` deliveries. Views read
 /// fields at the leaf and never write back — they invoke `appHandle` actions
-/// instead, and the resulting events flow back through the reducer.
+/// instead, and the resulting events flow back through the dispatcher.
 @Observable
 public class PlaybackStore {
     public var nowPlaying: NowPlaying = .stopped

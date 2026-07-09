@@ -7,8 +7,8 @@ import Foundation
 /// folder path plus the watched folder they were scanned from (the candidate
 /// list groups by it); re-identify candidates carry the existing library
 /// release id — the identify pipeline reads its files from the DB rather than
-/// scanning a folder. Created by the reducer (folder) or by `AlbumDetailView`'s
-/// "Re-identify..." action.
+/// scanning a folder. Created by the import-candidate projection (folder) or
+/// by `AlbumDetailView`'s "Re-identify..." action.
 enum CandidateSource: Equatable {
     case folder(folderPath: String, watchedFolderPath: String)
     case releaseReIdentify(releaseId: String)
@@ -100,12 +100,13 @@ struct Candidate: Equatable, Identifiable {
     /// Track count for the candidate. Folder candidates always have a value.
     let trackCount: UInt32?
 
-    /// Dynamic — mutated by the reducer or by views.
+    /// Dynamic — mutated by the import-candidate projection or by views.
     var files: CandidateFiles
     var identifyState: IdentifyState = .idle
     var importStatus: ImportStatus?
-    /// Whether the user manually skipped this candidate. Drives the import view's
-    /// Skipped tab; flipped by the reducer on a `candidateSkipChanged` event.
+    /// Whether the user manually skipped this candidate. Drives the import
+    /// view's Skipped tab; flipped by the import-candidate projection once the
+    /// skip toggle round-trips through core.
     var skipped: Bool = false
     /// Whether this candidate's file structure was already imported (matched by
     /// content hash). Set from the scan; drives the Added tab so an

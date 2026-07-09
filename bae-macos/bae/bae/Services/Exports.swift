@@ -5,7 +5,7 @@ import Foundation
 /// out to a folder, pause/resume the queue, cancel a release's export, and retry
 /// failed ones. Mirrors `Downloads`, wrapping the corresponding `handle.*`
 /// methods. The queue itself lives in bae-core; the Exporting pane reads its
-/// state from `ExportStore` (the reducer is the sole writer).
+/// state from `ExportStore` (the export projection is the sole writer).
 final class Exports: Sendable, Observable {
     /// Enqueue a release export to `targetDir`. It joins
     /// the serial export queue; the worker drains it one release at a time.

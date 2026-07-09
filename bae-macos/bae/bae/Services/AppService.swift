@@ -15,8 +15,9 @@ private let logger = Logger.bae("AppService")
 @MainActor
 final class AppService: BaeKit.AppService {
     /// Import-flow session state — folder candidates and the preview audio
-    /// state. Mixed-writer: reducer drives event-driven fields (scan, identify,
-    /// preview state); views drive user-set fields (mode, selectedCover).
+    /// state. Mixed-writer: core drives event-driven fields (scan/identify state
+    /// via the projection registry, preview state via the shared event
+    /// dispatcher); views drive user-set fields (mode, selectedCover).
     let importStore: ImportStore
 
     /// Navigation and selection state — which album is expanded, which release
@@ -24,8 +25,9 @@ final class AppService: BaeKit.AppService {
     /// gets a new `UiStore`.
     let uiStore: UiStore
 
-    /// In-memory export queue mirror — per-release state and summary. Reducer is
-    /// the sole writer; the Storage Manager's Exporting pane reads it.
+    /// In-memory export queue mirror — per-release state and summary. The export
+    /// projection is the sole writer; the Storage Manager's Exporting pane reads
+    /// it.
     let exportStore: ExportStore
 
     // MARK: - Desktop-only domain services
@@ -73,6 +75,10 @@ final class AppService: BaeKit.AppService {
         uiStore.showError(error)
     }
 
+    override func clearError() {
+        uiStore.clearError()
+    }
+
     /// Wire the live `AppHandle` into the stores: register the common and
     /// desktop projections, subscribe to Rust UI events, register the artwork
     /// analyzer, set up macOS media remote-control bindings, and re-check a
@@ -85,7 +91,10 @@ final class AppService: BaeKit.AppService {
         registerProjection(makeImportLibraryStatusProjection())
         appHandle.subscribeUiEvents(
             callback: UiEventPump(
-                sink: UiEventReducer.makeSink(appService: self)
+                sink: UiEventDispatcher.makeSink(
+                    appService: self,
+                    onUnhandled: DesktopUiEvents.apply
+                )
             )
         )
         appHandle.registerArtworkAnalyzer(analyzer: VisionArtworkAnalyzer())

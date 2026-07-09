@@ -99,6 +99,19 @@ open class AppService: @unchecked Sendable, Observable {
         #endif
     }
 
+    /// Clear the platform's error surface. Mirrors `showError`: iOS clears the
+    /// shared `ConfigStore` banner; macOS overrides this to clear its global
+    /// alert (`UiStore`).
+    open func clearError() {
+        #if os(iOS)
+            configStore.clearError()
+        #else
+            preconditionFailure(
+                "macOS AppService must override clearError to route through UiStore"
+            )
+        #endif
+    }
+
     /// Mirror a queue snapshot into the playback store and refresh the
     /// media-control next/previous availability.
     public func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
@@ -120,6 +133,16 @@ open class AppService: @unchecked Sendable, Observable {
             projectionRegistry.register(makeOutboxProjection()),
             projectionRegistry.register(makeDownloadProjection()),
             projectionRegistry.register(makeReleaseDetailProjection()),
+            // The bridge's lag-recovery path is `.queue`'s only invalidation
+            // producer (normal queue changes land through the `queueUpdated`
+            // direct apply), so this projection exists purely for that recovery
+            // case. A lag-recovery refetch queried before the next queue event
+            // but applied after that event's direct apply can overwrite one
+            // newer snapshot with an older one — corrected on the next queue
+            // event. Both applies write idempotent full snapshots, and
+            // `Projection`'s generation guard covers invalidation-vs-invalidation
+            // races, not this invalidation-vs-direct-apply race.
+            projectionRegistry.register(makeQueueProjection()),
         ]
     }
 
@@ -171,6 +194,19 @@ extension AppService {
             },
             apply: { [configStore] snapshot in
                 configStore.applySyncStatusSnapshot(snapshot)
+            },
+            onError: { [weak self] error in self?.showError(error) }
+        )
+    }
+
+    private func makeQueueProjection() -> Projection<BridgeQueueSnapshot> {
+        Projection(
+            domain: .queue,
+            query: { [appHandle] _ in
+                try await appHandle.getQueueSnapshot()
+            },
+            apply: { [weak self] snapshot in
+                self?.applyQueueSnapshot(snapshot)
             },
             onError: { [weak self] error in self?.showError(error) }
         )

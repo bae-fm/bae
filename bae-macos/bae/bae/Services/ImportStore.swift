@@ -32,8 +32,9 @@ enum SkippedRow: Identifiable {
     }
 }
 
-/// Session state for the import flow. Mixed-writer: the reducer drives
-/// event-driven fields (scan, identify, preview state), while views drive
+/// Session state for the import flow. Mixed-writer: core drives event-driven
+/// fields — scan/identify state through the import-candidate projections,
+/// preview state through the shared event dispatcher — while views drive
 /// user-set fields (mode, selectedCover) via `mutateCandidate(forKey:_:)`.
 /// The single-writer rule applies per field, not per store.
 ///
@@ -47,8 +48,8 @@ class ImportStore {
     /// Folders that look like a release but failed validation, keyed by folder
     /// path. They carry no files or identify state — they can't be imported —
     /// only a reason. Surfaced under the Skipped tab with a warning. A folder is
-    /// never in both `folderCandidates` and here: the reducer moves it across as
-    /// validity flips.
+    /// never in both `folderCandidates` and here: the import-candidate
+    /// projection moves it across as validity flips.
     var invalidCandidates: OrderedDictionary<String, BridgeInvalidCandidate> =
         [:]
     /// The folders being watched for imports, in add order. The candidate list
@@ -86,7 +87,7 @@ class ImportStore {
 
     /// Look up a candidate by key across both source dicts. Used when the
     /// caller doesn't know (or doesn't care about) the candidate's source —
-    /// e.g. generic reducer cases and the shared search/confirmation flow.
+    /// the shared search/confirmation flow.
     func candidate(forKey key: String) -> Candidate? {
         folderCandidates[key] ?? reIdentifyCandidates[key]
     }
