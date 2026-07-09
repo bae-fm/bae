@@ -48,9 +48,9 @@ public struct AlbumPreviewPageSource: PageSource {
 
 public struct LibraryComposerPageSource: PageSource {
     public let library: Library
-    public let sort: BridgeComposerSortCriterion
+    public let sort: [BridgeComposerSortCriterion]
 
-    public init(library: Library, sort: BridgeComposerSortCriterion) {
+    public init(library: Library, sort: [BridgeComposerSortCriterion]) {
         self.library = library
         self.sort = sort
     }
@@ -72,9 +72,9 @@ extension BridgeComposerSummary: Identifiable {
 
 public struct LibraryArtistPageSource: PageSource {
     public let library: Library
-    public let sort: BridgeArtistSortCriterion
+    public let sort: [BridgeArtistSortCriterion]
 
-    public init(library: Library, sort: BridgeArtistSortCriterion) {
+    public init(library: Library, sort: [BridgeArtistSortCriterion]) {
         self.library = library
         self.sort = sort
     }

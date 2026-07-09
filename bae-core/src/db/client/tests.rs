@@ -1968,18 +1968,80 @@ mod composer_mode_tests {
         .await
         .unwrap();
 
-        let sort = ComposerSortCriterion {
+        let sort = [ComposerSortCriterion {
             field: ComposerSortField::WorkCount,
             direction: SortDirection::Descending,
-        };
+        }];
         let mut page_ids = Vec::new();
         for offset in 0..3 {
-            let page = db.get_composer_page(sort, offset, 1).await.unwrap();
+            let page = db.get_composer_page(&sort, offset, 1).await.unwrap();
             assert_eq!(page.len(), 1);
             page_ids.push(page[0].artist.id.clone());
         }
 
         assert_eq!(page_ids, vec!["composer-a", "composer-b", "composer-c"]);
+    }
+
+    /// A secondary criterion must apply before the name-ASC tail: two
+    /// composers tie on `WorkCount` but differ in name, so `[WorkCount DESC,
+    /// Name DESC]` must order the tied pair by name descending — a
+    /// single-criterion implementation would fall straight to the tail's
+    /// `composer.name ASC` and order them the other way.
+    #[tokio::test]
+    async fn composer_page_applies_secondary_criterion() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        db.call(|conn| {
+            conn.execute_batch(
+                "
+                INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+                VALUES
+                    ('composer-a', 'Composer Name A', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('composer-b', 'Composer Name B', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('composer-solo', 'Composer Name Solo', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO works (id, title, work_type, _updated_at, created_at)
+                VALUES
+                    ('work-a1', 'Work Title A1', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('work-a2', 'Work Title A2', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('work-b1', 'Work Title B1', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('work-b2', 'Work Title B2', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('work-solo', 'Work Title Solo', 'work', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
+                VALUES
+                    ('work-artist-a1', 'work-a1', 'composer-a', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('work-artist-a2', 'work-a2', 'composer-a', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('work-artist-b1', 'work-b1', 'composer-b', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('work-artist-b2', 'work-b2', 'composer-b', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('work-artist-solo', 'work-solo', 'composer-solo', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+
+        let sort = [
+            ComposerSortCriterion {
+                field: ComposerSortField::WorkCount,
+                direction: SortDirection::Descending,
+            },
+            ComposerSortCriterion {
+                field: ComposerSortField::Name,
+                direction: SortDirection::Descending,
+            },
+        ];
+        let page = db.get_composer_page(&sort, 0, 10).await.unwrap();
+        let ids: Vec<&str> = page.iter().map(|c| c.artist.id.as_str()).collect();
+
+        // composer-a and composer-b tie on work_count (2 each); the secondary
+        // Name DESC criterion orders composer-b before composer-a.
+        assert_eq!(ids, vec!["composer-b", "composer-a", "composer-solo"]);
     }
 }
 
@@ -2047,11 +2109,11 @@ mod artist_mode_tests {
     async fn artist_page_lists_album_artists_with_distinct_album_counts() {
         let (db, _tmp) = seeded_db().await;
 
-        let sort = ArtistSortCriterion {
+        let sort = [ArtistSortCriterion {
             field: ArtistSortField::Name,
             direction: SortDirection::Ascending,
-        };
-        let page = db.get_artist_page(sort, 0, 10).await.unwrap();
+        }];
+        let page = db.get_artist_page(&sort, 0, 10).await.unwrap();
 
         let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
         assert_eq!(
@@ -2069,11 +2131,11 @@ mod artist_mode_tests {
     async fn artist_page_sorts_by_album_count() {
         let (db, _tmp) = seeded_db().await;
 
-        let sort = ArtistSortCriterion {
+        let sort = [ArtistSortCriterion {
             field: ArtistSortField::AlbumCount,
             direction: SortDirection::Descending,
-        };
-        let page = db.get_artist_page(sort, 0, 10).await.unwrap();
+        }];
+        let page = db.get_artist_page(&sort, 0, 10).await.unwrap();
 
         let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
         assert_eq!(
@@ -2117,18 +2179,80 @@ mod artist_mode_tests {
         .await
         .unwrap();
 
-        let sort = ArtistSortCriterion {
+        let sort = [ArtistSortCriterion {
             field: ArtistSortField::AlbumCount,
             direction: SortDirection::Descending,
-        };
+        }];
         let mut page_ids = Vec::new();
         for offset in 0..3 {
-            let page = db.get_artist_page(sort, offset, 1).await.unwrap();
+            let page = db.get_artist_page(&sort, offset, 1).await.unwrap();
             assert_eq!(page.len(), 1);
             page_ids.push(page[0].artist.id.clone());
         }
 
         assert_eq!(page_ids, vec!["artist-a", "artist-b", "artist-c"]);
+    }
+
+    /// A secondary criterion must apply before the name-ASC tail: two artists
+    /// tie on `AlbumCount` but differ in name, so `[AlbumCount DESC, Name
+    /// DESC]` must order the tied pair by name descending — a
+    /// single-criterion implementation would fall straight to the tail's
+    /// `ar.name ASC` and order them the other way.
+    #[tokio::test]
+    async fn artist_page_applies_secondary_criterion() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
+            .await
+            .unwrap();
+        db.call(|conn| {
+            conn.execute_batch(
+                "
+                INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+                VALUES
+                    ('artist-a', 'Artist Name A', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('artist-b', 'Artist Name B', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('artist-solo', 'Artist Name Solo', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
+                VALUES
+                    ('album-a1', 'Album Title A1', 'artist-a', 2026, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('album-a2', 'Album Title A2', 'artist-a', 2026, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('album-b1', 'Album Title B1', 'artist-b', 2026, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('album-b2', 'Album Title B2', 'artist-b', 2026, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('album-solo', 'Album Title Solo', 'artist-solo', 2026, NULL, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+
+                INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+                VALUES
+                    ('release-a1', 'album-a1', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('release-a2', 'album-a2', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('release-b1', 'album-b1', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('release-b2', 'album-b2', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                    ('release-solo', 'album-solo', 'file_tags', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+
+        let sort = [
+            ArtistSortCriterion {
+                field: ArtistSortField::AlbumCount,
+                direction: SortDirection::Descending,
+            },
+            ArtistSortCriterion {
+                field: ArtistSortField::Name,
+                direction: SortDirection::Descending,
+            },
+        ];
+        let page = db.get_artist_page(&sort, 0, 10).await.unwrap();
+        let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
+
+        // artist-a and artist-b tie on album_count (2 each); the secondary
+        // Name DESC criterion orders artist-b before artist-a.
+        assert_eq!(ids, vec!["artist-b", "artist-a", "artist-solo"]);
     }
 
     #[tokio::test]

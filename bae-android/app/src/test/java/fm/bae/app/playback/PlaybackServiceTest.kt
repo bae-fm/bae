@@ -188,7 +188,7 @@ internal class FakeAppHandle(
     }
 
     override suspend fun getComposerPage(
-        sortCriterion: BridgeComposerSortCriterion,
+        sortCriteria: List<BridgeComposerSortCriterion>,
         offset: ULong,
         limit: ULong,
     ): List<BridgeComposerSummary> {

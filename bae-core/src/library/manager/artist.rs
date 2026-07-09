@@ -99,7 +99,7 @@ impl LibraryManager {
 
     pub async fn get_artist_page(
         &self,
-        sort: crate::db::ArtistSortCriterion,
+        sort: &[crate::db::ArtistSortCriterion],
         offset: u64,
         limit: u64,
     ) -> Result<Vec<ArtistSummary>, LibraryError> {

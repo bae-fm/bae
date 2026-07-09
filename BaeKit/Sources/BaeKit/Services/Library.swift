@@ -17,7 +17,7 @@ public final class Library: Sendable, Observable {
     public let getComposerCount: @Sendable () async throws -> UInt64
     public let getComposerPage:
         @Sendable (
-            _ sortCriterion: BridgeComposerSortCriterion, _ offset: UInt64,
+            _ sortCriteria: [BridgeComposerSortCriterion], _ offset: UInt64,
             _ limit: UInt64
         ) async throws -> [BridgeComposerSummary]
     public let getComposerDetail:
@@ -27,7 +27,7 @@ public final class Library: Sendable, Observable {
     public let getArtistCount: @Sendable () async throws -> UInt64
     public let getArtistPage:
         @Sendable (
-            _ sortCriterion: BridgeArtistSortCriterion, _ offset: UInt64,
+            _ sortCriteria: [BridgeArtistSortCriterion], _ offset: UInt64,
             _ limit: UInt64
         ) async throws -> [BridgeArtistSummary]
     public let getArtistDetail:
@@ -68,7 +68,7 @@ public final class Library: Sendable, Observable {
             throw StubError.notImplemented
         },
         getComposerPage:
-            @escaping @Sendable (BridgeComposerSortCriterion, UInt64, UInt64)
+            @escaping @Sendable ([BridgeComposerSortCriterion], UInt64, UInt64)
             async throws
             -> [BridgeComposerSummary] = { _, _, _ in
                 throw StubError.notImplemented
@@ -87,7 +87,7 @@ public final class Library: Sendable, Observable {
             throw StubError.notImplemented
         },
         getArtistPage:
-            @escaping @Sendable (BridgeArtistSortCriterion, UInt64, UInt64)
+            @escaping @Sendable ([BridgeArtistSortCriterion], UInt64, UInt64)
             async throws
             -> [BridgeArtistSummary] = { _, _, _ in
                 throw StubError.notImplemented
@@ -174,7 +174,7 @@ public final class Library: Sendable, Observable {
                 getComposerCount: { try await handle.getComposerCount() },
                 getComposerPage: {
                     try await handle.getComposerPage(
-                        sortCriterion: $0,
+                        sortCriteria: $0,
                         offset: $1,
                         limit: $2
                     )
@@ -186,7 +186,7 @@ public final class Library: Sendable, Observable {
                 getArtistCount: { try await handle.getArtistCount() },
                 getArtistPage: {
                     try await handle.getArtistPage(
-                        sortCriterion: $0,
+                        sortCriteria: $0,
                         offset: $1,
                         limit: $2
                     )
@@ -238,7 +238,7 @@ public final class Library: Sendable, Observable {
                 getComposerCount: { try await handle.getComposerCount() },
                 getComposerPage: {
                     try await handle.getComposerPage(
-                        sortCriterion: $0,
+                        sortCriteria: $0,
                         offset: $1,
                         limit: $2
                     )
@@ -250,7 +250,7 @@ public final class Library: Sendable, Observable {
                 getArtistCount: { try await handle.getArtistCount() },
                 getArtistPage: {
                     try await handle.getArtistPage(
-                        sortCriterion: $0,
+                        sortCriteria: $0,
                         offset: $1,
                         limit: $2
                     )

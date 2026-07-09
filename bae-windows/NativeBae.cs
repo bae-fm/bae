@@ -394,7 +394,7 @@ internal static class NativeBae
         checked((long)Await(handle.GetComposerCount()));
 
     internal static (List<ComposerSummary>? Composers, string? Error) ComposerPage(AppHandle handle, ulong offset, ulong limit, ComposerSortField field, SortDirection direction) =>
-        CaptureBridgeValue(() => Await(handle.GetComposerPage(ComposerSort(field, direction), offset, limit))
+        CaptureBridgeValue(() => Await(handle.GetComposerPage(new[] { ComposerSort(field, direction) }, offset, limit))
             .Select(composer => new ComposerSummary(composer))
             .ToList());
 
@@ -402,7 +402,7 @@ internal static class NativeBae
         checked((long)Await(handle.GetArtistCount()));
 
     internal static (List<ArtistSummary>? Artists, string? Error) ArtistPage(AppHandle handle, ulong offset, ulong limit, ArtistSortField field, SortDirection direction) =>
-        CaptureBridgeValue(() => Await(handle.GetArtistPage(ArtistSort(field, direction), offset, limit))
+        CaptureBridgeValue(() => Await(handle.GetArtistPage(new[] { ArtistSort(field, direction) }, offset, limit))
             .Select(artist => new ArtistSummary(artist))
             .ToList());
 

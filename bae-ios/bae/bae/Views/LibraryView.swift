@@ -266,7 +266,7 @@ extension LibraryView {
         let newList = ComposerList(
             pageSource: LibraryComposerPageSource(
                 library: library,
-                sort: composerSortCriterion
+                sort: [composerSortCriterion]
             ),
             ingest: { rows in
                 for row in rows {
@@ -292,7 +292,7 @@ extension LibraryView {
         let newList = ArtistList(
             pageSource: LibraryArtistPageSource(
                 library: library,
-                sort: artistSortCriterion
+                sort: [artistSortCriterion]
             ),
             ingest: { rows in
                 for row in rows {

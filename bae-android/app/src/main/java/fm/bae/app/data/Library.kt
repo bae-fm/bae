@@ -43,7 +43,7 @@ class Library(
         sortCriterion: BridgeComposerSortCriterion,
         offset: ULong,
         limit: ULong,
-    ): List<BridgeComposerSummary> = handle.getComposerPage(sortCriterion, offset, limit)
+    ): List<BridgeComposerSummary> = handle.getComposerPage(listOf(sortCriterion), offset, limit)
 
     suspend fun composerDetail(artistId: String): BridgeComposerDetail? = handle.getComposerDetail(artistId)
 
@@ -53,7 +53,7 @@ class Library(
         sortCriterion: BridgeArtistSortCriterion,
         offset: ULong,
         limit: ULong,
-    ): List<BridgeArtistSummary> = handle.getArtistPage(sortCriterion, offset, limit)
+    ): List<BridgeArtistSummary> = handle.getArtistPage(listOf(sortCriterion), offset, limit)
 
     suspend fun artistDetail(artistId: String): BridgeArtistDetail? = handle.getArtistDetail(artistId)
 

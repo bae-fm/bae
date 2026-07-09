@@ -121,15 +121,18 @@ impl AppHandle {
 
     pub async fn get_composer_page(
         &self,
-        sort_criterion: BridgeComposerSortCriterion,
+        sort_criteria: Vec<BridgeComposerSortCriterion>,
         offset: u64,
         limit: u64,
     ) -> Result<Vec<BridgeComposerSummary>, BridgeError> {
-        let sort = sort_criterion.into_core();
+        let sort: Vec<bae_core::db::ComposerSortCriterion> = sort_criteria
+            .into_iter()
+            .map(BridgeComposerSortCriterion::into_core)
+            .collect();
         let composers = self
             .services
             .library_manager()
-            .get_composer_page(sort, offset, limit)
+            .get_composer_page(&sort, offset, limit)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
         Ok(composers
@@ -174,15 +177,18 @@ impl AppHandle {
 
     pub async fn get_artist_page(
         &self,
-        sort_criterion: BridgeArtistSortCriterion,
+        sort_criteria: Vec<BridgeArtistSortCriterion>,
         offset: u64,
         limit: u64,
     ) -> Result<Vec<BridgeArtistSummary>, BridgeError> {
-        let sort = sort_criterion.into_core();
+        let sort: Vec<bae_core::db::ArtistSortCriterion> = sort_criteria
+            .into_iter()
+            .map(BridgeArtistSortCriterion::into_core)
+            .collect();
         let artists = self
             .services
             .library_manager()
-            .get_artist_page(sort, offset, limit)
+            .get_artist_page(&sort, offset, limit)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
         Ok(artists

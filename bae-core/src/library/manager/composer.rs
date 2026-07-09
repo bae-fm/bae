@@ -9,7 +9,7 @@ impl LibraryManager {
 
     pub async fn get_composer_page(
         &self,
-        sort: crate::db::ComposerSortCriterion,
+        sort: &[crate::db::ComposerSortCriterion],
         offset: u64,
         limit: u64,
     ) -> Result<Vec<ComposerSummary>, LibraryError> {

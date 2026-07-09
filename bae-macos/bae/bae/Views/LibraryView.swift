@@ -834,7 +834,7 @@ extension LibraryView {
         ComposerList(
             pageSource: LibraryComposerPageSource(
                 library: library,
-                sort: sort
+                sort: [sort]
             ),
             ingest: { [libraryStore] rows in
                 for row in rows {
@@ -851,7 +851,7 @@ extension LibraryView {
         ArtistList(
             pageSource: LibraryArtistPageSource(
                 library: library,
-                sort: sort
+                sort: [sort]
             ),
             ingest: { [libraryStore] rows in
                 for row in rows {

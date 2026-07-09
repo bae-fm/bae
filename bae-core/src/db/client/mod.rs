@@ -495,31 +495,59 @@ fn row_to_release_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbReleaseSum
     })
 }
 
-fn composer_order_by(sort: ComposerSortCriterion) -> String {
-    let field = match sort.field {
-        ComposerSortField::Name => "composer.name",
-        ComposerSortField::WorkCount => "work_count",
-        ComposerSortField::LinkedReleaseCount => "linked_release_count",
-    };
-    let direction = match sort.direction {
-        SortDirection::Ascending => "ASC",
-        SortDirection::Descending => "DESC",
-    };
-    // Pagination needs a total order; composer.name is not unique.
-    format!("{field} {direction}, composer.name ASC, composer.id ASC")
+/// Build an ORDER BY clause from composer-page sort criteria. Every criterion
+/// is joined into one clause, then `composer.name ASC, composer.id ASC` is
+/// appended unconditionally — pagination needs a total order and
+/// `composer.name` is not unique, so this tie-breaks a multi-criterion sort
+/// and is the whole ORDER BY when `sort` is empty (mirrors `build_order_by`'s
+/// `a.id` album tie-break).
+fn composer_order_by(sort: &[ComposerSortCriterion]) -> String {
+    if sort.is_empty() {
+        return "composer.name ASC, composer.id ASC".to_string();
+    }
+    let clause = sort
+        .iter()
+        .map(|c| {
+            let field = match c.field {
+                ComposerSortField::Name => "composer.name",
+                ComposerSortField::WorkCount => "work_count",
+                ComposerSortField::LinkedReleaseCount => "linked_release_count",
+            };
+            let direction = match c.direction {
+                SortDirection::Ascending => "ASC",
+                SortDirection::Descending => "DESC",
+            };
+            format!("{field} {direction}")
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("{clause}, composer.name ASC, composer.id ASC")
 }
 
-fn artist_order_by(sort: ArtistSortCriterion) -> String {
-    let field = match sort.field {
-        ArtistSortField::Name => "ar.name",
-        ArtistSortField::AlbumCount => "album_count",
-    };
-    let direction = match sort.direction {
-        SortDirection::Ascending => "ASC",
-        SortDirection::Descending => "DESC",
-    };
-    // Pagination needs a total order; ar.name is not unique.
-    format!("{field} {direction}, ar.name ASC, ar.id ASC")
+/// Build an ORDER BY clause from artist-page sort criteria. Same shape as
+/// `composer_order_by`: every criterion joins into one clause, then
+/// `ar.name ASC, ar.id ASC` is appended unconditionally as the pagination
+/// tie-break (and the whole ORDER BY when `sort` is empty).
+fn artist_order_by(sort: &[ArtistSortCriterion]) -> String {
+    if sort.is_empty() {
+        return "ar.name ASC, ar.id ASC".to_string();
+    }
+    let clause = sort
+        .iter()
+        .map(|c| {
+            let field = match c.field {
+                ArtistSortField::Name => "ar.name",
+                ArtistSortField::AlbumCount => "album_count",
+            };
+            let direction = match c.direction {
+                SortDirection::Ascending => "ASC",
+                SortDirection::Descending => "DESC",
+            };
+            format!("{field} {direction}")
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("{clause}, ar.name ASC, ar.id ASC")
 }
 
 #[cfg(any(test, feature = "test-utils"))]

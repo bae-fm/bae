@@ -148,7 +148,7 @@ impl Database {
 
     pub async fn get_composer_page(
         &self,
-        sort: ComposerSortCriterion,
+        sort: &[ComposerSortCriterion],
         offset: u64,
         limit: u64,
     ) -> Result<Vec<DbComposerSummary>, DbError> {
@@ -182,7 +182,7 @@ impl Database {
 
     pub async fn get_artist_page(
         &self,
-        sort: ArtistSortCriterion,
+        sort: &[ArtistSortCriterion],
         offset: u64,
         limit: u64,
     ) -> Result<Vec<DbArtistSummary>, DbError> {
