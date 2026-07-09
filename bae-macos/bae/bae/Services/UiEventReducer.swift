@@ -170,7 +170,15 @@ enum UiEventReducer {
                 )
             )
 
-        case .releaseTransferProgress, .releaseTransferEnded, .queueUpdated:
+        case .queueUpdated(let snapshot):
+            // Core resolves the full queue projection before emitting, so the
+            // carried snapshot is the queue's update path — the same direct
+            // apply every other platform does. The manual and context lanes
+            // land on the store; `has_next`/`has_previous` drive Control
+            // Center's next/previous availability.
+            context.appService.applyQueueSnapshot(snapshot)
+
+        case .releaseTransferProgress, .releaseTransferEnded:
             break
 
         case .error, .errorCleared:

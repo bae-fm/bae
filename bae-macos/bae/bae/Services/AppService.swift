@@ -79,7 +79,6 @@ final class AppService: BaeKit.AppService {
     /// deferred Discogs token. Called once after construction; previews skip it.
     func wireUp() {
         registerCommonProjections()
-        registerProjection(makeQueueProjection())
         registerProjection(makeExportProjection())
         registerProjection(makeImportCandidatesProjection())
         registerProjection(makeImportCandidateProjection())
@@ -114,19 +113,6 @@ final class AppService: BaeKit.AppService {
 }
 
 extension AppService {
-    private func makeQueueProjection() -> Projection<BridgeQueueSnapshot> {
-        Projection(
-            domain: .queue,
-            query: { [appHandle] _ in
-                try await appHandle.getQueueSnapshot()
-            },
-            apply: { [self] snapshot in
-                applyQueueSnapshot(snapshot)
-            },
-            onError: { [uiStore] error in uiStore.showError(error) }
-        )
-    }
-
     private func makeExportProjection() -> Projection<BridgeExportSnapshot> {
         Projection(
             domain: .exportQueue,
