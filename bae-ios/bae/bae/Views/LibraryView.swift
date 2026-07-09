@@ -7,6 +7,7 @@ private let pageSize = 60
 private enum LibraryBrowserMode {
     case albums
     case composers
+    case artists
 }
 
 private enum LibraryRoute: Hashable {
@@ -17,6 +18,7 @@ private enum LibraryRoute: Hashable {
     )
     case composer(String)
     case work(String)
+    case artist(String)
 }
 
 /// Maps a `LibraryRoute` to its pushed screen, threading navigation callbacks
@@ -58,13 +60,25 @@ private struct LibraryRouteDestination: View {
                     )
                 }
             )
+        case .artist(let artistId):
+            ArtistDetailScreen(
+                artistId: artistId,
+                openAlbum: { albumId in
+                    routePath.appendAlbum(
+                        albumId: albumId,
+                        initialReleaseId: nil,
+                        context: nil
+                    )
+                }
+            )
         }
     }
 }
 
 /// Library browse root: a top bar with sync status, an album grid paged from
 /// the database, navigation into album detail, and a persistent now-playing
-/// bar. The grid re-queries when core invalidates the album or composer list.
+/// bar. The grid re-queries when core invalidates the album, artist, or
+/// composer list.
 struct LibraryView: View {
     @Environment(LibraryStore.self)
     private var libraryStore
@@ -90,9 +104,13 @@ struct LibraryView: View {
     @State
     private var composerList: ComposerList?
     @State
+    private var artistList: ArtistList?
+    @State
     private var albumListRegistration: ProjectionRegistration?
     @State
     private var composerListRegistration: ProjectionRegistration?
+    @State
+    private var artistListRegistration: ProjectionRegistration?
     @State
     private var routePath: [LibraryRoute] = []
     @State
@@ -110,6 +128,9 @@ struct LibraryView: View {
     @State
     private var composerSortCriterion =
         BridgeComposerSortCriterion(field: .name, direction: .ascending)
+    @State
+    private var artistSortCriterion =
+        BridgeArtistSortCriterion(field: .name, direction: .ascending)
 
     private var listSelection: LibraryListSelection {
         switch mode {
@@ -117,6 +138,8 @@ struct LibraryView: View {
             .albums(field: sortField, direction: sortDirection)
         case .composers:
             .composers(composerSortCriterion)
+        case .artists:
+            .artists(artistSortCriterion)
         }
     }
 
@@ -151,6 +174,8 @@ struct LibraryView: View {
                         )
                     case .composers:
                         ComposerSortMenu(criterion: $composerSortCriterion)
+                    case .artists:
+                        ArtistSortMenu(criterion: $artistSortCriterion)
                     }
                 }
                 ToolbarItem(placement: .topBarLeading) {
@@ -195,10 +220,14 @@ struct LibraryView: View {
                 await rebuildList()
             case .composers:
                 await rebuildComposerList()
+            case .artists:
+                await rebuildArtistList()
             }
         }
     }
+}
 
+extension LibraryView {
     private var isSearching: Bool {
         !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -259,6 +288,32 @@ struct LibraryView: View {
         composerList = newList
     }
 
+    private func rebuildArtistList() async {
+        let newList = ArtistList(
+            pageSource: LibraryArtistPageSource(
+                library: library,
+                sort: artistSortCriterion
+            ),
+            ingest: { rows in
+                for row in rows {
+                    _ = libraryStore.internArtistSummary(row)
+                }
+            },
+            onError: { error in
+                configStore.showError(error)
+            },
+        )
+        artistListRegistration = projectionRegistry.registerList(
+            newList,
+            domain: .artistList
+        )
+        await newList.loadInitial()
+        guard !Task.isCancelled else {
+            return
+        }
+        artistList = newList
+    }
+
     @ViewBuilder
     private var content: some View {
         LibraryContentView(
@@ -266,6 +321,7 @@ struct LibraryView: View {
             mode: mode,
             albumList: albumList,
             composerList: composerList,
+            artistList: artistList,
             searchResults: searchResults,
             searchError: searchError,
             sync: sync,
@@ -277,6 +333,7 @@ struct LibraryView: View {
                 )
             },
             onSelectComposer: { routePath.append(.composer($0)) },
+            onSelectArtist: { routePath.append(.artist($0)) },
             onSelectWork: { routePath.append(.work($0)) }
         )
     }
@@ -411,6 +468,7 @@ private struct LibraryModePicker: View {
         Picker("Library", selection: $mode) {
             Text("Albums").tag(LibraryBrowserMode.albums)
             Text("Composers").tag(LibraryBrowserMode.composers)
+            Text("Artists").tag(LibraryBrowserMode.artists)
         }
         .pickerStyle(.segmented)
         .padding(.horizontal, 16)
@@ -501,16 +559,62 @@ private struct ComposerSortMenu: View {
     }
 }
 
+private struct ArtistSortMenu: View {
+    @Binding
+    var criterion: BridgeArtistSortCriterion
+
+    var body: some View {
+        Menu {
+            ForEach(BridgeArtistSortField.allCases, id: \.self) { field in
+                Button {
+                    criterion = BridgeArtistSortCriterion(
+                        field: field,
+                        direction: criterion.direction
+                    )
+                } label: {
+                    if field == criterion.field {
+                        Label(field.displayName, systemImage: "checkmark")
+                    }
+                    else {
+                        Text(field.displayName)
+                    }
+                }
+            }
+            Divider()
+            Button {
+                let direction: BridgeSortDirection =
+                    criterion.direction == .ascending ? .descending : .ascending
+                criterion = BridgeArtistSortCriterion(
+                    field: criterion.field,
+                    direction: direction
+                )
+            } label: {
+                Label(
+                    criterion.direction == .ascending
+                        ? String(localized: "Ascending")
+                        : String(localized: "Descending"),
+                    systemImage: criterion.direction == .ascending
+                        ? "arrow.up" : "arrow.down"
+                )
+            }
+        } label: {
+            Image(systemName: "arrow.up.arrow.down")
+        }
+    }
+}
+
 private struct LibraryContentView: View {
     let isSearching: Bool
     let mode: LibraryBrowserMode
     let albumList: AlbumList?
     let composerList: ComposerList?
+    let artistList: ArtistList?
     let searchResults: SearchResults?
     let searchError: String?
     let sync: Sync
     let onSelectAlbum: (String) -> Void
     let onSelectComposer: (String) -> Void
+    let onSelectArtist: (String) -> Void
     let onSelectWork: (String) -> Void
 
     var body: some View {
@@ -529,6 +633,8 @@ private struct LibraryContentView: View {
                 albumContent
             case .composers:
                 composerContent
+            case .artists:
+                artistContent
             }
         }
     }
@@ -563,6 +669,21 @@ private struct LibraryContentView: View {
         }
     }
 
+    @ViewBuilder
+    private var artistContent: some View {
+        if let artistList {
+            ArtistListView(list: artistList, onSelect: onSelectArtist)
+                .refreshable {
+                    sync.triggerSync()
+                    await settleAfterRefresh()
+                }
+        }
+        else {
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
     private func settleAfterRefresh() async {
         do {
             try await Task.sleep(for: .seconds(0.9))
@@ -577,6 +698,7 @@ private struct LibraryContentView: View {
 private enum LibraryListSelection: Hashable {
     case albums(field: BridgeSortField, direction: BridgeSortDirection)
     case composers(BridgeComposerSortCriterion)
+    case artists(BridgeArtistSortCriterion)
 }
 
 private extension Array where Element == LibraryRoute {
@@ -793,6 +915,93 @@ private struct ComposerSummaryRow: View {
     }
 }
 
+private struct ArtistListView: View {
+    let list: ArtistList
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        if let error = list.initialLoadError {
+            LoadFailureView(line: error.line) {
+                Task { await list.loadInitial() }
+            }
+        }
+        else if list.totalCount == 0 {
+            Text("No artists")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .padding(32)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        else {
+            List {
+                ForEach(0..<list.totalCount, id: \.self) { position in
+                    ArtistRowSlot(
+                        list: list,
+                        position: position,
+                        onSelect: onSelect
+                    )
+                }
+            }
+            .listStyle(.plain)
+        }
+    }
+}
+
+private struct ArtistRowSlot: View {
+    let list: ArtistList
+    let position: Int
+    let onSelect: (String) -> Void
+
+    @Environment(LibraryStore.self)
+    private var libraryStore
+
+    var body: some View {
+        Group {
+            if let id = list.idAt(position),
+                let summary = libraryStore.artistSummaries[id]
+            {
+                Button {
+                    onSelect(id)
+                } label: {
+                    ArtistSummaryRow(summary: summary)
+                }
+                .buttonStyle(.plain)
+            }
+            else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .task(id: list.loadEpoch) {
+            let offset = (position / pageSize) * pageSize
+            await list.loadRange(offset: offset, limit: pageSize)
+        }
+    }
+}
+
+private struct ArtistSummaryRow: View {
+    let summary: BridgeArtistSummary
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ImageView(imageRef: summary.image, pointSize: 48)
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(summary.name)
+                    .font(.body)
+                    .lineLimit(1)
+                Text("\(summary.albumCount) \(String(localized: "Albums"))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+        }
+        .padding(.vertical, 4)
+    }
+}
+
 private struct ComposerDetailScreen: View {
     let artistId: String
     let openWork: (String) -> Void
@@ -909,6 +1118,106 @@ private struct ComposerDetailContent: View {
                             title: role.trackTitle,
                             subtitle: role.albumTitle
                         )
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+}
+
+private struct ArtistDetailScreen: View {
+    let artistId: String
+    let openAlbum: (String) -> Void
+
+    @Environment(Library.self)
+    private var library
+
+    @State
+    private var detail: BridgeArtistDetail?
+    @State
+    private var error: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .padding(32)
+            }
+            else if let detail {
+                ArtistDetailContent(detail: detail, openAlbum: openAlbum)
+            }
+            else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .navigationTitle(navigationTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .task(id: artistId) {
+            await load()
+        }
+    }
+
+    private var navigationTitle: String {
+        if let detail {
+            return detail.artist.name
+        }
+        if error != nil {
+            return String(localized: "Artists")
+        }
+        return ""
+    }
+
+    private func load() async {
+        error = nil
+        do {
+            let getArtistDetail = library.getArtistDetail
+            let loaded =
+                try await Task.detached {
+                    try await getArtistDetail(artistId)
+                }
+                .value
+            try Task.checkCancellation()
+            guard let loaded else {
+                error = String(localized: "Artist detail not found")
+                return
+            }
+            detail = loaded
+        }
+        catch is CancellationError {}
+        catch {
+            self.error = error.localizedDescription
+        }
+    }
+}
+
+private struct ArtistDetailContent: View {
+    let detail: BridgeArtistDetail
+    let openAlbum: (String) -> Void
+
+    var body: some View {
+        List {
+            Section {
+                ArtistSummaryRow(summary: detail.artist)
+            }
+            if !detail.albums.isEmpty {
+                Section("Albums") {
+                    ForEach(detail.albums) { album in
+                        Button {
+                            openAlbum(album.id)
+                        } label: {
+                            HStack(spacing: 12) {
+                                ImageView(imageRef: album.cover, pointSize: 48)
+                                    .frame(width: 48, height: 48)
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                TwoLineRow(
+                                    title: album.title,
+                                    subtitle: album.year.map(String.init)
+                                )
+                            }
+                        }
                     }
                 }
             }

@@ -247,6 +247,17 @@ public final class Library: Sendable, Observable {
                     try await handle.getComposerDetail(artistId: $0)
                 },
                 getWorkDetail: { try await handle.getWorkDetail(workId: $0) },
+                getArtistCount: { try await handle.getArtistCount() },
+                getArtistPage: {
+                    try await handle.getArtistPage(
+                        sortCriterion: $0,
+                        offset: $1,
+                        limit: $2
+                    )
+                },
+                getArtistDetail: {
+                    try await handle.getArtistDetail(artistId: $0)
+                },
                 searchLibrary: { try await handle.searchLibrary(query: $0) },
                 findReleaseDetail: {
                     try await handle.findReleaseDetail(releaseId: $0)
