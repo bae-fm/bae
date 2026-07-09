@@ -413,4 +413,5 @@
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Reproduzir # álbum a seguir} other {Reproduzir # álbuns a seguir}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Adicionar # álbum à fila} other {Adicionar # álbuns à fila}}</value></data>
   <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Fixar # álbum para offline} other {Fixar # álbuns para offline}}</value></data>
+  <data name="shell.open_with_folder" xml:space="preserve"><value>abrir com {name}</value></data>
 </root>

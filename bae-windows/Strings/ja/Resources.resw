@@ -413,4 +413,5 @@
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {アルバム#件を次に再生} other {アルバム#件を次に再生}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {アルバム#件をキューに追加} other {アルバム#件をキューに追加}}</value></data>
   <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {アルバム#件をオフライン用にピン留め} other {アルバム#件をオフライン用にピン留め}}</value></data>
+  <data name="shell.open_with_folder" xml:space="preserve"><value>{name} で開く</value></data>
 </root>

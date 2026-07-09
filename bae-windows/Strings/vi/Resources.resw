@@ -413,4 +413,5 @@
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {Phát # album tiếp theo} other {Phát # album tiếp theo}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Thêm # album vào hàng đợi} other {Thêm # album vào hàng đợi}}</value></data>
   <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Ghim # album để dùng ngoại tuyến} other {Ghim # album để dùng ngoại tuyến}}</value></data>
+  <data name="shell.open_with_folder" xml:space="preserve"><value>mở bằng {name}</value></data>
 </root>

@@ -47,6 +47,15 @@
       over plain BCL types (the armed two-step confirm and the post-close
       forget dance that render it live in SettingsDialog and are verified by
       compilation).
+    - The activation-intent model (ActivationIntentModel) — the bae:// URI
+      grammar, the folder-verb / dropped-folder argv rule (its own
+      Windows-rooted-path check, not System.IO.Path, whose rootedness
+      semantics differ on this host), and the argv tokenizer for a redirected
+      activation's raw command line, over plain BCL types with a caller-
+      supplied isDirectory delegate standing in for the filesystem (the
+      registry writes and AppInstance redirection that produce and dispatch an
+      intent live in ProtocolRegistration / Program / MainWindow and are
+      verified by compilation).
 
     The rest of bae-windows' pure logic (ReleaseCandidateChoice.Summary,
     ImportCandidate status/ToString, BridgeDisplay) depends on the generated
@@ -89,6 +98,7 @@
     <Compile Include="../Stores/PersistPlaybackModel.cs" Link="PersistPlaybackModel.cs" />
     <Compile Include="../Stores/ForgetLibraryModel.cs" Link="ForgetLibraryModel.cs" />
     <Compile Include="../Stores/AlbumGridSelectionModel.cs" Link="AlbumGridSelectionModel.cs" />
+    <Compile Include="../ActivationIntentModel.cs" Link="ActivationIntentModel.cs" />
   </ItemGroup>
 
   <ItemGroup>

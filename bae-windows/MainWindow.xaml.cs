@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -83,6 +84,18 @@ public sealed partial class MainWindow : Window
     // relaunch lands on the user's chosen size rather than a display-sized rect.
     private PixelRect? _lastNormalBounds;
     private bool _maximized;
+
+    // The launch-time activation intent (a folder verb / bae://import command
+    // line, parsed by App.OnLaunched) latches here until the initial
+    // library-open attempt settles — a cold-start activation can arrive before
+    // an async unlock resolves, when CurrentHandleOrNull() would be null
+    // spuriously. A redirected activation (the app already warm) dispatches
+    // straight to HandleActivationIntent instead of going through this latch.
+    private bool _initialLibraryOpenSettled;
+    private ActivationIntent? _pendingLaunchIntent;
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     // x:Bind Albums/Composers in the shell resolve here; the collections live in
     // the browser store (constructed before InitializeComponent so these are
@@ -450,6 +463,9 @@ public sealed partial class MainWindow : Window
         if (library is null)
         {
             _welcomeView.Show();
+            // Settled: no library exists to hand a launch-time intent to, so
+            // it applies now as the no-op HandleActivationIntent logs.
+            SettleInitialLibraryOpen();
             return;
         }
 
@@ -462,11 +478,14 @@ public sealed partial class MainWindow : Window
         {
             case OpenHandleResult.Failed:
                 StatusText.Text = Loc.Chrome("library.open_failed");
+                SettleInitialLibraryOpen();
                 return;
             case OpenHandleResult.NeedsUnlock:
                 // Encrypted library whose key isn't on this device: the session
                 // freed the handle it made; prompt for the key rather than show a
-                // half-open library. Unlocking re-opens with sync online.
+                // half-open library. Unlocking re-opens with sync online, which
+                // settles the latch below through this same method; until then
+                // a pending launch intent stays latched.
                 _ = _unlockDialog.Show(libraryId);
                 return;
         }
@@ -480,6 +499,76 @@ public sealed partial class MainWindow : Window
         _nowPlayingBar.SeedVolume();
         _sync.Refresh();
         _session.Subscribe();
+        SettleInitialLibraryOpen();
+    }
+
+    // Set by App.OnLaunched once the window exists. Applies immediately when
+    // the initial library-open attempt has already settled (the common case:
+    // LoadLibrary runs synchronously in the constructor, before this is
+    // called); otherwise latches until SettleInitialLibraryOpen runs.
+    internal void SetPendingLaunchIntent(ActivationIntent intent)
+    {
+        if (_initialLibraryOpenSettled)
+        {
+            _ = HandleActivationIntent(intent);
+        }
+        else
+        {
+            _pendingLaunchIntent = intent;
+        }
+    }
+
+    // Idempotent: called at every terminal point of the launch-time
+    // LoadLibrary/OpenLibrary flow (no library found, a failed open, or a
+    // successful open), including the one that runs after an async unlock
+    // resolves. Only the first call after a pending intent was set has an
+    // effect; later calls (a manual library switch, for instance) find nothing
+    // latched.
+    private void SettleInitialLibraryOpen()
+    {
+        _initialLibraryOpenSettled = true;
+        if (_pendingLaunchIntent is { } intent)
+        {
+            _pendingLaunchIntent = null;
+            _ = HandleActivationIntent(intent);
+        }
+    }
+
+    // Turn a parsed activation intent (the folder verb, a dropped-on-the-exe
+    // folder, or bae://import) into the same UI action OnWindowDrop runs for a
+    // dropped folder.
+    internal async System.Threading.Tasks.Task HandleActivationIntent(ActivationIntent intent)
+    {
+        switch (intent)
+        {
+            case ActivationIntent.ImportFolder importFolder:
+                if (CurrentHandleOrNull() == null)
+                {
+                    // No open library (welcome screen or an unresolved unlock):
+                    // a no-op, matching the macOS handler's folder add.
+                    BaeDiagnostics.Logger.Info(
+                        "Ignored a folder-import activation: no library is open.");
+                    return;
+                }
+                await ImportFolder(importFolder.Path);
+                return;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(intent), intent, "Unknown activation intent");
+        }
+    }
+
+    // Bring the window to the front for a redirected activation (a second
+    // launch while bae is already running): restore it first if minimized.
+    // The OS may downgrade this to a taskbar flash when foreground rights are
+    // denied to a background process — accepted, not worked around.
+    internal void BringToForeground()
+    {
+        if (AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
+        {
+            presenter.Restore();
+        }
+
+        SetForegroundWindow(WinRT.Interop.WindowNative.GetWindowHandle(this));
     }
 
     // Render the toolbar sync indicator and the sync banner from the sync store's
@@ -674,6 +763,17 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        await ImportFolder(folderPath);
+    }
+
+    // Scan a folder and open the import dialog on its candidates — candidates
+    // stream into the import store and the dialog (bound to that list) shows
+    // them, on a scan error too, matching macOS, which navigates to import
+    // regardless of the scan result. Shared by the window drop target and a
+    // folder activation intent (the folder verb or bae://import); the caller
+    // has already confirmed a library is open.
+    private async System.Threading.Tasks.Task ImportFolder(string folderPath)
+    {
         var (current, error) = await _import.ScanFolder(folderPath);
         if (!current)
         {
@@ -684,8 +784,6 @@ public sealed partial class MainWindow : Window
             ShowImportBanner(error);
         }
 
-        // Open the import dialog on the streamed candidates — on scan error too,
-        // matching macOS, which navigates to import regardless of the scan result.
         // Skip if one is already open (only one ContentDialog can open at a time).
         if (!_importDialog.IsOpen)
         {

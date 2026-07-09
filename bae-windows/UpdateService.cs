@@ -20,8 +20,11 @@ internal sealed class UpdateService
 {
     // The public repository's GitHub releases are the feed. Anonymous access is
     // one API call per check; the installed package's channel selects its own
-    // releases.<channel>.json, so no edition branching is needed here.
-    private readonly UpdateManager _manager = new(
+    // releases.<channel>.json, so no edition branching is needed here. Static:
+    // IsInstalled is also the Velopack-install gate App.OnLaunched asserts the
+    // protocol registration behind, before a MainWindow (and its UpdateService)
+    // exists.
+    private static readonly UpdateManager Manager = new(
         new GithubSource("https://github.com/bae-fm/bae", null, false));
 
     // The checked-and-downloaded update awaiting apply-on-restart, set once a
@@ -39,12 +42,18 @@ internal sealed class UpdateService
     /// <summary>Whether this process is a Velopack install (as opposed to a dev
     /// run or a loose-zip copy). Gates every affordance: the throwing Velopack
     /// calls are only valid on an install.</summary>
-    internal bool IsAvailable => _manager.IsInstalled;
+    internal bool IsAvailable => Manager.IsInstalled;
+
+    /// <summary>Static form of <see cref="IsAvailable"/> for callers that run
+    /// before a <see cref="UpdateService"/> instance exists — the protocol
+    /// registration assert in <c>App.OnLaunched</c>, which runs before the
+    /// <see cref="MainWindow"/> that owns one.</summary>
+    internal static bool IsInstalled => Manager.IsInstalled;
 
     /// <summary>The installed package version, or null when this isn't an
     /// install.</summary>
     internal string? InstalledVersion =>
-        _manager.IsInstalled ? _manager.CurrentVersion?.ToString() : null;
+        Manager.IsInstalled ? Manager.CurrentVersion?.ToString() : null;
 
     private void SetState(UpdateFlowState state)
     {
@@ -66,15 +75,15 @@ internal sealed class UpdateService
 
         try
         {
-            var info = await _manager.CheckForUpdatesAsync();
+            var info = await Manager.CheckForUpdatesAsync();
             if (info is null)
             {
                 return;
             }
 
-            await _manager.DownloadUpdatesAsync(info);
+            await Manager.DownloadUpdatesAsync(info);
             _pending = info;
-            _manager.WaitExitThenApplyUpdates(info.TargetFullRelease, silent: true, restart: false);
+            Manager.WaitExitThenApplyUpdates(info.TargetFullRelease, silent: true, restart: false);
             SetState(new UpdateFlowState.Ready(info.TargetFullRelease.Version.ToString()));
         }
         catch (Exception exception)
@@ -107,14 +116,14 @@ internal sealed class UpdateService
         try
         {
             SetState(new UpdateFlowState.Checking());
-            var info = await _manager.CheckForUpdatesAsync();
+            var info = await Manager.CheckForUpdatesAsync();
             if (info is null)
             {
                 SetState(new UpdateFlowState.UpToDate());
                 return;
             }
 
-            await _manager.DownloadUpdatesAsync(
+            await Manager.DownloadUpdatesAsync(
                 info, percent => SetState(new UpdateFlowState.Downloading(percent)));
             _pending = info;
             SetState(new UpdateFlowState.Ready(info.TargetFullRelease.Version.ToString()));
@@ -132,5 +141,5 @@ internal sealed class UpdateService
 
     /// <summary>Apply the staged update and relaunch. This exits the process, so
     /// the caller must persist playback state first.</summary>
-    internal void ApplyAndRestart() => _manager.ApplyUpdatesAndRestart(_pending!.TargetFullRelease);
+    internal void ApplyAndRestart() => Manager.ApplyUpdatesAndRestart(_pending!.TargetFullRelease);
 }

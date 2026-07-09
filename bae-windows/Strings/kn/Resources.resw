@@ -413,4 +413,5 @@
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {# ಆಲ್ಬಮ್ ಮುಂದೆ ಪ್ಲೇ ಮಾಡಿ} other {# ಆಲ್ಬಮ್‌ಗಳು ಮುಂದೆ ಪ್ಲೇ ಮಾಡಿ}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {# ಆಲ್ಬಮ್ ಸಾಲಿಗೆ ಸೇರಿಸಿ} other {# ಆಲ್ಬಮ್‌ಗಳು ಸಾಲಿಗೆ ಸೇರಿಸಿ}}</value></data>
   <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# ಆಲ್ಬಮ್ ಆಫ್‌ಲೈನ್‌ಗಾಗಿ ಪಿನ್ ಮಾಡಿ} other {# ಆಲ್ಬಮ್‌ಗಳು ಆಫ್‌ಲೈನ್‌ಗಾಗಿ ಪಿನ್ ಮಾಡಿ}}</value></data>
+  <data name="shell.open_with_folder" xml:space="preserve"><value>{name} ನೊಂದಿಗೆ ತೆರೆಯಿರಿ</value></data>
 </root>

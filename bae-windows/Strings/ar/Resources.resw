@@ -413,4 +413,5 @@
   <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, zero {تشغيل # ألبوم كالتالي} one {تشغيل ألبوم واحد كالتالي} two {تشغيل ألبومين كالتالي} few {تشغيل # ألبومات كالتالي} many {تشغيل # ألبومًا كالتالي} other {تشغيل # ألبوم كالتالي}}</value></data>
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, zero {إضافة # ألبوم إلى قائمة الانتظار} one {إضافة ألبوم واحد إلى قائمة الانتظار} two {إضافة ألبومين إلى قائمة الانتظار} few {إضافة # ألبومات إلى قائمة الانتظار} many {إضافة # ألبومًا إلى قائمة الانتظار} other {إضافة # ألبوم إلى قائمة الانتظار}}</value></data>
   <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, zero {تثبيت # ألبوم للاستخدام دون اتصال} one {تثبيت ألبوم واحد للاستخدام دون اتصال} two {تثبيت ألبومين للاستخدام دون اتصال} few {تثبيت # ألبومات للاستخدام دون اتصال} many {تثبيت # ألبومًا للاستخدام دون اتصال} other {تثبيت # ألبوم للاستخدام دون اتصال}}</value></data>
+  <data name="shell.open_with_folder" xml:space="preserve"><value>افتح باستخدام {name}</value></data>
 </root>
