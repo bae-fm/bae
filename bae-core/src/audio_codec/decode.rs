@@ -1288,7 +1288,6 @@ unsafe fn decode_audio_streaming_impl(
         );
     }
     sink.set_decode_error_count(error_count);
-    sink.set_samples_decoded(samples_output);
 
     if !sink.is_cancelled() {
         sink.mark_finished();

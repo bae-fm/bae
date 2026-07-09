@@ -41,6 +41,9 @@ impl PlaybackService {
         });
         self.mark_current_foreground();
         self.sync_audio_state();
+        // A fresh install starts this track's starvation clock over, whatever
+        // the outgoing track's watchdog state was.
+        self.reset_starvation_episode();
     }
 
     /// Spawn the in-core decoder for `prepared`, build the audio stream through
@@ -266,6 +269,7 @@ impl PlaybackService {
         }
         self.shared_file_buffers.clear();
         *self.current_position_shared.lock().unwrap() = None;
+        self.reset_starvation_episode();
         // The slot is Stopped; project that onto the atomic and emit Stopped.
         self.sync_audio_state();
         self.emit_state();

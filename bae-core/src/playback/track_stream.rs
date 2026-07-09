@@ -90,8 +90,12 @@ impl StreamingState {
         self.samples_decoded.load(Ordering::Relaxed)
     }
 
-    pub fn set_samples_decoded(&self, count: u64) {
-        self.samples_decoded.store(count, Ordering::Relaxed);
+    /// Count `n` more interleaved samples as pushed into the ring — the total
+    /// pushed so far, live as the decoder produces them (not a value set once
+    /// at decode-complete), so a `Starved` event fired mid-decode carries a
+    /// truthful count.
+    fn add_samples_decoded(&self, n: u64) {
+        self.samples_decoded.fetch_add(n, Ordering::Relaxed);
     }
 }
 
@@ -127,6 +131,7 @@ impl TrackSink {
                 Err(_) => break, // Buffer full
             }
         }
+        self.state.add_samples_decoded(pushed as u64);
         pushed
     }
 
@@ -159,6 +164,7 @@ impl TrackSink {
 
             offset += n;
             self.samples_pushed += n;
+            self.state.add_samples_decoded(n as u64);
 
             // Signal ready when buffer is 50% full
             if self.ready_tx.is_some() && self.samples_pushed >= self.capacity / 2 {
@@ -210,11 +216,6 @@ impl TrackSink {
     /// Set the decode error count (called at end of decode with FFmpeg error count)
     pub fn set_decode_error_count(&self, count: u32) {
         self.state.set_decode_error_count(count);
-    }
-
-    /// Set the total samples decoded (called at end of decode)
-    pub fn set_samples_decoded(&self, count: u64) {
-        self.state.set_samples_decoded(count);
     }
 
     /// Check if cancelled.

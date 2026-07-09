@@ -67,6 +67,7 @@ mod preview;
 mod queue_commands;
 mod seek;
 mod slot;
+mod starvation;
 mod state;
 
 use crate::playback::stream_pipeline::{
@@ -76,6 +77,7 @@ use crate::playback::stream_pipeline::{
 use slot::{
     CurrentTrack, LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase,
 };
+use starvation::StarvationEpisode;
 
 #[cfg(test)]
 mod tests;
@@ -910,6 +912,10 @@ pub struct PlaybackService {
     /// reader; the current track is designated foreground via
     /// `mark_current_foreground` whenever it becomes current.
     fetch_arbiter: Arc<FetchArbiter>,
+    /// The in-progress starvation-watchdog episode, if the current track is
+    /// mid-starvation with no decode progress yet observed. `None` whenever
+    /// the track is flowing normally — see `reset_starvation_episode`.
+    starvation_episode: Option<StarvationEpisode>,
 }
 
 impl PlaybackService {
@@ -983,6 +989,9 @@ impl PlaybackService {
     }
 
     fn handle_position_event(&mut self, fmt: Arc<TrackFmt>, pos: std::time::Duration) {
+        // Samples are flowing normally: whatever starvation episode was in
+        // progress is over.
+        self.reset_starvation_episode();
         let actual_pos = fmt.position_offset + pos;
         *self.current_position_shared.lock().unwrap() = Some(actual_pos);
         let raw_pos_ms = actual_pos.as_millis() as u64;
@@ -1038,15 +1047,40 @@ impl PlaybackService {
     }
 
     async fn handle_audio_event(&mut self, event: AudioEvent) {
+        // Position/Completion/TrackCrossing carry their own logging (or none);
+        // every other event kind gets the shared diagnostic log both players
+        // share.
+        if !matches!(
+            event,
+            AudioEvent::Position(_) | AudioEvent::Completion(_) | AudioEvent::TrackCrossing(_)
+        ) {
+            log_stream_diagnostic("playback", &event);
+        }
         match event {
             AudioEvent::Position((fmt, pos)) => self.handle_position_event(fmt, pos),
             AudioEvent::Completion((fmt, error_count, samples_decoded)) => {
                 self.handle_completion_event(fmt, error_count, samples_decoded);
             }
             AudioEvent::TrackCrossing(crossing) => self.handle_track_crossed(crossing).await,
-            event => {
-                log_stream_diagnostic("playback", &event);
+            AudioEvent::Starved {
+                fmt,
+                starved_ms,
+                producer_finished,
+                samples_decoded,
+                ..
+            } => {
+                // `producer_finished` is the completion path (a drained track
+                // awaiting AutoAdvance) — never the stall this watchdog
+                // targets.
+                if !producer_finished {
+                    self.handle_starvation(&fmt.track_id, samples_decoded, starved_ms)
+                        .await;
+                }
             }
+            AudioEvent::StarvationEnded { .. } => {
+                self.reset_starvation_episode();
+            }
+            AudioEvent::SourceLockMissed { .. } | AudioEvent::SourceLockReacquired { .. } => {}
         }
     }
 
@@ -1232,6 +1266,7 @@ impl PlaybackService {
                     shared_file_buffers: HashMap::new(),
                     last_position_display,
                     fetch_arbiter: FetchArbiter::new(),
+                    starvation_episode: None,
                 };
                 match service.library_manager.load_playback_state().await {
                     Ok(Some(state)) => match PersistedPlayback::from_row(state) {

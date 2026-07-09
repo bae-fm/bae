@@ -262,10 +262,10 @@ mod tests {
         let (mut sink1, src1, _r1) = create_track_stream_pair(44100, 1);
         let (mut sink2, src2, _r2) = create_track_stream_pair(44100, 1);
 
-        // Track 1: three samples + decode stats, then EOF.
+        // Track 1: three samples + decode stats, then EOF. `samples_decoded`
+        // is live off the push itself now, not hand-set.
         assert_eq!(sink1.push_samples(&[1.0, 2.0, 3.0]), 3);
         sink1.set_decode_error_count(7);
-        sink1.set_samples_decoded(3);
         sink1.mark_finished();
         // Track 2: two samples, then EOF.
         assert_eq!(sink2.push_samples(&[10.0, 11.0]), 2);

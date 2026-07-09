@@ -151,6 +151,7 @@ async fn seeded_playback_service(
         shared_file_buffers: HashMap::new(),
         last_position_display: Arc::new(std::sync::Mutex::new(None)),
         fetch_arbiter: FetchArbiter::new(),
+        starvation_episode: None,
     };
     (home, service, progress_rx)
 }
@@ -622,6 +623,172 @@ async fn pause_during_load_emits_paused_and_supersedes_track_ready() {
     assert!(
         progress_rx.try_recv().is_err(),
         "the collapsed load's TrackReady must not emit a second state"
+    );
+}
+
+fn starved_event(
+    track_id: &str,
+    starved_ms: u64,
+    samples_decoded: u64,
+    producer_finished: bool,
+) -> AudioEvent {
+    AudioEvent::Starved {
+        fmt: Arc::new(test_track_fmt(track_id)),
+        starved_ms,
+        position_ms: 0,
+        producer_finished,
+        samples_decoded,
+        decode_errors: 0,
+        has_next: false,
+    }
+}
+
+fn starvation_ended_event(track_id: &str) -> AudioEvent {
+    AudioEvent::StarvationEnded {
+        fmt: Arc::new(test_track_fmt(track_id)),
+        starved_ms: 0,
+        position_ms: 0,
+        samples_decoded: 0,
+        decode_errors: 0,
+    }
+}
+
+/// A starvation episode with zero decode progress that persists past the fail
+/// threshold is a genuine stall — a decoder wedged for good on a byte buffer
+/// that will never produce, not a producer that's merely slow — and must
+/// surface a `PlaybackError` and tear playback down rather than log forever
+/// with a frozen position bar.
+#[tokio::test]
+async fn starvation_past_fail_threshold_with_no_progress_escalates_to_error_and_stops() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+
+    service
+        .handle_audio_event(starved_event("t", 500, 1_000, false))
+        .await;
+    service
+        .handle_audio_event(starved_event("t", 30_000, 1_000, false))
+        .await;
+
+    let mut saw_error = false;
+    while let Ok(progress) = progress_rx.try_recv() {
+        if matches!(progress, PlaybackProgress::PlaybackError { .. }) {
+            saw_error = true;
+        }
+    }
+    assert!(
+        saw_error,
+        "a stalled starvation episode must surface a PlaybackError"
+    );
+    assert!(
+        matches!(service.slot, PlaybackSlot::Stopped),
+        "the stalled track must stop"
+    );
+}
+
+/// `samples_decoded` advancing between `Starved` events proves the producer is
+/// alive (e.g. a slow cloud fetch) even though the ring is still starved —
+/// this must never escalate, however long the starvation drags on.
+#[tokio::test]
+async fn starvation_with_advancing_samples_decoded_never_escalates() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+
+    service
+        .handle_audio_event(starved_event("t", 500, 1_000, false))
+        .await;
+    service
+        .handle_audio_event(starved_event("t", 30_000, 1_100, false))
+        .await;
+    service
+        .handle_audio_event(starved_event("t", 60_000, 1_200, false))
+        .await;
+
+    let mut saw_error = false;
+    while let Ok(progress) = progress_rx.try_recv() {
+        if matches!(progress, PlaybackProgress::PlaybackError { .. }) {
+            saw_error = true;
+        }
+    }
+    assert!(
+        !saw_error,
+        "advancing samples_decoded must never escalate, regardless of starved_ms"
+    );
+    assert!(
+        matches!(service.slot, PlaybackSlot::Active(_)),
+        "the track must stay active"
+    );
+}
+
+/// `producer_finished == true` is the completion path — a drained track
+/// awaiting `AutoAdvance` — never the stall this watchdog targets.
+#[tokio::test]
+async fn starvation_with_producer_finished_never_escalates() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+
+    service
+        .handle_audio_event(starved_event("t", 500, 1_000, true))
+        .await;
+    service
+        .handle_audio_event(starved_event("t", 60_000, 1_000, true))
+        .await;
+
+    let mut saw_error = false;
+    while let Ok(progress) = progress_rx.try_recv() {
+        if matches!(progress, PlaybackProgress::PlaybackError { .. }) {
+            saw_error = true;
+        }
+    }
+    assert!(
+        !saw_error,
+        "producer_finished starvation is the completion path, never escalates"
+    );
+}
+
+/// A `StarvationEnded` between episodes resets the watchdog clock: the next
+/// episode starts fresh rather than inheriting the ended episode's duration.
+/// Sabotage — drop the reset on `StarvationEnded` — and the single event below
+/// (whose own `starved_ms` already exceeds the threshold) would be read as a
+/// continuation of the first episode's stalled baseline and escalate
+/// immediately.
+#[tokio::test]
+async fn starvation_ended_resets_the_episode_clock() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+
+    // First episode starts, then ends (the producer resumed) before ever
+    // crossing the fail threshold.
+    service
+        .handle_audio_event(starved_event("t", 500, 1_000, false))
+        .await;
+    service
+        .handle_audio_event(starvation_ended_event("t"))
+        .await;
+
+    // A second, independent episode begins at the same samples_decoded count.
+    service
+        .handle_audio_event(starved_event("t", 30_000, 1_000, false))
+        .await;
+
+    let mut saw_error = false;
+    while let Ok(progress) = progress_rx.try_recv() {
+        if matches!(progress, PlaybackProgress::PlaybackError { .. }) {
+            saw_error = true;
+        }
+    }
+    assert!(
+        !saw_error,
+        "StarvationEnded must reset the episode; the first Starved event after \
+         it establishes a fresh baseline rather than escalating immediately"
+    );
+    assert!(
+        matches!(service.slot, PlaybackSlot::Active(_)),
+        "the track must stay active"
     );
 }
 
