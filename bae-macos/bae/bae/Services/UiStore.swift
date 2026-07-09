@@ -10,14 +10,14 @@ enum MainSection {
 
 enum LibraryBrowserMode: CaseIterable {
     case albums
-    case composers
     case artists
+    case composers
 
     var displayName: String {
         switch self {
         case .albums: String(localized: "Albums")
-        case .composers: String(localized: "Composers")
         case .artists: String(localized: "Artists")
+        case .composers: String(localized: "Composers")
         }
     }
 }

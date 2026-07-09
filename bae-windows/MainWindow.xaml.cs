@@ -145,8 +145,8 @@ public sealed partial class MainWindow : Window
             : FlowDirection.LeftToRight;
 
         BrowserModeBox.Items.Add(Loc.Chrome("library.mode.albums"));
-        BrowserModeBox.Items.Add(Loc.Chrome("library.mode.composers"));
         BrowserModeBox.Items.Add(Loc.Chrome("library.mode.artists"));
+        BrowserModeBox.Items.Add(Loc.Chrome("library.mode.composers"));
         _sortControls = new LibrarySortControls(SortControls, _browser.Sort, ReloadBrowserForSortChange);
         _sortControls.Render();
         BrowserModeBox.SelectedIndex = 0;
@@ -345,8 +345,8 @@ public sealed partial class MainWindow : Window
     {
         _browser.Sort.SetMode(BrowserModeBox.SelectedIndex switch
         {
-            1 => BrowserMode.Composers,
-            2 => BrowserMode.Artists,
+            1 => BrowserMode.Artists,
+            2 => BrowserMode.Composers,
             _ => BrowserMode.Albums,
         });
         _sortControls.Render();
