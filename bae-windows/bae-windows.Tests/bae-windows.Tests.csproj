@@ -16,15 +16,16 @@
       no WinRT dependency (the WinRT shell that applies its decisions lives in
       MediaControlService and is verified by compilation).
     - The store models (PlaybackPositionModel / SyncIndicatorModel /
-      ImportIdentityModel / ReidentifyResultsModel / ImportListModel) — the
-      now-playing-bar seek/position math, the sync-indicator precedence, the
-      import identity-claim state (exact vs metadata-only, its note and
-      pressing-field enablement), the re-identify results-list arbitration
-      between the auto-identify pipeline and a manual search, and the import
-      candidate-list tab assignment / counts / sort orders / persisted-token
-      round-trip, and the main-window bounds clamp (validation of the saved rect
-      plus the fit-onto-the-current-displays math that keeps a restored window
-      reachable), split out as plain BCL types (the stores that hold bridge
+      ImportIdentityModel / ReidentifyResultsModel / ImportListModel /
+      LibrarySwitchModel) — the now-playing-bar seek/position math, the
+      sync-indicator precedence, the import identity-claim state (exact vs
+      metadata-only, its note and pressing-field enablement), the re-identify
+      results-list arbitration between the auto-identify pipeline and a manual
+      search, the import candidate-list tab assignment / counts / sort orders /
+      persisted-token round-trip, the main-window bounds clamp (validation of
+      the saved rect plus the fit-onto-the-current-displays math that keeps a
+      restored window reachable), and the Ctrl+1..9 library-switch digit → id
+      mapping, split out as plain BCL types (the stores that hold bridge
       snapshots and the WinUI views and dialogs that render them are verified by
       compilation).
     - The export-queue decision layer (ExportQueueModel) — the Exporting
@@ -62,6 +63,7 @@
     <Compile Include="../MediaControlState.cs" Link="MediaControlState.cs" />
     <Compile Include="../Stores/PlaybackPositionModel.cs" Link="PlaybackPositionModel.cs" />
     <Compile Include="../Stores/SyncIndicatorModel.cs" Link="SyncIndicatorModel.cs" />
+    <Compile Include="../Stores/LibrarySwitchModel.cs" Link="LibrarySwitchModel.cs" />
     <Compile Include="../UpdateFlow.cs" Link="UpdateFlow.cs" />
     <Compile Include="../Stores/LibrarySort.cs" Link="LibrarySort.cs" />
     <Compile Include="../TextTruncation.cs" Link="TextTruncation.cs" />

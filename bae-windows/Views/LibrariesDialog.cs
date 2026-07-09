@@ -37,7 +37,7 @@ internal sealed class LibrariesDialog
     {
         var libraries = _loadLibraries();
 
-        var list = new StackPanel { Spacing = 4, MinWidth = 360 };
+        var list = new StackPanel { Spacing = 4, MinWidth = 480 };
         var status = new TextBlock
         {
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon),
@@ -45,6 +45,16 @@ internal sealed class LibrariesDialog
             Visibility = Visibility.Collapsed,
         };
         list.Children.Add(status);
+
+        // Neutral confirmation for "copy ID", following the settings dialog's
+        // token-copy feedback: persists until overwritten or the dialog closes.
+        var copyFeedback = new TextBlock
+        {
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+            TextWrapping = TextWrapping.Wrap,
+            Visibility = Visibility.Collapsed,
+        };
+        list.Children.Add(copyFeedback);
 
         var dialog = new ContentDialog
         {
@@ -58,9 +68,12 @@ internal sealed class LibrariesDialog
         {
             var id = library.Id;
             var isActive = library.IsActive;
+            var path = library.Path;
 
             var row = new Grid { ColumnSpacing = 4 };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             // Click the name to switch to that library; the active one can't switch
@@ -80,6 +93,41 @@ internal sealed class LibrariesDialog
             };
             Grid.SetColumn(switchButton, 0);
             row.Children.Add(switchButton);
+
+            // Open the library's folder in File Explorer (its contents, matching
+            // macOS's reveal). Success needs no feedback; failure lands on the
+            // shared salmon status line.
+            var revealButton = new Button { Content = Loc.Chrome("libraries.reveal") };
+            revealButton.Click += async (_, _) =>
+            {
+                try
+                {
+                    if (!await Windows.System.Launcher.LaunchFolderPathAsync(path))
+                    {
+                        status.Text = Loc.Chrome("libraries.reveal_failed");
+                        status.Visibility = Visibility.Visible;
+                    }
+                }
+                catch (Exception)
+                {
+                    status.Text = Loc.Chrome("libraries.reveal_failed");
+                    status.Visibility = Visibility.Visible;
+                }
+            };
+            Grid.SetColumn(revealButton, 1);
+            row.Children.Add(revealButton);
+
+            // Copy the library's UUID to the clipboard, confirming in the neutral
+            // feedback line above.
+            var copyIdButton = new Button { Content = Loc.Chrome("libraries.copy_id") };
+            copyIdButton.Click += (_, _) =>
+            {
+                ClipboardHelper.CopyToClipboard(id);
+                copyFeedback.Text = Loc.Chrome("libraries.id_copied");
+                copyFeedback.Visibility = Visibility.Visible;
+            };
+            Grid.SetColumn(copyIdButton, 2);
+            row.Children.Add(copyIdButton);
 
             // Rename via a flyout editor (a nested ContentDialog can't open over this
             // one). Saving updates the row label in place; no list rebuild needed.
@@ -126,7 +174,7 @@ internal sealed class LibrariesDialog
                 renameFlyout.Hide();
             };
             var renameButton = new Button { Content = Loc.Chrome("libraries.rename"), Flyout = renameFlyout };
-            Grid.SetColumn(renameButton, 1);
+            Grid.SetColumn(renameButton, 3);
             row.Children.Add(renameButton);
 
             list.Children.Add(row);

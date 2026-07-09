@@ -378,4 +378,8 @@
   <data name="settings.export.no_folder" xml:space="preserve"><value>לא נבחרה תיקייה</value></data>
   <data name="import.documents" xml:space="preserve"><value>מסמכים</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>לא ניתן לקרוא את {name}: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>הצג בסייר הקבצים</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>העתק מזהה</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>מזהה הספרייה הועתק</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>לא ניתן לפתוח את תיקיית הספרייה</value></data>
 </root>

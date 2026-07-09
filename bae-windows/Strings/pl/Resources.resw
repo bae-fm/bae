@@ -378,4 +378,8 @@
   <data name="settings.export.no_folder" xml:space="preserve"><value>Nie wybrano folderu</value></data>
   <data name="import.documents" xml:space="preserve"><value>Dokumenty</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Nie można odczytać {name}: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>pokaż w Eksploratorze plików</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>kopiuj ID</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>skopiowano ID biblioteki</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>nie można otworzyć folderu biblioteki</value></data>
 </root>

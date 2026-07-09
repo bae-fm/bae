@@ -378,4 +378,8 @@
   <data name="settings.export.no_folder" xml:space="preserve"><value>ಯಾವುದೇ ಫೋಲ್ಡರ್ ಆಯ್ಕೆ ಮಾಡಿಲ್ಲ</value></data>
   <data name="import.documents" xml:space="preserve"><value>ದಾಖಲೆಗಳು</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ಓದಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>ಫೈಲ್ ಎಕ್ಸ್‌ಪ್ಲೋರರ್‌ನಲ್ಲಿ ತೋರಿಸಿ</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>ID ನಕಲಿಸಿ</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>ಲೈಬ್ರರಿ ID ನಕಲಿಸಲಾಗಿದೆ</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>ಲೈಬ್ರರಿ ಫೋಲ್ಡರ್ ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
 </root>

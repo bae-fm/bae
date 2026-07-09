@@ -378,4 +378,8 @@
   <data name="settings.export.no_folder" xml:space="preserve"><value>ഫോൾഡർ തിരഞ്ഞെടുത്തിട്ടില്ല</value></data>
   <data name="import.documents" xml:space="preserve"><value>ഡോക്യുമെന്റുകൾ</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} വായിക്കാനായില്ല: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>ഫയൽ എക്സ്‌പ്ലോററിൽ കാണിക്കുക</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>ID പകർത്തുക</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>ലൈബ്രറി ID പകർത്തി</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>ലൈബ്രറി ഫോൾഡർ തുറക്കാനായില്ല</value></data>
 </root>

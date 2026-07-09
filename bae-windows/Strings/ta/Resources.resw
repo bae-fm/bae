@@ -378,4 +378,8 @@
   <data name="settings.export.no_folder" xml:space="preserve"><value>கோப்புறை தேர்வு செய்யப்படவில்லை</value></data>
   <data name="import.documents" xml:space="preserve"><value>ஆவணங்கள்</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ஐப் படிக்க முடியவில்லை: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>கோப்பு எக்ஸ்ப்ளோரரில் காட்டு</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>ID நகலெடு</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>நூலக ID நகலெடுக்கப்பட்டது</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>நூலக கோப்புறையைத் திறக்க முடியவில்லை</value></data>
 </root>

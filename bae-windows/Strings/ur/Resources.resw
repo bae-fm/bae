@@ -378,4 +378,8 @@
   <data name="settings.export.no_folder" xml:space="preserve"><value>کوئی فولڈر منتخب نہیں کیا گیا</value></data>
   <data name="import.documents" xml:space="preserve"><value>دستاویزات</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} پڑھا نہیں جا سکا: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>فائل ایکسپلورر میں دکھائیں</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>ID کاپی کریں</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>لائبریری ID کاپی ہو گئی</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>لائبریری فولڈر نہیں کھل سکا</value></data>
 </root>

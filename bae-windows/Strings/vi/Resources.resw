@@ -378,4 +378,8 @@
   <data name="settings.export.no_folder" xml:space="preserve"><value>Chưa chọn thư mục</value></data>
   <data name="import.documents" xml:space="preserve"><value>Tài liệu</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Không thể đọc {name}: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>hiển thị trong File Explorer</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>sao chép ID</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>đã sao chép ID thư viện</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>không thể mở thư mục thư viện</value></data>
 </root>

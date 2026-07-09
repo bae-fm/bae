@@ -765,6 +765,22 @@ public sealed partial class MainWindow : Window
         await OpenNowPlayingAlbum();
     }
 
+    // Ctrl+1..9 switch to the Nth discovered library. No-op when the digit is
+    // beyond the list or already the active library; open failures land on the
+    // existing status text and unlock dialog, like any other switch.
+    private async void OnLibrarySwitchAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        var digit = (int)sender.Key - (int)VirtualKey.Number0;
+        var libraries = LoadLibraries();
+        var target = LibrarySwitchModel.TargetLibraryId(
+            libraries.ConvertAll(library => (library.Id, library.IsActive)), digit);
+        if (target is not null)
+        {
+            await SwitchLibrary(target);
+        }
+    }
+
     // Clicking the bar's album art or track title jumps to the playing album —
     // the pointer version of the go-to-now-playing accelerator.
     private async void OnNowPlayingInfoTapped(object sender, TappedRoutedEventArgs e)

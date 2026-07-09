@@ -378,4 +378,8 @@
   <data name="settings.export.no_folder" xml:space="preserve"><value>कोई फ़ोल्डर नहीं चुना गया</value></data>
   <data name="import.documents" xml:space="preserve"><value>दस्तावेज़</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} पढ़ा नहीं जा सका: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>फ़ाइल एक्सप्लोरर में दिखाएँ</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>आईडी कॉपी करें</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>लाइब्रेरी आईडी कॉपी की गई</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>लाइब्रेरी फ़ोल्डर नहीं खुल सका</value></data>
 </root>

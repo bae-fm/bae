@@ -378,4 +378,8 @@
   <data name="settings.export.no_folder" xml:space="preserve"><value>Nessuna cartella scelta</value></data>
   <data name="import.documents" xml:space="preserve"><value>Documenti</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Impossibile leggere {name}: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>mostra in Esplora file</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>copia ID</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>ID della libreria copiato</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>impossibile aprire la cartella della libreria</value></data>
 </root>

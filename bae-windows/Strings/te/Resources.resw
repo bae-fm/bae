@@ -378,4 +378,8 @@
   <data name="settings.export.no_folder" xml:space="preserve"><value>ఫోల్డర్ ఎంచుకోలేదు</value></data>
   <data name="import.documents" xml:space="preserve"><value>పత్రాలు</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} చదవలేకపోయింది: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>ఫైల్ ఎక్స్‌ప్లోరర్‌లో చూపించు</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>ID కాపీ చేయి</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>లైబ్రరీ ID కాపీ చేయబడింది</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>లైబ్రరీ ఫోల్డర్‌ను తెరవడం సాధ్యం కాలేదు</value></data>
 </root>

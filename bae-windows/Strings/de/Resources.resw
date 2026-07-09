@@ -378,4 +378,8 @@
   <data name="settings.export.no_folder" xml:space="preserve"><value>Kein Ordner ausgewählt</value></data>
   <data name="import.documents" xml:space="preserve"><value>Dokumente</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} konnte nicht gelesen werden: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>im Explorer anzeigen</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>ID kopieren</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>Bibliotheks-ID kopiert</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>Bibliotheksordner konnte nicht geöffnet werden</value></data>
 </root>

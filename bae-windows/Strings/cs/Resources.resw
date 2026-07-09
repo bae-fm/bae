@@ -378,4 +378,8 @@
   <data name="settings.export.no_folder" xml:space="preserve"><value>Není vybrána žádná složka</value></data>
   <data name="import.documents" xml:space="preserve"><value>Dokumenty</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Nelze přečíst {name}: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>zobrazit v Průzkumníku souborů</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>kopírovat ID</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>ID knihovny zkopírováno</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>složku knihovny se nepodařilo otevřít</value></data>
 </root>

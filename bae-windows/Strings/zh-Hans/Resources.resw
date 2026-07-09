@@ -378,4 +378,8 @@
   <data name="settings.export.no_folder" xml:space="preserve"><value>未选择文件夹</value></data>
   <data name="import.documents" xml:space="preserve"><value>文档</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>无法读取{name}: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>在文件资源管理器中显示</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>复制 ID</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>已复制库 ID</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>无法打开库文件夹</value></data>
 </root>
