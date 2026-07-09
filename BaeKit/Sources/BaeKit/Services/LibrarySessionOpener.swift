@@ -59,7 +59,7 @@ public final class LibrarySessionOpener<
 
     /// The open still in flight, cancelled by the next `open` (or an explicit
     /// `cancel`) so its now-stale result never lands on the caller's screen.
-    private var openTask: Task<Void, Never>?
+    private let slot = CancellableTaskSlot()
 
     public init(
         makeHandle: @escaping @Sendable (String) throws -> Handle,
@@ -79,8 +79,7 @@ public final class LibrarySessionOpener<
         libraryId: String,
         onOutcome: @escaping @MainActor (Outcome) -> Void
     ) {
-        openTask?.cancel()
-        openTask = Task { @MainActor in
+        slot.replace {
             let outcome = await self.run(libraryId: libraryId)
             onOutcome(outcome)
         }
@@ -90,7 +89,7 @@ public final class LibrarySessionOpener<
     /// the caller tears its session down (close) so a parked `initApp` can't
     /// resume past its cancellation check and land a library after the close.
     public func cancel() {
-        openTask?.cancel()
+        slot.cancel()
     }
 
     private func run(libraryId: String) async -> Outcome {

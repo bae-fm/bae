@@ -481,16 +481,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     )
     /// In-flight library-list reload, cancelled when a newer one supersedes it.
-    @ObservationIgnored
-    private var reloadTask: Task<Void, Never>?
+    private let reloadSlot = CancellableTaskSlot()
     /// In-flight rename / lock, cancelled on library close.
-    @ObservationIgnored
-    private var renameTask: Task<Void, Never>?
-    @ObservationIgnored
-    private var lockTask: Task<Void, Never>?
+    private let renameSlot = CancellableTaskSlot()
+    private let lockSlot = CancellableTaskSlot()
     /// In-flight forget, cancelled on library close.
-    @ObservationIgnored
-    private var forgetTask: Task<Void, Never>?
+    private let forgetSlot = CancellableTaskSlot()
 
     private var skipsApplicationServices: Bool {
         AppRuntime.skipsApplicationServices(
@@ -607,9 +603,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // its post-await cancellation check and write `.library`/`appService`
         // back after the close.
         opener.cancel()
-        renameTask?.cancel()
-        lockTask?.cancel()
-        forgetTask?.cancel()
+        renameSlot.cancel()
+        lockSlot.cancel()
+        forgetSlot.cancel()
         mediaControlService.deactivate(playbackStore: service.playbackStore)
         Task { [handle = service.appHandle] in
             await handle.shutdown()
@@ -628,22 +624,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// the Open Library submenu. A newer reload cancels an in-flight one; on
     /// failure we log and keep the last good list rather than blanking the menu.
     func reloadLibraries() {
-        reloadTask?.cancel()
-        reloadTask = Task { @MainActor in
-            do {
-                libraries = try await DetachedWork.run {
-                    try discoverLibraries()
-                }
-            }
-            catch is CancellationError {
-                logger.debug("discoverLibraries cancelled")
-            }
-            catch {
+        reloadSlot.replace(
+            "discoverLibraries",
+            work: { try discoverLibraries() },
+            onSuccess: { self.libraries = $0 },
+            onError: {
                 logger.error(
-                    "Failed to list libraries: \(error.localizedDescription)"
+                    "Failed to list libraries: \($0.localizedDescription)"
                 )
             }
-        }
+        )
     }
 
     /// Switch to the library `offset` positions from the active one in the
@@ -667,25 +657,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func renameLibrary(_ libraryId: String, to newName: String) {
         guard let sync = appService?.sync else { return }
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        renameTask?.cancel()
-        renameTask = Task { @MainActor in
-            do {
-                try await DetachedWork.run {
-                    try sync.renameLibrary(libraryId, trimmed)
-                }
-                renameLibrarySheet = nil
-                reloadLibraries()
-            }
-            catch is CancellationError {
-                logger.debug("rename cancelled for \(libraryId)")
-            }
-            catch {
+        renameSlot.replace(
+            "rename of \(libraryId)",
+            work: { try sync.renameLibrary(libraryId, trimmed) },
+            onSuccess: {
+                self.renameLibrarySheet = nil
+                self.reloadLibraries()
+            },
+            onError: {
                 logger.error(
-                    "Failed to rename \(libraryId): \(error.localizedDescription)"
+                    "Failed to rename \(libraryId): \($0.localizedDescription)"
                 )
-                renameLibrarySheet?.error = error.localizedDescription
+                self.renameLibrarySheet?.error = $0.localizedDescription
             }
-        }
+        )
     }
 
     /// Lock the active library off the main actor: drop its encryption key from
@@ -693,23 +678,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// on next launch. Errors surface through `loadError`.
     func lockActiveLibrary() {
         guard let sync = appService?.sync else { return }
-        lockTask?.cancel()
-        lockTask = Task { @MainActor in
-            do {
-                try await DetachedWork.run {
-                    try sync.lockActiveLibrary()
-                }
-            }
-            catch is CancellationError {
-                logger.debug("lock cancelled")
-            }
-            catch {
+        lockSlot.replace(
+            "lock",
+            work: { try sync.lockActiveLibrary() },
+            onSuccess: {},
+            onError: {
                 logger.error(
-                    "Failed to lock library: \(error.localizedDescription)"
+                    "Failed to lock library: \($0.localizedDescription)"
                 )
-                loadError = error.localizedDescription
+                self.loadError = $0.localizedDescription
             }
-        }
+        )
     }
 }
 
@@ -731,32 +710,27 @@ extension AppDelegate {
             )
             return
         }
-        forgetTask?.cancel()
-        forgetTask = Task { @MainActor in
-            do {
-                try await DetachedWork.run { [handle = service.appHandle] in
-                    try handle.forgetLibrary()
-                }
-            }
-            catch is CancellationError {
-                logger.debug("forget cancelled")
-                return
-            }
-            catch {
+        forgetSlot.replace(
+            "forget",
+            work: { [handle = service.appHandle] in
+                try handle.forgetLibrary()
+            },
+            onSuccess: {
+                self.closeLibrary()
+                self.reloadLibraries()
+            },
+            onError: {
                 logger.error(
-                    "Failed to remove library: \(error.localizedDescription)"
+                    "Failed to remove library: \($0.localizedDescription)"
                 )
-                uiStore.showError(
+                self.uiStore.showError(
                     String(
                         localized:
-                            "Couldn't remove library: \(error.localizedDescription)"
+                            "Couldn't remove library: \($0.localizedDescription)"
                     )
                 )
-                return
             }
-            closeLibrary()
-            reloadLibraries()
-        }
+        )
     }
 }
 
