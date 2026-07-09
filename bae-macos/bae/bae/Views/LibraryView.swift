@@ -82,6 +82,7 @@ struct LibraryView: View {
                     composerContent
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.background)
         .task(id: sortCriteria) {
