@@ -1442,7 +1442,7 @@ impl PlaybackService {
                     self.play_track(&first_track, TrackStart::Direct, PlayTarget::Playing).await;
                 }
                 PlaybackCommand::Pause => {
-                    self.pause().await;
+                    self.pause();
                 }
                 PlaybackCommand::Resume => {
                     self.resume().await;
@@ -1730,7 +1730,7 @@ impl PlaybackService {
                         _ => None,
                     };
                     match intent {
-                        Some(PlayIntent::Playing) => self.pause().await,
+                        Some(PlayIntent::Playing) => self.pause(),
                         Some(PlayIntent::Paused) => self.resume().await,
                         Some(PlayIntent::Stopped) | None => {}
                     }

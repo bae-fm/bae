@@ -527,22 +527,20 @@ impl PlaybackService {
         }
 
         // Recover the preloaded next track stream (staged in the gapless chain or
-        // held for the rebuild path) BEFORE tearing down the current stream.
+        // held for the rebuild path) BEFORE tearing down the current stream — the
+        // teardown below cancels the outgoing source, and in the staged case the
+        // incoming stream lives inside it until this take_next pulls it out.
         let track_stream = detach_preloaded_source(self.current_source(), preloaded_source)
             .expect("Preloaded track has no streaming source");
 
-        // Tear down the current track. Cancel its source so the callback goes
-        // silent, then release its buffers (unless shared with the incoming
-        // track). The preloaded track's already-running decoder becomes current.
-        if let PlaybackSlot::Active(cur) = std::mem::replace(&mut self.slot, PlaybackSlot::Stopped)
-        {
-            if let Ok(guard) = cur.pipeline.source().lock() {
-                guard.cancel();
-            }
-            cur.prepared
-                .release_buffers(&next_prepared.file_ids(), &mut self.shared_file_buffers);
-            // Dropping `cur` drops the old pipeline (stream + source, detaching the
-            // decoder) and the old audio-events receiver.
+        // Tear down the current track through the shared teardown (silence the
+        // callback, cancel the outgoing decoder + its token, drop the stream),
+        // then release its buffers now that the incoming track's files are known
+        // — files it shares stay cached and alive. The incoming decoder's token is
+        // its own (carried in `cancel_token`, handed to `attach_preloaded` below),
+        // untouched by the outgoing pipeline's teardown.
+        if let Some(outgoing) = self.teardown_current_track() {
+            outgoing.release_buffers(&next_prepared.file_ids(), &mut self.shared_file_buffers);
         }
 
         // Natural transition: start at position 0 (INDEX 00, pregap plays).

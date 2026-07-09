@@ -605,7 +605,7 @@ async fn pause_during_load_emits_paused_and_supersedes_track_ready() {
         },
     );
 
-    service.pause().await;
+    service.pause();
     assert!(
         matches!(
             progress_rx.try_recv(),

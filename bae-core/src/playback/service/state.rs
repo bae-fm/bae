@@ -317,12 +317,6 @@ impl PlaybackService {
         info!("Playback state restored");
     }
 
-    /// Build the device-local `playback_state` row from the current queue and
-    /// playback state, and save it — or clear it when playback has stopped. The
-    /// queue is device-local; this never syncs.
-    ///
-    /// The write is logged-best-effort, not propagated as fatal: a failed
-    /// resume-cache write only costs the resume point; playback is unaffected.
     /// Fetch a context's tracks in source order for the source it plays from:
     /// a release's ordered track ids, several releases' track ids concatenated in
     /// input order, or every library track. The one place the service re-derives a
@@ -378,6 +372,12 @@ impl PlaybackService {
         (playable_ids, track_ids)
     }
 
+    /// Build the device-local `playback_state` row from the current queue and
+    /// playback state, and save it — or clear it when playback has stopped. The
+    /// queue is device-local; this never syncs.
+    ///
+    /// The write is logged-best-effort, not propagated as fatal: a failed
+    /// resume-cache write only costs the resume point; playback is unaffected.
     /// The log is the never-mask escape hatch — a write failure is recorded, not
     /// conflated with "nothing was playing".
     pub(super) async fn persist_playback_state(&self) {
@@ -428,7 +428,7 @@ impl PlaybackService {
         }
     }
 
-    pub(super) async fn pause(&mut self) {
+    pub(super) fn pause(&mut self) {
         // Pausing during a load collapses the Loading phase to Paused, so the
         // pending TrackReady no longer matches and is ignored. A Stopped or
         // still-resolving slot is a no-op (nothing is playing to pause).
