@@ -949,7 +949,7 @@ impl LibraryManager {
                         }
                         if status.last_sync_time != state.last_sync_time_raw {
                             match status.last_sync_time.as_deref() {
-                                Some(s) => match crate::config::rfc3339_to_epoch_millis(s) {
+                                Some(s) => match crate::util::time::rfc3339_to_epoch_millis(s) {
                                     Ok(ms) => {
                                         state.last_sync_time_raw = status.last_sync_time.clone();
                                         state.last_sync_time = Some(ms);

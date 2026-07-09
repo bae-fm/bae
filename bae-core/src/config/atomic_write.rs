@@ -1,0 +1,128 @@
+use std::ffi::OsString;
+use std::io::{Error, Write};
+use std::path::Path;
+
+#[derive(Debug)]
+pub(super) enum AtomicWriteError {
+    BeforeCommit(std::io::Error),
+    AfterCommit(std::io::Error),
+}
+
+impl AtomicWriteError {
+    pub(super) fn committed(&self) -> bool {
+        matches!(self, Self::AfterCommit(_))
+    }
+
+    pub(super) fn into_io(self) -> std::io::Error {
+        match self {
+            Self::BeforeCommit(e) | Self::AfterCommit(e) => e,
+        }
+    }
+}
+
+pub(super) fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), AtomicWriteError> {
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let file_name = path.file_name().ok_or_else(|| {
+        AtomicWriteError::BeforeCommit(Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "atomic write target has no file name",
+        ))
+    })?;
+
+    let mut temp_prefix = OsString::from(".");
+    temp_prefix.push(file_name);
+    temp_prefix.push(".");
+
+    let mut temp = tempfile::Builder::new()
+        .prefix(&temp_prefix)
+        .suffix(".tmp")
+        .tempfile_in(parent)
+        .map_err(AtomicWriteError::BeforeCommit)?;
+    temp.write_all(bytes)
+        .map_err(AtomicWriteError::BeforeCommit)?;
+    temp.as_file()
+        .sync_all()
+        .map_err(AtomicWriteError::BeforeCommit)?;
+    temp.persist(path)
+        .map_err(|e| AtomicWriteError::BeforeCommit(e.error))?;
+    sync_parent_dir(parent).map_err(AtomicWriteError::AfterCommit)
+}
+
+pub(super) fn write_atomic_io(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    write_atomic(path, bytes).map_err(AtomicWriteError::into_io)
+}
+
+#[cfg(unix)]
+fn sync_parent_dir(parent: &Path) -> std::io::Result<()> {
+    std::fs::File::open(parent)?.sync_all()
+}
+
+#[cfg(windows)]
+fn sync_parent_dir(parent: &Path) -> std::io::Result<()> {
+    use std::os::windows::fs::OpenOptionsExt;
+
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+
+    std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+        .open(parent)?
+        .sync_all()
+}
+
+#[cfg(not(any(unix, windows)))]
+fn sync_parent_dir(_parent: &Path) -> std::io::Result<()> {
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn write_atomic_replaces_file_bytes() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("config.yaml");
+        std::fs::write(&path, b"old config").unwrap();
+
+        write_atomic(&path, b"new config").unwrap();
+
+        assert_eq!(std::fs::read(&path).unwrap(), b"new config");
+    }
+
+    #[test]
+    fn write_atomic_requires_existing_parent() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("missing").join("config.yaml");
+
+        let err = write_atomic(&path, b"new config").unwrap_err().into_io();
+
+        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn write_atomic_failure_leaves_target_and_removes_temp() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("config.yaml");
+        std::fs::create_dir(&path).unwrap();
+
+        let err = write_atomic(&path, b"new config").unwrap_err().into_io();
+
+        assert!(matches!(
+            err.kind(),
+            std::io::ErrorKind::AlreadyExists | std::io::ErrorKind::IsADirectory
+        ));
+        assert!(path.is_dir());
+        let temp_names: Vec<_> = std::fs::read_dir(tmp.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .filter(|name| name.to_string_lossy().starts_with(".config.yaml."))
+            .collect();
+        assert!(temp_names.is_empty());
+    }
+}

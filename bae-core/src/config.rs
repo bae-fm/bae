@@ -1,208 +1,36 @@
 use coven::LibraryDir;
 use serde::{Deserialize, Serialize};
-use std::ffi::OsString;
-use std::io::{Error, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tokio::sync::watch;
 use tracing::{debug, info, warn};
 
-pub const MCP_DEFAULT_PORT: u16 = 47777;
+mod atomic_write;
+mod dev;
+mod export;
+mod keyring;
 
-/// Initialize the keyring credential store.
-///
-/// On macOS, uses the protected data store with iCloud cloud-sync enabled,
-/// so the encryption key is backed up via iCloud Keychain (if the user has it on).
-///
-/// Must be called once at startup before any keyring operations.
-pub fn init_keyring() {
-    #[cfg(target_os = "macos")]
-    {
-        use std::collections::HashMap;
-        let config = HashMap::from([("cloud-sync", "true")]);
-        match apple_native_keyring_store::protected::Store::new_with_configuration(&config) {
-            Ok(store) => {
-                keyring_core::set_default_store(store);
-                info!("Keyring initialized (protected store, iCloud sync enabled)");
-            }
-            Err(e) => {
-                warn!("Failed to create protected keyring store: {e}, falling back to local");
-                if let Ok(store) = apple_native_keyring_store::protected::Store::new() {
-                    keyring_core::set_default_store(store);
-                    info!("Keyring initialized (protected store, local only)");
-                }
-            }
-        }
-    }
-
-    #[cfg(target_os = "android")]
-    {
-        if let Ok(store) = android_native_keyring_store::Store::new() {
-            keyring_core::set_default_store(store);
-            info!("Keyring initialized (Android keystore)");
-        } else {
-            warn!("Failed to create Android keyring store");
-        }
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        match windows_native_keyring_store::Store::new() {
-            Ok(store) => {
-                keyring_core::set_default_store(store);
-                info!("Keyring initialized (Windows Credential Manager)");
-            }
-            Err(e) => warn!("Failed to create Windows keyring store: {e}"),
-        }
-    }
-
-    // coven namespaces every key entry under the host app's identity, which the
-    // host must set once before any keyring access. "bae" keeps bae's coven key
-    // entries from colliding with any other coven-based app on the same machine.
-    // Set-once, so it's safe to run through every init path.
-    if let Err(error) = coven::set_keyring_service("bae") {
-        warn!("Failed to register keyring service: {error}");
-    }
-}
-
-/// Read a dev-mode `BAE_*` env var, distinguishing the three outcomes that
-/// matter: absent (skip silently — the common case for an unset secret), present
-/// but non-UTF-8 (a misconfigured `.env`, warned and skipped so it isn't
-/// silently treated as absent), and present with a non-empty value (returned for
-/// seeding). An empty value is treated as absent.
-fn dev_env_secret(var: &str) -> Option<String> {
-    match std::env::var(var) {
-        Ok(value) if !value.is_empty() => Some(value),
-        Ok(_) => None,
-        Err(std::env::VarError::NotPresent) => None,
-        Err(std::env::VarError::NotUnicode(raw)) => {
-            warn!("dev: ignoring non-UTF-8 {var}: {raw:?}");
-            None
-        }
-    }
-}
-
-type CloudHomeS3Setter = fn(&mut coven::CloudHomeConfig, String);
-
-fn overlay_cloud_home_s3_env(cloud_home: &mut coven::CloudHomeConfig) {
-    let overlays: [(&str, CloudHomeS3Setter); 4] = [
-        ("BAE_CLOUD_HOME_S3_BUCKET", |cloud_home, value| {
-            cloud_home.s3_bucket = Some(value)
-        }),
-        ("BAE_CLOUD_HOME_S3_REGION", |cloud_home, value| {
-            cloud_home.s3_region = Some(value)
-        }),
-        ("BAE_CLOUD_HOME_S3_ENDPOINT", |cloud_home, value| {
-            cloud_home.s3_endpoint = Some(value)
-        }),
-        ("BAE_CLOUD_HOME_S3_KEY_PREFIX", |cloud_home, value| {
-            cloud_home.s3_key_prefix = Some(value)
-        }),
-    ];
-
-    for (var, apply) in overlays {
-        if let Some(value) = dev_env_secret(var) {
-            apply(cloud_home, value);
-        }
-    }
-}
-
-fn dev_mode_enabled() -> bool {
-    std::env::var("BAE_DEV_MODE").is_ok() || {
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        {
-            dotenvy::dotenv().is_ok()
-        }
-        #[cfg(any(target_os = "ios", target_os = "android"))]
-        {
-            false
-        }
-    }
-}
-
-/// Bridge bae's dev-mode `BAE_*` env vars into coven's keyring for one library.
-///
-/// coven's `KeyService` reads secrets from the keyring. In dev mode bae's secrets
-/// live in env vars (`.env` / `BAE_ENCRYPTION_KEY` / `BAE_CLOUD_HOME_CREDENTIALS`
-/// / `BAE_DISCOGS_API_KEY`), so before coven reads them bae seeds each present
-/// env value into the keyring account coven reads from — through coven's own
-/// `KeyService` setters, not a hand-rolled keyring entry. Production is a no-op:
-/// `is_dev_mode()` is false, so coven reads the OS keyring directly.
-///
-/// Call once after the keyring store is installed (`init_keyring`) and the
-/// `library_id` is known, before constructing coven's `KeyService`.
-pub fn seed_dev_keyring(library_id: &str) {
-    if !Config::is_dev_mode() {
-        return;
-    }
-
-    let keys = coven::KeyService::new(library_id.to_string());
-
-    if let Some(key) = dev_env_secret("BAE_ENCRYPTION_KEY") {
-        match keys.set_encryption_key(&key) {
-            Ok(()) => info!("dev: seeded encryption key from env"),
-            Err(e) => warn!("dev: failed to seed encryption key: {e}"),
-        }
-    }
-
-    if let Some(creds_json) = dev_env_secret("BAE_CLOUD_HOME_CREDENTIALS") {
-        match serde_json::from_str::<coven::CloudHomeCredentials>(&creds_json) {
-            Ok(creds) => match keys.set_cloud_home_credentials(&creds) {
-                Ok(()) => info!("dev: seeded cloud home credentials from env"),
-                Err(e) => warn!("dev: failed to seed cloud home credentials: {e}"),
-            },
-            Err(e) => warn!("dev: ignoring malformed BAE_CLOUD_HOME_CREDENTIALS JSON: {e}"),
-        }
-    }
-
-    // bae's own Discogs API key — a bae-domain credential with no coven setter,
-    // written through bae's own keyring path (`BaeKeyServiceExt::set_discogs_key`).
-    if let Some(discogs) = dev_env_secret("BAE_DISCOGS_API_KEY") {
-        use crate::keys::BaeKeyServiceExt;
-        match keys.set_discogs_key(&discogs) {
-            Ok(()) => info!("dev: seeded discogs api key from env"),
-            Err(e) => warn!("dev: failed to seed discogs api key: {e}"),
-        }
-    }
-}
-
-/// Install an in-memory keyring store and set coven's keyring service for tests.
-///
-/// coven's `KeyService` reads and writes the keyring instead of the environment,
-/// and its getters panic unless the service is set. Tests don't run
-/// `init_keyring` (which would install the OS store and prompt), so this is the
-/// startup every test needing the keyring calls: an in-memory store stands in
-/// for the OS keyring, and the service is set to "bae" to match production.
-/// Genuinely set-once: the mock store is installed on the first call and kept
-/// for the rest of the process. Replacing it on a later call (as this used to)
-/// wipes entries other parallel tests already wrote — the store is one
-/// process-global namespace — which flaked any test reading a key a sibling had
-/// just stored. Entries stay isolated by library id (see the test-manager
-/// setup) instead of by a fresh store per test.
+pub use dev::seed_dev_keyring;
+pub use export::{
+    ExportBitDepth, ExportLocation, ExportPregapPlacement, ExportPreset, ExportPresetCodec,
+    ExportSelection,
+};
+pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils"))]
-pub fn install_test_keyring() {
-    use std::sync::Once;
-    static INIT: Once = Once::new();
-    INIT.call_once(|| {
-        keyring_core::set_default_store(
-            keyring_core::mock::Store::new().expect("create mock keyring store"),
-        );
-        coven::set_keyring_service("bae").expect("register test keyring service");
-    });
-}
+pub use keyring::install_test_keyring;
+
+use atomic_write::{write_atomic, write_atomic_io};
+use dev::{dev_env_secret, dev_mode_enabled, overlay_cloud_home_s3_env};
+use export::{
+    default_export_filename_template, default_export_location, default_export_presets,
+    default_export_selection,
+};
+
+pub const MCP_DEFAULT_PORT: u16 = 47777;
 
 /// Cloud home provider selection. bae uses coven's enum directly — same
 /// variants, same serialization, same `needs_oauth` — rather than maintaining a
 /// duplicate it would have to keep mapping back and forth.
 pub use coven::CloudProvider;
-
-/// Parse an RFC 3339 timestamp into Unix epoch milliseconds. coven and bae's
-/// own queue both store sync/created times as RFC 3339 text, but the UI only
-/// needs an instant, so this is the one place that maps the text to epoch
-/// millis. The parse result is returned so each caller decides how to handle a
-/// value that won't parse (log-and-drop, or surface as a conversion error).
-pub fn rfc3339_to_epoch_millis(s: &str) -> Result<i64, chrono::ParseError> {
-    chrono::DateTime::parse_from_rfc3339(s).map(|dt| dt.timestamp_millis())
-}
 
 /// Cloud home settings (provider + per-provider fields). bae uses coven's type
 /// directly — same fields, extracted from bae — instead of a parallel copy.
@@ -254,201 +82,6 @@ pub enum ReplayGainMode {
 /// `#[derive(Default)]` in this project, so the default is named explicitly.
 fn default_replay_gain_mode() -> ReplayGainMode {
     ReplayGainMode::Off
-}
-
-/// Where a release export writes its files — the browser download-folder model.
-///
-/// - `AskEachTime` — prompt for a destination directory on every export.
-/// - `Fixed(dir)` — a configured default directory; exports go straight there
-///   without a prompt.
-///
-/// Export reconstructs the release's source folder under the chosen directory
-/// (`<dir>/<source_folder_name>/`).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ExportLocation {
-    AskEachTime,
-    Fixed(PathBuf),
-}
-
-/// The serde default for `ConfigYaml.export_location`. Enums carry no
-/// `#[derive(Default)]` in this project, so the default is named explicitly:
-/// prompt for a destination each time until the user sets a fixed folder.
-fn default_export_location() -> ExportLocation {
-    ExportLocation::AskEachTime
-}
-
-/// Template for the default filename a single-track export suggests. Tokens are
-/// substituted from the track's metadata; see `render_export_filename`. The
-/// extension is added by the exporter from the chosen format, not the template.
-fn default_export_filename_template() -> String {
-    "{track_number} - {title}".to_string()
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ExportBitDepth {
-    Source,
-    Bits16,
-    Bits24,
-    Bits32,
-}
-
-impl ExportBitDepth {
-    pub fn resolve(self, source_bits: Option<i64>) -> u32 {
-        match self {
-            Self::Source => source_bits
-                .and_then(|bits| u32::try_from(bits).ok())
-                .filter(|bits| (1..=32).contains(bits))
-                .unwrap_or(32),
-            Self::Bits16 => 16,
-            Self::Bits24 => 24,
-            Self::Bits32 => 32,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ExportPresetCodec {
-    Flac { bit_depth: ExportBitDepth },
-    Mp3 { bitrate_kbps: u32 },
-    OpusOgg { bitrate_kbps: u32 },
-    Wav { bit_depth: ExportBitDepth },
-    Aiff { bit_depth: ExportBitDepth },
-}
-
-impl ExportPresetCodec {
-    pub fn extension(&self) -> &'static str {
-        match self {
-            Self::Flac { .. } => "flac",
-            Self::Mp3 { .. } => "mp3",
-            Self::OpusOgg { .. } => "ogg",
-            Self::Wav { .. } => "wav",
-            Self::Aiff { .. } => "aiff",
-        }
-    }
-
-    pub fn supports_single_file_cue(&self) -> bool {
-        match self {
-            Self::OpusOgg { .. } => false,
-            Self::Flac { .. } | Self::Mp3 { .. } | Self::Wav { .. } | Self::Aiff { .. } => true,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ExportPregapPlacement {
-    AppendToPreviousExceptHtoa,
-    AppendToPreviousIncludingHtoa,
-    Exclude,
-    SingleFileWithCue,
-}
-
-fn default_export_pregap_placement() -> ExportPregapPlacement {
-    ExportPregapPlacement::AppendToPreviousExceptHtoa
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ExportSelection {
-    Original,
-    Preset { preset_id: String },
-}
-
-fn default_export_selection() -> ExportSelection {
-    ExportSelection::Original
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ExportPreset {
-    pub id: String,
-    pub name: String,
-    pub codec: ExportPresetCodec,
-    pub filename_template: String,
-    #[serde(default = "default_export_pregap_placement")]
-    pub pregap_placement: ExportPregapPlacement,
-    pub applies_to_track: bool,
-    pub applies_to_release: bool,
-}
-
-impl ExportPreset {
-    pub fn validate(&self) -> Result<(), ConfigError> {
-        if self.id.trim().is_empty() {
-            return Err(ConfigError::Config("export preset id is empty".to_string()));
-        }
-        if self.name.trim().is_empty() {
-            return Err(ConfigError::Config(format!(
-                "export preset {} has an empty name",
-                self.id
-            )));
-        }
-        if !self.applies_to_track && !self.applies_to_release {
-            return Err(ConfigError::Config(format!(
-                "export preset {} does not apply to any export level",
-                self.id
-            )));
-        }
-        if self.pregap_placement == ExportPregapPlacement::SingleFileWithCue
-            && self.applies_to_track
-        {
-            return Err(ConfigError::Config(format!(
-                "export preset {} uses single-file CUE and cannot apply to track export",
-                self.id
-            )));
-        }
-        if self.pregap_placement == ExportPregapPlacement::SingleFileWithCue
-            && !self.codec.supports_single_file_cue()
-        {
-            return Err(ConfigError::Config(format!(
-                "export preset {} uses single-file CUE with an unsupported codec",
-                self.id
-            )));
-        }
-        match self.codec {
-            ExportPresetCodec::Mp3 { bitrate_kbps } => {
-                if !(32..=320).contains(&bitrate_kbps) {
-                    return Err(ConfigError::Config(format!(
-                        "export preset {} has unsupported MP3 bitrate {}",
-                        self.id, bitrate_kbps
-                    )));
-                }
-            }
-            ExportPresetCodec::OpusOgg { bitrate_kbps } => {
-                if !(32..=512).contains(&bitrate_kbps) {
-                    return Err(ConfigError::Config(format!(
-                        "export preset {} has unsupported Opus bitrate {}",
-                        self.id, bitrate_kbps
-                    )));
-                }
-            }
-            ExportPresetCodec::Flac { .. }
-            | ExportPresetCodec::Wav { .. }
-            | ExportPresetCodec::Aiff { .. } => {}
-        }
-        Ok(())
-    }
-}
-
-fn default_export_presets() -> Vec<ExportPreset> {
-    vec![
-        ExportPreset {
-            id: "flac".to_string(),
-            name: "FLAC".to_string(),
-            codec: ExportPresetCodec::Flac {
-                bit_depth: ExportBitDepth::Source,
-            },
-            filename_template: default_export_filename_template(),
-            pregap_placement: default_export_pregap_placement(),
-            applies_to_track: true,
-            applies_to_release: true,
-        },
-        ExportPreset {
-            id: "mp3".to_string(),
-            name: "MP3".to_string(),
-            codec: ExportPresetCodec::Mp3 { bitrate_kbps: 320 },
-            filename_template: default_export_filename_template(),
-            pregap_placement: default_export_pregap_placement(),
-            applies_to_track: true,
-            applies_to_release: true,
-        },
-    ]
 }
 
 /// The serde default for `ConfigYaml.verify_decode_on_import`: on. Import fully
@@ -572,24 +205,6 @@ pub fn bae_dir() -> Result<std::path::PathBuf, ConfigError> {
 }
 
 #[derive(Debug)]
-enum AtomicWriteError {
-    BeforeCommit(std::io::Error),
-    AfterCommit(std::io::Error),
-}
-
-impl AtomicWriteError {
-    fn committed(&self) -> bool {
-        matches!(self, Self::AfterCommit(_))
-    }
-
-    fn into_io(self) -> std::io::Error {
-        match self {
-            Self::BeforeCommit(e) | Self::AfterCommit(e) => e,
-        }
-    }
-}
-
-#[derive(Debug)]
 enum ConfigWriteError {
     BeforeCommit(ConfigError),
     AfterCommit(ConfigError),
@@ -605,64 +220,6 @@ impl ConfigWriteError {
             Self::BeforeCommit(e) | Self::AfterCommit(e) => e,
         }
     }
-}
-
-fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), AtomicWriteError> {
-    let parent = path
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-        .unwrap_or_else(|| Path::new("."));
-    let file_name = path.file_name().ok_or_else(|| {
-        AtomicWriteError::BeforeCommit(Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "atomic write target has no file name",
-        ))
-    })?;
-
-    let mut temp_prefix = OsString::from(".");
-    temp_prefix.push(file_name);
-    temp_prefix.push(".");
-
-    let mut temp = tempfile::Builder::new()
-        .prefix(&temp_prefix)
-        .suffix(".tmp")
-        .tempfile_in(parent)
-        .map_err(AtomicWriteError::BeforeCommit)?;
-    temp.write_all(bytes)
-        .map_err(AtomicWriteError::BeforeCommit)?;
-    temp.as_file()
-        .sync_all()
-        .map_err(AtomicWriteError::BeforeCommit)?;
-    temp.persist(path)
-        .map_err(|e| AtomicWriteError::BeforeCommit(e.error))?;
-    sync_parent_dir(parent).map_err(AtomicWriteError::AfterCommit)
-}
-
-fn write_atomic_io(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    write_atomic(path, bytes).map_err(AtomicWriteError::into_io)
-}
-
-#[cfg(unix)]
-fn sync_parent_dir(parent: &Path) -> std::io::Result<()> {
-    std::fs::File::open(parent)?.sync_all()
-}
-
-#[cfg(windows)]
-fn sync_parent_dir(parent: &Path) -> std::io::Result<()> {
-    use std::os::windows::fs::OpenOptionsExt;
-
-    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
-
-    std::fs::OpenOptions::new()
-        .read(true)
-        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
-        .open(parent)?
-        .sync_all()
-}
-
-#[cfg(not(any(unix, windows)))]
-fn sync_parent_dir(_parent: &Path) -> std::io::Result<()> {
-    Ok(())
 }
 
 /// YAML config file structure for non-secret settings (per-library)
@@ -1407,46 +964,6 @@ mod tests {
     }
 
     #[test]
-    fn single_file_cue_preset_is_release_only() {
-        let preset = ExportPreset {
-            id: "flac-image".to_string(),
-            name: "FLAC image".to_string(),
-            codec: ExportPresetCodec::Flac {
-                bit_depth: ExportBitDepth::Source,
-            },
-            filename_template: default_export_filename_template(),
-            pregap_placement: ExportPregapPlacement::SingleFileWithCue,
-            applies_to_track: true,
-            applies_to_release: true,
-        };
-
-        let err = preset
-            .validate()
-            .expect_err("single-file CUE cannot be a track export preset");
-        assert!(err.to_string().contains("cannot apply to track export"));
-
-        let release_only = ExportPreset {
-            applies_to_track: false,
-            ..preset
-        };
-        release_only.validate().unwrap();
-
-        let opus_image = ExportPreset {
-            id: "opus-image".to_string(),
-            name: "Opus image".to_string(),
-            codec: ExportPresetCodec::OpusOgg { bitrate_kbps: 192 },
-            filename_template: default_export_filename_template(),
-            pregap_placement: ExportPregapPlacement::SingleFileWithCue,
-            applies_to_track: false,
-            applies_to_release: true,
-        };
-        let err = opus_image
-            .validate()
-            .expect_err("single-file CUE requires a CUE-compatible codec");
-        assert!(err.to_string().contains("unsupported codec"));
-    }
-
-    #[test]
     fn config_yaml_requires_library_id() {
         let yaml = "library_name: Test\nmcp:\n  enabled: false\n  port: 47777\n";
         let result: Result<ConfigYaml, _> = serde_yaml::from_str(yaml);
@@ -1495,23 +1012,6 @@ mod tests {
             config.discogs_token_status(),
             DiscogsTokenStatus::Rejected
         ));
-    }
-
-    /// `rfc3339_to_epoch_millis` is the single conversion the sync-time and
-    /// outbox-row paths share. A fractional-second timestamp keeps its
-    /// sub-second precision, a plain whole-second one converts cleanly, and an
-    /// unparseable string surfaces the parse error rather than a wrong instant.
-    #[test]
-    fn rfc3339_to_epoch_millis_handles_fractional_and_invalid() {
-        assert_eq!(
-            rfc3339_to_epoch_millis("2024-01-02T03:04:05Z").unwrap(),
-            1_704_164_645_000,
-        );
-        assert_eq!(
-            rfc3339_to_epoch_millis("2024-01-02T03:04:05.250Z").unwrap(),
-            1_704_164_645_250,
-        );
-        assert!(rfc3339_to_epoch_millis("not a timestamp").is_err());
     }
 
     #[test]
@@ -1578,49 +1078,6 @@ mod tests {
         .unwrap();
         assert_eq!(yaml.library_id, "my-library-id");
         assert_eq!(yaml.mcp, McpConfig::disabled_default());
-    }
-
-    #[test]
-    fn write_atomic_replaces_file_bytes() {
-        let tmp = TempDir::new().unwrap();
-        let path = tmp.path().join("config.yaml");
-        std::fs::write(&path, b"old config").unwrap();
-
-        write_atomic(&path, b"new config").unwrap();
-
-        assert_eq!(std::fs::read(&path).unwrap(), b"new config");
-    }
-
-    #[test]
-    fn write_atomic_requires_existing_parent() {
-        let tmp = TempDir::new().unwrap();
-        let path = tmp.path().join("missing").join("config.yaml");
-
-        let err = write_atomic(&path, b"new config").unwrap_err().into_io();
-
-        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
-        assert!(!path.exists());
-    }
-
-    #[test]
-    fn write_atomic_failure_leaves_target_and_removes_temp() {
-        let tmp = TempDir::new().unwrap();
-        let path = tmp.path().join("config.yaml");
-        std::fs::create_dir(&path).unwrap();
-
-        let err = write_atomic(&path, b"new config").unwrap_err().into_io();
-
-        assert!(matches!(
-            err.kind(),
-            std::io::ErrorKind::AlreadyExists | std::io::ErrorKind::IsADirectory
-        ));
-        assert!(path.is_dir());
-        let temp_names: Vec<_> = std::fs::read_dir(tmp.path())
-            .unwrap()
-            .map(|entry| entry.unwrap().file_name())
-            .filter(|name| name.to_string_lossy().starts_with(".config.yaml."))
-            .collect();
-        assert!(temp_names.is_empty());
     }
 
     #[test]
