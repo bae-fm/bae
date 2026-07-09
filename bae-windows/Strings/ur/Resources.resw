@@ -223,8 +223,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ڈسک ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>artist</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>ترتیب شامل کریں</value></data>
-  <data name="sort.criterion.move_down" xml:space="preserve"><value>نیچے منتقل کریں</value></data>
-  <data name="sort.criterion.move_up" xml:space="preserve"><value>اوپر منتقل کریں</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>ترتیب ہٹائیں</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>date added</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>صعودی ترتیب دیں</value></data>
   <data name="sort.direction.descending" xml:space="preserve"><value>نزولی ترتیب دیں</value></data>

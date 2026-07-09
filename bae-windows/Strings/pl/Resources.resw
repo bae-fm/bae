@@ -223,8 +223,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>DiscID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>wykonawca</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>dodaj sortowanie</value></data>
-  <data name="sort.criterion.move_down" xml:space="preserve"><value>przenieś w dół</value></data>
-  <data name="sort.criterion.move_up" xml:space="preserve"><value>przenieś w górę</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>usuń sortowanie</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>data dodania</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>sortuj rosnąco</value></data>
   <data name="sort.direction.descending" xml:space="preserve"><value>sortuj malejąco</value></data>

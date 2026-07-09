@@ -54304,6 +54304,197 @@
         }
       }
     },
+    "Remove sort criterion": {
+      "comment": "Album sort pill: remove this criterion",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove sort criterion"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar criterio de orden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer un critère de tri"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sortierkriterium entfernen"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover critério de ordenação"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "並べ替え条件を削除"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除排序条件"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إزالة معيار فرز"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הסר קריטריון מיון"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалити критерій сортування"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Премахване на критерий за подреждане"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń kryterium sortowania"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odebrat kritérium řazení"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ukloni kriterij sortiranja"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정렬 기준 제거"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除排序條件"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovi criterio di ordinamento"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıralama ölçütünü kaldır"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa tiêu chí sắp xếp"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwijder sorteercriterium"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "छंटाई मानदंड हटाएं"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সাজানোর মানদণ্ড সরান"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "வரிசைப்படுத்தல் அளவுகோலை நீக்கவும்"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "క్రమబద్ధీకరణ ప్రమాణాన్ని తీసివేయి"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "क्रमवारी निकष काढा"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترتیب کا معیار ہٹائیں"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ગોઠવણી માપદંડ દૂર કરો"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ವಿಂಗಡಣೆ ಮಾನದಂಡ ತೆಗೆದುಹಾಕಿ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ക്രമീകരണ മാനദണ്ഡം നീക്കം ചെയ്യുക"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਛਾਂਟ ਮਾਪਦੰਡ ਹਟਾਓ"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลบเกณฑ์การเรียงลำดับ"
+          }
+        }
+      }
+    },
     "Remove Folder": {
       "comment": "Import: context-menu action to stop watching a folder",
       "localizations": {
@@ -65572,7 +65763,7 @@
       }
     },
     "Sort Ascending": {
-      "comment": "Album grid sort chip: switch to ascending order",
+      "comment": "Album sort pill / composer direction control: switch to ascending order",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -65763,7 +65954,7 @@
       }
     },
     "Sort Descending": {
-      "comment": "Album grid sort chip: switch to descending order",
+      "comment": "Album sort pill / composer direction control: switch to descending order",
       "localizations": {
         "en": {
           "stringUnit": {

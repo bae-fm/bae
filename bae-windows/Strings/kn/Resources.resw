@@ -223,8 +223,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ಡಿಸ್ಕ್ ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>ಕಲಾವಿದ</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>ವಿಂಗಡಣೆ ಸೇರಿಸಿ</value></data>
-  <data name="sort.criterion.move_down" xml:space="preserve"><value>ಕೆಳಕ್ಕೆ ಸರಿಸಿ</value></data>
-  <data name="sort.criterion.move_up" xml:space="preserve"><value>ಮೇಲಕ್ಕೆ ಸರಿಸಿ</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>ವಿಂಗಡಣೆ ತೆಗೆದುಹಾಕಿ</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>ಸೇರಿಸಿದ ದಿನಾಂಕ</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>ಆರೋಹಣ ಕ್ರಮದಲ್ಲಿ ವಿಂಗಡಿಸಿ</value></data>
   <data name="sort.direction.descending" xml:space="preserve"><value>ಅವರೋಹಣ ಕ್ರಮದಲ್ಲಿ ವಿಂಗಡಿಸಿ</value></data>

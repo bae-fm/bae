@@ -223,8 +223,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>光碟 ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>演出者</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>加入排序</value></data>
-  <data name="sort.criterion.move_down" xml:space="preserve"><value>下移</value></data>
-  <data name="sort.criterion.move_up" xml:space="preserve"><value>上移</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>移除排序</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>加入日期</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>升冪排序</value></data>
   <data name="sort.direction.descending" xml:space="preserve"><value>降冪排序</value></data>

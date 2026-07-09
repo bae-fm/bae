@@ -6,9 +6,8 @@ namespace Bae.Windows.Tests;
 
 /// <summary>
 /// Locks the library sort model: the album criteria's defaults, invariants
-/// (unique fields, never empty), add/remove/reorder/direction/field manipulation,
-/// the composer sort, and the JSON round-trip that persists the album sort like
-/// macOS does.
+/// (unique fields, never empty), add/remove/direction manipulation, the composer
+/// sort, and the JSON round-trip that persists the album sort like macOS does.
 /// </summary>
 public sealed class LibrarySortTests
 {
@@ -83,71 +82,6 @@ public sealed class LibrarySortTests
     }
 
     [Fact]
-    public void SetField_SwapsInPlace_KeepingPositionAndDirection()
-    {
-        var criteria = new AlbumSortCriteria();
-        criteria.SetDirection(AlbumSortField.DateAdded, SortDirection.Ascending);
-        criteria.Add(AlbumSortField.Year);
-
-        criteria.SetField(AlbumSortField.DateAdded, AlbumSortField.Title);
-
-        Assert.Equal(
-            new[] { AlbumSortField.Title, AlbumSortField.Year },
-            criteria.Items.Select(c => c.Field));
-        // Direction of the swapped slot is preserved.
-        Assert.Equal(SortDirection.Ascending, criteria.Items[0].Direction);
-    }
-
-    [Fact]
-    public void SetField_IgnoresATargetAlreadyInUse()
-    {
-        var criteria = new AlbumSortCriteria();
-        criteria.Add(AlbumSortField.Year);
-
-        criteria.SetField(AlbumSortField.DateAdded, AlbumSortField.Year);
-        Assert.Equal(
-            new[] { AlbumSortField.DateAdded, AlbumSortField.Year },
-            criteria.Items.Select(c => c.Field));
-    }
-
-    [Fact]
-    public void ChoosableFieldsFor_IsCurrentPlusUnused()
-    {
-        var criteria = new AlbumSortCriteria();
-        criteria.Add(AlbumSortField.Artist);
-
-        // DateAdded's picker offers itself plus the still-unused fields, never Artist.
-        Assert.Equal(
-            new[] { AlbumSortField.DateAdded, AlbumSortField.Title, AlbumSortField.Year },
-            criteria.ChoosableFieldsFor(AlbumSortField.DateAdded));
-    }
-
-    [Fact]
-    public void MoveUpDown_ReordersPriority_AndClampsAtEnds()
-    {
-        var criteria = new AlbumSortCriteria();
-        criteria.Add(AlbumSortField.Title);
-        criteria.Add(AlbumSortField.Year);
-
-        criteria.MoveDown(AlbumSortField.DateAdded);
-        Assert.Equal(
-            new[] { AlbumSortField.Title, AlbumSortField.DateAdded, AlbumSortField.Year },
-            criteria.Items.Select(c => c.Field));
-
-        criteria.MoveUp(AlbumSortField.Year);
-        Assert.Equal(
-            new[] { AlbumSortField.Title, AlbumSortField.Year, AlbumSortField.DateAdded },
-            criteria.Items.Select(c => c.Field));
-
-        // First can't move up, last can't move down — both are no-ops.
-        criteria.MoveUp(AlbumSortField.Title);
-        criteria.MoveDown(AlbumSortField.DateAdded);
-        Assert.Equal(
-            new[] { AlbumSortField.Title, AlbumSortField.Year, AlbumSortField.DateAdded },
-            criteria.Items.Select(c => c.Field));
-    }
-
-    [Fact]
     public void Changed_FiresOnRealMutationsOnly()
     {
         var criteria = new AlbumSortCriteria();
@@ -157,7 +91,6 @@ public sealed class LibrarySortTests
         criteria.Add(AlbumSortField.Title); // fires
         criteria.Add(AlbumSortField.Title); // no-op, already present
         criteria.SetDirection(AlbumSortField.Title, SortDirection.Ascending); // no-op, already ascending
-        criteria.MoveUp(AlbumSortField.DateAdded); // no-op, already first
         criteria.SetDirection(AlbumSortField.Title, SortDirection.Descending); // fires
 
         Assert.Equal(2, count);

@@ -223,8 +223,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>מזהה תקליטור</value></data>
   <data name="sort.artist" xml:space="preserve"><value>אמן</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>הוספת מיון</value></data>
-  <data name="sort.criterion.move_down" xml:space="preserve"><value>העברה למטה</value></data>
-  <data name="sort.criterion.move_up" xml:space="preserve"><value>העברה למעלה</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>הסרת מיון</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>תאריך הוספה</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>מיין בסדר עולה</value></data>
   <data name="sort.direction.descending" xml:space="preserve"><value>מיין בסדר יורד</value></data>

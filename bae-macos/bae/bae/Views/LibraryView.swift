@@ -206,11 +206,8 @@ extension LibraryView {
         HStack(spacing: 4) {
             ForEach($sortCriteria, id: \.field) { $criterion in
                 let field = criterion.field
-                SortCriterionChip(
+                SortCriterionPill(
                     criterion: $criterion,
-                    choosableFields: BridgeSortField.allCases.filter {
-                        $0 == field || !usedFields.contains($0)
-                    },
                     canRemove: sortCriteria.count > 1,
                     onRemove: { sortCriteria.removeAll { $0.field == field } },
                 )
@@ -386,8 +383,13 @@ extension LibraryView {
                     systemName: composerSortCriterion.direction == .ascending
                         ? "arrow.up" : "arrow.down"
                 )
+                .font(.callout)
+                .foregroundStyle(.secondary)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Theme.surfaceElevated, in: Capsule())
             .help(
                 composerSortCriterion.direction == .ascending
                     ? String(localized: "Sort Descending")

@@ -223,8 +223,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ID disku</value></data>
   <data name="sort.artist" xml:space="preserve"><value>interpret</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>přidat řazení</value></data>
-  <data name="sort.criterion.move_down" xml:space="preserve"><value>posunout dolů</value></data>
-  <data name="sort.criterion.move_up" xml:space="preserve"><value>posunout nahoru</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>odebrat řazení</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>datum přidání</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>seřadit vzestupně</value></data>
   <data name="sort.direction.descending" xml:space="preserve"><value>seřadit sestupně</value></data>

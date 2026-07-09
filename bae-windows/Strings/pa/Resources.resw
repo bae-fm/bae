@@ -223,8 +223,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ਡਿਸਕ ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>ਕਲਾਕਾਰ</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>ਲੜੀਬੱਧ ਜੋੜੋ</value></data>
-  <data name="sort.criterion.move_down" xml:space="preserve"><value>ਹੇਠਾਂ ਭੇਜੋ</value></data>
-  <data name="sort.criterion.move_up" xml:space="preserve"><value>ਉੱਪਰ ਭੇਜੋ</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>ਲੜੀਬੱਧ ਹਟਾਓ</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>ਸ਼ਾਮਲ ਕਰਨ ਦੀ ਤਾਰੀਖ਼</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>ਵਧਦੇ ਕ੍ਰਮ ਵਿੱਚ ਲੜੀਬੱਧ ਕਰੋ</value></data>
   <data name="sort.direction.descending" xml:space="preserve"><value>ਘਟਦੇ ਕ੍ਰਮ ਵਿੱਚ ਲੜੀਬੱਧ ਕਰੋ</value></data>

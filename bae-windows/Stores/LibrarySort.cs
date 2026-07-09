@@ -145,10 +145,10 @@ public static class LibrarySortVocab
 public sealed record AlbumSortCriterion(AlbumSortField Field, SortDirection Direction);
 
 // The ordered album sort: a primary-first list of criteria, each field appearing
-// at most once and the list never empty. All manipulation (add/remove/reorder,
-// direction and field changes) and the on-disk round-trip live here so the view
-// stays a thin renderer and the whole thing is unit-tested. Raises Changed on
-// every real mutation so the persistence shell can write through.
+// at most once and the list never empty. All manipulation (add/remove and
+// direction changes) and the on-disk round-trip live here so the view stays a
+// thin renderer and the whole thing is unit-tested. Raises Changed on every
+// real mutation so the persistence shell can write through.
 public sealed class AlbumSortCriteria
 {
     public static AlbumSortCriterion DefaultCriterion { get; } =
@@ -191,11 +191,6 @@ public sealed class AlbumSortCriteria
     public IReadOnlyList<AlbumSortField> AvailableToAdd =>
         LibrarySortVocab.AlbumFields.Where(field => !HasField(field)).ToList();
 
-    // The fields a chip may switch to: its own field plus any unused one, in
-    // canonical order — so a field is never used by two criteria.
-    public IReadOnlyList<AlbumSortField> ChoosableFieldsFor(AlbumSortField current) =>
-        LibrarySortVocab.AlbumFields.Where(field => field == current || !HasField(field)).ToList();
-
     public void Add(AlbumSortField field)
     {
         if (HasField(field))
@@ -233,49 +228,6 @@ public sealed class AlbumSortCriteria
         }
 
         _criteria[index] = _criteria[index] with { Direction = direction };
-        Changed?.Invoke();
-    }
-
-    // Change what a criterion sorts by, keeping its position and direction. A no-op
-    // if the target field is already used by another criterion.
-    public void SetField(AlbumSortField current, AlbumSortField target)
-    {
-        if (current == target)
-        {
-            return;
-        }
-
-        var index = IndexOf(current);
-        if (index < 0 || HasField(target))
-        {
-            return;
-        }
-
-        _criteria[index] = _criteria[index] with { Field = target };
-        Changed?.Invoke();
-    }
-
-    public void MoveUp(AlbumSortField field)
-    {
-        var index = IndexOf(field);
-        if (index <= 0)
-        {
-            return;
-        }
-
-        (_criteria[index - 1], _criteria[index]) = (_criteria[index], _criteria[index - 1]);
-        Changed?.Invoke();
-    }
-
-    public void MoveDown(AlbumSortField field)
-    {
-        var index = IndexOf(field);
-        if (index < 0 || index >= _criteria.Count - 1)
-        {
-            return;
-        }
-
-        (_criteria[index + 1], _criteria[index]) = (_criteria[index], _criteria[index + 1]);
         Changed?.Invoke();
     }
 

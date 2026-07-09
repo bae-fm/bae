@@ -4,12 +4,14 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace Bae.Windows;
 
-// Renders the library sort surface into the toolbar: for albums, a chip per sort
-// criterion (each a button whose flyout toggles direction, reorders, removes, and
-// switches field) plus a "+" button that adds an unused field; for composers, a
-// field button and a direction-toggle button. Every action mutates the LibrarySort
-// model and asks the window to reload. The window owns visibility and reload; this
-// only builds controls, so it stays a thin renderer of the model.
+// Renders the library sort surface into the toolbar: for albums, a pill per sort
+// criterion (a button that inverts that field's direction, plus an "x" button
+// that removes it) and a "+" button whose flyout adds an unused field; for
+// composers, a field-picker button and a direction-invert button. Field
+// switching and reordering are gone by design — the sort is built by adding and
+// removing pills. Every action mutates the LibrarySort model and asks the window
+// to reload. The window owns visibility and reload; this only builds controls,
+// so it stays a thin renderer of the model.
 internal sealed class LibrarySortControls
 {
     private const string CheckmarkGlyph = "";
@@ -52,9 +54,9 @@ internal sealed class LibrarySortControls
     private void RenderAlbums()
     {
         var items = _sort.Albums.Items;
-        for (var index = 0; index < items.Count; index++)
+        foreach (var criterion in items)
         {
-            _host.Children.Add(BuildAlbumChip(items[index], index, items.Count));
+            _host.Children.Add(BuildAlbumPill(criterion));
         }
 
         var addable = _sort.Albums.AvailableToAdd;
@@ -64,78 +66,64 @@ internal sealed class LibrarySortControls
         }
     }
 
-    private Button BuildAlbumChip(AlbumSortCriterion criterion, int index, int count)
+    // A sort criterion pill: the main button (field label + direction arrow)
+    // sets the opposite direction — an absolute set computed from the rendered
+    // direction, not a blind toggle. The trailing "x" removes the criterion; on
+    // the last remaining criterion it is absent, not disabled. The two buttons
+    // share a pill silhouette through their corner radii.
+    private UIElement BuildAlbumPill(AlbumSortCriterion criterion)
     {
         var arrow = criterion.Direction == SortDirection.Ascending ? AscendingArrow : DescendingArrow;
-        var menu = new MenuFlyout();
-
         var opposite = LibrarySortVocab.Opposite(criterion.Direction);
-        var toggle = new MenuFlyoutItem { Text = Loc.Chrome(LibrarySortVocab.DirectionActionKey(opposite)) };
+
+        var toggle = new Button
+        {
+            Content = $"{Loc.Chrome(LibrarySortVocab.LabelKey(criterion.Field))} {arrow}",
+            VerticalAlignment = VerticalAlignment.Center,
+            CornerRadius = new CornerRadius(14),
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            toggle, Loc.Chrome(LibrarySortVocab.LabelKey(criterion.Field)));
+        ToolTipService.SetToolTip(toggle, Loc.Chrome(LibrarySortVocab.DirectionActionKey(opposite)));
         toggle.Click += (_, _) =>
         {
             _sort.Albums.SetDirection(criterion.Field, opposite);
             Mutated();
         };
-        menu.Items.Add(toggle);
 
-        if (index > 0)
+        if (!_sort.Albums.CanRemove)
         {
-            var moveUp = new MenuFlyoutItem { Text = Loc.Chrome("sort.criterion.move_up") };
-            moveUp.Click += (_, _) =>
-            {
-                _sort.Albums.MoveUp(criterion.Field);
-                Mutated();
-            };
-            menu.Items.Add(moveUp);
+            return toggle;
         }
 
-        if (index < count - 1)
+        toggle.CornerRadius = new CornerRadius(14, 0, 0, 14);
+
+        var remove = new Button
         {
-            var moveDown = new MenuFlyoutItem { Text = Loc.Chrome("sort.criterion.move_down") };
-            moveDown.Click += (_, _) =>
-            {
-                _sort.Albums.MoveDown(criterion.Field);
-                Mutated();
-            };
-            menu.Items.Add(moveDown);
-        }
-
-        if (_sort.Albums.CanRemove)
-        {
-            var remove = new MenuFlyoutItem { Text = Loc.Chrome("action.remove") };
-            remove.Click += (_, _) =>
-            {
-                _sort.Albums.Remove(criterion.Field);
-                Mutated();
-            };
-            menu.Items.Add(remove);
-        }
-
-        menu.Items.Add(new MenuFlyoutSeparator());
-
-        foreach (var field in _sort.Albums.ChoosableFieldsFor(criterion.Field))
-        {
-            var item = new MenuFlyoutItem { Text = Loc.Chrome(LibrarySortVocab.LabelKey(field)) };
-            if (field == criterion.Field)
-            {
-                item.Icon = new FontIcon { Glyph = CheckmarkGlyph };
-            }
-
-            var target = field;
-            item.Click += (_, _) =>
-            {
-                _sort.Albums.SetField(criterion.Field, target);
-                Mutated();
-            };
-            menu.Items.Add(item);
-        }
-
-        return new Button
-        {
-            Content = $"{Loc.Chrome(LibrarySortVocab.LabelKey(criterion.Field))} {arrow}",
+            // Segoe MDL2 Assets "ChromeClose" glyph (U+E711).
+            Content = new FontIcon { Glyph = "\uE711", FontSize = 10 },
             VerticalAlignment = VerticalAlignment.Center,
-            Flyout = menu,
+            CornerRadius = new CornerRadius(0, 14, 14, 0),
+            Padding = new Thickness(6, 5, 8, 5),
         };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            remove, Loc.Chrome("sort.criterion.remove"));
+        ToolTipService.SetToolTip(remove, Loc.Chrome("sort.criterion.remove"));
+        remove.Click += (_, _) =>
+        {
+            _sort.Albums.Remove(criterion.Field);
+            Mutated();
+        };
+
+        var pill = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
+            Spacing = 1,
+        };
+        pill.Children.Add(toggle);
+        pill.Children.Add(remove);
+        return pill;
     }
 
     private Button BuildAddButton(System.Collections.Generic.IReadOnlyList<AlbumSortField> addable)
@@ -198,6 +186,7 @@ internal sealed class LibrarySortControls
         {
             Content = arrow,
             VerticalAlignment = VerticalAlignment.Center,
+            CornerRadius = new CornerRadius(14),
         };
         ToolTipService.SetToolTip(directionButton, Loc.Chrome(LibrarySortVocab.DirectionActionKey(opposite)));
         directionButton.Click += (_, _) =>

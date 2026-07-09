@@ -223,8 +223,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>디스크 ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>아티스트</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>정렬 추가</value></data>
-  <data name="sort.criterion.move_down" xml:space="preserve"><value>아래로 이동</value></data>
-  <data name="sort.criterion.move_up" xml:space="preserve"><value>위로 이동</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>정렬 제거</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>추가한 날짜</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>오름차순 정렬</value></data>
   <data name="sort.direction.descending" xml:space="preserve"><value>내림차순 정렬</value></data>

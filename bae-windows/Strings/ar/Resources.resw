@@ -223,8 +223,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>معرّف القرص</value></data>
   <data name="sort.artist" xml:space="preserve"><value>الفنان</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>إضافة ترتيب</value></data>
-  <data name="sort.criterion.move_down" xml:space="preserve"><value>تحريك لأسفل</value></data>
-  <data name="sort.criterion.move_up" xml:space="preserve"><value>تحريك لأعلى</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>إزالة ترتيب</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>تاريخ الإضافة</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>ترتيب تصاعدي</value></data>
   <data name="sort.direction.descending" xml:space="preserve"><value>ترتيب تنازلي</value></data>

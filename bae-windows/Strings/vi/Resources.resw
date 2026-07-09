@@ -223,8 +223,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>nghệ sĩ</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>thêm sắp xếp</value></data>
-  <data name="sort.criterion.move_down" xml:space="preserve"><value>di chuyển xuống</value></data>
-  <data name="sort.criterion.move_up" xml:space="preserve"><value>di chuyển lên</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>xóa sắp xếp</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>ngày thêm</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>sắp xếp tăng dần</value></data>
   <data name="sort.direction.descending" xml:space="preserve"><value>sắp xếp giảm dần</value></data>
