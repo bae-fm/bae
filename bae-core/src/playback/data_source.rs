@@ -475,6 +475,13 @@ fn spawn_window_prefetch(
 /// `MIN_READAHEAD` ahead so the ring can't underrun. Returns `None` when every
 /// reader is buffered up to its target -- the fill then idles.
 ///
+/// The ceiling caps read-AHEAD, never the demanded byte itself: a reader
+/// demanding at or past its ceiling is not done -- raw-FLAC frame parsing needs
+/// lookahead past a segment's end (CUE boundaries aren't frame-aligned), so a
+/// segment's decoder blocks reading right at its ceiling. Treating the ceiling
+/// as a hard stop would starve that read forever and deadlock the decode, so
+/// such a demand falls back to the `MIN_READAHEAD` window from its position.
+///
 /// There is no backfill: the buffer only holds the current track(s) around the
 /// live readers, never the whole album. A backward seek into an evicted region
 /// re-publishes a demand there and the fill re-fetches that window.
@@ -485,8 +492,8 @@ fn pick_window_gap(
 ) -> Option<(u64, u64)> {
     for demand in windows {
         let ceil = match demand.ceiling {
-            Some(c) => c.min(total),
-            None => (demand.pos + MIN_READAHEAD).min(total),
+            Some(c) if demand.pos < c => c.min(total),
+            _ => (demand.pos + MIN_READAHEAD).min(total),
         };
         if let Some(gap) = buffer.next_gap(demand.pos, ceil) {
             return Some(gap);
@@ -802,6 +809,47 @@ mod tests {
             6 * WINDOW,
             log,
         );
+    }
+
+    /// A reader demanding at or past its read-ahead ceiling must still be
+    /// served. The ceiling bounds read-ahead within the reader's segment, but
+    /// raw-FLAC frame parsing needs lookahead past a segment's end (CUE
+    /// boundaries aren't frame-aligned), so a segment's decoder legitimately
+    /// blocks reading at its ceiling. A fill that treats the ceiling as a hard
+    /// stop starves that read forever — the gapless-preload deadlock on
+    /// single-file CUE albums.
+    #[tokio::test]
+    async fn read_at_the_ceiling_is_served_not_starved() {
+        let source_size = 4 * WINDOW;
+        let blob: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
+
+        let buffer = create_sparse_buffer(source_size);
+        // A segment reader positioned exactly at its segment's end: ceiling ==
+        // pos, the shape a pregap decoder is in while reading the frame that
+        // straddles the boundary.
+        let mut reader = buffer.new_reader();
+        reader.set_readahead_ceiling(WINDOW);
+        assert!(reader.seek(WINDOW));
+
+        let _read_log = start_recording_fill(blob, None, &buffer);
+
+        let read_result = timeout(
+            Duration::from_secs(5),
+            tokio::task::spawn_blocking(move || {
+                let mut b = [0u8; 1];
+                let n = reader.read(&mut b);
+                drop(reader);
+                n
+            }),
+        )
+        .await;
+        // Unblock the parked reader before asserting, so a starved (failing)
+        // run doesn't wedge the runtime's blocking pool on shutdown.
+        buffer.cancel();
+        let one = read_result
+            .expect("a read at the ceiling must be served, not starved")
+            .expect("read task");
+        assert_eq!(one, Some(1));
     }
 
     /// The parallel prefetch removes the serial fetch at the track's start byte:

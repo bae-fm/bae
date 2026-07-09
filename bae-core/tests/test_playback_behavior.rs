@@ -5094,9 +5094,21 @@ static MULTI_WINDOW_FLAC: std::sync::LazyLock<Vec<u8>> = std::sync::LazyLock::ne
     const TRACKS: u32 = 3;
 
     let frames = (SAMPLE_RATE * TRACK_SECONDS * TRACKS) as usize;
+    // The pregap region (0:58-1:00, track 2's INDEX 00 gap) is silence, like a
+    // real rip's pregap. Silence compresses to a few KB, so the pregap becomes
+    // a tiny segment whose decode must read past its own end byte (raw-FLAC
+    // frame parsing needs lookahead) -- the fill has to serve a reader at its
+    // read-ahead ceiling or the preload decoder deadlocks.
+    let pregap_samples = (SAMPLE_RATE * 58) as usize * 2..(SAMPLE_RATE * 60) as usize * 2;
     let mut rng = rand::rngs::StdRng::seed_from_u64(0x0bae);
     let samples: Vec<i32> = (0..frames * 2)
-        .map(|_| (rng.random::<i16>() as i32) << 16)
+        .map(|i| {
+            if pregap_samples.contains(&i) {
+                0
+            } else {
+                (rng.random::<i16>() as i32) << 16
+            }
+        })
         .collect();
     let cancel = std::sync::atomic::AtomicBool::new(false);
     let flac = bae_core::audio_codec::encode_to_flac(&samples, SAMPLE_RATE, 2, 16, &cancel)
@@ -5295,6 +5307,17 @@ async fn auto_advance_crosses_gaplessly_within_a_multi_window_file() {
     assert!(
         outcome.decode_stats_for_finishing && !outcome.completed_for_finishing,
         "the first boundary is gapless: decode stats without TrackCompleted"
+    );
+
+    // The crossing events fire at the boundary whether or not audio flows, so
+    // require the position to actually advance into track 2 before seeking --
+    // a preload decoder starved at the pregap boundary pins it in place.
+    let p1 = position_after(&mut playback.progress_rx, Duration::from_millis(800)).await;
+    let p2 = position_after(&mut playback.progress_rx, Duration::from_millis(1600)).await;
+    assert!(
+        p2 > p1,
+        "track 2's position advances after the crossing (got {p1}ms then {p2}ms) -- \
+         its decoder must keep producing samples past the pregap boundary"
     );
 
     // Track 2's raw timeline is 62 s (2 s pregap + 60 s).
