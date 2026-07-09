@@ -79167,7 +79167,7 @@
       }
     },
     "Shuffle Library": {
-      "comment": "Library view: shuffle the whole library into a fresh session",
+      "comment": "Menu bar Playback menu: shuffle the whole library into a fresh session",
       "localizations": {
         "en": {
           "stringUnit": {

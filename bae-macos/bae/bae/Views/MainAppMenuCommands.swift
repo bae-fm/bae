@@ -327,6 +327,13 @@ struct MainAppMenuCommands: Commands {
                     playback.setRepeatMode(mode)
                 }
             }
+
+            Divider()
+
+            Button("Shuffle Library") {
+                playback.playLibraryShuffled()
+            }
+            .disabled((libraryStore.albumTotal ?? 0) == 0)
         }
     }
 }

@@ -4,7 +4,8 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>بحث</value></data>
   <data name="LibrariesButton.Content" xml:space="preserve"><value>المكتبات</value></data>
-  <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>تشغيل المكتبة عشوائيًا</value></data>
+  <data name="PlaybackMenuButton.Content" xml:space="preserve"><value>التشغيل</value></data>
+  <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>تشغيل المكتبة عشوائيًا</value></data>
   <data name="CloseLibraryButton.Content" xml:space="preserve"><value>إغلاق</value></data>
   <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>إغلاق المكتبة</value></data>
   <data name="ImportButton.Content" xml:space="preserve"><value>استيراد</value></data>

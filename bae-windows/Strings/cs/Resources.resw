@@ -4,7 +4,8 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>hledat</value></data>
   <data name="LibrariesButton.Content" xml:space="preserve"><value>knihovny</value></data>
-  <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>náhodně přehrát knihovnu</value></data>
+  <data name="PlaybackMenuButton.Content" xml:space="preserve"><value>přehrávání</value></data>
+  <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>náhodně přehrát knihovnu</value></data>
   <data name="CloseLibraryButton.Content" xml:space="preserve"><value>zavřít</value></data>
   <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>zavřít knihovnu</value></data>
   <data name="ImportButton.Content" xml:space="preserve"><value>import</value></data>

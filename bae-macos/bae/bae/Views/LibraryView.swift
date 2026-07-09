@@ -125,6 +125,15 @@ struct LibraryView: View {
         .task(id: albumList?.loadEpoch) {
             await pruneDeletedSelection()
         }
+        // Mirror the library-wide album count into the store: the menu bar's
+        // Shuffle Library item (MainAppMenuCommands) disables at zero, and the
+        // menu has no album list of its own to ask. `initial: true` publishes
+        // a count that was already loaded when this view (re)mounts.
+        .onChange(of: albumList?.totalCount, initial: true) { _, count in
+            if let count {
+                libraryStore.setAlbumTotal(count)
+            }
+        }
     }
 }
 
@@ -179,13 +188,6 @@ extension LibraryView {
             Spacer()
             switch uiStore.libraryBrowserMode {
             case .albums:
-                Button {
-                    playback.playLibraryShuffled()
-                } label: {
-                    Label("Shuffle Library", systemImage: "shuffle")
-                }
-                .buttonStyle(.borderless)
-                .help("Shuffle Library")
                 albumSortControls
             case .composers:
                 composerSortControls

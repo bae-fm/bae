@@ -302,6 +302,20 @@ struct InternAlbumSummaryTests {
     }
 }
 
+@Suite("LibraryStore.albumTotal")
+struct AlbumTotalTests {
+    @MainActor
+    @Test("nil before any count is recorded, then tracks recorded values")
+    func recordsAlbumTotal() {
+        let store = LibraryStore()
+        #expect(store.albumTotal == nil)
+        store.setAlbumTotal(3)
+        #expect(store.albumTotal == 3)
+        store.setAlbumTotal(0)
+        #expect(store.albumTotal == 0)
+    }
+}
+
 // MARK: - internReleaseSummary tests
 
 @Suite("LibraryStore.internReleaseSummary")

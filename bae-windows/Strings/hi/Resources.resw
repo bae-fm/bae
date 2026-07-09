@@ -4,7 +4,8 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>खोजें</value></data>
   <data name="LibrariesButton.Content" xml:space="preserve"><value>लाइब्रेरी</value></data>
-  <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>लाइब्रेरी शफ़ल करें</value></data>
+  <data name="PlaybackMenuButton.Content" xml:space="preserve"><value>प्लेबैक</value></data>
+  <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>लाइब्रेरी शफ़ल करें</value></data>
   <data name="CloseLibraryButton.Content" xml:space="preserve"><value>बंद करें</value></data>
   <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>लाइब्रेरी बंद करें</value></data>
   <data name="ImportButton.Content" xml:space="preserve"><value>आयात</value></data>

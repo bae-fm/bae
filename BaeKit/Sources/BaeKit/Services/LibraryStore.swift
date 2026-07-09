@@ -238,7 +238,21 @@ public final class LibraryStore {
     /// Cleared when a load for that release starts again or succeeds.
     public private(set) var releaseDetailErrors: [String: DisplayError] = [:]
 
+    /// Total albums in the open library, or `nil` before any album list has
+    /// reported a count. Written by the macOS library browser whenever its
+    /// album list's count loads or changes; read by menu chrome that has no
+    /// list of its own (the Playback menu's Shuffle Library item disables at
+    /// zero). Albums are the proxy the UI owns for "anything to play": core's
+    /// shuffle no-ops on zero *tracks*, but the UI never loads a track count.
+    public private(set) var albumTotal: Int?
+
     public nonisolated init() {}
+
+    /// Record the library-wide album total reported by an album-list count
+    /// load.
+    public func setAlbumTotal(_ count: Int) {
+        albumTotal = count
+    }
 
     // MARK: - Interning
 

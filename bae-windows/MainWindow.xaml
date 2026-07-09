@@ -49,7 +49,18 @@
                            Foreground="Gray" TextWrapping="NoWrap" />
                 <ComboBox x:Name="BrowserModeBox" SelectionChanged="OnBrowserModeChanged" VerticalAlignment="Center" />
                 <StackPanel x:Name="SortControls" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" />
-                <Button x:Uid="ShuffleLibraryButton" Content="shuffle library" Click="OnShuffleLibraryClick" />
+                <DropDownButton x:Uid="PlaybackMenuButton" Content="playback">
+                    <DropDownButton.Flyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem
+                                x:Name="ShuffleLibraryItem"
+                                x:Uid="ShuffleLibraryMenuItem"
+                                Text="shuffle library"
+                                IsEnabled="False"
+                                Click="OnShuffleLibraryClick" />
+                        </MenuFlyout>
+                    </DropDownButton.Flyout>
+                </DropDownButton>
                 <Button x:Uid="LibrariesButton" Content="libraries" Click="OnLibrariesClick" />
                 <Button x:Uid="CloseLibraryButton" Content="close" Click="OnCloseLibraryClick" ToolTipService.ToolTip="close library">
                     <Button.KeyboardAccelerators>

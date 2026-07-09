@@ -4,7 +4,8 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>ಹುಡುಕಿ</value></data>
   <data name="LibrariesButton.Content" xml:space="preserve"><value>ಲೈಬ್ರರಿಗಳು</value></data>
-  <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>ಲೈಬ್ರರಿಯನ್ನು ಶಫಲ್ ಮಾಡಿ</value></data>
+  <data name="PlaybackMenuButton.Content" xml:space="preserve"><value>ಪ್ಲೇಬ್ಯಾಕ್</value></data>
+  <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>ಲೈಬ್ರರಿಯನ್ನು ಶಫಲ್ ಮಾಡಿ</value></data>
   <data name="CloseLibraryButton.Content" xml:space="preserve"><value>ಮುಚ್ಚಿ</value></data>
   <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ ಮುಚ್ಚಿ</value></data>
   <data name="ImportButton.Content" xml:space="preserve"><value>ಆಮದು</value></data>

@@ -407,6 +407,18 @@ public sealed partial class MainWindow : Window
     // untouched. Visibility is the caller's concern.
     private void RenderGridStatus(BrowserGridLoad load)
     {
+        // Albums are the proxy the UI owns for "anything to shuffle": core's
+        // shuffle no-ops on zero tracks, and the album count is what this
+        // window already loads. Only an album-mode load speaks to it (a
+        // composer load says nothing about albums), and a handle-gone load
+        // leaves the view untouched, this included. A failed load disables —
+        // don't offer playback of unknown contents.
+        if (load.Result != BrowserLoadResult.HandleGone && load.Mode == BrowserMode.Albums)
+        {
+            ShuffleLibraryItem.IsEnabled =
+                load.Result == BrowserLoadResult.Loaded && !load.IsEmpty;
+        }
+
         switch (load.Result)
         {
             case BrowserLoadResult.HandleGone:
@@ -648,6 +660,7 @@ public sealed partial class MainWindow : Window
         _transferProgress.Reset();
         SearchBox.Text = string.Empty;
         StatusText.Text = string.Empty;
+        ShuffleLibraryItem.IsEnabled = false;
         _mediaControls.Deactivate();
         // The banners report the old library's sync / playback errors; clear them
         // so they don't describe state the next library (or none) doesn't have.
