@@ -920,9 +920,12 @@ mod tests {
         assert_eq!(all, vec!["t1", "t2", "t3", "t4"]);
     }
 
+    /// Both shuffle entry points — playing a release pre-shuffled, and toggling
+    /// shuffle on later over an already-playing sequential context — derive the
+    /// same order from the same seed each time, not a fresh random one per call.
     #[test]
-    fn test_play_release_shuffled_is_deterministic_for_a_seed() {
-        let order = |seed| {
+    fn shuffle_entry_points_are_deterministic_for_a_seed() {
+        let play_release_shuffled_order = |seed| {
             let mut q = queue();
             q.play_release(
                 rel_src("r1"),
@@ -931,7 +934,27 @@ mod tests {
             );
             full_order(&q)
         };
-        assert_eq!(order(42), order(42), "same seed yields the same order");
+        assert_eq!(
+            play_release_shuffled_order(42),
+            play_release_shuffled_order(42),
+            "play_release with a shuffled start yields the same order for the same seed"
+        );
+
+        let set_shuffle_on_order = |seed| {
+            let mut q = queue();
+            q.play_release(
+                rel_src("r1"),
+                rel(&["t1", "t2", "t3", "t4", "t5"]),
+                ContextStart::Index(0),
+            );
+            q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), seed);
+            q.context_order()
+        };
+        assert_eq!(
+            set_shuffle_on_order(42),
+            set_shuffle_on_order(42),
+            "set_shuffle(true) yields the same order for the same seed"
+        );
     }
 
     /// A repeating shuffled context loops a freshly re-derived order each pass,
@@ -1042,21 +1065,6 @@ mod tests {
             vec!["t3", "t4", "t5"],
             "source order resumes from the current track"
         );
-    }
-
-    #[test]
-    fn test_set_shuffle_on_is_deterministic_for_a_seed() {
-        let order = |seed| {
-            let mut q = queue();
-            q.play_release(
-                rel_src("r1"),
-                rel(&["t1", "t2", "t3", "t4", "t5"]),
-                ContextStart::Index(0),
-            );
-            q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), seed);
-            q.context_order()
-        };
-        assert_eq!(order(42), order(42), "same seed yields the same order");
     }
 
     // -- persistence round-trips -----------------------------------------------

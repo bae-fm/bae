@@ -674,13 +674,21 @@ mod tests {
         );
     }
 
+    /// Neither shape of "no usable probe" — the prober ran and found nothing
+    /// (`Ok(None)`, a file that isn't audio) nor the probe task itself failed
+    /// (`Err`, a panic) — resolves to a probe; both fall through to the same
+    /// `None` rather than a caller mistaking either for a usable format and
+    /// driving a decoder with defaults.
     #[tokio::test]
-    async fn preview_probe_join_error_does_not_use_format_defaults() {
-        let result = tokio::spawn(async { panic!("preview probe panic") })
+    async fn resolve_preview_probe_rejects_absent_or_failed_probe() {
+        let unprobeable: Result<Option<crate::audio_codec::ProbeResult>, tokio::task::JoinError> =
+            Ok(None);
+        assert!(resolve_preview_probe("path", unprobeable).is_none());
+
+        let join_failed = tokio::spawn(async { panic!("preview probe panic") })
             .await
             .map(|()| Option::<crate::audio_codec::ProbeResult>::None);
-
-        assert!(resolve_preview_probe("path", result).is_none());
+        assert!(resolve_preview_probe("path", join_failed).is_none());
     }
 
     fn probe(sample_rate: u32, channels: u32) -> crate::audio_codec::ProbeResult {
@@ -714,14 +722,6 @@ mod tests {
     #[test]
     fn resolve_preview_probe_rejects_zero_channels() {
         let result: Result<_, tokio::task::JoinError> = Ok(Some(probe(44100, 0)));
-        assert!(resolve_preview_probe("path", result).is_none());
-    }
-
-    /// A file the prober couldn't read at all (`Ok(None)`) yields no probe.
-    #[test]
-    fn resolve_preview_probe_rejects_unprobeable_file() {
-        let result: Result<Option<crate::audio_codec::ProbeResult>, tokio::task::JoinError> =
-            Ok(None);
         assert!(resolve_preview_probe("path", result).is_none());
     }
 }
