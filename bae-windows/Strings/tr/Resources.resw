@@ -3,10 +3,10 @@
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>ara</value></data>
-  <data name="LibrariesButton.Content" xml:space="preserve"><value>arşivler</value></data>
+  <data name="LibrariesButton.Content" xml:space="preserve"><value>kitaplıklar</value></data>
   <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>kitaplığı karıştır</value></data>
   <data name="CloseLibraryButton.Content" xml:space="preserve"><value>kapat</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>close Kitaplık</value></data>
+  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>kitaplığı kapat</value></data>
   <data name="ImportButton.Content" xml:space="preserve"><value>içe aktar</value></data>
   <data name="StorageButton.Content" xml:space="preserve"><value>Depolama</value></data>
   <data name="SettingsButton.Content" xml:space="preserve"><value>ayarlar</value></data>
@@ -18,14 +18,14 @@
   <data name="action.play" xml:space="preserve"><value>Çal</value></data>
   <data name="action.save" xml:space="preserve"><value>Kaydet</value></data>
   <data name="action.search" xml:space="preserve"><value>ara</value></data>
-  <data name="album.delete.body" xml:space="preserve"><value>This removes the release from the Kitaplık.</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>Yayını kitaplıktan kaldırır.</value></data>
   <data name="album.delete.failed" xml:space="preserve"><value>silinemedi</value></data>
   <data name="album.delete.title" xml:space="preserve"><value>yayın silinsin mi?</value></data>
   <data name="album.edit.label" xml:space="preserve"><value>düzenle</value></data>
-  <data name="album.edit.load_failed" xml:space="preserve"><value>couldn't load the Üst veri editor</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>üst veri düzenleyicisi yüklenemedi</value></data>
   <data name="album.edit.reset" xml:space="preserve"><value>Kaynağa Sıfırla</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>kaynağa sıfırlanamadı</value></data>
-  <data name="album.edit.title" xml:space="preserve"><value>edit Üst veri</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>üst veriyi düzenle</value></data>
   <data name="album.gallery" xml:space="preserve"><value>Galeri</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>bu albüm açılamadı</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>yeniden tanımla</value></data>
@@ -40,7 +40,7 @@
   <data name="cloud.signin.failed" xml:space="preserve"><value>bulut oturumu açılamadı</value></data>
   <data name="cloud.signin.in_progress" xml:space="preserve"><value>{provider} oturumu açılıyor…</value></data>
   <data name="cloud.signin.not_configured" xml:space="preserve"><value>bu derlemede bulut oturumu yapılandırılmamış (oauth-creds.json yok)</value></data>
-  <data name="cloud.unsupported_provider" xml:space="preserve"><value>this build doesn't support {provider} Eşzamanlama</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>bu derleme {provider} eşzamanlamasını desteklemiyor</value></data>
   <data name="cover.change_title" xml:space="preserve"><value>kapağı değiştir</value></data>
   <data name="cover.fetch_failed" xml:space="preserve"><value>uzak kapaklar alınamadı</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>kapaklar alınıyor…</value></data>
@@ -64,13 +64,13 @@
   <data name="identify.identifying" xml:space="preserve"><value>tanımlanıyor…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>yalnızca elle arama</value></data>
   <data name="identify.not_found" xml:space="preserve"><value>bulunamadı</value></data>
-  <data name="import.already_in_library" xml:space="preserve"><value>this release is already in your Kitaplık</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>bu yayın kitaplığınızda zaten var</value></data>
   <data name="import.back_to_search" xml:space="preserve"><value>Aramaya Dön</value></data>
-  <data name="import.choose_folder" xml:space="preserve"><value>choose folder &amp;amp; scan</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>klasör seç ve tara</value></data>
   <data name="import.complete" xml:space="preserve"><value>içe aktarıldı</value></data>
   <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# parça} other {# parça}}</value></data>
   <data name="import.confirm_title" xml:space="preserve"><value>içe aktarmayı onayla</value></data>
-  <data name="import.drop_caption" xml:space="preserve"><value>scan &amp;amp; import</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>tara ve içe aktar</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>içe aktarmak için klasör bırakın</value></data>
   <data name="import.drop_read_failed" xml:space="preserve"><value>bırakılan öğe okunamadı</value></data>
   <data name="import.error_title" xml:space="preserve"><value>içe aktarma hatası</value></data>
@@ -86,11 +86,11 @@
   <data name="import.storage.keep_local" xml:space="preserve"><value>Yerel kopyayı tut</value></data>
   <data name="import.storage.managed" xml:space="preserve"><value>Yönetilen</value></data>
   <data name="import.title" xml:space="preserve"><value>içe aktar</value></data>
-  <data name="import.view_in_library" xml:space="preserve"><value>view in Kitaplık</value></data>
-  <data name="join.title" xml:space="preserve"><value>arşive katıl</value></data>
-  <data name="join.intro" xml:space="preserve"><value>bu cihazı başka bir cihazda zaten sahip olduğunuz bir arşive ekleyin.</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>kitaplıkta görüntüle</value></data>
+  <data name="join.title" xml:space="preserve"><value>kitaplığa katıl</value></data>
+  <data name="join.intro" xml:space="preserve"><value>bu cihazı başka bir cihazda zaten sahip olduğunuz bir kitaplığa ekleyin.</value></data>
   <data name="join.this_device_code" xml:space="preserve"><value>bu cihazın kodu</value></data>
-  <data name="join.show_to_member" xml:space="preserve"><value>arşivinizdeki bir cihazda ayarlar → cihazlar → cihaz ekle'yi açın ve bunu tarayın veya yapıştırın.</value></data>
+  <data name="join.show_to_member" xml:space="preserve"><value>kitaplığınızdaki bir cihazda ayarlar → cihazlar → cihaz ekle'yi açın ve bunu tarayın veya yapıştırın.</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>bu cihaz: {fingerprint}</value></data>
   <data name="join.generate_failed" xml:space="preserve"><value>bu cihazın kodu oluşturulamadı</value></data>
   <data name="join.invite_label" xml:space="preserve"><value>davet kodu</value></data>
@@ -99,20 +99,20 @@
   <data name="join.invalid_invite" xml:space="preserve"><value>geçersiz davet kodu</value></data>
   <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · sahip {fingerprint}</value></data>
   <data name="join.confirm" xml:space="preserve"><value>katıl</value></data>
-  <data name="join.in_progress" xml:space="preserve"><value>{name} arşivine katılıyor…</value></data>
-  <data name="join.failed" xml:space="preserve"><value>arşive katılınamadı</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>{name} kitaplığına katılınıyor…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>kitaplığa katılınamadı</value></data>
   <data name="libraries.active" xml:space="preserve"><value>{name}  ·  etkin</value></data>
-  <data name="libraries.new" xml:space="preserve"><value>new Kitaplık</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>yeni kitaplık</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>yeniden adlandır</value></data>
-  <data name="libraries.title" xml:space="preserve"><value>arşivler</value></data>
-  <data name="library.empty" xml:space="preserve"><value>Kitaplık is empty</value></data>
-  <data name="library.load_failed" xml:space="preserve"><value>couldn't load the Kitaplık</value></data>
-  <data name="library.locked" xml:space="preserve"><value>Kitaplık is locked</value></data>
-  <data name="library.open_failed" xml:space="preserve"><value>couldn't open the Kitaplık</value></data>
-  <data name="library.unlock.body" xml:space="preserve"><value>This Kitaplık is encrypted and its key isn't on this device. Enter the 64-character hex key to unlock it.</value></data>
+  <data name="libraries.title" xml:space="preserve"><value>kitaplıklar</value></data>
+  <data name="library.empty" xml:space="preserve"><value>kitaplık boş</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>kitaplık yüklenemedi</value></data>
+  <data name="library.locked" xml:space="preserve"><value>kitaplık kilitli</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>kitaplık açılamadı</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>Bu kitaplık şifreli ve anahtarı bu cihazda yok. Kilidini açmak için 64 karakterlik onaltılık anahtarı girin.</value></data>
   <data name="library.unlock.confirm" xml:space="preserve"><value>Kilidi aç</value></data>
   <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64 karakterlik onaltılık anahtar</value></data>
-  <data name="library.unlock.title" xml:space="preserve"><value>unlock Kitaplık</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>kitaplığın kilidini aç</value></data>
   <data name="menu.add_to_queue" xml:space="preserve"><value>Kuyruğa ekle</value></data>
   <data name="menu.change_cover" xml:space="preserve"><value>Kapağı değiştir…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>Sil…</value></data>
@@ -129,14 +129,14 @@
   <data name="members.load_failed" xml:space="preserve"><value>cihazlar yüklenemedi</value></data>
   <data name="members.add" xml:space="preserve"><value>cihaz ekle…</value></data>
   <data name="members.remove" xml:space="preserve"><value>kaldır</value></data>
-  <data name="members.remove_confirm" xml:space="preserve"><value>bu cihaz erişimi kaybedecek ve arşiv anahtarı döndürülecek. onaylamak için kaldır'a yeniden tıklayın.</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>bu cihaz erişimi kaybedecek ve kitaplık anahtarı döndürülecek. onaylamak için kaldır'a yeniden tıklayın.</value></data>
   <data name="members.approve.title" xml:space="preserve"><value>cihaz ekle</value></data>
-  <data name="members.approve.capture_hint" xml:space="preserve"><value>yeni cihazda arşive katıl'ı açıp kodunu gösterin. burada tarayın veya aşağıya yapıştırın.</value></data>
+  <data name="members.approve.capture_hint" xml:space="preserve"><value>yeni cihazda kitaplığa katıl'ı açıp kodunu gösterin. burada tarayın veya aşağıya yapıştırın.</value></data>
   <data name="members.approve.paste_placeholder" xml:space="preserve"><value>cihazın kodunu yapıştır</value></data>
   <data name="members.approve.decode" xml:space="preserve"><value>çöz</value></data>
   <data name="members.approve.invalid_request" xml:space="preserve"><value>geçersiz cihaz kodu</value></data>
   <data name="members.approve.confirm_title" xml:space="preserve"><value>bu cihaz onaylansın mı?</value></data>
-  <data name="members.approve.confirm_hint" xml:space="preserve"><value>arşivinize eklenecek ve eşzamanlayabilecek. ona girmek için bir kod alacaksınız.</value></data>
+  <data name="members.approve.confirm_hint" xml:space="preserve"><value>kitaplığınıza eklenecek ve eşzamanlayabilecek. ona girmek için bir kod alacaksınız.</value></data>
   <data name="members.approve.confirm" xml:space="preserve"><value>onayla</value></data>
   <data name="members.approve.in_progress" xml:space="preserve"><value>cihaz onaylanıyor…</value></data>
   <data name="members.approve.failed" xml:space="preserve"><value>bu cihaz onaylanamadı</value></data>
@@ -160,10 +160,10 @@
   <data name="restore.code_placeholder" xml:space="preserve"><value>geri yükleme kodu</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>geri yükle</value></data>
   <data name="restore.failed" xml:space="preserve"><value>geri yükleme başarısız</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloud Depolama</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>Şifreleme key (hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>Kitaplık id</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>Kitaplık name (optional)</value></data>
+  <data name="restore.field.cloud_storage" xml:space="preserve"><value>bulut depolama</value></data>
+  <data name="restore.field.encryption_key" xml:space="preserve"><value>şifreleme anahtarı (onaltılık)</value></data>
+  <data name="restore.field.library_id" xml:space="preserve"><value>kitaplık kimliği</value></data>
+  <data name="restore.field.library_name" xml:space="preserve"><value>kitaplık adı (isteğe bağlı)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>buluttan geri yükle</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>buluttan geri yükle</value></data>
   <data name="restore.from_code" xml:space="preserve"><value>koddan geri yükle</value></data>
@@ -200,9 +200,9 @@
   <data name="settings.updates.ready" xml:space="preserve"><value>sürüm {version} hazır — güncellemek için yeniden başlat</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>Şimdi yeniden başlat</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>güncellemeler denetlenemedi</value></data>
-  <data name="settings.lock_library" xml:space="preserve"><value>lock Kitaplık</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>kitaplığı kilitle</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>kurtarma</value></data>
-  <data name="settings.recovery.intro" xml:space="preserve"><value>onaylamak için başka cihazınız olmadığında kurtarma kodunuz bu arşivi yeni bir cihazda geri yükler. ona sahip olan herkes tam erişim sağlar — gizli tutun.</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>onaylamak için başka cihazınız olmadığında kurtarma kodunuz bu kitaplığı yeni bir cihazda geri yükler. ona sahip olan herkes tam erişim sağlar — gizli tutun.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>kurtarma kodu</value></data>
   <data name="settings.recovery.show" xml:space="preserve"><value>kurtarma kodunu göster…</value></data>
   <data name="settings.recovery.unavailable" xml:space="preserve"><value>(kullanılamıyor — eşzamanlama bağlı mı?)</value></data>
@@ -213,7 +213,7 @@
   <data name="settings.storage.opaque" xml:space="preserve"><value>opak — uçtan uca şifreli</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>bağlantıyı kes</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} onaylamak için bağlantıyı kes'e yeniden tıklayın.</value></data>
-  <data name="settings.sync.now" xml:space="preserve"><value>Eşzamanlama now</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>şimdi eşzamanla</value></data>
   <data name="settings.title" xml:space="preserve"><value>ayarlar</value></data>
   <data name="signal.exclude" xml:space="preserve"><value>sinyali hariç tut</value></data>
   <data name="signal.include" xml:space="preserve"><value>sinyali dahil et</value></data>
@@ -230,33 +230,33 @@
   <data name="sort.name" xml:space="preserve"><value>ad</value></data>
   <data name="sort.title" xml:space="preserve"><value>başlık</value></data>
   <data name="sort.year" xml:space="preserve"><value>yıl</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Move into Kitaplık</value></data>
+  <data name="storage.action.manage" xml:space="preserve"><value>Kitaplığa taşı</value></data>
   <data name="storage.action.pin" xml:space="preserve"><value>Çevrimdışı için sabitle</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Move out of Kitaplık…</value></data>
+  <data name="storage.action.unmanage" xml:space="preserve"><value>Kitaplıktan taşı…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>Yerel kopyayı kaldır</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# dosya} other {# dosya}}</value></data>
-  <data name="storage.load_failed" xml:space="preserve"><value>couldn't load Depolama</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>depolama yüklenemedi</value></data>
   <data name="storage.pinned" xml:space="preserve"><value>Sabitlendi</value></data>
-  <data name="storage.read_failed" xml:space="preserve"><value>couldn't read Depolama</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>depolama okunamadı</value></data>
   <data name="storage.state.managed" xml:space="preserve"><value>Yönetilen</value></data>
   <data name="storage.state.unmanaged" xml:space="preserve"><value>Yönetilmeyen</value></data>
   <data name="storage.title" xml:space="preserve"><value>Depolama</value></data>
-  <data name="sync.error_title" xml:space="preserve"><value>Eşzamanlama error</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>eşzamanlama hatası</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Yeniden bağlan</value></data>
-  <data name="sync.synced" xml:space="preserve"><value>Eşzamanlamaed {time}</value></data>
-  <data name="sync.syncing" xml:space="preserve"><value>Eşzamanlamaing…</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>{time} eşzamanlandı</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>eşzamanlanıyor…</value></data>
   <data name="track.export.original" xml:space="preserve"><value>Özgün</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Dışa aktarım hazırlanamadı.</value></data>
-  <data name="welcome.choose_library" xml:space="preserve"><value>choose a Kitaplık</value></data>
-  <data name="welcome.join_library" xml:space="preserve"><value>arşive katıl</value></data>
-  <data name="welcome.create_library" xml:space="preserve"><value>create Kitaplık</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>no Kitaplık yet</value></data>
-  <data name="welcome.your_libraries" xml:space="preserve"><value>arşivleriniz</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>bir kitaplık seç</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>kitaplığa katıl</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>kitaplık oluştur</value></data>
+  <data name="welcome.no_library" xml:space="preserve"><value>henüz kitaplık yok</value></data>
+  <data name="welcome.your_libraries" xml:space="preserve"><value>kitaplıklarınız</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>bağlandı</value></data>
   <data name="settings.discogs.unvalidated" xml:space="preserve"><value>kaydedildi — henüz doğrulanamadı (çevrimdışı). yeniden denenecek.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>başlatılıyor</value></data>
-  <data name="settings.sync.not_connected" xml:space="preserve"><value>Eşzamanlama: not connected</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>Eşzamanlama: bağlı değil</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>hazır</value></data>
   <data name="settings.sync.status" xml:space="preserve"><value>Eşzamanlama: {provider}{account} — {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>indirmeler</value></data>
@@ -379,8 +379,8 @@
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} okunamadı: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>Dosya Gezgini'nde göster</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>kimliği kopyala</value></data>
-  <data name="libraries.id_copied" xml:space="preserve"><value>arşiv kimliği kopyalandı</value></data>
-  <data name="libraries.reveal_failed" xml:space="preserve"><value>arşiv klasörü açılamadı</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>kitaplık kimliği kopyalandı</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>kitaplık klasörü açılamadı</value></data>
   <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>Açılışta geri yükle</value></data>
   <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>Çıkarken geçerli parçayı, konumu, sırayı ve ses düzeyini kaydeder; sonraki açılışta geri yükler.</value></data>
   <data name="gallery.counter" xml:space="preserve"><value>{index} / {count}</value></data>
@@ -401,10 +401,10 @@
   <data name="storage.footer.total" xml:space="preserve"><value>Toplam: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Kaldır</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>Bu kitaplığı ve indirilen dosyalarını bu bilgisayardan kaldırır. Buluttaki kitaplığınız olduğu gibi kalır — daha sonra buradan geri yükleyebilirsiniz.</value></data>
-  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Bu kitaplık eşitlenmemiş. Kaldırmak, kataloğunu — albümleri, meta veri düzenlemelerini ve çalma geçmişini — kalıcı olarak siler. Klasörlerinizdeki ses dosyaları silinmez.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Bu kitaplık eşzamanlanmamış. Kaldırmak, kataloğunu — albümleri, üst veri düzenlemelerini ve çalma geçmişini — kalıcı olarak siler. Klasörlerinizdeki ses dosyaları silinmez.</value></data>
   <data name="settings.remove.button" xml:space="preserve"><value>bu kitaplığı bu bilgisayardan kaldır</value></data>
   <data name="settings.remove.confirm_synced" xml:space="preserve"><value>Buluttaki kitaplığınız olduğu gibi kalır — daha sonra karşılama ekranından geri yükleyebilirsiniz.</value></data>
-  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Bu kitaplık hiç eşitlenmedi. Kataloğu kalıcı olarak silinecek; klasörlerinizdeki ses dosyaları silinmez.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>Bu kitaplık hiç eşzamanlanmadı. Kataloğu kalıcı olarak silinecek; klasörlerinizdeki ses dosyaları silinmez.</value></data>
   <data name="settings.remove.confirm_pending" xml:space="preserve"><value>Bazı değişikliklerin yüklenmesi tamamlanmadı ve kaybolacak.</value></data>
   <data name="settings.remove.confirm_again" xml:space="preserve"><value>Onaylamak için düğmeye tekrar tıklayın.</value></data>
   <data name="settings.remove.failed" xml:space="preserve"><value>Kitaplık kaldırılamadı: {error}</value></data>

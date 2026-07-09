@@ -6,7 +6,7 @@
   <data name="LibrariesButton.Content" xml:space="preserve"><value>bibliotheken</value></data>
   <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>bibliotheek shufflen</value></data>
   <data name="CloseLibraryButton.Content" xml:space="preserve"><value>sluiten</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>close Bibliotheek</value></data>
+  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>bibliotheek sluiten</value></data>
   <data name="ImportButton.Content" xml:space="preserve"><value>importeren</value></data>
   <data name="StorageButton.Content" xml:space="preserve"><value>Opslag</value></data>
   <data name="SettingsButton.Content" xml:space="preserve"><value>instellingen</value></data>
@@ -18,14 +18,14 @@
   <data name="action.play" xml:space="preserve"><value>Afspelen</value></data>
   <data name="action.save" xml:space="preserve"><value>Opslaan</value></data>
   <data name="action.search" xml:space="preserve"><value>zoeken</value></data>
-  <data name="album.delete.body" xml:space="preserve"><value>This removes the release from the Bibliotheek.</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>Dit verwijdert de release uit de bibliotheek.</value></data>
   <data name="album.delete.failed" xml:space="preserve"><value>kan niet verwijderen</value></data>
   <data name="album.delete.title" xml:space="preserve"><value>release verwijderen?</value></data>
   <data name="album.edit.label" xml:space="preserve"><value>bewerken</value></data>
-  <data name="album.edit.load_failed" xml:space="preserve"><value>couldn't load the Metadata editor</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>kan de metadata-editor niet laden</value></data>
   <data name="album.edit.reset" xml:space="preserve"><value>Terugzetten naar bron</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>kan niet terugzetten naar bron</value></data>
-  <data name="album.edit.title" xml:space="preserve"><value>edit Metadata</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>metadata bewerken</value></data>
   <data name="album.gallery" xml:space="preserve"><value>Galerij</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>kan dit album niet openen</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>opnieuw identificeren</value></data>
@@ -40,7 +40,7 @@
   <data name="cloud.signin.failed" xml:space="preserve"><value>cloudaanmelding mislukt</value></data>
   <data name="cloud.signin.in_progress" xml:space="preserve"><value>aanmelden bij {provider}…</value></data>
   <data name="cloud.signin.not_configured" xml:space="preserve"><value>cloudaanmelding is niet geconfigureerd in deze build (geen oauth-creds.json)</value></data>
-  <data name="cloud.unsupported_provider" xml:space="preserve"><value>this build doesn't support {provider} Synchronisatie</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>deze build ondersteunt geen {provider}-synchronisatie</value></data>
   <data name="cover.change_title" xml:space="preserve"><value>hoes wijzigen</value></data>
   <data name="cover.fetch_failed" xml:space="preserve"><value>kan externe hoezen niet ophalen</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>hoezen ophalen…</value></data>
@@ -64,13 +64,13 @@
   <data name="identify.identifying" xml:space="preserve"><value>identificeren…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>alleen handmatig zoeken</value></data>
   <data name="identify.not_found" xml:space="preserve"><value>niet gevonden</value></data>
-  <data name="import.already_in_library" xml:space="preserve"><value>this release is already in your Bibliotheek</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>deze release staat al in je bibliotheek</value></data>
   <data name="import.back_to_search" xml:space="preserve"><value>Terug naar zoeken</value></data>
-  <data name="import.choose_folder" xml:space="preserve"><value>choose folder &amp;amp; scan</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>map kiezen en scannen</value></data>
   <data name="import.complete" xml:space="preserve"><value>geïmporteerd</value></data>
   <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# nummer} other {# nummers}}</value></data>
   <data name="import.confirm_title" xml:space="preserve"><value>import bevestigen</value></data>
-  <data name="import.drop_caption" xml:space="preserve"><value>scan &amp;amp; import</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>scannen en importeren</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>sleep een map om te importeren</value></data>
   <data name="import.drop_read_failed" xml:space="preserve"><value>kan het gesleepte item niet lezen</value></data>
   <data name="import.error_title" xml:space="preserve"><value>importfout</value></data>
@@ -86,7 +86,7 @@
   <data name="import.storage.keep_local" xml:space="preserve"><value>Lokale kopie behouden</value></data>
   <data name="import.storage.managed" xml:space="preserve"><value>Beheerd</value></data>
   <data name="import.title" xml:space="preserve"><value>importeren</value></data>
-  <data name="import.view_in_library" xml:space="preserve"><value>view in Bibliotheek</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>weergeven in bibliotheek</value></data>
   <data name="join.title" xml:space="preserve"><value>aan een bibliotheek deelnemen</value></data>
   <data name="join.intro" xml:space="preserve"><value>voeg dit apparaat toe aan een bibliotheek die je al op een ander apparaat hebt.</value></data>
   <data name="join.this_device_code" xml:space="preserve"><value>code van dit apparaat</value></data>
@@ -102,17 +102,17 @@
   <data name="join.in_progress" xml:space="preserve"><value>deelnemen aan {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>kan niet deelnemen aan de bibliotheek</value></data>
   <data name="libraries.active" xml:space="preserve"><value>{name}  ·  actief</value></data>
-  <data name="libraries.new" xml:space="preserve"><value>new Bibliotheek</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>nieuwe bibliotheek</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>naam wijzigen</value></data>
   <data name="libraries.title" xml:space="preserve"><value>bibliotheken</value></data>
-  <data name="library.empty" xml:space="preserve"><value>Bibliotheek is empty</value></data>
-  <data name="library.load_failed" xml:space="preserve"><value>couldn't load the Bibliotheek</value></data>
-  <data name="library.locked" xml:space="preserve"><value>Bibliotheek is locked</value></data>
-  <data name="library.open_failed" xml:space="preserve"><value>couldn't open the Bibliotheek</value></data>
-  <data name="library.unlock.body" xml:space="preserve"><value>This Bibliotheek is encrypted and its key isn't on this device. Enter the 64-character hex key to unlock it.</value></data>
+  <data name="library.empty" xml:space="preserve"><value>bibliotheek is leeg</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>kan de bibliotheek niet laden</value></data>
+  <data name="library.locked" xml:space="preserve"><value>bibliotheek is vergrendeld</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>kan de bibliotheek niet openen</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>Deze bibliotheek is versleuteld en de sleutel staat niet op dit apparaat. Voer de hexadecimale sleutel van 64 tekens in om te ontgrendelen.</value></data>
   <data name="library.unlock.confirm" xml:space="preserve"><value>Ontgrendelen</value></data>
   <data name="library.unlock.key_placeholder" xml:space="preserve"><value>Hex-sleutel van 64 tekens</value></data>
-  <data name="library.unlock.title" xml:space="preserve"><value>unlock Bibliotheek</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>bibliotheek ontgrendelen</value></data>
   <data name="menu.add_to_queue" xml:space="preserve"><value>Toevoegen aan wachtrij</value></data>
   <data name="menu.change_cover" xml:space="preserve"><value>Hoes wijzigen…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>Verwijderen…</value></data>
@@ -160,10 +160,10 @@
   <data name="restore.code_placeholder" xml:space="preserve"><value>herstelcode</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>herstellen</value></data>
   <data name="restore.failed" xml:space="preserve"><value>herstellen mislukt</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloud Opslag</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>Versleuteling key (hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>Bibliotheek id</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>Bibliotheek name (optional)</value></data>
+  <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloudopslag</value></data>
+  <data name="restore.field.encryption_key" xml:space="preserve"><value>versleutelingssleutel (hexadecimaal)</value></data>
+  <data name="restore.field.library_id" xml:space="preserve"><value>bibliotheek-ID</value></data>
+  <data name="restore.field.library_name" xml:space="preserve"><value>bibliotheeknaam (optioneel)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>herstellen vanuit cloud</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>herstellen vanuit cloud</value></data>
   <data name="restore.from_code" xml:space="preserve"><value>herstellen vanaf code</value></data>
@@ -200,7 +200,7 @@
   <data name="settings.updates.ready" xml:space="preserve"><value>versie {version} is klaar — herstart om bij te werken</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>Nu herstarten</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>kon niet op updates controleren</value></data>
-  <data name="settings.lock_library" xml:space="preserve"><value>lock Bibliotheek</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>bibliotheek vergrendelen</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>herstel</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>je herstelcode herstelt deze bibliotheek op een nieuw apparaat wanneer je geen ander apparaat beschikbaar hebt om dit goed te keuren. iedereen die deze heeft, heeft volledige toegang — houd deze geheim.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>herstelcode</value></data>
@@ -213,7 +213,7 @@
   <data name="settings.storage.opaque" xml:space="preserve"><value>ondoorzichtig — end-to-end versleuteld</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>verbinding verbreken</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} klik opnieuw op verbinding verbreken om te bevestigen.</value></data>
-  <data name="settings.sync.now" xml:space="preserve"><value>Synchronisatie now</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>nu synchroniseren</value></data>
   <data name="settings.title" xml:space="preserve"><value>instellingen</value></data>
   <data name="signal.exclude" xml:space="preserve"><value>signaal uitsluiten</value></data>
   <data name="signal.include" xml:space="preserve"><value>signaal opnemen</value></data>
@@ -230,33 +230,33 @@
   <data name="sort.name" xml:space="preserve"><value>naam</value></data>
   <data name="sort.title" xml:space="preserve"><value>titel</value></data>
   <data name="sort.year" xml:space="preserve"><value>jaar</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Move into Bibliotheek</value></data>
+  <data name="storage.action.manage" xml:space="preserve"><value>Naar bibliotheek verplaatsen</value></data>
   <data name="storage.action.pin" xml:space="preserve"><value>Vastzetten voor offline</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Move out of Bibliotheek…</value></data>
+  <data name="storage.action.unmanage" xml:space="preserve"><value>Uit bibliotheek verplaatsen…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>Lokale kopie verwijderen</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# bestand} other {# bestanden}}</value></data>
-  <data name="storage.load_failed" xml:space="preserve"><value>couldn't load Opslag</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>kan opslag niet laden</value></data>
   <data name="storage.pinned" xml:space="preserve"><value>Vastgezet</value></data>
-  <data name="storage.read_failed" xml:space="preserve"><value>couldn't read Opslag</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>kan opslag niet lezen</value></data>
   <data name="storage.state.managed" xml:space="preserve"><value>Beheerd</value></data>
   <data name="storage.state.unmanaged" xml:space="preserve"><value>Onbeheerd</value></data>
   <data name="storage.title" xml:space="preserve"><value>Opslag</value></data>
-  <data name="sync.error_title" xml:space="preserve"><value>Synchronisatie error</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>synchronisatiefout</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Opnieuw verbinden</value></data>
-  <data name="sync.synced" xml:space="preserve"><value>Synchronisatieed {time}</value></data>
-  <data name="sync.syncing" xml:space="preserve"><value>Synchronisatieing…</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>gesynchroniseerd {time}</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>synchroniseren…</value></data>
   <data name="track.export.original" xml:space="preserve"><value>Origineel</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Kan de export niet voorbereiden.</value></data>
-  <data name="welcome.choose_library" xml:space="preserve"><value>choose a Bibliotheek</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>kies een bibliotheek</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>aan een bibliotheek deelnemen</value></data>
-  <data name="welcome.create_library" xml:space="preserve"><value>create Bibliotheek</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>no Bibliotheek yet</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>bibliotheek maken</value></data>
+  <data name="welcome.no_library" xml:space="preserve"><value>nog geen bibliotheek</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>je bibliotheken</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>verbonden</value></data>
   <data name="settings.discogs.unvalidated" xml:space="preserve"><value>bewaard — kon nog niet valideren (offline). probeert opnieuw.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>initialiseren</value></data>
-  <data name="settings.sync.not_connected" xml:space="preserve"><value>Synchronisatie: not connected</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>Synchronisatie: niet verbonden</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>gereed</value></data>
   <data name="settings.sync.status" xml:space="preserve"><value>Synchronisatie: {provider}{account} — {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>downloads</value></data>

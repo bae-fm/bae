@@ -6,7 +6,7 @@
   <data name="LibrariesButton.Content" xml:space="preserve"><value>thư viện</value></data>
   <data name="ShuffleLibraryButton.Content" xml:space="preserve"><value>phát ngẫu nhiên thư viện</value></data>
   <data name="CloseLibraryButton.Content" xml:space="preserve"><value>đóng</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>close Thư viện</value></data>
+  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>đóng thư viện</value></data>
   <data name="ImportButton.Content" xml:space="preserve"><value>nhập</value></data>
   <data name="StorageButton.Content" xml:space="preserve"><value>Lưu trữ</value></data>
   <data name="SettingsButton.Content" xml:space="preserve"><value>cài đặt</value></data>
@@ -18,14 +18,14 @@
   <data name="action.play" xml:space="preserve"><value>Phát</value></data>
   <data name="action.save" xml:space="preserve"><value>Lưu</value></data>
   <data name="action.search" xml:space="preserve"><value>tìm kiếm</value></data>
-  <data name="album.delete.body" xml:space="preserve"><value>This removes the release from the Thư viện.</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>Thao tác này xóa bản phát hành khỏi thư viện.</value></data>
   <data name="album.delete.failed" xml:space="preserve"><value>không thể xóa</value></data>
   <data name="album.delete.title" xml:space="preserve"><value>xóa bản phát hành?</value></data>
   <data name="album.edit.label" xml:space="preserve"><value>sửa</value></data>
-  <data name="album.edit.load_failed" xml:space="preserve"><value>couldn't load the Siêu dữ liệu editor</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>không thể tải trình sửa siêu dữ liệu</value></data>
   <data name="album.edit.reset" xml:space="preserve"><value>Đặt lại về nguồn</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>không thể đặt lại về nguồn</value></data>
-  <data name="album.edit.title" xml:space="preserve"><value>edit Siêu dữ liệu</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>sửa siêu dữ liệu</value></data>
   <data name="album.gallery" xml:space="preserve"><value>Thư viện ảnh</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>không thể mở album này</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>nhận dạng lại</value></data>
@@ -40,7 +40,7 @@
   <data name="cloud.signin.failed" xml:space="preserve"><value>đăng nhập đám mây thất bại</value></data>
   <data name="cloud.signin.in_progress" xml:space="preserve"><value>đang đăng nhập vào {provider}…</value></data>
   <data name="cloud.signin.not_configured" xml:space="preserve"><value>đăng nhập đám mây chưa được cấu hình trong bản dựng này (không có oauth-creds.json)</value></data>
-  <data name="cloud.unsupported_provider" xml:space="preserve"><value>this build doesn't support {provider} Đồng bộ</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>bản dựng này không hỗ trợ đồng bộ {provider}</value></data>
   <data name="cover.change_title" xml:space="preserve"><value>đổi bìa</value></data>
   <data name="cover.fetch_failed" xml:space="preserve"><value>không thể lấy bìa từ xa</value></data>
   <data name="cover.fetching" xml:space="preserve"><value>đang lấy bìa…</value></data>
@@ -64,13 +64,13 @@
   <data name="identify.identifying" xml:space="preserve"><value>đang nhận dạng…</value></data>
   <data name="identify.manual" xml:space="preserve"><value>chỉ tìm thủ công</value></data>
   <data name="identify.not_found" xml:space="preserve"><value>không tìm thấy</value></data>
-  <data name="import.already_in_library" xml:space="preserve"><value>this release is already in your Thư viện</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>bản phát hành này đã có trong thư viện của bạn</value></data>
   <data name="import.back_to_search" xml:space="preserve"><value>Quay lại tìm kiếm</value></data>
-  <data name="import.choose_folder" xml:space="preserve"><value>choose folder &amp;amp; scan</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>chọn thư mục và quét</value></data>
   <data name="import.complete" xml:space="preserve"><value>đã nhập</value></data>
   <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# bản nhạc} other {# bản nhạc}}</value></data>
   <data name="import.confirm_title" xml:space="preserve"><value>xác nhận nhập</value></data>
-  <data name="import.drop_caption" xml:space="preserve"><value>scan &amp;amp; import</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>quét và nhập</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>thả thư mục để nhập</value></data>
   <data name="import.drop_read_failed" xml:space="preserve"><value>không thể đọc mục đã thả</value></data>
   <data name="import.error_title" xml:space="preserve"><value>lỗi nhập</value></data>
@@ -86,7 +86,7 @@
   <data name="import.storage.keep_local" xml:space="preserve"><value>Giữ bản sao cục bộ</value></data>
   <data name="import.storage.managed" xml:space="preserve"><value>Được quản lý</value></data>
   <data name="import.title" xml:space="preserve"><value>nhập</value></data>
-  <data name="import.view_in_library" xml:space="preserve"><value>view in Thư viện</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>xem trong thư viện</value></data>
   <data name="join.title" xml:space="preserve"><value>tham gia thư viện</value></data>
   <data name="join.intro" xml:space="preserve"><value>thêm thiết bị này vào thư viện bạn đã có trên thiết bị khác.</value></data>
   <data name="join.this_device_code" xml:space="preserve"><value>mã của thiết bị này</value></data>
@@ -102,17 +102,17 @@
   <data name="join.in_progress" xml:space="preserve"><value>đang tham gia {name}…</value></data>
   <data name="join.failed" xml:space="preserve"><value>không thể tham gia thư viện</value></data>
   <data name="libraries.active" xml:space="preserve"><value>{name}  ·  đang hoạt động</value></data>
-  <data name="libraries.new" xml:space="preserve"><value>new Thư viện</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>thư viện mới</value></data>
   <data name="libraries.rename" xml:space="preserve"><value>đổi tên</value></data>
   <data name="libraries.title" xml:space="preserve"><value>thư viện</value></data>
-  <data name="library.empty" xml:space="preserve"><value>Thư viện is empty</value></data>
-  <data name="library.load_failed" xml:space="preserve"><value>couldn't load the Thư viện</value></data>
-  <data name="library.locked" xml:space="preserve"><value>Thư viện is locked</value></data>
-  <data name="library.open_failed" xml:space="preserve"><value>couldn't open the Thư viện</value></data>
-  <data name="library.unlock.body" xml:space="preserve"><value>This Thư viện is encrypted and its key isn't on this device. Enter the 64-character hex key to unlock it.</value></data>
+  <data name="library.empty" xml:space="preserve"><value>thư viện trống</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>không thể tải thư viện</value></data>
+  <data name="library.locked" xml:space="preserve"><value>thư viện đang khóa</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>không thể mở thư viện</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>Thư viện này được mã hóa và khóa của nó không có trên thiết bị này. Nhập khóa thập lục phân 64 ký tự để mở khóa.</value></data>
   <data name="library.unlock.confirm" xml:space="preserve"><value>Mở khóa</value></data>
   <data name="library.unlock.key_placeholder" xml:space="preserve"><value>Khóa hex 64 ký tự</value></data>
-  <data name="library.unlock.title" xml:space="preserve"><value>unlock Thư viện</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>mở khóa thư viện</value></data>
   <data name="menu.add_to_queue" xml:space="preserve"><value>Thêm vào hàng đợi</value></data>
   <data name="menu.change_cover" xml:space="preserve"><value>Đổi bìa…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>Xóa…</value></data>
@@ -160,10 +160,10 @@
   <data name="restore.code_placeholder" xml:space="preserve"><value>mã khôi phục</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>khôi phục</value></data>
   <data name="restore.failed" xml:space="preserve"><value>khôi phục thất bại</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloud Lưu trữ</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>Mã hóa key (hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>Thư viện id</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>Thư viện name (optional)</value></data>
+  <data name="restore.field.cloud_storage" xml:space="preserve"><value>lưu trữ đám mây</value></data>
+  <data name="restore.field.encryption_key" xml:space="preserve"><value>khóa mã hóa (thập lục phân)</value></data>
+  <data name="restore.field.library_id" xml:space="preserve"><value>ID thư viện</value></data>
+  <data name="restore.field.library_name" xml:space="preserve"><value>tên thư viện (tùy chọn)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>khôi phục từ đám mây</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>khôi phục từ đám mây</value></data>
   <data name="restore.from_code" xml:space="preserve"><value>khôi phục từ mã</value></data>
@@ -200,7 +200,7 @@
   <data name="settings.updates.ready" xml:space="preserve"><value>phiên bản {version} đã sẵn sàng — khởi động lại để cập nhật</value></data>
   <data name="settings.updates.restart" xml:space="preserve"><value>Khởi động lại ngay</value></data>
   <data name="settings.updates.failed" xml:space="preserve"><value>không thể kiểm tra bản cập nhật</value></data>
-  <data name="settings.lock_library" xml:space="preserve"><value>lock Thư viện</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>khóa thư viện</value></data>
   <data name="settings.recovery.title" xml:space="preserve"><value>khôi phục</value></data>
   <data name="settings.recovery.intro" xml:space="preserve"><value>mã khôi phục của bạn khôi phục thư viện này trên thiết bị mới khi bạn không có thiết bị nào khác để phê duyệt. bất kỳ ai có mã này đều có toàn quyền truy cập — hãy giữ bí mật.</value></data>
   <data name="settings.recovery.label" xml:space="preserve"><value>mã khôi phục</value></data>
@@ -213,7 +213,7 @@
   <data name="settings.storage.opaque" xml:space="preserve"><value>không thể duyệt — mã hóa đầu cuối</value></data>
   <data name="settings.sync.disconnect" xml:space="preserve"><value>ngắt kết nối</value></data>
   <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} bấm ngắt kết nối lần nữa để xác nhận.</value></data>
-  <data name="settings.sync.now" xml:space="preserve"><value>Đồng bộ now</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>đồng bộ ngay</value></data>
   <data name="settings.title" xml:space="preserve"><value>cài đặt</value></data>
   <data name="signal.exclude" xml:space="preserve"><value>loại trừ tín hiệu</value></data>
   <data name="signal.include" xml:space="preserve"><value>bao gồm tín hiệu</value></data>
@@ -230,33 +230,33 @@
   <data name="sort.name" xml:space="preserve"><value>tên</value></data>
   <data name="sort.title" xml:space="preserve"><value>tiêu đề</value></data>
   <data name="sort.year" xml:space="preserve"><value>năm</value></data>
-  <data name="storage.action.manage" xml:space="preserve"><value>Move into Thư viện</value></data>
+  <data name="storage.action.manage" xml:space="preserve"><value>Chuyển vào thư viện</value></data>
   <data name="storage.action.pin" xml:space="preserve"><value>Ghim để dùng ngoại tuyến</value></data>
-  <data name="storage.action.unmanage" xml:space="preserve"><value>Move out of Thư viện…</value></data>
+  <data name="storage.action.unmanage" xml:space="preserve"><value>Chuyển ra khỏi thư viện…</value></data>
   <data name="storage.action.unpin" xml:space="preserve"><value>Xóa bản sao cục bộ</value></data>
   <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# tệp} other {# tệp}}</value></data>
-  <data name="storage.load_failed" xml:space="preserve"><value>couldn't load Lưu trữ</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>không thể tải kho lưu trữ</value></data>
   <data name="storage.pinned" xml:space="preserve"><value>Đã ghim</value></data>
-  <data name="storage.read_failed" xml:space="preserve"><value>couldn't read Lưu trữ</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>không thể đọc kho lưu trữ</value></data>
   <data name="storage.state.managed" xml:space="preserve"><value>Được quản lý</value></data>
   <data name="storage.state.unmanaged" xml:space="preserve"><value>Không được quản lý</value></data>
   <data name="storage.title" xml:space="preserve"><value>Lưu trữ</value></data>
-  <data name="sync.error_title" xml:space="preserve"><value>Đồng bộ error</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>lỗi đồng bộ</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Kết nối lại</value></data>
-  <data name="sync.synced" xml:space="preserve"><value>Đồng bộed {time}</value></data>
-  <data name="sync.syncing" xml:space="preserve"><value>Đồng bộing…</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>đã đồng bộ {time}</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>đang đồng bộ…</value></data>
   <data name="track.export.original" xml:space="preserve"><value>Gốc</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Không thể chuẩn bị xuất.</value></data>
-  <data name="welcome.choose_library" xml:space="preserve"><value>choose a Thư viện</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>chọn một thư viện</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>tham gia thư viện</value></data>
-  <data name="welcome.create_library" xml:space="preserve"><value>create Thư viện</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>no Thư viện yet</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>tạo thư viện</value></data>
+  <data name="welcome.no_library" xml:space="preserve"><value>chưa có thư viện nào</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>thư viện của bạn</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>đã kết nối</value></data>
   <data name="settings.discogs.unvalidated" xml:space="preserve"><value>đã lưu — chưa thể xác thực (ngoại tuyến). sẽ thử lại.</value></data>
   <data name="settings.sync.initializing" xml:space="preserve"><value>đang khởi tạo</value></data>
-  <data name="settings.sync.not_connected" xml:space="preserve"><value>Đồng bộ: not connected</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>Đồng bộ: chưa kết nối</value></data>
   <data name="settings.sync.ready" xml:space="preserve"><value>sẵn sàng</value></data>
   <data name="settings.sync.status" xml:space="preserve"><value>Đồng bộ: {provider}{account} — {state}</value></data>
   <data name="download.title" xml:space="preserve"><value>tải xuống</value></data>

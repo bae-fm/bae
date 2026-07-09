@@ -5,11 +5,9 @@ glossary noun swapped in (sometimes with an English suffix glued onto a
 non-English stem, e.g. "Sincronizzazioneing", "Eşzamanlamaed", "Đồng bộed",
 "Importerened").
 
-Reads both xcstrings catalogs and the Android values-{it,tr,vi,nl}/strings.xml
-catalog (strict — these gate CI) plus the Windows
-Strings/{it,tr,vi,nl}/Resources.resw catalog (report-only: it carries
-pre-existing rot that hasn't been swept, so gating on it would fail CI on
-defects this script cannot yet fix).
+Reads both xcstrings catalogs, the Android values-{it,tr,vi,nl}/strings.xml
+catalog, and the Windows Strings/{it,tr,vi,nl}/Resources.resw catalog — all
+four gate CI.
 
 Detectors:
   - glued morphology: an English suffix (ing/ed/s) glued onto a non-English
@@ -37,8 +35,8 @@ translation defect regardless of what the other detectors say, so it is not
 allowlist-suppressible.
 
 Gates CI: exits non-zero if any strict-detector or placeholder-multiset hit in
-the two xcstrings catalogs or the Android catalog is not allowlisted
-(placeholder mismatches are never allowlist-suppressible).
+the two xcstrings catalogs, the Android catalog, or the Windows resw catalog is
+not allowlisted (placeholder mismatches are never allowlist-suppressible).
 """
 import json
 import pathlib
@@ -81,6 +79,140 @@ def strip_placeholders(s):
 
 def placeholder_multiset(s):
     return sorted(PLACEHOLDER_RE.findall(s))
+
+
+# resw embeds an entire ICU plural expression as one string value
+# (`{count, plural, one {# item} other {# items}}`); xcstrings and Android
+# instead split each plural form into its own leaf before it ever reaches
+# placeholder_multiset, so their values never contain a nested `{...}`. The
+# flat PLACEHOLDER_RE above can't parse that nesting — it matches from the
+# outer `{` to the first `}` it finds, which lands inside the first branch
+# and turns that branch's translated words into a bogus "placeholder" token,
+# so two branches with different words (e.g. "trovato" vs "trovati") read as
+# a placeholder mismatch even though every real placeholder matches. The
+# extractor below walks the string with balanced-brace matching, descends
+# into a `{ARG, plural, ...}` construct's branches, and collects the actual
+# placeholder tokens (`%...`, `{name}`, `#`) wherever they occur, including
+# nested inside a branch; the plural argument name and branch keywords
+# (one/other/...) are ICU control syntax, not placeholders.
+_RESW_SIMPLE_FMT_RE = re.compile(r"%\d+\$[a-zA-Z@]|%lld|%@|%[sd]")
+_RESW_PLURAL_HEADER_RE = re.compile(r"\s*\w+\s*,\s*plural\s*,\s*")
+
+
+def _find_balanced_close(s, open_idx):
+    depth = 0
+    for i in range(open_idx, len(s)):
+        if s[i] == "{":
+            depth += 1
+        elif s[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return i
+    raise ValueError(f"unbalanced braces in {s!r}")
+
+
+def _extract_resw_placeholders(s):
+    tokens = []
+    i, n = 0, len(s)
+    while i < n:
+        c = s[i]
+        if c == "#":
+            tokens.append("#")
+            i += 1
+            continue
+        m = _RESW_SIMPLE_FMT_RE.match(s, i)
+        if m:
+            tokens.append(m.group(0))
+            i = m.end()
+            continue
+        if c == "{":
+            close = _find_balanced_close(s, i)
+            inner = s[i + 1:close]
+            pm = _RESW_PLURAL_HEADER_RE.match(inner)
+            if pm:
+                tokens.extend(_extract_resw_plural_branches(inner[pm.end():]))
+            else:
+                tokens.append("{" + inner + "}")
+            i = close + 1
+            continue
+        i += 1
+    return tokens
+
+
+def _parse_resw_plural_branches(s):
+    """s is the branch-list portion of a plural construct, after the
+    argument name and "plural," keyword: a sequence of `label {branch}`
+    pairs (one/other/few/many/zero/=N). Returns {label: sorted placeholder
+    tokens found in that branch's own text}."""
+    branches = {}
+    i, n = 0, len(s)
+    while i < n:
+        while i < n and s[i].isspace():
+            i += 1
+        if i >= n:
+            break
+        j = i
+        while j < n and s[j] not in "{ \t\n":
+            j += 1
+        label = s[i:j]
+        k = j
+        while k < n and s[k].isspace():
+            k += 1
+        if k < n and s[k] == "{":
+            close = _find_balanced_close(s, k)
+            branches[label] = sorted(_extract_resw_placeholders(s[k + 1:close]))
+            i = close + 1
+        else:
+            i = j + 1 if j > i else i + 1
+    return branches
+
+
+def _extract_resw_plural_branches(s):
+    tokens = []
+    for branch_tokens in _parse_resw_plural_branches(s).values():
+        tokens.extend(branch_tokens)
+    return tokens
+
+
+def _parse_top_level_plural(value):
+    """If value is, in its entirety, a single `{ARG, plural, label {branch}
+    ...}` construct (every plural value in this catalog is — the whole
+    resource value, no surrounding text), return {label: sorted placeholder
+    tokens in that branch}. Otherwise return None so the caller falls back
+    to flat placeholder-multiset comparison."""
+    s = value.strip()
+    if not s.startswith("{"):
+        return None
+    close = _find_balanced_close(s, 0)
+    if close != len(s) - 1:
+        return None
+    inner = s[1:close]
+    pm = _RESW_PLURAL_HEADER_RE.match(inner)
+    if not pm:
+        return None
+    return _parse_resw_plural_branches(inner[pm.end():])
+
+
+def resw_placeholder_multiset(s):
+    return sorted(_extract_resw_placeholders(s))
+
+
+def resw_placeholders_match(en_value, target_value):
+    """Placeholder equality for a resw value, aware that CLDR plural-category
+    counts vary by locale (e.g. Vietnamese has only "other", no "one" —
+    dropping a category English uses is a correct translation, not a defect).
+    For a value that is a single top-level plural construct in both en and
+    the target: every category the target defines must exist in en with the
+    identical placeholder list (the target may omit an en category, never
+    invent one en lacks). Otherwise falls back to flat placeholder-multiset
+    equality, same as the other three catalogs."""
+    en_branches = _parse_top_level_plural(en_value)
+    target_branches = _parse_top_level_plural(target_value)
+    if en_branches is not None and target_branches is not None:
+        if not set(target_branches) <= set(en_branches):
+            return False
+        return all(target_branches[label] == en_branches[label] for label in target_branches)
+    return resw_placeholder_multiset(en_value) == resw_placeholder_multiset(target_value)
 
 
 def tokenize(s):
@@ -328,13 +460,15 @@ def scan_leaves(leaves):
     return detector_hits, band_hits
 
 
-def placeholder_mismatches(leaves):
+def placeholder_mismatches(leaves, multiset_fn=placeholder_multiset, equal_fn=None):
+    if equal_fn is None:
+        equal_fn = lambda en_value, target_value: multiset_fn(en_value) == multiset_fn(target_value)
     mismatches = []
     for key, form, en_value, values in leaves:
-        en_multiset = placeholder_multiset(en_value)
+        en_multiset = multiset_fn(en_value)
         for locale, target_value in values.items():
-            target_multiset = placeholder_multiset(target_value)
-            if target_multiset != en_multiset:
+            target_multiset = multiset_fn(target_value)
+            if not equal_fn(en_value, target_value):
                 mismatches.append({
                     "key": key, "form": form, "locale": locale,
                     "en": en_value, "value": target_value,
@@ -403,14 +537,25 @@ def main():
         if verbose:
             print_hits("Android strings.xml (report-only band)", band_hits, allowed)
 
-    # ── Report-only: Windows resw (rot confirmed, sweep not yet scheduled) ──
     windows_leaves_all = []
     for loc, target_path in WINDOWS_RESW.items():
         en_path = "bae-windows/Strings/en-US/Resources.resw"
         windows_leaves_all.extend(resw_leaves(en_path, target_path, loc))
     if windows_leaves_all:
         detector_hits, band_hits = scan_leaves(windows_leaves_all)
-        print_hits("Windows resw (report-only)", detector_hits, allowed)
+        unallowed = print_hits("Windows resw (strict)", detector_hits, allowed)
+        total_gating_failures += len(unallowed)
+
+        mismatches = placeholder_mismatches(windows_leaves_all, resw_placeholder_multiset, resw_placeholders_match)
+        if mismatches:
+            print(f"=== Windows resw: {len(mismatches)} placeholder-multiset mismatch(es) ===")
+            for m in mismatches:
+                loc_label = m["key"] if not m["form"] else f"{m['key']} [{m['form']}]"
+                print(f"  [{m['locale']}] {loc_label!r}")
+                print(f"      en:  {m['en']!r} -> {m['en_placeholders']}")
+                print(f"      val: {m['value']!r} -> {m['value_placeholders']}")
+            total_gating_failures += len(mismatches)
+
         if verbose:
             print_hits("Windows resw (report-only band)", band_hits, allowed)
 
