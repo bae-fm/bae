@@ -979,3 +979,48 @@ private struct WorkDetailView: View {
         return release.displayName
     }
 }
+
+#if DEBUG
+    extension LibraryView {
+        /// A `Library` whose album/composer counts and pages are all empty,
+        /// driving the real `loadInitial()` → `totalCount == 0` path so the
+        /// previews below hit the actual empty-state branches in
+        /// `albumContent`/`composerContent` rather than a hand-built stand-in.
+        fileprivate static var emptyLibrary: Library {
+            Library(
+                getAlbumCount: { 0 },
+                getAlbumPage: { _, _, _ in [] },
+                getComposerCount: { 0 },
+                getComposerPage: { _, _, _ in [] },
+            )
+        }
+    }
+
+    #Preview("Albums \u{2014} Empty") {
+        LibraryView()
+            .environment(Playback.stub)
+            .environment(Queue.stub)
+            .environment(Downloads.stub)
+            .environment(LibraryView.emptyLibrary)
+            .environment(LibraryStore())
+            .environment(UiStore())
+            .environment(ProjectionRegistry())
+            .frame(width: 1100, height: 700)
+            .windowBackground()
+    }
+
+    #Preview("Composers \u{2014} Empty") {
+        let uiStore = UiStore()
+        uiStore.setLibraryBrowserMode(.composers)
+        return LibraryView()
+            .environment(Playback.stub)
+            .environment(Queue.stub)
+            .environment(Downloads.stub)
+            .environment(LibraryView.emptyLibrary)
+            .environment(LibraryStore())
+            .environment(uiStore)
+            .environment(ProjectionRegistry())
+            .frame(width: 1100, height: 700)
+            .windowBackground()
+    }
+#endif
