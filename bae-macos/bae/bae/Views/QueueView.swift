@@ -1,4 +1,5 @@
 import BaeKit
+import ObjectiveC
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -28,12 +29,13 @@ struct QueueView: View {
     /// to the context section's header — shuffle is a property of the context.
     let onSetShuffle: (Bool) -> Void
 
-    // A drag can start in either section; the dragged entry id is shared so the
-    // source row dims wherever it lives. Hover and drop-insertion are positional,
-    // so each QueueSection owns its own — a row index in one lane must not light
-    // up the same index in the other.
+    // A drag can start in either section; the session is shared so the source
+    // row dims wherever it lives and both sections revert on the same cancel.
+    // (Hover and drop-insertion are positional, so each QueueSection still owns
+    // its own — a row index in one lane must not light up the same index in the
+    // other.)
     @State
-    private var draggedEntryId: String?
+    private var dragSession = QueueDragSession()
 
     /// The manual lane ("Up Next"): explicitly enqueued tracks, drained first —
     /// always resolved in full, never windowed.
@@ -102,7 +104,8 @@ struct QueueView: View {
                             loadEpoch: 0,
                             loadRange: nil,
                             acceptsExternalDrops: true,
-                            draggedEntryId: $draggedEntryId,
+                            dragSession: dragSession,
+                            queueRevision: playbackStore.revision,
                             onSkipTo: onSkipTo,
                             onRemove: onRemove,
                             onReorder: onReorder,
@@ -130,7 +133,8 @@ struct QueueView: View {
                                     )
                                 },
                                 acceptsExternalDrops: false,
-                                draggedEntryId: $draggedEntryId,
+                                dragSession: dragSession,
+                                queueRevision: playbackStore.revision,
                                 onSkipTo: onSkipTo,
                                 onRemove: onRemove,
                                 onReorder: onReorder,
@@ -221,6 +225,88 @@ struct QueueView: View {
     }
 }
 
+// MARK: - Drag session
+
+/// The in-flight internal-reorder drag, shared across both `QueueSection`s.
+/// Reference-typed (not `@State` value fields) for one reason: the drag's end —
+/// a drop, a drag out of the window, OR an Esc-cancel that never leaves the row
+/// it's hovering — has to reach `end()`, and only the `NSItemProvider`-lifetime
+/// token (`DragSessionToken`) below sees that last case. A `deinit` firing into
+/// a value-typed `@State` closure can't mutate the view; a shared object it can.
+///
+/// `@MainActor` so it's `Sendable` — the token's `deinit` runs on whatever
+/// thread releases the provider and hops back here to call `end()`.
+@MainActor
+@Observable
+final class QueueDragSession {
+    /// The dragged row's entry id while an internal drag is live, else `nil`.
+    /// Drives the source row's dimmed opacity and lets each drop delegate tell
+    /// an internal reorder from a foreign drag.
+    var draggedEntryId: String?
+    /// Set by the row drop delegate when an internal reorder actually commits.
+    /// The session-end signal reads it to decide: a committed move leaves the
+    /// live permutation on screen for the coming revision bump to clear (no
+    /// snap); anything else — Esc, drag-out, drop-on-chrome — reverts it now.
+    var committed = false
+    /// Bumped when a drag ends WITHOUT a commit, so each `QueueSection` animates
+    /// its live permutation back to canonical order. Separate from the revision
+    /// bump, which clears a committed permutation un-animated.
+    private(set) var cancelTick = 0
+    /// Identifies the current drag. A token's `deinit` is ARC-delayed, so a
+    /// finished drag's `end()` can fire AFTER the next drag has already begun;
+    /// each token carries the `sessionId` of its own drag and `end()` ignores
+    /// any that no longer matches, so a stale token can't revert or un-dim a
+    /// newer drag.
+    private var sessionId = 0
+
+    /// Start a drag; returns the id its session-end token must present to
+    /// `end(sessionId:)`.
+    func begin(entryId: String) -> Int {
+        sessionId += 1
+        draggedEntryId = entryId
+        committed = false
+        return sessionId
+    }
+
+    /// The drag identified by `sessionId` ended (signalled by its
+    /// `DragSessionToken.deinit`). Reverts the live permutation unless a commit
+    /// already claimed it. A no-op for a stale token whose drag was already
+    /// superseded by a newer one.
+    func end(sessionId: Int) {
+        guard sessionId == self.sessionId else {
+            return
+        }
+        if !committed {
+            cancelTick += 1
+        }
+        draggedEntryId = nil
+        committed = false
+    }
+}
+
+/// Fires `onEnd` from its `deinit`. One is attached to each internal drag's
+/// `NSItemProvider` (as an associated object, so the provider owns it for the
+/// drag's lifetime); AppKit releases the provider when the drag session ends —
+/// by drop, by drag-out, or by Esc alike — which deinits this. That release is
+/// the only signal delivered for an Esc-cancel that never leaves the hovered
+/// row, which neither `.onDrag` nor any `DropDelegate` reports. Deinit timing is
+/// ARC-delayed; a slightly late revert beats a permutation that never reverts.
+private final class DragSessionToken {
+    private let onEnd: () -> Void
+
+    init(onEnd: @escaping () -> Void) {
+        self.onEnd = onEnd
+    }
+
+    deinit {
+        onEnd()
+    }
+}
+
+/// Associated-object key under which a drag's `DragSessionToken` is stashed on
+/// its `NSItemProvider`. Only its address is used; the value is never read.
+private nonisolated(unsafe) var queueDragTokenKey: UInt8 = 0
+
 // MARK: - Section
 
 // periphery:ignore
@@ -231,6 +317,18 @@ struct QueueView: View {
 private struct QueueRowLoadID: Hashable {
     let epoch: UInt64
     let index: Int
+}
+
+/// A row's identity in the `ForEach` below: a loaded row is keyed by its entry
+/// id (stable across a live reorder, which is what lets SwiftUI animate the
+/// move); an unloaded row is keyed by its display slot instead, since it has no
+/// content of its own to identify. `sourceIndex` is the absolute, canonical
+/// index `itemAt`/`loadRange` address — it equals `displaySlot` outside a live
+/// reorder, and diverges from it only while `QueueSection.liveOrder` is active.
+private struct QueueRowSlot: Identifiable {
+    let id: String
+    let displaySlot: Int
+    let sourceIndex: Int
 }
 
 /// One lane of the queue (the manual "Up Next" lane or the context), rendered as
@@ -253,8 +351,15 @@ private struct QueueSection: View {
     /// the manual lane, which is never windowed.
     let loadRange: ((_ offset: Int, _ limit: Int) async -> Void)?
     let acceptsExternalDrops: Bool
-    @Binding
-    var draggedEntryId: String?
+    /// The shared in-flight drag: source-row identity for dimming, and the
+    /// `cancelTick` each section watches to revert on a cancelled drag.
+    let dragSession: QueueDragSession
+    /// The store's queue revision, independent of `loadEpoch` (which the manual
+    /// lane fixes at 0). A change means core applied a mutation — including the
+    /// reorder this lane just committed — so `liveOrder` is dropped: the
+    /// canonical order the new snapshot carries already equals what was on
+    /// screen, so clearing it is visually a no-op, not a snap.
+    let queueRevision: UInt64
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
     let onReorder: (_ entryId: String, _ beforeEntryId: String?) -> Void
@@ -267,33 +372,88 @@ private struct QueueSection: View {
     private var hoveredIndex: Int?
     @State
     private var dropInsertIndex: Int?
+    /// Display position → source index, active only while an internal drag in
+    /// this lane is live. `nil` means canonical order. Read live by every row's
+    /// identity and content (`rowSlots`) and by the drop delegates that mutate
+    /// it as the drag crosses row boundaries; written back to canonical (`nil`)
+    /// on drop-commit (via `queueRevision`) or on cancel (via
+    /// `dragSession.cancelTick`).
+    @State
+    private var liveOrder: [Int]?
+
+    /// Display slots 0..<count, each resolved to its source index (identity
+    /// under `liveOrder`, or permuted while a drag is live) and an identity —
+    /// the entry id when loaded, a slot sentinel when not. A `LazyMapCollection`
+    /// rather than a materialized array: `itemAt` is only ever called for rows
+    /// `ForEach`/`LazyVStack` actually need (visible rows plus a small buffer),
+    /// preserving the windowed-loading contract's whole point for a
+    /// library-scaled context lane — building an eager `[QueueRowSlot]` here
+    /// would call `itemAt` for every index up front regardless of what's
+    /// on screen.
+    private var rowSlots: LazyMapCollection<Range<Int>, QueueRowSlot> {
+        // Use the live permutation only while it still matches `count`. A
+        // `QueueUpdated` landing mid-drag (a lane grows — sync from another
+        // device, Play Next — or shrinks) resizes `count` for the one body pass
+        // before `.onChange(of: queueRevision)` clears `liveOrder`. On grow,
+        // `liveOrder[displaySlot]` would read past the stale-short array's end;
+        // on shrink, its indices point past the new bounds and resolve to
+        // stale positions. A length mismatch falls back to canonical order for
+        // that pass — `sourceIndex == displaySlot`, in range, and any index the
+        // shorter data can't resolve renders a placeholder.
+        let order = liveOrder?.count == count ? liveOrder : nil
+        return (0..<count).lazy
+            .map { displaySlot in
+                let sourceIndex = order?[displaySlot] ?? displaySlot
+                let id = itemAt(sourceIndex)?.id ?? "unloaded-\(displaySlot)"
+                return QueueRowSlot(
+                    id: id,
+                    displaySlot: displaySlot,
+                    sourceIndex: sourceIndex
+                )
+            }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             sectionHeader
 
-            ForEach(0..<count, id: \.self) { index in
-                let item = itemAt(index)
+            ForEach(rowSlots) { slot in
+                let item = itemAt(slot.sourceIndex)
                 VStack(spacing: 0) {
-                    // Kept in the tree and toggled by opacity so showing the drop
-                    // line doesn't change a row's size and re-lay-out the lane.
-                    insertionLine
-                        .opacity(dropInsertIndex == index ? 1 : 0)
-                        .allowsHitTesting(false)
-                    queueRow(item, index: index)
+                    // Only the manual lane ever sets `dropInsertIndex` (external
+                    // drops land there only) — an internal reorder moves rows
+                    // live instead of showing an insertion line, so the line is
+                    // omitted entirely on the context lane, which never uses it.
+                    if acceptsExternalDrops {
+                        insertionLine
+                            .opacity(
+                                dropInsertIndex == slot.displaySlot ? 1 : 0
+                            )
+                            .allowsHitTesting(false)
+                    }
+                    queueRow(item, index: slot.displaySlot)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
                         .opacity(
-                            item != nil && draggedEntryId == item?.id
+                            item != nil
+                                && dragSession.draggedEntryId == item?.id
                                 ? 0.3 : 1.0
                         )
                     Divider().padding(.leading, 62)
                 }
-                .task(id: QueueRowLoadID(epoch: loadEpoch, index: index)) {
+                .task(
+                    id: QueueRowLoadID(
+                        epoch: loadEpoch,
+                        index: slot.sourceIndex
+                    )
+                ) {
                     guard item == nil, let loadRange else {
                         return
                     }
-                    let first = max(0, index - queueUpcomingLoadBatchSize / 2)
+                    let first = max(
+                        0,
+                        slot.sourceIndex - queueUpcomingLoadBatchSize / 2
+                    )
                     let end = min(
                         first + queueUpcomingLoadBatchSize,
                         count
@@ -303,12 +463,13 @@ private struct QueueSection: View {
                 .onDrop(
                     of: [UTType.plainText],
                     delegate: QueueDropDelegate(
-                        targetIndex: index,
+                        targetIndex: slot.displaySlot,
                         targetLoaded: item != nil,
                         count: count,
                         itemAt: itemAt,
                         acceptsExternalDrops: acceptsExternalDrops,
-                        draggedEntryId: $draggedEntryId,
+                        dragSession: dragSession,
+                        liveOrder: $liveOrder,
                         dropInsertIndex: $dropInsertIndex,
                         onReorder: onReorder,
                         onInsertTracks: onInsertTracks,
@@ -316,10 +477,13 @@ private struct QueueSection: View {
                 )
             }
             // The trailing drop line (insert at the lane's end) stays in the tree
-            // and toggles by opacity, matching the per-row lines above.
-            insertionLine
-                .opacity(dropInsertIndex == count ? 1 : 0)
-                .allowsHitTesting(false)
+            // and toggles by opacity, matching the per-row lines above — manual
+            // lane only, for the same reason as the per-row line above.
+            if acceptsExternalDrops {
+                insertionLine
+                    .opacity(dropInsertIndex == count ? 1 : 0)
+                    .allowsHitTesting(false)
+            }
 
             // Trailing drop zone for appending — only the manual lane appends
             // external tracks; the context still accepts a reorder-to-end here.
@@ -333,12 +497,30 @@ private struct QueueSection: View {
                         count: count,
                         itemAt: itemAt,
                         acceptsExternalDrops: acceptsExternalDrops,
-                        draggedEntryId: $draggedEntryId,
+                        dragSession: dragSession,
+                        liveOrder: $liveOrder,
                         dropInsertIndex: $dropInsertIndex,
                         onReorder: onReorder,
                         onInsertTracks: onInsertTracks,
                     )
                 )
+        }
+        // The drop just committed: core's next snapshot carries the same order
+        // already displayed, so dropping the permutation here is a no-op, not
+        // an animated snap.
+        .onChange(of: queueRevision) {
+            liveOrder = nil
+        }
+        // The drag ended without a commit (drop-on-chrome, drag-out, or Esc):
+        // the displayed order was never committed, so reverting it is a real,
+        // visible change — animate it.
+        .onChange(of: dragSession.cancelTick) {
+            guard liveOrder != nil else {
+                return
+            }
+            withAnimation(.snappy) {
+                liveOrder = nil
+            }
         }
     }
 
@@ -382,66 +564,60 @@ private struct QueueSection: View {
             .padding(.horizontal, 8)
     }
 
-    // The hover play overlay stays in the tree and toggles by opacity/hit-testing
-    // so revealing it on hover doesn't resize the row and re-lay-out the lane.
-    private func queueItemArtWithHover(_ item: QueueItem, index: Int)
-        -> some View
-    {
-        let isHovered = hoveredIndex == index
-        return ZStack {
-            queueItemArt(coverImageId: item.coverImageId)
-                .frame(width: 40, height: 40)
-                .clipShape(RoundedRectangle(cornerRadius: 3))
-
-            RoundedRectangle(cornerRadius: 3)
-                .fill(.black.opacity(0.5))
-                .frame(width: 40, height: 40)
-                .opacity(isHovered ? 1 : 0)
-            Button(action: { onSkipTo(item.id) }) {
-                Image(systemName: "play.fill")
-                    .font(.caption)
-                    .foregroundColor(.white)
-            }
-            .buttonStyle(.plain)
-            .opacity(isHovered ? 1 : 0)
-            .allowsHitTesting(isHovered)
-        }
-    }
-
-    /// A not-yet-loaded row: a skeleton shape, no text — `loadRange` is already
-    /// in flight for it via the row's `.task(id:)`.
-    private func queuePlaceholderRow() -> some View {
-        HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(.secondary.opacity(0.15))
-                .frame(width: 40, height: 40)
-            VStack(alignment: .leading, spacing: 4) {
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(.secondary.opacity(0.15))
-                    .frame(width: 140, height: 12)
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(.secondary.opacity(0.12))
-                    .frame(width: 90, height: 10)
-            }
-            Spacer()
-        }
-    }
-
     /// A row at `index`: the resolved item, or a placeholder while it loads.
     private func queueRow(_ item: QueueItem?, index: Int) -> some View {
         Group {
             if let item {
-                queueItemRow(item, index: index)
+                QueueItemRow(
+                    item: item,
+                    isHovered: hoveredIndex == index,
+                    onHoverChanged: { hoveredIndex = $0 ? index : nil },
+                    onDragStarted: { dragSession.begin(entryId: item.id) },
+                    // Runs from the drag token's `deinit`, off the main actor,
+                    // for the drag whose `sessionId` this is — hop back before
+                    // touching the main-actor session, which ignores a stale id.
+                    onDragEnded: { sessionId in
+                        Task { @MainActor in
+                            dragSession.end(sessionId: sessionId)
+                        }
+                    },
+                    onSkipTo: onSkipTo,
+                    onRemove: onRemove
+                )
             }
             else {
-                queuePlaceholderRow()
+                QueuePlaceholderRow()
             }
         }
     }
+}
 
-    private func queueItemRow(_ item: QueueItem, index: Int) -> some View {
+/// One loaded row: cover art (with a hover play overlay), title/album, and a
+/// duration that swaps for a remove button on hover. Broken out of
+/// `QueueSection` (which otherwise owns every row's chrome — drop targets,
+/// insertion line, load hook) purely to keep that type's body a reasonable
+/// size; it has no state of its own; hover is the section's (only one row is
+/// ever hovered at a time) so it flows in and back out via `isHovered`/
+/// `onHoverChanged`.
+private struct QueueItemRow: View {
+    let item: QueueItem
+    let isHovered: Bool
+    let onHoverChanged: (Bool) -> Void
+    /// The section records this row as the drag's source and returns the drag's
+    /// `sessionId`; the `NSItemProvider` carrying `item.id` is what the drop side
+    /// reads back.
+    let onDragStarted: () -> Int
+    /// Fired from the drag `NSItemProvider`'s lifetime token when the session
+    /// ends — drop, drag-out, or Esc — so a cancel that never lands on a row
+    /// still reverts the live order. Carries the `sessionId` from
+    /// `onDragStarted` so a late-firing stale token is ignored.
+    let onDragEnded: (Int) -> Void
+    let onSkipTo: (String) -> Void
+    let onRemove: (String) -> Void
+
+    var body: some View {
         HStack(spacing: 10) {
-            queueItemArtWithHover(item, index: index)
+            artWithHoverOverlay
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
@@ -459,7 +635,6 @@ private struct QueueSection: View {
             // and toggle by opacity/hit-testing so the swap doesn't resize the row
             // and re-lay-out the lane. (The trailing slot is the wider of the two,
             // so neither toggle changes the row's intrinsic width.)
-            let isHovered = hoveredIndex == index
             ZStack(alignment: .trailing) {
                 Text(item.durationLabel)
                     .font(.caption.monospacedDigit())
@@ -477,12 +652,23 @@ private struct QueueSection: View {
             }
         }
         .contentShape(Rectangle())
-        .onHover { isHovered in
-            hoveredIndex = isHovered ? index : nil
-        }
+        .onHover(perform: onHoverChanged)
         .onDrag {
-            draggedEntryId = item.id
-            return NSItemProvider(object: item.id as NSString)
+            let sessionId = onDragStarted()
+            let provider = NSItemProvider(object: item.id as NSString)
+            // Own a session-end token for the provider's lifetime: AppKit
+            // releases the provider when the drag ends (any way it ends), the
+            // token deinits, and `onDragEnded` fires for this drag's session.
+            // This is the only signal for an Esc-cancel that never leaves the
+            // hovered row.
+            let token = DragSessionToken { onDragEnded(sessionId) }
+            objc_setAssociatedObject(
+                provider,
+                &queueDragTokenKey,
+                token,
+                .OBJC_ASSOCIATION_RETAIN
+            )
+            return provider
         }
         .onTapGesture(count: 2) {
             onSkipTo(item.id)
@@ -494,21 +680,68 @@ private struct QueueSection: View {
         }
     }
 
-    private func queueItemArt(coverImageId: String?) -> some View {
-        ImageView(coverImageId: coverImageId, pointSize: 40)
+    // The hover play overlay stays in the tree and toggles by opacity/hit-testing
+    // so revealing it on hover doesn't resize the row and re-lay-out the lane.
+    private var artWithHoverOverlay: some View {
+        ZStack {
+            ImageView(coverImageId: item.coverImageId, pointSize: 40)
+                .frame(width: 40, height: 40)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+
+            RoundedRectangle(cornerRadius: 3)
+                .fill(.black.opacity(0.5))
+                .frame(width: 40, height: 40)
+                .opacity(isHovered ? 1 : 0)
+            Button(action: { onSkipTo(item.id) }) {
+                Image(systemName: "play.fill")
+                    .font(.caption)
+                    .foregroundColor(.white)
+            }
+            .buttonStyle(.plain)
+            .opacity(isHovered ? 1 : 0)
+            .allowsHitTesting(isHovered)
+        }
+    }
+}
+
+/// A not-yet-loaded row: a skeleton shape, no text — `loadRange` is already in
+/// flight for it via the row's `.task(id:)`.
+private struct QueuePlaceholderRow: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(.secondary.opacity(0.15))
+                .frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 4) {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(.secondary.opacity(0.15))
+                    .frame(width: 140, height: 12)
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(.secondary.opacity(0.12))
+                    .frame(width: 90, height: 10)
+            }
+            Spacer()
+        }
     }
 }
 
 // MARK: - Drop Delegate
 
 private struct QueueDropDelegate: DropDelegate {
+    /// This row's display position — a slot in `liveOrder`, not the underlying
+    /// item's canonical index (`targetIndex == count` addresses the trailing
+    /// append zone, past the last row).
     let targetIndex: Int
-    /// Whether `itemAt(targetIndex)` is loaded. An internal reorder onto an
-    /// unloaded row is rejected — `onReorder` needs the target's own entry id
-    /// (core reorders by id, not index), which isn't known yet. In practice a
-    /// row must be visible (and its load task already running) to receive a
-    /// drop at all, so this only ever excludes a brief loading flash, not a
-    /// real position.
+    /// Whether the item currently displayed at `targetIndex` is loaded. An
+    /// internal reorder onto an unloaded row is rejected — `onReorder` needs
+    /// the target's own entry id (core reorders by id, not index), which isn't
+    /// known yet. In practice a row must be visible (and its load task already
+    /// running) to receive a drop at all, so this only ever excludes a brief
+    /// loading flash, not a real position. Always `true` for the trailing zone,
+    /// which has no row of its own to be unloaded. The same "needs a loaded
+    /// entry id to pin against" rule applies to the *anchor* row a committed
+    /// drop lands before — see `performDrop`, which refuses a drop whose
+    /// next-displayed row exists but hasn't loaded.
     let targetLoaded: Bool
     let count: Int
     let itemAt: (Int) -> QueueItem?
@@ -516,18 +749,26 @@ private struct QueueDropDelegate: DropDelegate {
     /// manual lane inserts them; the context lane ignores them (you can't add a
     /// track into the release's own order) and only handles internal reorders.
     let acceptsExternalDrops: Bool
+    /// The shared in-flight drag — its `draggedEntryId` identifies the source
+    /// row; `committed` is set here on a successful drop so the session-end
+    /// signal leaves the permutation for the revision bump instead of reverting.
+    let dragSession: QueueDragSession
+    /// The lane's live display-order permutation — see
+    /// `QueueSection.liveOrder`.
     @Binding
-    var draggedEntryId: String?
+    var liveOrder: [Int]?
     @Binding
     var dropInsertIndex: Int?
     /// Move the dragged entry to sit before `beforeEntryId`; `nil` = end.
     let onReorder: (_ entryId: String, _ beforeEntryId: String?) -> Void
     let onInsertTracks: ([String], Int) -> Void
 
-    /// The position of the dragged entry among this lane's *loaded* rows, or
-    /// `nil` if it isn't dragging from this lane.
+    /// The dragged entry's canonical (source) index in this lane, or `nil` if
+    /// it isn't dragging from this lane. Resolved against `itemAt` (canonical
+    /// order), never against `liveOrder` — the entry's true position doesn't
+    /// change until core commits the reorder.
     private var fromIndex: Int? {
-        guard let draggedId = draggedEntryId else {
+        guard let draggedId = dragSession.draggedEntryId else {
             return nil
         }
         return (0..<count).first { itemAt($0)?.id == draggedId }
@@ -541,17 +782,40 @@ private struct QueueDropDelegate: DropDelegate {
         fromIndex != nil
     }
 
+    /// The live permutation, but only while it still matches the current row
+    /// count. A `QueueUpdated` landing mid-drag resizes `count` for a beat
+    /// before `.onChange(of: queueRevision)` clears `liveOrder`; a stale-length
+    /// permutation would subscript out of range (lane grew) or address stale
+    /// positions (lane shrank), so any length mismatch reads as canonical order.
+    /// Mirrors the identical guard in `QueueSection.rowSlots`.
+    private var activeOrder: [Int]? {
+        guard let liveOrder, liveOrder.count == count else {
+            return nil
+        }
+        return liveOrder
+    }
+
     func dropEntered(info _: DropInfo) {
         if let fromIndex {
-            // Internal reorder: show insertion line relative to source.
-            if targetIndex > fromIndex {
-                dropInsertIndex = targetIndex + 1
+            // Internal reorder: live-move the dragged entry to this row's
+            // display position. A target that isn't loaded is a no-op — core
+            // reorders by id, and an unloaded row's id isn't known yet, so the
+            // permutation is left exactly as it was.
+            guard targetLoaded else {
+                return
             }
-            else if targetIndex < fromIndex {
-                dropInsertIndex = targetIndex
-            }
+            var order = activeOrder ?? Array(0..<count)
+            guard let currentSlot = order.firstIndex(of: fromIndex),
+                currentSlot != targetIndex
             else {
-                dropInsertIndex = nil
+                return
+            }
+            let moved = order.remove(at: currentSlot)
+            let insertAt =
+                targetIndex > currentSlot ? targetIndex - 1 : targetIndex
+            order.insert(moved, at: insertAt)
+            withAnimation(.snappy) {
+                liveOrder = order
             }
         }
         else if acceptsExternalDrops {
@@ -572,18 +836,49 @@ private struct QueueDropDelegate: DropDelegate {
     }
 
     func performDrop(info: DropInfo) -> Bool {
-        if let draggedId = draggedEntryId, let fromIndex, targetLoaded {
-            // Internal reorder. `toIndex` is the gap the entry lands in; the
-            // entry it lands before is whatever currently sits at that gap
-            // (nil past the end = move to the lane's end).
-            let toIndex =
-                targetIndex > fromIndex ? targetIndex + 1 : targetIndex
-            if toIndex != fromIndex {
-                let beforeEntryId = toIndex < count ? itemAt(toIndex)?.id : nil
+        if let draggedId = dragSession.draggedEntryId, let fromIndex,
+            targetLoaded
+        {
+            // Un-dim the source row now, whatever this drop resolves to.
+            defer { dragSession.draggedEntryId = nil }
+
+            // The drop commits exactly what dropEntered already put on screen:
+            // the dragged entry lands before whatever now sits right after it in
+            // the live order.
+            let order = activeOrder ?? Array(0..<count)
+            guard let slot = order.firstIndex(of: fromIndex), slot != fromIndex
+            else {
+                // Dropped back at its own slot (no rows crossed): the
+                // permutation already equals canonical, so there's nothing to
+                // commit. Leave `committed` false — the session-end token
+                // reverts, a visual no-op that also clears the stray
+                // identity permutation.
+                return true
+            }
+
+            // The row after the dragged entry is the reorder's anchor. Nothing
+            // after it is a genuine lane end (commit `nil` = "to the end"). But
+            // a row that EXISTS yet isn't loaded has no entry id to pin before —
+            // and core reads a `nil` anchor as lane-end, so committing here
+            // would snap the entry to the bottom on the next snapshot (the same
+            // reason `targetLoaded` gates the drop target itself). Refuse it:
+            // skip `onReorder`, leave `committed` false so the token reverts the
+            // permutation, and report the drop as not accepted.
+            if slot + 1 < order.count {
+                guard let beforeEntryId = itemAt(order[slot + 1])?.id else {
+                    return false
+                }
                 onReorder(draggedId, beforeEntryId)
             }
-            draggedEntryId = nil
-            dropInsertIndex = nil
+            else {
+                onReorder(draggedId, nil)
+            }
+
+            // Mark the session committed so the session-end token leaves
+            // `liveOrder` in place — it already equals what core will echo back
+            // in the next snapshot, and `QueueSection` drops it on that revision
+            // bump.
+            dragSession.committed = true
             return true
         }
 
