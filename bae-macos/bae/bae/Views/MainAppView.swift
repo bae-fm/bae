@@ -38,15 +38,16 @@ struct MainAppView: View {
             VStack(spacing: 0) {
                 TitleBar(searchText: $searchText)
 
-                // Library and import stay mounted; active section fades in via opacity
-                ZStack {
+                // Only the active section is in the view tree: SwiftUI's
+                // .onHover is backed by AppKit tracking areas, which ignore
+                // both opacity and hit-testing, so a permanently-mounted
+                // inactive section leaks its hover chrome (popovers, tooltips)
+                // through to whichever section is showing.
+                if uiStore.activeSection == .library {
                     LibrarySection()
-                        .opacity(uiStore.activeSection == .library ? 1 : 0)
-                        .allowsHitTesting(uiStore.activeSection == .library)
-
+                }
+                else {
                     ImportView()
-                        .opacity(uiStore.activeSection == .importing ? 1 : 0)
-                        .allowsHitTesting(uiStore.activeSection == .importing)
                 }
                 Divider()
                 NowPlayingBarContainer(
