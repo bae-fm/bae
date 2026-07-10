@@ -205,13 +205,12 @@
                 <StackPanel x:Name="ArtistDetailPane" Spacing="10" />
             </ScrollViewer>
         </Grid>
-        <ScrollViewer
-            x:Name="SearchResultsScroll"
+        <ListView
+            x:Name="SearchResultsList"
             Grid.Row="1"
             Padding="24"
-            Visibility="Collapsed">
-            <StackPanel x:Name="SearchResultsPanel" Spacing="10" />
-        </ScrollViewer>
+            SelectionMode="None"
+            Visibility="Collapsed" />
         <StackPanel
             x:Name="EmptyState"
             Grid.Row="1"

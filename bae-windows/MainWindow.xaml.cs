@@ -241,7 +241,7 @@ public sealed partial class MainWindow : Window
         _browserPanes = new BrowserPanes(
             _session,
             DispatcherQueue,
-            SearchResultsPanel,
+            SearchResultsList,
             ComposerDetailPane,
             ArtistDetailPane,
             text => StatusText.Text = text,
@@ -368,7 +368,7 @@ public sealed partial class MainWindow : Window
         AlbumGrid.Visibility = Visibility.Visible;
         ComposerBrowser.Visibility = Visibility.Collapsed;
         ArtistBrowser.Visibility = Visibility.Collapsed;
-        SearchResultsScroll.Visibility = Visibility.Collapsed;
+        SearchResultsList.Visibility = Visibility.Collapsed;
     }
 
     private void ShowComposerBrowser()
@@ -376,7 +376,7 @@ public sealed partial class MainWindow : Window
         AlbumGrid.Visibility = Visibility.Collapsed;
         ComposerBrowser.Visibility = Visibility.Visible;
         ArtistBrowser.Visibility = Visibility.Collapsed;
-        SearchResultsScroll.Visibility = Visibility.Collapsed;
+        SearchResultsList.Visibility = Visibility.Collapsed;
     }
 
     private void ShowArtistBrowser()
@@ -384,7 +384,7 @@ public sealed partial class MainWindow : Window
         AlbumGrid.Visibility = Visibility.Collapsed;
         ComposerBrowser.Visibility = Visibility.Collapsed;
         ArtistBrowser.Visibility = Visibility.Visible;
-        SearchResultsScroll.Visibility = Visibility.Collapsed;
+        SearchResultsList.Visibility = Visibility.Collapsed;
     }
 
     private void ShowSearchBrowser()
@@ -392,7 +392,7 @@ public sealed partial class MainWindow : Window
         AlbumGrid.Visibility = Visibility.Collapsed;
         ComposerBrowser.Visibility = Visibility.Collapsed;
         ArtistBrowser.Visibility = Visibility.Collapsed;
-        SearchResultsScroll.Visibility = Visibility.Visible;
+        SearchResultsList.Visibility = Visibility.Visible;
     }
 
     // Load the active mode's grid through the store, then render the status line

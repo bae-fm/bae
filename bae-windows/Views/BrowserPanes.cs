@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -16,9 +17,22 @@ namespace Bae.Windows;
 // lives on the window.
 internal sealed class BrowserPanes
 {
+    // One row of the search-results list: a section header, or a clickable
+    // result. Rendered in one virtualized ListView (sections as items, not a
+    // ScrollViewer over a StackPanel of hand-built rows) — the bridge already
+    // caps results at 50/section (~200 rows total), so this bounds the *render*
+    // cost, not the data; there is no paging to do here.
+    private abstract record SearchResultRow;
+
+    private sealed record SearchHeaderRow(string Title) : SearchResultRow;
+
+    private sealed record SearchItemRow(string Title, string Subtitle, Func<System.Threading.Tasks.Task> Action)
+        : SearchResultRow;
+
     private readonly SessionStore _session;
     private readonly DispatcherQueue _dispatcher;
-    private readonly StackPanel _searchResultsPanel;
+    private readonly ListView _searchResultsList;
+    private readonly ObservableCollection<SearchResultRow> _searchResults = new();
     private readonly StackPanel _composerDetailPane;
     private readonly StackPanel _artistDetailPane;
     private readonly Action<string> _setStatus;
@@ -29,7 +43,7 @@ internal sealed class BrowserPanes
     public BrowserPanes(
         SessionStore session,
         DispatcherQueue dispatcher,
-        StackPanel searchResultsPanel,
+        ListView searchResultsList,
         StackPanel composerDetailPane,
         StackPanel artistDetailPane,
         Action<string> setStatus,
@@ -39,7 +53,17 @@ internal sealed class BrowserPanes
     {
         _session = session;
         _dispatcher = dispatcher;
-        _searchResultsPanel = searchResultsPanel;
+        _searchResultsList = searchResultsList;
+        _searchResultsList.ItemsSource = _searchResults;
+        _searchResultsList.ContainerContentChanging += (_, args) =>
+        {
+            if (args.InRecycleQueue || args.Item is not SearchResultRow row)
+            {
+                return;
+            }
+            args.ItemContainer.Content = BuildSearchRowVisual(row);
+            args.Handled = true;
+        };
         _composerDetailPane = composerDetailPane;
         _artistDetailPane = artistDetailPane;
         _setStatus = setStatus;
@@ -52,12 +76,23 @@ internal sealed class BrowserPanes
 
     public void ClearArtistDetail() => _artistDetailPane.Children.Clear();
 
+    private static FrameworkElement BuildSearchRowVisual(SearchResultRow row) => row switch
+    {
+        SearchHeaderRow header => new TextBlock
+        {
+            Text = header.Title,
+            Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"],
+        },
+        SearchItemRow item => SearchButton(item.Title, item.Subtitle, item.Action),
+        _ => throw new ArgumentOutOfRangeException(nameof(row), row, "Unknown search result row"),
+    };
+
     // Render the search-results list from the store's cover-attached results. The
-    // window has already flipped to the search pane; this fills the panel and sets
+    // window has already flipped to the search pane; this fills the list and sets
     // the status line (failure, no matches, or clear on results).
     public void RenderSearchResults(LibrarySearchResults? results, string? error)
     {
-        _searchResultsPanel.Children.Clear();
+        _searchResults.Clear();
         if (error is not null || results is null)
         {
             _setStatus(error ?? Loc.Chrome("search.failed"));
@@ -73,33 +108,30 @@ internal sealed class BrowserPanes
 
         _setStatus(string.Empty);
         AddSearchSection(Loc.Chrome("search.section.albums"), results.Albums, album =>
-            SearchButton(album.Title, album.Artist, () => _openAlbum(album.Id, null, null)));
+            new SearchItemRow(album.Title, album.Artist, () => _openAlbum(album.Id, null, null)));
         AddSearchSection(Loc.Chrome("search.section.tracks"), results.Tracks, track =>
-            SearchButton(track.Title, $"{track.ArtistName} — {track.AlbumTitle}", () => _openAlbum(track.AlbumId, null, null)));
+            new SearchItemRow(
+                track.Title, $"{track.ArtistName} — {track.AlbumTitle}", () => _openAlbum(track.AlbumId, null, null)));
         AddSearchSection(Loc.Chrome("search.section.composers"), results.Composers, composer =>
-            SearchButton(composer.Name, composer.WorkCountText, () => ShowComposerDetail(composer.ArtistId)));
+            new SearchItemRow(composer.Name, composer.WorkCountText, () => ShowComposerDetail(composer.ArtistId)));
         AddSearchSection(Loc.Chrome("search.section.works"), results.Works, work =>
-            SearchButton(work.Title, work.ComposerNames ?? string.Empty, () => ShowWorkDetail(work.WorkId)));
+            new SearchItemRow(work.Title, work.ComposerNames ?? string.Empty, () => ShowWorkDetail(work.WorkId)));
     }
 
     private void AddSearchSection<T>(
         string title,
         IReadOnlyList<T> rows,
-        Func<T, Button> button)
+        Func<T, SearchItemRow> project)
     {
         if (rows.Count == 0)
         {
             return;
         }
 
-        _searchResultsPanel.Children.Add(new TextBlock
-        {
-            Text = title,
-            Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"],
-        });
+        _searchResults.Add(new SearchHeaderRow(title));
         foreach (var row in rows)
         {
-            _searchResultsPanel.Children.Add(button(row));
+            _searchResults.Add(project(row));
         }
     }
 
