@@ -86,28 +86,6 @@ internal sealed class StorageDialog
             FontSize = 12,
         };
 
-        // The tab bar: All / Unmanaged / Managed / Uploading. Clicking a tab
-        // clears the selection and reloads from the server with the new filter.
-        var tabBar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        var tabButtons = new List<(StorageTab Tab, Button Button)>();
-        foreach (var tab in new[] { StorageTab.All, StorageTab.Unmanaged, StorageTab.Managed, StorageTab.Uploading })
-        {
-            var value = tab;
-            var button = new Button { Content = Loc.Chrome(StorageListModel.TabLabelKey(tab)) };
-            button.Click += (_, _) =>
-            {
-                if (activeTab == value)
-                {
-                    return;
-                }
-                activeTab = value;
-                selected.Clear();
-                _ = LoadStorageRows();
-            };
-            tabButtons.Add((value, button));
-            tabBar.Children.Add(button);
-        }
-
         // The storage cell's precedence mirrors macOS: an in-flight transfer verb
         // (from the overlay or the row's own transfer action) wins over the outbox
         // upload badge, which wins over the resting state.
@@ -164,6 +142,31 @@ internal sealed class StorageDialog
             MaxHeight = 320,
             MinWidth = 560,
         };
+
+        // The tab bar: All / Unmanaged / Managed / Uploading. Clicking a tab
+        // clears the selection and reloads from the server with the new filter.
+        // Built after `rows`/`list` exist: the click handler calls
+        // LoadStorageRows, which reads both, so definite assignment requires
+        // them declared first.
+        var tabBar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        var tabButtons = new List<(StorageTab Tab, Button Button)>();
+        foreach (var tab in new[] { StorageTab.All, StorageTab.Unmanaged, StorageTab.Managed, StorageTab.Uploading })
+        {
+            var value = tab;
+            var button = new Button { Content = Loc.Chrome(StorageListModel.TabLabelKey(tab)) };
+            button.Click += (_, _) =>
+            {
+                if (activeTab == value)
+                {
+                    return;
+                }
+                activeTab = value;
+                selected.Clear();
+                _ = LoadStorageRows();
+            };
+            tabButtons.Add((value, button));
+            tabBar.Children.Add(button);
+        }
 
         // Recolor every currently-realized row from the current selection —
         // bounded to loaded/realized rows, never the whole library.
