@@ -1865,14 +1865,15 @@ async fn seek_preserves_staged_next_for_a_gapless_advance() {
     );
 }
 
-/// If the seek's stream rebuild fails, the preserved staged next is cancelled
-/// (it was taken out of the old chain, so stop()'s teardown can't reach it) and
-/// playback stops loudly (seek.rs ~103–123). Force the rebuild to fail by
-/// dropping the capture sink's stream receiver, which makes the seek's
-/// create_stream error, then assert a PlaybackError and a terminal Stopped that
-/// doesn't bounce back into Playing.
+/// A same-format seek swaps the persistent output's source in place
+/// (`PlaybackSource::replace`) — it never rebuilds the device stream, so it has
+/// no `create_stream` step that can fail. Dropping the capture sink's stream
+/// receiver (which under the old per-seek-rebuild model made the seek's
+/// `create_stream` error and stopped playback) now only fails the non-fatal,
+/// logged capture-buffer rotation: the seek still lands and playback continues.
+/// This pins that a dropped test observer can't tear playback down.
 #[tokio::test]
-async fn seek_init_failure_cancels_staged_next_and_stops() {
+async fn seek_with_dropped_capture_receiver_keeps_playing() {
     let lib = restore_test_library().await;
     let first = lib.track_ids[0].clone();
 
@@ -1898,20 +1899,27 @@ async fn seek_init_failure_cancels_staged_next_and_stops() {
     .await
     .expect("the track should start playing (first stream created)");
 
-    // Drop the receiver so the seek's stream rebuild can't create a new stream.
+    // Drop the receiver: under the old per-seek rebuild this made create_stream
+    // fail; the persistent output uses replace, so the seek must still land.
     capture_stream_rx.take();
     handle.seek(Duration::from_secs(2));
 
+    // The seek lands (Seeked for the same track); no error, no stop.
+    let mut saw_seeked = false;
     let mut saw_error = false;
-    let mut stopped = false;
+    let mut saw_stopped = false;
     let deadline = Instant::now() + Duration::from_secs(8);
     while Instant::now() < deadline {
         match timeout(Duration::from_millis(200), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::Seeked { track_id, .. })) if track_id == first => {
+                saw_seeked = true;
+                break;
+            }
             Ok(Some(PlaybackProgress::PlaybackError { .. })) => saw_error = true,
             Ok(Some(PlaybackProgress::StateChanged {
                 state: PlaybackState::Stopped,
             })) => {
-                stopped = true;
+                saw_stopped = true;
                 break;
             }
             Ok(Some(_)) => continue,
@@ -1919,23 +1927,12 @@ async fn seek_init_failure_cancels_staged_next_and_stops() {
             Err(_) => continue,
         }
     }
+    assert!(saw_seeked, "an in-place seek should land and emit Seeked");
     assert!(
-        saw_error,
-        "a failed seek rebuild should surface a PlaybackError, not fail silently"
+        !saw_error,
+        "an in-place seek must not surface a PlaybackError"
     );
-    assert!(stopped, "a failed seek rebuild should stop playback");
-
-    // The cancelled staged next must not resurrect playback.
-    let resurfaced = wait_for_state_on(
-        &mut progress_rx,
-        |s| matches!(s, PlaybackState::Playing { .. }),
-        Duration::from_millis(300),
-    )
-    .await;
-    assert!(
-        resurfaced.is_none(),
-        "playback must stay stopped after the failed seek, not flip back to Playing"
-    );
+    assert!(!saw_stopped, "an in-place seek must not stop playback");
 
     handle.stop();
 }

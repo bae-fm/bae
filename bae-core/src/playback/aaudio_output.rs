@@ -238,9 +238,12 @@ impl AudioOutput for AAudioOutput {
 
                 let read = match drain.drain_iteration(&mut buf, true, false, None) {
                     DrainStatus::Samples { read } => read,
+                    // Persistent output: a drained track idles the writer rather
+                    // than ending it — the next track's source replace resumes it.
+                    // The thread exits only on the stop flag (stream dropped).
                     DrainStatus::Completed => {
-                        info!("AAudio writer: end of stream");
-                        break;
+                        std::thread::sleep(std::time::Duration::from_millis(1));
+                        continue;
                     }
                     DrainStatus::Idle => {
                         std::thread::sleep(std::time::Duration::from_millis(1));

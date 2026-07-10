@@ -387,6 +387,13 @@ pub trait AudioOutput: Send + 'static {
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError>;
 
+    /// Called after the persistent output's `PlaybackSource` is swapped in place
+    /// (`PlaybackSource::replace`) for a same-format track transition — the stream
+    /// keeps running, only what its callback reads changed. Real devices don't
+    /// care (the default no-op); the test capture sinks rotate their capture
+    /// buffer so each non-gapless transition still yields one buffer.
+    fn on_source_replaced(&mut self) {}
+
     fn set_state(&self, state: AudioState);
     fn get_state(&self) -> AudioState;
     fn set_volume(&self, volume: f32);
@@ -397,10 +404,11 @@ pub trait AudioOutput: Send + 'static {
 
 /// Audio output that captures raw f32 samples for ground truth comparison in tests.
 ///
-/// Each call to `create_stream` mints a fresh capture buffer; the receiver
-/// returned from `new()` yields one `Arc<Mutex<Vec<f32>>>` per stream in
-/// creation order. Volume is NOT applied — samples are captured exactly as
-/// the decoder produced them.
+/// Each non-gapless transition mints a fresh capture buffer — a `create_stream`
+/// (a rebuild) or an `on_source_replaced` (a same-format swap) — and the receiver
+/// returned from `new()` yields one `Arc<Mutex<Vec<f32>>>` per transition in
+/// order. Volume is NOT applied — samples are captured exactly as the decoder
+/// produced them.
 #[cfg(feature = "test-utils")]
 pub struct CaptureAudioOutput {
     core: CaptureOutputCore,
@@ -408,10 +416,11 @@ pub struct CaptureAudioOutput {
 
 /// Audio output that captures raw f32 samples and paces pulls to real time.
 ///
-/// Each call to `create_stream` mints a fresh capture buffer; the receiver
-/// returned from `new()` yields one `Arc<Mutex<Vec<f32>>>` per stream in
-/// creation order. Volume is NOT applied — samples are captured exactly as
-/// the decoder produced them.
+/// Each non-gapless transition mints a fresh capture buffer — a `create_stream`
+/// (a rebuild) or an `on_source_replaced` (a same-format swap) — and the receiver
+/// returned from `new()` yields one `Arc<Mutex<Vec<f32>>>` per transition in
+/// order. Volume is NOT applied — samples are captured exactly as the decoder
+/// produced them.
 #[cfg(feature = "test-utils")]
 pub struct RealtimeCaptureAudioOutput {
     core: CaptureOutputCore,
@@ -421,10 +430,13 @@ pub struct RealtimeCaptureAudioOutput {
 struct CaptureOutputCore {
     controls: AudioOutputControls,
     notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>,
+    /// The capture buffer the running capture thread currently extends. A fresh
+    /// `create_stream` (a rebuild) or an `on_source_replaced` (a same-format swap)
+    /// mints a new inner buffer and publishes it here so each non-gapless
+    /// transition captures into its own buffer — the "one buffer per transition"
+    /// contract the fixtures await via `next_capture_stream`.
+    active: Arc<Mutex<Arc<Mutex<Vec<f32>>>>>,
 }
-
-#[cfg(feature = "test-utils")]
-type PreparedCaptureStream = (AudioOutputControls, Arc<Mutex<Vec<f32>>>);
 
 #[cfg(feature = "test-utils")]
 impl CaptureOutputCore {
@@ -436,16 +448,19 @@ impl CaptureOutputCore {
         let core = Self {
             controls: AudioOutputControls::new(1.0),
             notify_tx,
+            active: Arc::new(Mutex::new(Arc::new(Mutex::new(Vec::new())))),
         };
         (core, notify_rx)
     }
 
-    fn prepare_stream(&self) -> Result<PreparedCaptureStream, AudioError> {
+    /// Mint a fresh capture buffer, make it the active one the capture thread
+    /// extends, and publish it to the receiver `new()` handed back.
+    fn rotate_capture_buffer(&self) -> Result<(), AudioError> {
         let captured = Arc::new(Mutex::new(Vec::<f32>::new()));
+        *self.active.lock().unwrap() = captured.clone();
         self.notify_tx
-            .send(captured.clone())
-            .map_err(|_| AudioError::StreamBuildError("capture receiver dropped".to_string()))?;
-        Ok((self.controls.clone(), captured))
+            .send(captured)
+            .map_err(|_| AudioError::StreamBuildError("capture receiver dropped".to_string()))
     }
 
     fn set_state(&self, new_state: AudioState) {
@@ -460,7 +475,7 @@ impl CaptureOutputCore {
 #[cfg(feature = "test-utils")]
 fn spawn_capture_stream<F>(
     controls: AudioOutputControls,
-    captured: Arc<Mutex<Vec<f32>>>,
+    active: Arc<Mutex<Arc<Mutex<Vec<f32>>>>>,
     source: Arc<Mutex<PlaybackSource>>,
     audio_events: AudioEventSender,
     position_update_interval_ms: u32,
@@ -490,10 +505,19 @@ where
                     std::thread::sleep(std::time::Duration::from_millis(1));
                     continue;
                 }
+                // A drained track does NOT end the capture thread: the output
+                // stream is persistent, so it keeps running (idle) until the
+                // source is replaced with the next track or the stream is dropped
+                // (the stop flag). Equivalent to Idle here by design.
                 DrainStatus::Completed => {
-                    break;
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                    continue;
                 }
                 DrainStatus::Samples { read } => {
+                    // Read the current capture buffer each iteration: a same-format
+                    // source replace rotates it under us, so post-swap samples land
+                    // in the new track's buffer.
+                    let captured = active.lock().unwrap().clone();
                     if let Ok(mut guard) = captured.lock() {
                         guard.extend_from_slice(&buf[..read]);
                     } else {
@@ -514,7 +538,8 @@ macro_rules! impl_capture_output_constructor {
     ($type:ty) => {
         impl $type {
             /// Returns the output and a receiver that yields one buffer per
-            /// `create_stream` call, in creation order.
+            /// non-gapless transition (a `create_stream` rebuild or an
+            /// `on_source_replaced` swap), in order.
             pub fn new() -> (
                 Self,
                 tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>,
@@ -529,6 +554,15 @@ macro_rules! impl_capture_output_constructor {
 #[cfg(feature = "test-utils")]
 macro_rules! capture_output_control_methods {
     () => {
+        fn on_source_replaced(&mut self) {
+            // A same-format source swap keeps the one capture thread running;
+            // rotate to a fresh buffer so this transition's samples are captured
+            // separately, matching the fixtures' one-buffer-per-transition await.
+            if let Err(e) = self.core.rotate_capture_buffer() {
+                tracing::warn!("capture buffer rotation failed on source replace: {e}");
+            }
+        }
+
         fn set_state(&self, new_state: AudioState) {
             self.core.set_state(new_state);
         }
@@ -563,10 +597,10 @@ impl AudioOutput for CaptureAudioOutput {
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        let (controls, captured) = self.core.prepare_stream()?;
+        self.core.rotate_capture_buffer()?;
         let (stop, thread) = spawn_capture_stream(
-            controls,
-            captured,
+            self.core.controls.clone(),
+            self.core.active.clone(),
             source,
             audio_events,
             position_update_interval_ms,
@@ -625,11 +659,11 @@ impl AudioOutput for RealtimeCaptureAudioOutput {
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        let (controls, captured) = self.core.prepare_stream()?;
+        self.core.rotate_capture_buffer()?;
         let channels = source_channels.max(1);
         let (stop, thread) = spawn_capture_stream(
-            controls,
-            captured,
+            self.core.controls.clone(),
+            self.core.active.clone(),
             source,
             audio_events,
             position_update_interval_ms,
@@ -759,8 +793,12 @@ impl AudioOutput for RealtimeProbeOutput {
                         std::thread::sleep(std::time::Duration::from_millis(1));
                         continue;
                     }
+                    // Persistent output: a drained track idles rather than ending
+                    // the probe thread, which exits only when the stream is dropped
+                    // (the stop flag).
                     DrainStatus::Completed => {
-                        break;
+                        std::thread::sleep(std::time::Duration::from_millis(1));
+                        continue;
                     }
                     DrainStatus::Samples { read } => {
                         sleep_realtime_buffer(read, channels, source_sample_rate);

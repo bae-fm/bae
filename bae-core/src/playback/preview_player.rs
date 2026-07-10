@@ -334,7 +334,6 @@ impl PreviewPlayer {
         let StreamPipelineStart {
             pipeline,
             audio_events,
-            ready: _,
         } = match start_stream_pipeline(
             self.audio_output.as_deref_mut().unwrap(),
             decode,

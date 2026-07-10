@@ -100,7 +100,7 @@ impl PlaybackService {
                     && self.playback_queue.repeat_mode() != RepeatMode::Track
                     && !self.should_hold_for_side_pause(&cur.prepared, &prepared) =>
             {
-                Some(cur.pipeline.source().clone())
+                self.output.as_ref().map(|o| o.source.clone())
             }
             _ => None,
         };
@@ -311,12 +311,10 @@ impl PlaybackService {
         }
     }
 
-    /// The current track's playback source, if a track is active.
+    /// The persistent output's playback source, present whenever a stream is
+    /// attached (which is exactly whenever a track is current).
     pub(super) fn current_source(&self) -> Option<&Arc<Mutex<source::PlaybackSource>>> {
-        match &self.slot {
-            PlaybackSlot::Active(cur) => Some(cur.pipeline.source()),
-            _ => None,
-        }
+        self.output.as_ref().map(|o| &o.source)
     }
 
     /// Discard the preloaded decoder and hand back its prepared track without
@@ -417,8 +415,14 @@ impl PlaybackService {
         cur.prepared
             .release_buffers(&next_prepared.file_ids(), &mut self.shared_file_buffers);
         cur.prepared = next_prepared;
-        cur.pipeline
-            .adopt_crossed_decoder(decoder_handle, cancel_token);
+        // The source already crossed in place (`pull_samples`); swap the current
+        // track's decoder to the crossed-into one. The finishing track's decoder
+        // already exited (the crossing fired), so dropping its handle detaches
+        // nothing live.
+        cur.decoder = TrackDecoder {
+            handle: decoder_handle,
+            cancel_token,
+        };
 
         // The crossed-into track is now playing: hand its reader fetch priority
         // over the track preloaded below.
@@ -527,62 +531,60 @@ impl PlaybackService {
         }
 
         // Recover the preloaded next track stream (staged in the gapless chain or
-        // held for the rebuild path) BEFORE tearing down the current stream — the
-        // teardown below cancels the outgoing source, and in the staged case the
-        // incoming stream lives inside it until this take_next pulls it out.
+        // held for the rebuild path) BEFORE attaching it — in the staged case the
+        // incoming stream lives inside the current source until this take_next
+        // pulls it out.
         let track_stream = detach_preloaded_source(self.current_source(), preloaded_source)
             .expect("Preloaded track has no streaming source");
 
-        // Tear down the current track through the shared teardown (silence the
-        // callback, cancel the outgoing decoder + its token, drop the stream),
-        // then release its buffers now that the incoming track's files are known
-        // — files it shares stay cached and alive. The incoming decoder's token is
-        // its own (carried in `cancel_token`, handed to `attach_preloaded` below),
-        // untouched by the outgoing pipeline's teardown.
+        // Natural transition: start at position 0 (INDEX 00, pregap plays).
+        let fmt = next_prepared.track_fmt(std::time::Duration::ZERO);
+        let sample_rate = next_prepared.sample_rate;
+        let channels = next_prepared.channels;
+
+        // Attach the preloaded stream to the persistent output: same format swaps
+        // the callback's source in place; a format change rebuilds the stream. On
+        // a rebuild-build failure the incoming decoder is left with no consumer —
+        // cancel it and hard-fail, mirroring play_track when audio can't start.
+        if self
+            .attach_track(track_stream, fmt, sample_rate, channels)
+            .await
+            .is_err()
+        {
+            cancel_token.store(true, std::sync::atomic::Ordering::Release);
+            for segment in &next_prepared.segments {
+                segment.buffer.wake_readers();
+            }
+            drop(decoder_handle);
+            emit_progress(
+                &self.progress_tx,
+                PlaybackProgress::PlaybackError {
+                    reason: crate::ui::PlaybackErrorReason::internal(
+                        "Couldn't start audio output for the next track.",
+                    ),
+                },
+            );
+            self.stop().await;
+            return;
+        }
+
+        // The incoming source is now live; tear down the OUTGOING track's decoder
+        // and release its buffers now that the incoming track's files are known —
+        // files it shares stay cached and alive. The incoming decoder's token is
+        // its own (`cancel_token`), untouched by the outgoing teardown.
         if let Some(outgoing) = self.teardown_current_track() {
             outgoing.release_buffers(&next_prepared.file_ids(), &mut self.shared_file_buffers);
         }
-
-        // Natural transition: start at position 0 (INDEX 00, pregap plays).
-        let fmt = next_prepared.track_fmt(std::time::Duration::ZERO);
-        let position_update_interval_ms = self.position_update_interval_ms;
-
-        // Adopt the preloaded track's already-running decoder onto a fresh stream.
-        // On failure the caller owns the failure path: surface a PlaybackError,
-        // then stop() to resolve the transition to Stopped (as play_track does when
-        // audio can't start).
-        let (pipeline, audio_events) = match StreamPipeline::attach_preloaded(
-            &mut *self.audio_output,
-            track_stream,
-            fmt,
-            decoder_handle,
-            cancel_token,
-            position_update_interval_ms,
-        )
-        .await
-        {
-            Ok(parts) => parts,
-            Err(_) => {
-                emit_progress(
-                    &self.progress_tx,
-                    PlaybackProgress::PlaybackError {
-                        reason: crate::ui::PlaybackErrorReason::internal(
-                            "Couldn't start audio output for the next track.",
-                        ),
-                    },
-                );
-                self.stop().await;
-                return;
-            }
-        };
 
         // The gapless natural transition begins at position 0.
         *self.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
 
         self.install_active_track(
             next_prepared,
-            pipeline,
-            audio_events,
+            TrackDecoder {
+                handle: decoder_handle,
+                cancel_token,
+            },
             target.into_track_phase(),
         );
         self.emit_state();

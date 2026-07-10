@@ -43,8 +43,7 @@ impl PlaybackService {
         let generation = self.next_load_generation();
         let CurrentTrack {
             prepared,
-            pipeline,
-            audio_events,
+            decoder: old_decoder,
             phase,
         } = cur;
 
@@ -57,9 +56,6 @@ impl PlaybackService {
             TrackPhase::Loading { target, .. } => target,
         };
 
-        // Drop the old event receiver — the rebuild replaces it.
-        drop(audio_events);
-
         let old_buffers: Vec<_> = prepared
             .segments
             .iter()
@@ -67,28 +63,21 @@ impl PlaybackService {
             .collect();
 
         // Preserve any staged gapless next track across the rebuild so playback
-        // stays gapless after the seek. Removing it from the old chain keeps the
-        // teardown below from cancelling its (still-running) decoder; its source +
-        // fmt are re-staged into the new stream once it's built.
-        let staged_next: Option<(TrackStream, TrackFmt)> = pipeline
-            .source()
-            .lock()
-            .unwrap()
-            .take_next()
+        // stays gapless after the seek. Taking it out of the persistent source now
+        // keeps the `replace` below from cancelling its (still-running) decoder;
+        // its source + fmt are re-staged after the new decoder attaches.
+        let staged_next: Option<(TrackStream, TrackFmt)> = self
+            .output
+            .as_ref()
+            .and_then(|o| o.source.lock().unwrap().take_next())
             .map(|(s, fmt)| (s, (*fmt).clone()));
-
-        // Cancel the old decoder + source, wake the retained buffers, and join the
-        // old decoder so a fresh one can reuse the same buffers. The seek's fresh
-        // decoder mints its own token inside the shared unit, so cancelling the old
-        // one here can't touch it.
-        pipeline.shutdown_for_seek(&old_buffers).await;
 
         // Show buffering at the target immediately (the same Loading→ready arc the
         // play path uses): the bar jumps to the seek position via Seeked below,
         // Loading covers the wait for the demanded window, and the ready-watcher
-        // confirms the target once audio flows. The decoder reads immediately and
-        // the demand-driven fill fetches the seek target first, so there's no
-        // fixed wait and no frozen-but-playing bar.
+        // confirms the target once audio flows. Projecting Stopped onto the atomic
+        // silences the callback while the seek's new decoder fills, so nothing
+        // audible leaks from the old ring in the window before the swap.
         self.slot = PlaybackSlot::Loading {
             track_id: track_id.clone(),
             resolved: Some(LoadingTrack::from_prepared(&prepared)),
@@ -101,20 +90,30 @@ impl PlaybackService {
         let fmt = prepared.track_fmt(position);
         info!("Seek: position {:?}", position);
 
-        let (pipeline, audio_events) = match self
+        // Spawn the seek's fresh decoder over the same byte buffers and swap it
+        // into the persistent source (same format → `replace`). The old decoder is
+        // still running against the same buffers; two readers on one sparse buffer
+        // is supported, and the new decoder is spawned before the old is joined to
+        // minimize the silent window.
+        let new_decoder = match self
             .start_decoder_and_watch(&prepared, decode, fmt, generation)
             .await
         {
-            Ok(parts) => parts,
+            Ok(decoder) => decoder,
             Err(_) => {
-                // The rebuilt stream failed. The preserved next track was taken
-                // out of the old chain, so stop()'s teardown can't reach it —
-                // cancel it here (otherwise its decoder parks forever filling a
-                // buffer with no consumer). Then resolve the Loading we just
-                // emitted to Stopped via stop(), the same hard-failure outcome the
-                // play path takes when audio output can't start.
+                // The rebuild failed (only reachable on a format-change build,
+                // which a same-track seek never hits, but handle it uniformly).
+                // The preserved next track is out of the source, so stop()'s
+                // teardown can't reach it — cancel it here. Cancel the old decoder
+                // too, then resolve to Stopped via stop().
                 if let Some((next_source, _next_fmt)) = staged_next {
                     next_source.cancel();
+                }
+                old_decoder
+                    .cancel_token
+                    .store(true, std::sync::atomic::Ordering::Release);
+                for buffer in &old_buffers {
+                    buffer.wake_readers();
                 }
                 emit_progress(
                     &self.progress_tx,
@@ -129,23 +128,41 @@ impl PlaybackService {
             }
         };
 
-        // Re-stage the preserved gapless next track into the rebuilt stream's
-        // source before it becomes current, so post-seek auto-advance stays
+        // Re-stage the preserved gapless next track into the persistent source
+        // (the same one, replaced in place above) so post-seek auto-advance stays
         // gapless without re-decoding.
         if let Some((next_source, next_fmt)) = staged_next {
-            pipeline
-                .source()
-                .lock()
-                .unwrap()
-                .stage_next(next_source, next_fmt);
+            if let Some(out) = &self.output {
+                out.source.lock().unwrap().stage_next(next_source, next_fmt);
+            }
+        }
+
+        // Now cancel + join the old decoder so the reused byte buffers are free and
+        // the old thread is gone. `replace` already cancelled its sink; setting its
+        // token and waking the buffers unblocks a read-blocked decoder. Surface a
+        // thread panic as an error; a tokio join failure as a warn.
+        old_decoder
+            .cancel_token
+            .store(true, std::sync::atomic::Ordering::Release);
+        for buffer in &old_buffers {
+            buffer.wake_readers();
+        }
+        let old_handle = old_decoder.handle;
+        match tokio::task::spawn_blocking(move || old_handle.join()).await {
+            Ok(Ok(())) => {}
+            Ok(Err(panic)) => {
+                error!("Decoder thread panicked during seek teardown: {:?}", panic);
+            }
+            Err(e) => {
+                warn!("spawn_blocking failed while joining decoder thread: {e}");
+            }
         }
 
         // Reassemble the current track. The phase stays Loading (with this seek's
         // generation and target) until the ready-watcher's TrackReady resolves it.
         self.install_active_track(
             prepared,
-            pipeline,
-            audio_events,
+            new_decoder,
             TrackPhase::Loading { generation, target },
         );
 

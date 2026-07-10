@@ -91,19 +91,20 @@ impl PlaybackService {
     pub(super) fn sync_audio_state(&self) {
         use crate::playback::audio_output::AudioState;
         let projected = match &self.slot {
-            PlaybackSlot::Stopped => Some(AudioState::Stopped),
-            // No stream is attached, so the atomic is inert; leave it as it is
-            // until the load's stream attaches and this runs again.
-            PlaybackSlot::Loading { .. } => None,
-            PlaybackSlot::Active(cur) => Some(match cur.phase.intent() {
+            PlaybackSlot::Stopped => AudioState::Stopped,
+            // A load is in flight. The output stream persists across the
+            // transition, so its callback keeps running — project silence until
+            // the load's track attaches and install runs this again with the
+            // resolved intent. This is what keeps the old ring from leaking audio
+            // during play_track's swap and seek's rebuild.
+            PlaybackSlot::Loading { .. } => AudioState::Stopped,
+            PlaybackSlot::Active(cur) => match cur.phase.intent() {
                 PlayIntent::Playing => AudioState::Playing,
                 PlayIntent::Paused => AudioState::Paused,
                 PlayIntent::Stopped => AudioState::Stopped,
-            }),
+            },
         };
-        if let Some(state) = projected {
-            self.audio_output.set_state(state);
-        }
+        self.audio_output.set_state(projected);
     }
 
     /// The play/pause intent to carry to a track we switch to (Next / Previous /

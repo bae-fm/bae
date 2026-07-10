@@ -62,6 +62,7 @@ use tokio::sync::oneshot;
 use tracing::{debug, error, info, trace, warn};
 
 mod advance;
+mod output;
 mod pipeline;
 mod preview;
 mod queue_commands;
@@ -71,11 +72,13 @@ mod starvation;
 mod state;
 
 use crate::playback::stream_pipeline::{
-    log_stream_diagnostic, report_dropped_audio_events, start_stream_pipeline, DecodeFailureReport,
-    SegmentDecodeParams, StreamDecodeParams, StreamPipeline,
+    log_stream_diagnostic, report_dropped_audio_events, spawn_decoder, DecodeFailureReport,
+    DecoderStart, SegmentDecodeParams, StreamDecodeParams,
 };
+use output::OutputStream;
 use slot::{
-    CurrentTrack, LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase,
+    CurrentTrack, LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackDecoder,
+    TrackPhase,
 };
 use starvation::StarvationEpisode;
 
@@ -659,8 +662,9 @@ struct PreloadedNext {
     prepared: PlaybackPreparedTrack,
     decoder_handle: std::thread::JoinHandle<()>,
     /// The preload decoder's AVIO cancel flag, minted where the decoder is
-    /// spawned. Handed to `attach_preloaded` / `adopt_crossed_decoder` when the
-    /// preload is promoted to current, so the pipeline owns exactly one token.
+    /// spawned. Carried into the installed `TrackDecoder` when the preload is
+    /// promoted to current (manual next or gapless crossing), so the current track
+    /// owns exactly one token.
     cancel_token: Arc<std::sync::atomic::AtomicBool>,
     source: PreloadedNextSource,
 }
@@ -880,10 +884,16 @@ pub struct PlaybackService {
     playback_queue: PlaybackQueue,
     current_position_shared: Arc<std::sync::Mutex<Option<std::time::Duration>>>,
     audio_output: Box<dyn AudioOutput>,
+    /// The persistent output stream, present whenever playback has attached a
+    /// track in some format and not yet stopped. Holds the device stream, the
+    /// `PlaybackSource` the callback pulls from, and the audio-events receiver the
+    /// command loop drains — all shared across track transitions in the same
+    /// format. Rebuilt only on a format change / stream error; dropped on `stop`.
+    output: Option<OutputStream>,
     /// The single authority for what is current and in what phase. Owns the
-    /// stream, source, decoder handle, audio-events receiver, and prepared track
-    /// as one consistent whole; the `AudioState` atomic is written as a
-    /// projection of it via `sync_audio_state`.
+    /// current track's decoder and prepared track plus its phase as one consistent
+    /// whole; the `AudioState` atomic is written as a projection of it via
+    /// `sync_audio_state`. The stream/source/audio-events live in `output`.
     slot: PlaybackSlot,
     /// Mints a fresh `LoadGeneration` per decoder load so a `TrackReady` from an
     /// abandoned load can be told from the live one.
@@ -1115,18 +1125,14 @@ impl PlaybackService {
     }
 
     async fn drain_current_audio_events(&mut self) {
-        while let Some(event) = self
-            .slot
-            .pollable_audio_events()
-            .and_then(AudioEventReceiver::pop)
-        {
+        while let Some(event) = self.output.as_mut().and_then(|o| o.audio_events.pop()) {
             self.handle_audio_event(event).await;
         }
 
         let dropped_required = self
-            .slot
-            .pollable_audio_events_ref()
-            .map(|events| report_dropped_audio_events(events, "playback"))
+            .output
+            .as_ref()
+            .map(|o| report_dropped_audio_events(&o.audio_events, "playback"))
             .unwrap_or(false);
         if dropped_required {
             emit_progress(
@@ -1285,6 +1291,7 @@ impl PlaybackService {
                     playback_queue: PlaybackQueue::new(queue_ids),
                     current_position_shared: Arc::new(std::sync::Mutex::new(None)),
                     audio_output,
+                    output: None,
                     slot: PlaybackSlot::Stopped,
                     load_generation_counter: 0,
                     preloaded_next: None,
@@ -1341,7 +1348,7 @@ impl PlaybackService {
         audio_event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
             tokio::select! {
-                _ = audio_event_tick.tick(), if self.slot.has_pollable_audio_events() => {
+                _ = audio_event_tick.tick(), if self.output.is_some() => {
                     self.drain_current_audio_events().await;
                 }
                 Some(command) = self.command_rx.recv() => {

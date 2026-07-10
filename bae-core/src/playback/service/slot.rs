@@ -104,16 +104,23 @@ impl TrackPhase {
     }
 }
 
+/// The decoder feeding the persistent output's current track: the thread and its
+/// AVIO cancel token. The stream, source, and audio-events receiver are not here
+/// — they live in `PlaybackService::output`, shared across tracks. A track
+/// transition cancels this token (stops the outgoing AVIO reads) and installs the
+/// incoming decoder; the source-side swap happens via `PlaybackSource::replace`.
+pub(super) struct TrackDecoder {
+    pub(super) handle: std::thread::JoinHandle<()>,
+    pub(super) cancel_token: Arc<std::sync::atomic::AtomicBool>,
+}
+
 /// Everything that exists exactly when a track is current, held as one
-/// always-consistent whole. The stream + source + decoder are the shared
-/// `StreamPipeline`; the audio-events receiver stays a `CurrentTrack` field
-/// (not inside the pipeline) because the service drains it on its select tick,
-/// while preview moves its receiver into a spawned task — that asymmetry lives
-/// at the owner, not in the shared unit.
+/// always-consistent whole: the prepared track, its decoder, and its phase. The
+/// output stream / source / audio-events receiver are not per-track — they live
+/// in `PlaybackService::output` and persist across track transitions.
 pub(super) struct CurrentTrack {
     pub(super) prepared: PlaybackPreparedTrack,
-    pub(super) pipeline: StreamPipeline,
-    pub(super) audio_events: AudioEventReceiver,
+    pub(super) decoder: TrackDecoder,
     pub(super) phase: TrackPhase,
 }
 
@@ -137,36 +144,5 @@ impl PlaybackSlot {
             PlaybackSlot::Active(cur) => Some(cur.prepared.track_info.track_id.as_str()),
             _ => None,
         }
-    }
-
-    /// The current track while it is actively streaming — Active and not yet
-    /// Completed. A Completed track keeps its receiver but stops being polled:
-    /// nothing reads its counters again, and the next stream replaces it whole.
-    fn streaming(&self) -> Option<&CurrentTrack> {
-        match self {
-            PlaybackSlot::Active(cur) if !matches!(cur.phase, TrackPhase::Completed) => Some(cur),
-            _ => None,
-        }
-    }
-
-    fn streaming_mut(&mut self) -> Option<&mut CurrentTrack> {
-        match self {
-            PlaybackSlot::Active(cur) if !matches!(cur.phase, TrackPhase::Completed) => Some(cur),
-            _ => None,
-        }
-    }
-
-    /// The audio-events receiver to poll on the drain tick, present only while a
-    /// track is actively streaming.
-    pub(super) fn pollable_audio_events(&mut self) -> Option<&mut AudioEventReceiver> {
-        self.streaming_mut().map(|cur| &mut cur.audio_events)
-    }
-
-    pub(super) fn pollable_audio_events_ref(&self) -> Option<&AudioEventReceiver> {
-        self.streaming().map(|cur| &cur.audio_events)
-    }
-
-    pub(super) fn has_pollable_audio_events(&self) -> bool {
-        self.streaming().is_some()
     }
 }

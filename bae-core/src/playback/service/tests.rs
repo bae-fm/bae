@@ -1,7 +1,11 @@
 use super::*;
 use crate::playback::audio_output::{
-    audio_event_channel, AudioError, AudioEvent, AudioEventSender, AudioState, AudioStream,
+    audio_event_channel, AudioError, AudioEvent, AudioEventReceiver, AudioEventSender, AudioState,
+    AudioStream,
 };
+// Preview retains the per-track `StreamPipeline`; the test builds one for the
+// preview-teardown test via `test_pipeline`.
+use crate::playback::stream_pipeline::StreamPipeline;
 use tempfile::TempDir;
 
 struct TestAudioStream;
@@ -140,6 +144,7 @@ async fn seeded_playback_service(
         playback_queue: PlaybackQueue::new(queue_ids),
         current_position_shared: Arc::new(std::sync::Mutex::new(None)),
         audio_output: Box::new(TestAudioOutput::new()),
+        output: None,
         slot: PlaybackSlot::Stopped,
         load_generation_counter: 0,
         preloaded_next: None,
@@ -157,8 +162,8 @@ async fn seeded_playback_service(
 }
 
 /// Build a `StreamPipeline` over a fresh source for the prepared track's fmt —
-/// the shared unit a `CurrentTrack` holds. The stub stream/decoder/token come
-/// from `new_for_test`.
+/// the per-track unit the preview player still holds. The stub stream/decoder/
+/// token come from `new_for_test`.
 fn test_pipeline(prepared: &PlaybackPreparedTrack) -> StreamPipeline {
     let (_sink, source, _ready) = create_track_stream_pair(prepared.sample_rate, prepared.channels);
     let track_fmt = prepared.track_fmt(std::time::Duration::ZERO);
@@ -167,16 +172,36 @@ fn test_pipeline(prepared: &PlaybackPreparedTrack) -> StreamPipeline {
     ))))
 }
 
-/// Build an `Active` slot from a prepared track, wrapping a fresh test pipeline
-/// and audio-events channel. Tests that need a specific source or pending audio
-/// event build the slot inline instead.
+/// An already-exited decoder with a fresh token — the current track's decoder for
+/// slot-shaped tests that don't exercise a live decode.
+fn test_decoder() -> TrackDecoder {
+    TrackDecoder {
+        handle: finished_decoder_handle(),
+        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    }
+}
+
+/// Build a persistent `OutputStream` over `source` with a stub device stream and
+/// the given audio-events receiver, for tests that drive the drain / seek paths.
+fn test_output(
+    source: Arc<Mutex<source::PlaybackSource>>,
+    audio_events: AudioEventReceiver,
+) -> OutputStream {
+    OutputStream {
+        _stream: Box::new(TestAudioStream),
+        source,
+        audio_events,
+        sample_rate: 44_100,
+        channels: 2,
+    }
+}
+
+/// Build an `Active` slot from a prepared track with a stub decoder. Tests that
+/// exercise the persistent output set `service.output` separately.
 fn active_slot(prepared: PlaybackPreparedTrack, phase: TrackPhase) -> PlaybackSlot {
-    let pipeline = test_pipeline(&prepared);
-    let (_tx, audio_events) = audio_event_channel();
     PlaybackSlot::Active(CurrentTrack {
         prepared,
-        pipeline,
-        audio_events,
+        decoder: test_decoder(),
         phase,
     })
 }
@@ -335,14 +360,16 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
         incoming_fmt: Arc::new(test_track_fmt("incoming-track")),
     }));
     let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
-    let pipeline = StreamPipeline::new_for_test(Arc::new(Mutex::new(source::PlaybackSource::new(
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
         source,
         test_track_fmt("finished-track"),
-    ))));
+    )));
+    // The crossing event lives in the persistent output's audio-events receiver;
+    // the source and receiver survive the track transition.
+    service.output = Some(test_output(source, audio_rx));
     service.slot = PlaybackSlot::Active(CurrentTrack {
         prepared: test_prepared_track("finished-track", finished_buffer.clone()),
-        pipeline,
-        audio_events: audio_rx,
+        decoder: test_decoder(),
         phase: TrackPhase::Playing,
     });
     service.current_position_shared =

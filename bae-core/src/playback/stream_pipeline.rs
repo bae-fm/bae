@@ -1,11 +1,14 @@
-//! One live decoded-audio pipeline, shared by both players.
+//! The preview player's decoded-audio pipeline, plus the decoder-spawn and
+//! diagnostic helpers the main player also uses.
 //!
 //! A `StreamPipeline` is the decoder thread + `PlaybackSource` + output
-//! `AudioStream` trio with one construction path and one teardown path. Both the
-//! main current track (`service::CurrentTrack`) and the preview player
-//! (`preview_player::ActivePreview`) run exactly one of these at a time, so the
-//! buffer+decoder+stream startup, the seek teardown, and the diagnostic event
-//! logging live here once instead of being mirrored in both players.
+//! `AudioStream` trio with one construction path and one teardown path. The
+//! preview player (`preview_player::ActivePreview`) runs exactly one of these at
+//! a time. The main player no longer builds a per-track stream — it keeps one
+//! persistent output stream and swaps what its callback reads (see
+//! `service::output`) — but it shares `spawn_decoder` (the decoder-thread half),
+//! `run_decoder`, and the diagnostic logging from here so the two players can't
+//! drift on the decode/seek mapping.
 
 use crate::audio_codec::StreamingDecodeError;
 use crate::playback::audio_output::{
@@ -25,7 +28,8 @@ use tokio::sync::mpsc as tokio_mpsc;
 use tracing::{debug, error, warn};
 
 /// One live decoded-audio pipeline: a decoder thread filling a ring, wrapped in
-/// a `PlaybackSource`, attached to an output stream.
+/// a `PlaybackSource`, attached to an output stream. Built and torn down per
+/// track by the preview player.
 pub(crate) struct StreamPipeline {
     stream: Box<dyn AudioStream>,
     source: Arc<Mutex<PlaybackSource>>,
@@ -43,14 +47,13 @@ pub(crate) enum DecodeFailureReport {
     LogOnly,
 }
 
-/// The assembled pipeline plus the two channels the owner consumes: the
-/// audio-events receiver (drained on the service's select tick, or moved into
-/// preview's listener task) and the ready receiver (the main player arms its
-/// `TrackReady` watcher on it; preview drops it — it has no Loading state).
+/// The assembled pipeline plus the audio-events receiver its owner consumes
+/// (preview moves it into its listener task). The decoder's ready signal is
+/// dropped inside `start_stream_pipeline` — preview has no Loading state, so it
+/// never arms a `TrackReady` watcher.
 pub(crate) struct StreamPipelineStart {
     pub(crate) pipeline: StreamPipeline,
     pub(crate) audio_events: AudioEventReceiver,
-    pub(crate) ready: ReadyReceiver,
 }
 
 /// The decoder window for one stream. `target_sample` is where FFmpeg trims
@@ -114,26 +117,36 @@ impl StreamDecodeParams {
     }
 }
 
-/// Spawn the decoder for `decode`, build the audio stream on `audio_output`,
-/// start it, and return the assembled pipeline plus its event/ready channels. On
-/// any stream-build failure the spawned decoder is cancelled and its handle
-/// dropped before returning `Err`, so no half-built pipeline escapes. Cancelling
-/// the source's byte buffers (stopping the data reader) stays with the buffer's
-/// owner — this cancels only the decoder it spawned.
-pub(crate) async fn start_stream_pipeline(
-    audio_output: &mut dyn AudioOutput,
+/// A just-spawned decoder thread: the consumer `TrackStream` it fills, the
+/// thread handle, its AVIO cancel token, and the ready signal that fires when the
+/// ring reaches the play threshold (or EOF). No output stream is built — the
+/// caller either wraps it in a fresh `PlaybackSource` + output stream (preview,
+/// or the main player's format-change rebuild) or swaps it into the main player's
+/// persistent source via `PlaybackSource::replace`.
+pub(crate) struct DecoderStart {
+    pub(crate) track_stream: TrackStream,
+    pub(crate) handle: std::thread::JoinHandle<()>,
+    pub(crate) cancel_token: Arc<AtomicBool>,
+    pub(crate) ready: ReadyReceiver,
+}
+
+/// Spawn the streaming decoder for `decode`: mint its AVIO cancel token, create
+/// the sink/stream pair, and run `run_decoder` on a thread. A genuine decode
+/// failure surfaces via `on_decode_failure` (the main player emits a
+/// `PlaybackError`; preview only logs); normal teardown (seek / stop / track
+/// change cancels the token first) stays silent. Builds no output stream — that
+/// is the caller's next step.
+pub(crate) fn spawn_decoder(
     decode: StreamDecodeParams,
-    fmt: TrackFmt,
     sample_rate: u32,
     channels: u32,
-    position_update_interval_ms: u32,
     log_context: &'static str,
     on_decode_failure: DecodeFailureReport,
-) -> Result<StreamPipelineStart, PlaybackError> {
+) -> DecoderStart {
     let cancel_token = Arc::new(AtomicBool::new(false));
-    let (mut sink, track_source, ready) = create_track_stream_pair(sample_rate, channels);
+    let (mut sink, track_stream, ready) = create_track_stream_pair(sample_rate, channels);
 
-    let decoder_handle = {
+    let handle = {
         let decoder_cancel = cancel_token.clone();
         // Kept to tell a genuine decode failure from normal teardown (seek /
         // stop / track change all cancel the token before the decoder exits).
@@ -160,8 +173,46 @@ pub(crate) async fn start_stream_pipeline(
         })
     };
 
+    DecoderStart {
+        track_stream,
+        handle,
+        cancel_token,
+        ready,
+    }
+}
+
+/// Spawn the decoder for `decode`, build the audio stream on `audio_output`,
+/// start it, and return the assembled pipeline plus its event/ready channels. On
+/// any stream-build failure the spawned decoder is cancelled and its handle
+/// dropped before returning `Err`, so no half-built pipeline escapes. Cancelling
+/// the source's byte buffers (stopping the data reader) stays with the buffer's
+/// owner — this cancels only the decoder it spawned. Used by the preview player.
+pub(crate) async fn start_stream_pipeline(
+    audio_output: &mut dyn AudioOutput,
+    decode: StreamDecodeParams,
+    fmt: TrackFmt,
+    sample_rate: u32,
+    channels: u32,
+    position_update_interval_ms: u32,
+    log_context: &'static str,
+    on_decode_failure: DecodeFailureReport,
+) -> Result<StreamPipelineStart, PlaybackError> {
+    let DecoderStart {
+        track_stream,
+        handle,
+        cancel_token,
+        // Preview has no Loading state; the ready signal goes unused (dropped here).
+        ready: _,
+    } = spawn_decoder(
+        decode,
+        sample_rate,
+        channels,
+        log_context,
+        on_decode_failure,
+    );
+
     let (stream, source, audio_events) =
-        match build_and_play_stream(audio_output, track_source, fmt, position_update_interval_ms)
+        match build_and_play_stream(audio_output, track_stream, fmt, position_update_interval_ms)
             .await
         {
             Ok(parts) => parts,
@@ -173,7 +224,7 @@ pub(crate) async fn start_stream_pipeline(
                 // its byte buffers (so a read-blocked decoder sees the token) is
                 // the owner's job on the returned `Err`.
                 cancel_token.store(true, Ordering::Release);
-                drop(decoder_handle);
+                drop(handle);
                 return Err(e);
             }
         };
@@ -182,11 +233,10 @@ pub(crate) async fn start_stream_pipeline(
         pipeline: StreamPipeline {
             stream,
             source,
-            decoder_handle,
+            decoder_handle: handle,
             cancel_token,
         },
         audio_events,
-        ready,
     })
 }
 
@@ -249,51 +299,6 @@ async fn build_and_play_stream(
 }
 
 impl StreamPipeline {
-    /// Adopt an already-running preloaded decoder onto a fresh stream (the main
-    /// player's gapless-rebuild advance path). The decoder + token were minted at
-    /// preload time; this only builds and starts the output stream over the
-    /// preloaded track source.
-    pub(crate) async fn attach_preloaded(
-        audio_output: &mut dyn AudioOutput,
-        track_stream: TrackStream,
-        fmt: TrackFmt,
-        decoder_handle: std::thread::JoinHandle<()>,
-        cancel_token: Arc<AtomicBool>,
-        position_update_interval_ms: u32,
-    ) -> Result<(Self, AudioEventReceiver), PlaybackError> {
-        let (stream, source, audio_events) =
-            build_and_play_stream(audio_output, track_stream, fmt, position_update_interval_ms)
-                .await?;
-        Ok((
-            StreamPipeline {
-                stream,
-                source,
-                decoder_handle,
-                cancel_token,
-            },
-            audio_events,
-        ))
-    }
-
-    pub(crate) fn source(&self) -> &Arc<Mutex<PlaybackSource>> {
-        &self.source
-    }
-
-    /// Swap in the crossed-into track's decoder at a gapless boundary. The stream
-    /// and source stay live (the `PlaybackSource` already advanced to the staged
-    /// next track within the same stream); only the decoder thread + token the
-    /// pipeline owns are replaced.
-    pub(crate) fn adopt_crossed_decoder(
-        &mut self,
-        decoder_handle: std::thread::JoinHandle<()>,
-        cancel_token: Arc<AtomicBool>,
-    ) {
-        // The finishing track's decoder already exited (the crossing fired), so
-        // dropping its handle detaches nothing live.
-        self.decoder_handle = decoder_handle;
-        self.cancel_token = cancel_token;
-    }
-
     /// Immediate teardown: cancel the source (the audio callback goes silent),
     /// cancel the decoder token, drop the stream, and detach the decoder. Does NOT
     /// join the decoder — the token plus the owner's buffer cancellation make it
@@ -537,48 +542,5 @@ mod tests {
 
         // Teardown drops the stream and detaches the decoder; nothing left to poll.
         start.pipeline.cancel();
-    }
-
-    /// When `attach_preloaded`'s stream build fails, the already-running preloaded
-    /// decoder must be stopped, not left parked filling a ring with no consumer.
-    /// A decoder that pushes until its sink is cancelled exits promptly, proving
-    /// the failure path cancelled the source.
-    #[tokio::test]
-    async fn attach_preloaded_failure_stops_the_preloaded_decoder() {
-        let (mut sink, track_stream, _ready) = create_track_stream_pair(44_100, 2);
-        let exited = Arc::new(AtomicBool::new(false));
-        let exited_in_thread = exited.clone();
-        // Stands in for a preloaded decoder: push forever until the sink cancels.
-        let decoder_handle = std::thread::spawn(move || {
-            let chunk = vec![0.0f32; 4096];
-            while !sink.is_cancelled() {
-                sink.push_samples_blocking(&chunk);
-            }
-            exited_in_thread.store(true, Ordering::Release);
-        });
-        let cancel_token = Arc::new(AtomicBool::new(false));
-
-        let mut output = FailingAudioOutput;
-        let result = StreamPipeline::attach_preloaded(
-            &mut output,
-            track_stream,
-            test_fmt(),
-            decoder_handle,
-            cancel_token,
-            50,
-        )
-        .await;
-        assert!(result.is_err(), "a failed attach returns Err");
-
-        // The failure path cancelled the source, so the decoder's sink is
-        // cancelled and the thread exits rather than parking on a full ring.
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
-        while !exited.load(Ordering::Acquire) && std::time::Instant::now() < deadline {
-            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-        }
-        assert!(
-            exited.load(Ordering::Acquire),
-            "the preloaded decoder must exit when attach_preloaded fails"
-        );
     }
 }
