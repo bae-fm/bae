@@ -222,6 +222,7 @@ mod tests {
             manager.clone(),
             tokio::runtime::Handle::current(),
             50,
+            false,
         );
 
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
