@@ -19,6 +19,11 @@ impl AudioStream for TestAudioStream {
 struct TestAudioOutput {
     state: std::sync::Mutex<AudioState>,
     volume: std::sync::Mutex<f32>,
+    /// Count of device streams built (`create_stream`) vs source swaps
+    /// (`on_source_replaced`), so a test can assert the persistent stream is
+    /// rebuilt only on a format change, not on a same-format transition.
+    build_count: Arc<std::sync::atomic::AtomicU64>,
+    replace_count: Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl TestAudioOutput {
@@ -26,6 +31,8 @@ impl TestAudioOutput {
         Self {
             state: std::sync::Mutex::new(AudioState::Playing),
             volume: std::sync::Mutex::new(1.0),
+            build_count: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            replace_count: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         }
     }
 }
@@ -39,7 +46,14 @@ impl AudioOutput for TestAudioOutput {
         _audio_events: AudioEventSender,
         _position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
+        self.build_count
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Ok(Box::new(TestAudioStream))
+    }
+
+    fn on_source_replaced(&mut self) {
+        self.replace_count
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
     fn set_state(&self, state: AudioState) {
@@ -1184,5 +1198,71 @@ async fn play_context_load_failure_surfaces_error_without_touching_the_queue() {
     assert!(
         matches!(service.slot, PlaybackSlot::Stopped),
         "the slot must stay Stopped, not start loading a track whose context failed"
+    );
+}
+
+/// `attach_track` reuses the one persistent output stream for a same-format
+/// transition (swapping the source in place, which fires `on_source_replaced`)
+/// and rebuilds the device stream only when the format changes. Drives it
+/// directly through a `TestAudioOutput` that counts builds vs replaces.
+#[tokio::test]
+async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
+    use std::sync::atomic::Ordering;
+
+    let (_home, mut service, _rx) = test_playback_service().await;
+    let output = TestAudioOutput::new();
+    let builds = output.build_count.clone();
+    let replaces = output.replace_count.clone();
+    service.audio_output = Box::new(output);
+
+    // First attach: nothing is attached yet, so it builds the stream.
+    let (_s1, ts1, _r1) = create_track_stream_pair(44_100, 2);
+    service
+        .attach_track(ts1, test_track_fmt("t1"), 44_100, 2)
+        .await
+        .expect("the first attach builds a stream");
+    assert_eq!(
+        builds.load(Ordering::Relaxed),
+        1,
+        "first attach builds once"
+    );
+    assert_eq!(
+        replaces.load(Ordering::Relaxed),
+        0,
+        "no swap on the first attach"
+    );
+
+    // Same format: swap in place, no rebuild.
+    let (_s2, ts2, _r2) = create_track_stream_pair(44_100, 2);
+    service
+        .attach_track(ts2, test_track_fmt("t2"), 44_100, 2)
+        .await
+        .expect("a same-format attach replaces in place");
+    assert_eq!(
+        builds.load(Ordering::Relaxed),
+        1,
+        "a same-format attach reuses the one persistent stream"
+    );
+    assert_eq!(
+        replaces.load(Ordering::Relaxed),
+        1,
+        "a same-format attach swaps the source (on_source_replaced)"
+    );
+
+    // Format change: drop the old stream and build a fresh one.
+    let (_s3, ts3, _r3) = create_track_stream_pair(96_000, 2);
+    service
+        .attach_track(ts3, test_track_fmt("t3"), 96_000, 2)
+        .await
+        .expect("a format-change attach rebuilds the stream");
+    assert_eq!(
+        builds.load(Ordering::Relaxed),
+        2,
+        "a format change rebuilds the device stream"
+    );
+    assert_eq!(
+        replaces.load(Ordering::Relaxed),
+        1,
+        "a rebuild is not a source swap"
     );
 }

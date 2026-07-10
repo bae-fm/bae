@@ -1937,6 +1937,76 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
     handle.stop();
 }
 
+/// The persistent output stream is built once and reused across same-format
+/// transitions: two consecutive plays and a seek, all in one format, build
+/// exactly ONE device stream (each later transition swaps the callback's source
+/// in place instead of rebuilding). Under the old per-transition rebuild this
+/// counter would read 3; asserting 1 pins the persistent-stream behavior.
+#[tokio::test]
+async fn same_format_transitions_reuse_one_output_stream() {
+    let lib = restore_test_library().await;
+    let first = lib.track_ids[0].clone();
+    let second = lib.track_ids[1].clone();
+
+    // Own the capture sink so we can read its build counter after handing it to
+    // the service. Real-time paced so the tracks don't race to their ends.
+    let (capture_output, _capture_stream_rx) =
+        bae_core::playback::RealtimeCaptureAudioOutput::new();
+    let builds = capture_output.stream_build_count();
+    let handle = bae_core::playback::PlaybackService::start_with_output(
+        lib.library_manager,
+        lib.runtime_handle,
+        100,
+        Box::new(capture_output),
+    );
+    let mut progress_rx = handle.subscribe_progress();
+
+    handle.play(first.clone());
+    wait_for_state_on(
+        &mut progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+        Duration::from_secs(5),
+    )
+    .await
+    .expect("the first track should start playing (one build)");
+
+    // A second play of a same-format track swaps the source in place — no rebuild.
+    handle.play(second.clone());
+    wait_for_state_on(
+        &mut progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
+        Duration::from_secs(5),
+    )
+    .await
+    .expect("the second track should start playing (source replaced, not rebuilt)");
+
+    // A same-format seek likewise swaps in place.
+    handle.seek(Duration::from_secs(1));
+    let deadline = Instant::now() + Duration::from_secs(8);
+    let mut saw_seeked = false;
+    while Instant::now() < deadline {
+        match timeout(Duration::from_millis(200), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::Seeked { track_id, .. })) if track_id == second => {
+                saw_seeked = true;
+                break;
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) => break,
+            Err(_) => continue,
+        }
+    }
+    assert!(saw_seeked, "the seek should land and emit Seeked");
+
+    assert_eq!(
+        builds.load(std::sync::atomic::Ordering::Relaxed),
+        1,
+        "play → play → seek in one format must build exactly one output stream; \
+         each later transition swaps the source in place"
+    );
+
+    handle.stop();
+}
+
 #[tokio::test]
 async fn test_position_maintained_across_pause_resume() {
     let mut fixture = PlaybackTestFixture::new().await;
