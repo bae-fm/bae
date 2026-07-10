@@ -252,6 +252,14 @@ pub(crate) enum PlaybackCommand {
     /// fresh seed and materializes a shuffled order; `false` restores source order.
     /// The current track keeps playing.
     SetShuffle(bool),
+    /// Re-run the side-pause staging decision for the currently preloaded next
+    /// track. Sent after `pause_between_sides` is turned on: staging is decided
+    /// once, at preload time, so without this the boundary already staged into
+    /// the gapless chain would keep crossing gaplessly until the track after
+    /// it. A no-op when there's no active track, no preloaded next, or the
+    /// preload is already held (the drain-time gate already re-reads the
+    /// config in that case).
+    ReevaluateSidePauseStaging,
     /// Skip to the queue entry with this per-instance id (manual action, skip pregap)
     SkipTo(QueueEntryId),
     /// Preview a local audio file (toggle: same path stops, different path switches).
@@ -483,6 +491,16 @@ impl PlaybackHandle {
     }
     pub fn skip_to_entry(&self, entry_id: QueueEntryId) {
         dispatch_command(&self.command_tx, PlaybackCommand::SkipTo(entry_id));
+    }
+    /// Re-evaluate the side-pause staging decision for the currently preloaded
+    /// next track. Called after `pause_between_sides` turns on, so a track
+    /// already staged into the gapless chain is held instead if a pause is now
+    /// due at its boundary.
+    pub fn reevaluate_side_pause_staging(&self) {
+        dispatch_command(
+            &self.command_tx,
+            PlaybackCommand::ReevaluateSidePauseStaging,
+        );
     }
     /// Preview a local audio file. Same path toggles off, different path switches.
     pub fn preview_play(&self, path: String) {
@@ -1829,6 +1847,9 @@ impl PlaybackService {
                         },
                         None => warn!("SetShuffle: no playing context; nothing to shuffle"),
                     }
+                }
+                PlaybackCommand::ReevaluateSidePauseStaging => {
+                    self.reevaluate_side_pause_staging().await;
                 }
                 PlaybackCommand::SkipTo(entry_id) => {
                     if let Some(entry) = self.playback_queue.skip_to(&entry_id) {

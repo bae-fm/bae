@@ -131,6 +131,21 @@ impl AppServices {
         &self.inner.playback
     }
 
+    /// Set whether playback pauses between vinyl/cassette sides. Turning it on
+    /// must take effect at the boundary already staged for gapless playback,
+    /// not just the next one: `preload_next_track` decides staging once, at
+    /// preload time, so writing the config alone leaves an already-staged
+    /// track to cross gaplessly. Turning it off needs no follow-up — the
+    /// drain-time gate (`side_pause_for_queue_front`) already re-reads the
+    /// config before every boundary.
+    pub fn set_pause_between_sides(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
+        self.inner.manager.set_pause_between_sides(enabled)?;
+        if enabled {
+            self.inner.playback.reevaluate_side_pause_staging();
+        }
+        Ok(())
+    }
+
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub fn import(&self) -> &ImportServiceHandle {
         &self.inner.import

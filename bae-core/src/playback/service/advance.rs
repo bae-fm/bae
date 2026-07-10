@@ -220,6 +220,45 @@ impl PlaybackService {
             && self.playback_queue.repeat_mode() != RepeatMode::Track
     }
 
+    /// Re-run the staging decision for the currently preloaded next track,
+    /// after `pause_between_sides` turns on mid-track. `preload_next_track`
+    /// reads the config once, at preload time — flipping it on afterwards
+    /// changes nothing for a track already staged into the gapless chain, so
+    /// the callback would still cross that boundary without a pause. If the
+    /// preload is `Staged` and the (now-updated) config says to hold it,
+    /// discard the staged preload and re-preload the same track: re-running
+    /// `preload_next_track`'s decision holds it this time. A `Held` preload
+    /// needs nothing — `side_pause_for_queue_front` already re-reads the
+    /// config at drain time. No active track or no preloaded next: nothing to
+    /// do. If the boundary was already crossed by the time this command
+    /// reaches the service's loop, the current track IS the next side, so the
+    /// re-evaluation below finds no pause due and does nothing — the toggle
+    /// simply came too late for that boundary.
+    pub(super) async fn reevaluate_side_pause_staging(&mut self) {
+        let Some(preloaded) = &self.preloaded_next else {
+            return;
+        };
+        if !matches!(preloaded.source, PreloadedNextSource::Staged) {
+            return;
+        }
+        let should_hold = match &self.slot {
+            PlaybackSlot::Active(cur) => {
+                self.should_hold_for_side_pause(&cur.prepared, &preloaded.prepared)
+            }
+            _ => return,
+        };
+        if !should_hold {
+            return;
+        }
+        let track_id = preloaded.track_id().to_string();
+        info!(
+            "pause_between_sides enabled mid-track: unstaging preloaded {} to hold for the side pause",
+            track_id
+        );
+        self.clear_next_track_state();
+        self.preload_next_track(&track_id).await;
+    }
+
     pub(super) fn pause_for_side_end(&mut self, decision: SidePauseDecision) {
         // The current track drained (phase Completed); fold the side-pause into
         // the phase, carrying the track it resumes into.

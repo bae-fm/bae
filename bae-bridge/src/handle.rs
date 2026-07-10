@@ -543,7 +543,6 @@ impl AppHandle {
 
     pub fn set_pause_between_sides(&self, enabled: bool) -> Result<(), BridgeError> {
         self.services
-            .library_manager()
             .set_pause_between_sides(enabled)
             .map_err(BridgeError::config)
     }

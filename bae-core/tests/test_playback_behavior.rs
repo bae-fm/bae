@@ -970,6 +970,7 @@ impl CueFlacTestFixture {
 
 struct SidePauseTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
+    library_manager: LibraryManager,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     release_id: String,
@@ -1016,12 +1017,27 @@ impl SidePauseTestFixture {
 
         Ok(Self {
             playback_handle,
+            library_manager: setup.library_manager,
             progress_rx,
             track_ids: setup.track_ids,
             release_id: setup.release_id,
             capture_stream_rx,
             _temp_dir: setup.temp_dir,
         })
+    }
+
+    /// Toggle `pause_between_sides` mid-track through the same effective path
+    /// production uses (`AppServices::set_pause_between_sides`, not reachable
+    /// directly from this fixture since it drives `PlaybackService` without an
+    /// `AppServices`): write the config, then — turning it on — notify the
+    /// playback service to re-evaluate its already-staged preload.
+    fn set_pause_between_sides_mid_track(&self, enabled: bool) {
+        self.library_manager
+            .set_pause_between_sides(enabled)
+            .expect("set_pause_between_sides");
+        if enabled {
+            self.playback_handle.reevaluate_side_pause_staging();
+        }
     }
 
     async fn wait_for_state<F>(
@@ -1238,6 +1254,55 @@ async fn setting_off_auto_advances_across_sided_boundary() {
             &next_side_track_id,
             Duration::from_secs(10),
             "setting off should keep playing across side boundary",
+        )
+        .await;
+}
+
+#[tokio::test]
+async fn enabling_setting_mid_track_pauses_at_the_imminent_boundary() {
+    // The setting starts OFF: A2 preloads B1 and stages it gapless into the
+    // live audio chain immediately after A2 starts. Turning the setting on
+    // while A2 is still playing must still catch that already-staged
+    // boundary — the natural way anyone would try the feature.
+    let mut fixture = SidePauseTestFixture::new("Vinyl", ["A1", "A2", "B1"], false)
+        .await
+        .expect("side-pause fixture");
+    let side_a_track_id = fixture.track_ids[1].clone();
+
+    fixture.play_track_and_wait(1, &side_a_track_id).await;
+
+    fixture.set_pause_between_sides_mid_track(true);
+
+    fixture.seek_to_auto_advance();
+
+    fixture
+        .wait_for_side_pause("A", SIDE_PAUSE_VINYL_MESSAGE_KEY)
+        .await;
+}
+
+#[tokio::test]
+async fn disabling_setting_mid_track_keeps_playing_across_the_boundary() {
+    // Regression guard for the direction that already worked: the setting
+    // starts ON, so B1 is held (not staged) rather than gaplessly chained.
+    // Turning the setting off mid-track must let it play straight through —
+    // the drain-time gate re-reads the config before the boundary fires.
+    let mut fixture = SidePauseTestFixture::new("Vinyl", ["A1", "A2", "B1"], true)
+        .await
+        .expect("side-pause fixture");
+    let side_a_track_id = fixture.track_ids[1].clone();
+    let next_side_track_id = fixture.track_ids[2].clone();
+
+    fixture.play_track_and_wait(1, &side_a_track_id).await;
+
+    fixture.set_pause_between_sides_mid_track(false);
+
+    fixture.seek_to_auto_advance();
+
+    fixture
+        .wait_for_playing_track(
+            &next_side_track_id,
+            Duration::from_secs(10),
+            "disabling the setting mid-track should keep playing across the boundary",
         )
         .await;
 }
