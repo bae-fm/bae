@@ -1084,11 +1084,12 @@ impl PlaybackService {
                 samples_decoded,
             },
         );
-        // The track drained: mark the phase Completed. The stream/source/decoder
-        // stay in the slot because AutoAdvance and the side-pause decision still
-        // read them; the audio-events receiver is retained but no longer polled
-        // (the drain tick's guard skips a Completed slot). The audio callback
-        // already flipped the atomic to Stopped, which `sync_audio_state` confirms.
+        // The track drained: mark the phase Completed. The persistent output
+        // stays live because AutoAdvance and the side-pause decision still read
+        // the source; the callback (atomic already Stopped) produces no further
+        // events until the source is replaced, so the drain tick keeps ticking
+        // but pops nothing. The audio callback already flipped the atomic to
+        // Stopped, which `sync_audio_state` confirms.
         if let PlaybackSlot::Active(cur) = &mut self.slot {
             cur.phase = TrackPhase::Completed;
         }

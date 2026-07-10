@@ -43,7 +43,17 @@ impl PlaybackService {
     ) -> Result<(), PlaybackError> {
         if let Some(out) = &mut self.output {
             if out.sample_rate == sample_rate && out.channels == channels {
-                out.source.lock().unwrap().replace(track_stream, fmt);
+                // Swap the source and flush the shared receiver under the same
+                // lock every audio-event push takes, so the swap and flush are
+                // atomic: everything queued at that instant was pushed for the
+                // outgoing track (stale — a stale `Completion` would otherwise
+                // stamp the incoming track `Completed` and mute it), and
+                // everything the callback pushes after belongs to the new track.
+                {
+                    let mut source = out.source.lock().unwrap();
+                    source.replace(track_stream, fmt);
+                    while out.audio_events.pop().is_some() {}
+                }
                 // A same-format swap keeps the one device stream; tell the sink so
                 // a capture buffer rotates, preserving "one buffer per non-gapless
                 // transition" for the test capture sinks (a no-op on real devices).
@@ -53,22 +63,29 @@ impl PlaybackService {
         }
 
         // Format differs (or nothing is attached yet): build a fresh stream over
-        // a new source for this track.
+        // a new source for this track. A fresh source has no prior events to
+        // carry — an outgoing track's would be stale — so carry none.
         let source = Arc::new(Mutex::new(source::PlaybackSource::new(track_stream, fmt)));
-        self.build_output_over(source, sample_rate, channels)
+        self.build_output_over(source, sample_rate, channels, Vec::new())
     }
 
     /// Drop the current output stream (if any) and build a fresh one over
     /// `source`, resolving the current default device. Both the format-change
     /// branch of `attach_track` and the default-device-change handler go through
     /// here — the difference is only whether `source` wraps a new track or the
-    /// live one. On a build failure the source is cancelled (so a decoder filling
-    /// its ring exits) and the error returned.
+    /// live one. A fresh stream always needs a fresh audio-events channel (the old
+    /// sender dies with the old drain); `carry_events` are events already queued
+    /// for the SAME source that must survive the new channel — the device-change
+    /// rebuild passes the old receiver's pending events, since they can never
+    /// re-fire (a `Completion` latched the source's completion flag). A format
+    /// change wraps a new track, so it carries none. On a build failure the source
+    /// is cancelled (so a decoder filling its ring exits) and the error returned.
     pub(super) fn build_output_over(
         &mut self,
         source: Arc<Mutex<source::PlaybackSource>>,
         sample_rate: u32,
         channels: u32,
+        carry_events: Vec<AudioEvent>,
     ) -> Result<(), PlaybackError> {
         // Drop the old stream first so the device is released / the old capture
         // thread joins before the new one binds. Cancel its source before
@@ -82,7 +99,10 @@ impl PlaybackService {
             old.source.lock().unwrap().cancel();
         }
 
-        let (audio_event_tx, audio_events) = audio_event_channel();
+        let (mut audio_event_tx, audio_events) = audio_event_channel();
+        for event in carry_events {
+            audio_event_tx.push(event);
+        }
 
         let stream = match self.audio_output.create_stream(
             source.clone(),
@@ -134,14 +154,21 @@ impl PlaybackService {
         let OutputStream {
             _stream,
             source,
-            audio_events: _,
+            mut audio_events,
             sample_rate,
             channels,
         } = out;
         // Release the old device before binding the new one.
         drop(_stream);
+        // Carry events already queued for this (unchanged) source onto the new
+        // channel — the callback pushed them under the source lock before the
+        // device changed, and a `Completion` among them can never re-fire.
+        let mut pending = Vec::new();
+        while let Some(event) = audio_events.pop() {
+            pending.push(event);
+        }
         info!("Default output device changed; rebuilding the output stream in place");
-        if let Err(e) = self.build_output_over(source, sample_rate, channels) {
+        if let Err(e) = self.build_output_over(source, sample_rate, channels, pending) {
             error!("Failed to rebuild output after a device change: {e}");
             emit_progress(
                 &self.progress_tx,

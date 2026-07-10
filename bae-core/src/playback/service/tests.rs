@@ -1441,3 +1441,90 @@ async fn format_change_rebuild_cancels_the_old_source_so_its_decoder_exits() {
     );
     handle.join().unwrap();
 }
+
+fn queued_completion(track_id: &str) -> AudioEvent {
+    AudioEvent::Completion((Arc::new(test_track_fmt(track_id)), 0, 44_100))
+}
+
+fn drained_track_completed_ids(
+    progress_rx: &mut tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
+) -> Vec<String> {
+    let mut ids = Vec::new();
+    while let Ok(progress) = progress_rx.try_recv() {
+        if let PlaybackProgress::TrackCompleted { track_id } = progress {
+            ids.push(track_id);
+        }
+    }
+    ids
+}
+
+/// A same-format switch swaps the source in place but keeps the one persistent
+/// audio-events receiver. Events queued for the outgoing track before the swap
+/// must be dropped under the same lock the swap takes, or a later drain would
+/// pop the outgoing track's `Completion` and stamp the incoming track
+/// `Completed` (muting it) and fire a spurious auto-advance. Sabotage — skip the
+/// drain in `attach_track`'s replace branch — and the stale `TrackCompleted`
+/// fires.
+#[tokio::test]
+async fn same_format_replace_drops_events_queued_for_the_outgoing_track() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+
+    let (_sink_a, stream_a, _r_a) = create_track_stream_pair(44_100, 2);
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
+        stream_a,
+        test_track_fmt("A"),
+    )));
+    // A Completion for A is already in the receiver, not yet drained.
+    let (mut tx, rx) = audio_event_channel();
+    tx.push_required(queued_completion("A"));
+    service.output = Some(test_output(source, rx));
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("A", buffer), TrackPhase::Playing);
+
+    // A same-format switch to B swaps the source in place.
+    let (_sink_b, stream_b, _r_b) = create_track_stream_pair(44_100, 2);
+    service
+        .attach_track(stream_b, test_track_fmt("B"), 44_100, 2)
+        .await
+        .expect("a same-format attach replaces in place");
+
+    // Draining now must find nothing stale — the outgoing track's Completion is
+    // gone, so no TrackCompleted (which would drive a spurious advance).
+    service.drain_current_audio_events().await;
+    assert!(
+        drained_track_completed_ids(&mut progress_rx).is_empty(),
+        "a same-format swap must drop events queued for the outgoing track"
+    );
+}
+
+/// A default-device rebuild mints a fresh audio-events channel but reuses the
+/// SAME source. A `Completion` queued when the device changed must be carried
+/// onto the new channel — it can never re-fire (the source's completion latch is
+/// already set), so losing it wedges auto-advance at the end of that track.
+/// Sabotage — drop the old receiver without carrying its events — and no
+/// `TrackCompleted` survives the rebuild.
+#[cfg(target_os = "macos")]
+#[tokio::test]
+async fn device_change_carries_a_queued_completion_forward() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+
+    let (_sink, stream, _r) = create_track_stream_pair(44_100, 2);
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
+        stream,
+        test_track_fmt("t"),
+    )));
+    let (mut tx, rx) = audio_event_channel();
+    tx.push_required(queued_completion("t"));
+    service.output = Some(test_output(source, rx));
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+
+    service.handle_output_device_changed().await;
+    service.drain_current_audio_events().await;
+
+    assert_eq!(
+        drained_track_completed_ids(&mut progress_rx),
+        vec!["t".to_string()],
+        "a queued Completion must survive a device-change rebuild so auto-advance still fires"
+    );
+}
