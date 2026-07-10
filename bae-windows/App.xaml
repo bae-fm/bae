@@ -2,12 +2,18 @@
 <Application
     x:Class="Bae.Windows.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Bae.Windows">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
+            <!-- App-scoped: WinUI 3's Window has no Resources member, and a
+                 compiled binding in Window XAML can't resolve a StaticResource
+                 hung on an inner element (the generated lookup passes the
+                 Window, which isn't a FrameworkElement). -->
+            <local:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

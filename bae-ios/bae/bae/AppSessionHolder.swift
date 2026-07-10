@@ -1,4 +1,5 @@
 import BaeKit
+import Foundation
 import Observation
 
 /// Position-update tick interval handed to the bridge, in milliseconds.
