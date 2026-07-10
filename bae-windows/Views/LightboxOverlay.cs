@@ -331,8 +331,10 @@ internal sealed class LightboxOverlay
         return failureView;
     }
 
-    // Resize the popup to match the window size.
-    private void ResizePopup(Windows.Foundation.Size windowSize)
+    // Resize the popup to match the window size. global:: because inside
+    // namespace Bae.Windows the bare `Windows` resolves to Bae.Windows, not
+    // the platform namespace (CS0234).
+    private void ResizePopup(global::Windows.Foundation.Size windowSize)
     {
         _popup.Width = windowSize.Width;
         _popup.Height = windowSize.Height;
