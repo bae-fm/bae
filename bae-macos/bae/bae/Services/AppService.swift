@@ -81,8 +81,9 @@ final class AppService: BaeKit.AppService {
 
     /// Wire the live `AppHandle` into the stores: register the common and
     /// desktop projections, subscribe to Rust UI events, register the artwork
-    /// analyzer, set up macOS media remote-control bindings, and re-check a
-    /// deferred Discogs token. Called once after construction; previews skip it.
+    /// analyzer, set up macOS media remote-control bindings, start watching
+    /// every persisted watched folder, and re-check a deferred Discogs token.
+    /// Called once after construction; previews skip it.
     func wireUp() {
         registerCommonProjections()
         registerProjection(makeExportProjection())
@@ -103,7 +104,27 @@ final class AppService: BaeKit.AppService {
             previewAudio: previewAudio,
             playbackStore: playbackStore
         )
+        startWatchingImportFolders()
         revalidateDiscogsToken()
+    }
+
+    /// Start the core filesystem watcher on every folder persisted from a
+    /// previous session. Core's watcher stays live and self-updating from here
+    /// on (a debounced `notify` watch re-scans on every on-disk change), so
+    /// this only needs to run once per library open — not on every import-tab
+    /// visit, which is what re-running it would amount to if it lived behind a
+    /// view's `.task`.
+    private func startWatchingImportFolders() {
+        do {
+            try importer.scanWatchedFolders()
+        }
+        catch {
+            uiStore.showError(
+                String(
+                    localized: "Scan failed: \(error.localizedDescription)"
+                )
+            )
+        }
     }
 
     /// Re-check a Discogs key that was saved while offline. App-launch half of

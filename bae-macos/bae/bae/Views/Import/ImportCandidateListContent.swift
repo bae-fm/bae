@@ -40,25 +40,36 @@ struct ImportCandidateListContent: View {
     /// Skip (or unskip) the candidate at `key`. Wired to the row context menu.
     let onSkip: (_ key: String, _ skipped: Bool) -> Void
 
-    @State
-    private var activeTab: CandidateTab = .new
-    @State
-    private var filterText = ""
-    @State
-    private var collapsedFolders: Set<String> = []
+    @Environment(UiStore.self)
+    private var uiStore
     @AppStorage("importCandidateSort")
     private var sortOrder: CandidateSortOrder = .dateAddedNewest
 
+    private var filterTextBinding: Binding<String> {
+        Binding(
+            get: { uiStore.importCandidateFilterText },
+            set: { uiStore.setImportCandidateFilterText($0) }
+        )
+    }
+
+    private var activeTabBinding: Binding<CandidateTab> {
+        Binding(
+            get: { uiStore.importCandidateTab },
+            set: { uiStore.setImportCandidateTab($0) }
+        )
+    }
+
     /// One section per watched folder, candidates in the active tab, filtered and
-    /// sorted — built by the store. `activeTab`, `filterText`, and `sortOrder`
-    /// are this view's own UI state. Used for the New and Added tabs; the
-    /// Skipped tab uses `displayedSkippedGroups` (it also holds invalid rows).
+    /// sorted — built by the store. The active tab and filter text are
+    /// UI-originated session state on `UiStore`; `sortOrder` is
+    /// `AppStorage`-backed. Used for the New and Added tabs; the Skipped tab
+    /// uses `displayedSkippedGroups` (it also holds invalid rows).
     private var displayedGroups:
         [(folder: BridgeWatchedFolder, candidates: [Candidate])]
     {
         importStore.candidateGroups(
-            tab: activeTab,
-            filterText: filterText,
+            tab: uiStore.importCandidateTab,
+            filterText: uiStore.importCandidateFilterText,
             sortOrder: sortOrder
         )
     }
@@ -69,14 +80,14 @@ struct ImportCandidateListContent: View {
         [(folder: BridgeWatchedFolder, rows: [SkippedRow])]
     {
         importStore.skippedGroups(
-            filterText: filterText,
+            filterText: uiStore.importCandidateFilterText,
             sortOrder: sortOrder
         )
     }
 
     /// True when the active tab has nothing to show — drives the empty state.
     private var activeTabIsEmpty: Bool {
-        activeTab == .skipped
+        uiStore.importCandidateTab == .skipped
             ? displayedSkippedGroups.isEmpty : displayedGroups.isEmpty
     }
 
@@ -84,19 +95,19 @@ struct ImportCandidateListContent: View {
         ImportSidebarList {
             VStack(spacing: 8) {
                 CandidateTabBar(
-                    activeTab: $activeTab,
+                    activeTab: activeTabBinding,
                     importStore: importStore
                 )
                 HStack(spacing: 6) {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.tertiary)
                         .font(.callout)
-                    TextField("Filter...", text: $filterText)
+                    TextField("Filter...", text: filterTextBinding)
                         .textFieldStyle(.plain)
                         .font(.callout)
-                    if !filterText.isEmpty {
+                    if !uiStore.importCandidateFilterText.isEmpty {
                         Button {
-                            filterText = ""
+                            uiStore.setImportCandidateFilterText("")
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(.tertiary)
@@ -117,7 +128,7 @@ struct ImportCandidateListContent: View {
             if activeTabIsEmpty {
                 emptyState
             }
-            else if activeTab == .skipped {
+            else if uiStore.importCandidateTab == .skipped {
                 skippedList
             }
             else {
@@ -130,8 +141,9 @@ struct ImportCandidateListContent: View {
     /// "nothing in this tab yet".
     private var emptyState: some View {
         ContentUnavailableView(
-            filterText.isEmpty ? "Nothing here yet" : "No matches",
-            systemImage: filterText.isEmpty
+            uiStore.importCandidateFilterText.isEmpty
+                ? "Nothing here yet" : "No matches",
+            systemImage: uiStore.importCandidateFilterText.isEmpty
                 ? emptyTabSymbol : "magnifyingglass"
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -139,7 +151,7 @@ struct ImportCandidateListContent: View {
     }
 
     private var emptyTabSymbol: String {
-        switch activeTab {
+        switch uiStore.importCandidateTab {
         case .new: "folder"
         case .added: "checkmark.circle"
         case .skipped: "minus.circle"
@@ -150,7 +162,9 @@ struct ImportCandidateListContent: View {
         List(selection: $selectedKey) {
             ForEach(displayedGroups, id: \.folder.path) { group in
                 Section {
-                    if !collapsedFolders.contains(group.folder.path) {
+                    if !uiStore.collapsedImportFolders.contains(
+                        group.folder.path
+                    ) {
                         ForEach(group.candidates, id: \.key) { candidate in
                             CandidateRow(
                                 displayName: candidate.displayName,
@@ -172,10 +186,14 @@ struct ImportCandidateListContent: View {
                     FolderSectionHeader(
                         folder: group.folder,
                         count: group.candidates.count,
-                        isCollapsed: collapsedFolders.contains(
+                        isCollapsed: uiStore.collapsedImportFolders.contains(
                             group.folder.path
                         ),
-                        onToggle: { toggleCollapsed(group.folder.path) },
+                        onToggle: {
+                            uiStore.toggleImportFolderCollapsed(
+                                group.folder.path
+                            )
+                        },
                         onRemove: { onRemoveFolder(group.folder.path) },
                     )
                 }
@@ -193,7 +211,9 @@ struct ImportCandidateListContent: View {
         List(selection: $selectedKey) {
             ForEach(displayedSkippedGroups, id: \.folder.path) { group in
                 Section {
-                    if !collapsedFolders.contains(group.folder.path) {
+                    if !uiStore.collapsedImportFolders.contains(
+                        group.folder.path
+                    ) {
                         ForEach(group.rows) { row in
                             skippedRow(row)
                         }
@@ -202,10 +222,14 @@ struct ImportCandidateListContent: View {
                     FolderSectionHeader(
                         folder: group.folder,
                         count: group.rows.count,
-                        isCollapsed: collapsedFolders.contains(
+                        isCollapsed: uiStore.collapsedImportFolders.contains(
                             group.folder.path
                         ),
-                        onToggle: { toggleCollapsed(group.folder.path) },
+                        onToggle: {
+                            uiStore.toggleImportFolderCollapsed(
+                                group.folder.path
+                            )
+                        },
                         onRemove: { onRemoveFolder(group.folder.path) },
                     )
                 }
@@ -235,15 +259,6 @@ struct ImportCandidateListContent: View {
                 reason: invalid.reason,
                 revealPath: invalid.folderPath,
             )
-        }
-    }
-
-    private func toggleCollapsed(_ path: String) {
-        if collapsedFolders.contains(path) {
-            collapsedFolders.remove(path)
-        }
-        else {
-            collapsedFolders.insert(path)
         }
     }
 
@@ -542,6 +557,7 @@ private struct InvalidCandidateRow: View {
         onSkip: { _, _ in },
     )
     .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    .environment(UiStore())
     .frame(width: 280, height: 500)
     .windowBackground()
 }

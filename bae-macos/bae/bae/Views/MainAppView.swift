@@ -21,6 +21,8 @@ struct MainAppView: View {
     var importer
     @Environment(ImportStore.self)
     var importStore
+    @Environment(PreviewAudio.self)
+    var previewAudio
     @Environment(UiStore.self)
     var uiStore
     @State
@@ -113,6 +115,13 @@ struct MainAppView: View {
         .ignoresSafeArea(.all, edges: .top)
         .modifier(TrafficLightOffset(xOffset: 6, yOffset: 7))
         .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDrop)
+        // A running import-audio preview is scoped to this library session, so
+        // it ends when this view leaves the tree — closing, switching, or
+        // locking the library. Not a tab switch: MainAppView stays mounted
+        // across those; only its active child section unmounts. (The preview
+        // overlay is a sibling here, not inside the section, so switching tabs
+        // must NOT stop it.)
+        .onDisappear { previewAudio.previewStop() }
     }
 
     // MARK: - Search selection

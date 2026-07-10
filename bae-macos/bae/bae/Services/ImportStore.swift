@@ -1,7 +1,10 @@
 import BaeKit
 import Combine
+import OSLog
 import OrderedCollections
 import SwiftUI
+
+private let logger = Logger.bae("ImportStore")
 
 /// The three state tabs the import candidate list groups candidates under.
 /// `tab(for:)` assigns each candidate to exactly one.
@@ -64,6 +67,14 @@ class ImportStore {
 
     var previewState: PreviewState = .idle
 
+    /// Source-folder names that look already imported (a content-hash match on
+    /// some already-completed release), keyed by `Candidate.displayName`. Backs
+    /// the candidate list's "Likely imported" badge. Session state, not
+    /// view-local — kept here so an import-tab remount shows the last-known
+    /// badges immediately instead of blanking them while
+    /// `refreshImportedSourceFolderNames` re-checks.
+    var importedSourceFolderNames: Set<String> = []
+
     /// Preview audio progress (the import-tab preview player).
     /// High-frequency — published as a Combine signal so only the
     /// progress-bar NSView re-renders. Buffers the latest value so a
@@ -90,6 +101,35 @@ class ImportStore {
     /// the shared search/confirmation flow.
     func candidate(forKey key: String) -> Candidate? {
         folderCandidates[key] ?? reIdentifyCandidates[key]
+    }
+
+    /// Re-check which `names` (source-folder display names) look already
+    /// imported, replacing `importedSourceFolderNames` wholesale on success. The
+    /// caller supplies the per-name check (`Importer.isSourceFolderNameImported`)
+    /// and an error sink; a failure on any name aborts the pass and leaves the
+    /// previous (still-valid) badges in place rather than clearing them.
+    @MainActor
+    func refreshImportedSourceFolderNames(
+        _ names: [String],
+        isImported: (String) async throws -> Bool,
+        onError: (String) -> Void
+    ) async {
+        var imported: Set<String> = []
+        for name in names {
+            do {
+                if try await isImported(name) {
+                    imported.insert(name)
+                }
+            }
+            catch {
+                logger.warning(
+                    "Failed to check if folder is imported: \(error)"
+                )
+                onError(error.localizedDescription)
+                return
+            }
+        }
+        importedSourceFolderNames = imported
     }
 
     func applyImportCandidatesSnapshot(

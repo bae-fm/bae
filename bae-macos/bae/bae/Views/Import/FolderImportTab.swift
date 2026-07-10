@@ -1,9 +1,6 @@
 import AppKit
 import BaeKit
-import OSLog
 import SwiftUI
-
-private let logger = Logger.bae("FolderImportTab")
 
 struct FolderImportTab: View {
     @Environment(Importer.self)
@@ -17,8 +14,6 @@ struct FolderImportTab: View {
     @Environment(ConfigStore.self)
     var configStore
 
-    @State
-    private var selectedKey: String?
     // Last-used storage choices, persisted; only consulted when a cloud home
     // exists (toggles hidden otherwise). Managed and pinned are orthogonal:
     // `managed` picks the storage state, `pinned` is passed separately to
@@ -30,23 +25,13 @@ struct FolderImportTab: View {
 
     @State
     private var documentContent: (name: String, text: String)?
-    @State
-    private var importedSourceFolderNames: Set<String> = []
     @Environment(\.openSettings)
     private var openSettings
     @Environment(UiStore.self)
     private var uiStore
 
-    /// Seeds the initially-selected candidate so a preview can render the
-    /// populated view. Production constructs `FolderImportTab()`, leaving the
-    /// list unselected.
-    init(initialSelection: String? = nil) {
-        _selectedKey = State(initialValue: initialSelection)
-        _documentContent = State(initialValue: nil)
-    }
-
     private var selectedCandidate: Candidate? {
-        guard let key = selectedKey else {
+        guard let key = uiStore.selectedFolderCandidate else {
             return nil
         }
         return importStore.folderCandidates[key]
@@ -63,25 +48,15 @@ struct FolderImportTab: View {
 
             documentOverlay
         }
-        .onChange(of: selectedKey) { _, _ in
+        .onChange(of: uiStore.selectedFolderCandidate) { _, _ in
             uiStore.lightbox = nil
         }
-        .task {
-            // Scan watched folders; candidate and folder state refreshes through
-            // invalidation projections.
-            do {
-                try importer.scanWatchedFolders()
-            }
-            catch {
-                uiStore.showError(
-                    String(
-                        localized: "Scan failed: \(error.localizedDescription)"
-                    )
-                )
-            }
-        }
         .task(id: sourceFolderNames) {
-            await refreshImportedSourceFolderNames(sourceFolderNames)
+            await importStore.refreshImportedSourceFolderNames(
+                sourceFolderNames,
+                isImported: importer.isSourceFolderNameImported,
+                onError: { uiStore.showError($0) }
+            )
         }
     }
 
@@ -133,7 +108,7 @@ struct FolderImportTab: View {
 
     private var candidateSelectionBinding: Binding<String?> {
         Binding(
-            get: { selectedKey },
+            get: { uiStore.selectedFolderCandidate },
             set: { key in
                 guard let key,
                     let candidate = importStore.folderCandidates[key]
@@ -150,7 +125,7 @@ struct FolderImportTab: View {
             return
         }
 
-        selectedKey = candidate.key
+        uiStore.selectFolderCandidate(candidate.key)
 
         // Identify gate: only kick off on the first selection. Subsequent
         // re-selects (including back-to-identify from Confirming) keep the
@@ -166,25 +141,6 @@ struct FolderImportTab: View {
     private var sourceFolderNames: [String] {
         Array(Set(importStore.folderCandidates.values.map(\.displayName)))
             .sorted()
-    }
-
-    private func refreshImportedSourceFolderNames(_ names: [String]) async {
-        var imported: Set<String> = []
-        for name in names {
-            do {
-                if try await importer.isSourceFolderNameImported(name) {
-                    imported.insert(name)
-                }
-            }
-            catch {
-                logger.warning(
-                    "Failed to check if folder is imported: \(error)"
-                )
-                uiStore.showError(error.localizedDescription)
-                return
-            }
-        }
-        importedSourceFolderNames = imported
     }
 
     /// Mark the candidate at `key` skipped or unskipped. The import-candidate
@@ -208,10 +164,10 @@ struct FolderImportTab: View {
     /// clear the selection — the import-candidate projection drops the
     /// folder's candidates when the new watched-folder list arrives.
     private func removeWatchedFolder(_ path: String) {
-        if let key = selectedKey,
+        if let key = uiStore.selectedFolderCandidate,
             importStore.folderCandidates[key]?.watchedFolderPath == path
         {
-            selectedKey = nil
+            uiStore.selectFolderCandidate(nil)
         }
         do {
             try importer.removeWatchedFolder(path)
@@ -234,7 +190,7 @@ extension FolderImportTab {
         ImportCandidateListContent(
             importStore: importStore,
             selectedKey: candidateSelectionBinding,
-            isLikelyDupe: importedSourceFolderNames.contains,
+            isLikelyDupe: importStore.importedSourceFolderNames.contains,
             onAddFolder: { pickFolderAndAdd() },
             onRemoveFolder: { path in removeWatchedFolder(path) },
             onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
@@ -272,7 +228,7 @@ extension FolderImportTab {
         ) {
             resultPane(for: candidate)
         }
-        .animation(nil, value: selectedKey)
+        .animation(nil, value: uiStore.selectedFolderCandidate)
     }
 
     /// True while the confirm pane is docked — during detail load and while
@@ -533,14 +489,17 @@ extension FolderImportTab {
 
 #if DEBUG
     #Preview("Folder import — whole view") {
-        FolderImportTab(
-            initialSelection: PreviewData.folderCandidates.first?.key
-        )
-        .frame(width: 1400, height: 800)
-        .importPreviewEnvironment()
-        .environment(Library.stub)
-        .environment(PreviewAudio.stub)
-        .environment(PreviewData.folderImportStore)
-        .environment(Importer())
+        // Seeds the initially-selected candidate so the preview renders the
+        // populated view; production starts with nothing selected.
+        let uiStore = UiStore()
+        uiStore.selectFolderCandidate(PreviewData.folderCandidates.first?.key)
+        return FolderImportTab()
+            .frame(width: 1400, height: 800)
+            .environment(uiStore)
+            .importPreviewEnvironment()
+            .environment(Library.stub)
+            .environment(PreviewAudio.stub)
+            .environment(PreviewData.folderImportStore)
+            .environment(Importer())
     }
 #endif

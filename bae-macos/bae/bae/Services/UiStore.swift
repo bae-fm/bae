@@ -78,11 +78,25 @@ class UiStore: @unchecked Sendable {
 
     // ── Shared selections ───────────────────────────────────────────────
 
-    var selectedFolderCandidate: String?
-
     /// Release selected within a given album. Entries exist only when the user
     /// deviates from the default (first release). Missing key == default.
     var selectedReleaseIdByAlbum: [String: String] = [:]
+
+    // ── Import candidate selection ──────────────────────────────────────
+
+    /// The selected row in the import candidate list, or `nil` before any
+    /// selection. UI-originated session state — which folder the user is
+    /// looking at, not anything core produces — so it survives an import-tab
+    /// remount instead of resetting to "Select a folder".
+    var selectedFolderCandidate: String?
+
+    /// The candidate list sidebar's active tab, filter text, and collapsed
+    /// folders. UI-originated session state, alongside
+    /// `selectedFolderCandidate` — surviving a remount so the sidebar doesn't
+    /// reset to its defaults on every import-tab switch.
+    var importCandidateTab: CandidateTab = .new
+    var importCandidateFilterText: String = ""
+    var collapsedImportFolders: Set<String> = []
 
     // ── Overlays ────────────────────────────────────────────────────────
 
@@ -182,6 +196,29 @@ class UiStore: @unchecked Sendable {
 
     func toggleQueue() {
         showQueue.toggle()
+    }
+
+    // MARK: - Import candidate selection methods
+
+    func selectFolderCandidate(_ key: String?) {
+        selectedFolderCandidate = key
+    }
+
+    func setImportCandidateTab(_ tab: CandidateTab) {
+        importCandidateTab = tab
+    }
+
+    func setImportCandidateFilterText(_ text: String) {
+        importCandidateFilterText = text
+    }
+
+    func toggleImportFolderCollapsed(_ path: String) {
+        if collapsedImportFolders.contains(path) {
+            collapsedImportFolders.remove(path)
+        }
+        else {
+            collapsedImportFolders.insert(path)
+        }
     }
 
     // MARK: - Error methods

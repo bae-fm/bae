@@ -63,16 +63,10 @@ func commitImport(
 // MARK: - ImportView
 
 struct ImportView: View {
-    @Environment(PreviewAudio.self)
-    var previewAudio
-
     var body: some View {
         VStack(spacing: 0) {
             Divider()
             FolderImportTab()
-        }
-        .onDisappear {
-            previewAudio.previewStop()
         }
     }
 }
