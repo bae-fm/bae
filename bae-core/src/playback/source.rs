@@ -56,6 +56,18 @@ pub struct TrackCrossing {
     pub incoming_fmt: Arc<TrackFmt>,
 }
 
+/// The callback-side starvation span for the current track: when the ring first
+/// ran dry (`started`) and when that starvation was last logged (`last_logged` —
+/// `None` means started but not yet logged, a valid state within a span). The
+/// whole span is `Option`: `None` means the ring is flowing, no starvation in
+/// progress. Distinct from the service-side `StarvationEpisode`, which is the
+/// fail-watchdog's per-track decode-progress baseline; this is the audio
+/// callback's own log-throttling span.
+struct StarvationSpan {
+    started: Instant,
+    last_logged: Option<Instant>,
+}
+
 /// What the audio callback pulls from: the current track's PCM source plus an
 /// optional pre-staged next track to advance to in place at the current track's
 /// end.
@@ -63,8 +75,7 @@ pub struct PlaybackSource {
     current: TrackStream,
     current_fmt: Arc<TrackFmt>,
     next: Option<(TrackStream, Arc<TrackFmt>)>,
-    starvation_started: Option<Instant>,
-    last_starvation_log: Option<Instant>,
+    starvation: Option<StarvationSpan>,
     /// Whether the current track's completion (drained, nothing staged after
     /// it) has already been reported via a `Completion` event. Reset when the
     /// current track changes — a gapless crossing or a `replace` — so each
@@ -80,8 +91,7 @@ impl PlaybackSource {
             current,
             current_fmt: Arc::new(current_fmt),
             next: None,
-            starvation_started: None,
-            last_starvation_log: None,
+            starvation: None,
             completion_reported: false,
         }
     }
@@ -110,8 +120,7 @@ impl PlaybackSource {
         self.current = next;
         self.current_fmt = Arc::new(next_fmt);
         self.completion_reported = false;
-        self.starvation_started = None;
-        self.last_starvation_log = None;
+        self.starvation = None;
     }
 
     /// Whether a next track is currently staged.
@@ -215,8 +224,8 @@ impl PlaybackSource {
 
     fn record_starvation_if_needed(&mut self, filled: usize, audio_events: &mut AudioEventSender) {
         if filled > 0 {
-            if let Some(started) = self.starvation_started.take() {
-                let starved = started.elapsed();
+            if let Some(span) = self.starvation.take() {
+                let starved = span.started.elapsed();
                 if starved >= STARVATION_LOG_AFTER {
                     audio_events.push(AudioEvent::StarvationEnded {
                         fmt: self.current_fmt.clone(),
@@ -226,25 +235,31 @@ impl PlaybackSource {
                         decode_errors: self.current.decode_error_count(),
                     });
                 }
-                self.last_starvation_log = None;
             }
             return;
         }
 
         if self.current.is_finished() {
-            self.starvation_started = None;
-            self.last_starvation_log = None;
+            self.starvation = None;
             return;
         }
 
         let now = Instant::now();
-        let started = *self.starvation_started.get_or_insert(now);
-        let starved = now.duration_since(started);
-        if starved >= STARVATION_LOG_AFTER
-            && self
-                .last_starvation_log
-                .is_none_or(|last| now.duration_since(last) >= STARVATION_LOG_EVERY)
-        {
+        let span = self.starvation.get_or_insert(StarvationSpan {
+            started: now,
+            last_logged: None,
+        });
+        let starved = now.duration_since(span.started);
+        let should_log = starved >= STARVATION_LOG_AFTER
+            && span
+                .last_logged
+                .is_none_or(|last| now.duration_since(last) >= STARVATION_LOG_EVERY);
+        if should_log {
+            span.last_logged = Some(now);
+        }
+        // The `span` borrow of `self.starvation` ends above; pushing the event
+        // reads other `self` fields (position, decode counts), so it must follow.
+        if should_log {
             audio_events.push(AudioEvent::Starved {
                 fmt: self.current_fmt.clone(),
                 starved_ms: duration_millis(starved),
@@ -254,7 +269,6 @@ impl PlaybackSource {
                 decode_errors: self.current.decode_error_count(),
                 has_next: self.next.is_some(),
             });
-            self.last_starvation_log = Some(now);
         }
     }
 
