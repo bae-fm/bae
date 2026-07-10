@@ -233,16 +233,26 @@ mod device_listener {
 
     impl Drop for DefaultDeviceListener {
         fn drop(&mut self) {
-            // SAFETY: remove the exact listener we registered, then free the boxed
-            // callback now that no CoreAudio thread can reach it.
-            unsafe {
+            // SAFETY: remove the exact listener we registered. We deliberately do
+            // NOT free the callback box afterward: AudioObjectRemovePropertyListener
+            // does not guarantee that an in-flight `listener_proc` invocation on a
+            // CoreAudio thread has returned by the time it returns, so freeing here
+            // would be an unsynchronizable use-after-free. The output lives for the
+            // process, so this drops at most once at shutdown — one small
+            // intentionally-leaked allocation is the correct trade against the race.
+            let status = unsafe {
                 AudioObjectRemovePropertyListener(
                     kAudioObjectSystemObject,
                     &self.address,
                     Some(listener_proc),
                     self.callback as *mut c_void,
+                )
+            };
+            if status != 0 {
+                tracing::warn!(
+                    "AudioObjectRemovePropertyListener failed with OSStatus {status}; \
+                     the default-device listener may keep firing until process exit"
                 );
-                drop(Box::from_raw(self.callback));
             }
         }
     }
