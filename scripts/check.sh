@@ -26,6 +26,33 @@ if command -v brew &>/dev/null; then
   export LIBRARY_PATH="${BREW_PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
 fi
 
+# FFmpeg's dylibs ship in the repo's bae-ffmpeg/dist (never a system prefix),
+# and nothing bakes their location as an rpath, so the test binaries need it on
+# the dynamic-loader path at runtime. Set it here rather than relying on a dev's
+# shell profile so this script is self-contained. It must be set *inside* this
+# script's own environment: macOS SIP strips DYLD_* when it is inherited across
+# a protected shell (/bin/bash, /bin/sh), but a value exported here survives to
+# the non-restricted `cargo` and test-binary children that actually load FFmpeg.
+if [[ -d "$ROOT/bae-ffmpeg/dist/lib" ]]; then
+  export DYLD_LIBRARY_PATH="$ROOT/bae-ffmpeg/dist/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+fi
+
+# Gradle needs a JDK. Homebrew's openjdk is keg-only — not on PATH, and not
+# registered with /usr/libexec/java_home — so derive JAVA_HOME from it when
+# unset, mirroring the ANDROID_HOME bootstrap below. Prefer the LTS releases the
+# project's Gradle (8.10.2) supports: the unversioned `openjdk` formula tracks
+# the latest (currently 25), which Gradle rejects, so it is only a last resort.
+if [[ -z "${JAVA_HOME:-}" ]] && command -v brew &>/dev/null; then
+  for _jdk in openjdk@21 openjdk@17 openjdk; do
+    _jdk_home="$(brew --prefix "$_jdk" 2>/dev/null)/libexec/openjdk.jdk/Contents/Home"
+    if [[ -d "$_jdk_home" ]]; then
+      export JAVA_HOME="$_jdk_home"
+      export PATH="$JAVA_HOME/bin:$PATH"
+      break
+    fi
+  done
+fi
+
 export NDK_VERSION="${NDK_VERSION:-29.0.14206865}"
 
 if [[ -z "${ANDROID_HOME:-}" ]]; then
