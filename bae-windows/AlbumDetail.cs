@@ -48,11 +48,15 @@ public sealed class Release
     public bool Pinned => _release.Pinned;
 
     /// <summary>The storage transitions available right now, gated on cloud-home
-    /// by the core; the album-detail storage band renders one button per entry.</summary>
-    public IReadOnlyList<BridgeReleaseStorageAction> StorageActions => _release.StorageActions;
+    /// by the core; the album-detail storage band renders one button per entry.
+    /// Internal: the generated bridge types are internal, so a public member
+    /// exposing one is inconsistent accessibility (CS0053); every consumer is
+    /// in-assembly.</summary>
+    internal IReadOnlyList<BridgeReleaseStorageAction> StorageActions => _release.StorageActions;
 
-    /// <summary>The transition in flight for this release, or null when idle.</summary>
-    public BridgeReleaseStorageAction? TransferAction => _release.TransferAction;
+    /// <summary>The transition in flight for this release, or null when idle.
+    /// Internal for the same reason as <see cref="StorageActions"/>.</summary>
+    internal BridgeReleaseStorageAction? TransferAction => _release.TransferAction;
 
     /// <summary>The picker label.</summary>
     public override string ToString() => DisplayName;
