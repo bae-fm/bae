@@ -5978,10 +5978,12 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
 }
 
 /// Multi-window analog of `assert_preload_refreshed_after_queue_mutation`,
-/// covering `add_next` (an insertion ahead of the stale preload) and
-/// `remove_entry` (removing it outright) — the two structurally distinct
-/// mutation shapes; `reorder_entry`/`insert_in_queue` share `add_next`'s code
-/// path (`refresh_preload_for_queue_front`) and aren't ported separately.
+/// used by all four preload-displacement mutations (`add_next`,
+/// `reorder_entry`, `insert_in_queue`, `remove_entry`): after the mutation
+/// displaces the stale preload, Next plays the newly-correct track AND its
+/// audio actually flows over the sparse buffer — a regression that keeps the
+/// queue correct but silences the promoted track fails the audio-advances
+/// assertion.
 async fn assert_preload_refreshed_over_sparse_buffer<F>(
     playback: &mut MultiWindowPlayback,
     initial_queue: Vec<String>,
@@ -6058,6 +6060,43 @@ async fn remove_entry_refreshes_preloaded_track_over_sparse_buffer() {
         &track0,
         &track2,
         |h, entries| h.remove_entry(entries[0].id.clone()),
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn reorder_entry_displaces_preloaded_track_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-reorder-displace").await;
+    let (track0, track1, track2) = (
+        playback.track_ids[0].clone(),
+        playback.track_ids[1].clone(),
+        playback.track_ids[2].clone(),
+    );
+    assert_preload_refreshed_over_sparse_buffer(
+        &mut playback,
+        vec![track1, track2.clone()],
+        &track0,
+        &track2,
+        |h, entries| h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone())),
+    )
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn insert_in_queue_displaces_preloaded_track_over_sparse_buffer() {
+    let mut playback = MultiWindowPlayback::new("multi-window-insert-displace").await;
+    let (track0, track1, track2) = (
+        playback.track_ids[0].clone(),
+        playback.track_ids[1].clone(),
+        playback.track_ids[2].clone(),
+    );
+    let t2 = track2.clone();
+    assert_preload_refreshed_over_sparse_buffer(
+        &mut playback,
+        vec![track1],
+        &track0,
+        &track2,
+        move |h, _entries| h.insert_in_queue(vec![t2], 0),
     )
     .await;
 }
