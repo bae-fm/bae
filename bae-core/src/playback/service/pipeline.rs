@@ -5,8 +5,12 @@ impl PlaybackService {
     /// Stopped. Cancels the outgoing decoder's AVIO token (stopping its reads) and
     /// detaches its thread handle without joining — joining would block the
     /// command loop; a fresh load's decoder replaces it. Does NOT touch
-    /// `self.output`: the source's current ring is cancelled by the subsequent
-    /// `PlaybackSource::replace` (or dropped when `stop()` clears `self.output`).
+    /// `self.output`: the outgoing decoder's ring (sink side) is cancelled by
+    /// whichever teardown site follows — `PlaybackSource::replace` on a same-format
+    /// switch, `build_output_over`'s source-cancel on a format-change rebuild, or
+    /// `stop()`'s source-cancel before it drops the output. The AVIO token alone
+    /// doesn't unpark a decoder blocked writing a full ring; that sink-side cancel
+    /// does, which is why every site does it.
     ///
     /// Returns the outgoing prepared track: its file buffers are still cached
     /// and live, and the caller releases them (`release_buffers`) once it knows
@@ -275,10 +279,15 @@ impl PlaybackService {
         // `self.output` is still present so a staged next source can be recovered
         // and its sink cancelled, then drop the persistent output stream.
         self.clear_next_track_state();
-        // Dropping the persistent output releases the device / drops the source /
-        // drops the audio-events receiver (and, for the capture sinks, joins the
-        // capture thread). This is what tears the persistent stream down.
-        self.output = None;
+        // Cancel the output's source before dropping it, then drop the persistent
+        // output. Cancelling unparks the outgoing decoder even when it's blocked
+        // writing a full ring (`teardown_current_track` only set its AVIO token,
+        // which doesn't reach a write-parked decoder). Dropping the output then
+        // releases the device / drops the source / drops the audio-events receiver
+        // (and, for the capture sinks, joins the capture thread).
+        if let Some(out) = self.output.take() {
+            out.source.lock().unwrap().cancel();
+        }
         // Stop means we're done with this album: cancel every cached file
         // buffer (stopping its fill task and unblocking its readers) and drop
         // the cache.

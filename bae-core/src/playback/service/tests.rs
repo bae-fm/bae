@@ -1345,3 +1345,99 @@ async fn output_device_changed_is_a_noop_when_stopped() {
         "a no-op device change emits nothing"
     );
 }
+
+/// Spawn a stand-in decoder that fills `sink`'s ring until the sink is
+/// cancelled, then flags that it exited. A stub output never drains the ring, so
+/// the thread parks on a full ring in `push_samples_blocking` — the common
+/// steady-state condition, and the only way to prove the source was cancelled
+/// (the AVIO cancel token does not unpark a write-blocked decoder; only the
+/// sink's cancel flag does).
+fn spawn_ring_filling_decoder(
+    mut sink: crate::playback::track_stream::TrackSink,
+) -> (
+    Arc<std::sync::atomic::AtomicBool>,
+    std::thread::JoinHandle<()>,
+) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let exited = Arc::new(AtomicBool::new(false));
+    let exited_in_thread = exited.clone();
+    let handle = std::thread::spawn(move || {
+        let chunk = vec![0.0f32; 4096];
+        while !sink.is_cancelled() {
+            sink.push_samples_blocking(&chunk);
+        }
+        exited_in_thread.store(true, Ordering::Release);
+    });
+    (exited, handle)
+}
+
+async fn await_decoder_exit(exited: &Arc<std::sync::atomic::AtomicBool>) -> bool {
+    use std::sync::atomic::Ordering;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !exited.load(Ordering::Acquire) && std::time::Instant::now() < deadline {
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    exited.load(Ordering::Acquire)
+}
+
+/// `stop()` must cancel the output's `PlaybackSource` before dropping it, so the
+/// outgoing decoder — which `teardown_current_track` only stopped via its AVIO
+/// token — is unparked and exits even when it's blocked writing a full ring.
+/// Dropping the source alone abandons the ring but never sets the sink's cancel
+/// flag, so a ring-parked decoder would spin forever (leaking its thread and
+/// FFmpeg contexts). Sabotage — drop the source-cancel — and this hangs.
+#[tokio::test]
+async fn stop_cancels_the_output_source_so_a_ring_parked_decoder_exits() {
+    let (_home, mut service, _rx) = test_playback_service().await;
+
+    let (sink, track_stream, _ready) = create_track_stream_pair(44_100, 2);
+    let (exited, handle) = spawn_ring_filling_decoder(sink);
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
+        track_stream,
+        test_track_fmt("t"),
+    )));
+    let (_tx, audio_rx) = audio_event_channel();
+    service.output = Some(test_output(source, audio_rx));
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+
+    service.stop().await;
+
+    assert!(
+        await_decoder_exit(&exited).await,
+        "stop() must cancel the output source so a ring-parked decoder exits"
+    );
+    handle.join().unwrap();
+}
+
+/// A format-change rebuild (`attach_track` into a different sample rate/channel
+/// count) discards the old output's `PlaybackSource`; it must cancel that source
+/// first so its ring-parked decoder exits, for the same reason as `stop()`.
+#[tokio::test]
+async fn format_change_rebuild_cancels_the_old_source_so_its_decoder_exits() {
+    let (_home, mut service, _rx) = test_playback_service().await;
+
+    // An old output at 44.1kHz whose decoder is parked filling a full ring.
+    let (sink, track_stream, _ready) = create_track_stream_pair(44_100, 2);
+    let (exited, handle) = spawn_ring_filling_decoder(sink);
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
+        track_stream,
+        test_track_fmt("t"),
+    )));
+    let (_tx, audio_rx) = audio_event_channel();
+    service.output = Some(test_output(source, audio_rx));
+
+    // Attach a track in a DIFFERENT format, forcing a rebuild that drops the old
+    // output's source.
+    let (_new_sink, new_stream, _new_ready) = create_track_stream_pair(96_000, 2);
+    service
+        .attach_track(new_stream, test_track_fmt("t2"), 96_000, 2)
+        .await
+        .expect("the format-change attach rebuilds the stream");
+
+    assert!(
+        await_decoder_exit(&exited).await,
+        "a format-change rebuild must cancel the discarded source so its decoder exits"
+    );
+    handle.join().unwrap();
+}

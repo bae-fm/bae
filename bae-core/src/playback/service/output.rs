@@ -71,8 +71,16 @@ impl PlaybackService {
         channels: u32,
     ) -> Result<(), PlaybackError> {
         // Drop the old stream first so the device is released / the old capture
-        // thread joins before the new one binds.
-        self.output = None;
+        // thread joins before the new one binds. Cancel its source before
+        // dropping it: a format-change rebuild discards the outgoing track's
+        // source, whose decoder `teardown_current_track` stopped only via its AVIO
+        // token — but a decoder parked writing a full ring only unparks on the
+        // sink's cancel flag, so without this it would spin forever. (The
+        // device-change handler took `self.output` out before calling here and
+        // passes that same source back in, so there's nothing to cancel then.)
+        if let Some(old) = self.output.take() {
+            old.source.lock().unwrap().cancel();
+        }
 
         let (audio_event_tx, audio_events) = audio_event_channel();
 
