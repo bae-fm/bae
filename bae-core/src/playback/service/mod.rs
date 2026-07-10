@@ -940,6 +940,13 @@ pub struct PlaybackService {
     /// mid-starvation with no decode progress yet observed. `None` whenever
     /// the track is flowing normally — see `reset_starvation_episode`.
     starvation_episode: Option<StarvationEpisode>,
+    /// When `persist_playback_state` last ran, real time. Throttles the
+    /// periodic per-tick persist (`handle_position_event`) to at most once a
+    /// second; every call to `persist_playback_state` — including the ones a
+    /// track change already triggers (play, gapless advance) — refreshes it,
+    /// so the periodic writer naturally waits a full second from whichever
+    /// discrete event last wrote the row.
+    last_position_persist: Option<std::time::Instant>,
 }
 
 impl PlaybackService {
@@ -1113,7 +1120,7 @@ impl PlaybackService {
         }
     }
 
-    fn handle_position_event(&mut self, fmt: Arc<TrackFmt>, pos: std::time::Duration) {
+    async fn handle_position_event(&mut self, fmt: Arc<TrackFmt>, pos: std::time::Duration) {
         // Samples are flowing normally: whatever starvation episode was in
         // progress is over.
         self.reset_starvation_episode();
@@ -1134,6 +1141,26 @@ impl PlaybackService {
                 progress,
             },
         );
+
+        // Persist the resume point at most once a second while the track is
+        // actually advancing (Playing) — this is what makes `playback_state`
+        // the crash-safe resume point in between the discrete events
+        // (load/pause/seek/stop) that already persist. A Loading or Paused
+        // tick skips this: position isn't moving, and pause/seek already
+        // wrote the row when they happened.
+        let playing = matches!(
+            &self.slot,
+            PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Playing)
+        );
+        if playing {
+            let due = match self.last_position_persist {
+                Some(last) => last.elapsed() >= std::time::Duration::from_secs(1),
+                None => true,
+            };
+            if due {
+                self.persist_playback_state().await;
+            }
+        }
     }
 
     fn handle_completion_event(
@@ -1183,7 +1210,7 @@ impl PlaybackService {
             log_stream_diagnostic("playback", &event);
         }
         match event {
-            AudioEvent::Position((fmt, pos)) => self.handle_position_event(fmt, pos),
+            AudioEvent::Position((fmt, pos)) => self.handle_position_event(fmt, pos).await,
             AudioEvent::Completion((fmt, error_count, samples_decoded)) => {
                 self.handle_completion_event(fmt, error_count, samples_decoded);
             }
@@ -1303,8 +1330,11 @@ impl PlaybackService {
     /// `restore_playback` is the platform's "Restore on launch" preference:
     /// `true` restores the saved queue/track/position from the `playback_state`
     /// row at startup; `false` starts with nothing in playback. The row itself
-    /// is written continuously either way (it's the crash-safe resume point),
-    /// so flipping the preference on takes effect at the next launch.
+    /// is kept current either way (it's the crash-safe resume point): a track
+    /// load, stop, or queue edit writes it immediately, and while a track is
+    /// actually playing `handle_position_event` additionally writes it at
+    /// most once a second, so `position_ms` never goes stale for longer than
+    /// that — so flipping the preference on takes effect at the next launch.
     pub fn start(
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
@@ -1430,6 +1460,7 @@ impl PlaybackService {
                     last_position_display,
                     fetch_arbiter: FetchArbiter::new(),
                     starvation_episode: None,
+                    last_position_persist: None,
                 };
                 // "Restore on launch" off is a designed-for start-fresh launch:
                 // skip the restore but keep the row — it stays the crash-safe

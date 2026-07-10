@@ -381,7 +381,13 @@ impl PlaybackService {
     /// resume-cache write only costs the resume point; playback is unaffected.
     /// The log is the never-mask escape hatch — a write failure is recorded, not
     /// conflated with "nothing was playing".
-    pub(super) async fn persist_playback_state(&self) {
+    pub(super) async fn persist_playback_state(&mut self) {
+        // Every call is a fresh write of the row (or its clearing), so it
+        // resets the periodic per-tick throttle in `handle_position_event` —
+        // including the persist a track change already does at play/gapless-
+        // advance time, which is exactly why a new track's first periodic
+        // write waits a full second rather than firing immediately.
+        self.last_position_persist = Some(std::time::Instant::now());
         // Clear the durable row when there is nothing to resume: the slot is
         // Stopped, or the track drained naturally (Completed). A Loading or
         // playing/paused Active track writes the row.

@@ -430,6 +430,9 @@ struct PlaybackTestFixture {
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     album_dir: std::path::PathBuf,
+    /// Held so tests can read the device-local `playback_state` row directly,
+    /// without going through Shutdown/SaveState.
+    library_manager: LibraryManager,
     /// Held so the capture sink's `create_stream` can hand off each stream's
     /// buffer — dropping the receiver would fail stream creation. The fixture's
     /// tests don't inspect the samples, only playback state.
@@ -469,6 +472,7 @@ impl PlaybackTestFixture {
             progress_rx,
             track_ids: setup.track_ids,
             album_dir: setup.album_dir,
+            library_manager: setup.library_manager,
             _capture_stream_rx: capture_stream_rx,
             _temp_dir: setup.temp_dir,
         }
@@ -4654,6 +4658,67 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     assert!(
         cleared,
         "stopping playback should clear the playback_state row"
+    );
+}
+
+/// The `playback_state` row must advance while a track plays, with no
+/// Shutdown/SaveState sent — that's the crash-safe resume point `start`'s doc
+/// promises. Without periodic persistence the row holds whatever position the
+/// last discrete event (track load, pause, seek) captured, usually 0.
+#[tokio::test]
+async fn test_position_persists_periodically_while_playing() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let track_id = fixture.track_ids[0].clone();
+
+    fixture.playback_handle.play(track_id.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { .. }),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the track should start playing");
+
+    // Let playback advance past the periodic-persist threshold. No Shutdown,
+    // no SaveState — only the ordinary play-progress ticks.
+    let live_position_ms =
+        position_after(&mut fixture.progress_rx, Duration::from_millis(1500)).await;
+    assert!(
+        live_position_ms > 0,
+        "sanity: playback should have advanced, got {live_position_ms}ms"
+    );
+
+    let row = fixture
+        .library_manager
+        .load_playback_state()
+        .await
+        .expect("load_playback_state should succeed")
+        .expect(
+            "a playback_state row should be persisted while playing, \
+             with no Shutdown/SaveState sent",
+        );
+    let first_persisted_ms = row
+        .position_ms
+        .expect("position_ms must be recorded while playing");
+    assert!(
+        first_persisted_ms > 0,
+        "persisted position should be > 0 after ~1.5s of playback, got {first_persisted_ms}ms"
+    );
+
+    // Advance further and confirm the stored position keeps climbing — proof
+    // this is a periodic write, not a one-shot at track start.
+    let _ = position_after(&mut fixture.progress_rx, Duration::from_millis(1500)).await;
+    let row = fixture
+        .library_manager
+        .load_playback_state()
+        .await
+        .expect("load_playback_state should succeed")
+        .expect("the playback_state row should still be present");
+    let second_persisted_ms = row.position_ms.expect("position_ms must still be recorded");
+    assert!(
+        second_persisted_ms > first_persisted_ms,
+        "persisted position must keep advancing while playing: \
+         {first_persisted_ms}ms then {second_persisted_ms}ms"
     );
 }
 

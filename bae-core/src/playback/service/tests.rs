@@ -171,6 +171,7 @@ async fn seeded_playback_service(
         last_position_display: Arc::new(std::sync::Mutex::new(None)),
         fetch_arbiter: FetchArbiter::new(),
         starvation_episode: None,
+        last_position_persist: None,
     };
     (home, service, progress_rx)
 }
