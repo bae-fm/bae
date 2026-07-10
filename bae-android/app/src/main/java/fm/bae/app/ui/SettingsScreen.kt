@@ -130,27 +130,38 @@ fun SettingsScreen(
     }
 
     if (confirmLeave) {
-        AlertDialog(
-            onDismissRequest = { confirmLeave = false },
-            title = { Text(stringResource(R.string.settings_remove_library_confirm_title)) },
-            text = { Text(stringResource(R.string.settings_remove_library_confirm_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmLeave = false
-                    onLeaveLibrary()
-                }) {
-                    Text(stringResource(R.string.settings_remove))
-                }
+        LeaveLibraryConfirmDialog(
+            onConfirm = {
+                confirmLeave = false
+                onLeaveLibrary()
             },
-            dismissButton = {
-                TextButton(onClick = { confirmLeave = false }) { Text(stringResource(R.string.cancel)) }
-            },
+            onDismiss = { confirmLeave = false },
         )
     }
 
     if (showRecoveryCode) {
         RecoveryCodeDialog(session = session, onDismiss = { showRecoveryCode = false })
     }
+}
+
+@Composable
+private fun LeaveLibraryConfirmDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_remove_library_confirm_title)) },
+        text = { Text(stringResource(R.string.settings_remove_library_confirm_body)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.settings_remove))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
 }
 
 @Composable
@@ -250,8 +261,6 @@ private fun SettingsPlaybackSection(
     config: BridgeConfig,
     ioDispatcher: CoroutineDispatcher,
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     Column(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -261,59 +270,76 @@ private fun SettingsPlaybackSection(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.settings_pause_between_sides),
-                modifier = Modifier.weight(1f),
-            )
-            Switch(
-                checked = config.pauseBetweenSides,
-                onCheckedChange = { enabled ->
-                    scope.launch {
-                        try {
-                            withContext(ioDispatcher) {
-                                session.appHandle.setPauseBetweenSides(enabled)
-                            }
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: BridgeException) {
-                            logger.error("Failed to update pause-between-sides setting", e)
-                            session.configStore.showError(context.localizedLine(e))
-                        } catch (e: Exception) {
-                            logger.error("Failed to update pause-between-sides setting", e)
-                            session.configStore.showError(e.toString())
-                        }
-                    }
-                },
-            )
-        }
-        // Device-local, not library config: whether the next launch restores
-        // the last session's playback. The core keeps the resume row current
-        // either way, so flipping this on takes effect at the next launch.
-        var restoreOnLaunch by remember { mutableStateOf(RestorePlaybackPref.load(context)) }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.settings_restore_on_launch),
-                modifier = Modifier.weight(1f),
-            )
-            Switch(
-                checked = restoreOnLaunch,
-                onCheckedChange = { enabled ->
-                    restoreOnLaunch = enabled
-                    RestorePlaybackPref.save(context, enabled)
-                },
-            )
-        }
+        PauseBetweenSidesRow(session = session, config = config, ioDispatcher = ioDispatcher)
+        RestoreOnLaunchRow()
         Text(
             text = stringResource(R.string.settings_restore_on_launch_help),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun PauseBetweenSidesRow(
+    session: OpenLibrary,
+    config: BridgeConfig,
+    ioDispatcher: CoroutineDispatcher,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.settings_pause_between_sides),
+            modifier = Modifier.weight(1f),
+        )
+        Switch(
+            checked = config.pauseBetweenSides,
+            onCheckedChange = { enabled ->
+                scope.launch {
+                    try {
+                        withContext(ioDispatcher) {
+                            session.appHandle.setPauseBetweenSides(enabled)
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: BridgeException) {
+                        logger.error("Failed to update pause-between-sides setting", e)
+                        session.configStore.showError(context.localizedLine(e))
+                    } catch (e: Exception) {
+                        logger.error("Failed to update pause-between-sides setting", e)
+                        session.configStore.showError(e.toString())
+                    }
+                }
+            },
+        )
+    }
+}
+
+// Device-local, not library config: whether the next launch restores the last
+// session's playback. The core keeps the resume row current either way, so
+// flipping this on takes effect at the next launch.
+@Composable
+private fun RestoreOnLaunchRow() {
+    val context = LocalContext.current
+    var restoreOnLaunch by remember { mutableStateOf(RestorePlaybackPref.load(context)) }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.settings_restore_on_launch),
+            modifier = Modifier.weight(1f),
+        )
+        Switch(
+            checked = restoreOnLaunch,
+            onCheckedChange = { enabled ->
+                restoreOnLaunch = enabled
+                RestorePlaybackPref.save(context, enabled)
+            },
         )
     }
 }

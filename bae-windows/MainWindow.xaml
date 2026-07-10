@@ -99,7 +99,7 @@
                              the row — required in a virtualized, container-recycling GridView. -->
                         <Border
                             CornerRadius="10"
-                            Opacity="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}">
+                            Opacity="{x:Bind SelectionTintOpacity, Mode=OneWay}">
                             <Border.Background>
                                 <SolidColorBrush Color="{ThemeResource SystemAccentColor}" Opacity="0.18" />
                             </Border.Background>

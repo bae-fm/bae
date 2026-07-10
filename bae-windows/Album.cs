@@ -63,6 +63,13 @@ public sealed class Album : INotifyPropertyChanged
             }
             _isSelected = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectionTintOpacity)));
         }
     }
+
+    /// <summary>The selection tint's opacity, precomputed so the card's XAML
+    /// binds it directly — a compiled binding in Window XAML can't resolve a
+    /// StaticResource converter (the generated lookup passes the Window, which
+    /// isn't a FrameworkElement in WinUI 3).</summary>
+    public double SelectionTintOpacity => _isSelected ? 1.0 : 0.0;
 }

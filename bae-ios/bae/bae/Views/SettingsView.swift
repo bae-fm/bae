@@ -301,8 +301,13 @@ extension SettingsView {
     /// "1.2 (345)". Both Info.plist keys are stamped by every build; a missing
     /// one is a packaging bug and fails loud.
     fileprivate static var appVersion: String {
-        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as! String
+        let info = Bundle.main
+        guard
+            let short = info.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+            let build = info.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+        else {
+            preconditionFailure("the app bundle always stamps its version keys")
+        }
         return "\(short) (\(build))"
     }
 }
