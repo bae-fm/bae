@@ -175,10 +175,12 @@ struct ExpandedNowPlayingView: View {
 
     // The upcoming queue, embedded below the player so a swipe up scrolls into it.
     // Tapping a row skips to it (without dismissing — the player follows the new
-    // track); swiping a row removes it. Drag-to-reorder and Clear stay in the
-    // dedicated queue sheet (the bar's queue button), which needs an edit mode
-    // this list omits. The current track isn't in `queueItems` — it's the player
-    // above. The section is dropped when empty so no bare "Up Next" header shows.
+    // track); swiping a row removes it; drag-to-reorder is always available too
+    // (`upNextRows` scopes edit mode to its own rows). Clear stays in the
+    // dedicated queue sheet (the bar's queue button) — this embedded surface has
+    // no toolbar to put it in. The current track isn't in `queueItems` — it's the
+    // player above. The section is dropped when empty so no bare "Up Next" header
+    // shows.
     @ViewBuilder
     private var upNext: some View {
         if !playbackStore.manualQueue.isEmpty {
@@ -192,7 +194,6 @@ struct ExpandedNowPlayingView: View {
                         loadRange: nil
                     ),
                     queue: queue,
-                    isEditing: false,
                     onSkipped: {}
                 )
             }
@@ -213,7 +214,6 @@ struct ExpandedNowPlayingView: View {
                         }
                     ),
                     queue: queue,
-                    isEditing: false,
                     onSkipped: {}
                 )
             } header: {

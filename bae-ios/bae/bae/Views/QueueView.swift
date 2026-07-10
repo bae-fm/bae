@@ -47,12 +47,6 @@ struct QueueView: View {
     private var playbackStore
     @Environment(\.dismiss)
     private var dismiss
-    // Own the edit state rather than letting EditButton drive an implicit one,
-    // so it can be forced inactive when the queue empties (otherwise deleting
-    // the last row mid-edit would strand the list in edit mode) and so row taps
-    // can be gated while editing.
-    @State
-    private var editMode: EditMode = .inactive
 
     var body: some View {
         NavigationStack {
@@ -67,10 +61,6 @@ struct QueueView: View {
                 playingFrom
             }
             .listStyle(.plain)
-            .environment(\.editMode, $editMode)
-            .onChange(of: playbackStore.manualQueue.isEmpty) { _, isEmpty in
-                if isEmpty { editMode = .inactive }
-            }
             .background(Theme.background)
             .navigationTitle("Queue")
             .navigationBarTitleDisplayMode(.inline)
@@ -81,12 +71,6 @@ struct QueueView: View {
                     // manual lane regardless of the context.
                     Button("Clear") { queue.clearQueue() }
                         .disabled(playbackStore.manualQueue.isEmpty)
-                }
-                // EditButton toggles the list into edit mode, which is what
-                // surfaces the drag-to-reorder handles (and the delete control)
-                // for the Up Next rows; without it `.onMove` has no affordance.
-                ToolbarItem(placement: .topBarTrailing) {
-                    EditButton()
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -116,9 +100,9 @@ struct QueueView: View {
         }
         else {
             Section("Up Next") {
-                // Edit mode surfaces reorder handles here; a row tap is gated to
-                // skip only when not editing, and skipping dismisses the sheet.
-                // Always fully resolved, so no load hook.
+                // Reorder handles are always on (see `upNextRows`); a tap always
+                // skips, and skipping dismisses the sheet. Always fully resolved,
+                // so no load hook.
                 let manual = playbackStore.manualQueue
                 upNextRows(
                     lane: QueueLane(
@@ -128,7 +112,6 @@ struct QueueView: View {
                         loadRange: nil
                     ),
                     queue: queue,
-                    isEditing: editMode.isEditing,
                     onSkipped: { dismiss() }
                 )
             }
@@ -158,7 +141,6 @@ struct QueueView: View {
                         }
                     ),
                     queue: queue,
-                    isEditing: editMode.isEditing,
                     onSkipped: { dismiss() }
                 )
             } header: {
@@ -217,13 +199,21 @@ func contextSectionTitle(_ kind: BridgePlaybackSourceKind) -> LocalizedStringKey
 /// index via `itemAt`, not a concrete array, so the context lane can be a
 /// library-scaled, partly-loaded tail: an unloaded index renders a placeholder
 /// and `.task(id:)` fetches the range around it via `loadRange` (`nil` for the
-/// always-fully-loaded manual lane). Tapping a loaded row skips to it (unless
-/// `isEditing`, when the tap belongs to reorder/delete) and then runs
-/// `onSkipped`; swiping deletes; `.onMove` reorders. `.onMove` is inert without
-/// an active edit mode, so the embedded queue (which has none) shows no reorder
-/// handles while still getting tap-to-skip and swipe-to-delete.
+/// always-fully-loaded manual lane). Tapping a loaded row always skips to it and
+/// runs `onSkipped`; swiping a loaded row deletes it; `.onMove` reorders.
 ///
-/// A reorder/delete whose source or target row isn't loaded is dropped with a
+/// Reorder handles are always visible in both surfaces — no `EditButton`, no
+/// edit-mode toggle — matching Apple Music's Up Next. That needs
+/// `EditMode.active` scoped to just this `ForEach` (`.onMove` is inert
+/// without it), which would normally also swap every row's trailing swipe
+/// gesture for the edit-mode delete (minus) control; using `.swipeActions`
+/// instead of `.onDelete` keeps the delete affordance a real swipe regardless
+/// of edit mode (and, since it's attached only when `item` is loaded, an
+/// unloaded row is simply not swipeable rather than swiping and silently
+/// no-op'ing). The now-playing row and the section headers sit outside this
+/// `ForEach`, so the constant edit mode never reaches them.
+///
+/// A reorder whose source or target row isn't loaded is dropped with a
 /// warning rather than guessed — reordering only ever targets a rendered
 /// (hence loaded) row in practice, so this only ever excludes a brief loading
 /// flash, not a real position.
@@ -232,7 +222,6 @@ func contextSectionTitle(_ kind: BridgePlaybackSourceKind) -> LocalizedStringKey
 func upNextRows(
     lane: QueueLane,
     queue: Queue,
-    isEditing: Bool,
     onSkipped: @escaping () -> Void
 ) -> some View {
     ForEach(0..<lane.count, id: \.self) { index in
@@ -240,13 +229,19 @@ func upNextRows(
         Group {
             if let item {
                 Button {
-                    guard !isEditing else { return }
                     queue.skipToEntry(item.entryId)
                     onSkipped()
                 } label: {
                     QueueRow(item: item)
                 }
                 .buttonStyle(.plain)
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        queue.removeEntry(item.entryId)
+                    } label: {
+                        Label("Remove", systemImage: "trash")
+                    }
+                }
             }
             else {
                 QueueRowPlaceholder()
@@ -264,9 +259,7 @@ func upNextRows(
     .onMove { source, destination in
         reorderQueueEntry(in: lane, queue: queue, from: source, to: destination)
     }
-    .onDelete { offsets in
-        deleteQueueEntry(in: lane, queue: queue, at: offsets)
-    }
+    .environment(\.editMode, .constant(.active))
 }
 
 /// Apply a SwiftUI `onMove` to the queue by entry id. A move whose source or
@@ -305,22 +298,6 @@ func reorderQueueEntry(
         beforeEntryId = nil
     }
     queue.reorderEntry(fromItem.entryId, beforeEntryId)
-}
-
-/// Apply a SwiftUI `onDelete` to the queue by entry id, dropping (with a
-/// warning) a delete of an unloaded row for the same reason `reorderQueueEntry`
-/// does.
-@MainActor
-func deleteQueueEntry(in lane: QueueLane, queue: Queue, at offsets: IndexSet) {
-    guard let index = offsets.first else {
-        logger.warning("onDelete fired with an empty offset set")
-        return
-    }
-    guard let item = lane.itemAt(index) else {
-        logger.warning("onDelete at index \(index) is not loaded")
-        return
-    }
-    queue.removeEntry(item.entryId)
 }
 
 private struct NowPlayingRow: View {
