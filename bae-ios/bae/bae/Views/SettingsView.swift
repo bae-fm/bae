@@ -136,6 +136,10 @@ struct SettingsView: View {
                         "Removes this library and its downloaded files from this device. Your library in the cloud is untouched — you can re-pair this device later."
                     )
                 }
+
+                Section("About") {
+                    LabeledContent("Version", value: Self.appVersion)
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -289,5 +293,16 @@ private struct SyncConnectedControls: View {
             Text(flow.message)
         }
         .onDisappear { flow.cancelWarningTask() }
+    }
+}
+
+extension SettingsView {
+    /// The marketing version and build number from the app bundle, e.g.
+    /// "1.2 (345)". Both Info.plist keys are stamped by every build; a missing
+    /// one is a packaging bug and fails loud.
+    fileprivate static var appVersion: String {
+        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as! String
+        return "\(short) (\(build))"
     }
 }

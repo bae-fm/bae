@@ -83,6 +83,10 @@
     <string name="settings_reconnect">మళ్లీ కనెక్ట్ చేయండి</string>
     <string name="settings_pause_between_sides">వైపుల మధ్య విరామం</string>
     <string name="settings_restore_on_launch">ప్రారంభంలో పునరుద్ధరించు</string>
+    <string name="settings_restore_on_launch_help">యాప్ తెరిచినప్పుడు గత సెషన్ ట్రాక్, స్థానం, క్యూ మరియు వాల్యూమ్‌ను పునరుద్ధరిస్తుంది.</string>
+    <string name="settings_playback">ప్లేబ్యాక్</string>
+    <string name="settings_about">యాప్ గురించి</string>
+    <string name="settings_version">వెర్షన్</string>
     <string name="settings_devices">పరికరాలు</string>
     <string name="settings_manage_devices">పరికరాలను నిర్వహించు</string>
     <string name="settings_recovery_code">రికవరీ కోడ్</string>

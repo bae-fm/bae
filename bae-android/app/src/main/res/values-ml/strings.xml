@@ -83,6 +83,10 @@
     <string name="settings_reconnect">വീണ്ടും ബന്ധിപ്പിക്കുക</string>
     <string name="settings_pause_between_sides">വശങ്ങൾക്കിടയിൽ താൽക്കാലികമായി നിർത്തുക</string>
     <string name="settings_restore_on_launch">ആരംഭിക്കുമ്പോൾ പുനഃസ്ഥാപിക്കുക</string>
+    <string name="settings_restore_on_launch_help">ആപ്പ് തുറക്കുമ്പോൾ അവസാന സെഷനിലെ ട്രാക്ക്, സ്ഥാനം, ക്യൂ, വോളിയം എന്നിവ പുനഃസ്ഥാപിക്കുന്നു.</string>
+    <string name="settings_playback">പ്ലേബാക്ക്</string>
+    <string name="settings_about">ആപ്പിനെക്കുറിച്ച്</string>
+    <string name="settings_version">പതിപ്പ്</string>
     <string name="settings_devices">ഉപകരണങ്ങൾ</string>
     <string name="settings_manage_devices">ഉപകരണങ്ങൾ നിയന്ത്രിക്കുക</string>
     <string name="settings_recovery_code">വീണ്ടെടുപ്പ് കോഡ്</string>

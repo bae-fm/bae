@@ -106,6 +106,12 @@ fun SettingsScreen(
             syncError = syncError,
             ioDispatcher = ioDispatcher,
         )
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        SettingsPlaybackSection(
+            session = session,
+            config = config,
+            ioDispatcher = ioDispatcher,
+        )
         // Managing devices and revealing the recovery code both read the
         // membership chain from the library's cloud storage, so they need a live
         // sync session this run — gate on runtime sync readiness, not merely a
@@ -119,6 +125,8 @@ fun SettingsScreen(
         }
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         SettingsLeaveSection(onRequestLeave = { confirmLeave = true })
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        SettingsAboutSection()
     }
 
     if (confirmLeave) {
@@ -233,6 +241,26 @@ private fun SettingsConfigSection(
                 ioDispatcher = ioDispatcher,
             )
         }
+    }
+}
+
+@Composable
+private fun SettingsPlaybackSection(
+    session: OpenLibrary,
+    config: BridgeConfig,
+    ioDispatcher: CoroutineDispatcher,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.settings_playback),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -280,6 +308,45 @@ private fun SettingsConfigSection(
                     restoreOnLaunch = enabled
                     RestorePlaybackPref.save(context, enabled)
                 },
+            )
+        }
+        Text(
+            text = stringResource(R.string.settings_restore_on_launch_help),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun SettingsAboutSection() {
+    val context = LocalContext.current
+    // The installed version: read from the package rather than BuildConfig so
+    // it reflects what is actually installed. Our manifest always stamps
+    // versionName (build.gradle.kts), so its absence is a build bug.
+    val versionName =
+        remember(context) {
+            checkNotNull(context.packageManager.getPackageInfo(context.packageName, 0).versionName) {
+                "the app manifest always carries versionName"
+            }
+        }
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.settings_about),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.settings_version),
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = versionName,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

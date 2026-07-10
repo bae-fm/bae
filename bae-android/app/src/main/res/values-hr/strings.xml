@@ -83,6 +83,10 @@
     <string name="settings_reconnect">Ponovno poveži</string>
     <string name="settings_pause_between_sides">Pauza između strana</string>
     <string name="settings_restore_on_launch">Vrati pri pokretanju</string>
+    <string name="settings_restore_on_launch_help">Pri otvaranju aplikacije vraća pjesmu, poziciju, red čekanja i glasnoću zadnje sesije.</string>
+    <string name="settings_playback">Reprodukcija</string>
+    <string name="settings_about">O aplikaciji</string>
+    <string name="settings_version">Verzija</string>
     <string name="settings_devices">Uređaji</string>
     <string name="settings_manage_devices">Upravljanje uređajima</string>
     <string name="settings_recovery_code">Kod za oporavak</string>

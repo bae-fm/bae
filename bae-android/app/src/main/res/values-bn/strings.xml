@@ -83,6 +83,10 @@
     <string name="settings_reconnect">পুনরায় সংযোগ করুন</string>
     <string name="settings_pause_between_sides">সাইডের মাঝে বিরতি</string>
     <string name="settings_restore_on_launch">চালু হলে রিস্টোর করুন</string>
+    <string name="settings_restore_on_launch_help">অ্যাপ খোলার সময় শেষ সেশনের ট্র্যাক, অবস্থান, সারি ও ভলিউম পুনরুদ্ধার করে।</string>
+    <string name="settings_playback">প্লেব্যাক</string>
+    <string name="settings_about">অ্যাপ সম্পর্কে</string>
+    <string name="settings_version">সংস্করণ</string>
     <string name="settings_devices">ডিভাইস</string>
     <string name="settings_manage_devices">ডিভাইস পরিচালনা করুন</string>
     <string name="settings_recovery_code">রিকভারি কোড</string>

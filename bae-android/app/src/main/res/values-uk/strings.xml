@@ -83,6 +83,10 @@
     <string name="settings_reconnect">Підключити знову</string>
     <string name="settings_pause_between_sides">Пауза між сторонами</string>
     <string name="settings_restore_on_launch">Відновлювати під час запуску</string>
+    <string name="settings_restore_on_launch_help">Під час відкриття застосунку відновлює трек, позицію, чергу та гучність останнього сеансу.</string>
+    <string name="settings_playback">Відтворення</string>
+    <string name="settings_about">Про застосунок</string>
+    <string name="settings_version">Версія</string>
     <string name="settings_devices">Пристрої</string>
     <string name="settings_manage_devices">Керувати пристроями</string>
     <string name="settings_recovery_code">Код відновлення</string>

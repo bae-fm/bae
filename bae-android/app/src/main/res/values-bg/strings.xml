@@ -83,6 +83,10 @@
     <string name="settings_reconnect">Свържи отново</string>
     <string name="settings_pause_between_sides">Пауза между страните</string>
     <string name="settings_restore_on_launch">Възстановяване при стартиране</string>
+    <string name="settings_restore_on_launch_help">При отваряне на приложението възстановява песента, позицията, опашката и силата на звука от последната сесия.</string>
+    <string name="settings_playback">Възпроизвеждане</string>
+    <string name="settings_about">Относно</string>
+    <string name="settings_version">Версия</string>
     <string name="settings_devices">Устройства</string>
     <string name="settings_manage_devices">Управление на устройства</string>
     <string name="settings_recovery_code">Код за възстановяване</string>

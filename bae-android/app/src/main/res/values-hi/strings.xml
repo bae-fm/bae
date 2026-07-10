@@ -83,6 +83,10 @@
     <string name="settings_reconnect">फिर से कनेक्ट करें</string>
     <string name="settings_pause_between_sides">पक्षों के बीच रोकें</string>
     <string name="settings_restore_on_launch">शुरू होने पर बहाल करें</string>
+    <string name="settings_restore_on_launch_help">ऐप खुलने पर पिछले सत्र का ट्रैक, स्थिति, क़तार और वॉल्यूम बहाल करता है।</string>
+    <string name="settings_playback">प्लेबैक</string>
+    <string name="settings_about">ऐप के बारे में</string>
+    <string name="settings_version">संस्करण</string>
     <string name="settings_devices">उपकरण</string>
     <string name="settings_manage_devices">उपकरण प्रबंधित करें</string>
     <string name="settings_recovery_code">पुनर्प्राप्ति कोड</string>

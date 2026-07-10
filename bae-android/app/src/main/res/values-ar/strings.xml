@@ -83,6 +83,10 @@
     <string name="settings_reconnect">إعادة الاتصال</string>
     <string name="settings_pause_between_sides">إيقاف مؤقت بين الجانبين</string>
     <string name="settings_restore_on_launch">الاستعادة عند التشغيل</string>
+    <string name="settings_restore_on_launch_help">يستعيد المقطع والموضع وقائمة الانتظار ومستوى الصوت من الجلسة الأخيرة عند فتح التطبيق.</string>
+    <string name="settings_playback">التشغيل</string>
+    <string name="settings_about">حول</string>
+    <string name="settings_version">الإصدار</string>
     <string name="settings_devices">الأجهزة</string>
     <string name="settings_manage_devices">إدارة الأجهزة</string>
     <string name="settings_recovery_code">رمز الاسترداد</string>

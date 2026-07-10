@@ -83,6 +83,10 @@
     <string name="settings_reconnect">ફરી જોડો</string>
     <string name="settings_pause_between_sides">બાજુઓ વચ્ચે વિરામ</string>
     <string name="settings_restore_on_launch">શરૂઆત પર પુનઃસ્થાપિત કરો</string>
+    <string name="settings_restore_on_launch_help">ઍપ ખૂલે ત્યારે છેલ્લા સત્રનો ટ્રૅક, સ્થિતિ, કતાર અને વૉલ્યુમ પુનઃસ્થાપિત કરે છે.</string>
+    <string name="settings_playback">પ્લેબેક</string>
+    <string name="settings_about">ઍપ વિશે</string>
+    <string name="settings_version">સંસ્કરણ</string>
     <string name="settings_devices">ઉપકરણો</string>
     <string name="settings_manage_devices">ઉપકરણો સંભાળો</string>
     <string name="settings_recovery_code">પુનઃપ્રાપ્તિ કોડ</string>

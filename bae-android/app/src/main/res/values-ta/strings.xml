@@ -83,6 +83,10 @@
     <string name="settings_reconnect">மீண்டும் இணை</string>
     <string name="settings_pause_between_sides">பக்கங்களுக்கு இடையில் இடைநிறுத்து</string>
     <string name="settings_restore_on_launch">தொடக்கத்தில் மீட்டமை</string>
+    <string name="settings_restore_on_launch_help">ஆப்ஸ் திறக்கும்போது கடந்த அமர்வின் டிராக், நிலை, வரிசை மற்றும் ஒலியளவை மீட்டமைக்கிறது.</string>
+    <string name="settings_playback">பிளேபேக்</string>
+    <string name="settings_about">ஆப்ஸ் பற்றி</string>
+    <string name="settings_version">பதிப்பு</string>
     <string name="settings_devices">சாதனங்கள்</string>
     <string name="settings_manage_devices">சாதனங்களை நிர்வகி</string>
     <string name="settings_recovery_code">மீட்பு குறியீடு</string>

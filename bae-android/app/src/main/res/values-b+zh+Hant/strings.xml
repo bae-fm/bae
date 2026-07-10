@@ -83,6 +83,10 @@
     <string name="settings_reconnect">重新連接</string>
     <string name="settings_pause_between_sides">面與面之間暫停</string>
     <string name="settings_restore_on_launch">啟動時還原</string>
+    <string name="settings_restore_on_launch_help">開啟 App 時還原上次工作階段的曲目、播放位置、佇列與音量。</string>
+    <string name="settings_playback">播放</string>
+    <string name="settings_about">關於</string>
+    <string name="settings_version">版本</string>
     <string name="settings_devices">裝置</string>
     <string name="settings_manage_devices">管理裝置</string>
     <string name="settings_recovery_code">復原碼</string>

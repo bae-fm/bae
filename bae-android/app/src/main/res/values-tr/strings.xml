@@ -83,6 +83,10 @@
     <string name="settings_reconnect">Yeniden bağlan</string>
     <string name="settings_pause_between_sides">Yüzler arasında duraklat</string>
     <string name="settings_restore_on_launch">Açılışta geri yükle</string>
+    <string name="settings_restore_on_launch_help">Uygulama açıldığında son oturumun parçasını, konumunu, kuyruğunu ve ses düzeyini geri yükler.</string>
+    <string name="settings_playback">Oynatma</string>
+    <string name="settings_about">Hakkında</string>
+    <string name="settings_version">Sürüm</string>
     <string name="settings_devices">Cihazlar</string>
     <string name="settings_manage_devices">Cihazları yönet</string>
     <string name="settings_recovery_code">Kurtarma kodu</string>

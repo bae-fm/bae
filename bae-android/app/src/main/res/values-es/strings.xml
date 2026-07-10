@@ -83,6 +83,10 @@
     <string name="settings_reconnect">Reconectar</string>
     <string name="settings_pause_between_sides">Pausa entre caras</string>
     <string name="settings_restore_on_launch">Restaurar al iniciar</string>
+    <string name="settings_restore_on_launch_help">Restaura la pista, la posición, la cola y el volumen de la última sesión al abrir la app.</string>
+    <string name="settings_playback">Reproducción</string>
+    <string name="settings_about">Acerca de</string>
+    <string name="settings_version">Versión</string>
     <string name="settings_devices">Dispositivos</string>
     <string name="settings_manage_devices">Gestionar dispositivos</string>
     <string name="settings_recovery_code">Código de recuperación</string>

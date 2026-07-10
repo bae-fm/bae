@@ -83,6 +83,10 @@
     <string name="settings_reconnect">เชื่อมต่อใหม่</string>
     <string name="settings_pause_between_sides">หยุดพักระหว่างด้าน</string>
     <string name="settings_restore_on_launch">คืนค่าเมื่อเปิดแอป</string>
+    <string name="settings_restore_on_launch_help">กู้คืนแทร็ก ตำแหน่ง คิว และระดับเสียงของเซสชันล่าสุดเมื่อเปิดแอป</string>
+    <string name="settings_playback">การเล่น</string>
+    <string name="settings_about">เกี่ยวกับ</string>
+    <string name="settings_version">เวอร์ชัน</string>
     <string name="settings_devices">อุปกรณ์</string>
     <string name="settings_manage_devices">จัดการอุปกรณ์</string>
     <string name="settings_recovery_code">รหัสกู้คืน</string>

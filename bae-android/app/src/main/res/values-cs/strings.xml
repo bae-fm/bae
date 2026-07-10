@@ -83,6 +83,10 @@
     <string name="settings_reconnect">Znovu připojit</string>
     <string name="settings_pause_between_sides">Pauza mezi stranami</string>
     <string name="settings_restore_on_launch">Obnovit při spuštění</string>
+    <string name="settings_restore_on_launch_help">Při otevření aplikace obnoví skladbu, pozici, frontu a hlasitost z poslední relace.</string>
+    <string name="settings_playback">Přehrávání</string>
+    <string name="settings_about">O aplikaci</string>
+    <string name="settings_version">Verze</string>
     <string name="settings_devices">Zařízení</string>
     <string name="settings_manage_devices">Spravovat zařízení</string>
     <string name="settings_recovery_code">Kód pro obnovení</string>

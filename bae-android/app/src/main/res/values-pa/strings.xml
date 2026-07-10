@@ -83,6 +83,10 @@
     <string name="settings_reconnect">ਮੁੜ ਕਨੈਕਟ ਕਰੋ</string>
     <string name="settings_pause_between_sides">ਸਾਈਡਾਂ ਵਿਚਕਾਰ ਠਹਿਰਾਓ</string>
     <string name="settings_restore_on_launch">ਸ਼ੁਰੂ ਹੋਣ ਤੇ ਮੁੜ-ਬਹਾਲ ਕਰੋ</string>
+    <string name="settings_restore_on_launch_help">ਐਪ ਖੁੱਲ੍ਹਣ \'ਤੇ ਪਿਛਲੇ ਸੈਸ਼ਨ ਦਾ ਟ੍ਰੈਕ, ਸਥਿਤੀ, ਕਤਾਰ ਅਤੇ ਵਾਲੀਅਮ ਬਹਾਲ ਕਰਦਾ ਹੈ।</string>
+    <string name="settings_playback">ਪਲੇਬੈਕ</string>
+    <string name="settings_about">ਐਪ ਬਾਰੇ</string>
+    <string name="settings_version">ਵਰਜਨ</string>
     <string name="settings_devices">ਡਿਵਾਈਸ</string>
     <string name="settings_manage_devices">ਡਿਵਾਈਸ ਸੰਭਾਲੋ</string>
     <string name="settings_recovery_code">ਰਿਕਵਰੀ ਕੋਡ</string>

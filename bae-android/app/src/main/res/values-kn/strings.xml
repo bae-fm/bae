@@ -83,6 +83,10 @@
     <string name="settings_reconnect">ಮರುಸಂಪರ್ಕಿಸಿ</string>
     <string name="settings_pause_between_sides">ಬದಿಗಳ ನಡುವೆ ವಿರಾಮ</string>
     <string name="settings_restore_on_launch">ಪ್ರಾರಂಭಿಸುವಾಗ ಮರುಸ್ಥಾಪಿಸಿ</string>
+    <string name="settings_restore_on_launch_help">ಆ್ಯಪ್ ತೆರೆದಾಗ ಕೊನೆಯ ಸೆಷನ್‌ನ ಟ್ರ್ಯಾಕ್, ಸ್ಥಾನ, ಸರತಿ ಮತ್ತು ವಾಲ್ಯೂಮ್ ಅನ್ನು ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ.</string>
+    <string name="settings_playback">ಪ್ಲೇಬ್ಯಾಕ್</string>
+    <string name="settings_about">ಆ್ಯಪ್ ಕುರಿತು</string>
+    <string name="settings_version">ಆವೃತ್ತಿ</string>
     <string name="settings_devices">ಸಾಧನಗಳು</string>
     <string name="settings_manage_devices">ಸಾಧನಗಳನ್ನು ನಿರ್ವಹಿಸಿ</string>
     <string name="settings_recovery_code">ಮರುಪಡೆಯುವ ಕೋಡ್</string>
