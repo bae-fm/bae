@@ -185,10 +185,12 @@ struct ExpandedNowPlayingView: View {
             Section("Up Next") {
                 let manual = playbackStore.manualQueue
                 upNextRows(
-                    count: manual.count,
-                    itemAt: { manual.indices.contains($0) ? manual[$0] : nil },
-                    loadEpoch: 0,
-                    loadRange: nil,
+                    lane: QueueLane(
+                        count: manual.count,
+                        itemAt: { manual.indices.contains($0) ? manual[$0] : nil },
+                        loadEpoch: 0,
+                        loadRange: nil
+                    ),
                     queue: queue,
                     isEditing: false,
                     onSkipped: {}
@@ -198,16 +200,18 @@ struct ExpandedNowPlayingView: View {
         if let context = playbackStore.queueContext, context.upcomingTotal > 0 {
             Section {
                 upNextRows(
-                    count: context.upcomingTotal,
-                    itemAt: { playbackStore.upcomingItem(at: $0) },
-                    loadEpoch: playbackStore.revision,
-                    loadRange: { offset, limit in
-                        await playbackStore.loadUpcomingRange(
-                            offset: offset,
-                            limit: limit,
-                            queue: queue
-                        )
-                    },
+                    lane: QueueLane(
+                        count: context.upcomingTotal,
+                        itemAt: { playbackStore.upcomingItem(at: $0) },
+                        loadEpoch: playbackStore.revision,
+                        loadRange: { offset, limit in
+                            await playbackStore.loadUpcomingRange(
+                                offset: offset,
+                                limit: limit,
+                                queue: queue
+                            )
+                        }
+                    ),
                     queue: queue,
                     isEditing: false,
                     onSkipped: {}

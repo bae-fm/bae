@@ -966,19 +966,24 @@ class BaeCorePlayer(
     ) {
         val lane = contextLane ?: return
         val end = minOf(offset + limit, lane.upcomingTotal)
-        if (offset >= end) return
-        if ((offset until end).all { upcomingItemLoaded(it) }) return
+        // Nothing to fetch: an empty/backwards range, or every row in it already
+        // loaded. The `offset >= end` check short-circuits so the per-row scan
+        // only runs on a non-empty range.
+        if (offset >= end || (offset until end).all { upcomingItemLoaded(it) }) return
 
+        // Coalesce concurrent requests for the same range+revision: the first
+        // caller launches the fetch and removes the key once it settles; any
+        // caller that finds an in-flight job just awaits it.
         val key = "$offset:$end:$queueRevision"
         val existing = inFlightUpcomingLoads[key]
         if (existing != null) {
             existing.join()
-            return
+        } else {
+            val job = scope.launch { fetchUpcomingRange(offset, end) }
+            inFlightUpcomingLoads[key] = job
+            job.join()
+            inFlightUpcomingLoads.remove(key)
         }
-        val job = scope.launch { fetchUpcomingRange(offset, end) }
-        inFlightUpcomingLoads[key] = job
-        job.join()
-        inFlightUpcomingLoads.remove(key)
     }
 
     private suspend fun fetchUpcomingRange(

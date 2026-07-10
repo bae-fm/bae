@@ -125,13 +125,7 @@ object UiEventAdapter {
             }
 
             is BridgeUiEvent.QueueUpdated -> {
-                player.onQueueUpdated(
-                    manual = event.snapshot.manual,
-                    context = event.snapshot.context,
-                    hasNext = event.snapshot.hasNext,
-                    hasPrevious = event.snapshot.hasPrevious,
-                    revision = event.snapshot.revision,
-                )
+                applyQueueUpdated(event, player)
             }
 
             is BridgeUiEvent.VolumeChanged -> {
@@ -151,6 +145,22 @@ object UiEventAdapter {
             }
         }
         return true
+    }
+
+    /** Forward a queue-snapshot replacement to the player, mapping the windowed
+     *  snapshot's fields (manual lane, context window, transport flags, and the
+     *  revision the store stamps its fetched pages against). */
+    private fun applyQueueUpdated(
+        event: BridgeUiEvent.QueueUpdated,
+        player: PlaybackEventSink,
+    ) {
+        player.onQueueUpdated(
+            manual = event.snapshot.manual,
+            context = event.snapshot.context,
+            hasNext = event.snapshot.hasNext,
+            hasPrevious = event.snapshot.hasPrevious,
+            revision = event.snapshot.revision,
+        )
     }
 
     private fun handleAppErrorEvent(

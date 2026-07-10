@@ -8,6 +8,7 @@ private let logger = Logger.bae("Queue")
 /// the page size `PlaybackStore.loadUpcomingRange`'s bridge call uses.
 private let queueUpcomingLoadBatchSize = 100
 
+// periphery:ignore
 /// Row load identity: the store's queue revision (so a bump restarts every
 /// visible row's load task) plus the row's absolute index. The manual lane,
 /// always fully loaded, passes a constant epoch and a `nil` load hook so its
@@ -15,6 +16,19 @@ private let queueUpcomingLoadBatchSize = 100
 private struct QueueRowLoadID: Hashable {
     let epoch: UInt64
     let index: Int
+}
+
+/// One queue lane's row-addressing and on-demand loading: how many rows it
+/// spans, how to resolve the item at an absolute index (`nil` when not yet
+/// loaded), the load epoch that restarts a row's fetch task when the queue
+/// revision bumps, and the range fetch for unloaded rows — `nil` for the
+/// always-fully-loaded manual lane, which never pages. The context lane fills
+/// these from its windowed store; the manual lane from its in-memory array.
+struct QueueLane {
+    let count: Int
+    let itemAt: (Int) -> QueueItem?
+    let loadEpoch: UInt64
+    let loadRange: ((_ offset: Int, _ limit: Int) async -> Void)?
 }
 
 /// The play queue, presented as a sheet: the currently-playing track, then a
@@ -107,10 +121,12 @@ struct QueueView: View {
                 // Always fully resolved, so no load hook.
                 let manual = playbackStore.manualQueue
                 upNextRows(
-                    count: manual.count,
-                    itemAt: { manual.indices.contains($0) ? manual[$0] : nil },
-                    loadEpoch: 0,
-                    loadRange: nil,
+                    lane: QueueLane(
+                        count: manual.count,
+                        itemAt: { manual.indices.contains($0) ? manual[$0] : nil },
+                        loadEpoch: 0,
+                        loadRange: nil
+                    ),
                     queue: queue,
                     isEditing: editMode.isEditing,
                     onSkipped: { dismiss() }
@@ -129,16 +145,18 @@ struct QueueView: View {
         if let context = playbackStore.queueContext, context.upcomingTotal > 0 {
             Section {
                 upNextRows(
-                    count: context.upcomingTotal,
-                    itemAt: { playbackStore.upcomingItem(at: $0) },
-                    loadEpoch: playbackStore.revision,
-                    loadRange: { offset, limit in
-                        await playbackStore.loadUpcomingRange(
-                            offset: offset,
-                            limit: limit,
-                            queue: queue
-                        )
-                    },
+                    lane: QueueLane(
+                        count: context.upcomingTotal,
+                        itemAt: { playbackStore.upcomingItem(at: $0) },
+                        loadEpoch: playbackStore.revision,
+                        loadRange: { offset, limit in
+                            await playbackStore.loadUpcomingRange(
+                                offset: offset,
+                                limit: limit,
+                                queue: queue
+                            )
+                        }
+                    ),
                     queue: queue,
                     isEditing: editMode.isEditing,
                     onSkipped: { dismiss() }
@@ -212,16 +230,13 @@ func contextSectionTitle(_ kind: BridgePlaybackSourceKind) -> LocalizedStringKey
 @MainActor
 @ViewBuilder
 func upNextRows(
-    count: Int,
-    itemAt: @escaping (Int) -> QueueItem?,
-    loadEpoch: UInt64,
-    loadRange: ((_ offset: Int, _ limit: Int) async -> Void)?,
+    lane: QueueLane,
     queue: Queue,
     isEditing: Bool,
     onSkipped: @escaping () -> Void
 ) -> some View {
-    ForEach(0..<count, id: \.self) { index in
-        let item = itemAt(index)
+    ForEach(0..<lane.count, id: \.self) { index in
+        let item = lane.itemAt(index)
         Group {
             if let item {
                 Button {
@@ -237,55 +252,75 @@ func upNextRows(
                 QueueRowPlaceholder()
             }
         }
-        .task(id: QueueRowLoadID(epoch: loadEpoch, index: index)) {
-            guard item == nil, let loadRange else {
+        .task(id: QueueRowLoadID(epoch: lane.loadEpoch, index: index)) {
+            guard item == nil, let loadRange = lane.loadRange else {
                 return
             }
             let first = max(0, index - queueUpcomingLoadBatchSize / 2)
-            let end = min(first + queueUpcomingLoadBatchSize, count)
+            let end = min(first + queueUpcomingLoadBatchSize, lane.count)
             await loadRange(first, end - first)
         }
     }
     .onMove { source, destination in
-        guard let from = source.first else {
-            // SwiftUI always hands onMove a non-empty source; an empty set is a
-            // framework anomaly, so surface it rather than silently dropping it.
-            logger.warning("onMove fired with an empty source index set")
-            return
-        }
-        guard let fromItem = itemAt(from) else {
-            logger.warning("onMove source at index \(from) is not loaded")
-            return
-        }
-        // SwiftUI's destination is a gap index in the original array (item still
-        // present): the moved entry lands before the item currently at that gap,
-        // or at the end when the gap is past the last row.
-        let beforeEntryId: String?
-        if destination < count {
-            guard let target = itemAt(destination) else {
-                logger.warning(
-                    "onMove destination at index \(destination) is not loaded"
-                )
-                return
-            }
-            beforeEntryId = target.entryId
-        }
-        else {
-            beforeEntryId = nil
-        }
-        queue.reorderEntry(fromItem.entryId, beforeEntryId)
+        reorderQueueEntry(in: lane, queue: queue, from: source, to: destination)
     }
     .onDelete { offsets in
-        guard let index = offsets.first else {
-            logger.warning("onDelete fired with an empty offset set")
-            return
-        }
-        guard let item = itemAt(index) else {
-            logger.warning("onDelete at index \(index) is not loaded")
-            return
-        }
-        queue.removeEntry(item.entryId)
+        deleteQueueEntry(in: lane, queue: queue, at: offsets)
     }
+}
+
+/// Apply a SwiftUI `onMove` to the queue by entry id. A move whose source or
+/// target row isn't loaded is dropped with a warning rather than guessed —
+/// reorder only ever targets a rendered (hence loaded) row in practice, so this
+/// only ever excludes a brief loading flash, not a real position.
+@MainActor
+func reorderQueueEntry(
+    in lane: QueueLane,
+    queue: Queue,
+    from source: IndexSet,
+    to destination: Int
+) {
+    guard let from = source.first else {
+        // SwiftUI always hands onMove a non-empty source; an empty set is a
+        // framework anomaly, so surface it rather than silently dropping it.
+        logger.warning("onMove fired with an empty source index set")
+        return
+    }
+    guard let fromItem = lane.itemAt(from) else {
+        logger.warning("onMove source at index \(from) is not loaded")
+        return
+    }
+    // SwiftUI's destination is a gap index in the original array (item still
+    // present): the moved entry lands before the item currently at that gap,
+    // or at the end when the gap is past the last row.
+    let beforeEntryId: String?
+    if destination < lane.count {
+        guard let target = lane.itemAt(destination) else {
+            logger.warning("onMove destination at index \(destination) is not loaded")
+            return
+        }
+        beforeEntryId = target.entryId
+    }
+    else {
+        beforeEntryId = nil
+    }
+    queue.reorderEntry(fromItem.entryId, beforeEntryId)
+}
+
+/// Apply a SwiftUI `onDelete` to the queue by entry id, dropping (with a
+/// warning) a delete of an unloaded row for the same reason `reorderQueueEntry`
+/// does.
+@MainActor
+func deleteQueueEntry(in lane: QueueLane, queue: Queue, at offsets: IndexSet) {
+    guard let index = offsets.first else {
+        logger.warning("onDelete fired with an empty offset set")
+        return
+    }
+    guard let item = lane.itemAt(index) else {
+        logger.warning("onDelete at index \(index) is not loaded")
+        return
+    }
+    queue.removeEntry(item.entryId)
 }
 
 private struct NowPlayingRow: View {

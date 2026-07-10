@@ -258,7 +258,12 @@ internal fun LazyListScope.queueContent(
     if (order.manual.isNotEmpty()) {
         item(key = "uphdr") { SectionLabel(stringResource(R.string.queue_section_up_next)) }
         // Always fully resolved, so no load hook.
-        queueRows(session, order.manual, revision = 0uL, loadRange = null, reorderState, onSkipped)
+        queueRows(
+            session,
+            QueueLane(order.manual, revision = 0uL, loadRange = null),
+            reorderState,
+            onSkipped,
+        )
     }
 
     if (order.context.isNotEmpty()) {
@@ -278,14 +283,26 @@ internal fun LazyListScope.queueContent(
         // element renders a placeholder and triggers loadUpcomingRange.
         queueRows(
             session,
-            order.context,
-            revision = order.revision,
-            loadRange = { offset, limit -> session.playback.loadUpcomingRange(offset, limit) },
+            QueueLane(
+                order.context,
+                revision = order.revision,
+                loadRange = { offset, limit -> session.playback.loadUpcomingRange(offset, limit) },
+            ),
             reorderState,
             onSkipped,
         )
     }
 }
+
+/** One queue lane's rows for [queueRows]: the (null = not-yet-loaded) items, the
+ *  revision that re-keys each row's load effect, and the range fetch for unloaded
+ *  context rows (`null` for the always-fully-loaded manual lane, which never
+ *  pages). */
+private data class QueueLane(
+    val items: List<QueueItem?>,
+    val revision: ULong,
+    val loadRange: (suspend (offset: Int, limit: Int) -> Unit)?,
+)
 
 // One lane's reorderable rows. Entry ids key the rows (unique across both lanes),
 // so skip/remove/reorder target one instance. A null element is a not-yet-loaded
@@ -293,16 +310,14 @@ internal fun LazyListScope.queueContent(
 // around it (`null` for the always-fully-loaded manual lane).
 private fun LazyListScope.queueRows(
     session: OpenLibrary,
-    items: List<QueueItem?>,
-    revision: ULong,
-    loadRange: (suspend (offset: Int, limit: Int) -> Unit)?,
+    lane: QueueLane,
     reorderState: ReorderableLazyListState,
     onSkipped: (() -> Unit)?,
 ) {
-    itemsIndexed(items, key = { index, item -> item?.entryId ?: "placeholder-$index" }) { index, item ->
+    itemsIndexed(lane.items, key = { index, item -> item?.entryId ?: "placeholder-$index" }) { index, item ->
         if (item == null) {
-            LaunchedEffect(revision, index) {
-                loadRange?.invoke(
+            LaunchedEffect(lane.revision, index) {
+                lane.loadRange?.invoke(
                     (index - QUEUE_UPCOMING_LOAD_BATCH_SIZE / 2).coerceAtLeast(0),
                     QUEUE_UPCOMING_LOAD_BATCH_SIZE,
                 )
@@ -427,157 +442,5 @@ private fun ContextSectionLabel(
     }
 }
 
-@Composable
-private fun NowPlayingRow(
-    np: NowPlaying,
-    loadImage: suspend (imageId: String) -> ByteArray?,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CoverImage(
-            coverId = np.coverImageId,
-            coverVersion = null,
-            loadImage = loadImage,
-            cornerRadius = 4.dp,
-            iconPadding = 12.dp,
-            modifier = Modifier.size(48.dp),
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = np.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-            )
-            Text(
-                text = np.artist,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-@Composable
-private fun QueueRow(
-    item: QueueItem,
-    loadImage: suspend (imageId: String) -> ByteArray?,
-    dragHandleModifier: Modifier,
-    onClick: () -> Unit,
-    onRemove: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CoverImage(
-            coverId = item.coverImageId,
-            coverVersion = null,
-            loadImage = loadImage,
-            cornerRadius = 4.dp,
-            iconPadding = 12.dp,
-            modifier = Modifier.size(48.dp),
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        QueueItemText(item, modifier = Modifier.weight(1f))
-        // durationLabel is pre-formatted (empty when core has no duration); keep
-        // the slot in the tree and toggle via alpha so rows align.
-        Text(
-            text = item.durationLabel,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier =
-                Modifier
-                    .padding(horizontal = 8.dp)
-                    .alpha(if (item.durationLabel.isEmpty()) 0f else 1f),
-        )
-        IconButton(onClick = onRemove) {
-            Icon(
-                imageVector = Icons.Filled.Close,
-                contentDescription = stringResource(R.string.queue_remove),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Icon(
-            imageVector = Icons.Filled.DragHandle,
-            contentDescription = stringResource(R.string.queue_drag_to_reorder),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = dragHandleModifier.size(24.dp),
-        )
-    }
-}
-
-/** A not-yet-loaded row: a skeleton shape, no text — `loadRange` is already in
- *  flight for it via the row's `LaunchedEffect`. */
-@Composable
-private fun QueueRowPlaceholder() {
-    val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(placeholderColor),
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(width = 160.dp, height = 12.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(placeholderColor),
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Box(
-                modifier =
-                    Modifier
-                        .size(width = 100.dp, height = 10.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(placeholderColor),
-            )
-        }
-    }
-}
-
-@Composable
-private fun QueueItemText(
-    item: QueueItem,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = item.title,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-        )
-        Text(
-            text =
-                if (item.albumTitle.isEmpty()) {
-                    item.artist
-                } else {
-                    "${item.artist} — ${item.albumTitle}"
-                },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-        )
-    }
-}
+// NowPlayingRow / QueueRow / QueueRowPlaceholder / QueueItemText — the queue's
+// row renderers — live in QueueRow.kt.
