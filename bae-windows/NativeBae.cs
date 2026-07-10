@@ -385,6 +385,9 @@ internal static class NativeBae
     internal static string? ChangeCover(AppHandle handle, string albumId, string releaseId, BridgeCoverSelection selection) =>
         CaptureError(() => Await(handle.ChangeCover(albumId, releaseId, selection)));
 
+    internal static long AlbumCount(AppHandle handle) =>
+        checked((long)Await(handle.GetAlbumCount()));
+
     internal static (List<Album>? Albums, string? Error) AlbumPage(AppHandle handle, ulong offset, ulong limit, IReadOnlyList<SortCriterion<AlbumSortField>> criteria) =>
         CaptureBridgeValue(() => Await(handle.GetAlbumPage(ToBridge(criteria), offset, limit))
             .Select(album => new Album(album))
