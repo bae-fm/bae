@@ -155,7 +155,6 @@ pub(crate) struct AudioDrain {
     audio_events: AudioEventSender,
     position_update_interval: std::time::Duration,
     last_position_update: std::time::Instant,
-    completion_sent: bool,
 }
 
 impl AudioDrain {
@@ -173,7 +172,6 @@ impl AudioDrain {
                 position_update_interval_ms as u64,
             ),
             last_position_update: std::time::Instant::now(),
-            completion_sent: false,
         }
     }
 
@@ -212,16 +210,19 @@ impl AudioDrain {
         let read = source_guard.pull_samples(buf, &mut self.audio_events);
 
         if read == 0 {
-            if source_guard.is_finished() && !self.completion_sent {
+            // Report the current track's completion exactly once (the source's
+            // latch resets on a crossing or a `replace`, so a persistent stream
+            // that plays many tracks still fires one Completion per drained
+            // track).
+            if let Some(event) = source_guard.take_completion_event() {
                 self.controls.set_state(AudioState::Stopped);
                 self.audio_events
-                    .push_required(AudioEvent::Completion(source_guard.completion_event()));
-                self.completion_sent = true;
+                    .push_required(AudioEvent::Completion(event));
             }
             if zero_unfilled {
                 buf.fill(0.0);
             }
-            return if self.completion_sent {
+            return if source_guard.completion_reported() {
                 DrainStatus::Completed
             } else {
                 DrainStatus::Idle

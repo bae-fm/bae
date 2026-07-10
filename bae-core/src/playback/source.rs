@@ -65,6 +65,13 @@ pub struct PlaybackSource {
     next: Option<(TrackStream, Arc<TrackFmt>)>,
     starvation_started: Option<Instant>,
     last_starvation_log: Option<Instant>,
+    /// Whether the current track's completion (drained, nothing staged after
+    /// it) has already been reported via a `Completion` event. Reset when the
+    /// current track changes — a gapless crossing or a `replace` — so each
+    /// track that reaches the end of the source reports exactly once, even
+    /// across a persistent output stream that plays many tracks through the
+    /// same source.
+    completion_reported: bool,
 }
 
 impl PlaybackSource {
@@ -75,6 +82,7 @@ impl PlaybackSource {
             next: None,
             starvation_started: None,
             last_starvation_log: None,
+            completion_reported: false,
         }
     }
 
@@ -82,6 +90,28 @@ impl PlaybackSource {
     /// caller is responsible for only staging a format-compatible track.
     pub fn stage_next(&mut self, next: TrackStream, next_fmt: TrackFmt) {
         self.next = Some((next, Arc::new(next_fmt)));
+    }
+
+    /// Replace the current track in place — the command-side sibling of the
+    /// gapless crossing (`pull_samples`' in-callback swap). Cancel the outgoing
+    /// track and any staged next, install `next` as the new current, and reset
+    /// the per-track bookkeeping (starvation episode and completion reporting)
+    /// so the new track starts clean. The caller only replaces a
+    /// format-compatible track — the output stream is built for one sample rate
+    /// and channel count, and this swaps what its callback reads without
+    /// rebuilding it. Cancelling the outgoing track here is only its sink side
+    /// (unpark + cancel flag); the caller cancels the outgoing decoder's token
+    /// and wakes its byte buffers, exactly as a stream teardown would.
+    pub fn replace(&mut self, next: TrackStream, next_fmt: TrackFmt) {
+        self.current.cancel();
+        if let Some((staged, _)) = self.next.take() {
+            staged.cancel();
+        }
+        self.current = next;
+        self.current_fmt = Arc::new(next_fmt);
+        self.completion_reported = false;
+        self.starvation_started = None;
+        self.last_starvation_log = None;
     }
 
     /// Whether a next track is currently staged.
@@ -111,6 +141,27 @@ impl PlaybackSource {
             self.current.decode_error_count(),
             self.current.samples_decoded(),
         )
+    }
+
+    /// If the current track has drained (finished with nothing staged after it)
+    /// and its completion hasn't been reported yet, mark it reported and return
+    /// the completion event; `None` otherwise. The audio callback calls this
+    /// once the ring runs dry so the service's auto-advance fires exactly once
+    /// per drained track — the persistent-stream-safe form of the old
+    /// drain-side `completion_sent` latch, since `replace`/crossing reset it.
+    pub fn take_completion_event(&mut self) -> Option<(Arc<TrackFmt>, u32, u64)> {
+        if self.is_finished() && !self.completion_reported {
+            self.completion_reported = true;
+            Some(self.completion_event())
+        } else {
+            None
+        }
+    }
+
+    /// Whether the current track's completion has already been reported. The
+    /// audio callback projects this into `DrainStatus::Completed`.
+    pub fn completion_reported(&self) -> bool {
+        self.completion_reported
     }
 
     /// Cancel the current decoder and any staged next decoder.
@@ -149,6 +200,10 @@ impl PlaybackSource {
                 };
                 self.current = next;
                 self.current_fmt = next_fmt;
+                // The incoming track hasn't drained; its completion is still to
+                // come (the finishing track reported via the crossing, not a
+                // Completion event).
+                self.completion_reported = false;
                 audio_events.push_required(AudioEvent::TrackCrossing(crossing));
                 filled += self.current.pull_samples(&mut output[filled..]);
             }
@@ -399,5 +454,91 @@ mod tests {
 
         assert!(sink1.is_cancelled(), "the current track is cancelled");
         assert!(sink2.is_cancelled(), "the staged next track is cancelled");
+    }
+
+    /// `replace` swaps in a new current track without rebuilding: the audio
+    /// callback keeps pulling from the same source and now sees the new track's
+    /// samples and fmt. The outgoing track and any staged next are cancelled;
+    /// the replacement stays live.
+    #[test]
+    fn replace_swaps_current_and_cancels_outgoing_and_staged() {
+        let (sink1, src1, _r1) = create_track_stream_pair(44100, 1);
+        let (staged_sink, staged_src, _rs) = create_track_stream_pair(44100, 1);
+        let (mut sink2, src2, _r2) = create_track_stream_pair(44100, 1);
+
+        // The replacement has its own samples, then EOF.
+        assert_eq!(sink2.push_samples(&[9.0, 8.0]), 2);
+        sink2.mark_finished();
+
+        let (mut audio_tx, _audio_rx) = audio_event_channel();
+        let mut source = PlaybackSource::new(src1, fmt("t1"));
+        source.stage_next(staged_src, fmt("staged"));
+
+        source.replace(src2, fmt("t2"));
+
+        // The outgoing and staged decoders are cancelled; the replacement is not.
+        assert!(sink1.is_cancelled(), "the outgoing track is cancelled");
+        assert!(staged_sink.is_cancelled(), "the staged next is cancelled");
+        assert!(!sink2.is_cancelled(), "the replacement track stays live");
+        assert!(!source.has_next(), "the staged next is cleared");
+
+        // The callback now reads the replacement track's samples and fmt.
+        assert_eq!(source.position_event().0.track_id, "t2");
+        let mut out = [0.0f32; 8];
+        assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 2);
+        assert_eq!(&out[..2], &[9.0, 8.0]);
+    }
+
+    /// The completion latch fires once per drained track and resets on
+    /// `replace`, so a single source playing several tracks in turn (a
+    /// persistent output stream) reports each track's end exactly once — the
+    /// property the drain relies on to auto-advance every track, not just the
+    /// first.
+    #[test]
+    fn take_completion_event_fires_once_per_track_across_replace() {
+        let (mut sink1, src1, _r1) = create_track_stream_pair(44100, 1);
+        assert_eq!(sink1.push_samples(&[1.0]), 1);
+        sink1.mark_finished();
+
+        let (mut audio_tx, _audio_rx) = audio_event_channel();
+        let mut source = PlaybackSource::new(src1, fmt("t1"));
+
+        // Drain track 1.
+        let mut out = [0.0f32; 8];
+        assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 1);
+        assert!(source.is_finished());
+
+        // First observation reports; the second doesn't (already reported).
+        assert!(
+            source.take_completion_event().is_some(),
+            "track 1's completion is reported once"
+        );
+        assert!(
+            source.take_completion_event().is_none(),
+            "track 1's completion is not reported twice"
+        );
+        assert!(source.completion_reported());
+
+        // Replace with track 2 over the SAME source; its completion reports fresh.
+        let (mut sink2, src2, _r2) = create_track_stream_pair(44100, 1);
+        assert_eq!(sink2.push_samples(&[2.0]), 1);
+        sink2.mark_finished();
+        source.replace(src2, fmt("t2"));
+        assert!(
+            !source.completion_reported(),
+            "replace resets the completion latch"
+        );
+
+        let mut out = [0.0f32; 8];
+        assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 1);
+        assert!(source.is_finished());
+        let event = source
+            .take_completion_event()
+            .expect("track 2's completion is reported after replace");
+        assert_eq!(event.0.track_id, "t2");
+        assert!(
+            source.take_completion_event().is_none(),
+            "track 2's completion is not reported twice either"
+        );
     }
 }
