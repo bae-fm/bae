@@ -499,6 +499,7 @@ impl CueApeTestFixture {
             library_manager.clone(),
             runtime_handle,
             100,
+            true,
             Box::new(capture_output),
         );
         let progress_rx = playback_handle.subscribe_progress();

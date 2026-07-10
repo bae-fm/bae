@@ -82,6 +82,7 @@
     <string name="settings_sync_disconnected">Verbinding verbroken</string>
     <string name="settings_reconnect">Opnieuw verbinden</string>
     <string name="settings_pause_between_sides">Pauze tussen kanten</string>
+    <string name="settings_restore_on_launch">Herstellen bij starten</string>
     <string name="settings_devices">Apparaten</string>
     <string name="settings_manage_devices">Apparaten beheren</string>
     <string name="settings_recovery_code">Herstelcode</string>

@@ -82,6 +82,7 @@
     <string name="settings_sync_disconnected">Відключено</string>
     <string name="settings_reconnect">Підключити знову</string>
     <string name="settings_pause_between_sides">Пауза між сторонами</string>
+    <string name="settings_restore_on_launch">Відновлювати під час запуску</string>
     <string name="settings_devices">Пристрої</string>
     <string name="settings_manage_devices">Керувати пристроями</string>
     <string name="settings_recovery_code">Код відновлення</string>

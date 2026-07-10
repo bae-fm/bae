@@ -101,7 +101,7 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
     let a_id = a.library_id.clone();
     let b_id = write_locked_library(home.path(), "Library B");
 
-    let app = bootstrap(b_id, 200, None).expect("a locked open completes with sync deferred");
+    let app = bootstrap(b_id, 200, true, None).expect("a locked open completes with sync deferred");
 
     assert!(
         !app.services.library_manager().has_encryption(),
@@ -124,7 +124,7 @@ fn bootstrap_of_unlocked_library_advances_active_pointer() {
     create_library("Library A".into(), &UuidProvider).unwrap();
     let b_id = write_plain_library(home.path(), "Library B");
 
-    let app = bootstrap(b_id.clone(), 200, None).expect("a plain local open completes");
+    let app = bootstrap(b_id.clone(), 200, true, None).expect("a plain local open completes");
 
     assert_eq!(
         active_pointer().as_deref(),
@@ -148,7 +148,7 @@ fn bootstrap_that_fails_leaves_active_pointer() {
     let db_path = registered_library_dir(home.path(), &b_id).db_path();
     std::fs::create_dir(&db_path).unwrap();
 
-    let result = bootstrap(b_id, 200, None);
+    let result = bootstrap(b_id, 200, true, None);
     assert!(
         result.is_err(),
         "a directory at the db path must fail the open"
@@ -178,7 +178,7 @@ fn unlock_then_reopen_advances_active_pointer() {
     // mints the encryption key and records its fingerprint.
     let b = create_library("Library B".into(), &UuidProvider).unwrap();
     let b_id = b.library_id.clone();
-    let app = bootstrap(b_id.clone(), 200, None).expect("open the fresh library");
+    let app = bootstrap(b_id.clone(), 200, true, None).expect("open the fresh library");
     app.runtime.block_on(s3.provision_bucket(&bucket));
     app.runtime
         .block_on(
@@ -202,7 +202,7 @@ fn unlock_then_reopen_advances_active_pointer() {
         .expect("lock library B");
 
     // Reopening B is now locked: it succeeds with sync deferred, pointer stays A.
-    let locked = bootstrap(b_id.clone(), 200, None).expect("locked open of B succeeds");
+    let locked = bootstrap(b_id.clone(), 200, true, None).expect("locked open of B succeeds");
     assert!(!locked.services.library_manager().has_encryption());
     let a_after_lock = active_pointer();
     drop(locked);
@@ -210,7 +210,7 @@ fn unlock_then_reopen_advances_active_pointer() {
 
     // Unlock B, then reopen: sync attaches and the pointer advances to B.
     unlock_library(&b_id, &key_hex).expect("unlock B");
-    let unlocked = bootstrap(b_id.clone(), 200, None).expect("unlocked open of B succeeds");
+    let unlocked = bootstrap(b_id.clone(), 200, true, None).expect("unlocked open of B succeeds");
     assert!(unlocked.services.library_manager().has_encryption());
     assert_eq!(active_pointer().as_deref(), Some(b_id.as_str()));
     drop(unlocked);

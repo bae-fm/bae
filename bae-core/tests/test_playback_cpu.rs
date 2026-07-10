@@ -370,6 +370,7 @@ impl PlaybackTestFixture {
             library_manager.clone(),
             runtime_handle,
             100,
+            true,
             Box::new(bae_core::playback::RealtimeProbeOutput::new()),
         );
         let progress_rx = playback_handle.subscribe_progress();

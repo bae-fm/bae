@@ -324,11 +324,23 @@ fn start_capture_service(
     library_manager: LibraryManager,
     runtime_handle: tokio::runtime::Handle,
 ) -> (bae_core::playback::PlaybackHandle, CaptureStreamRx) {
+    start_capture_service_with_restore(library_manager, runtime_handle, true)
+}
+
+/// `start_capture_service` with the platform's "Restore on launch" preference
+/// explicit, for tests that cover the restore-off launch path.
+#[must_use]
+fn start_capture_service_with_restore(
+    library_manager: LibraryManager,
+    runtime_handle: tokio::runtime::Handle,
+    restore_playback: bool,
+) -> (bae_core::playback::PlaybackHandle, CaptureStreamRx) {
     let (capture_output, capture_stream_rx) = bae_core::playback::RealtimeCaptureAudioOutput::new();
     let handle = bae_core::playback::PlaybackService::start_with_output(
         library_manager,
         runtime_handle,
         100,
+        restore_playback,
         Box::new(capture_output),
     );
     (handle, capture_stream_rx)
@@ -448,6 +460,7 @@ impl PlaybackTestFixture {
             setup.library_manager.clone(),
             setup.runtime_handle,
             100,
+            true,
             Box::new(capture_output),
         );
         let progress_rx = playback_handle.subscribe_progress();
@@ -936,6 +949,7 @@ impl CueFlacTestFixture {
             library_manager.clone(),
             runtime_handle,
             100,
+            true,
             capture_output,
         );
         let progress_rx = playback_handle.subscribe_progress();
@@ -991,6 +1005,7 @@ impl SidePauseTestFixture {
             setup.library_manager.clone(),
             setup.runtime_handle,
             100,
+            true,
             Box::new(capture_output),
         );
         let progress_rx = playback_handle.subscribe_progress();
@@ -1903,6 +1918,7 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
         lib.library_manager,
         lib.runtime_handle,
         100,
+        true,
         Box::new(capture_output),
     );
     let mut progress_rx = handle.subscribe_progress();
@@ -1974,6 +1990,7 @@ async fn same_format_transitions_reuse_one_output_stream() {
         lib.library_manager,
         lib.runtime_handle,
         100,
+        true,
         Box::new(capture_output),
     );
     let mut progress_rx = handle.subscribe_progress();
@@ -3794,8 +3811,12 @@ async fn test_real_library_cpu_usage() {
 
     // Start playback service
     let runtime_handle = tokio::runtime::Handle::current();
-    let playback_handle =
-        bae_core::playback::PlaybackService::start(library_manager.clone(), runtime_handle, 100);
+    let playback_handle = bae_core::playback::PlaybackService::start(
+        library_manager.clone(),
+        runtime_handle,
+        100,
+        true,
+    );
     let mut progress_rx = playback_handle.subscribe_progress();
 
     // Measure CPU before playback
@@ -3967,8 +3988,12 @@ async fn test_pause_seek_cue_flac() {
 
     let runtime_handle = tokio::runtime::Handle::current();
     eprintln!("Starting PlaybackService...");
-    let playback_handle =
-        bae_core::playback::PlaybackService::start(library_manager.clone(), runtime_handle, 100);
+    let playback_handle = bae_core::playback::PlaybackService::start(
+        library_manager.clone(),
+        runtime_handle,
+        100,
+        true,
+    );
     playback_handle.set_volume(0.0); // Mute for test
     let mut progress_rx = playback_handle.subscribe_progress();
 
@@ -4193,8 +4218,12 @@ async fn test_playing_seek_cue_flac() {
     );
 
     let runtime_handle = tokio::runtime::Handle::current();
-    let playback_handle =
-        bae_core::playback::PlaybackService::start(library_manager.clone(), runtime_handle, 100);
+    let playback_handle = bae_core::playback::PlaybackService::start(
+        library_manager.clone(),
+        runtime_handle,
+        100,
+        true,
+    );
     playback_handle.set_volume(0.0);
     let mut progress_rx = playback_handle.subscribe_progress();
 
@@ -6058,6 +6087,78 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
     assert!(
         p2 > p1,
         "resumed playback must keep advancing from the restored position, got {p1}ms then {p2}ms"
+    );
+}
+
+/// With the "Restore on launch" preference off, a service that starts over a
+/// saved `playback_state` row must come up with nothing in playback: empty
+/// queue, no current track, no restored state emission. The row itself stays —
+/// it's the crash-safe resume point, and flipping the preference back on
+/// restores it at the next launch.
+#[tokio::test(flavor = "multi_thread")]
+async fn restore_off_starts_with_nothing_in_playback_and_keeps_the_row() {
+    let mut playback = MultiWindowPlayback::new("multi-window-restore-off").await;
+    let track = playback.track_ids[0].clone();
+    playback.play_and_wait(&track).await;
+
+    // Persist mid-track and tear the service down, like an app quit.
+    playback.playback_handle.shutdown().await;
+    assert!(
+        playback
+            .library_manager
+            .load_playback_state()
+            .await
+            .expect("read the resume row")
+            .is_some(),
+        "shutdown persists a resume row while a track is current"
+    );
+
+    // Relaunch with the preference off.
+    let (handle, _capture_rx) = start_capture_service_with_restore(
+        playback.library_manager.clone(),
+        playback.runtime_handle.clone(),
+        false,
+    );
+    let mut progress_rx = handle.subscribe_progress();
+
+    // No restored Paused/Playing state may surface. The bounded window is
+    // generous relative to how fast a restore emits (immediately at startup).
+    let restored = wait_for_state_on(
+        &mut progress_rx,
+        |s| {
+            matches!(
+                s,
+                PlaybackState::Paused { .. } | PlaybackState::Playing { .. }
+            )
+        },
+        Duration::from_secs(3),
+    )
+    .await;
+    assert!(
+        restored.is_none(),
+        "restore-off must not surface a restored playback state, got {restored:?}"
+    );
+
+    let queue = handle.queue_projection().await.expect("queue projection");
+    assert!(
+        queue.manual.is_empty() && queue.context.is_none(),
+        "restore-off starts with an empty queue"
+    );
+    assert!(
+        handle.get_last_position_display().is_none(),
+        "restore-off leaves no restored position display"
+    );
+
+    // The row survives the skipped restore, so turning the preference on
+    // restores this session at the next launch.
+    assert!(
+        playback
+            .library_manager
+            .load_playback_state()
+            .await
+            .expect("re-read the resume row")
+            .is_some(),
+        "the resume row must survive a restore-off launch"
     );
 }
 

@@ -62,7 +62,12 @@ final class AppSessionHolder {
         makeHandle: {
             try initApp(
                 libraryId: $0,
-                positionUpdateIntervalMs: positionUpdateIntervalMs
+                positionUpdateIntervalMs: positionUpdateIntervalMs,
+                // The "Restore on launch" preference (default on for mobile):
+                // off starts with nothing in playback; the core keeps the
+                // resume row current either way.
+                restorePlayback: UserDefaults.standard.object(forKey: "persistPlayback") == nil
+                    || UserDefaults.standard.bool(forKey: "persistPlayback")
             )
         },
         makeService: { handle, config, initialOutbox in

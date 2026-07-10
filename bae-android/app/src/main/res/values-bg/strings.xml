@@ -82,6 +82,7 @@
     <string name="settings_sync_disconnected">Връзката е прекъсната</string>
     <string name="settings_reconnect">Свържи отново</string>
     <string name="settings_pause_between_sides">Пауза между страните</string>
+    <string name="settings_restore_on_launch">Възстановяване при стартиране</string>
     <string name="settings_devices">Устройства</string>
     <string name="settings_manage_devices">Управление на устройства</string>
     <string name="settings_recovery_code">Код за възстановяване</string>

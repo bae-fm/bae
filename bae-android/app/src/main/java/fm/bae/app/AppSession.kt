@@ -332,7 +332,14 @@ object AppSessionHolder {
         try {
             val handle =
                 withContext(Dispatchers.IO) {
-                    initApp(libraryId, POSITION_UPDATE_INTERVAL_MS)
+                    // The "Restore on launch" preference (default on): off
+                    // starts with nothing in playback; the core keeps the
+                    // resume row current either way.
+                    initApp(
+                        libraryId,
+                        POSITION_UPDATE_INTERVAL_MS,
+                        RestorePlaybackPref.load(context),
+                    )
                 }
             val config: BridgeConfig = withContext(Dispatchers.IO) { handle.getConfig() }
 

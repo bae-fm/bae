@@ -319,11 +319,11 @@ internal static class NativeBae
         public void OnEvent(BridgeUiEvent @event) => onEvent(@event);
     }
 
-    internal static AppHandle? Init(string libraryId, uint positionUpdateIntervalMs)
+    internal static AppHandle? Init(string libraryId, uint positionUpdateIntervalMs, bool restorePlayback)
     {
         try
         {
-            return BaeBridgeMethods.InitApp(libraryId, positionUpdateIntervalMs);
+            return BaeBridgeMethods.InitApp(libraryId, positionUpdateIntervalMs, restorePlayback);
         }
         catch (BridgeException exception)
         {

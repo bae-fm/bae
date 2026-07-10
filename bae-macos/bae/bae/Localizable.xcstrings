@@ -60797,196 +60797,6 @@
         }
       }
     },
-    "Saves the current track, position, queue, and volume on quit and restores them on next launch.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Saves the current track, position, queue, and volume on quit and restores them on next launch."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Guarda la pista actual, la posición, la cola y el volumen al salir y los restaura en el próximo inicio."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Enregistre la piste, la position, la file et le volume actuels à la fermeture et les restaure au prochain lancement."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Speichert beim Beenden den aktuellen Titel, die Position, die Warteschlange und die Lautstärke und stellt sie beim nächsten Start wieder her."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Salva a faixa, posição, fila e volume atuais ao sair e os restaura na próxima abertura."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "終了時に現在のトラック、再生位置、キュー、音量を保存し、次回起動時に復元します。"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "退出时保存当前曲目、播放位置、队列和音量，并在下次启动时恢复。"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يحفظ المقطوعة الحالية والموضع وقائمة الانتظار ومستوى الصوت عند الخروج ويستعيدها عند التشغيل التالي."
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "שומר את הרצועה הנוכחית, המיקום, התור והעוצמה ביציאה ומשחזר אותם בהפעלה הבאה."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Зберігає поточний трек, позицію, чергу та гучність під час виходу й відновлює їх під час наступного запуску."
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запазва текущата песен, позиция, опашка и сила на звука при изход и ги възстановява при следващото стартиране."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zapisuje bieżący utwór, pozycję, kolejkę i głośność przy zamknięciu i przywraca je przy następnym uruchomieniu."
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Při ukončení uloží aktuální skladbu, pozici, frontu a hlasitost a při příštím spuštění je obnoví."
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sprema trenutnu skladbu, položaj, red i glasnoću pri izlasku te ih vraća pri sljedećem pokretanju."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "종료 시 현재 트랙, 위치, 대기열, 음량을 저장하고 다음 실행 때 복원합니다."
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "結束時儲存目前曲目、位置、佇列與音量，並在下次啟動時還原。"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Salva brano corrente, posizione, coda e volume all'uscita e li ripristina al prossimo avvio."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Çıkarken geçerli parçayı, konumu, sırayı ve ses düzeyini kaydeder; sonraki açılışta geri yükler."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lưu bản nhạc hiện tại, vị trí, hàng đợi và âm lượng khi thoát rồi khôi phục ở lần mở tiếp theo."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bewaart het huidige nummer, de positie, wachtrij en volume bij afsluiten en herstelt ze bij de volgende start."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "बंद करने पर मौजूदा ट्रैक, स्थिति, कतार और वॉल्यूम सहेजता है और अगली शुरुआत पर उन्हें बहाल करता है।"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "বন্ধ করার সময় বর্তমান ট্র্যাক, অবস্থান, সারি ও ভলিউম সংরক্ষণ করে এবং পরেরবার চালু হলে সেগুলো ফিরিয়ে আনে।"
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "வெளியேறும் போது தற்போதைய பாடல், நிலை, வரிசை, ஒலியளவைச் சேமித்து, அடுத்த தொடக்கத்தில் மீட்டெடுக்கும்."
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "మూసివేసేటప్పుడు ప్రస్తుత ట్రాక్, స్థానం, క్యూ, వాల్యూమ్‌ను సేవ్ చేసి తదుపరి ప్రారంభంలో పునరుద్ధరిస్తుంది."
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "बाहेर पडताना सध्याचे गाणे, स्थिती, रांग आणि आवाजपातळी जतन करते आणि पुढच्या सुरुवातीला ते पुनर्संचयित करते."
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "بند کرتے وقت موجودہ نغمہ، پوزیشن، قطار، اور آواز محفوظ کرتا ہے اور اگلی شروعات پر بحال کرتا ہے۔"
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "બંધ કરતી વખતે હાલનો ટ્રૅક, સ્થિતિ, કતાર અને અવાજ સાચવે છે અને આગામી શરૂઆત પર પુનઃસ્થાપિત કરે છે."
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಮುಚ್ಚುವಾಗ ಪ್ರಸ್ತುತ ಹಾಡು, ಸ್ಥಾನ, ಸರದಿ ಮತ್ತು ಧ್ವನಿಮಟ್ಟವನ್ನು ಉಳಿಸಿ, ಮುಂದಿನ ಪ್ರಾರಂಭದಲ್ಲಿ ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ."
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "പുറത്തുകടക്കുമ്പോൾ നിലവിലെ ട്രാക്ക്, സ്ഥാനം, നിര, ശബ്ദനില എന്നിവ സംരക്ഷിച്ച് അടുത്ത ആരംഭത്തിൽ പുനഃസ്ഥാപിക്കുന്നു."
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਬੰਦ ਕਰਦੇ ਸਮੇਂ ਮੌਜੂਦਾ ਟ੍ਰੈਕ, ਸਥਿਤੀ, ਕਤਾਰ ਅਤੇ ਆਵਾਜ਼ ਸੰਭਾਲਦਾ ਹੈ ਅਤੇ ਅਗਲੀ ਸ਼ੁਰੂਆਤ ਤੇ ਉਹਨਾਂ ਨੂੰ ਮੁੜ-ਬਹਾਲ ਕਰਦਾ ਹੈ।"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "บันทึกแทร็กปัจจุบัน ตำแหน่ง คิว และระดับเสียงเมื่อออก แล้วคืนค่าเมื่อเปิดครั้งถัดไป"
-          }
-        }
-      }
-    },
     "Saving...": {
       "comment": "Edit-metadata sheet: saving in-progress status",
       "localizations": {
@@ -94924,6 +94734,196 @@
           "stringUnit": {
             "state": "translated",
             "value": "找不到藝人詳細資料"
+          }
+        }
+      }
+    },
+    "Restores the last session's track, position, queue, and volume when the app opens.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restores the last session's track, position, queue, and volume when the app opens."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaura la pista, la posición, la cola y el volumen de la última sesión al abrir la app."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaure la piste, la position, la file et le volume de la dernière session à l'ouverture de l'app."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stellt beim Öffnen der App den Titel, die Position, die Warteschlange und die Lautstärke der letzten Sitzung wieder her."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaura a faixa, a posição, a fila e o volume da última sessão ao abrir o app."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripristina traccia, posizione, coda e volume dell'ultima sessione all'apertura dell'app."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herstelt de track, positie, wachtrij en het volume van de laatste sessie bij het openen van de app."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przywraca utwór, pozycję, kolejkę i głośność z ostatniej sesji przy otwarciu aplikacji."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Při otevření aplikace obnoví skladbu, pozici, frontu a hlasitost z poslední relace."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pri otvaranju aplikacije vraća pjesmu, poziciju, red čekanja i glasnoću zadnje sesije."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "При отваряне на приложението възстановява песента, позицията, опашката и силата на звука от последната сесия."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Під час відкриття застосунку відновлює трек, позицію, чергу та гучність останнього сеансу."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygulama açıldığında son oturumun parçasını, konumunu, kuyruğunu ve ses düzeyini geri yükler."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يستعيد المقطع والموضع وقائمة الانتظار ومستوى الصوت من الجلسة الأخيرة عند فتح التطبيق."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "משחזר את הרצועה, המיקום, התור ועוצמת השמע מההפעלה הקודמת עם פתיחת האפליקציה."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ऐप खुलने पर पिछले सत्र का ट्रैक, स्थिति, क़तार और वॉल्यूम बहाल करता है।"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অ্যাপ খোলার সময় শেষ সেশনের ট্র্যাক, অবস্থান, সারি ও ভলিউম পুনরুদ্ধার করে।"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ઍપ ખૂલે ત્યારે છેલ્લા સત્રનો ટ્રૅક, સ્થિતિ, કતાર અને વૉલ્યુમ પુનઃસ્થાપિત કરે છે."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಆ್ಯಪ್ ತೆರೆದಾಗ ಕೊನೆಯ ಸೆಷನ್‌ನ ಟ್ರ್ಯಾಕ್, ಸ್ಥಾನ, ಸರತಿ ಮತ್ತು ವಾಲ್ಯೂಮ್ ಅನ್ನು ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ആപ്പ് തുറക്കുമ്പോൾ അവസാന സെഷനിലെ ട്രാക്ക്, സ്ഥാനം, ക്യൂ, വോളിയം എന്നിവ പുനഃസ്ഥാപിക്കുന്നു."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अ‍ॅप उघडताना मागील सत्रातील ट्रॅक, स्थिती, रांग आणि आवाज पुनर्संचयित करते."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਐਪ ਖੁੱਲ੍ਹਣ 'ਤੇ ਪਿਛਲੇ ਸੈਸ਼ਨ ਦਾ ਟ੍ਰੈਕ, ਸਥਿਤੀ, ਕਤਾਰ ਅਤੇ ਵਾਲੀਅਮ ਬਹਾਲ ਕਰਦਾ ਹੈ।"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ஆப்ஸ் திறக்கும்போது கடந்த அமர்வின் டிராக், நிலை, வரிசை மற்றும் ஒலியளவை மீட்டமைக்கிறது."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "యాప్ తెరిచినప్పుడు గత సెషన్ ట్రాక్, స్థానం, క్యూ మరియు వాల్యూమ్‌ను పునరుద్ధరిస్తుంది."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ایپ کھلنے پر پچھلے سیشن کا ٹریک، پوزیشن، قطار اور والیوم بحال کرتا ہے۔"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กู้คืนแทร็ก ตำแหน่ง คิว และระดับเสียงของเซสชันล่าสุดเมื่อเปิดแอป"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khôi phục bản nhạc, vị trí, hàng đợi và âm lượng của phiên trước khi mở ứng dụng."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリを開いたときに、前回のセッションのトラック、再生位置、キュー、音量を復元します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱을 열 때 마지막 세션의 트랙, 위치, 대기열, 음량을 복원합니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开应用时恢复上次会话的曲目、播放位置、队列和音量。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開啟 App 時還原上次工作階段的曲目、播放位置、佇列與音量。"
           }
         }
       }

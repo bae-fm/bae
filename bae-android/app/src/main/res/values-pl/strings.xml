@@ -82,6 +82,7 @@
     <string name="settings_sync_disconnected">Rozłączono</string>
     <string name="settings_reconnect">Połącz ponownie</string>
     <string name="settings_pause_between_sides">Pauza między stronami</string>
+    <string name="settings_restore_on_launch">Przywracaj przy uruchomieniu</string>
     <string name="settings_devices">Urządzenia</string>
     <string name="settings_manage_devices">Zarządzaj urządzeniami</string>
     <string name="settings_recovery_code">Kod odzyskiwania</string>

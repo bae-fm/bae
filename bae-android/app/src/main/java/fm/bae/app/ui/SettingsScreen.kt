@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.localizedLine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -258,6 +259,26 @@ private fun SettingsConfigSection(
                             session.configStore.showError(e.toString())
                         }
                     }
+                },
+            )
+        }
+        // Device-local, not library config: whether the next launch restores
+        // the last session's playback. The core keeps the resume row current
+        // either way, so flipping this on takes effect at the next launch.
+        var restoreOnLaunch by remember { mutableStateOf(RestorePlaybackPref.load(context)) }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.settings_restore_on_launch),
+                modifier = Modifier.weight(1f),
+            )
+            Switch(
+                checked = restoreOnLaunch,
+                onCheckedChange = { enabled ->
+                    restoreOnLaunch = enabled
+                    RestorePlaybackPref.save(context, enabled)
                 },
             )
         }

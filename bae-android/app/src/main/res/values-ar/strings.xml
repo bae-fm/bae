@@ -82,6 +82,7 @@
     <string name="settings_sync_disconnected">غير متصل</string>
     <string name="settings_reconnect">إعادة الاتصال</string>
     <string name="settings_pause_between_sides">إيقاف مؤقت بين الجانبين</string>
+    <string name="settings_restore_on_launch">الاستعادة عند التشغيل</string>
     <string name="settings_devices">الأجهزة</string>
     <string name="settings_manage_devices">إدارة الأجهزة</string>
     <string name="settings_recovery_code">رمز الاسترداد</string>

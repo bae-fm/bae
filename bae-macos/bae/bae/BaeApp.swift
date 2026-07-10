@@ -466,7 +466,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @ObservationIgnored
     private lazy var opener = LibrarySessionOpener<AppHandle, AppService>(
         makeHandle: {
-            try initApp(libraryId: $0, positionUpdateIntervalMs: 200)
+            try initApp(
+                libraryId: $0,
+                positionUpdateIntervalMs: 200,
+                // The "Restore on launch" preference: off starts with nothing
+                // in playback; the core keeps the resume row current either way.
+                restorePlayback: UserDefaults.standard.bool(
+                    forKey: "persistPlayback"
+                )
+            )
         },
         makeService: { [weak self] handle, config, initialOutbox in
             guard let self else {
@@ -736,9 +744,9 @@ extension AppDelegate {
 
 extension AppDelegate {
     func applicationWillTerminate(_: Notification) {
-        guard UserDefaults.standard.bool(forKey: "persistPlayback"),
-            let appService
-        else {
+        // Always shut down gracefully; the restore-on-launch preference gates
+        // the restore at the next launch (passed to initApp), not this save.
+        guard let appService else {
             return
         }
         Task { [handle = appService.appHandle] in

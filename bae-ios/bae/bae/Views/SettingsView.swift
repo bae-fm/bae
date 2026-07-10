@@ -16,6 +16,11 @@ struct SettingsView: View {
     @Environment(\.dismiss)
     private var dismiss
 
+    // Mobile defaults to restoring: the app resumes where playback left off
+    // unless the user turns this off. Read at the next initApp (app launch).
+    @AppStorage("persistPlayback")
+    private var persistPlayback = true
+
     @State
     private var confirmLeave = false
     @State
@@ -72,7 +77,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Playback") {
+                Section {
                     PauseBetweenSidesToggle(
                         configStore: configStore,
                         setEnabled: { [appHandle = appService.appHandle] in
@@ -81,6 +86,13 @@ struct SettingsView: View {
                         showError: { @MainActor error in
                             configStore.showError(error)
                         }
+                    )
+                    Toggle("Restore on launch", isOn: $persistPlayback)
+                } header: {
+                    Text("Playback")
+                } footer: {
+                    Text(
+                        "Restores the last session's track, position, queue, and volume when the app opens."
                     )
                 }
 

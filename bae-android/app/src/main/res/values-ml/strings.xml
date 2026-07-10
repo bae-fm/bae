@@ -82,6 +82,7 @@
     <string name="settings_sync_disconnected">വിച്ഛേദിച്ചു</string>
     <string name="settings_reconnect">വീണ്ടും ബന്ധിപ്പിക്കുക</string>
     <string name="settings_pause_between_sides">വശങ്ങൾക്കിടയിൽ താൽക്കാലികമായി നിർത്തുക</string>
+    <string name="settings_restore_on_launch">ആരംഭിക്കുമ്പോൾ പുനഃസ്ഥാപിക്കുക</string>
     <string name="settings_devices">ഉപകരണങ്ങൾ</string>
     <string name="settings_manage_devices">ഉപകരണങ്ങൾ നിയന്ത്രിക്കുക</string>
     <string name="settings_recovery_code">വീണ്ടെടുപ്പ് കോഡ്</string>

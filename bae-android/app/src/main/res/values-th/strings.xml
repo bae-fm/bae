@@ -82,6 +82,7 @@
     <string name="settings_sync_disconnected">ตัดการเชื่อมต่อแล้ว</string>
     <string name="settings_reconnect">เชื่อมต่อใหม่</string>
     <string name="settings_pause_between_sides">หยุดพักระหว่างด้าน</string>
+    <string name="settings_restore_on_launch">คืนค่าเมื่อเปิดแอป</string>
     <string name="settings_devices">อุปกรณ์</string>
     <string name="settings_manage_devices">จัดการอุปกรณ์</string>
     <string name="settings_recovery_code">รหัสกู้คืน</string>

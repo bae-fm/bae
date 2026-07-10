@@ -1300,15 +1300,22 @@ pub(crate) fn default_audio_output_with_device_listener(
 }
 
 impl PlaybackService {
+    /// `restore_playback` is the platform's "Restore on launch" preference:
+    /// `true` restores the saved queue/track/position from the `playback_state`
+    /// row at startup; `false` starts with nothing in playback. The row itself
+    /// is written continuously either way (it's the crash-safe resume point),
+    /// so flipping the preference on takes effect at the next launch.
     pub fn start(
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
+        restore_playback: bool,
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
             runtime_handle,
             position_update_interval_ms,
+            restore_playback,
             None,
         )
     }
@@ -1318,12 +1325,14 @@ impl PlaybackService {
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
+        restore_playback: bool,
         audio_output: Box<dyn AudioOutput>,
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
             runtime_handle,
             position_update_interval_ms,
+            restore_playback,
             Some(audio_output),
         )
     }
@@ -1332,6 +1341,7 @@ impl PlaybackService {
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
+        restore_playback: bool,
         custom_output: Option<Box<dyn AudioOutput>>,
     ) -> PlaybackHandle {
         let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
@@ -1421,21 +1431,30 @@ impl PlaybackService {
                     fetch_arbiter: FetchArbiter::new(),
                     starvation_episode: None,
                 };
-                match service.library_manager.load_playback_state().await {
-                    Ok(Some(state)) => match PersistedPlayback::from_row(state) {
-                        Some(parsed) => service.restore(parsed).await,
-                        // The row was corrupt (logged in `from_row`). Delete it so
-                        // the bad row doesn't linger durably across restarts.
-                        None => {
-                            if let Err(e) = service.library_manager.clear_playback_state().await {
-                                warn!("couldn't clear the corrupt playback resume cache: {e}");
+                // "Restore on launch" off is a designed-for start-fresh launch:
+                // skip the restore but keep the row — it stays the crash-safe
+                // resume point, and flipping the preference on restores it at
+                // the next launch.
+                if restore_playback {
+                    match service.library_manager.load_playback_state().await {
+                        Ok(Some(state)) => match PersistedPlayback::from_row(state) {
+                            Some(parsed) => service.restore(parsed).await,
+                            // The row was corrupt (logged in `from_row`). Delete it so
+                            // the bad row doesn't linger durably across restarts.
+                            None => {
+                                if let Err(e) = service.library_manager.clear_playback_state().await
+                                {
+                                    warn!("couldn't clear the corrupt playback resume cache: {e}");
+                                }
                             }
+                        },
+                        Ok(None) => {}
+                        Err(e) => {
+                            warn!("couldn't load the saved playback state: {e}; starting fresh")
                         }
-                    },
-                    Ok(None) => {}
-                    Err(e) => {
-                        warn!("couldn't load the saved playback state: {e}; starting fresh")
                     }
+                } else {
+                    debug!("restore on launch is off; starting with nothing in playback");
                 }
                 service.run().await;
             });

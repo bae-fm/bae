@@ -82,6 +82,7 @@
     <string name="settings_sync_disconnected">منقطع</string>
     <string name="settings_reconnect">دوبارہ جوڑیں</string>
     <string name="settings_pause_between_sides">اطراف کے درمیان وقفہ</string>
+    <string name="settings_restore_on_launch">شروع ہونے پر بحال کریں</string>
     <string name="settings_devices">آلات</string>
     <string name="settings_manage_devices">آلات کا انتظام کریں</string>
     <string name="settings_recovery_code">بازیابی رمز</string>

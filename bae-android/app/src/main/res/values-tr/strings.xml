@@ -82,6 +82,7 @@
     <string name="settings_sync_disconnected">Bağlantı kesildi</string>
     <string name="settings_reconnect">Yeniden bağlan</string>
     <string name="settings_pause_between_sides">Yüzler arasında duraklat</string>
+    <string name="settings_restore_on_launch">Açılışta geri yükle</string>
     <string name="settings_devices">Cihazlar</string>
     <string name="settings_manage_devices">Cihazları yönet</string>
     <string name="settings_recovery_code">Kurtarma kodu</string>

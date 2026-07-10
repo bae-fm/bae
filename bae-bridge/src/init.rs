@@ -65,17 +65,26 @@ pub struct BridgeDiagnostics {
 }
 
 #[uniffi::export]
+/// `restore_playback` is the platform's "Restore on launch" preference: `true`
+/// restores the saved queue/current track/position at startup, `false` starts
+/// with nothing in playback. Platforms without the preference pass `true`
+/// (mobile always resumes where playback left off).
 pub fn init_app(
     library_id: String,
     position_update_interval_ms: u32,
+    restore_playback: bool,
 ) -> Result<Arc<AppHandle>, BridgeError> {
     configure_logging(Diagnostics::noop())?;
 
     #[cfg(feature = "desktop")]
     {
-        let app =
-            bae_desktop::bootstrap(library_id, position_update_interval_ms, get_cloudkit_ops())
-                .map_err(bootstrap_error_to_bridge)?;
+        let app = bae_desktop::bootstrap(
+            library_id,
+            position_update_interval_ms,
+            restore_playback,
+            get_cloudkit_ops(),
+        )
+        .map_err(bootstrap_error_to_bridge)?;
         Ok(Arc::new(AppHandle { app }))
     }
 
@@ -84,8 +93,13 @@ pub fn init_app(
         runtime,
         services,
         ui_event_bus,
-    } = bootstrap(library_id, position_update_interval_ms, get_cloudkit_ops())
-        .map_err(bootstrap_error_to_bridge)?;
+    } = bootstrap(
+        library_id,
+        position_update_interval_ms,
+        restore_playback,
+        get_cloudkit_ops(),
+    )
+    .map_err(bootstrap_error_to_bridge)?;
 
     #[cfg(not(feature = "desktop"))]
     Ok(Arc::new(AppHandle {

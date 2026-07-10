@@ -46,7 +46,9 @@ internal sealed class SessionStore
     // rather than show a half-open library.
     public OpenHandleResult OpenHandle(string libraryId)
     {
-        var handle = NativeBae.Init(libraryId, PositionUpdateIntervalMs);
+        // The restore-on-launch preference gates the startup restore in the core;
+        // the resume row itself is written continuously either way.
+        var handle = NativeBae.Init(libraryId, PositionUpdateIntervalMs, PersistPlaybackStore.Load());
         if (handle == null)
         {
             return OpenHandleResult.Failed;

@@ -3188,6 +3188,7 @@ mod tests {
             manager.clone(),
             runtime.handle().clone(),
             50,
+            true,
         );
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         let services = {

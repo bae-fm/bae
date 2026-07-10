@@ -23817,6 +23817,386 @@
           }
         }
       }
+    },
+    "Restore on launch": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاستعادة عند التشغيل"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Възстановяване при стартиране"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "চালু হলে রিস্টোর করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obnovit při spuštění"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Start wiederherstellen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore on launch"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurar al iniciar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurer au lancement"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "શરૂઆત પર પુનઃસ્થાપિત કરો"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שחזר בהפעלה"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "शुरू होने पर बहाल करें"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vrati pri pokretanju"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripristina all'avvio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "起動時に復元"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಪ್ರಾರಂಭಿಸುವಾಗ ಮರುಸ್ಥಾಪಿಸಿ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시작 시 복원"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ആരംഭിക്കുമ്പോൾ പുനഃസ്ഥാപിക്കുക"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सुरुवातीला पुनर्संचयित करा"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herstellen bij starten"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਸ਼ੁਰੂ ਹੋਣ ਤੇ ਮੁੜ-ਬਹਾਲ ਕਰੋ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przywracaj przy uruchomieniu"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurar ao abrir"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "தொடக்கத்தில் மீட்டமை"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ప్రారంభంలో పునరుద్ధరించు"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คืนค่าเมื่อเปิดแอป"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açılışta geri yükle"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відновлювати під час запуску"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شروع ہونے پر بحال کریں"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khôi phục khi khởi chạy"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动时恢复"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "啟動時還原"
+          }
+        }
+      }
+    },
+    "Restores the last session's track, position, queue, and volume when the app opens.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يستعيد المقطع والموضع وقائمة الانتظار ومستوى الصوت من الجلسة الأخيرة عند فتح التطبيق."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "При отваряне на приложението възстановява песента, позицията, опашката и силата на звука от последната сесия."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অ্যাপ খোলার সময় শেষ সেশনের ট্র্যাক, অবস্থান, সারি ও ভলিউম পুনরুদ্ধার করে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Při otevření aplikace obnoví skladbu, pozici, frontu a hlasitost z poslední relace."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stellt beim Öffnen der App den Titel, die Position, die Warteschlange und die Lautstärke der letzten Sitzung wieder her."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restores the last session's track, position, queue, and volume when the app opens."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaura la pista, la posición, la cola y el volumen de la última sesión al abrir la app."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaure la piste, la position, la file et le volume de la dernière session à l'ouverture de l'app."
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ઍપ ખૂલે ત્યારે છેલ્લા સત્રનો ટ્રૅક, સ્થિતિ, કતાર અને વૉલ્યુમ પુનઃસ્થાપિત કરે છે."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "משחזר את הרצועה, המיקום, התור ועוצמת השמע מההפעלה הקודמת עם פתיחת האפליקציה."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ऐप खुलने पर पिछले सत्र का ट्रैक, स्थिति, क़तार और वॉल्यूम बहाल करता है।"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pri otvaranju aplikacije vraća pjesmu, poziciju, red čekanja i glasnoću zadnje sesije."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripristina traccia, posizione, coda e volume dell'ultima sessione all'apertura dell'app."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリを開いたときに、前回のセッションのトラック、再生位置、キュー、音量を復元します。"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಆ್ಯಪ್ ತೆರೆದಾಗ ಕೊನೆಯ ಸೆಷನ್‌ನ ಟ್ರ್ಯಾಕ್, ಸ್ಥಾನ, ಸರತಿ ಮತ್ತು ವಾಲ್ಯೂಮ್ ಅನ್ನು ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱을 열 때 마지막 세션의 트랙, 위치, 대기열, 음량을 복원합니다."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ആപ്പ് തുറക്കുമ്പോൾ അവസാന സെഷനിലെ ട്രാക്ക്, സ്ഥാനം, ക്യൂ, വോളിയം എന്നിവ പുനഃസ്ഥാപിക്കുന്നു."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अ‍ॅप उघडताना मागील सत्रातील ट्रॅक, स्थिती, रांग आणि आवाज पुनर्संचयित करते."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herstelt de track, positie, wachtrij en het volume van de laatste sessie bij het openen van de app."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਐਪ ਖੁੱਲ੍ਹਣ 'ਤੇ ਪਿਛਲੇ ਸੈਸ਼ਨ ਦਾ ਟ੍ਰੈਕ, ਸਥਿਤੀ, ਕਤਾਰ ਅਤੇ ਵਾਲੀਅਮ ਬਹਾਲ ਕਰਦਾ ਹੈ।"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przywraca utwór, pozycję, kolejkę i głośność z ostatniej sesji przy otwarciu aplikacji."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaura a faixa, a posição, a fila e o volume da última sessão ao abrir o app."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ஆப்ஸ் திறக்கும்போது கடந்த அமர்வின் டிராக், நிலை, வரிசை மற்றும் ஒலியளவை மீட்டமைக்கிறது."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "యాప్ తెరిచినప్పుడు గత సెషన్ ట్రాక్, స్థానం, క్యూ మరియు వాల్యూమ్‌ను పునరుద్ధరిస్తుంది."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กู้คืนแทร็ก ตำแหน่ง คิว และระดับเสียงของเซสชันล่าสุดเมื่อเปิดแอป"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygulama açıldığında son oturumun parçasını, konumunu, kuyruğunu ve ses düzeyini geri yükler."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Під час відкриття застосунку відновлює трек, позицію, чергу та гучність останнього сеансу."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ایپ کھلنے پر پچھلے سیشن کا ٹریک، پوزیشن، قطار اور والیوم بحال کرتا ہے۔"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khôi phục bản nhạc, vị trí, hàng đợi và âm lượng của phiên trước khi mở ứng dụng."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开应用时恢复上次会话的曲目、播放位置、队列和音量。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開啟 App 時還原上次工作階段的曲目、播放位置、佇列與音量。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

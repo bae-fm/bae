@@ -82,6 +82,7 @@
     <string name="settings_sync_disconnected">সংযোগ বিচ্ছিন্ন</string>
     <string name="settings_reconnect">পুনরায় সংযোগ করুন</string>
     <string name="settings_pause_between_sides">সাইডের মাঝে বিরতি</string>
+    <string name="settings_restore_on_launch">চালু হলে রিস্টোর করুন</string>
     <string name="settings_devices">ডিভাইস</string>
     <string name="settings_manage_devices">ডিভাইস পরিচালনা করুন</string>
     <string name="settings_recovery_code">রিকভারি কোড</string>

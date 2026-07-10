@@ -1350,12 +1350,11 @@ public sealed partial class MainWindow : Window
         // Clear the transport controls first so no ghost entry lingers during
         // shutdown; OnClosed doesn't go through TearDownLibrary. Idempotent.
         _mediaControls.Deactivate();
-        if (CurrentHandleOrNull() != null && PersistPlaybackStore.Load())
+        if (CurrentHandleOrNull() != null)
         {
-            // The restore-on-launch preference is on: persist the queue /
-            // current track / position before freeing the handle, so the next
-            // launch can restore where playback left off. Off (the default)
-            // skips this save and lets process exit reclaim the handle.
+            // Always shut down gracefully; the restore-on-launch preference
+            // gates the restore at the next launch (passed to InitApp), not
+            // this save — the core keeps the resume row current either way.
             await ShutdownAndFreeCurrentHandle();
         }
 

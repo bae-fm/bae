@@ -55,11 +55,13 @@ pub enum BootstrapError {
 pub fn bootstrap(
     library_id: String,
     position_update_interval_ms: u32,
+    restore_playback: bool,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
     bootstrap_on_thread(
         BootstrapTarget::RegisteredId(library_id),
         position_update_interval_ms,
+        restore_playback,
         cloudkit_ops,
     )
 }
@@ -67,10 +69,12 @@ pub fn bootstrap(
 pub fn bootstrap_library_path(
     library_path: PathBuf,
     position_update_interval_ms: u32,
+    restore_playback: bool,
 ) -> Result<RunningApp, BootstrapError> {
     bootstrap_on_thread(
         BootstrapTarget::LibraryPath(library_path),
         position_update_interval_ms,
+        restore_playback,
         None,
     )
 }
@@ -78,6 +82,7 @@ pub fn bootstrap_library_path(
 fn bootstrap_on_thread(
     target: BootstrapTarget,
     position_update_interval_ms: u32,
+    restore_playback: bool,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
     // Building the sync manager (loading keys, opening the synced DB) and
@@ -90,7 +95,14 @@ fn bootstrap_on_thread(
     std::thread::Builder::new()
         .name("bae-bootstrap".to_string())
         .stack_size(32 * 1024 * 1024)
-        .spawn(move || bootstrap_inner(target, position_update_interval_ms, cloudkit_ops))
+        .spawn(move || {
+            bootstrap_inner(
+                target,
+                position_update_interval_ms,
+                restore_playback,
+                cloudkit_ops,
+            )
+        })
         .expect("spawn bae-bootstrap thread")
         .join()
         .expect("bae-bootstrap thread panicked")
@@ -104,6 +116,7 @@ enum BootstrapTarget {
 fn bootstrap_inner(
     target: BootstrapTarget,
     position_update_interval_ms: u32,
+    restore_playback: bool,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
     // Composition root for the injected wall clock + id source. Production wires
@@ -228,6 +241,7 @@ fn bootstrap_inner(
         library_manager.clone(),
         runtime.handle().clone(),
         position_update_interval_ms,
+        restore_playback,
     );
 
     // The import pipeline (scanning, transcoding, identify) is desktop-only.

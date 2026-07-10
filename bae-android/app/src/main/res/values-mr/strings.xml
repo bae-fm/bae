@@ -82,6 +82,7 @@
     <string name="settings_sync_disconnected">कनेक्शन तुटले</string>
     <string name="settings_reconnect">पुन्हा कनेक्ट करा</string>
     <string name="settings_pause_between_sides">बाजूंमध्ये विराम</string>
+    <string name="settings_restore_on_launch">सुरुवातीला पुनर्संचयित करा</string>
     <string name="settings_devices">डिव्हाइसेस</string>
     <string name="settings_manage_devices">डिव्हाइसेस व्यवस्थापित करा</string>
     <string name="settings_recovery_code">पुनर्प्राप्ती संकेत</string>

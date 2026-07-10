@@ -82,6 +82,7 @@
     <string name="settings_sync_disconnected">Đã ngắt kết nối</string>
     <string name="settings_reconnect">Kết nối lại</string>
     <string name="settings_pause_between_sides">Tạm dừng giữa các mặt</string>
+    <string name="settings_restore_on_launch">Khôi phục khi khởi chạy</string>
     <string name="settings_devices">Thiết bị</string>
     <string name="settings_manage_devices">Quản lý thiết bị</string>
     <string name="settings_recovery_code">Mã khôi phục</string>

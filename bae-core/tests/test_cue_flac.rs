@@ -346,6 +346,7 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
         library_manager.clone(),
         tokio::runtime::Handle::current(),
         100,
+        true,
     );
     playback_handle.set_volume(0.0);
     let mut progress_rx = playback_handle.subscribe_progress();
@@ -550,6 +551,7 @@ impl CueFlacCaptureFixture {
             library_manager.clone(),
             runtime_handle,
             100,
+            true,
             Box::new(capture_output),
         );
         Ok(Self {

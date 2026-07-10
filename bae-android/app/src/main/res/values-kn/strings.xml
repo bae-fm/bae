@@ -82,6 +82,7 @@
     <string name="settings_sync_disconnected">ಸಂಪರ್ಕ ಕಡಿತಗೊಂಡಿದೆ</string>
     <string name="settings_reconnect">ಮರುಸಂಪರ್ಕಿಸಿ</string>
     <string name="settings_pause_between_sides">ಬದಿಗಳ ನಡುವೆ ವಿರಾಮ</string>
+    <string name="settings_restore_on_launch">ಪ್ರಾರಂಭಿಸುವಾಗ ಮರುಸ್ಥಾಪಿಸಿ</string>
     <string name="settings_devices">ಸಾಧನಗಳು</string>
     <string name="settings_manage_devices">ಸಾಧನಗಳನ್ನು ನಿರ್ವಹಿಸಿ</string>
     <string name="settings_recovery_code">ಮರುಪಡೆಯುವ ಕೋಡ್</string>
