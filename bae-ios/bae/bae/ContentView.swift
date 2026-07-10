@@ -1,5 +1,6 @@
 import BaeKit
 import SwiftUI
+import UIKit
 
 /// App root. Drives the `AppScreen` lifecycle: discover an existing library and
 /// open it, gate on the encryption key, or onboard. Once a library is open, the
@@ -88,9 +89,14 @@ struct ContentView: View {
             // Persist playback on background so the queue, current track, and
             // position survive process death while suspended. We can't shut core
             // down (that would stop the background audio), so this is the only
-            // save point on iOS.
+            // save point on iOS. Wrapped in a UIKit background task: without
+            // it, iOS is free to suspend the process as soon as the scene
+            // finishes backgrounding, which can cut this await off before
+            // savePlaybackState returns.
             if phase == .background {
                 Task { [handle = holder.appService?.appHandle] in
+                    let task = BackgroundSaveTask(name: "SavePlaybackState")
+                    defer { task.end() }
                     await handle?.savePlaybackState()
                 }
             }
@@ -102,5 +108,30 @@ struct ContentView: View {
             .foregroundStyle(.red)
             .padding(32)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// Owns one UIKit background task and ends its identifier exactly once —
+/// whether the work finishes first (the caller's `end()`) or iOS fires the
+/// expiration handler because the save overran the background window. Ending
+/// an already-ended identifier is an over-release, so `end()` is guarded and
+/// clears the identifier after ending; both paths route through it. The
+/// identifier lives on the main actor (UIKit requires it), and the expiration
+/// handler — invoked by UIKit on the main thread — hops back onto it.
+@MainActor
+private final class BackgroundSaveTask {
+    private var id: UIBackgroundTaskIdentifier = .invalid
+
+    init(name: String) {
+        id = UIApplication.shared.beginBackgroundTask(withName: name) {
+            [weak self] in
+            MainActor.assumeIsolated { self?.end() }
+        }
+    }
+
+    func end() {
+        guard id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(id)
+        id = .invalid
     }
 }
