@@ -76,19 +76,25 @@ where
     states
 }
 
-/// Drain progress for `settle` wall time, returning the most recent adjusted
-/// `position_ms` seen. With a real-time capture sink wall time tracks playback
-/// time, so this reads "where the position bar sits `settle` into playback" —
-/// the signal that distinguishes a skipped pregap (position climbs from 0
-/// immediately) from a played pregap (position pinned at 0 for the pregap's
-/// length, then climbs). Panics if no position update arrives in the window.
+/// Await the first position update (generous deadline — a fresh load or a seek
+/// rebuild only starts emitting once its ring fills, which can take seconds on
+/// a loaded machine), then drain progress for `settle` wall time from that
+/// anchor and return the most recent adjusted `position_ms` seen. With a
+/// real-time capture sink wall time tracks playback time, so this reads "where
+/// the position bar sits `settle` into audible playback" — the signal that
+/// distinguishes a skipped pregap (position climbs from 0 immediately) from a
+/// played pregap (position pinned at 0 for the pregap's length, then climbs).
+/// Panics if no position update ever arrives.
 async fn position_after(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     settle: Duration,
 ) -> u64 {
-    let deadline = Instant::now() + settle;
+    let first_deadline = Instant::now() + Duration::from_secs(30);
     let mut latest = None;
-    while Instant::now() < deadline {
+    while latest.is_none() {
+        if Instant::now() >= first_deadline {
+            panic!("no position update arrived within 30s of requesting one");
+        }
         match timeout(Duration::from_millis(100), progress_rx.recv()).await {
             Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. })) => {
                 latest = Some(position_ms)
@@ -98,7 +104,18 @@ async fn position_after(
             Err(_) => continue,
         }
     }
-    latest.expect("a position update should arrive during playback")
+    let deadline = Instant::now() + settle;
+    while Instant::now() < deadline {
+        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. })) => {
+                latest = Some(position_ms)
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) => panic!("progress channel closed while sampling position updates"),
+            Err(_) => continue,
+        }
+    }
+    latest.expect("anchored on a first position update above")
 }
 
 /// Wait for the next `Seeked` event and return its adjusted `position_ms`, or
