@@ -12,16 +12,14 @@ object RestorePlaybackPref {
     private const val PREFS = "playback"
     private const val KEY = "restore_on_launch"
 
-    fun load(context: Context): Boolean = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY, true)
+    fun load(context: Context): Boolean = prefs(context).getBoolean(KEY, true)
 
     fun save(
         context: Context,
         enabled: Boolean,
     ) {
-        context
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY, enabled)
-            .apply()
+        prefs(context).edit().putBoolean(KEY, enabled).apply()
     }
+
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }

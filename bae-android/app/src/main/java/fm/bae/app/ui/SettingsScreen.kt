@@ -63,9 +63,6 @@ import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
 
-private const val TAG = "bae.SettingsScreen"
-private val logger = BaeLogger(TAG)
-
 /**
  * Per-device settings: the library's sync status, device management (the
  * membership chain), an on-demand recovery-code reveal, and a destructive
@@ -231,8 +228,6 @@ private fun SettingsConfigSection(
     syncError: String?,
     ioDispatcher: CoroutineDispatcher,
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     Column(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -252,95 +247,6 @@ private fun SettingsConfigSection(
                 ioDispatcher = ioDispatcher,
             )
         }
-    }
-}
-
-@Composable
-private fun SettingsPlaybackSection(
-    session: OpenLibrary,
-    config: BridgeConfig,
-    ioDispatcher: CoroutineDispatcher,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.settings_playback),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        PauseBetweenSidesRow(session = session, config = config, ioDispatcher = ioDispatcher)
-        RestoreOnLaunchRow()
-        Text(
-            text = stringResource(R.string.settings_restore_on_launch_help),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun PauseBetweenSidesRow(
-    session: OpenLibrary,
-    config: BridgeConfig,
-    ioDispatcher: CoroutineDispatcher,
-) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.settings_pause_between_sides),
-            modifier = Modifier.weight(1f),
-        )
-        Switch(
-            checked = config.pauseBetweenSides,
-            onCheckedChange = { enabled ->
-                scope.launch {
-                    try {
-                        withContext(ioDispatcher) {
-                            session.appHandle.setPauseBetweenSides(enabled)
-                        }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: BridgeException) {
-                        logger.error("Failed to update pause-between-sides setting", e)
-                        session.configStore.showError(context.localizedLine(e))
-                    } catch (e: Exception) {
-                        logger.error("Failed to update pause-between-sides setting", e)
-                        session.configStore.showError(e.toString())
-                    }
-                }
-            },
-        )
-    }
-}
-
-// Device-local, not library config: whether the next launch restores the last
-// session's playback. The core keeps the resume row current either way, so
-// flipping this on takes effect at the next launch.
-@Composable
-private fun RestoreOnLaunchRow() {
-    val context = LocalContext.current
-    var restoreOnLaunch by remember { mutableStateOf(RestorePlaybackPref.load(context)) }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.settings_restore_on_launch),
-            modifier = Modifier.weight(1f),
-        )
-        Switch(
-            checked = restoreOnLaunch,
-            onCheckedChange = { enabled ->
-                restoreOnLaunch = enabled
-                RestorePlaybackPref.save(context, enabled)
-            },
-        )
     }
 }
 
@@ -430,78 +336,4 @@ private fun SettingsLeaveSection(onRequestLeave: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-}
-
-/**
- * Reveals the library's recovery code on demand. The code is a bearer secret —
- * anyone holding it can restore the whole library — so it is generated only when
- * the user asks and labelled as a secret, never offered as an add-a-device step
- * (devices are added through the membership chain in the Devices screen).
- */
-@Composable
-private fun RecoveryCodeDialog(
-    session: OpenLibrary,
-    onDismiss: () -> Unit,
-) {
-    val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
-    var code by remember { mutableStateOf<String?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
-        try {
-            code = withContext(Dispatchers.IO) { session.appHandle.generateRestoreCode() }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("Failed to generate recovery code", e)
-            error = e.message ?: context.getString(R.string.settings_recovery_code_failed)
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_recovery_code)) },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text(
-                    text = stringResource(R.string.settings_recovery_code_secret_warning),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                val current = code
-                when {
-                    current != null -> {
-                        Text(
-                            text = current,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = FontFamily.Monospace,
-                        )
-                    }
-
-                    error != null -> {
-                        Text(text = error!!, color = MaterialTheme.colorScheme.error)
-                    }
-
-                    else -> {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            val current = code
-            if (current != null) {
-                TextButton(onClick = { clipboard.setText(AnnotatedString(current)) }) {
-                    Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(stringResource(R.string.settings_copy_recovery_code))
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
-        },
-    )
 }
