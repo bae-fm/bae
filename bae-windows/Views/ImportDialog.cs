@@ -98,7 +98,7 @@ internal sealed class ImportDialog
         // Sort ComboBox: the four orders in enum order, so the selected index maps
         // straight to the value. Seed the selection before subscribing so the
         // initial value doesn't round-trip a save.
-        var sortBox = new ComboBox { Header = Loc.Chrome("import.sort") };
+        var sortBox = new ComboBox { Header = Loc.Chrome("import.sort_by") };
         sortBox.Items.Add(Loc.Chrome("import.sort.name_az"));
         sortBox.Items.Add(Loc.Chrome("import.sort.name_za"));
         sortBox.Items.Add(Loc.Chrome("import.sort.newest"));

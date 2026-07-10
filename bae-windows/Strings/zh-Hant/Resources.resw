@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>略過</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>移至「新」</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>移除資料夾</value></data>
-  <data name="import.sort" xml:space="preserve"><value>排序</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>排序</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>名稱（A–Z）</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>名稱（Z–A）</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>加入日期（最新）</value></data>

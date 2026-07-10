@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>Overslaan</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>Naar nieuw verplaatsen</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Map verwijderen</value></data>
-  <data name="import.sort" xml:space="preserve"><value>Sorteren</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>Sorteren</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Naam (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Naam (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>Toegevoegd op (nieuwste)</value></data>

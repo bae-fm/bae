@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>Pomiń</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>Przenieś do nowych</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Usuń folder</value></data>
-  <data name="import.sort" xml:space="preserve"><value>Sortuj</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>Sortuj</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Nazwa (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Nazwa (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>Data dodania (od najnowszych)</value></data>

@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>वगळा</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>नवीनमध्ये हलवा</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>फोल्डर काढा</value></data>
-  <data name="import.sort" xml:space="preserve"><value>क्रम लावा</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>क्रम लावा</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>नाव (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>नाव (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>जोडल्याची तारीख (नवीनतम)</value></data>

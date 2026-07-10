@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>تخطّي</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>نقل إلى الجديد</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>إزالة المجلد</value></data>
-  <data name="import.sort" xml:space="preserve"><value>فرز</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>فرز</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>الاسم (أ–ي)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>الاسم (ي–أ)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>تاريخ الإضافة (الأحدث)</value></data>

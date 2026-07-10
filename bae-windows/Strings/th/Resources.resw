@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>ข้าม</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>ย้ายไปใหม่</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ลบโฟลเดอร์</value></data>
-  <data name="import.sort" xml:space="preserve"><value>จัดเรียง</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>จัดเรียง</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>ชื่อ (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>ชื่อ (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>วันที่เพิ่ม (ใหม่สุด)</value></data>

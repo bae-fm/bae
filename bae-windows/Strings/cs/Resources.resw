@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>Přeskočit</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>Přesunout do Nových</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Odebrat složku</value></data>
-  <data name="import.sort" xml:space="preserve"><value>Řazení</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>Řazení</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Název (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Název (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>Datum přidání (nejnovější)</value></data>

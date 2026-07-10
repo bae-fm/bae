@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>דלג</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>העבר לחדשים</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>הסר תיקייה</value></data>
-  <data name="import.sort" xml:space="preserve"><value>מיון</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>מיון</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>שם (א׳–ת׳)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>שם (ת׳–א׳)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>תאריך הוספה (החדש ביותר)</value></data>

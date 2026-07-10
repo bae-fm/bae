@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>Salta</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>Sposta in nuovo</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Rimuovi cartella</value></data>
-  <data name="import.sort" xml:space="preserve"><value>Ordina</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>Ordina</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Nome (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Nome (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>Data di aggiunta (più recente)</value></data>

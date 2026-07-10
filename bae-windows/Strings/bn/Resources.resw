@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>এড়িয়ে যান</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>নতুনে সরান</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ফোল্ডার সরান</value></data>
-  <data name="import.sort" xml:space="preserve"><value>সাজান</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>সাজান</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>নাম (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>নাম (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>যোগের তারিখ (নতুনতম)</value></data>

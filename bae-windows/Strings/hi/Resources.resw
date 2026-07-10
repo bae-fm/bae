@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>छोड़ें</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>नए में ले जाएं</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>फोल्डर हटाएं</value></data>
-  <data name="import.sort" xml:space="preserve"><value>क्रमबद्ध करें</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>क्रमबद्ध करें</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>नाम (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>नाम (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>जोड़े जाने की तारीख (सबसे नया)</value></data>

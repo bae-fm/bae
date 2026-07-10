@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>Atla</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>Yeniye Taşı</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Klasörü Kaldır</value></data>
-  <data name="import.sort" xml:space="preserve"><value>Sırala</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>Sırala</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Ad (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Ad (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>Eklenme Tarihi (En Yeni)</value></data>

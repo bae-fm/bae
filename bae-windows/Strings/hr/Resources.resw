@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>Preskoči</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>Premjesti u nove</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Ukloni mapu</value></data>
-  <data name="import.sort" xml:space="preserve"><value>Sortiraj</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>Sortiraj</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Naziv (A–Ž)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Naziv (Ž–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>Datum dodavanja (najnovije)</value></data>

@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>தவிர்</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>புதியதற்கு நகர்த்து</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>கோப்புறையை நீக்கு</value></data>
-  <data name="import.sort" xml:space="preserve"><value>வரிசைப்படுத்து</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>வரிசைப்படுத்து</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>பெயர் (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>பெயர் (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>சேர்த்த தேதி (புதியது)</value></data>

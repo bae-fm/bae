@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>Ignorar</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>Mover para Novos</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Remover pasta</value></data>
-  <data name="import.sort" xml:space="preserve"><value>Ordenar</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>Ordenar</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Nome (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Nome (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>Data de adição (mais recente)</value></data>

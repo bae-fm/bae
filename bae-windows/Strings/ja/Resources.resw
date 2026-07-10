@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>スキップ</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>新規に移動</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>フォルダを削除</value></data>
-  <data name="import.sort" xml:space="preserve"><value>並べ替え</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>並べ替え</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>名前（A–Z）</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>名前（Z–A）</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>追加日（新しい順）</value></data>

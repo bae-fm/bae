@@ -365,7 +365,7 @@
   <data name="import.candidate.skip" xml:space="preserve"><value>ಬಿಟ್ಟುಬಿಡಿ</value></data>
   <data name="import.candidate.unskip" xml:space="preserve"><value>ಹೊಸದಕ್ಕೆ ಸರಿಸಿ</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ಫೋಲ್ಡರ್ ತೆಗೆದುಹಾಕಿ</value></data>
-  <data name="import.sort" xml:space="preserve"><value>ಕ್ರಮಗೊಳಿಸಿ</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>ಕ್ರಮಗೊಳಿಸಿ</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>ಹೆಸರು (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>ಹೆಸರು (Z–A)</value></data>
   <data name="import.sort.newest" xml:space="preserve"><value>ಸೇರಿಸಿದ ದಿನಾಂಕ (ಹೊಸದು)</value></data>
