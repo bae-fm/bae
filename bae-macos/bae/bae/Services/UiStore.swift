@@ -22,19 +22,29 @@ enum LibraryBrowserMode: CaseIterable {
     }
 }
 
-/// A request to reveal an album (scroll the grid to it) and optionally flash
-/// a track inside it. Durable state, not a `PassthroughSubject`: the consumer
-/// (`AlbumGridView`, `AlbumDetailView`) does not exist when the producer emits.
-/// Navigating from composers mode switches to albums mode, which *mounts* the
-/// grid — so a subject would publish before any subscriber is alive and the
-/// request would be lost. As state, the request persists across that remount
-/// and the freshly-mounted grid reads it. `seq` is the version: it lets a
-/// consumer detect a new request even when `albumId` repeats (navigate to the
-/// same album twice), and drives `.task(id:)` so SwiftUI cancels a stale reveal
-/// when a newer one arrives.
-struct AlbumReveal {
+/// A pending "scroll the grid to this album" command, consumed exactly once by
+/// `AlbumGridView`. Durable state, not a `PassthroughSubject`: the section that
+/// mounts the grid (the library section can be unmounted entirely, or the
+/// browser can be in composers mode) may not exist yet when the producer
+/// emits. As state, the request persists until a mounted grid consumes it via
+/// `UiStore.consumeAlbumReveal(seq:)`, which clears it so a later remount finds
+/// nothing to replay. `seq` lets a consumer detect a new request even when
+/// `albumId` repeats (navigate to the same album twice in a row) and drives
+/// `.task(id:)` so SwiftUI restarts the reveal when a newer one arrives.
+struct PendingAlbumReveal {
     let albumId: String
-    let trackId: String?
+    let seq: Int
+}
+
+/// A pending "flash this track" command, consumed exactly once by the
+/// `TrackRowView` whose `trackId` matches. Independent of `PendingAlbumReveal`
+/// even though both are produced together by `navigateToAlbum` — the grid
+/// scroll and the track flash are two different consumers with two different
+/// lifetimes (the flash's track row may mount well after the grid scroll
+/// completes), so one `take` must not starve the other. Durable and
+/// seq-versioned for the same reasons as `PendingAlbumReveal`.
+struct PendingTrackFlash {
+    let trackId: String
     let seq: Int
 }
 
@@ -43,10 +53,11 @@ enum LibraryNavigationTarget {
     case work(String)
 }
 
-/// A request to reveal a composer or work in the composers browser. Durable for
-/// the same reason as `AlbumReveal`: cross-section navigation can switch the
-/// browser mode and mount the consumer after the producer records the request.
-/// `seq` lets repeat navigation to the same target run again.
+/// A pending composer/work reveal, consumed exactly once by `LibraryView`.
+/// Durable for the same reason as `PendingAlbumReveal`: cross-section
+/// navigation can switch the browser mode and mount the consumer after the
+/// producer records the request. `seq` lets repeat navigation to the same
+/// target run again.
 struct LibraryNavigationRequest {
     let target: LibraryNavigationTarget
     let seq: Int
@@ -65,15 +76,18 @@ class UiStore: @unchecked Sendable {
     var selectedAlbumId: String?
     var showQueue: Bool = false
 
-    /// The current album-reveal request (scroll + optional track flash), or
-    /// `nil` before any navigation. Durable — see `AlbumReveal` for why this is
-    /// state rather than a one-shot subject.
-    private(set) var albumReveal: AlbumReveal?
+    /// The pending grid-scroll command, or `nil` before any navigation or once
+    /// applied. Durable until consumed — see `PendingAlbumReveal`.
+    private(set) var pendingAlbumReveal: PendingAlbumReveal?
+    /// The pending track-flash command, or `nil` before any navigation, once
+    /// applied, or when the navigation carried no track. Durable until
+    /// consumed — see `PendingTrackFlash`.
+    private(set) var pendingTrackFlash: PendingTrackFlash?
     private var revealSeq = 0
 
-    /// The current composer/work reveal request, or `nil` before any such
-    /// navigation. Durable — see `LibraryNavigationRequest`.
-    private(set) var libraryNavigationRequest: LibraryNavigationRequest?
+    /// The pending composer/work reveal, or `nil` before any such navigation or
+    /// once applied. Durable until consumed — see `LibraryNavigationRequest`.
+    private(set) var pendingLibraryNavigation: LibraryNavigationRequest?
     private var libraryNavigationSeq = 0
 
     // ── Shared selections ───────────────────────────────────────────────
@@ -139,11 +153,16 @@ class UiStore: @unchecked Sendable {
             selectRelease(releaseId, inAlbum: albumId)
         }
         revealSeq += 1
-        albumReveal = AlbumReveal(
+        pendingAlbumReveal = PendingAlbumReveal(
             albumId: albumId,
-            trackId: trackId,
             seq: revealSeq
         )
+        // Always overwrite (to `nil` when there's no track) rather than leaving
+        // a prior navigation's flash around unconsumed if its track row never
+        // mounted.
+        pendingTrackFlash = trackId.map {
+            PendingTrackFlash(trackId: $0, seq: revealSeq)
+        }
     }
 
     func navigateToImport() {
@@ -154,7 +173,7 @@ class UiStore: @unchecked Sendable {
         activeSection = .library
         libraryBrowserMode = .composers
         libraryNavigationSeq += 1
-        libraryNavigationRequest = LibraryNavigationRequest(
+        pendingLibraryNavigation = LibraryNavigationRequest(
             target: .composer(artistId),
             seq: libraryNavigationSeq
         )
@@ -164,10 +183,35 @@ class UiStore: @unchecked Sendable {
         activeSection = .library
         libraryBrowserMode = .composers
         libraryNavigationSeq += 1
-        libraryNavigationRequest = LibraryNavigationRequest(
+        pendingLibraryNavigation = LibraryNavigationRequest(
             target: .work(workId),
             seq: libraryNavigationSeq
         )
+    }
+
+    /// Clear the pending grid-scroll command once `AlbumGridView` has applied
+    /// it. A no-op if a newer request already superseded it (that request owns
+    /// the clear now).
+    func consumeAlbumReveal(seq: Int) {
+        if pendingAlbumReveal?.seq == seq {
+            pendingAlbumReveal = nil
+        }
+    }
+
+    /// Clear the pending track-flash command once the matching `TrackRowView`
+    /// has applied it. A no-op if a newer request already superseded it.
+    func consumeTrackFlash(seq: Int) {
+        if pendingTrackFlash?.seq == seq {
+            pendingTrackFlash = nil
+        }
+    }
+
+    /// Clear the pending composer/work reveal once `LibraryView` has applied
+    /// it. A no-op if a newer request already superseded it.
+    func consumeLibraryNavigation(seq: Int) {
+        if pendingLibraryNavigation?.seq == seq {
+            pendingLibraryNavigation = nil
+        }
     }
 
     func selectAlbum(_ albumId: String) {

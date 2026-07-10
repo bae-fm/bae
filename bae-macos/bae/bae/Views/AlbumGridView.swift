@@ -177,8 +177,8 @@ struct AlbumGridView<ExpansionContent: View>: View {
                     selection.selectAll(list.allLoadedIds)
                     return .handled
                 }
-                .task(id: uiStore.albumReveal?.seq) {
-                    guard let reveal = uiStore.albumReveal else {
+                .task(id: uiStore.pendingAlbumReveal?.seq) {
+                    guard let reveal = uiStore.pendingAlbumReveal else {
                         return
                     }
                     await revealAlbum(
@@ -186,6 +186,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
                         columnCount: columnCount,
                         scrollProxy: scrollProxy
                     )
+                    uiStore.consumeAlbumReveal(seq: reveal.seq)
                 }
             }
         }
@@ -201,8 +202,11 @@ extension AlbumGridView {
     /// sort (off the main actor), load the page that contains it, then scroll.
     /// Each async stage checks `Task.isCancelled`, and the scroll — the only
     /// durable effect — commits last, so a cancel (a newer reveal, or the grid
-    /// disappearing) before that point changes nothing. SwiftUI drives the
-    /// cancellation by keying the calling `.task` on `albumReveal.seq`.
+    /// disappearing) before that point changes nothing — the pending reveal
+    /// stays set and a later remount retries it. SwiftUI drives the
+    /// cancellation by keying the calling `.task` on `pendingAlbumReveal.seq`;
+    /// the caller consumes (clears) the reveal only after this returns, so a
+    /// cancelled attempt never marks an unfinished reveal as done.
     private func revealAlbum(
         _ albumId: String,
         columnCount: Int,

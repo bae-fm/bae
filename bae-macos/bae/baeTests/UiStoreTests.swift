@@ -37,12 +37,13 @@ struct UiStoreLibraryBrowserModeTests {
         store.navigateToComposer("artist-1")
 
         guard
-            case .composer("artist-1") = store.libraryNavigationRequest?.target
+            case .composer("artist-1") = store.pendingLibraryNavigation?
+                .target
         else {
             Issue.record("expected composer navigation target")
             return
         }
-        #expect(store.libraryNavigationRequest?.seq == 1)
+        #expect(store.pendingLibraryNavigation?.seq == 1)
     }
 
     @Test("navigateToWork switches to composers mode")
@@ -56,9 +57,9 @@ struct UiStoreLibraryBrowserModeTests {
     func repeatComposerNavigationRecordsFreshRequest() {
         let store = UiStore()
         store.navigateToComposer("artist-1")
-        let first = store.libraryNavigationRequest?.seq
+        let first = store.pendingLibraryNavigation?.seq
         store.navigateToComposer("artist-1")
-        let second = store.libraryNavigationRequest?.seq
+        let second = store.pendingLibraryNavigation?.seq
 
         guard let first, let second else {
             Issue.record("expected navigation sequence values")
@@ -72,12 +73,41 @@ struct UiStoreLibraryBrowserModeTests {
         let store = UiStore()
         store.navigateToWork("work-1")
 
-        guard case .work("work-1") = store.libraryNavigationRequest?.target
+        guard case .work("work-1") = store.pendingLibraryNavigation?.target
         else {
             Issue.record("expected work navigation target")
             return
         }
-        #expect(store.libraryNavigationRequest?.seq == 1)
+        #expect(store.pendingLibraryNavigation?.seq == 1)
+    }
+
+    @Test("consumeLibraryNavigation clears the pending request it names")
+    func consumeLibraryNavigationClearsMatchingRequest() {
+        let store = UiStore()
+        store.navigateToComposer("artist-1")
+        let seq = store.pendingLibraryNavigation!.seq
+
+        store.consumeLibraryNavigation(seq: seq)
+
+        #expect(store.pendingLibraryNavigation == nil)
+    }
+
+    @Test(
+        "consumeLibraryNavigation is a no-op against a superseded request"
+    )
+    func consumeLibraryNavigationIgnoresStaleSeq() {
+        let store = UiStore()
+        store.navigateToComposer("artist-1")
+        let staleSeq = store.pendingLibraryNavigation!.seq
+        store.navigateToWork("work-1")
+
+        store.consumeLibraryNavigation(seq: staleSeq)
+
+        guard case .work("work-1") = store.pendingLibraryNavigation?.target
+        else {
+            Issue.record("newer request should survive a stale consume")
+            return
+        }
     }
 
     @Test("navigateToLibraryRoot does not change libraryBrowserMode")
@@ -115,21 +145,31 @@ struct UiStoreLibraryBrowserModeTests {
         #expect(store.selectedReleaseIdByAlbum["album-1"] == "release-9")
     }
 
-    @Test("navigateToAlbum sets the reveal request with albumId and trackId")
+    @Test(
+        "navigateToAlbum sets an independent grid-reveal and track-flash command"
+    )
     func navigateToAlbumSetsRevealRequest() {
         let store = UiStore()
         store.navigateToAlbum("album-1", trackId: "track-7")
-        #expect(store.albumReveal?.albumId == "album-1")
-        #expect(store.albumReveal?.trackId == "track-7")
+        #expect(store.pendingAlbumReveal?.albumId == "album-1")
+        #expect(store.pendingTrackFlash?.trackId == "track-7")
+    }
+
+    @Test("navigateToAlbum without a trackId clears any pending track flash")
+    func navigateToAlbumWithoutTrackClearsPendingFlash() {
+        let store = UiStore()
+        store.navigateToAlbum("album-1", trackId: "track-7")
+        store.navigateToAlbum("album-2")
+        #expect(store.pendingTrackFlash == nil)
     }
 
     @Test("navigateToAlbum bumps the reveal seq (strictly increasing)")
     func navigateToAlbumBumpsSeq() {
         let store = UiStore()
         store.navigateToAlbum("album-1")
-        let first = store.albumReveal?.seq
+        let first = store.pendingAlbumReveal?.seq
         store.navigateToAlbum("album-2")
-        let second = store.albumReveal?.seq
+        let second = store.pendingAlbumReveal?.seq
         #expect(first != nil)
         #expect(second != nil)
         #expect(second! > first!)
@@ -141,9 +181,60 @@ struct UiStoreLibraryBrowserModeTests {
     func navigateToSameAlbumTwiceRefires() {
         let store = UiStore()
         store.navigateToAlbum("album-1")
-        let first = store.albumReveal?.seq
+        let first = store.pendingAlbumReveal?.seq
         store.navigateToAlbum("album-1")
-        let second = store.albumReveal?.seq
+        let second = store.pendingAlbumReveal?.seq
         #expect(first != second)
+    }
+
+    @Test("consumeAlbumReveal clears the pending reveal it names")
+    func consumeAlbumRevealClearsMatchingReveal() {
+        let store = UiStore()
+        store.navigateToAlbum("album-1")
+        let seq = store.pendingAlbumReveal!.seq
+
+        store.consumeAlbumReveal(seq: seq)
+
+        #expect(store.pendingAlbumReveal == nil)
+    }
+
+    @Test("consumeAlbumReveal is a no-op against a superseded reveal")
+    func consumeAlbumRevealIgnoresStaleSeq() {
+        let store = UiStore()
+        store.navigateToAlbum("album-1")
+        let staleSeq = store.pendingAlbumReveal!.seq
+        store.navigateToAlbum("album-2")
+
+        store.consumeAlbumReveal(seq: staleSeq)
+
+        #expect(store.pendingAlbumReveal?.albumId == "album-2")
+    }
+
+    @Test(
+        "consumeTrackFlash clears only the track flash, leaving the grid reveal pending"
+    )
+    func consumeTrackFlashDoesNotStarveGridReveal() {
+        let store = UiStore()
+        store.navigateToAlbum("album-1", trackId: "track-7")
+        let seq = store.pendingTrackFlash!.seq
+
+        store.consumeTrackFlash(seq: seq)
+
+        #expect(store.pendingTrackFlash == nil)
+        #expect(store.pendingAlbumReveal?.albumId == "album-1")
+    }
+
+    @Test(
+        "consumeAlbumReveal clears only the grid reveal, leaving the track flash pending"
+    )
+    func consumeAlbumRevealDoesNotStarveTrackFlash() {
+        let store = UiStore()
+        store.navigateToAlbum("album-1", trackId: "track-7")
+        let seq = store.pendingAlbumReveal!.seq
+
+        store.consumeAlbumReveal(seq: seq)
+
+        #expect(store.pendingAlbumReveal == nil)
+        #expect(store.pendingTrackFlash?.trackId == "track-7")
     }
 }

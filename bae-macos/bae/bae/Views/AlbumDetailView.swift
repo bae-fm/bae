@@ -1142,18 +1142,23 @@ private struct TrackRowView: View {
             RoundedRectangle(cornerRadius: 6)
                 .fill(Color.accentColor.opacity(highlightOpacity)),
         )
-        // Keyed on the reveal's `seq` (not a subject) for the same reason the
+        // Keyed on the flash's `seq` (not a subject) for the same reason the
         // grid scroll is: navigating here can remount this row, and durable
         // state survives that where a one-shot emit would be lost. Re-fires when
-        // seq changes (repeat navigation) and cancels cleanly on a newer reveal.
-        .task(id: uiStore.albumReveal?.seq) {
-            guard uiStore.albumReveal?.trackId == track.id else {
+        // seq changes (repeat navigation). Independent of the grid-scroll
+        // consumer sharing the same navigateToAlbum call — each clears only its
+        // own pending command, so one consumer can't starve the other.
+        .task(id: uiStore.pendingTrackFlash?.seq) {
+            guard let flash = uiStore.pendingTrackFlash,
+                flash.trackId == track.id
+            else {
                 return
             }
             highlightOpacity = 0.3
             withAnimation(.easeOut(duration: 3)) {
                 highlightOpacity = 0
             }
+            uiStore.consumeTrackFlash(seq: flash.seq)
         }
         .onTapGesture(count: 2) {
             onPlay()

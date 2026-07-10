@@ -3,30 +3,6 @@ import SwiftUI
 
 private let listLoadBatchSize = 50
 
-private enum ComposerPaneSelection: Equatable {
-    case none
-    case composer(artistId: String, workId: String?)
-    case work(workId: String)
-
-    var composerId: String? {
-        if case .composer(let artistId, _) = self {
-            return artistId
-        }
-        return nil
-    }
-
-    var workId: String? {
-        switch self {
-        case .none:
-            return nil
-        case .composer(_, let workId):
-            return workId
-        case .work(let workId):
-            return workId
-        }
-    }
-}
-
 private enum ComposerPaneDetail {
     case empty
     case composer(BridgeComposerDetail, work: BridgeWorkDetail?)
@@ -46,39 +22,15 @@ struct LibraryView: View {
     var libraryStore
     @Environment(UiStore.self)
     var uiStore
-    @Environment(ProjectionRegistry.self)
-    var projectionRegistry
+    @Environment(LibraryBrowseSession.self)
+    var session
 
-    @State
-    private var albumList: AlbumList?
-    /// Album-grid multi-selection, a browsing-session concern owned here as local
-    /// state (the Storage Manager precedent) and passed to the grid.
-    @State
-    private var albumSelection = AlbumGridSelection()
-    @State
-    private var composerList: ComposerList?
-    @State
-    private var albumListRegistration: ProjectionRegistration?
-    @State
-    private var composerListRegistration: ProjectionRegistration?
-    @State
-    private var sortCriteria: [BridgeSortCriterion] = Self.loadSortCriteria()
-    @State
-    private var composerSortCriteria: [BridgeComposerSortCriterion] =
-        Self.loadComposerSortCriteria()
+    /// Detail payloads derived from `session.detailSelection` /
+    /// `session.selectedArtistId`. View-local by design (see
+    /// `LibraryBrowseSession`'s doc comment): a remount re-fetches them cheaply
+    /// rather than keeping them warm, while the selections themselves persist.
     @State
     private var composerPaneDetail: ComposerPaneDetail = .empty
-    @State
-    private var detailSelection: ComposerPaneSelection = .none
-    @State
-    private var artistList: ArtistList?
-    @State
-    private var artistListRegistration: ProjectionRegistration?
-    @State
-    private var artistSortCriteria: [BridgeArtistSortCriterion] =
-        Self.loadArtistSortCriteria()
-    @State
-    private var selectedArtistId: String?
     @State
     private var artistDetail: BridgeArtistDetail?
 
@@ -98,66 +50,53 @@ struct LibraryView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.background)
-        .task(id: sortCriteria) {
-            Self.saveSortCriteria(sortCriteria)
-            await reloadAlbumList(sort: sortCriteria)
-        }
         .task(id: uiStore.libraryBrowserMode) {
             switch uiStore.libraryBrowserMode {
             case .albums:
                 break
             case .composers:
-                await ensureComposerListLoaded()
+                await session.ensureComposerListLoaded()
             case .artists:
-                await ensureArtistListLoaded()
+                await session.ensureArtistListLoaded()
             }
         }
-        .task(id: detailSelection.composerId) {
+        .task(id: session.detailSelection.composerId) {
             await loadComposerDetail()
         }
-        .task(id: detailSelection) {
+        .task(id: session.detailSelection) {
             await loadWorkDetail()
         }
-        .task(id: composerSortCriteria) {
-            Self.saveComposerSortCriteria(composerSortCriteria)
-            if uiStore.libraryBrowserMode == .composers {
-                await reloadComposerList(sort: composerSortCriteria)
-            }
-        }
-        .task(id: artistSortCriteria) {
-            Self.saveArtistSortCriteria(artistSortCriteria)
-            if uiStore.libraryBrowserMode == .artists {
-                await reloadArtistList(sort: artistSortCriteria)
-            }
-        }
-        .task(id: selectedArtistId) {
+        .task(id: session.selectedArtistId) {
             await loadArtistDetail()
         }
-        .task(id: uiStore.libraryNavigationRequest?.seq) {
-            guard let request = uiStore.libraryNavigationRequest else {
+        .task(id: uiStore.pendingLibraryNavigation?.seq) {
+            guard let request = uiStore.pendingLibraryNavigation else {
                 return
             }
             applyLibraryNavigation(request.target)
+            uiStore.consumeLibraryNavigation(seq: request.seq)
         }
         // Opening a detail expansion (plain click, search, external navigation)
         // clears the multi-selection — the same semantics as a plain grid click.
         .onChange(of: uiStore.selectedAlbumId) { _, selected in
             if selected != nil {
-                albumSelection.clear()
+                session.albumSelection.clear()
             }
         }
         // The album-list invalidation is coarse (no per-id removal event), so
         // after a shape change prune any selected album that no longer resolves —
         // e.g. one deleted on another device. The selection is small; one
         // authoritative index lookup per id, cancellable between ids.
-        .task(id: albumList?.loadEpoch) {
+        .task(id: session.albumList?.loadEpoch) {
             await pruneDeletedSelection()
         }
         // Mirror the library-wide album count into the store: the menu bar's
         // Shuffle Library item (MainAppMenuCommands) disables at zero, and the
         // menu has no album list of its own to ask. `initial: true` publishes
         // a count that was already loaded when this view (re)mounts.
-        .onChange(of: albumList?.totalCount, initial: true) { _, count in
+        .onChange(of: session.albumList?.totalCount, initial: true) {
+            _,
+            count in
             if let count {
                 libraryStore.setAlbumTotal(count)
             }
@@ -184,16 +123,18 @@ extension LibraryView {
     /// off the album-list epoch; checks cancellation between ids so a newer epoch
     /// supersedes it cleanly.
     private func pruneDeletedSelection() async {
-        guard !albumSelection.isEmpty else {
+        guard !session.albumSelection.isEmpty else {
             return
         }
         var missing: [String] = []
-        for id in albumSelection.selectedIds {
+        for id in session.albumSelection.selectedIds {
             if Task.isCancelled {
                 return
             }
             do {
-                if try await library.getAlbumIndex(sortCriteria, id) == nil {
+                if try await library.getAlbumIndex(session.sortCriteria, id)
+                    == nil
+                {
                     missing.append(id)
                 }
             }
@@ -204,7 +145,7 @@ extension LibraryView {
             }
         }
         if !missing.isEmpty {
-            albumSelection.remove(missing)
+            session.albumSelection.remove(missing)
         }
     }
 
@@ -229,12 +170,17 @@ extension LibraryView {
     }
 
     private var albumSortControls: some View {
-        SortCriteriaRow(criteria: $sortCriteria)
+        SortCriteriaRow(
+            criteria: Binding(
+                get: { session.sortCriteria },
+                set: { session.setSortCriteria($0) }
+            )
+        )
     }
 
     private var albumContent: some View {
         Group {
-            if let albumList {
+            if let albumList = session.albumList {
                 if let error = albumList.initialLoadError {
                     LoadFailureView(line: error.line) {
                         Task { await albumList.loadInitial() }
@@ -250,8 +196,8 @@ extension LibraryView {
                 else {
                     AlbumGridView(
                         list: albumList,
-                        sortCriteria: sortCriteria,
-                        selection: albumSelection,
+                        sortCriteria: session.sortCriteria,
+                        selection: session.albumSelection,
                         onPlay: { albumIds in
                             playback.playReleases(
                                 primaryReleaseIds(for: albumIds)
@@ -280,7 +226,7 @@ extension LibraryView {
 
     private var composerContent: some View {
         Group {
-            if let composerList {
+            if let composerList = session.composerList {
                 if let error = composerList.initialLoadError {
                     LoadFailureView(line: error.line) {
                         Task { await composerList.loadInitial() }
@@ -310,7 +256,7 @@ extension LibraryView {
 
     private var artistContent: some View {
         Group {
-            if let artistList {
+            if let artistList = session.artistList {
                 if let error = artistList.initialLoadError {
                     LoadFailureView(line: error.line) {
                         Task { await artistList.loadInitial() }
@@ -341,10 +287,10 @@ extension LibraryView {
     private func applyLibraryNavigation(_ target: LibraryNavigationTarget) {
         switch target {
         case .composer(let artistId):
-            detailSelection = .composer(artistId: artistId, workId: nil)
+            session.selectComposer(artistId)
             composerPaneDetail = .empty
         case .work(let workId):
-            detailSelection = .work(workId: workId)
+            session.selectWork(workId)
             composerPaneDetail = .empty
         }
     }
@@ -408,29 +354,39 @@ extension LibraryView {
         let id = list.idAt(index)
         return ArtistListRow(
             id: id,
-            isSelected: id != nil && selectedArtistId == id,
+            isSelected: id != nil && session.selectedArtistId == id,
             select: { id in
-                selectedArtistId = id
+                session.selectArtist(id)
                 artistDetail = nil
             }
         )
     }
 
     private var composerSortControls: some View {
-        SortCriteriaRow(criteria: $composerSortCriteria)
+        SortCriteriaRow(
+            criteria: Binding(
+                get: { session.composerSortCriteria },
+                set: { session.setComposerSortCriteria($0) }
+            )
+        )
     }
 
     private var artistSortControls: some View {
-        SortCriteriaRow(criteria: $artistSortCriteria)
+        SortCriteriaRow(
+            criteria: Binding(
+                get: { session.artistSortCriteria },
+                set: { session.setArtistSortCriteria($0) }
+            )
+        )
     }
 
     private func composerRow(at index: Int, list: ComposerList) -> some View {
         let id = list.idAt(index)
         return ComposerListRow(
             id: id,
-            isSelected: id != nil && detailSelection.composerId == id,
+            isSelected: id != nil && session.detailSelection.composerId == id,
             select: { id in
-                detailSelection = .composer(artistId: id, workId: nil)
+                session.selectComposer(id)
                 composerPaneDetail = .empty
             }
         )
@@ -447,8 +403,10 @@ extension LibraryView {
                         SectionHeader(title: String(localized: "Works"))
                         ForEach(composerDetail.workGroups) { group in
                             ComposerWorkGroupView(group: group) { workId in
-                                if let artistId = detailSelection.composerId {
-                                    detailSelection = .composer(
+                                if let artistId = session.detailSelection
+                                    .composerId
+                                {
+                                    session.selectComposerWork(
                                         artistId: artistId,
                                         workId: workId
                                     )
@@ -489,9 +447,9 @@ extension LibraryView {
                             detail: loadedWorkDetail,
                             openWork: { workId in
                                 if case .composer(let artistId, _) =
-                                    detailSelection
+                                    session.detailSelection
                                 {
-                                    detailSelection = .composer(
+                                    session.selectComposerWork(
                                         artistId: artistId,
                                         workId: workId
                                     )
@@ -514,7 +472,7 @@ extension LibraryView {
                     WorkDetailView(
                         detail: loadedWorkDetail,
                         openWork: { workId in
-                            detailSelection = .work(workId: workId)
+                            session.selectWork(workId)
                             composerPaneDetail = .empty
                         },
                         openAlbum: { albumId, releaseId in
@@ -525,7 +483,7 @@ extension LibraryView {
                         }
                     )
                 }
-                if detailSelection == .none {
+                if session.detailSelection == .none {
                     ContentUnavailableView(
                         "Composers",
                         systemImage: "person.wave.2"
@@ -557,7 +515,7 @@ extension LibraryView {
                         }
                     }
                 }
-                else if selectedArtistId == nil {
+                else if session.selectedArtistId == nil {
                     ContentUnavailableView(
                         "Artists",
                         systemImage: "music.mic"
@@ -573,22 +531,9 @@ extension LibraryView {
         .background(Theme.surface)
     }
 
-    private func ensureComposerListLoaded() async {
-        guard composerList == nil else {
-            return
-        }
-        await reloadComposerList(sort: composerSortCriteria)
-    }
-
-    private func ensureArtistListLoaded() async {
-        guard artistList == nil else {
-            return
-        }
-        await reloadArtistList(sort: artistSortCriteria)
-    }
-
     private func loadComposerDetail() async {
-        guard let selectedComposerId = detailSelection.composerId else {
+        guard let selectedComposerId = session.detailSelection.composerId
+        else {
             return
         }
         do {
@@ -606,11 +551,11 @@ extension LibraryView {
                 return
             }
             composerPaneDetail = .composer(detail, work: nil)
-            if case .composer(let artistId, nil) = detailSelection,
+            if case .composer(let artistId, nil) = session.detailSelection,
                 artistId == selectedComposerId,
                 let defaultWorkId = detail.defaultWorkId
             {
-                detailSelection = .composer(
+                session.selectComposerWork(
                     artistId: selectedComposerId,
                     workId: defaultWorkId
                 )
@@ -622,7 +567,7 @@ extension LibraryView {
     }
 
     private func loadArtistDetail() async {
-        guard let requestedArtistId = selectedArtistId else {
+        guard let requestedArtistId = session.selectedArtistId else {
             return
         }
         do {
@@ -631,7 +576,7 @@ extension LibraryView {
             guard !Task.isCancelled else {
                 return
             }
-            guard selectedArtistId == requestedArtistId else {
+            guard session.selectedArtistId == requestedArtistId else {
                 return
             }
             guard let detail else {
@@ -650,7 +595,7 @@ extension LibraryView {
     }
 
     private func loadWorkDetail() async {
-        let selectedDetail = detailSelection
+        let selectedDetail = session.detailSelection
         guard let selectedWorkId = selectedDetail.workId else {
             return
         }
@@ -660,7 +605,7 @@ extension LibraryView {
             guard !Task.isCancelled else {
                 return
             }
-            guard detailSelection == selectedDetail else {
+            guard session.detailSelection == selectedDetail else {
                 return
             }
             guard let detail else {
@@ -695,177 +640,6 @@ extension LibraryView {
             uiStore.showError(DisplayError(line: error.localizedDescription))
         }
     }
-
-    private func makeAlbumList(sort: [BridgeSortCriterion]) -> AlbumList {
-        AlbumList(
-            pageSource: LibraryAlbumPageSource(
-                library: library,
-                sort: sort
-            ),
-            ingest: { [libraryStore] rows in
-                for row in rows {
-                    _ = libraryStore.internAlbumSummary(row)
-                }
-            },
-            onError: { [uiStore] error in
-                uiStore.showError(error)
-            },
-        )
-    }
-
-    private func makeComposerList(
-        sort: [BridgeComposerSortCriterion]
-    ) -> ComposerList {
-        ComposerList(
-            pageSource: LibraryComposerPageSource(
-                library: library,
-                sort: sort
-            ),
-            ingest: { [libraryStore] rows in
-                for row in rows {
-                    _ = libraryStore.internComposerSummary(row)
-                }
-            },
-            onError: { [uiStore] error in
-                uiStore.showError(error)
-            },
-        )
-    }
-
-    private func makeArtistList(
-        sort: [BridgeArtistSortCriterion]
-    ) -> ArtistList {
-        ArtistList(
-            pageSource: LibraryArtistPageSource(
-                library: library,
-                sort: sort
-            ),
-            ingest: { [libraryStore] rows in
-                for row in rows {
-                    _ = libraryStore.internArtistSummary(row)
-                }
-            },
-            onError: { [uiStore] error in
-                uiStore.showError(error)
-            },
-        )
-    }
-
-    private func reloadComposerList(sort: [BridgeComposerSortCriterion]) async {
-        let newList = makeComposerList(sort: sort)
-        await newList.loadInitial()
-        guard !Task.isCancelled else {
-            return
-        }
-        composerListRegistration = projectionRegistry.registerList(
-            newList,
-            domain: .composerList
-        )
-        composerList = newList
-    }
-
-    private func reloadArtistList(sort: [BridgeArtistSortCriterion]) async {
-        let newList = makeArtistList(sort: sort)
-        await newList.loadInitial()
-        guard !Task.isCancelled else {
-            return
-        }
-        artistListRegistration = projectionRegistry.registerList(
-            newList,
-            domain: .artistList
-        )
-        artistList = newList
-    }
-
-    private func reloadAlbumList(sort: [BridgeSortCriterion]) async {
-        let newList = makeAlbumList(sort: sort)
-        await newList.loadInitial()
-        guard !Task.isCancelled else {
-            return
-        }
-        albumListRegistration = projectionRegistry.registerList(
-            newList,
-            domain: .albumList
-        )
-        albumList = newList
-    }
-
-    private static let sortCriteriaKey = "librarySortCriteria"
-
-    private static func loadSortCriteria() -> [BridgeSortCriterion] {
-        guard let data = UserDefaults.standard.data(forKey: sortCriteriaKey),
-            let criteria = [BridgeSortCriterion].fromJSON(data),
-            !criteria.isEmpty
-        else {
-            return [
-                BridgeSortCriterion(field: .dateAdded, direction: .descending)
-            ]
-        }
-        return criteria
-    }
-
-    private static func saveSortCriteria(_ criteria: [BridgeSortCriterion]) {
-        if let data = criteria.toJSON() {
-            UserDefaults.standard.set(data, forKey: sortCriteriaKey)
-        }
-    }
-
-    private static let composerSortCriteriaKey = "libraryComposerSortCriteria"
-
-    private static func loadComposerSortCriteria()
-        -> [BridgeComposerSortCriterion]
-    {
-        guard
-            let data = UserDefaults.standard.data(
-                forKey: composerSortCriteriaKey
-            ),
-            let criteria = [BridgeComposerSortCriterion].fromJSON(data),
-            !criteria.isEmpty
-        else {
-            return [
-                BridgeComposerSortCriterion(
-                    field: .name,
-                    direction: .ascending
-                )
-            ]
-        }
-        return criteria
-    }
-
-    private static func saveComposerSortCriteria(
-        _ criteria: [BridgeComposerSortCriterion]
-    ) {
-        if let data = criteria.toJSON() {
-            UserDefaults.standard.set(data, forKey: composerSortCriteriaKey)
-        }
-    }
-
-    private static let artistSortCriteriaKey = "libraryArtistSortCriteria"
-
-    private static func loadArtistSortCriteria() -> [BridgeArtistSortCriterion]
-    {
-        guard
-            let data = UserDefaults.standard.data(
-                forKey: artistSortCriteriaKey
-            ),
-            let criteria = [BridgeArtistSortCriterion].fromJSON(data),
-            !criteria.isEmpty
-        else {
-            return [
-                BridgeArtistSortCriterion(field: .name, direction: .ascending)
-            ]
-        }
-        return criteria
-    }
-
-    private static func saveArtistSortCriteria(
-        _ criteria: [BridgeArtistSortCriterion]
-    ) {
-        if let data = criteria.toJSON() {
-            UserDefaults.standard.set(data, forKey: artistSortCriteriaKey)
-        }
-    }
-
 }
 
 extension BridgeComposerWorkGroup: Identifiable {}
@@ -1301,14 +1075,22 @@ private struct WorkDetailView: View {
     }
 
     #Preview("Albums \u{2014} Empty") {
-        LibraryView()
+        let uiStore = UiStore()
+        let libraryStore = LibraryStore()
+        let session = LibraryBrowseSession(
+            library: LibraryView.emptyLibrary,
+            projectionRegistry: ProjectionRegistry(),
+            libraryStore: libraryStore,
+            uiStore: uiStore
+        )
+        return LibraryView()
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
             .environment(LibraryView.emptyLibrary)
-            .environment(LibraryStore())
-            .environment(UiStore())
-            .environment(ProjectionRegistry())
+            .environment(libraryStore)
+            .environment(uiStore)
+            .environment(session)
             .frame(width: 1100, height: 700)
             .windowBackground()
     }
@@ -1316,14 +1098,21 @@ private struct WorkDetailView: View {
     #Preview("Composers \u{2014} Empty") {
         let uiStore = UiStore()
         uiStore.setLibraryBrowserMode(.composers)
+        let libraryStore = LibraryStore()
+        let session = LibraryBrowseSession(
+            library: LibraryView.emptyLibrary,
+            projectionRegistry: ProjectionRegistry(),
+            libraryStore: libraryStore,
+            uiStore: uiStore
+        )
         return LibraryView()
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
             .environment(LibraryView.emptyLibrary)
-            .environment(LibraryStore())
+            .environment(libraryStore)
             .environment(uiStore)
-            .environment(ProjectionRegistry())
+            .environment(session)
             .frame(width: 1100, height: 700)
             .windowBackground()
     }
@@ -1331,14 +1120,21 @@ private struct WorkDetailView: View {
     #Preview("Artists \u{2014} Empty") {
         let uiStore = UiStore()
         uiStore.setLibraryBrowserMode(.artists)
+        let libraryStore = LibraryStore()
+        let session = LibraryBrowseSession(
+            library: LibraryView.emptyLibrary,
+            projectionRegistry: ProjectionRegistry(),
+            libraryStore: libraryStore,
+            uiStore: uiStore
+        )
         return LibraryView()
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
             .environment(LibraryView.emptyLibrary)
-            .environment(LibraryStore())
+            .environment(libraryStore)
             .environment(uiStore)
-            .environment(ProjectionRegistry())
+            .environment(session)
             .frame(width: 1100, height: 700)
             .windowBackground()
     }

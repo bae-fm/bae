@@ -30,6 +30,19 @@ final class AppService: BaeKit.AppService {
     /// it.
     let exportStore: ExportStore
 
+    /// The library browser's session state (lists, selections, sort criteria).
+    /// `lazy` because its constructor needs `library`/`projectionRegistry`/
+    /// `libraryStore` from the `BaeKit.AppService` base, which aren't set until
+    /// `super.init()` returns — deferring to first access (from `BaeApp`'s
+    /// environment injection) sidesteps that ordering, the same way
+    /// `AppDelegate.opener` defers on `self`.
+    lazy var libraryBrowseSession = LibraryBrowseSession(
+        library: library,
+        projectionRegistry: projectionRegistry,
+        libraryStore: libraryStore,
+        uiStore: uiStore
+    )
+
     // MARK: - Desktop-only domain services
 
     let previewAudio: PreviewAudio
