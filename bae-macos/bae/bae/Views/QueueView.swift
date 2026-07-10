@@ -223,11 +223,11 @@ struct QueueView: View {
 
 // MARK: - Section
 
+// periphery:ignore
 /// Row load identity: which section epoch (the store's queue revision, so a
 /// bump restarts every visible row's load task) and which absolute index. The
 /// manual lane, always fully loaded, passes a constant epoch and a `nil` load
 /// hook so its rows never fire a load.
-// periphery:ignore
 private struct QueueRowLoadID: Hashable {
     let epoch: UInt64
     let index: Int

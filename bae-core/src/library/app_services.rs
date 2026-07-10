@@ -146,3 +146,172 @@ impl AppServices {
         &self.inner.extraction
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{Config, ConfigHandle};
+    use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
+    use crate::keys::KeyService;
+    use coven::LibraryDir;
+    use tempfile::TempDir;
+
+    /// Build a real `AppServices` — library manager, actor-backed playback,
+    /// and (natively) the import/identify/extraction trio — wired up exactly
+    /// as `bootstrap` does for desktop, seeded with one release of
+    /// `track_count` tracks. Starts playing the release from its first track,
+    /// so by the time this returns the queue's context is a real,
+    /// actor-resolved tail — not a hand-built `PlaybackQueueProjection` — for
+    /// `get_queue_upcoming_page` to page through. The seeded tracks have no
+    /// backing audio file, so preparing the first track for playback fails
+    /// fast (a DB lookup, no I/O); that failure only stops playback, it
+    /// doesn't touch the queue the `PlayRelease` command already set.
+    async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, TempDir) {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+        let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
+            .await
+            .unwrap();
+
+        let artist = DbArtist {
+            id: "test-artist-id".to_string(),
+            name: "Test Artist".to_string(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: chrono::Utc::now(),
+        };
+        database.insert_artist(&artist).await.unwrap();
+        let album = DbAlbum::new_test("Album Title", &artist.id);
+        let release = DbRelease::new_test(&album.id, "release-under-test");
+        database.insert_album(&album).await.unwrap();
+        database.insert_release(&release).await.unwrap();
+        let mut track_ids = Vec::with_capacity(track_count);
+        for i in 0..track_count {
+            let track_id = format!("track-{i}");
+            let track = DbTrack::new_test(
+                &release.id,
+                &track_id,
+                &format!("Track {i}"),
+                Some(i as i32),
+            );
+            database.insert_track(&track).await.unwrap();
+            track_ids.push(track_id);
+        }
+
+        let library_id = format!("app-services-test-{}", uuid::Uuid::new_v4());
+        let config = Config::with_defaults(
+            library_id.clone(),
+            "test-device".to_string(),
+            LibraryDir::new(temp_dir.path().to_path_buf()),
+            "Test Library".to_string(),
+        );
+        let config_handle = Arc::new(ConfigHandle::new(config));
+        crate::config::install_test_keyring();
+        let key_service = KeyService::new(library_id);
+        let manager = LibraryManager::new(
+            database,
+            config_handle,
+            key_service,
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::UuidProvider),
+            tokio::runtime::Handle::current(),
+        );
+
+        let playback = crate::playback::PlaybackService::start(
+            manager.clone(),
+            tokio::runtime::Handle::current(),
+            50,
+        );
+
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let services = {
+            let cover_art = crate::import::cover_art::CoverArtArchiveClient::new();
+            let import = crate::import::ImportService::start(
+                tokio::runtime::Handle::current(),
+                manager.clone(),
+                cover_art.clone(),
+            );
+            let identify = crate::identify::IdentifyService::start(
+                manager.clone(),
+                tokio::runtime::Handle::current(),
+                import.event_sender_for_test(),
+                cover_art,
+            );
+            let extraction = crate::signals::ExtractionService::start(
+                tokio::runtime::Handle::current(),
+                import.event_sender_for_test(),
+                Arc::new(coven::SystemClock),
+                manager.clone(),
+            );
+            AppServices::new(manager, playback, import, identify, extraction)
+        };
+        #[cfg(any(target_os = "ios", target_os = "android"))]
+        let services = AppServices::new(manager, playback);
+
+        // Dispatched here and only awaited by this function's callers'
+        // subsequent round-tripping queries on the same command channel —
+        // the actor processes commands FIFO, so `PlayRelease` (which sets
+        // the queue's context before it attempts to play the first track)
+        // is guaranteed to have run before any later `queue_projection`
+        // request this test makes.
+        services
+            .playback()
+            .play_release(release.id.clone(), Some(0), false);
+
+        (services, track_ids, temp_dir)
+    }
+
+    /// `get_queue_upcoming_page` slices a real, actor-resolved context tail —
+    /// not a hand-built projection — in order, and stamps the page with the
+    /// same revision the live queue's own snapshot reports.
+    #[tokio::test]
+    async fn get_queue_upcoming_page_slices_and_orders_a_live_context_tail() {
+        let (services, track_ids, _temp_dir) = playing_app_services(12).await;
+
+        let snapshot = services.get_queue_snapshot().await.unwrap();
+        let page = services.get_queue_upcoming_page(2, 5).await.unwrap();
+
+        assert_eq!(
+            page.revision, snapshot.revision,
+            "the page is stamped with the same revision as the live queue's own snapshot"
+        );
+        let page_track_ids: Vec<&str> = page.items.iter().map(|i| i.track_id.as_str()).collect();
+        // track_ids[0] is the currently playing track, so the context tail
+        // is track_ids[1..]; offset 2 into that tail lands on track_ids[3].
+        let expected: Vec<&str> = track_ids[3..8].iter().map(String::as_str).collect();
+        assert_eq!(
+            page_track_ids, expected,
+            "the slice preserves the tail's order"
+        );
+    }
+
+    /// A limit reaching past the live tail's end clamps to what remains, and
+    /// an offset past the end returns no items rather than erroring — both
+    /// through the real `AppServices` -> `PlaybackHandle` -> `PlaybackQueue`
+    /// chain, not `clamp_upcoming_page` called directly.
+    #[tokio::test]
+    async fn get_queue_upcoming_page_clamps_to_the_live_tails_end() {
+        let (services, track_ids, _temp_dir) = playing_app_services(12).await;
+
+        // The tail has 11 entries (track_ids[1..12]); offset 9 has only 2
+        // left, so a limit of 100 clamps down to those 2.
+        let page = services.get_queue_upcoming_page(9, 100).await.unwrap();
+        let page_track_ids: Vec<&str> = page.items.iter().map(|i| i.track_id.as_str()).collect();
+        assert_eq!(
+            page_track_ids,
+            vec![track_ids[10].as_str(), track_ids[11].as_str()],
+            "the limit clamps to what remains instead of erroring"
+        );
+
+        let empty_page = services.get_queue_upcoming_page(50, 10).await.unwrap();
+        assert!(
+            empty_page.items.is_empty(),
+            "an offset past the tail's end yields no items"
+        );
+        assert_eq!(
+            empty_page.revision, page.revision,
+            "revision is stable across reads that don't mutate the queue"
+        );
+    }
+}
