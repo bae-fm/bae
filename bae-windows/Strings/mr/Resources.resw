@@ -402,7 +402,6 @@
   <data name="storage.column.files" xml:space="preserve"><value>फायली</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>आकार</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# प्रकाशन} other {# प्रकाशने}}</value></data>
-  <data name="storage.footer.total" xml:space="preserve"><value>एकूण: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>काढून टाका</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>ही लायब्ररी आणि तिच्या डाउनलोड केलेल्या फायली या पीसीवरून काढून टाकते. क्लाउडमधील तुमची लायब्ररी सुरक्षित राहते — तुम्ही नंतर येथून ती पुनर्संचयित करू शकता.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ही लायब्ररी सिंक केलेली नाही. ती काढून टाकल्याने तिचा कॅटलॉग — अल्बम, मेटाडेटा संपादने आणि प्ले इतिहास — कायमचा हटवला जाईल. तुमच्या फोल्डरमधील ऑडिओ फायली हटवल्या जाणार नाहीत.</value></data>

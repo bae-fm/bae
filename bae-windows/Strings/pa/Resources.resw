@@ -402,7 +402,6 @@
   <data name="storage.column.files" xml:space="preserve"><value>ਫਾਈਲਾਂ</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>ਆਕਾਰ</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# ਰਿਲੀਜ਼} other {# ਰਿਲੀਜ਼ਾਂ}}</value></data>
-  <data name="storage.footer.total" xml:space="preserve"><value>ਕੁੱਲ: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>ਹਟਾਓ</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਅਤੇ ਇਸ ਦੀਆਂ ਡਾਊਨਲੋਡ ਕੀਤੀਆਂ ਫਾਈਲਾਂ ਨੂੰ ਇਸ ਪੀਸੀ ਤੋਂ ਹਟਾਉਂਦਾ ਹੈ। ਕਲਾਊਡ ਵਿੱਚ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਸੁਰੱਖਿਅਤ ਰਹਿੰਦੀ ਹੈ — ਤੁਸੀਂ ਬਾਅਦ ਵਿੱਚ ਇੱਥੋਂ ਇਸਨੂੰ ਮੁੜ-ਬਹਾਲ ਕਰ ਸਕਦੇ ਹੋ।</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ਇਹ ਲਾਇਬ੍ਰੇਰੀ ਸਿੰਕ ਨਹੀਂ ਹੈ। ਇਸਨੂੰ ਹਟਾਉਣ ਨਾਲ ਇਸਦਾ ਕੈਟਾਲਾਗ — ਐਲਬਮਾਂ, ਮੈਟਾਡੇਟਾ ਸੋਧਾਂ ਅਤੇ ਪਲੇ ਇਤਿਹਾਸ — ਸਥਾਈ ਤੌਰ 'ਤੇ ਮਿਟ ਜਾਵੇਗਾ। ਤੁਹਾਡੇ ਫੋਲਡਰਾਂ ਦੀਆਂ ਆਡੀਓ ਫਾਈਲਾਂ ਨਹੀਂ ਮਿਟਣਗੀਆਂ।</value></data>

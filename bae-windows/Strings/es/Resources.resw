@@ -402,7 +402,6 @@
   <data name="storage.column.files" xml:space="preserve"><value>Archivos</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>Tamaño</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# lanzamiento} other {# lanzamientos}}</value></data>
-  <data name="storage.footer.total" xml:space="preserve"><value>Total: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Eliminar</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>Elimina esta biblioteca y sus archivos descargados de este equipo. Tu biblioteca en la nube permanece intacta — podrás restaurarla desde aquí más tarde.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Esta biblioteca no está sincronizada. Al eliminarla se borrará permanentemente su catálogo — álbumes, ediciones de metadatos e historial de reproducción. Los archivos de audio de tus carpetas no se eliminarán.</value></data>

@@ -402,7 +402,6 @@
   <data name="storage.column.files" xml:space="preserve"><value>File</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>Dimensione</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# pubblicazione} other {# pubblicazioni}}</value></data>
-  <data name="storage.footer.total" xml:space="preserve"><value>Totale: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Rimuovi</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>Rimuove questa libreria e i suoi file scaricati da questo PC. La tua libreria nel cloud resta intatta — potrai ripristinarla da qui in seguito.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Questa libreria non è sincronizzata. Rimuoverla eliminerà definitivamente il suo catalogo — album, modifiche ai metadati e cronologia di riproduzione. I file audio nelle tue cartelle non verranno eliminati.</value></data>

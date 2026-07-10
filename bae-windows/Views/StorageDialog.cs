@@ -18,6 +18,7 @@ internal sealed class StorageDialog
 {
     private const string AscendingArrow = "↑";
     private const string DescendingArrow = "↓";
+    private const ulong StoragePageSize = 100;
 
     private readonly SessionStore _session;
     private readonly Func<XamlRoot?> _xamlRoot;
@@ -61,20 +62,23 @@ internal sealed class StorageDialog
         // when it isn't part of it). Releases that vanish on reload (e.g. an
         // local release moved out of the library) drop out below.
         var selected = new HashSet<string>();
-        // The current rows, kept so the right-tap menu can resolve a release's
-        // allowed actions (for the multi-select intersection) by id.
-        var rowsById = new Dictionary<string, BridgeStorageRow>();
-        // The projected list the tab/sort re-render from, plus the per-release
-        // outbox progress the Storage cell reads for its upload badge. Both are
-        // refreshed by LoadStorageRows and read (without a refetch) by RenderRows.
-        var cachedRows = new List<StorageListRow>();
+        // The per-release outbox progress the Storage cell reads for its upload
+        // badge — bounded to releases with active outbox activity (never the
+        // whole library), refreshed by LoadStorageRows and read without a
+        // refetch by StorageCellText.
         var outboxProgress = new Dictionary<string, BridgeUploadProgress>();
+        // The Storage-column cell for each currently-realized row, keyed by
+        // release id, so a transfer/outbox change can refresh just that cell —
+        // bounded to loaded rows, evicted as containers recycle.
+        var storageCellsByReleaseId = new Dictionary<string, TextBlock>();
 
         // Filter tab resets to All each open (macOS parity); the sort persists.
+        // Both are now server-side (the row set is paged, so a client-side
+        // filter/sort over only the loaded rows would be wrong), so changing
+        // either resets and reloads from offset 0.
         var activeTab = StorageTab.All;
         var (sortField, sortDirection) = StorageSortStore.Load();
 
-        var listPanel = new StackPanel { Spacing = 4, MinWidth = 560 };
         var headerRow = MakeStorageGrid();
         var footer = new TextBlock
         {
@@ -83,7 +87,7 @@ internal sealed class StorageDialog
         };
 
         // The tab bar: All / Unmanaged / Managed / Uploading. Clicking a tab
-        // clears the selection and re-renders from the cached rows (no refetch).
+        // clears the selection and reloads from the server with the new filter.
         var tabBar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         var tabButtons = new List<(StorageTab Tab, Button Button)>();
         foreach (var tab in new[] { StorageTab.All, StorageTab.Unmanaged, StorageTab.Managed, StorageTab.Uploading })
@@ -98,7 +102,7 @@ internal sealed class StorageDialog
                 }
                 activeTab = value;
                 selected.Clear();
-                RenderRows();
+                _ = LoadStorageRows();
             };
             tabButtons.Add((value, button));
             tabBar.Children.Add(button);
@@ -124,101 +128,166 @@ internal sealed class StorageDialog
                 row.Release.StorageState == BridgeReleaseStorageState.Remote, row.Release.Pinned);
         }
 
+        // Fetch one page of storage rows for the active tab/sort. offset 0 is
+        // always the eager first page LoadStorageRows fetches directly; further
+        // pages come through here via the collection's incremental loading.
+        (bool Current, IReadOnlyList<BridgeStorageRow>? Items, string? Error) FetchStoragePage(ulong offset, ulong limit)
+        {
+            var (current, result) = _session.WithCurrentHandle(
+                handle => NativeBae.StoragePage(handle, activeTab, sortField, sortDirection, offset, limit));
+            if (!current)
+            {
+                return (false, null, null);
+            }
+            var (page, error) = result;
+            if (error is not null || page is null)
+            {
+                return (true, null, error ?? Loc.Chrome("storage.load_failed"));
+            }
+            return (true, page.Rows, null);
+        }
+
+        var rows = new IncrementalBrowserCollection<BridgeStorageRow>(FetchStoragePage, error =>
+        {
+            storageStatus.Text = error ?? Loc.Chrome("storage.load_failed");
+            storageStatus.Visibility = Visibility.Visible;
+        });
+
+        var list = new ListView
+        {
+            ItemsSource = rows,
+            SelectionMode = ListViewSelectionMode.None,
+            // Bounded so ItemsStackPanel actually virtualizes — this dialog's
+            // content sits in an outer ScrollViewer (below), which would
+            // otherwise hand the list unbounded height. Matches ImportDialog's
+            // list.
+            MaxHeight = 320,
+            MinWidth = 560,
+        };
+
+        // Recolor every currently-realized row from the current selection —
+        // bounded to loaded/realized rows, never the whole library.
         void RefreshRowHighlights()
         {
-            foreach (var child in listPanel.Children)
+            for (var i = 0; i < rows.Count; i++)
             {
-                if (child is Border border && border.Tag is string id)
+                if (list.ContainerFromIndex(i) is ListViewItem { Content: Border border } && border.Tag is string id)
                 {
                     border.Background = RowBackground(selected.Contains(id));
                 }
             }
         }
 
-        // Rebuild the header, list rows, and footer from the cached snapshot for
-        // the active tab and sort — no refetch. The tab buttons and the sortable
-        // column arrows reflect the current selection.
-        void RenderRows()
+        // Refresh the Storage cell of every currently-tracked (realized) row
+        // from its latest transfer/outbox state — bounded to loaded rows.
+        void RefreshStorageCells()
         {
-            foreach (var (tab, button) in tabButtons)
+            if (storageCellsByReleaseId.Count == 0)
             {
-                StyleTab(button, tab == activeTab);
+                return;
             }
-
-            RenderHeader();
-
-            var displayed = StorageListModel.Displayed(cachedRows, activeTab, sortField, sortDirection);
-            listPanel.Children.Clear();
-            foreach (var listRow in displayed)
+            var loadedById = rows.ToDictionary(row => row.Release.Id);
+            foreach (var (releaseId, cell) in storageCellsByReleaseId)
             {
-                var releaseId = listRow.ReleaseId;
-                if (!rowsById.TryGetValue(releaseId, out var row))
+                if (loadedById.TryGetValue(releaseId, out var row))
                 {
-                    continue;
+                    cell.Text = StorageCellText(row);
                 }
-
-                var grid = MakeStorageGrid();
-                AddCell(grid, 0, row.Album.Title);
-                AddCell(grid, 1, row.Album.ArtistNames);
-                AddCell(grid, 2, row.Release.Format ?? string.Empty);
-                AddCell(grid, 3, StorageCellText(row));
-                AddCell(grid, 4, Loc.Number(row.Release.FileCount), rightAligned: true);
-                AddCell(grid, 5, Loc.Bytes(row.Release.TotalSize), rightAligned: true);
-
-                var rowBorder = new Border
-                {
-                    Child = grid,
-                    // The release id rides on Tag so RefreshRowHighlights can
-                    // recolor each row from the current selection.
-                    Tag = releaseId,
-                    Padding = new Thickness(6, 4, 6, 4),
-                    CornerRadius = new CornerRadius(4),
-                    Background = RowBackground(selected.Contains(releaseId)),
-                };
-
-                rowBorder.Tapped += (_, _) =>
-                {
-                    if (!selected.Add(releaseId))
-                    {
-                        selected.Remove(releaseId);
-                    }
-                    rowBorder.Background = RowBackground(selected.Contains(releaseId));
-                };
-                rowBorder.RightTapped += async (_, args) =>
-                {
-                    // The args are only valid synchronously; capture the tap
-                    // position before any await.
-                    var position = args.GetPosition(rowBorder);
-
-                    // Act on the selection when this row is part of it, else on
-                    // just this row (and select it, matching the macOS menu).
-                    if (!selected.Contains(releaseId))
-                    {
-                        selected.Clear();
-                        selected.Add(releaseId);
-                        RefreshRowHighlights();
-                    }
-
-                    var menu = await BuildStorageRowMenu(
-                        selected.ToList(), rowsById, storageStatus, LoadStorageRows);
-                    // Nothing to offer (e.g. no cloud home, or uploads in flight)
-                    // — skip the empty popup.
-                    if (menu.Items.Count > 0)
-                    {
-                        menu.ShowAt(rowBorder, new FlyoutShowOptions { Position = position });
-                    }
-                };
-
-                listPanel.Children.Add(rowBorder);
             }
-
-            var (count, totalSize) = StorageListModel.Footer(cachedRows, activeTab);
-            footer.Text = $"{Loc.Chrome("storage.footer.releases", "count", count)} · {Loc.Chrome("storage.footer.total", "size", Loc.Bytes(totalSize))}";
         }
 
+        // Build one row's visual: the six-column grid plus tap-to-select and
+        // right-tap-for-menu. Returns the Storage cell too, so the caller can
+        // track it for live refreshes.
+        (Border RowVisual, TextBlock StorageCell) BuildStorageRowVisual(BridgeStorageRow row)
+        {
+            var releaseId = row.Release.Id;
+            var grid = MakeStorageGrid();
+            AddCell(grid, 0, row.Album.Title);
+            AddCell(grid, 1, row.Album.ArtistNames);
+            AddCell(grid, 2, row.Release.Format ?? string.Empty);
+            var storageCell = AddCell(grid, 3, StorageCellText(row));
+            AddCell(grid, 4, Loc.Number(row.Release.FileCount), rightAligned: true);
+            AddCell(grid, 5, Loc.Bytes(row.Release.TotalSize), rightAligned: true);
+
+            var rowBorder = new Border
+            {
+                Child = grid,
+                // The release id rides on Tag so RefreshRowHighlights can
+                // recolor each row from the current selection.
+                Tag = releaseId,
+                Padding = new Thickness(6, 4, 6, 4),
+                CornerRadius = new CornerRadius(4),
+                Background = RowBackground(selected.Contains(releaseId)),
+            };
+
+            rowBorder.Tapped += (_, _) =>
+            {
+                if (!selected.Add(releaseId))
+                {
+                    selected.Remove(releaseId);
+                }
+                rowBorder.Background = RowBackground(selected.Contains(releaseId));
+            };
+            rowBorder.RightTapped += async (_, args) =>
+            {
+                // The args are only valid synchronously; capture the tap
+                // position before any await.
+                var position = args.GetPosition(rowBorder);
+
+                // Act on the selection when this row is part of it, else on
+                // just this row (and select it, matching the macOS menu).
+                if (!selected.Contains(releaseId))
+                {
+                    selected.Clear();
+                    selected.Add(releaseId);
+                    RefreshRowHighlights();
+                }
+
+                // Every release the user could have selected is still held by
+                // `rows` (virtualization recycles containers, never the
+                // underlying data), so this resolves the whole selection.
+                var rowsById = rows.ToDictionary(r => r.Release.Id);
+                var menu = await BuildStorageRowMenu(
+                    selected.ToList(), rowsById, storageStatus, LoadStorageRows);
+                // Nothing to offer (e.g. no cloud home, or uploads in flight)
+                // — skip the empty popup.
+                if (menu.Items.Count > 0)
+                {
+                    menu.ShowAt(rowBorder, new FlyoutShowOptions { Position = position });
+                }
+            };
+
+            return (rowBorder, storageCell);
+        }
+
+        list.ContainerContentChanging += (_, args) =>
+        {
+            if (args.InRecycleQueue)
+            {
+                // Evict this container's previous row's cell reference before
+                // it's reused for a different item.
+                if (args.ItemContainer.Tag is string previousReleaseId)
+                {
+                    storageCellsByReleaseId.Remove(previousReleaseId);
+                }
+                return;
+            }
+            if (args.Item is not BridgeStorageRow row)
+            {
+                return;
+            }
+            var (rowVisual, storageCell) = BuildStorageRowVisual(row);
+            args.ItemContainer.Content = rowVisual;
+            args.ItemContainer.Tag = row.Release.Id;
+            storageCellsByReleaseId[row.Release.Id] = storageCell;
+            args.Handled = true;
+        };
+
         // The sortable-column header: a button per column. The five data columns
-        // toggle the sort (persisting it) and show the ↑/↓ arrow when active; the
-        // Storage column is inert.
+        // toggle the sort (persisting it, then reloading from the server with the
+        // new order) and show the ↑/↓ arrow when active; the Storage column is
+        // inert.
         void RenderHeader()
         {
             headerRow.Children.Clear();
@@ -240,7 +309,7 @@ internal sealed class StorageDialog
                 {
                     (sortField, sortDirection) = StorageListModel.Toggle(sortField, sortDirection, field);
                     StorageSortStore.Save(sortField, sortDirection);
-                    RenderRows();
+                    _ = LoadStorageRows();
                 };
                 Grid.SetColumn(button, column);
                 headerRow.Children.Add(button);
@@ -262,31 +331,32 @@ internal sealed class StorageDialog
             AddSortHeader(5, StorageSortField.TotalSize, rightAligned: true);
         }
 
-        // Fetch the storage rows and the outbox snapshot, project the list model
-        // rows (with the per-release Uploading flag), cache both, and re-render.
+        // Fetch the first page of storage rows for the active tab/sort plus the
+        // outbox snapshot, seed the incremental collection (further pages load
+        // as the list scrolls), and refresh the header/footer. Resets the
+        // collection wholesale, so a tab or sort change (which changes the
+        // server-side row set) calls this again rather than re-rendering cached
+        // data — there is no whole-library cache left to re-render from.
         async System.Threading.Tasks.Task LoadStorageRows()
         {
-            var (current, result) = await _session.RunForCurrentHandle(NativeBae.StorageRows);
+            var (current, firstPageResult) = await _session.RunForCurrentHandle(
+                handle => NativeBae.StoragePage(handle, activeTab, sortField, sortDirection, 0, StoragePageSize));
             if (!current)
             {
                 return;
             }
-            if (result.Error is not null)
+            var (page, error) = firstPageResult;
+            if (error is not null || page is null)
             {
-                storageStatus.Text = result.Error;
-                storageStatus.Visibility = Visibility.Visible;
-                return;
-            }
-            if (result.Rows is null)
-            {
-                storageStatus.Text = Loc.Chrome("storage.load_failed");
+                storageStatus.Text = error ?? Loc.Chrome("storage.load_failed");
                 storageStatus.Visibility = Visibility.Visible;
                 return;
             }
 
-            // The per-release outbox progress drives both the Uploading tab flag
-            // and the Storage cell's upload badge. A failed outbox read leaves the
-            // rows without the badge rather than failing the whole list.
+            // The per-release outbox progress drives both the Uploading tab
+            // (server-side now, via the filter) and the Storage cell's upload
+            // badge. A failed outbox read leaves the rows without the badge
+            // rather than failing the whole list.
             outboxProgress.Clear();
             var (outboxCurrent, outbox) = await _session.RunForCurrentHandle(NativeBae.OutboxSnapshot);
             if (!outboxCurrent)
@@ -302,26 +372,30 @@ internal sealed class StorageDialog
             }
 
             storageStatus.Visibility = Visibility.Collapsed;
-            rowsById.Clear();
-            cachedRows.Clear();
-            foreach (var row in result.Rows)
+            rows.Clear();
+            storageCellsByReleaseId.Clear();
+            foreach (var row in page.Rows)
             {
-                rowsById[row.Release.Id] = row;
-                cachedRows.Add(new StorageListRow(
-                    row.Release.Id,
-                    row.Album.Title,
-                    row.Album.ArtistNames,
-                    row.Release.Format,
-                    row.Release.StorageState == BridgeReleaseStorageState.Remote,
-                    row.Release.Pinned,
-                    row.Release.FileCount,
-                    row.Release.TotalSize,
-                    outboxProgress.ContainsKey(row.Release.Id)));
+                rows.Add(row);
             }
-            // Drop selections for releases no longer present after a transition.
-            selected.IntersectWith(rowsById.Keys);
+            // Drop selections for releases no longer present after a reload.
+            selected.IntersectWith(rows.Select(row => row.Release.Id));
+            RefreshRowHighlights();
 
-            RenderRows();
+            var (countCurrent, total) = await _session.RunForCurrentHandle(
+                handle => NativeBae.StorageCount(handle, activeTab));
+            var totalCount = countCurrent ? checked((ulong)total) : (ulong)page.Rows.Length;
+            rows.SeedFirstPage(totalCount, (ulong)page.Rows.Length);
+
+            foreach (var (tab, button) in tabButtons)
+            {
+                StyleTab(button, tab == activeTab);
+            }
+            RenderHeader();
+            // The per-release total-size sum isn't available without fetching
+            // every matching row (defeating the point of paging), so the footer
+            // now reports only the release count.
+            footer.Text = Loc.Chrome("storage.footer.releases", "count", checked((long)totalCount));
         }
 
         await LoadStorageRows();
@@ -886,7 +960,7 @@ internal sealed class StorageDialog
         content.Children.Add(outboxPanel);
         content.Children.Add(tabBar);
         content.Children.Add(headerRow);
-        content.Children.Add(listPanel);
+        content.Children.Add(list);
         content.Children.Add(footer);
 
         var dialog = new ContentDialog
@@ -916,10 +990,10 @@ internal sealed class StorageDialog
             _projections.Register(typeof(BridgeInvalidation.Album), () => _ = LoadStorageRows()),
             _projections.Register(typeof(BridgeInvalidation.Release), () => _ = LoadStorageRows()),
         };
-        // A transfer starting or ending re-renders the rows from cache (the row's
-        // Storage cell shows the in-flight verb); the Release invalidation core
-        // emits alongside it refetches the snapshot.
-        void OnTransfersChanged() => RenderRows();
+        // A transfer starting or ending refreshes the loaded rows' Storage cells
+        // (it shows the in-flight verb); the Release invalidation core emits
+        // alongside it refetches the snapshot.
+        void OnTransfersChanged() => RefreshStorageCells();
         _transfers.Changed += OnTransfersChanged;
         try
         {
@@ -1032,7 +1106,7 @@ internal sealed class StorageDialog
         return grid;
     }
 
-    private static void AddCell(Grid grid, int column, string text, bool rightAligned = false)
+    private static TextBlock AddCell(Grid grid, int column, string text, bool rightAligned = false)
     {
         var block = new TextBlock
         {
@@ -1043,6 +1117,7 @@ internal sealed class StorageDialog
         };
         Grid.SetColumn(block, column);
         grid.Children.Add(block);
+        return block;
     }
 
     // Emphasize the active tab and gray the inactive ones, matching the import

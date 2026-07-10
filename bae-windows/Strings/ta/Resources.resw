@@ -402,7 +402,6 @@
   <data name="storage.column.files" xml:space="preserve"><value>கோப்புகள்</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>அளவு</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# வெளியீடு} other {# வெளியீடுகள்}}</value></data>
-  <data name="storage.footer.total" xml:space="preserve"><value>மொத்தம்: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>அகற்று</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>இந்த நூலகத்தையும் அதன் பதிவிறக்கம் செய்யப்பட்ட கோப்புகளையும் இந்த பிசியிலிருந்து அகற்றுகிறது. மேகக்கணிப்பில் உள்ள உங்கள் நூலகம் அப்படியே இருக்கும் — நீங்கள் பின்னர் இங்கிருந்து அதை மீட்டெடுக்கலாம்.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>இந்த நூலகம் ஒத்திசைக்கப்படவில்லை. இதை அகற்றுவது அதன் பட்டியலை — ஆல்பங்கள், மேலான்ம தரவு திருத்தங்கள் மற்றும் இயக்க வரலாறு — நிரந்தரமாக நீக்கிவிடும். உங்கள் கோப்புறைகளில் உள்ள ஆடியோ கோப்புகள் நீக்கப்படாது.</value></data>

@@ -402,7 +402,6 @@
   <data name="storage.column.files" xml:space="preserve"><value>ಫೈಲ್‌ಗಳು</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>ಗಾತ್ರ</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# ಬಿಡುಗಡೆ} other {# ಬಿಡುಗಡೆಗಳು}}</value></data>
-  <data name="storage.footer.total" xml:space="preserve"><value>ಒಟ್ಟು: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>ತೆಗೆದುಹಾಕಿ</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>ಈ ಲೈಬ್ರರಿ ಮತ್ತು ಅದರ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ ಫೈಲ್‌ಗಳನ್ನು ಈ ಪಿಸಿಯಿಂದ ತೆಗೆದುಹಾಕುತ್ತದೆ. ಕ್ಲೌಡ್‌ನಲ್ಲಿರುವ ನಿಮ್ಮ ಲೈಬ್ರರಿ ಹಾಗೆಯೇ ಉಳಿಯುತ್ತದೆ — ನೀವು ನಂತರ ಇಲ್ಲಿಂದ ಅದನ್ನು ಪುನಃಸ್ಥಾಪಿಸಬಹುದು.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ಈ ಲೈಬ್ರರಿ ಸಿಂಕ್ ಆಗಿಲ್ಲ. ಇದನ್ನು ತೆಗೆದುಹಾಕುವುದರಿಂದ ಅದರ ಕ್ಯಾಟಲಾಗ್ — ಆಲ್ಬಮ್‌ಗಳು, ಮೆಟಾಡೇಟಾ ಬದಲಾವಣೆಗಳು ಮತ್ತು ಪ್ಲೇ ಇತಿಹಾಸ — ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಿಹೋಗುತ್ತದೆ. ನಿಮ್ಮ ಫೋಲ್ಡರ್‌ಗಳಲ್ಲಿನ ಆಡಿಯೊ ಫೈಲ್‌ಗಳು ಅಳಿಸಲ್ಪಡುವುದಿಲ್ಲ.</value></data>

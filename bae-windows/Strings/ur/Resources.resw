@@ -402,7 +402,6 @@
   <data name="storage.column.files" xml:space="preserve"><value>فائلیں</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>سائز</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# اشاعت} other {# اشاعتیں}}</value></data>
-  <data name="storage.footer.total" xml:space="preserve"><value>کل: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>ہٹائیں</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>یہ لائبریری اور اس کی ڈاؤن لوڈ شدہ فائلیں اس پی سی سے ہٹا دیتا ہے۔ کلاؤڈ میں آپ کی لائبریری محفوظ رہتی ہے — آپ بعد میں یہاں سے اسے بحال کر سکتے ہیں۔</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>یہ لائبریری سنک نہیں ہے۔ اسے ہٹانے سے اس کا کیٹلاگ — البمز، میٹا ڈیٹا میں ترامیم اور پلے کی تاریخ — مستقل طور پر حذف ہو جائے گا۔ آپ کے فولڈرز میں موجود آڈیو فائلیں حذف نہیں ہوں گی۔</value></data>

@@ -402,7 +402,6 @@
   <data name="storage.column.files" xml:space="preserve"><value>קבצים</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>גודל</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {הוצאה #} two {# הוצאות} many {# הוצאות} other {# הוצאות}}</value></data>
-  <data name="storage.footer.total" xml:space="preserve"><value>סה״כ: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>הסרה</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>מסיר ספרייה זו ואת הקבצים שהורדו שלה ממחשב זה. הספרייה שלך בענן נשארת ללא פגע — תוכל לשחזר אותה מכאן מאוחר יותר.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ספרייה זו אינה מסונכרנת. הסרתה תמחק לצמיתות את הקטלוג שלה — אלבומים, עריכות מטא-נתונים והיסטוריית ניגון. קובצי השמע בתיקיות שלך לא יימחקו.</value></data>

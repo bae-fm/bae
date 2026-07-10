@@ -402,7 +402,6 @@
   <data name="storage.column.files" xml:space="preserve"><value>ফাইল</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>আকার</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {#টি রিলিজ} other {#টি রিলিজ}}</value></data>
-  <data name="storage.footer.total" xml:space="preserve"><value>মোট: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>সরান</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>এই লাইব্রেরি এবং এর ডাউনলোড করা ফাইলগুলো এই পিসি থেকে সরিয়ে দেয়। ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে — আপনি পরে এখান থেকে এটি পুনরুদ্ধার করতে পারবেন।</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>এই লাইব্রেরিটি সিঙ্ক করা নেই। এটি সরালে এর ক্যাটালগ — অ্যালবাম, মেটাডেটা সম্পাদনা এবং প্লে ইতিহাস — স্থায়ীভাবে মুছে যাবে। আপনার ফোল্ডারের অডিও ফাইলগুলো মুছে যাবে না।</value></data>

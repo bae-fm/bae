@@ -402,7 +402,6 @@
   <data name="storage.column.files" xml:space="preserve"><value>ഫയലുകൾ</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>വലുപ്പം</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# പതിപ്പ്} other {# പതിപ്പുകൾ}}</value></data>
-  <data name="storage.footer.total" xml:space="preserve"><value>ആകെ: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>നീക്കം ചെയ്യുക</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>ഈ ലൈബ്രറിയും അതിന്റെ ഡൗൺലോഡ് ചെയ്ത ഫയലുകളും ഈ പിസിയിൽ നിന്ന് നീക്കം ചെയ്യുന്നു. ക്ലൗഡിലെ നിങ്ങളുടെ ലൈബ്രറി കേടുകൂടാതെയിരിക്കും — പിന്നീട് ഇവിടെ നിന്ന് അത് പുനഃസ്ഥാപിക്കാം.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ഈ ലൈബ്രറി സമന്വയിപ്പിച്ചിട്ടില്ല. ഇത് നീക്കം ചെയ്യുന്നത് അതിന്റെ കാറ്റലോഗ് — ആൽബങ്ങൾ, മെറ്റാഡാറ്റ എഡിറ്റുകൾ, പ്ലേ ചരിത്രം — ശാശ്വതമായി ഇല്ലാതാക്കും. നിങ്ങളുടെ ഫോൾഡറുകളിലെ ഓഡിയോ ഫയലുകൾ ഇല്ലാതാകില്ല.</value></data>

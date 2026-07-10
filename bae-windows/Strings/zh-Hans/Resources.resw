@@ -402,7 +402,6 @@
   <data name="storage.column.files" xml:space="preserve"><value>文件</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>大小</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, other {# 个发行}}</value></data>
-  <data name="storage.footer.total" xml:space="preserve"><value>总计：{size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>移除</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>从此电脑移除此库及其已下载的文件。云端的库保持不变——您以后可以从这里恢复它。</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>此库未同步。移除它将永久删除其目录——专辑、元数据编辑和播放历史。您文件夹中的音频文件不会被删除。</value></data>

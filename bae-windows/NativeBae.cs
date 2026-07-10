@@ -413,14 +413,49 @@ internal static class NativeBae
             return detail?.GalleryItems ?? [];
         });
 
-    internal static (BridgeStorageRow[]? Rows, string? Error) StorageRows(AppHandle handle) =>
-        CaptureBridgeValue(() =>
-        {
-            var filter = BridgeStorageFilter.All;
-            var sort = new BridgeStorageSort(BridgeStorageSortField.AlbumTitle, BridgeStorageSortDirection.Ascending);
-            var count = Await(handle.StorageCount(filter));
-            return Await(handle.StoragePage(sort, filter, 0, count)).Rows;
-        });
+    // Total releases matching a storage tab, for the dialog's incremental
+    // loading collection to know when it has everything.
+    internal static long StorageCount(AppHandle handle, StorageTab tab) =>
+        checked((long)Await(handle.StorageCount(ToBridge(tab))));
+
+    // One page of storage rows for a tab, sorted server-side by the active
+    // column — the dialog's incremental collection calls this per page instead
+    // of fetching the whole library at once.
+    internal static (BridgeStoragePage? Page, string? Error) StoragePage(
+        AppHandle handle, StorageTab tab, StorageSortField field, SortDirection direction, ulong offset, ulong limit) =>
+        CaptureBridgeValue(() => Await(handle.StoragePage(
+            new BridgeStorageSort(ToBridge(field), ToBridgeStorageDirection(direction)),
+            ToBridge(tab),
+            offset,
+            limit)));
+
+    private static BridgeStorageFilter ToBridge(StorageTab tab) => tab switch
+    {
+        StorageTab.All => BridgeStorageFilter.All,
+        // "Managed"/"Unmanaged" in this UI's vocabulary map onto the wire's
+        // Remote/Local storage state, not a "managed by an import" concept.
+        StorageTab.Managed => BridgeStorageFilter.Remote,
+        StorageTab.Unmanaged => BridgeStorageFilter.Local,
+        StorageTab.Uploading => BridgeStorageFilter.Uploading,
+        _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, "Unknown storage tab"),
+    };
+
+    private static BridgeStorageSortField ToBridge(StorageSortField field) => field switch
+    {
+        StorageSortField.AlbumTitle => BridgeStorageSortField.AlbumTitle,
+        StorageSortField.ArtistNames => BridgeStorageSortField.ArtistNames,
+        StorageSortField.Format => BridgeStorageSortField.Format,
+        StorageSortField.FileCount => BridgeStorageSortField.FileCount,
+        StorageSortField.TotalSize => BridgeStorageSortField.TotalSize,
+        _ => throw new ArgumentOutOfRangeException(nameof(field), field, "Unknown storage sort field"),
+    };
+
+    private static BridgeStorageSortDirection ToBridgeStorageDirection(SortDirection direction) => direction switch
+    {
+        SortDirection.Ascending => BridgeStorageSortDirection.Ascending,
+        SortDirection.Descending => BridgeStorageSortDirection.Descending,
+        _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Unknown sort direction"),
+    };
 
     /// <summary>A single release's live storage fields (state, pin, available
     /// actions, in-flight transfer), for refreshing the album-detail storage

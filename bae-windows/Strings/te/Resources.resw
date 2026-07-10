@@ -402,7 +402,6 @@
   <data name="storage.column.files" xml:space="preserve"><value>ఫైల్‌లు</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>పరిమాణం</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# విడుదల} other {# విడుదలలు}}</value></data>
-  <data name="storage.footer.total" xml:space="preserve"><value>మొత్తం: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>తీసివేయి</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>ఈ లైబ్రరీని మరియు దాని డౌన్‌లోడ్ చేసిన ఫైళ్లను ఈ పీసీ నుండి తీసివేస్తుంది. క్లౌడ్‌లో మీ లైబ్రరీ చెక్కుచెదరకుండా ఉంటుంది — మీరు తర్వాత దీన్ని ఇక్కడి నుండి పునరుద్ధరించవచ్చు.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ఈ లైబ్రరీ సింక్ చేయబడలేదు. దీన్ని తీసివేయడం వల్ల దాని కేటలాగ్ — ఆల్బమ్‌లు, మెటాడేటా మార్పులు మరియు ప్లే చరిత్ర — శాశ్వతంగా తొలగించబడుతుంది. మీ ఫోల్డర్‌లలోని ఆడియో ఫైళ్లు తొలగించబడవు.</value></data>

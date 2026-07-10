@@ -402,7 +402,6 @@
   <data name="storage.column.files" xml:space="preserve"><value>Файлове</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>Размер</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# издание} other {# издания}}</value></data>
-  <data name="storage.footer.total" xml:space="preserve"><value>Общо: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Премахване</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>Премахва тази библиотека и изтеглените ѝ файлове от този компютър. Библиотеката ви в облака остава непокътната — можете да я възстановите оттук по-късно.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Тази библиотека не е синхронизирана. Премахването ѝ изтрива завинаги каталога ѝ — албуми, редакции на метаданни и история на възпроизвеждане. Аудио файловете в папките ви няма да бъдат изтрити.</value></data>
