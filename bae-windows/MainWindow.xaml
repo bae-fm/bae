@@ -5,13 +5,16 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Bae.Windows"
     Title="bae">
-    <Window.Resources>
-        <local:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
-    </Window.Resources>
     <!-- Background="Transparent" makes the whole window a hit-testable drop target,
          so a folder can be dropped over empty areas (e.g. the empty-library state),
          not just over the grid. -->
     <Grid x:Name="RootGrid" KeyDown="OnGlobalKeyDown" AllowDrop="True" DragOver="OnWindowDragOver" Drop="OnWindowDrop" Background="Transparent">
+        <!-- On RootGrid, not Window: WinUI 3's Window has no Resources member
+             (XamlCompiler WMC0011); every StaticResource lookup here happens
+             inside this grid's tree. -->
+        <Grid.Resources>
+            <local:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+        </Grid.Resources>
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Modifiers="Control" Key="F" Invoked="OnFocusSearchAccelerator" />
             <KeyboardAccelerator Modifiers="Control" Key="L" Invoked="OnGoToNowPlaying" />
