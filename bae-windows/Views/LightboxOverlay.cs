@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -310,9 +311,10 @@ internal sealed class LightboxOverlay
             Spacing = 12,
         };
 
-        var icon = new SymbolIcon
+        // FontIcon: WinUI's Symbol enum has no Warning member.
+        var icon = new FontIcon
         {
-            Symbol = Symbol.Warning,
+            Glyph = "\uE7BA",
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
             HorizontalAlignment = HorizontalAlignment.Center,
         };
@@ -350,15 +352,15 @@ internal sealed class LightboxOverlay
     {
         switch (e.Key)
         {
-            case Windows.System.VirtualKey.Escape:
+            case global::Windows.System.VirtualKey.Escape:
                 Hide();
                 e.Handled = true;
                 break;
-            case Windows.System.VirtualKey.Left:
+            case global::Windows.System.VirtualKey.Left:
                 OnPrevious();
                 e.Handled = true;
                 break;
-            case Windows.System.VirtualKey.Right:
+            case global::Windows.System.VirtualKey.Right:
                 OnNext();
                 e.Handled = true;
                 break;
@@ -512,7 +514,7 @@ internal sealed class LightboxOverlay
                     bytes = task.Result;
                 }
 
-                xamlRoot.Dispatcher.TryEnqueue(() =>
+                _popup.DispatcherQueue.TryEnqueue(() =>
                 {
                     BitmapImage? thumbnail = null;
                     if (bytes is not null)
@@ -578,7 +580,7 @@ internal sealed class LightboxOverlay
             var xamlRoot = _xamlRoot?.Invoke();
             if (xamlRoot is not null)
             {
-                xamlRoot.Dispatcher.TryEnqueue(() =>
+                _popup.DispatcherQueue.TryEnqueue(() =>
                 {
                     if (_loadingEntryId != loadingId)
                     {

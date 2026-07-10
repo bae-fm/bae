@@ -623,7 +623,7 @@ internal static class NativeBae
     internal static string? SetCandidateSkipped(AppHandle handle, string path, bool skipped) =>
         CaptureError(() => handle.SetCandidateSkipped(path, skipped));
 
-    internal static (List<ImportCandidate> Rows, List<BridgeWatchedFolder> Folders) ImportCandidates(AppHandle handle)
+    internal static (List<ImportCandidate> Rows, BridgeWatchedFolder[] Folders) ImportCandidates(AppHandle handle)
     {
         var snapshot = handle.GetImportCandidates();
         return (ImportCandidateRows(snapshot), snapshot.WatchedFolders);

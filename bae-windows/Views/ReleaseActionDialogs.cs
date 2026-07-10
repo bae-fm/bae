@@ -622,7 +622,11 @@ internal sealed class ReleaseActionDialogs
                     {
                         return null;
                     }
-                    return NativeBae.GalleryBytes(handle, capturedReleaseId, capturedSource);
+                    return handle.TryUse(
+                        app => NativeBae.GalleryBytes(app, capturedReleaseId, capturedSource),
+                        out var bytes)
+                        ? bytes
+                        : null;
                 }));
         }
 

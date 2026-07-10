@@ -102,7 +102,9 @@ internal sealed class LibrariesDialog
             {
                 try
                 {
-                    if (!await Windows.System.Launcher.LaunchFolderPathAsync(path))
+                    // global:: because inside namespace Bae.Windows the bare `Windows`
+                    // resolves to Bae.Windows, not the platform namespace.
+                    if (!await global::Windows.System.Launcher.LaunchFolderPathAsync(path))
                     {
                         status.Text = Loc.Chrome("libraries.reveal_failed");
                         status.Visibility = Visibility.Visible;

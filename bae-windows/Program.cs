@@ -44,7 +44,7 @@ public static class Program
         // pre-uninstall hook removes the registry state OnLaunched asserts on
         // every normal run, before any UI/resource initialization.
         VelopackApp.Build()
-            .WithBeforeUninstallFastCallback(_ => ProtocolRegistration.Unregister())
+            .OnBeforeUninstallFastCallback(_ => ProtocolRegistration.Unregister())
             .Run();
 
         // AppInstance is a WinRT API; the COM wrappers it needs must be up
