@@ -52,12 +52,28 @@ impl PlaybackService {
             }
         }
 
-        // Format differs (or nothing is attached yet): drop the old stream first
-        // so the device is released / the old capture thread joins before the new
-        // one binds, then build fresh over a new source.
+        // Format differs (or nothing is attached yet): build a fresh stream over
+        // a new source for this track.
+        let source = Arc::new(Mutex::new(source::PlaybackSource::new(track_stream, fmt)));
+        self.build_output_over(source, sample_rate, channels)
+    }
+
+    /// Drop the current output stream (if any) and build a fresh one over
+    /// `source`, resolving the current default device. Both the format-change
+    /// branch of `attach_track` and the default-device-change handler go through
+    /// here — the difference is only whether `source` wraps a new track or the
+    /// live one. On a build failure the source is cancelled (so a decoder filling
+    /// its ring exits) and the error returned.
+    pub(super) fn build_output_over(
+        &mut self,
+        source: Arc<Mutex<source::PlaybackSource>>,
+        sample_rate: u32,
+        channels: u32,
+    ) -> Result<(), PlaybackError> {
+        // Drop the old stream first so the device is released / the old capture
+        // thread joins before the new one binds.
         self.output = None;
 
-        let source = Arc::new(Mutex::new(source::PlaybackSource::new(track_stream, fmt)));
         let (audio_event_tx, audio_events) = audio_event_channel();
 
         let stream = match self.audio_output.create_stream(
@@ -91,5 +107,41 @@ impl PlaybackService {
             channels,
         });
         Ok(())
+    }
+
+    /// Rebuild the output stream over the SAME `PlaybackSource` after the system
+    /// default output device changed, re-resolving the now-current default device.
+    /// No-op when nothing is playing (no stream to move). Playback position and
+    /// state ride on the source and the shared atomic, so they survive the swap;
+    /// a brief glitch at the switch is acceptable. A rebuild that can't get a
+    /// device fails loud — emit a `PlaybackError` and stop — rather than leaving a
+    /// silently dead stream. macOS-only: it's driven by the CoreAudio
+    /// default-device listener, which only exists there.
+    #[cfg(target_os = "macos")]
+    pub(super) async fn handle_output_device_changed(&mut self) {
+        let Some(out) = self.output.take() else {
+            debug!("output device changed with nothing playing; no stream to rebuild");
+            return;
+        };
+        let OutputStream {
+            _stream,
+            source,
+            audio_events: _,
+            sample_rate,
+            channels,
+        } = out;
+        // Release the old device before binding the new one.
+        drop(_stream);
+        info!("Default output device changed; rebuilding the output stream in place");
+        if let Err(e) = self.build_output_over(source, sample_rate, channels) {
+            error!("Failed to rebuild output after a device change: {e}");
+            emit_progress(
+                &self.progress_tx,
+                PlaybackProgress::PlaybackError {
+                    reason: e.into_ui_reason(),
+                },
+            );
+            self.stop().await;
+        }
     }
 }

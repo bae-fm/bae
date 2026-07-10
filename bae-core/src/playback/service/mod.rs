@@ -212,6 +212,15 @@ pub(crate) enum PlaybackCommand {
     /// so the command loop tears playback down to Stopped rather than leaving a
     /// frozen Playing state with a stalled position bar.
     HaltOnError,
+    /// Internal: the system default output device changed (macOS CoreAudio
+    /// listener). Rebuilds the persistent output stream over the same source so
+    /// playback follows the new default; a no-op when nothing is playing. The
+    /// persistent stream is only rebuilt on stop / format change / device change,
+    /// so without this a running stream would stay pinned to the old device.
+    /// macOS-only: other platforms have no default-device listener and keep
+    /// rebuild-on-stop/format-change semantics.
+    #[cfg(target_os = "macos")]
+    OutputDeviceChanged,
     Previous,
     Seek(std::time::Duration),
     /// Seek by slider ratio (0.0–1.0). The service converts to position using
@@ -1175,9 +1184,12 @@ fn side_pause_prompt_between(
     })
 }
 
-/// Construct the platform's concrete audio output. Called on the service's
-/// dedicated thread so the sink owns any thread-bound device handle it opens
-/// there (cpal builds lazily per stream; AAudio binds its writer thread).
+/// Construct the platform's concrete audio output with no default-device change
+/// listener. Called on the service's dedicated thread so the sink owns any
+/// thread-bound device handle it opens there (cpal builds lazily per stream;
+/// AAudio binds its writer thread). This is the preview player's output, and the
+/// main player's output on every platform except macOS (which uses
+/// `default_audio_output_with_device_listener` instead).
 #[cfg(not(target_os = "android"))]
 pub(crate) fn default_audio_output(
 ) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
@@ -1191,6 +1203,22 @@ pub(crate) fn default_audio_output(
 ) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
     Ok(Box::new(
         crate::playback::aaudio_output::AAudioOutput::new()?
+    ))
+}
+
+/// The main player's macOS output, which additionally registers a CoreAudio
+/// listener that dispatches `OutputDeviceChanged` through `command_tx` when the
+/// system default output device changes — so the persistent stream rebuilds onto
+/// the new default. The preview player never gets a listener (it uses
+/// `default_audio_output`), so exactly one listener exists at a time.
+#[cfg(target_os = "macos")]
+pub(crate) fn default_audio_output_with_device_listener(
+    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
+    Ok(Box::new(
+        crate::playback::cpal_output::CpalAudioOutput::with_device_listener(move || {
+            dispatch_command(&command_tx, PlaybackCommand::OutputDeviceChanged)
+        })?,
     ))
 }
 
@@ -1269,13 +1297,21 @@ impl PlaybackService {
             rt.block_on(async move {
                 let audio_output: Box<dyn AudioOutput> = match custom_output {
                     Some(output) => output,
-                    None => match default_audio_output() {
-                        Ok(output) => output,
-                        Err(e) => {
-                            error!("Failed to initialize audio output: {:?}", e);
-                            return;
+                    None => {
+                        // The main player registers the macOS default-device
+                        // listener; other platforms build the listener-less output.
+                        #[cfg(target_os = "macos")]
+                        let built = default_audio_output_with_device_listener(command_tx.clone());
+                        #[cfg(not(target_os = "macos"))]
+                        let built = default_audio_output();
+                        match built {
+                            Ok(output) => output,
+                            Err(e) => {
+                                error!("Failed to initialize audio output: {:?}", e);
+                                return;
+                            }
                         }
-                    },
+                    }
                 };
                 let queue_ids = library_manager.ids().clone();
                 let preview = PreviewPlayer::new(
@@ -1519,6 +1555,10 @@ impl PlaybackService {
                 }
                 PlaybackCommand::HaltOnError => {
                     self.halt_on_error().await;
+                }
+                #[cfg(target_os = "macos")]
+                PlaybackCommand::OutputDeviceChanged => {
+                    self.handle_output_device_changed().await;
                 }
                 PlaybackCommand::Previous => {
                     if let Some(current_track_id) = self.current_track_id().map(|s| s.to_string()) {

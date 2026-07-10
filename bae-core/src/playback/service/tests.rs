@@ -1266,3 +1266,82 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
         "a rebuild is not a source swap"
     );
 }
+
+/// A default-output-device change rebuilds the persistent stream over the SAME
+/// `PlaybackSource` (re-resolving the device), so playback follows the new
+/// default without losing position or state — the only path that rebuilds a
+/// live stream mid-playback. Builds go up by one, no source swap (the source is
+/// reused, not replaced), and the callback's play state is untouched.
+#[cfg(target_os = "macos")]
+#[tokio::test]
+async fn output_device_changed_rebuilds_over_the_same_source() {
+    use std::sync::atomic::Ordering;
+
+    let (_home, mut service, _rx) = test_playback_service().await;
+    let output = TestAudioOutput::new();
+    let builds = output.build_count.clone();
+    let replaces = output.replace_count.clone();
+    service.audio_output = Box::new(output);
+    service
+        .audio_output
+        .set_state(crate::playback::audio_output::AudioState::Playing);
+
+    // Attach a track so there's a live output stream to move.
+    let (_s1, ts1, _r1) = create_track_stream_pair(44_100, 2);
+    service
+        .attach_track(ts1, test_track_fmt("t1"), 44_100, 2)
+        .await
+        .expect("the first attach builds a stream");
+    assert_eq!(builds.load(Ordering::Relaxed), 1, "one build so far");
+    let source_before = service.output.as_ref().unwrap().source.clone();
+
+    // The default device changed: rebuild in place.
+    service.handle_output_device_changed().await;
+
+    assert_eq!(
+        builds.load(Ordering::Relaxed),
+        2,
+        "a device change rebuilds the device stream"
+    );
+    assert_eq!(
+        replaces.load(Ordering::Relaxed),
+        0,
+        "a device-change rebuild reuses the source, it is not a swap"
+    );
+    let source_after = service.output.as_ref().unwrap().source.clone();
+    assert!(
+        Arc::ptr_eq(&source_before, &source_after),
+        "the rebuild reuses the very same PlaybackSource so position/state survive"
+    );
+    assert_eq!(
+        service.audio_output.get_state(),
+        crate::playback::audio_output::AudioState::Playing,
+        "playback keeps playing across the device switch"
+    );
+}
+
+/// A device change with nothing playing has no stream to move, so it's a no-op:
+/// no build, no source, no error.
+#[cfg(target_os = "macos")]
+#[tokio::test]
+async fn output_device_changed_is_a_noop_when_stopped() {
+    use std::sync::atomic::Ordering;
+
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let output = TestAudioOutput::new();
+    let builds = output.build_count.clone();
+    service.audio_output = Box::new(output);
+
+    service.handle_output_device_changed().await;
+
+    assert_eq!(
+        builds.load(Ordering::Relaxed),
+        0,
+        "no stream to rebuild when nothing is playing"
+    );
+    assert!(service.output.is_none(), "still no output");
+    assert!(
+        progress_rx.try_recv().is_err(),
+        "a no-op device change emits nothing"
+    );
+}
