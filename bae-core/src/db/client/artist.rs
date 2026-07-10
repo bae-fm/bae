@@ -18,7 +18,7 @@ impl Database {
         sql: &'static str,
         value: String,
     ) -> Result<Option<DbArtist>, DbError> {
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(sql, params![value], row_to_artist)
                 .optional()
                 .map_err(DbError::from)
@@ -106,13 +106,13 @@ impl Database {
     /// Get artists for an album (ordered by position)
     pub async fn get_artists_for_album(&self, album_id: &str) -> Result<Vec<DbArtist>, DbError> {
         let album_id = album_id.to_string();
-        self.call(move |conn| get_artists_for_album_on(conn, &album_id))
+        self.read(move |conn| get_artists_for_album_on(conn, &album_id))
             .await
     }
     /// Get artists for a track (ordered by position)
     pub async fn get_artists_for_track(&self, track_id: &str) -> Result<Vec<DbArtist>, DbError> {
         let track_id = track_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare(
                 r#"
                         SELECT a.* FROM artists a
@@ -134,7 +134,7 @@ impl Database {
     }
 
     pub async fn get_composer_count(&self) -> Result<u64, DbError> {
-        self.call(move |conn| {
+        self.read(move |conn| {
             let query = format!(
                 "SELECT COUNT(*) FROM ({})",
                 composer_summary_query(None, None)
@@ -155,7 +155,7 @@ impl Database {
         let order_by = composer_order_by(sort);
         let tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
         let query = composer_summary_query(None, Some(&tail));
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare(&query)?;
             let rows = stmt.query_map(
                 params![limit as i64, offset as i64],
@@ -168,7 +168,7 @@ impl Database {
     }
 
     pub async fn get_artist_count(&self) -> Result<u64, DbError> {
-        self.call(move |conn| {
+        self.read(move |conn| {
             let query = format!(
                 "SELECT COUNT(*) FROM ({})",
                 artist_summary_query(None, None)
@@ -189,7 +189,7 @@ impl Database {
         let order_by = artist_order_by(sort);
         let tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
         let query = artist_summary_query(None, Some(&tail));
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare(&query)?;
             let rows =
                 stmt.query_map(params![limit as i64, offset as i64], row_to_artist_summary)?;
@@ -209,7 +209,7 @@ impl Database {
         artist_id: &str,
     ) -> Result<Option<DbArtistDetail>, DbError> {
         let artist_id = artist_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let artist = conn
                 .query_row(
                     &artist_summary_query(Some("WHERE ar.id = ?"), None),
@@ -249,7 +249,7 @@ impl Database {
         artist_id: &str,
     ) -> Result<Option<DbComposerDetail>, DbError> {
         let artist_id = artist_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let composer = conn
                 .query_row(
                     &composer_summary_query(Some("WHERE composer.id = ?"), None),
@@ -403,7 +403,7 @@ impl Database {
 
     pub async fn find_work_detail(&self, work_id: &str) -> Result<Option<DbWorkDetail>, DbError> {
         let work_id = work_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let work = conn
                 .query_row(
                     &work_summary_query(Some("WHERE w.id = ?"), None),

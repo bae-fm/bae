@@ -878,6 +878,40 @@ impl Database {
         }
     }
 
+    // ── The three SQL entry points ────────────────────────────────────────
+    //
+    // `read`     — pure reads. Runs on coven's read-only companion connection:
+    //              no changeset journal, concurrent with the writer instead of
+    //              queued behind it. The closure cannot write (the connection is
+    //              SQLITE_OPEN_READONLY, so SQLite refuses DML).
+    // `call`     — writes that do not stamp `_updated_at` (INSERT/DELETE, or an
+    //              UPDATE that sets the register clock itself). Runs on the
+    //              writer connection with a changeset session attached.
+    // `call_sql` — writes that stamp `_updated_at` from coven's SQL context.
+    //
+    // Read-your-writes holds: every `call`/`call_sql` write commits before its
+    // future resolves, and the WAL reader sees the last committed state, so a
+    // `read` after an awaited write is correct. A closure that reads and then
+    // conditionally writes is a write — it belongs on `call`, not `read`.
+
+    /// Run a pure read on coven's read-only companion connection. See the entry
+    /// points note above.
+    async fn read<R>(
+        &self,
+        f: impl FnOnce(&Connection) -> Result<R, DbError> + Send + 'static,
+    ) -> Result<R, DbError>
+    where
+        R: Send + 'static,
+    {
+        self.inner
+            .handle
+            .sql_read(move |conn| f(conn).map_err(CovenError::from))
+            .await
+            .map_err(Self::coven_error)
+    }
+
+    /// Run a write that does not stamp `_updated_at`. See the entry points note
+    /// above.
     async fn call<R>(
         &self,
         f: impl FnOnce(&Connection) -> Result<R, DbError> + Send + 'static,
@@ -888,6 +922,8 @@ impl Database {
         self.call_sql(move |sql| f(sql.tx())).await
     }
 
+    /// Run a write that stamps `_updated_at` from coven's SQL context. See the
+    /// entry points note above.
     async fn call_sql<R>(
         &self,
         f: impl for<'ctx, 'conn> FnOnce(SqlContext<'ctx, 'conn>) -> Result<R, DbError> + Send + 'static,

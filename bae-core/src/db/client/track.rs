@@ -14,7 +14,7 @@ impl Database {
     /// Find track by ID. Caller-provided ID — may not exist.
     pub async fn find_track_by_id(&self, track_id: &str) -> Result<Option<DbTrack>, DbError> {
         let track_id = track_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 "SELECT * FROM tracks WHERE id = ?",
                 params![track_id],
@@ -32,7 +32,7 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<String>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare(
                 "SELECT id FROM tracks WHERE release_id = ? ORDER BY side, track_number, id",
             )?;
@@ -48,7 +48,7 @@ impl Database {
     /// match the per-release order — by release, then side, track number, id — so
     /// the library and a single release agree on what "source order" means.
     pub async fn get_all_track_ids(&self) -> Result<Vec<String>, DbError> {
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt =
                 conn.prepare("SELECT id FROM tracks ORDER BY release_id, side, track_number, id")?;
             let rows = stmt.query_map([], |row| row.get::<_, String>("id"))?;
@@ -69,7 +69,7 @@ impl Database {
             return Ok(Vec::new());
         }
         let track_ids = track_ids.to_vec();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut existing = Vec::new();
             for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
                 let placeholders = in_clause_placeholders(chunk.len());
@@ -89,7 +89,7 @@ impl Database {
     /// Get tracks for a release
     pub async fn get_tracks_for_release(&self, release_id: &str) -> Result<Vec<DbTrack>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare(
                 "SELECT * FROM tracks WHERE release_id = ? ORDER BY side, track_number, id",
             )?;
@@ -108,7 +108,7 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<DbAudioFormat>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| get_audio_formats_for_release_on(conn, &release_id))
+        self.read(move |conn| get_audio_formats_for_release_on(conn, &release_id))
             .await
     }
     /// Find audio format by track ID. Caller-provided ID — may not exist.
@@ -117,7 +117,7 @@ impl Database {
         track_id: &str,
     ) -> Result<Option<DbAudioFormat>, DbError> {
         let track_id = track_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 "SELECT * FROM audio_formats WHERE track_id = ?",
                 params![track_id],
@@ -134,7 +134,7 @@ impl Database {
         audio_format_id: &str,
     ) -> Result<Vec<DbAudioSegment>, DbError> {
         let audio_format_id = audio_format_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare(
                 "SELECT * FROM audio_format_segments \
                  WHERE audio_format_id = ? \

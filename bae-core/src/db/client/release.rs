@@ -267,7 +267,7 @@ impl Database {
         &self,
     ) -> Result<Vec<DbReleaseStorageSummary>, DbError> {
         let query = Self::release_storage_summary_query("ORDER BY a.title, r.created_at");
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare(&query)?;
             let rows = stmt.query_map([], row_to_release_storage_summary)?;
             rows.collect::<coven::rusqlite::Result<Vec<_>>>()
@@ -286,7 +286,7 @@ impl Database {
     ) -> Result<Option<DbReleaseStorageSummary>, DbError> {
         let release_id = release_id.to_string();
         let query = Self::release_storage_summary_query("WHERE r.id = ?1");
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(&query, [release_id], row_to_release_storage_summary)
                 .optional()
                 .map_err(DbError::from)
@@ -301,7 +301,7 @@ impl Database {
     /// remote release is reachable only through the cloud. Pin/unpin act on all a
     /// release's blobs together, so one file represents the release.
     pub async fn get_remote_release_file_ids(&self) -> Result<Vec<Option<String>>, DbError> {
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare(
                 "SELECT (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) \
                      FROM releases r WHERE r.remote = 1",
@@ -320,7 +320,7 @@ impl Database {
         let where_clause = storage_filter_where(filter);
         let query = format!("SELECT COUNT(*) FROM releases r {where_clause}");
 
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(&query, [], |row| row.get::<_, i64>(0))
                 .map(|c| c as u64)
                 .map_err(DbError::from)
@@ -391,7 +391,7 @@ impl Database {
 
         let query = Self::storage_page_query(&order_by, artist_sort_join, where_clause);
 
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare(&query)?;
             let mut rows = stmt.query(params![limit as i64, offset as i64])?;
             let mut storage_rows = Vec::new();
@@ -409,7 +409,7 @@ impl Database {
     /// FK navigation — row must exist. See method conventions above.
     pub async fn get_release_for_track(&self, track: &DbTrack) -> Result<DbRelease, DbError> {
         let release_id = track.release_id.clone();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 "SELECT * FROM releases WHERE id = ?",
                 params![release_id],
@@ -427,7 +427,7 @@ impl Database {
         release_id: &str,
     ) -> Result<Option<DbReleaseDetail>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let Some(release) = find_release_by_id_on(conn, &release_id)? else {
                 return Ok(None);
             };
@@ -444,7 +444,7 @@ impl Database {
         release_id: &str,
     ) -> Result<Option<(DbReleaseDetail, Vec<DbArtist>, usize)>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let Some(release) = find_release_by_id_on(conn, &release_id)? else {
                 return Ok(None);
             };
@@ -465,7 +465,7 @@ impl Database {
     /// Get all releases for an album
     pub async fn get_releases_for_album(&self, album_id: &str) -> Result<Vec<DbRelease>, DbError> {
         let album_id = album_id.to_string();
-        self.call(move |conn| get_releases_for_album_on(conn, &album_id))
+        self.read(move |conn| get_releases_for_album_on(conn, &album_id))
             .await
     }
     /// Insert a new file record
@@ -481,13 +481,13 @@ impl Database {
     /// Get files for a release
     pub async fn get_files_for_release(&self, release_id: &str) -> Result<Vec<DbFile>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| get_files_for_release_on(conn, &release_id))
+        self.read(move |conn| get_files_for_release_on(conn, &release_id))
             .await
     }
     /// Find file by ID. Caller-provided ID — may not exist.
     pub async fn find_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, DbError> {
         let file_id = file_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 "SELECT * FROM release_files WHERE id = ?",
                 params![file_id],
@@ -1086,7 +1086,7 @@ impl Database {
         release_id: &str,
     ) -> Result<HashMap<String, String>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt =
                 conn.prepare("SELECT source, json FROM release_metadata WHERE release_id = ?")?;
             let rows = stmt.query_map(params![release_id], |row| {
@@ -1112,7 +1112,7 @@ impl Database {
     /// Find release by ID. Caller-provided ID — may not exist.
     pub async fn find_release_by_id(&self, release_id: &str) -> Result<Option<DbRelease>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| find_release_by_id_on(conn, &release_id))
+        self.read(move |conn| find_release_by_id_on(conn, &release_id))
             .await
     }
 
@@ -1162,7 +1162,7 @@ impl Database {
     /// Get the release that owns a given file.
     pub async fn find_release_for_file(&self, file_id: &str) -> Result<Option<DbRelease>, DbError> {
         let file_id = file_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 "SELECT r.* FROM releases r \
                      JOIN release_files rf ON rf.release_id = r.id \
@@ -1182,7 +1182,7 @@ impl Database {
         release_id: &str,
     ) -> Result<i64, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 "SELECT COUNT(*) FROM cloud_outbox co \
                      JOIN release_files rf ON rf.id = co.file_id \
@@ -1198,7 +1198,7 @@ impl Database {
     /// Check if any upload outbox entries remain for files belonging to a release.
     pub async fn has_pending_uploads_for_release(&self, release_id: &str) -> Result<bool, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 "SELECT 1 FROM cloud_outbox co \
                      JOIN release_files rf ON rf.id = co.file_id \
@@ -1219,7 +1219,7 @@ impl Database {
         release_id: &str,
     ) -> Result<bool, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 "SELECT 1 FROM blob_make_remote_intents \
                  WHERE root_table = 'releases' AND root_id = ? \
@@ -1265,7 +1265,7 @@ impl Database {
     /// Find import by ID. Caller-provided ID — may not exist.
     pub async fn find_import_by_id(&self, id: &str) -> Result<Option<DbImport>, DbError> {
         let id = id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 "SELECT * FROM imports WHERE id = ?",
                 params![id],
@@ -1279,7 +1279,7 @@ impl Database {
     /// Get all active (non-complete, non-failed) imports
     pub async fn get_active_imports(&self) -> Result<Vec<DbImport>, DbError> {
         self
-            .call(move |conn| {
+            .read(move |conn| {
                 let mut stmt = conn
                     .prepare(
                         "SELECT * FROM imports WHERE status IN ('preparing', 'importing') ORDER BY created_at DESC",
@@ -1359,7 +1359,7 @@ impl Database {
     /// Used for duplicate detection when scanning folders.
     pub async fn is_source_folder_name_imported(&self, name: &str) -> Result<bool, DbError> {
         let name = name.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 "SELECT 1 FROM releases WHERE source_folder_name = ? LIMIT 1",
                 params![name],
@@ -1377,7 +1377,7 @@ impl Database {
     /// matches so a re-import sweeps any pre-existing duplicates.
     pub async fn release_ids_for_content_hash(&self, hash: &str) -> Result<Vec<String>, DbError> {
         let hash = hash.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare("SELECT id FROM releases WHERE content_hash = ?")?;
             let ids = stmt
                 .query_map(params![hash], |row| row.get::<_, String>(0))?
@@ -1392,7 +1392,7 @@ impl Database {
     /// to mark a scanned folder as already added.
     pub async fn is_content_hash_imported(&self, hash: &str) -> Result<bool, DbError> {
         let hash = hash.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 "SELECT 1 FROM releases WHERE content_hash = ? LIMIT 1",
                 params![hash],

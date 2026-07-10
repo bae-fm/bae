@@ -43,7 +43,7 @@ impl Database {
         }
 
         let track_ids = track_ids.to_vec();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut album_ids = HashMap::new();
             for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
                 let placeholders = in_clause_placeholders(chunk.len());
@@ -77,7 +77,7 @@ impl Database {
         let limit_i64 = limit as i64;
 
         self
-            .call(move |conn| {
+            .read(move |conn| {
                 // Search albums by title, with primary artist name.
                 // COALESCE the primary_release_id to the album's first release so
                 // callers always see a release id (every album has at least one).
@@ -194,7 +194,7 @@ impl Database {
             ORDER BY {order_by}"
         );
 
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare(&query)?;
             let rows = stmt.query_map([], row_to_album)?;
             rows.collect::<coven::rusqlite::Result<Vec<_>>>()
@@ -222,7 +222,7 @@ impl Database {
             LIMIT ? OFFSET ?",
         );
 
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare(&query)?;
             let mut rows = stmt.query(params![limit as i64, offset as i64])?;
             let mut albums = Vec::new();
@@ -261,7 +261,7 @@ impl Database {
             ) WHERE id = ?"
         );
 
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(&query, params![album_id], |row| row.get::<_, i64>("idx"))
                 .optional()
                 .map(|idx| idx.map(|i| i as u64))
@@ -272,7 +272,7 @@ impl Database {
 
     /// Count total albums.
     pub async fn get_album_count(&self) -> Result<u64, DbError> {
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row("SELECT COUNT(*) FROM albums", [], |row| {
                 row.get::<_, i64>(0)
             })
@@ -290,7 +290,7 @@ impl Database {
     ) -> Result<Option<DbAlbumSummary>, DbError> {
         let album_id = album_id.to_string();
         let query = format!("{} FROM albums a WHERE a.id = ?", album_summary_select());
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(&query, params![album_id], |row| {
                 Ok(parse_album_summary_row(row))
             })
@@ -303,7 +303,7 @@ impl Database {
     /// Find album by ID. Caller-provided ID — may not exist.
     pub async fn find_album_by_id(&self, album_id: &str) -> Result<Option<DbAlbum>, DbError> {
         let album_id = album_id.to_string();
-        self.call(move |conn| find_album_by_id_on(conn, &album_id))
+        self.read(move |conn| find_album_by_id_on(conn, &album_id))
             .await
     }
 
@@ -311,7 +311,7 @@ impl Database {
     /// FK navigation — row must exist. See method conventions above.
     pub async fn get_album_for_release(&self, release: &DbRelease) -> Result<DbAlbum, DbError> {
         let album_id = release.album_id.clone();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 r#"
                     SELECT
@@ -337,7 +337,7 @@ impl Database {
         album_id: &str,
     ) -> Result<Option<DbAlbumDetail>, DbError> {
         let album_id = album_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             let Some(album) = find_album_by_id_on(conn, &album_id)? else {
                 return Ok(None);
             };
@@ -367,7 +367,7 @@ impl Database {
         release_id: &str,
     ) -> Result<Option<String>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 "SELECT album_id FROM releases WHERE id = ?",
                 params![release_id],

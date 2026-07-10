@@ -13,7 +13,7 @@ impl Database {
 
         let entries = entries.to_vec();
         self
-            .call(move |conn| {
+            .read(move |conn| {
                 let track_ids: Vec<String> =
                     entries.iter().map(|e| e.track_id.clone()).collect();
                 let mut meta_by_track: HashMap<String, TrackQueueMeta> = HashMap::new();
@@ -101,7 +101,7 @@ impl Database {
     /// (or if the row is corrupt — the resume cache is discarded at this
     /// boundary so no caller downstream sees a malformed context).
     pub async fn load_playback_state(&self) -> Result<Option<DbPlaybackState>, DbError> {
-        self.call(move |conn| {
+        self.read(move |conn| {
             // The closure yields `Option<DbPlaybackState>`: `None` is a corrupt
             // row that discards the whole cache, distinct from the outer `None`
             // for no row at all. The outer `.optional()` then flattens both to

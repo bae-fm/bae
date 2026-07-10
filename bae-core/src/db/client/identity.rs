@@ -31,7 +31,7 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<crate::import::ReleaseIdentity>, DbError> {
         let release_id = release_id.to_string();
-        self.call(move |conn| get_release_identities_on(conn, &release_id))
+        self.read(move |conn| get_release_identities_on(conn, &release_id))
             .await
     }
 
@@ -70,7 +70,7 @@ impl Database {
         }
         let exclude_release_ids = exclude_release_ids.to_vec();
 
-        self.call(move |conn| {
+        self.read(move |conn| {
             let placeholders = exact_pairs
                 .iter()
                 .map(|_| "(?, ?)")
@@ -170,7 +170,7 @@ impl Database {
             .collect();
         let exclude_release_ids = exclude_release_ids.to_vec();
 
-        self.call(move |conn| {
+        self.read(move |conn| {
             let placeholders = pairs
                 .iter()
                 .map(|_| "(?, ?)")
@@ -401,7 +401,7 @@ impl Database {
     ) -> Result<Vec<LibraryStatus>, DbError> {
         let checks = checks.to_vec();
 
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut statuses = Vec::with_capacity(checks.len());
 
             for check in &checks {

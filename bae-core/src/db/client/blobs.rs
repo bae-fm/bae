@@ -50,7 +50,7 @@ impl Database {
         let image_type = image_type.clone();
         let table = image_table(&image_type);
         let sql = format!("SELECT * FROM {table} WHERE id = ?");
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(&sql, params![id], |row| {
                 row_to_library_image(row, image_type.clone())
             })
@@ -93,7 +93,7 @@ impl Database {
             return Ok(HashMap::new());
         }
         let ids = ids.to_vec();
-        self.call(move |conn| image_versions(conn, image_type, &ids))
+        self.read(move |conn| image_versions(conn, image_type, &ids))
             .await
     }
 
@@ -142,7 +142,7 @@ impl Database {
         if !storage.is_browsable() {
             return Ok(None);
         }
-        self.call(move |conn| resolve(conn).map(Some)).await
+        self.read(move |conn| resolve(conn).map(Some)).await
     }
 
     /// The `cloud_path` for a cover image under `storage`: `None` for an opaque
@@ -197,7 +197,7 @@ impl Database {
 
     pub async fn external_blob(&self, blob_id: &str) -> Result<Option<ExternalBlob>, DbError> {
         let blob_id = blob_id.to_string();
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(
                 "SELECT path, size FROM local_blob_refs WHERE blob_id = ?1",
                 [blob_id],
@@ -367,7 +367,7 @@ impl Database {
         &self,
         operation: &'static str,
     ) -> Result<Vec<coven::OutboxEntry>, DbError> {
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare(
                 "SELECT id, operation, file_id, cloud_key, source_path, scope, \
                         retain_pinned, attempt_count, last_attempt_at \
@@ -386,7 +386,7 @@ impl Database {
     /// processing snapshot. coven's internal `cancel` rows (tombstone removals
     /// it retries after an upload) are excluded — they render nothing.
     pub async fn outbox_items(&self) -> Result<Vec<DbOutboxRow>, DbError> {
-        self.call(move |conn| {
+        self.read(move |conn| {
             let mut stmt = conn.prepare(
                 "SELECT co.id, co.operation, co.file_id, co.cloud_key, \
                                 co.created_at, co.attempt_count, co.last_error, \
