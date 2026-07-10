@@ -175,6 +175,11 @@ internal sealed class AlbumDetailDialog
             ItemsSource = selectedRelease.Tracks,
             SelectionMode = ListViewSelectionMode.None,
             IsItemClickEnabled = true,
+            // Bounded so ItemsStackPanel actually virtualizes (unbounded height
+            // inside the ContentDialog's StackPanel realizes every row) and so
+            // ScrollIntoView/ContainerFromItem below have a real viewport to
+            // scroll within. Matches ImportDialog's list.
+            MaxHeight = 320,
         };
         // "Go to now playing" reveal: once the list is realized, scroll the target
         // track into view and flash it. selectedRelease was chosen to contain it.
