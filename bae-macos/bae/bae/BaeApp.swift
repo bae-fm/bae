@@ -743,16 +743,73 @@ extension AppDelegate {
     }
 }
 
+/// Races `handle.shutdown()` against a fixed timeout so a hung shutdown can't
+/// hang Quit forever. An actor, not a lock, guards "resume the continuation
+/// exactly once": whichever of the two racing tasks finishes first resumes
+/// it; the other keeps running to completion in the background (shutdown
+/// isn't cancellable, and the timeout task is just a sleep) but is never
+/// awaited again.
+private actor ShutdownRace {
+    private var resumed = false
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    /// `onTimeout` runs (synchronously, from this actor) only if the timeout
+    /// wins the race — the caller uses it to log.
+    func run(
+        handle: AppHandle,
+        timeout: Duration,
+        onTimeout: @Sendable @escaping () -> Void
+    ) async {
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+            Task {
+                await handle.shutdown()
+                await self.finish()
+            }
+            Task {
+                try? await Task.sleep(for: timeout)
+                await self.finish(onTimeout: onTimeout)
+            }
+        }
+    }
+
+    private func finish(onTimeout: (@Sendable () -> Void)? = nil) {
+        guard !resumed, let continuation else { return }
+        resumed = true
+        self.continuation = nil
+        onTimeout?()
+        continuation.resume()
+    }
+}
+
 extension AppDelegate {
-    func applicationWillTerminate(_: Notification) {
-        // Always shut down gracefully; the restore-on-launch preference gates
-        // the restore at the next launch (passed to initApp), not this save.
+    /// AppKit's deferred-terminate flow, replacing the old fire-and-forget
+    /// `applicationWillTerminate`: that method fired a detached `Task` and
+    /// returned immediately, so the process could exit before the shutdown
+    /// task's `persist_playback_state` write landed — losing the resume
+    /// position on every quit that raced it. Returning `.terminateLater` here
+    /// and replying only after `shutdown()` (or a 5s timeout) actually runs
+    /// makes Quit wait for the save.
+    func applicationShouldTerminate(_ sender: NSApplication)
+        -> NSApplication.TerminateReply
+    {
         guard let appService else {
-            return
+            // No open library: closeLibrary() already shut its handle down
+            // (or none was ever opened), so there's nothing left to save.
+            return .terminateNow
         }
         Task { [handle = appService.appHandle] in
-            await handle.shutdown()
+            await ShutdownRace()
+                .run(handle: handle, timeout: .seconds(5)) {
+                    logger.warning(
+                        "Shutdown on quit timed out after 5s; terminating anyway"
+                    )
+                }
+            await MainActor.run {
+                sender.reply(toApplicationShouldTerminate: true)
+            }
         }
+        return .terminateLater
     }
 
     func applicationDidBecomeActive(_: Notification) {
