@@ -1,4 +1,4 @@
-using Bae.Windows;
+﻿using Bae.Windows;
 using Xunit;
 
 namespace Bae.Windows.Tests;

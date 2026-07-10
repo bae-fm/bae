@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Bae.Windows;
 using Xunit;
 
