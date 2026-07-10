@@ -85,6 +85,13 @@ public sealed partial class MainWindow : Window
     private PixelRect? _lastNormalBounds;
     private bool _maximized;
 
+    // Set once OnClosed's first pass has run its teardown. `async void` means
+    // the window would otherwise die mid-await on the first `await` inside
+    // the handler; cancelling that first close (`args.Handled = true`), then
+    // awaiting the teardown, then closing again lets it actually finish
+    // before the process exits. See OnClosed.
+    private bool _closeTeardownDone;
+
     // The launch-time activation intent (a folder verb / bae://import command
     // line, parsed by App.OnLaunched) latches here until the initial
     // library-open attempt settles — a cold-start activation can arrive before
@@ -1347,24 +1354,50 @@ public sealed partial class MainWindow : Window
 
     private async void OnClosed(object sender, WindowEventArgs args)
     {
-        // Clear the transport controls first so no ghost entry lingers during
-        // shutdown; OnClosed doesn't go through TearDownLibrary. Idempotent.
-        _mediaControls.Deactivate();
-        if (CurrentHandleOrNull() != null)
+        if (!_closeTeardownDone && CurrentHandleOrNull() != null)
         {
+            // First pass: cancel this close so the async teardown below can't
+            // race process exit — `async void` would otherwise let the window
+            // die at the first `await`, before the shutdown's
+            // persist_playback_state write lands. Run the teardown
+            // deterministically, then close again; the re-entrant call below
+            // takes the fast path (no live handle) and lets the close
+            // proceed.
+            args.Handled = true;
+
+            // Clear the transport controls first so no ghost entry lingers
+            // during shutdown; OnClosed doesn't go through TearDownLibrary.
+            // Idempotent.
+            _mediaControls.Deactivate();
             // Always shut down gracefully; the restore-on-launch preference
             // gates the restore at the next launch (passed to InitApp), not
             // this save — the core keeps the resume row current either way.
             await ShutdownAndFreeCurrentHandle();
+            SaveWindowBounds();
+
+            _closeTeardownDone = true;
+            Close();
+            return;
         }
 
-        // Persist the last-seen normal bounds and maximized state, if the window
-        // ever settled into a restored position, so the next launch reopens here.
+        // Re-entry after the teardown above, or a close with no library ever
+        // opened: nothing left to await, so let the close proceed. Bounds are
+        // only saved here if the first pass didn't already run above.
+        if (!_closeTeardownDone)
+        {
+            SaveWindowBounds();
+        }
+
+        BaeDiagnostics.Flush();
+    }
+
+    // Persist the last-seen normal bounds and maximized state, if the window
+    // ever settled into a restored position, so the next launch reopens here.
+    private void SaveWindowBounds()
+    {
         if (_lastNormalBounds is PixelRect normalBounds)
         {
             WindowBoundsStore.Save(WindowBoundsModel.Serialize(normalBounds, _maximized));
         }
-
-        BaeDiagnostics.Flush();
     }
 }
