@@ -63,6 +63,7 @@ class QueueProjectionTest {
             context = null,
             hasNext = true,
             hasPrevious = false,
+            revision = 1uL,
         )
 
         assertEquals(listOf(item("a"), item("b")), player.queue.value.manual)
@@ -80,9 +81,11 @@ class QueueProjectionTest {
                     kind = BridgePlaybackSourceKind.RELEASE,
                     shuffled = false,
                     upcoming = listOf(entry("c1"), entry("c2")),
+                    upcomingTotal = 2uL,
                 ),
             hasNext = true,
             hasPrevious = false,
+            revision = 1uL,
         )
 
         val projection = player.queue.value
@@ -103,9 +106,11 @@ class QueueProjectionTest {
                     kind = BridgePlaybackSourceKind.RELEASE,
                     shuffled = true,
                     upcoming = listOf(entry("c")),
+                    upcomingTotal = 1uL,
                 ),
             hasNext = true,
             hasPrevious = false,
+            revision = 1uL,
         )
 
         val context = player.queue.value.context
@@ -123,9 +128,11 @@ class QueueProjectionTest {
                     kind = BridgePlaybackSourceKind.LIBRARY,
                     shuffled = false,
                     upcoming = listOf(entry("c")),
+                    upcomingTotal = 1uL,
                 ),
             hasNext = true,
             hasPrevious = false,
+            revision = 1uL,
         )
 
         val context = player.queue.value.context
@@ -141,6 +148,7 @@ class QueueProjectionTest {
             context = null,
             hasNext = false,
             hasPrevious = false,
+            revision = 1uL,
         )
 
         val manual = player.queue.value.manual
@@ -159,9 +167,11 @@ class QueueProjectionTest {
                     kind = BridgePlaybackSourceKind.RELEASE,
                     shuffled = false,
                     upcoming = listOf(entry("c")),
+                    upcomingTotal = 1uL,
                 ),
             hasNext = true,
             hasPrevious = false,
+            revision = 1uL,
         )
 
         player.onQueueUpdated(
@@ -169,6 +179,7 @@ class QueueProjectionTest {
             context = null,
             hasNext = false,
             hasPrevious = false,
+            revision = 0uL,
         )
 
         assertEquals(QueueProjection.EMPTY, player.queue.value)

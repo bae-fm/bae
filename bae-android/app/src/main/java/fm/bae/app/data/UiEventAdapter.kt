@@ -130,6 +130,7 @@ object UiEventAdapter {
                     context = event.snapshot.context,
                     hasNext = event.snapshot.hasNext,
                     hasPrevious = event.snapshot.hasPrevious,
+                    revision = event.snapshot.revision,
                 )
             }
 

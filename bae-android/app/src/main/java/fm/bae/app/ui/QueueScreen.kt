@@ -1,11 +1,14 @@
 package fm.bae.app.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -14,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
@@ -36,6 +40,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,6 +56,11 @@ import uniffi.bae_bridge.BridgePlaybackSourceKind
 
 private const val TAG = "bae.QueueScreen"
 private val logger = BaeLogger(TAG)
+
+/** Range fetched around an unloaded context row as the queue scrolls, mirroring
+ *  the page size [fm.bae.app.playback.BaeCorePlayer.loadUpcomingRange]'s bridge
+ *  call uses. */
+private const val QUEUE_UPCOMING_LOAD_BATCH_SIZE = 100
 
 /**
  * The play queue, presented in a bottom sheet: the currently-playing track, then
@@ -104,24 +114,35 @@ fun QueueScreen(
  * mutated in place on a drag. Each lane reorders independently — entry ids are
  * unique across both, and core no-ops a cross-lane move — so the two are held
  * apart and a drop is resolved within its own lane.
+ *
+ * The context lane is sized to [QueueContext.upcomingTotal] and may hold nulls
+ * for indices not yet loaded (the tail is library-scaled and only partly
+ * resolved) — `manual` never has nulls, since the manual lane is always fully
+ * resolved, but both share the nullable element type so [laneOf] has one
+ * return type. A drag only ever targets a loaded (rendered) row.
  */
 internal class QueueOrder {
-    val manual = mutableStateListOf<QueueItem>()
-    val context = mutableStateListOf<QueueItem>()
+    val manual = mutableStateListOf<QueueItem?>()
+    val context = mutableStateListOf<QueueItem?>()
     var contextShuffled by mutableStateOf(false)
 
     /** What the context plays from (release vs library), labelling its section,
      *  or null when nothing is playing from a context. */
     var contextKind by mutableStateOf<BridgePlaybackSourceKind?>(null)
 
+    /** The queue revision [context] was last seeded from — folded into each
+     *  context row's load-trigger key so a queue change restarts in-flight loads
+     *  rather than resolving into a superseded window. */
+    var revision by mutableStateOf(0uL)
+
     val isEmpty: Boolean
         get() = manual.isEmpty() && context.isEmpty()
 
     /** The lane (manual or context) holding the entry id, or null if neither. */
-    fun laneOf(entryId: String): SnapshotStateList<QueueItem>? =
+    fun laneOf(entryId: String): SnapshotStateList<QueueItem?>? =
         when {
-            manual.any { it.entryId == entryId } -> manual
-            context.any { it.entryId == entryId } -> context
+            manual.any { it?.entryId == entryId } -> manual
+            context.any { it?.entryId == entryId } -> context
             else -> null
         }
 }
@@ -151,8 +172,8 @@ internal fun rememberReorderableQueue(
                 logger.debug("reorder: drag spans lanes or key not a row (from=${from.key}, to=${to.key}); ignoring")
                 return@rememberReorderableLazyListState
             }
-            val fromPos = lane.indexOfFirst { it.entryId == from.key }
-            val toPos = lane.indexOfFirst { it.entryId == to.key }
+            val fromPos = lane.indexOfFirst { it?.entryId == from.key }
+            val toPos = lane.indexOfFirst { it?.entryId == to.key }
             if (fromPos < 0 || toPos < 0) {
                 // The lane held both keys a moment ago (laneOf matched); failing to
                 // resolve them to positions now is an unexpected race, not a normal
@@ -161,9 +182,16 @@ internal fun rememberReorderableQueue(
                 return@rememberReorderableLazyListState
             }
             val moved = lane.removeAt(fromPos)
+            if (moved == null) {
+                // A drag key only ever comes from a rendered (loaded) row, so the
+                // position it resolved to should never hold an unloaded slot.
+                logger.warning("reorder: resolved position $fromPos held no loaded entry (from=${from.key}); ignoring")
+                return@rememberReorderableLazyListState
+            }
             lane.add(toPos, moved)
             // The moved entry lands before whatever now follows it in the lane;
-            // a null `before` (it's now last) means the lane's end.
+            // a null `before` (it's now last, or the next slot isn't loaded) means
+            // the lane's end.
             val beforeEntryId = lane.getOrNull(toPos + 1)?.entryId
             try {
                 session.appHandle.reorderEntry(moved.entryId, beforeEntryId)
@@ -187,11 +215,14 @@ internal fun rememberReorderableQueue(
                 }
 
                 else -> {
-                    order.context.addAll(context.upcoming)
+                    // Sized to the full (library-scaled) tail; unloaded indices
+                    // seed as null and render as placeholders.
+                    order.context.addAll((0 until context.upcomingTotal).map(context::itemAt))
                     order.contextShuffled = context.shuffled
                     order.contextKind = context.kind
                 }
             }
+            order.revision = queue.revision
         }
     }
     return order to reorderState
@@ -226,7 +257,8 @@ internal fun LazyListScope.queueContent(
 
     if (order.manual.isNotEmpty()) {
         item(key = "uphdr") { SectionLabel(stringResource(R.string.queue_section_up_next)) }
-        queueRows(session, order.manual, reorderState, onSkipped)
+        // Always fully resolved, so no load hook.
+        queueRows(session, order.manual, revision = 0uL, loadRange = null, reorderState, onSkipped)
     }
 
     if (order.context.isNotEmpty()) {
@@ -242,41 +274,64 @@ internal fun LazyListScope.queueContent(
                 shuffled = order.contextShuffled,
             )
         }
-        queueRows(session, order.context, reorderState, onSkipped)
+        // The context tail is library-scaled and only partly resolved; a null
+        // element renders a placeholder and triggers loadUpcomingRange.
+        queueRows(
+            session,
+            order.context,
+            revision = order.revision,
+            loadRange = { offset, limit -> session.playback.loadUpcomingRange(offset, limit) },
+            reorderState,
+            onSkipped,
+        )
     }
 }
 
 // One lane's reorderable rows. Entry ids key the rows (unique across both lanes),
-// so skip/remove/reorder target one instance.
+// so skip/remove/reorder target one instance. A null element is a not-yet-loaded
+// context row: it renders a placeholder and fires [loadRange] for the batch
+// around it (`null` for the always-fully-loaded manual lane).
 private fun LazyListScope.queueRows(
     session: OpenLibrary,
-    items: List<QueueItem>,
+    items: List<QueueItem?>,
+    revision: ULong,
+    loadRange: (suspend (offset: Int, limit: Int) -> Unit)?,
     reorderState: ReorderableLazyListState,
     onSkipped: (() -> Unit)?,
 ) {
-    itemsIndexed(items, key = { _, item -> item.entryId }) { _, item ->
-        ReorderableItem(reorderState, key = item.entryId) { isDragging ->
-            Surface(tonalElevation = if (isDragging) 4.dp else 0.dp, color = MaterialTheme.colorScheme.surface) {
-                QueueRow(
-                    item = item,
-                    loadImage = session.library::imageBytes,
-                    dragHandleModifier = Modifier.draggableHandle(),
-                    onClick = {
-                        try {
-                            session.appHandle.skipToEntry(item.entryId)
-                            onSkipped?.invoke()
-                        } catch (e: Exception) {
-                            logger.error("skipToEntry ${item.entryId} failed", e)
-                        }
-                    },
-                    onRemove = {
-                        try {
-                            session.appHandle.removeEntry(item.entryId)
-                        } catch (e: Exception) {
-                            logger.error("removeEntry ${item.entryId} failed", e)
-                        }
-                    },
+    itemsIndexed(items, key = { index, item -> item?.entryId ?: "placeholder-$index" }) { index, item ->
+        if (item == null) {
+            LaunchedEffect(revision, index) {
+                loadRange?.invoke(
+                    (index - QUEUE_UPCOMING_LOAD_BATCH_SIZE / 2).coerceAtLeast(0),
+                    QUEUE_UPCOMING_LOAD_BATCH_SIZE,
                 )
+            }
+            QueueRowPlaceholder()
+        } else {
+            ReorderableItem(reorderState, key = item.entryId) { isDragging ->
+                Surface(tonalElevation = if (isDragging) 4.dp else 0.dp, color = MaterialTheme.colorScheme.surface) {
+                    QueueRow(
+                        item = item,
+                        loadImage = session.library::imageBytes,
+                        dragHandleModifier = Modifier.draggableHandle(),
+                        onClick = {
+                            try {
+                                session.appHandle.skipToEntry(item.entryId)
+                                onSkipped?.invoke()
+                            } catch (e: Exception) {
+                                logger.error("skipToEntry ${item.entryId} failed", e)
+                            }
+                        },
+                        onRemove = {
+                            try {
+                                session.appHandle.removeEntry(item.entryId)
+                            } catch (e: Exception) {
+                                logger.error("removeEntry ${item.entryId} failed", e)
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -461,6 +516,43 @@ private fun QueueRow(
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = dragHandleModifier.size(24.dp),
         )
+    }
+}
+
+/** A not-yet-loaded row: a skeleton shape, no text — `loadRange` is already in
+ *  flight for it via the row's `LaunchedEffect`. */
+@Composable
+private fun QueueRowPlaceholder() {
+    val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(placeholderColor),
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(width = 160.dp, height = 12.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(placeholderColor),
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .size(width = 100.dp, height = 10.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(placeholderColor),
+            )
+        }
     }
 }
 

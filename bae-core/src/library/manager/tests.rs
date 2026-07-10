@@ -5198,3 +5198,141 @@ async fn get_members_on_unconfigured_library_propagates_typed_sync_error() {
     );
     assert_eq!(err.category(), crate::ui::UiErrorCategory::Internal);
 }
+
+// ── Queue windowing tests ───────────────────────────────────────────
+
+/// Insert one release with `count` sequentially-numbered tracks
+/// (`track-0`..`track-{count-1}`); return their ids in track order.
+async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<String> {
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    let mut track_ids = Vec::with_capacity(count);
+    for i in 0..count {
+        let track_id = format!("track-{i}");
+        let track = crate::db::DbTrack::new_test(
+            &release.id,
+            &track_id,
+            &format!("Track Title {i}"),
+            Some(i as i32),
+        );
+        manager.database.insert_track(&track).await.unwrap();
+        track_ids.push(track_id);
+    }
+    track_ids
+}
+
+/// A `Library`-source context projection whose upcoming tail is `track_ids`,
+/// in order, each wrapped in a freshly-minted per-instance entry id.
+fn context_projection_over(track_ids: &[String]) -> crate::playback::ContextProjection {
+    crate::playback::ContextProjection {
+        source: crate::playback::ContextSource::Library,
+        shuffled: false,
+        upcoming: track_ids
+            .iter()
+            .enumerate()
+            .map(|(i, t)| crate::playback::QueueEntry {
+                id: crate::playback::QueueEntryId(format!("ctx-{i}")),
+                track_id: t.clone(),
+            })
+            .collect(),
+    }
+}
+
+/// `resolve_queue_projection` resolves only the first `QUEUE_UPCOMING_WINDOW`
+/// entries of a library-scaled context tail, not the whole thing — the
+/// windowing this feature exists for — while still reporting the tail's real
+/// length via `upcoming_total` and preserving order.
+#[tokio::test]
+async fn resolve_queue_projection_windows_a_library_scaled_context_tail() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let track_ids = seed_release_tracks(&manager, crate::queue::QUEUE_UPCOMING_WINDOW + 50).await;
+
+    let projection = crate::playback::PlaybackQueueProjection {
+        manual: Vec::new(),
+        context: Some(context_projection_over(&track_ids)),
+        has_next: true,
+        has_previous: false,
+        revision: 7,
+    };
+    let snapshot = manager.resolve_queue_projection(projection).await.unwrap();
+    let context = snapshot.context.expect("a context was set");
+
+    assert_eq!(
+        context.upcoming.len(),
+        crate::queue::QUEUE_UPCOMING_WINDOW,
+        "only the window is resolved, not the whole library-scaled tail"
+    );
+    assert_eq!(
+        context.upcoming_total,
+        track_ids.len() as u64,
+        "upcoming_total reports the full tail length"
+    );
+    let resolved_track_ids: Vec<&str> = context
+        .upcoming
+        .iter()
+        .map(|i| i.track_id.as_str())
+        .collect();
+    let expected: Vec<&str> = track_ids[..crate::queue::QUEUE_UPCOMING_WINDOW]
+        .iter()
+        .map(String::as_str)
+        .collect();
+    assert_eq!(resolved_track_ids, expected, "the window preserves order");
+    assert_eq!(
+        snapshot.revision, 7,
+        "the snapshot carries the projection's revision"
+    );
+}
+
+/// A context tail shorter than the window resolves in full, and
+/// `upcoming_total` still matches its real (smaller) length.
+#[tokio::test]
+async fn resolve_queue_projection_shorter_than_window_resolves_it_all() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let track_ids = seed_release_tracks(&manager, 5).await;
+
+    let projection = crate::playback::PlaybackQueueProjection {
+        manual: Vec::new(),
+        context: Some(context_projection_over(&track_ids)),
+        has_next: false,
+        has_previous: false,
+        revision: 1,
+    };
+    let snapshot = manager.resolve_queue_projection(projection).await.unwrap();
+    let context = snapshot.context.expect("a context was set");
+    assert_eq!(context.upcoming.len(), 5);
+    assert_eq!(context.upcoming_total, 5);
+}
+
+/// The manual lane is explicit and user-curated, not library-scaled — it
+/// resolves in full even when it is larger than the context window.
+#[tokio::test]
+async fn resolve_queue_projection_resolves_manual_lane_in_full_regardless_of_window() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let track_ids = seed_release_tracks(&manager, crate::queue::QUEUE_UPCOMING_WINDOW + 10).await;
+
+    let manual_count = crate::queue::QUEUE_UPCOMING_WINDOW + 3;
+    let manual: Vec<crate::playback::QueueEntry> = track_ids[..manual_count]
+        .iter()
+        .enumerate()
+        .map(|(i, t)| crate::playback::QueueEntry {
+            id: crate::playback::QueueEntryId(format!("m{i}")),
+            track_id: t.clone(),
+        })
+        .collect();
+
+    let projection = crate::playback::PlaybackQueueProjection {
+        manual,
+        context: None,
+        has_next: false,
+        has_previous: false,
+        revision: 0,
+    };
+    let snapshot = manager.resolve_queue_projection(projection).await.unwrap();
+    assert_eq!(
+        snapshot.manual.len(),
+        manual_count,
+        "the manual lane is never windowed"
+    );
+}

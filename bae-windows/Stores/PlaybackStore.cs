@@ -41,6 +41,11 @@ internal sealed class PlaybackStore
     public string? NowPlayingAlbumId => _nowPlaying?.AlbumId;
     public string? NowPlayingTrackId => _nowPlaying?.TrackId;
 
+    // The queue revision the current lanes were resolved from. Stamped onto
+    // every QueueUpcomingPage fetch so a reply computed under a
+    // since-superseded revision is dropped rather than merged.
+    public ulong Revision { get; private set; }
+
     public event Action<NowPlayingBarTrack>? NowPlayingChanged;
     public event Action? PlaybackStopped;
     public event Action? LoadingStarted;
@@ -119,6 +124,7 @@ internal sealed class PlaybackStore
     {
         _queueManual = snapshot.Manual.ToList();
         _queueContext = snapshot.Context;
+        Revision = snapshot.Revision;
         TransportChanged?.Invoke(snapshot.HasPrevious, snapshot.HasNext);
         QueueChanged?.Invoke();
     }
@@ -162,6 +168,7 @@ internal sealed class PlaybackStore
         _nowPlaying = null;
         _queueManual = new List<BridgeQueueEntry>();
         _queueContext = null;
+        Revision = 0;
     }
 
     // Carry the current position forward only when the incoming track is the one

@@ -62,7 +62,7 @@ class GetStateCurrentIndexTest {
         player: BaeCorePlayer,
         manual: List<BridgeQueueEntry>,
     ) {
-        player.onQueueUpdated(manual = manual, context = null, hasNext = true, hasPrevious = false)
+        player.onQueueUpdated(manual = manual, context = null, hasNext = true, hasPrevious = false, revision = 1uL)
         player.onPlaying(
             BridgeUiEvent.PlaybackPlaying(
                 trackId = "cur",

@@ -4,6 +4,19 @@ import os.log
 
 private let logger = Logger.bae("Queue")
 
+/// Range fetched around an unloaded context row as the queue scrolls, mirroring
+/// the page size `PlaybackStore.loadUpcomingRange`'s bridge call uses.
+private let queueUpcomingLoadBatchSize = 100
+
+/// Row load identity: the store's queue revision (so a bump restarts every
+/// visible row's load task) plus the row's absolute index. The manual lane,
+/// always fully loaded, passes a constant epoch and a `nil` load hook so its
+/// rows never fire a load.
+private struct QueueRowLoadID: Hashable {
+    let epoch: UInt64
+    let index: Int
+}
+
 /// The play queue, presented as a sheet: the currently-playing track, then a
 /// reorderable "Up Next" list. Reads the authoritative now-playing and queue
 /// off the shared `PlaybackStore`; mutations go straight to the `Queue` service
@@ -91,8 +104,13 @@ struct QueueView: View {
             Section("Up Next") {
                 // Edit mode surfaces reorder handles here; a row tap is gated to
                 // skip only when not editing, and skipping dismisses the sheet.
+                // Always fully resolved, so no load hook.
+                let manual = playbackStore.manualQueue
                 upNextRows(
-                    items: playbackStore.manualQueue,
+                    count: manual.count,
+                    itemAt: { manual.indices.contains($0) ? manual[$0] : nil },
+                    loadEpoch: 0,
+                    loadRange: nil,
                     queue: queue,
                     isEditing: editMode.isEditing,
                     onSkipped: { dismiss() }
@@ -104,13 +122,23 @@ struct QueueView: View {
     // The context (the release being played from): its not-yet-played tail, with
     // a shuffle toggle in the header that flips its order while the current track
     // keeps playing. The rows skip/remove/reorder by entry id, the same as the
-    // manual lane.
+    // manual lane. The tail is library-scaled and only partly resolved; unloaded
+    // rows show a placeholder and trigger `loadUpcomingRange`.
     @ViewBuilder
     private var playingFrom: some View {
-        if let context = playbackStore.queueContext, !context.upcoming.isEmpty {
+        if let context = playbackStore.queueContext, context.upcomingTotal > 0 {
             Section {
                 upNextRows(
-                    items: context.upcoming,
+                    count: context.upcomingTotal,
+                    itemAt: { playbackStore.upcomingItem(at: $0) },
+                    loadEpoch: playbackStore.revision,
+                    loadRange: { offset, limit in
+                        await playbackStore.loadUpcomingRange(
+                            offset: offset,
+                            limit: limit,
+                            queue: queue
+                        )
+                    },
                     queue: queue,
                     isEditing: editMode.isEditing,
                     onSkipped: { dismiss() }
@@ -167,32 +195,56 @@ func contextSectionTitle(_ kind: BridgePlaybackSourceKind) -> LocalizedStringKey
 }
 
 /// The "Up Next" rows — shared by the queue sheet and the expanded player's
-/// embedded queue so the index conventions can't drift. Tapping a row skips to
-/// it (unless `isEditing`, when the tap belongs to reorder/delete) and then runs
+/// embedded queue so the index conventions can't drift. Addressed by absolute
+/// index via `itemAt`, not a concrete array, so the context lane can be a
+/// library-scaled, partly-loaded tail: an unloaded index renders a placeholder
+/// and `.task(id:)` fetches the range around it via `loadRange` (`nil` for the
+/// always-fully-loaded manual lane). Tapping a loaded row skips to it (unless
+/// `isEditing`, when the tap belongs to reorder/delete) and then runs
 /// `onSkipped`; swiping deletes; `.onMove` reorders. `.onMove` is inert without
 /// an active edit mode, so the embedded queue (which has none) shows no reorder
 /// handles while still getting tap-to-skip and swipe-to-delete.
+///
+/// A reorder/delete whose source or target row isn't loaded is dropped with a
+/// warning rather than guessed — reordering only ever targets a rendered
+/// (hence loaded) row in practice, so this only ever excludes a brief loading
+/// flash, not a real position.
 @MainActor
 @ViewBuilder
 func upNextRows(
-    items: [QueueItem],
+    count: Int,
+    itemAt: @escaping (Int) -> QueueItem?,
+    loadEpoch: UInt64,
+    loadRange: ((_ offset: Int, _ limit: Int) async -> Void)?,
     queue: Queue,
     isEditing: Bool,
     onSkipped: @escaping () -> Void
 ) -> some View {
-    // Each item carries a unique per-instance `entryId`, so rows key on
-    // `QueueItem.id` (== entryId) even when the same track is queued twice.
-    // onMove/onDelete report array positions, which we resolve back to the entry
-    // id of the affected row.
-    ForEach(items) { item in
-        Button {
-            guard !isEditing else { return }
-            queue.skipToEntry(item.entryId)
-            onSkipped()
-        } label: {
-            QueueRow(item: item)
+    ForEach(0..<count, id: \.self) { index in
+        let item = itemAt(index)
+        Group {
+            if let item {
+                Button {
+                    guard !isEditing else { return }
+                    queue.skipToEntry(item.entryId)
+                    onSkipped()
+                } label: {
+                    QueueRow(item: item)
+                }
+                .buttonStyle(.plain)
+            }
+            else {
+                QueueRowPlaceholder()
+            }
         }
-        .buttonStyle(.plain)
+        .task(id: QueueRowLoadID(epoch: loadEpoch, index: index)) {
+            guard item == nil, let loadRange else {
+                return
+            }
+            let first = max(0, index - queueUpcomingLoadBatchSize / 2)
+            let end = min(first + queueUpcomingLoadBatchSize, count)
+            await loadRange(first, end - first)
+        }
     }
     .onMove { source, destination in
         guard let from = source.first else {
@@ -201,19 +253,38 @@ func upNextRows(
             logger.warning("onMove fired with an empty source index set")
             return
         }
+        guard let fromItem = itemAt(from) else {
+            logger.warning("onMove source at index \(from) is not loaded")
+            return
+        }
         // SwiftUI's destination is a gap index in the original array (item still
         // present): the moved entry lands before the item currently at that gap,
         // or at the end when the gap is past the last row.
-        let beforeEntryId =
-            destination < items.count ? items[destination].entryId : nil
-        queue.reorderEntry(items[from].entryId, beforeEntryId)
+        let beforeEntryId: String?
+        if destination < count {
+            guard let target = itemAt(destination) else {
+                logger.warning(
+                    "onMove destination at index \(destination) is not loaded"
+                )
+                return
+            }
+            beforeEntryId = target.entryId
+        }
+        else {
+            beforeEntryId = nil
+        }
+        queue.reorderEntry(fromItem.entryId, beforeEntryId)
     }
     .onDelete { offsets in
         guard let index = offsets.first else {
             logger.warning("onDelete fired with an empty offset set")
             return
         }
-        queue.removeEntry(items[index].entryId)
+        guard let item = itemAt(index) else {
+            logger.warning("onDelete at index \(index) is not loaded")
+            return
+        }
+        queue.removeEntry(item.entryId)
     }
 }
 
@@ -269,6 +340,28 @@ struct QueueRow: View {
             }
         }
         .contentShape(Rectangle())
+        .padding(.vertical, 4)
+    }
+}
+
+/// A not-yet-loaded row: a skeleton shape, no text — `loadRange` is already in
+/// flight for it via the row's `.task(id:)`.
+struct QueueRowPlaceholder: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(.secondary.opacity(0.15))
+                .frame(width: 44, height: 44)
+            VStack(alignment: .leading, spacing: 6) {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(.secondary.opacity(0.15))
+                    .frame(width: 160, height: 12)
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(.secondary.opacity(0.12))
+                    .frame(width: 100, height: 10)
+            }
+            Spacer(minLength: 0)
+        }
         .padding(.vertical, 4)
     }
 }

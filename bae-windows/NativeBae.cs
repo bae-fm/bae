@@ -767,6 +767,12 @@ internal static class NativeBae
 
     internal static void QueueClear(AppHandle handle) => handle.ClearQueue();
 
+    // One page of the context's upcoming tail past the window QueueUpdated
+    // already carries. offset 0 is the first not-yet-played entry after the
+    // current track — the same coordinate space as BridgePlaybackContext.Upcoming.
+    internal static (BridgeQueueUpcomingPage? Page, string? Error) QueueUpcomingPage(AppHandle handle, uint offset, uint limit) =>
+        CaptureBridgeValue(() => Await(handle.GetQueueUpcomingPage(offset, limit)));
+
     internal static void AddReleaseToQueue(AppHandle handle, string releaseId) => handle.AddReleaseToQueue(releaseId);
 
     internal static void AddReleaseNext(AppHandle handle, string releaseId) => handle.AddReleaseNext(releaseId);

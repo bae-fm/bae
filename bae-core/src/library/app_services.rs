@@ -81,6 +81,38 @@ impl AppServices {
             .await
     }
 
+    /// Fetch one page of the context's not-yet-played tail, past the window
+    /// `get_queue_snapshot` already resolved. Offset 0 is the first
+    /// not-yet-played entry after the current track — the same coordinate
+    /// space as the snapshot's `context.upcoming` window. Clamped to the
+    /// tail's bounds; empty when nothing is playing from a context or the
+    /// offset is past its end. The page is stamped with the live
+    /// `PlaybackQueue` revision so the caller can drop it if a `QueueUpdated`
+    /// for a newer revision has since arrived.
+    pub async fn get_queue_upcoming_page(
+        &self,
+        offset: u32,
+        limit: u32,
+    ) -> Result<crate::queue::ResolvedQueueUpcomingPage, crate::library::LibraryError> {
+        let projection = self
+            .inner
+            .playback
+            .queue_projection()
+            .await
+            .map_err(crate::library::LibraryError::Playback)?;
+        let tail: &[crate::playback::QueueEntry] = projection
+            .context
+            .as_ref()
+            .map(|c| c.upcoming.as_slice())
+            .unwrap_or(&[]);
+        let page = crate::queue::clamp_upcoming_page(tail, offset, limit);
+        let items = self.inner.manager.get_queue_items(page).await?;
+        Ok(crate::queue::ResolvedQueueUpcomingPage {
+            revision: projection.revision,
+            items,
+        })
+    }
+
     pub fn get_sync_status(&self) -> crate::library::SyncStatusSnapshot {
         self.inner.manager.get_sync_status()
     }

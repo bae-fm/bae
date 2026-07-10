@@ -9,6 +9,12 @@ private let logger = Logger.bae("PlaybackStore")
 /// `queueContext` are all driven by `BridgeUiEvent` deliveries. Views read
 /// fields at the leaf and never write back — they invoke `appHandle` actions
 /// instead, and the resulting events flow back through the dispatcher.
+///
+/// Not `@MainActor` on the whole type: `MediaControlService.handleScrub` calls
+/// `projectSeek` from a nonisolated remote-command callback. Only
+/// `loadUpcomingRange`/its private helper are `@MainActor` (see their doc
+/// comments) since they spawn a `Task` capturing `self`, which Swift 6 only
+/// allows across a `Task` boundary when the capture is actor-isolated.
 @Observable
 public class PlaybackStore {
     public var nowPlaying: NowPlaying = .stopped
@@ -20,7 +26,26 @@ public class PlaybackStore {
     public var manualQueue: [QueueItem] = []
     /// The context (the release being played from), or `nil` when nothing plays
     /// from a release. Rendered as a section distinct from `manualQueue`.
+    /// `context.upcoming` is only the initial window; further indices, once
+    /// fetched via `loadUpcomingRange`, live in `pagedUpcoming` — read either
+    /// through `upcomingItem(at:)`.
     public var queueContext: QueuePlaybackContext?
+    /// Context-tail entries fetched past the initial window, keyed by their
+    /// absolute index in the tail. Reset wholesale on every `applyQueueSnapshot`
+    /// — a `QueueUpdated` is the invalidation signal for this ephemeral view
+    /// cache, not durable state to reconcile incrementally.
+    public var pagedUpcoming: [Int: QueueItem] = [:]
+    /// The queue revision the current `manualQueue`/`queueContext` were resolved
+    /// from. Stamped onto every `loadUpcomingRange` fetch so a reply computed
+    /// under a since-superseded revision is dropped rather than merged.
+    @ObservationIgnored
+    public private(set) var revision: UInt64 = 0
+    /// In-flight `loadUpcomingRange` fetches, keyed "offset:end:revision", so
+    /// concurrent callers asking for the same range (every row in a batch
+    /// window mounting at once) coalesce onto one bridge call instead of each
+    /// issuing a duplicate.
+    @ObservationIgnored
+    private var inFlightUpcomingLoads: [String: Task<Void, Never>] = [:]
 
     /// Current playback position. Updates at display rate during playback —
     /// far too frequent for `@Observable`; published as a Combine signal so
@@ -44,6 +69,93 @@ public class PlaybackStore {
     public func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
         manualQueue = snapshot.manual.map(QueueItem.init(bridge:))
         queueContext = snapshot.context.map(QueuePlaybackContext.init(bridge:))
+        revision = snapshot.revision
+        // The event is the invalidation signal: every previously fetched page
+        // is dropped, not reconciled against the new snapshot.
+        pagedUpcoming = [:]
+    }
+
+    /// The context-tail item at absolute `index`, or `nil` if not yet loaded —
+    /// either still outside the initial window and not yet paged in, or past
+    /// `upcomingTotal` entirely.
+    public func upcomingItem(at index: Int) -> QueueItem? {
+        guard let context = queueContext else {
+            return nil
+        }
+        if index < context.upcoming.count {
+            return context.upcoming[index]
+        }
+        return pagedUpcoming[index]
+    }
+
+    /// Fetch `[offset, offset + limit)` of the context's upcoming tail and
+    /// merge it into `pagedUpcoming`. A no-op if the range is already loaded.
+    /// The reply is applied only if its revision still matches this store's
+    /// current `revision`; a mismatch means a `QueueUpdated` for a newer queue
+    /// state arrived while the fetch was in flight, and that event's wholesale
+    /// reset already replaced the view, so the reply is dropped rather than
+    /// merged. Fetch failures are never swallowed silently: logged at warn with
+    /// the failed range — a page fetch is background prefetch, not a
+    /// user-initiated action with its own error-display path.
+    ///
+    /// `@MainActor`: spawns a `Task` capturing `self` to coalesce concurrent
+    /// range fetches; Swift 6 only allows that capture across a `Task`
+    /// boundary when the call site (and the spawned task, which inherits it)
+    /// is actor-isolated. Callers are SwiftUI `.task(id:)` bodies, already on
+    /// the main actor.
+    @MainActor
+    public func loadUpcomingRange(offset: Int, limit: Int, queue: Queue) async {
+        guard let context = queueContext else {
+            return
+        }
+        let end = min(offset + limit, context.upcomingTotal)
+        guard offset < end else {
+            return
+        }
+        guard !(offset..<end).allSatisfy({ upcomingItem(at: $0) != nil })
+        else {
+            return
+        }
+
+        let key = "\(offset):\(end):\(revision)"
+        if let existing = inFlightUpcomingLoads[key] {
+            await existing.value
+            return
+        }
+        let task = Task {
+            await self.fetchUpcomingRange(
+                offset: offset,
+                end: end,
+                queue: queue
+            )
+        }
+        inFlightUpcomingLoads[key] = task
+        await task.value
+        inFlightUpcomingLoads[key] = nil
+    }
+
+    @MainActor
+    private func fetchUpcomingRange(offset: Int, end: Int, queue: Queue) async {
+        do {
+            let page = try await queue.getUpcomingPage(
+                UInt32(offset),
+                UInt32(end - offset)
+            )
+            guard page.revision == revision else {
+                logger.warning(
+                    "dropping upcoming page for [\(offset), \(end)): fetched under a since-superseded revision"
+                )
+                return
+            }
+            for (i, entry) in page.entries.enumerated() {
+                pagedUpcoming[offset + i] = QueueItem(bridge: entry)
+            }
+        }
+        catch {
+            logger.warning(
+                "failed to load upcoming range [\(offset), \(end)): \(error.localizedDescription)"
+            )
+        }
     }
 
     /// Enter the loading transition for `trackId`, retaining the currently

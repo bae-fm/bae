@@ -2376,6 +2376,20 @@ pub struct BridgeQueueSnapshot {
     pub context: Option<BridgePlaybackContext>,
     pub has_next: bool,
     pub has_previous: bool,
+    /// The queue revision this snapshot was resolved from. The UI stamps any
+    /// `get_queue_upcoming_page` fetch it makes while showing this snapshot
+    /// with this value, and drops the reply if its revision no longer
+    /// matches — a `QueueUpdated` for the newer revision has already replaced
+    /// the view.
+    pub revision: u64,
+}
+
+/// One page of the context's upcoming tail, fetched by offset/limit past the
+/// initial window `BridgePlaybackContext.upcoming` already carries.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeQueueUpcomingPage {
+    pub revision: u64,
+    pub entries: Vec<BridgeQueueEntry>,
 }
 
 /// Which kind of source the context plays from, so the UI labels the section
@@ -2408,7 +2422,14 @@ impl BridgePlaybackSourceKind {
 pub struct BridgePlaybackContext {
     pub kind: BridgePlaybackSourceKind,
     pub shuffled: bool,
+    /// The first page of the not-yet-played tail — not the whole tail. See
+    /// `upcoming_total` for the full length and `get_queue_upcoming_page` for
+    /// fetching the rest.
     pub upcoming: Vec<BridgeQueueEntry>,
+    /// The full length of the not-yet-played tail, including entries beyond
+    /// `upcoming`. The UI renders a placeholder for every index up to this and
+    /// pages in the rest as it scrolls.
+    pub upcoming_total: u64,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

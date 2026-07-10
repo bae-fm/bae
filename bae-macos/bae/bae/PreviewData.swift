@@ -13,7 +13,7 @@ enum PreviewData {
 
     // MARK: - Queue
 
-    static let queueItems: [QueueItem] = [
+    static let queueEntries: [BridgeQueueEntry] = [
         BridgeQueueEntry(
             entryId: "e-01",
             trackId: "t-01",
@@ -60,7 +60,38 @@ enum PreviewData {
             coverImageId: nil
         ),
     ]
-    .map(QueueItem.init(bridge:))
+
+    /// A `PlaybackStore` preloaded with `queueEntries`: `manualCount` in the
+    /// manual lane, the rest in the context tail. Used by previews that need a
+    /// live store in the environment (`QueueView` reads its queue state via
+    /// `@Environment`, not by-value props).
+    @MainActor
+    static func queueStore(
+        manualCount: Int,
+        context: BridgePlaybackSourceKind? = .release,
+        shuffled: Bool = false
+    ) -> PlaybackStore {
+        let store = PlaybackStore()
+        let manual = Array(queueEntries.prefix(manualCount))
+        let upcoming = Array(queueEntries.suffix(from: manualCount))
+        store.applyQueueSnapshot(
+            BridgeQueueSnapshot(
+                manual: manual,
+                context: context.map { kind in
+                    BridgePlaybackContext(
+                        kind: kind,
+                        shuffled: shuffled,
+                        upcoming: upcoming,
+                        upcomingTotal: UInt64(upcoming.count)
+                    )
+                },
+                hasNext: !upcoming.isEmpty,
+                hasPrevious: false,
+                revision: 1
+            )
+        )
+        return store
+    }
 
     // MARK: - Now Playing
 

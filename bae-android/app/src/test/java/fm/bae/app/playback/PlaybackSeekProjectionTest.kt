@@ -232,7 +232,7 @@ class PlaybackSeekProjectionTest {
     fun nextTrackFailureDoesNotEscapeSeekHandler() {
         val (player, handle) = player()
         handle.nextTrackFailure = RuntimeException("next failed")
-        player.onQueueUpdated(manual = emptyList(), context = null, hasNext = true, hasPrevious = false)
+        player.onQueueUpdated(manual = emptyList(), context = null, hasNext = true, hasPrevious = false, revision = 1uL)
 
         player.seekToNext()
         shadowOf(Looper.getMainLooper()).idle()
@@ -244,7 +244,7 @@ class PlaybackSeekProjectionTest {
     fun previousTrackFailureDoesNotEscapeSeekHandler() {
         val (player, handle) = player()
         handle.previousTrackFailure = RuntimeException("previous failed")
-        player.onQueueUpdated(manual = emptyList(), context = null, hasNext = false, hasPrevious = true)
+        player.onQueueUpdated(manual = emptyList(), context = null, hasNext = false, hasPrevious = true, revision = 1uL)
 
         player.seekToPrevious()
         shadowOf(Looper.getMainLooper()).idle()

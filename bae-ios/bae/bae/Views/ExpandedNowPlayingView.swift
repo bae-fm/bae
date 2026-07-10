@@ -183,18 +183,31 @@ struct ExpandedNowPlayingView: View {
     private var upNext: some View {
         if !playbackStore.manualQueue.isEmpty {
             Section("Up Next") {
+                let manual = playbackStore.manualQueue
                 upNextRows(
-                    items: playbackStore.manualQueue,
+                    count: manual.count,
+                    itemAt: { manual.indices.contains($0) ? manual[$0] : nil },
+                    loadEpoch: 0,
+                    loadRange: nil,
                     queue: queue,
                     isEditing: false,
                     onSkipped: {}
                 )
             }
         }
-        if let context = playbackStore.queueContext, !context.upcoming.isEmpty {
+        if let context = playbackStore.queueContext, context.upcomingTotal > 0 {
             Section {
                 upNextRows(
-                    items: context.upcoming,
+                    count: context.upcomingTotal,
+                    itemAt: { playbackStore.upcomingItem(at: $0) },
+                    loadEpoch: playbackStore.revision,
+                    loadRange: { offset, limit in
+                        await playbackStore.loadUpcomingRange(
+                            offset: offset,
+                            limit: limit,
+                            queue: queue
+                        )
+                    },
                     queue: queue,
                     isEditing: false,
                     onSkipped: {}

@@ -1,11 +1,14 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Data;
 using uniffi.bae_bridge;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
@@ -13,13 +16,18 @@ using Windows.Foundation;
 namespace Bae.Windows;
 
 // The queue side pane: a non-modal surface hosting the manual "Up Next" lane and
-// the playback context as two reorderable lists. Non-modal so the album grid
-// behind it can source a drag while the pane stays open — album cards drop into
-// the manual lane at a chosen index. Reads the lanes from the playback store and
-// rebuilds on its QueueChanged while visible; each row skips on click, removes on
-// right-tap, and reorders on drag (forwarded to core by entry id). Clear empties
-// only the manual lane. External drops land only in the manual lane; the context
-// lane rejects them.
+// the playback context as ONE virtualized, reorderable ListView (never a ListView
+// inside a StackPanel inside a ScrollViewer — that combination hands the ListView
+// unbounded height, so ItemsStackPanel realizes every row instead of
+// virtualizing). Non-modal so the album grid behind it can source a drag while
+// the pane stays open — album cards drop into the manual lane at a chosen index.
+// Reads the lanes from the playback store and rebuilds on its QueueChanged while
+// visible; each row skips on click, removes on right-tap, and reorders on drag
+// (forwarded to core by entry id). Clear empties only the manual lane. External
+// drops land only in the manual lane; the context lane rejects them. The context
+// lane is library-scaled and only partly resolved: it pages further entries in via
+// ISupportIncrementalLoading as the list scrolls toward its end, revision-checked
+// against the store so a reply for a superseded queue state is dropped.
 internal sealed class QueuePane
 {
     private readonly SessionStore _session;
@@ -35,13 +43,48 @@ internal sealed class QueuePane
         _onError = onError;
     }
 
+    // -- Row model ---------------------------------------------------------
+    //
+    // The pane's single ListView is bound to one flat, heterogeneous row
+    // collection. Every row carries the lane it belongs to; the collection's
+    // rows are always laid out as contiguous same-lane runs in `Lane` ordinal
+    // order (Chrome, then Manual, then Context) — reorder validation leans on
+    // that invariant instead of tracking section boundaries separately.
+    private enum QueueLane
+    {
+        Chrome,
+        Manual,
+        Context,
+    }
+
+    private abstract record QueueRow(QueueLane Lane);
+
+    // The "Clear" action, at the top of the scrollable content (unchanged from
+    // today's layout — it scrolls with the list rather than becoming pane chrome,
+    // matching the current visual order).
+    private sealed record ClearRow() : QueueRow(QueueLane.Chrome);
+
+    // A section header. Shuffled is non-null only for the context section (the
+    // manual lane is never shuffled and has no toggle).
+    private sealed record SectionHeaderRow(QueueLane Lane, string Text, bool? Shuffled) : QueueRow(Lane);
+
     // One queue row's display: the entry, its id, and the one-line summary.
-    private sealed record QueueEntryRow(BridgeQueueEntry Entry)
+    private sealed record EntryRow(QueueLane Lane, BridgeQueueEntry Entry) : QueueRow(Lane)
     {
         internal string EntryId => Entry.EntryId;
         public override string ToString() =>
             $"{Entry.Title} — {Entry.ArtistNames} · {Loc.Duration(Entry.DurationMs)}".Trim();
     }
+
+    // The empty manual-lane state: shown instead of any manual EntryRow when the
+    // lane is empty, so a drop always has a target at the front of the pane.
+    private sealed record EmptyManualRow() : QueueRow(QueueLane.Manual);
+
+    // A trailing drop strip appended after a non-empty manual lane, mirroring the
+    // reference platforms' "drop here to append" zone. Belongs to Manual — it
+    // sits inside that lane's contiguous run, immediately before the context
+    // section (or the end of the list).
+    private sealed record TrailingDropRow() : QueueRow(QueueLane.Manual);
 
     public bool IsOpen => _host.Visibility == Visibility.Visible;
 
@@ -84,37 +127,49 @@ internal sealed class QueuePane
     // Rebuild the pane's content from the current lanes. Safe to run mid-drag:
     // core emits QueueChanged only after a mutation lands, and the whole content
     // is rebuilt between events (the modal dialog it replaced did the same per
-    // opening).
+    // opening). QueueChanged is also the invalidation signal for any in-flight
+    // incremental-load page fetch on the PREVIOUS collection instance: this
+    // always constructs a fresh QueuePaneRowCollection, so a stale reply lands on
+    // an abandoned instance nobody renders.
     private void Rebuild()
     {
-        var body = new StackPanel { Spacing = 8 };
+        var manual = _playback.ManualQueue;
+        var context = _playback.Context;
+        var revision = _playback.Revision;
 
-        // Clear empties only the manual lane (the context survives), so it
-        // disables on an empty manual lane regardless of the context.
-        var clear = new Button
+        var rows = new QueuePaneRowCollection(_session, revision, contextTotal: context?.UpcomingTotal ?? 0);
+
+        rows.Add(new ClearRow());
+        rows.Add(new SectionHeaderRow(QueueLane.Manual, Loc.Chrome("queue.section.up_next"), Shuffled: null));
+        if (manual.Count == 0)
         {
-            Content = Loc.Chrome("queue.clear"),
-            IsEnabled = _playback.ManualQueue.Count > 0,
-        };
-        clear.Click += (_, _) => _session.WithCurrentHandle(NativeBae.QueueClear);
-        body.Children.Add(clear);
+            rows.Add(new EmptyManualRow());
+        }
+        else
+        {
+            foreach (var entry in manual)
+            {
+                rows.Add(new EntryRow(QueueLane.Manual, entry));
+            }
+            rows.Add(new TrailingDropRow());
+        }
 
-        // The manual lane ("Up Next"), always shown so its empty state can accept
-        // a drop at the front; then the playback context (the release being played
-        // from) as its own reorderable list.
-        body.Children.Add(QueueSectionLabel(Loc.Chrome("queue.section.up_next")));
-        AddManualLane(body, _playback.ManualQueue);
-
-        if (_playback.Context is { Upcoming.Length: > 0 } ctx)
+        if (context is { UpcomingTotal: > 0 } ctx)
         {
             // The context section names what's playing — a release ("Playing From")
             // vs the whole library — by the source kind the wire shape carries.
             var labelKey = ctx.Kind == BridgePlaybackSourceKind.Library
                 ? "queue.section.your_library"
                 : "queue.section.playing_from";
-            body.Children.Add(ContextSectionLabel(Loc.Chrome(labelKey), ctx.Shuffled));
-            body.Children.Add(BuildQueueLaneList(ctx.Upcoming));
+            rows.Add(new SectionHeaderRow(QueueLane.Context, Loc.Chrome(labelKey), ctx.Shuffled));
+            foreach (var entry in ctx.Upcoming)
+            {
+                rows.Add(new EntryRow(QueueLane.Context, entry));
+            }
+            rows.MarkInitialContextLoad((ulong)ctx.Upcoming.Length);
         }
+
+        var list = BuildQueueList(rows, manual);
 
         var content = new Grid();
         content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -124,14 +179,8 @@ internal sealed class QueuePane
         Grid.SetRow(header, 0);
         content.Children.Add(header);
 
-        var scroll = new ScrollViewer
-        {
-            Content = body,
-            Padding = new Thickness(16, 8, 16, 16),
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-        };
-        Grid.SetRow(scroll, 1);
-        content.Children.Add(scroll);
+        Grid.SetRow(list, 1);
+        content.Children.Add(list);
 
         _host.Child = content;
     }
@@ -148,7 +197,7 @@ internal sealed class QueuePane
         var close = new Button
         {
             // Segoe MDL2 Assets "ChromeClose" glyph (U+E711).
-            Content = new FontIcon { Glyph = "", FontSize = 14 },
+            Content = new FontIcon { Glyph = "", FontSize = 14 },
             HorizontalAlignment = HorizontalAlignment.Right,
         };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(close, Loc.Chrome("action.close"));
@@ -165,30 +214,170 @@ internal sealed class QueuePane
         return grid;
     }
 
-    // Add the manual lane to the body: the reorderable list plus a trailing
-    // append zone when it has entries, or an empty-state drop area (index 0) when
-    // it is empty. Both accept external album drops.
-    private void AddManualLane(Panel body, IReadOnlyList<BridgeQueueEntry> manual)
+    // The single virtualized list hosting every row: chrome, both section
+    // headers, and both lanes' entries. Fills the pane's remaining height (the
+    // containing Grid row is Star-sized) so it is its own bounded scroll region —
+    // there is no outer ScrollViewer.
+    private ListView BuildQueueList(QueuePaneRowCollection rows, IReadOnlyList<BridgeQueueEntry> manual)
     {
-        if (manual.Count == 0)
+        var list = new ListView
         {
-            body.Children.Add(BuildEmptyDropArea());
-            return;
-        }
-
-        var laneList = BuildQueueLaneList(manual);
-        AttachExternalDrop(laneList, e => ComputeInsertIndex(laneList, manual, e));
-        body.Children.Add(laneList);
-
-        // A drop strip below the list appends at the lane's end, mirroring the
-        // trailing zone on the reference platform.
-        var trailing = new Border
-        {
-            Height = 40,
-            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            ItemsSource = rows,
+            SelectionMode = ListViewSelectionMode.None,
+            IsItemClickEnabled = true,
+            CanReorderItems = true,
+            CanDragItems = true,
+            AllowDrop = true,
+            Padding = new Thickness(16, 8, 16, 16),
+            IncrementalLoadingTrigger = IncrementalLoadingTrigger.Edge,
         };
-        AttachExternalDrop(trailing, _ => manual.Count);
-        body.Children.Add(trailing);
+
+        list.ContainerContentChanging += (_, args) =>
+        {
+            if (args.InRecycleQueue)
+            {
+                return;
+            }
+            args.ItemContainer.Content = BuildRowVisual(args.Item as QueueRow);
+            args.Handled = true;
+        };
+
+        // Only an EntryRow is draggable — headers, the empty state, and the
+        // trailing drop strip are chrome, not queue content.
+        list.DragItemsStarting += (_, args) =>
+        {
+            if (args.Items.Any(item => item is not EntryRow))
+            {
+                args.Cancel = true;
+            }
+        };
+
+        list.ItemClick += (_, args) =>
+        {
+            if (args.ClickedItem is EntryRow clicked)
+            {
+                _session.WithCurrentHandle(handle => NativeBae.QueueSkipTo(handle, clicked.EntryId));
+            }
+        };
+
+        // Right-tap a row to drop it from the queue. Removing locally too keeps
+        // the pane in sync; the Move-only reorder handler below ignores this
+        // Remove (it only reacts to NotifyCollectionChangedAction.Move).
+        list.RightTapped += (_, args) =>
+        {
+            if (args.OriginalSource is not FrameworkElement element
+                || element.DataContext is not EntryRow item)
+            {
+                return;
+            }
+
+            var index = rows.IndexOf(item);
+            if (index < 0)
+            {
+                return;
+            }
+
+            var menu = new MenuFlyout();
+            var remove = new MenuFlyoutItem { Text = Loc.Chrome("queue.remove_item") };
+            remove.Click += (_, _) =>
+            {
+                // The generated bridge removes by entry id, so a reorder between the right-tap and
+                // the click can't target the wrong row. The local index is only to keep
+                // the pane's collection in sync.
+                var idx = rows.IndexOf(item);
+                if (idx < 0)
+                {
+                    return;
+                }
+                _session.WithCurrentHandle(handle => NativeBae.QueueRemove(handle, item.EntryId));
+                rows.RemoveAt(idx);
+            };
+            menu.Items.Add(remove);
+            menu.ShowAt(element, new FlyoutShowOptions { Position = args.GetPosition(element) });
+        };
+
+        // A drag-reorder mutates `rows` in place before this fires (the framework's
+        // own behavior); validate it stayed within one lane before forwarding to
+        // core, and revert (a full Rebuild, since core's state never changed) if
+        // it crossed a section boundary — dragging past a header is visually
+        // possible but not a valid move.
+        rows.CollectionChanged += (_, args) =>
+        {
+            if (args.Action != NotifyCollectionChangedAction.Move)
+            {
+                return;
+            }
+            if (rows[args.NewStartingIndex] is not EntryRow moved)
+            {
+                return;
+            }
+            if (!IsLaneOrderValid(rows))
+            {
+                BaeDiagnostics.Logger.Warning(
+                    $"Queue reorder for {moved.EntryId} crossed a section boundary; reverting.");
+                Rebuild();
+                return;
+            }
+
+            var laneEntryIds = rows.OfType<EntryRow>().Where(e => e.Lane == moved.Lane)
+                .Select(e => e.EntryId).ToList();
+            var newIndex = laneEntryIds.IndexOf(moved.EntryId);
+            var move = QueueReorderModel.ResolveMove(laneEntryIds, newIndex);
+            _session.WithCurrentHandle(handle => NativeBae.QueueReorder(handle, move.MovedEntryId, move.BeforeEntryId));
+        };
+
+        // External album-card drops land only in the manual lane; the pointer's Y
+        // position resolves to an insert index among the manual lane's realized
+        // rows (or the lane's end when it's empty or the pointer is past them).
+        AttachExternalDrop(list, e => ComputeInsertIndex(list, rows, manual, e));
+
+        return list;
+    }
+
+    // Whether `rows` still partitions into contiguous same-lane runs in
+    // Chrome/Manual/Context ordinal order — the invariant a valid single-lane
+    // reorder always preserves. A cross-lane drag breaks it (some row's ordinal
+    // would regress relative to an earlier row's).
+    private static bool IsLaneOrderValid(IReadOnlyList<QueueRow> rows)
+    {
+        var lastOrdinal = -1;
+        foreach (var row in rows)
+        {
+            var ordinal = (int)row.Lane;
+            if (ordinal < lastOrdinal)
+            {
+                return false;
+            }
+            lastOrdinal = ordinal;
+        }
+        return true;
+    }
+
+    // Build one row's visual by kind. ContainerContentChanging re-fires per
+    // recycled container, so this runs again whenever a row's content changes
+    // (including a fresh page landing).
+    private FrameworkElement BuildRowVisual(QueueRow? row) => row switch
+    {
+        ClearRow => BuildClearRow(),
+        SectionHeaderRow { Shuffled: null } header => QueueSectionLabel(header.Text),
+        SectionHeaderRow header => ContextSectionLabel(header.Text, header.Shuffled!.Value),
+        EntryRow entry => BuildEntryRow(entry),
+        EmptyManualRow => BuildEmptyDropArea(),
+        TrailingDropRow => BuildTrailingDropArea(),
+        _ => throw new ArgumentOutOfRangeException(nameof(row), row, "Unknown queue row kind"),
+    };
+
+    // Clear empties only the manual lane (the context survives), so it disables
+    // on an empty manual lane regardless of the context.
+    private Button BuildClearRow()
+    {
+        var clear = new Button
+        {
+            Content = Loc.Chrome("queue.clear"),
+            IsEnabled = _playback.ManualQueue.Count > 0,
+        };
+        clear.Click += (_, _) => _session.WithCurrentHandle(NativeBae.QueueClear);
+        return clear;
     }
 
     // The empty manual-lane state: a heading and a hint inside a drop-accepting
@@ -215,7 +404,7 @@ internal sealed class QueuePane
             TextAlignment = TextAlignment.Center,
             Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
         });
-        var area = new Border
+        return new Border
         {
             MinHeight = 96,
             Padding = new Thickness(16),
@@ -223,9 +412,15 @@ internal sealed class QueuePane
             Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
             Child = stack,
         };
-        AttachExternalDrop(area, _ => 0);
-        return area;
     }
+
+    // A drop strip below the manual lane's rows that appends at the lane's end,
+    // mirroring the reference platforms' trailing zone.
+    private static Border BuildTrailingDropArea() => new()
+    {
+        Height = 40,
+        Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent),
+    };
 
     // A plain section header for the queue pane (the manual "Up Next" lane, which
     // is never shuffled and has no shuffle control).
@@ -256,7 +451,7 @@ internal sealed class QueuePane
         {
             Content = new FontIcon
             {
-                Glyph = "",
+                Glyph = "",
                 FontSize = 14,
                 Foreground = shuffled
                     ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"]
@@ -274,76 +469,21 @@ internal sealed class QueuePane
         return row;
     }
 
-    // One lane's reorderable list: click skips, right-tap removes, drag reorders
-    // within the lane (the framework raises a Move, forwarded to core by entry id).
-    private ListView BuildQueueLaneList(IEnumerable<BridgeQueueEntry> items)
+    private static Grid BuildEntryRow(EntryRow row)
     {
-        var queueItems = new ObservableCollection<QueueEntryRow>(items.Select(item => new QueueEntryRow(item)));
-        queueItems.CollectionChanged += (_, args) =>
+        // The row's own visual is unchanged from the reference implementation;
+        // wrapping it lets ContainerContentChanging swap content per row kind
+        // while keeping ListView's own drag/reorder/right-tap plumbing above.
+        var grid = new Grid();
+        var text = new TextBlock
         {
-            if (args.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Move)
-            {
-                // The collection already reflects the move: resolve the entry and
-                // the id it now sits before (null when it's now last).
-                var move = QueueReorderModel.ResolveMove(
-                    queueItems.Select(row => row.EntryId).ToList(), args.NewStartingIndex);
-                _session.WithCurrentHandle(
-                    handle => NativeBae.QueueReorder(handle, move.MovedEntryId, move.BeforeEntryId));
-            }
+            Text = row.ToString(),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(0, 8, 0, 8),
         };
-
-        var list = new ListView
-        {
-            ItemsSource = queueItems,
-            SelectionMode = ListViewSelectionMode.None,
-            IsItemClickEnabled = true,
-            CanReorderItems = true,
-            CanDragItems = true,
-            AllowDrop = true,
-        };
-        list.ItemClick += (_, args) =>
-        {
-            if (args.ClickedItem is QueueEntryRow clicked)
-            {
-                _session.WithCurrentHandle(handle => NativeBae.QueueSkipTo(handle, clicked.EntryId));
-            }
-        };
-        // Right-tap a row to drop it from the queue. Removing locally too keeps the
-        // pane in sync; the Move-only reorder handler ignores this Remove.
-        list.RightTapped += (_, args) =>
-        {
-            if (args.OriginalSource is not FrameworkElement element
-                || element.DataContext is not QueueEntryRow item)
-            {
-                return;
-            }
-
-            var index = queueItems.IndexOf(item);
-            if (index < 0)
-            {
-                return;
-            }
-
-            var menu = new MenuFlyout();
-            var remove = new MenuFlyoutItem { Text = Loc.Chrome("queue.remove_item") };
-            remove.Click += (_, _) =>
-            {
-                // The generated bridge removes by entry id, so a reorder between the right-tap and
-                // the click can't target the wrong row. The local index is only to keep
-                // the pane's collection in sync.
-                var idx = queueItems.IndexOf(item);
-                if (idx < 0)
-                {
-                    return;
-                }
-                _session.WithCurrentHandle(handle => NativeBae.QueueRemove(handle, item.EntryId));
-                queueItems.RemoveAt(idx);
-            };
-            menu.Items.Add(remove);
-            menu.ShowAt(element, new FlyoutShowOptions { Position = args.GetPosition(element) });
-        };
-
-        return list;
+        grid.Children.Add(text);
+        return grid;
     }
 
     // Wire a surface to accept an external album-card drop into the manual lane.
@@ -436,22 +576,30 @@ internal sealed class QueuePane
     }
 
     // The manual-lane index a drop at the pointer inserts before: the position of
-    // the first realized row whose midpoint is below the pointer, else the end.
-    private static int ComputeInsertIndex(ListView laneList, IReadOnlyList<BridgeQueueEntry> manual, DragEventArgs e)
+    // the first realized manual row whose midpoint is below the pointer, else the
+    // lane's end. Realized indices are resolved against the flat row collection
+    // (offset by the leading Clear + header rows) and translated back to a
+    // manual-lane-relative index.
+    private static int ComputeInsertIndex(
+        ListView list, QueuePaneRowCollection rows, IReadOnlyList<BridgeQueueEntry> manual, DragEventArgs e)
     {
-        var pointerY = e.GetPosition(laneList).Y;
-        var rows = new List<RealizedRow>();
-        for (var i = 0; i < manual.Count; i++)
+        var pointerY = e.GetPosition(list).Y;
+        var realizedRows = new List<RealizedRow>();
+        var manualIndex = 0;
+        for (var flatIndex = 0; flatIndex < rows.Count; flatIndex++)
         {
-            // Virtualized rows have no container; skip them and let the model
-            // interpolate from the realized ones.
-            if (laneList.ContainerFromIndex(i) is FrameworkElement container)
+            if (rows[flatIndex] is not EntryRow { Lane: QueueLane.Manual })
             {
-                var top = container.TransformToVisual(laneList).TransformPoint(new Point(0, 0)).Y;
-                rows.Add(new RealizedRow(i, top + container.ActualHeight / 2));
+                continue;
             }
+            if (list.ContainerFromIndex(flatIndex) is FrameworkElement container)
+            {
+                var top = container.TransformToVisual(list).TransformPoint(new Point(0, 0)).Y;
+                realizedRows.Add(new RealizedRow(manualIndex, top + container.ActualHeight / 2));
+            }
+            manualIndex++;
         }
-        return QueueDropIndex.Insert(rows, pointerY, manual.Count);
+        return QueueDropIndex.Insert(realizedRows, pointerY, manual.Count);
     }
 
     // Resolve the dragged album/track ids to track ids and hand them to apply
@@ -494,6 +642,69 @@ internal sealed class QueuePane
         if (outcome.Empty)
         {
             BaeDiagnostics.Logger.Warning($"Queue drop resolved no tracks for ids [{string.Join(", ", ids)}].");
+        }
+    }
+
+    // The flat row collection backing the pane's single ListView. Paging is
+    // append-only (WinUI's incremental-loading contract only ever asks to load
+    // more at the END of the bound collection), which lines up with the context
+    // section always being the tail-most section: "near the end of the whole
+    // list" is exactly "near the end of the context tail." A reply is merged only
+    // if its revision still matches the revision this instance was built for;
+    // Rebuild always constructs a fresh instance on every QueueChanged, so a
+    // stale in-flight reply lands on an abandoned collection nobody renders.
+    private sealed class QueuePaneRowCollection : ObservableCollection<QueueRow>, ISupportIncrementalLoading
+    {
+        private readonly SessionStore _session;
+        private readonly ulong _revision;
+        private readonly ulong _contextTotal;
+        private ulong _contextLoadedCount;
+
+        public QueuePaneRowCollection(SessionStore session, ulong revision, ulong contextTotal)
+        {
+            _session = session;
+            _revision = revision;
+            _contextTotal = contextTotal;
+        }
+
+        // Called once from Rebuild after seeding the initial window, so
+        // HasMoreItems reflects what's already loaded before any paging.
+        public void MarkInitialContextLoad(ulong loadedCount) => _contextLoadedCount = loadedCount;
+
+        public bool HasMoreItems => _contextLoadedCount < _contextTotal;
+
+        public IAsyncOperation<LoadMoreItemsResult> LoadMoreItemsAsync(uint count) =>
+            LoadMoreItemsAsyncCore(count).AsAsyncOperation();
+
+        private async Task<LoadMoreItemsResult> LoadMoreItemsAsyncCore(uint count)
+        {
+            var offset = _contextLoadedCount;
+            var (current, resolved) = await _session.RunForCurrentHandle(
+                handle => NativeBae.QueueUpcomingPage(handle, checked((uint)offset), count));
+            if (!current)
+            {
+                return new LoadMoreItemsResult { Count = 0 };
+            }
+
+            var (page, error) = resolved;
+            if (error is not null)
+            {
+                BaeDiagnostics.Logger.Warning($"Failed to load upcoming queue page at offset {offset}: {error}");
+                return new LoadMoreItemsResult { Count = 0 };
+            }
+            if (page is null || page.Revision != _revision)
+            {
+                BaeDiagnostics.Logger.Warning(
+                    $"Dropping upcoming queue page at offset {offset}: fetched under a since-superseded revision.");
+                return new LoadMoreItemsResult { Count = 0 };
+            }
+
+            foreach (var entry in page.Entries)
+            {
+                Add(new EntryRow(QueueLane.Context, entry));
+            }
+            _contextLoadedCount += (ulong)page.Entries.Length;
+            return new LoadMoreItemsResult { Count = (uint)page.Entries.Length };
         }
     }
 }

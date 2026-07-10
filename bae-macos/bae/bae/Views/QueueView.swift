@@ -2,16 +2,20 @@ import BaeKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// Range fetched around an unloaded context row as the queue scrolls, mirroring
+/// the page size `PlaybackStore.loadUpcomingRange`'s bridge call uses.
+private let queueUpcomingLoadBatchSize = 100
+
 struct QueueView: View {
+    @Environment(PlaybackStore.self)
+    private var playbackStore
+    @Environment(Queue.self)
+    private var queue
+
     let isActive: Bool
     let nowPlayingTitle: String?
     let nowPlayingArtist: String?
     let nowPlayingCover: ImageContent?
-    /// The manual lane ("Up Next"): explicitly enqueued tracks, drained first.
-    let manual: [QueueItem]
-    /// The context (the release being played from), or `nil` when nothing plays
-    /// from a release. Rendered as a section distinct from the manual lane.
-    let context: QueuePlaybackContext?
     let onClose: () -> Void
     let onClear: () -> Void
     let onSkipTo: (String) -> Void
@@ -31,6 +35,14 @@ struct QueueView: View {
     @State
     private var draggedEntryId: String?
 
+    /// The manual lane ("Up Next"): explicitly enqueued tracks, drained first —
+    /// always resolved in full, never windowed.
+    private var manual: [QueueItem] { playbackStore.manualQueue }
+    /// The context (the release being played from), or `nil` when nothing plays
+    /// from a release. Rendered as a section distinct from the manual lane;
+    /// `upcomingTotal` may exceed what's currently loaded.
+    private var context: QueuePlaybackContext? { playbackStore.queueContext }
+
     private var isEmpty: Bool {
         // No context (nothing playing from a release) contributes no rows — a
         // normal state, named here rather than folded into a default.
@@ -38,7 +50,7 @@ struct QueueView: View {
         case .none:
             return manual.isEmpty
         case .some(let context):
-            return manual.isEmpty && context.upcoming.isEmpty
+            return manual.isEmpty && context.upcomingTotal == 0
         }
     }
 
@@ -72,15 +84,23 @@ struct QueueView: View {
             }
             else {
                 ScrollView {
-                    VStack(spacing: 0) {
+                    LazyVStack(spacing: 0) {
                         // The manual lane drains first, so it is shown first. It
                         // accepts external track drops (Play Next / Add to Queue
                         // land here); the context section, being the release's own
-                        // order, takes reorder/remove/skip only.
+                        // order, takes reorder/remove/skip only. It is always
+                        // fully resolved, so it never has a load hook or unloaded
+                        // rows.
                         QueueSection(
                             title: String(localized: "Up Next"),
                             shuffled: false,
-                            items: manual,
+                            count: manual.count,
+                            itemAt: { index in
+                                manual.indices.contains(index)
+                                    ? manual[index] : nil
+                            },
+                            loadEpoch: 0,
+                            loadRange: nil,
                             acceptsExternalDrops: true,
                             draggedEntryId: $draggedEntryId,
                             onSkipTo: onSkipTo,
@@ -90,11 +110,25 @@ struct QueueView: View {
                             onSetShuffle: nil,
                         )
 
-                        if let context, !context.upcoming.isEmpty {
+                        if let context, context.upcomingTotal > 0 {
+                            // The context tail is library-scaled and only
+                            // partly resolved (`upcomingItem` returns `nil` for
+                            // an index not yet loaded); the section renders a
+                            // placeholder for those rows and fetches the range
+                            // around them.
                             QueueSection(
                                 title: Self.contextSectionTitle(context.kind),
                                 shuffled: context.shuffled,
-                                items: context.upcoming,
+                                count: context.upcomingTotal,
+                                itemAt: { playbackStore.upcomingItem(at: $0) },
+                                loadEpoch: playbackStore.revision,
+                                loadRange: { offset, limit in
+                                    await playbackStore.loadUpcomingRange(
+                                        offset: offset,
+                                        limit: limit,
+                                        queue: queue
+                                    )
+                                },
                                 acceptsExternalDrops: false,
                                 draggedEntryId: $draggedEntryId,
                                 onSkipTo: onSkipTo,
@@ -189,15 +223,35 @@ struct QueueView: View {
 
 // MARK: - Section
 
+/// Row load identity: which section epoch (the store's queue revision, so a
+/// bump restarts every visible row's load task) and which absolute index. The
+/// manual lane, always fully loaded, passes a constant epoch and a `nil` load
+/// hook so its rows never fire a load.
+// periphery:ignore
+private struct QueueRowLoadID: Hashable {
+    let epoch: UInt64
+    let index: Int
+}
+
 /// One lane of the queue (the manual "Up Next" lane or the context), rendered as
-/// a labelled section of reorderable rows. Reorder/remove/skip operate by entry
-/// id within this lane's `items`; only the manual lane sets `acceptsExternalDrops`
-/// (external track drops land in the manual lane, never the release's own order).
-/// Hover and drop-insertion are positional, so each section owns its own state.
+/// a labelled section of reorderable rows addressed by absolute index —
+/// `itemAt(index)` resolves the loaded row, or `nil` for a not-yet-loaded
+/// context row, which renders a placeholder and triggers `loadRange`. Only the
+/// manual lane sets `acceptsExternalDrops` (external track drops land in the
+/// manual lane, never the release's own order). Hover and drop-insertion are
+/// positional, so each section owns its own state.
 private struct QueueSection: View {
     let title: String
     let shuffled: Bool
-    let items: [QueueItem]
+    let count: Int
+    let itemAt: (Int) -> QueueItem?
+    /// The store's queue revision — folded into each row's `.task(id:)` so a
+    /// queue change restarts in-flight loads rather than resolving into a
+    /// superseded window. Unused (fixed at 0) for the always-loaded manual lane.
+    let loadEpoch: UInt64
+    /// Fetch `[offset, offset + limit)` and merge it into the store. `nil` for
+    /// the manual lane, which is never windowed.
+    let loadRange: ((_ offset: Int, _ limit: Int) async -> Void)?
     let acceptsExternalDrops: Bool
     @Binding
     var draggedEntryId: String?
@@ -218,26 +272,41 @@ private struct QueueSection: View {
         VStack(spacing: 0) {
             sectionHeader
 
-            ForEach(Array(items.enumerated()), id: \.element.id) {
-                index,
-                item in
+            ForEach(0..<count, id: \.self) { index in
+                let item = itemAt(index)
                 VStack(spacing: 0) {
                     // Kept in the tree and toggled by opacity so showing the drop
                     // line doesn't change a row's size and re-lay-out the lane.
                     insertionLine
                         .opacity(dropInsertIndex == index ? 1 : 0)
                         .allowsHitTesting(false)
-                    queueItemRow(item, index: index)
+                    queueRow(item, index: index)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
-                        .opacity(draggedEntryId == item.id ? 0.3 : 1.0)
+                        .opacity(
+                            item != nil && draggedEntryId == item?.id
+                                ? 0.3 : 1.0
+                        )
                     Divider().padding(.leading, 62)
+                }
+                .task(id: QueueRowLoadID(epoch: loadEpoch, index: index)) {
+                    guard item == nil, let loadRange else {
+                        return
+                    }
+                    let first = max(0, index - queueUpcomingLoadBatchSize / 2)
+                    let end = min(
+                        first + queueUpcomingLoadBatchSize,
+                        count
+                    )
+                    await loadRange(first, end - first)
                 }
                 .onDrop(
                     of: [UTType.plainText],
                     delegate: QueueDropDelegate(
                         targetIndex: index,
-                        items: items,
+                        targetLoaded: item != nil,
+                        count: count,
+                        itemAt: itemAt,
                         acceptsExternalDrops: acceptsExternalDrops,
                         draggedEntryId: $draggedEntryId,
                         dropInsertIndex: $dropInsertIndex,
@@ -249,7 +318,7 @@ private struct QueueSection: View {
             // The trailing drop line (insert at the lane's end) stays in the tree
             // and toggles by opacity, matching the per-row lines above.
             insertionLine
-                .opacity(dropInsertIndex == items.count ? 1 : 0)
+                .opacity(dropInsertIndex == count ? 1 : 0)
                 .allowsHitTesting(false)
 
             // Trailing drop zone for appending — only the manual lane appends
@@ -259,8 +328,10 @@ private struct QueueSection: View {
                 .onDrop(
                     of: [UTType.plainText],
                     delegate: QueueDropDelegate(
-                        targetIndex: items.count,
-                        items: items,
+                        targetIndex: count,
+                        targetLoaded: true,
+                        count: count,
+                        itemAt: itemAt,
                         acceptsExternalDrops: acceptsExternalDrops,
                         draggedEntryId: $draggedEntryId,
                         dropInsertIndex: $dropInsertIndex,
@@ -337,6 +408,37 @@ private struct QueueSection: View {
         }
     }
 
+    /// A not-yet-loaded row: a skeleton shape, no text — `loadRange` is already
+    /// in flight for it via the row's `.task(id:)`.
+    private func queuePlaceholderRow() -> some View {
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(.secondary.opacity(0.15))
+                .frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 4) {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(.secondary.opacity(0.15))
+                    .frame(width: 140, height: 12)
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(.secondary.opacity(0.12))
+                    .frame(width: 90, height: 10)
+            }
+            Spacer()
+        }
+    }
+
+    /// A row at `index`: the resolved item, or a placeholder while it loads.
+    private func queueRow(_ item: QueueItem?, index: Int) -> some View {
+        Group {
+            if let item {
+                queueItemRow(item, index: index)
+            }
+            else {
+                queuePlaceholderRow()
+            }
+        }
+    }
+
     private func queueItemRow(_ item: QueueItem, index: Int) -> some View {
         HStack(spacing: 10) {
             queueItemArtWithHover(item, index: index)
@@ -401,7 +503,15 @@ private struct QueueSection: View {
 
 private struct QueueDropDelegate: DropDelegate {
     let targetIndex: Int
-    let items: [QueueItem]
+    /// Whether `itemAt(targetIndex)` is loaded. An internal reorder onto an
+    /// unloaded row is rejected — `onReorder` needs the target's own entry id
+    /// (core reorders by id, not index), which isn't known yet. In practice a
+    /// row must be visible (and its load task already running) to receive a
+    /// drop at all, so this only ever excludes a brief loading flash, not a
+    /// real position.
+    let targetLoaded: Bool
+    let count: Int
+    let itemAt: (Int) -> QueueItem?
     /// Whether external (non-row) track drops are accepted into this lane. The
     /// manual lane inserts them; the context lane ignores them (you can't add a
     /// track into the release's own order) and only handles internal reorders.
@@ -414,21 +524,25 @@ private struct QueueDropDelegate: DropDelegate {
     let onReorder: (_ entryId: String, _ beforeEntryId: String?) -> Void
     let onInsertTracks: ([String], Int) -> Void
 
+    /// The position of the dragged entry among this lane's *loaded* rows, or
+    /// `nil` if it isn't dragging from this lane.
+    private var fromIndex: Int? {
+        guard let draggedId = draggedEntryId else {
+            return nil
+        }
+        return (0..<count).first { itemAt($0)?.id == draggedId }
+    }
+
     /// Whether this is an internal reorder within this lane (the dragged entry is
     /// one of this lane's rows). A drag from the other lane is neither an internal
     /// reorder here nor a valid external track drop, so it is rejected (cross-lane
     /// reorder is a core no-op anyway).
     private var isInternalDrag: Bool {
-        guard let draggedId = draggedEntryId else {
-            return false
-        }
-        return items.contains { $0.id == draggedId }
+        fromIndex != nil
     }
 
     func dropEntered(info _: DropInfo) {
-        if let draggedId = draggedEntryId,
-            let fromIndex = items.firstIndex(where: { $0.id == draggedId })
-        {
+        if let fromIndex {
             // Internal reorder: show insertion line relative to source.
             if targetIndex > fromIndex {
                 dropInsertIndex = targetIndex + 1
@@ -448,7 +562,9 @@ private struct QueueDropDelegate: DropDelegate {
 
     func dropUpdated(info _: DropInfo) -> DropProposal? {
         if isInternalDrag {
-            return DropProposal(operation: .move)
+            return DropProposal(
+                operation: targetLoaded ? .move : .forbidden
+            )
         }
         return DropProposal(
             operation: acceptsExternalDrops ? .copy : .forbidden
@@ -456,17 +572,14 @@ private struct QueueDropDelegate: DropDelegate {
     }
 
     func performDrop(info: DropInfo) -> Bool {
-        if let draggedId = draggedEntryId,
-            let fromIndex = items.firstIndex(where: { $0.id == draggedId })
-        {
+        if let draggedId = draggedEntryId, let fromIndex, targetLoaded {
             // Internal reorder. `toIndex` is the gap the entry lands in; the
             // entry it lands before is whatever currently sits at that gap
             // (nil past the end = move to the lane's end).
             let toIndex =
                 targetIndex > fromIndex ? targetIndex + 1 : targetIndex
             if toIndex != fromIndex {
-                let beforeEntryId =
-                    toIndex < items.count ? items[toIndex].id : nil
+                let beforeEntryId = toIndex < count ? itemAt(toIndex)?.id : nil
                 onReorder(draggedId, beforeEntryId)
             }
             draggedEntryId = nil
@@ -539,22 +652,20 @@ private struct QueueDropDelegate: DropDelegate {
 
 extension QueueView {
     /// Preview builder — fixes the image resolver and the action callbacks
-    /// to inert defaults so a preview states only its queue state.
+    /// to inert defaults and injects `store` (queue state now flows through
+    /// `@Environment`, not by-value props) so a preview states only its queue.
     @MainActor
     static func preview(
         isActive: Bool,
         nowPlayingTitle: String?,
         nowPlayingArtist: String?,
-        manual: [QueueItem],
-        context: QueuePlaybackContext?
-    ) -> QueueView {
+        store: PlaybackStore
+    ) -> some View {
         QueueView(
             isActive: isActive,
             nowPlayingTitle: nowPlayingTitle,
             nowPlayingArtist: nowPlayingArtist,
             nowPlayingCover: nil,
-            manual: manual,
-            context: context,
             onClose: {},
             onClear: {},
             onSkipTo: { _ in },
@@ -563,6 +674,8 @@ extension QueueView {
             onInsertTracks: { _, _ in },
             onSetShuffle: { _ in }
         )
+        .environment(store)
+        .environment(Queue.stub)
     }
 }
 
@@ -573,12 +686,7 @@ extension QueueView {
         isActive: true,
         nowPlayingTitle: PreviewData.nowPlayingTitle,
         nowPlayingArtist: PreviewData.nowPlayingArtist,
-        manual: Array(PreviewData.queueItems.prefix(2)),
-        context: QueuePlaybackContext(
-            kind: .release,
-            shuffled: true,
-            upcoming: Array(PreviewData.queueItems.suffix(3))
-        )
+        store: PreviewData.queueStore(manualCount: 2, shuffled: true)
     )
     .frame(width: 350, height: 500)
     .environment(MediaPaths.stub)
@@ -589,8 +697,7 @@ extension QueueView {
         isActive: false,
         nowPlayingTitle: nil,
         nowPlayingArtist: nil,
-        manual: [],
-        context: nil
+        store: PreviewData.queueStore(manualCount: 0, context: nil)
     )
     .frame(width: 350, height: 400)
     .environment(MediaPaths.stub)

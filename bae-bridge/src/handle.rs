@@ -21,10 +21,10 @@ use crate::types::{
     BridgeArtistSortCriterion, BridgeArtistSummary, BridgeComposerDetail,
     BridgeComposerSortCriterion, BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig,
     BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource,
-    BridgeMetadataSource, BridgeQueueSnapshot, BridgeRelease, BridgeReleaseRoleSummary,
-    BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults,
-    BridgeSortCriterion, BridgeStorageFilter, BridgeStoragePage, BridgeStorageRow,
-    BridgeStorageSort, BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup,
+    BridgeMetadataSource, BridgeQueueSnapshot, BridgeQueueUpcomingPage, BridgeRelease,
+    BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig,
+    BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter, BridgeStoragePage,
+    BridgeStorageRow, BridgeStorageSort, BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup,
     BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary,
     BridgeWorkSummary, BridgeWorkTrackSummary,
 };
@@ -457,6 +457,25 @@ impl AppHandle {
             .await
             .map_err(BridgeError::internal)?;
         Ok(BridgeQueueSnapshot::from_core(snapshot))
+    }
+
+    /// A page of the context's upcoming tail past the window
+    /// `get_queue_snapshot`/`QueueUpdated` already carry. `offset` 0 is the
+    /// first not-yet-played entry after the current track — the same
+    /// coordinate space as `BridgePlaybackContext.upcoming`. The reply's
+    /// `revision` lets the caller drop a page answered for a since-superseded
+    /// queue state.
+    pub async fn get_queue_upcoming_page(
+        &self,
+        offset: u32,
+        limit: u32,
+    ) -> Result<BridgeQueueUpcomingPage, BridgeError> {
+        let page = self
+            .services
+            .get_queue_upcoming_page(offset, limit)
+            .await
+            .map_err(BridgeError::internal)?;
+        Ok(BridgeQueueUpcomingPage::from_core(page))
     }
 
     /// Resolve a list of IDs (album or track) to track IDs.
@@ -1976,6 +1995,7 @@ impl crate::types::BridgePlaybackContext {
             source,
             shuffled,
             upcoming,
+            upcoming_total,
         } = context;
         crate::types::BridgePlaybackContext {
             kind: crate::types::BridgePlaybackSourceKind::from_core(&source),
@@ -1984,6 +2004,7 @@ impl crate::types::BridgePlaybackContext {
                 .into_iter()
                 .map(crate::types::BridgeQueueEntry::from_core)
                 .collect(),
+            upcoming_total,
         }
     }
 }
@@ -1995,6 +2016,7 @@ impl crate::types::BridgeQueueSnapshot {
             context,
             has_next,
             has_previous,
+            revision,
         } = snapshot;
         crate::types::BridgeQueueSnapshot {
             manual: manual
@@ -2004,6 +2026,20 @@ impl crate::types::BridgeQueueSnapshot {
             context: context.map(crate::types::BridgePlaybackContext::from_core),
             has_next,
             has_previous,
+            revision,
+        }
+    }
+}
+
+impl crate::types::BridgeQueueUpcomingPage {
+    fn from_core(page: bae_core::queue::ResolvedQueueUpcomingPage) -> Self {
+        let bae_core::queue::ResolvedQueueUpcomingPage { revision, items } = page;
+        crate::types::BridgeQueueUpcomingPage {
+            revision,
+            entries: items
+                .into_iter()
+                .map(crate::types::BridgeQueueEntry::from_core)
+                .collect(),
         }
     }
 }

@@ -18,6 +18,14 @@ public final class Queue: Sendable, Observable {
     public let skipToEntry: @Sendable (_ entryId: String) -> Void
     /// Flip the playing context between sequential and shuffled order.
     public let setShuffle: @Sendable (_ on: Bool) -> Void
+    /// Fetch one page of the context's upcoming tail past the initial window
+    /// `get_queue_snapshot`/`QueueUpdated` already carry. `offset` 0 is the
+    /// first not-yet-played entry after the current track. Called by
+    /// `PlaybackStore.loadUpcomingRange` as the queue view scrolls; not a
+    /// mutation, so it has no corresponding `QueueUpdated` event.
+    public let getUpcomingPage:
+        @Sendable (_ offset: UInt32, _ limit: UInt32) async throws ->
+            BridgeQueueUpcomingPage
 
     public init(
         addToQueue: @escaping @Sendable ([String]) -> Void = { _ in },
@@ -33,7 +41,12 @@ public final class Queue: Sendable, Observable {
         reorderEntry: @escaping @Sendable (String, String?) -> Void = { _, _ in
         },
         skipToEntry: @escaping @Sendable (String) -> Void = { _ in },
-        setShuffle: @escaping @Sendable (Bool) -> Void = { _ in }
+        setShuffle: @escaping @Sendable (Bool) -> Void = { _ in },
+        getUpcomingPage:
+            @escaping @Sendable (UInt32, UInt32) async throws ->
+            BridgeQueueUpcomingPage = { _, _ in
+                BridgeQueueUpcomingPage(revision: 0, entries: [])
+            }
     ) {
         self.addToQueue = addToQueue
         self.addNext = addNext
@@ -45,6 +58,7 @@ public final class Queue: Sendable, Observable {
         self.reorderEntry = reorderEntry
         self.skipToEntry = skipToEntry
         self.setShuffle = setShuffle
+        self.getUpcomingPage = getUpcomingPage
     }
 
     public convenience init(handle: any AppHandleProtocol) {
@@ -60,7 +74,10 @@ public final class Queue: Sendable, Observable {
                 handle.reorderEntry(entryId: $0, beforeEntryId: $1)
             },
             skipToEntry: { handle.skipToEntry(entryId: $0) },
-            setShuffle: { handle.setShuffle(on: $0) }
+            setShuffle: { handle.setShuffle(on: $0) },
+            getUpcomingPage: {
+                try await handle.getQueueUpcomingPage(offset: $0, limit: $1)
+            }
         )
     }
 

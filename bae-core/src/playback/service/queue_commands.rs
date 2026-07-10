@@ -27,6 +27,7 @@ impl PlaybackService {
             has_next: self.playback_queue.has_upcoming()
                 || self.playback_queue.repeat_mode() != RepeatMode::Off,
             has_previous: self.playback_queue.has_previous(),
+            revision: self.playback_queue.revision(),
         }
     }
 

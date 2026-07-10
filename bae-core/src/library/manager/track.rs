@@ -91,24 +91,43 @@ impl LibraryManager {
         Ok(self.database.get_queue_items(entries).await?)
     }
 
+    /// Resolve the manual lane in full plus only the first
+    /// `QUEUE_UPCOMING_WINDOW` entries of the context's upcoming tail — the
+    /// tail is library-scaled (a `Library` source's tail is every remaining
+    /// library track), so only the window is ever resolved here; the rest
+    /// pages in on demand via `AppServices::get_queue_upcoming_page`. Slicing
+    /// before resolving (rather than resolving the whole tail and slicing
+    /// after) is the point: it's what keeps this bounded regardless of
+    /// library size.
     pub async fn resolve_queue_projection(
         &self,
         projection: crate::playback::PlaybackQueueProjection,
     ) -> Result<crate::queue::ResolvedQueueSnapshot, LibraryError> {
-        let context_entries: Vec<_> = projection
+        let upcoming_total = projection
             .context
-            .iter()
-            .flat_map(|c| c.upcoming.iter().cloned())
-            .collect();
+            .as_ref()
+            .map(|c| c.upcoming.len() as u64)
+            .unwrap_or(0);
+        let context_window: Vec<_> = projection
+            .context
+            .as_ref()
+            .map(|c| {
+                c.upcoming
+                    .iter()
+                    .take(crate::queue::QUEUE_UPCOMING_WINDOW)
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
         let combined: Vec<_> = projection
             .manual
             .iter()
-            .chain(context_entries.iter())
+            .chain(context_window.iter())
             .cloned()
             .collect();
         let items = self.get_queue_items(&combined).await?;
         let context_ids: std::collections::HashSet<&str> =
-            context_entries.iter().map(|e| e.id.0.as_str()).collect();
+            context_window.iter().map(|e| e.id.0.as_str()).collect();
         let (context_items, manual_items): (Vec<_>, Vec<_>) = items
             .into_iter()
             .partition(|i| context_ids.contains(i.entry_id.as_str()));
@@ -118,9 +137,11 @@ impl LibraryManager {
                 source: c.source,
                 shuffled: c.shuffled,
                 upcoming: context_items,
+                upcoming_total,
             }),
             has_next: projection.has_next,
             has_previous: projection.has_previous,
+            revision: projection.revision,
         })
     }
 

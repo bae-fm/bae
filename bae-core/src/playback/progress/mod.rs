@@ -27,6 +27,10 @@ pub struct PlaybackQueueProjection {
     pub context: Option<crate::playback::ContextProjection>,
     pub has_next: bool,
     pub has_previous: bool,
+    /// The `PlaybackQueue` revision this projection was read at. Stamped onto
+    /// the resolved snapshot and onto every upcoming-page fetch so a UI can
+    /// tell whether a page still corresponds to the queue it is rendering.
+    pub revision: u64,
 }
 
 /// Progress updates during playback.

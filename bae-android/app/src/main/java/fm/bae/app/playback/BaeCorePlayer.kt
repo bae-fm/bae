@@ -21,6 +21,7 @@ import fm.bae.app.formatDurationMs
 import fm.bae.app.runLoggedBridgeCommand
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,21 +77,35 @@ data class QueueItem(
     val coverImageId: String?,
 )
 
-/** The context lane (the release being played from): its not-yet-played tail,
- *  plus whether it was ordered by shuffle (the UI shows a shuffle indicator when
- *  so). Rendered as a section distinct from the manual lane. */
+/** The context lane (the release being played from): the first page of its
+ *  not-yet-played tail, the tail's full length, further pages fetched via
+ *  [fm.bae.app.playback.BaeCorePlayer.loadUpcomingRange], plus whether it was
+ *  ordered by shuffle (the UI shows a shuffle indicator when so). Rendered as a
+ *  section distinct from the manual lane.
+ *
+ *  [upcoming] is only the initial window core resolved eagerly — the tail is
+ *  library-scaled. [pagedUpcoming] holds indices fetched past that window,
+ *  keyed by absolute index; [itemAt] reads either uniformly. */
 data class QueueContext(
     val kind: BridgePlaybackSourceKind,
     val shuffled: Boolean,
     val upcoming: List<QueueItem>,
-)
+    val upcomingTotal: Int,
+    val pagedUpcoming: Map<Int, QueueItem> = emptyMap(),
+) {
+    fun itemAt(index: Int): QueueItem? = upcoming.getOrNull(index) ?: pagedUpcoming[index]
+}
 
 /** The queue's two lanes the [fm.bae.app.ui.QueueScreen] renders as distinct
  *  sections: the manual lane ("Up Next") and the [context] (or null when nothing
- *  plays from a release). Kept separate, not flattened. */
+ *  plays from a release). Kept separate, not flattened. [revision] is the queue
+ *  revision this projection was built from — a UI stamps its
+ *  [BaeCorePlayer.loadUpcomingRange] fetches against it and drops a reply
+ *  computed under a since-superseded revision. */
 data class QueueProjection(
     val manual: List<QueueItem>,
     val context: QueueContext?,
+    val revision: ULong = 0u,
 ) {
     companion object {
         val EMPTY = QueueProjection(manual = emptyList(), context = null)
@@ -135,6 +150,7 @@ interface PlaybackEventSink {
         context: BridgePlaybackContext?,
         hasNext: Boolean,
         hasPrevious: Boolean,
+        revision: ULong,
     )
 
     fun onVolumeChanged(volume: Float)
@@ -427,7 +443,10 @@ class BaeCorePlayer(
     internal data class ContextLane(
         val kind: BridgePlaybackSourceKind,
         val shuffled: Boolean,
+        /** The initial window resolved eagerly by core — not the whole
+         *  (library-scaled) tail. See [upcomingTotal]. */
         val entries: List<Meta>,
+        val upcomingTotal: Int,
     )
 
     internal companion object {
@@ -554,6 +573,23 @@ class BaeCorePlayer(
      *  lane is null when nothing plays from a release/library. */
     private var manualEntries: List<Meta> = emptyList()
     private var contextLane: ContextLane? = null
+
+    /** Context-tail entries fetched past [ContextLane.entries]'s initial window,
+     *  keyed by absolute index. Reset wholesale on every `QueueUpdated` — that
+     *  event is the invalidation signal for this ephemeral view cache, not
+     *  durable state to reconcile incrementally. */
+    private var pagedUpcoming: Map<Int, QueueItem> = emptyMap()
+
+    /** The queue revision the current [manualEntries]/[contextLane] were built
+     *  from. Stamped onto every [loadUpcomingRange] fetch so a reply computed
+     *  under a since-superseded revision is dropped rather than merged. */
+    private var queueRevision: ULong = 0u
+
+    /** In-flight [loadUpcomingRange] fetches, keyed "offset:end:revision", so
+     *  concurrent callers asking for the same range (every visible row in a
+     *  batch window composing at once) coalesce onto one bridge call instead of
+     *  each issuing a duplicate. */
+    private val inFlightUpcomingLoads = mutableMapOf<String, Job>()
 
     /** Authoritative now-playing metadata from the latest Playing/Paused payload. */
     private var currentMeta: Meta? = null
@@ -880,6 +916,7 @@ class BaeCorePlayer(
         context: BridgePlaybackContext?,
         hasNext: Boolean,
         hasPrevious: Boolean,
+        revision: ULong,
     ) {
         val manualMetas = manual.map { it.toEntry() }
         val lane =
@@ -888,14 +925,85 @@ class BaeCorePlayer(
                     kind = it.kind,
                     shuffled = it.shuffled,
                     entries = it.upcoming.map { entry -> entry.toEntry() },
+                    upcomingTotal = it.upcomingTotal.toInt(),
                 )
             }
         manualEntries = manualMetas
         contextLane = lane
+        // The event is the invalidation signal: every previously fetched page is
+        // dropped, not reconciled against the new snapshot.
+        pagedUpcoming = emptyMap()
+        queueRevision = revision
         entries = manualMetas + (lane?.entries ?: emptyList())
         this.hasNext = hasNext
         this.hasPrevious = hasPrevious
         publish()
+    }
+
+    /**
+     * Whether the context tail's absolute [index] is already loaded, either in
+     * the initial window or [pagedUpcoming].
+     */
+    private fun upcomingItemLoaded(index: Int): Boolean {
+        val lane = contextLane ?: return false
+        return lane.entries.getOrNull(index)?.toQueueItem() != null || pagedUpcoming.containsKey(index)
+    }
+
+    /**
+     * Fetch `[offset, offset + limit)` of the context's upcoming tail and merge
+     * it into [pagedUpcoming]. A no-op if the range is already loaded. The reply
+     * is applied only if its revision still matches [queueRevision]; a mismatch
+     * means a `QueueUpdated` for a newer queue state arrived while the fetch was
+     * in flight, and that event's wholesale reset already replaced the
+     * projection, so the reply is dropped rather than merged. Fetch failures are
+     * never swallowed silently: logged at warn with the failed range — a page
+     * fetch is background prefetch, not a user-initiated action with its own
+     * error-display path.
+     */
+    suspend fun loadUpcomingRange(
+        offset: Int,
+        limit: Int,
+    ) {
+        val lane = contextLane ?: return
+        val end = minOf(offset + limit, lane.upcomingTotal)
+        if (offset >= end) return
+        if ((offset until end).all { upcomingItemLoaded(it) }) return
+
+        val key = "$offset:$end:$queueRevision"
+        val existing = inFlightUpcomingLoads[key]
+        if (existing != null) {
+            existing.join()
+            return
+        }
+        val job = scope.launch { fetchUpcomingRange(offset, end) }
+        inFlightUpcomingLoads[key] = job
+        job.join()
+        inFlightUpcomingLoads.remove(key)
+    }
+
+    private suspend fun fetchUpcomingRange(
+        offset: Int,
+        end: Int,
+    ) {
+        try {
+            val page = appHandle.getQueueUpcomingPage(offset.toUInt(), (end - offset).toUInt())
+            if (page.revision != queueRevision) {
+                logger.warning(
+                    "dropping upcoming page for [$offset, $end): fetched under a since-superseded revision",
+                )
+                return
+            }
+            val loaded =
+                page.entries
+                    .mapIndexedNotNull { i, entry -> entry.toEntry().toQueueItem()?.let { (offset + i) to it } }
+                    .toMap()
+            pagedUpcoming = pagedUpcoming + loaded
+            publish()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.error("failed to load upcoming range [$offset, $end)", e)
+        }
     }
 
     /**
@@ -922,8 +1030,11 @@ class BaeCorePlayer(
                             kind = lane.kind,
                             shuffled = lane.shuffled,
                             upcoming = lane.entries.mapNotNull { it.toQueueItem() },
+                            upcomingTotal = lane.upcomingTotal,
+                            pagedUpcoming = pagedUpcoming,
                         )
                     },
+                revision = queueRevision,
             )
     }
 

@@ -105,6 +105,15 @@ pub struct PlaybackQueue {
     current: Option<QueueEntry>,
     repeat: RepeatMode,
     ids: IdRef,
+    /// Bumped by every mutation that changes the projected queue (enqueue,
+    /// insert, remove, reorder, clear, advance/previous/skip-to, context
+    /// set/replace, restore) — never by a read. Lets a UI that fetched a page
+    /// of the upcoming tail tell whether the page still corresponds to the
+    /// queue it is rendering: the page is stamped with the revision it was
+    /// computed from, and a fetch answered under a since-bumped revision is
+    /// stale and must be dropped. Only `PlaybackQueue` bumps it — it is the
+    /// single authority on the queue's contents.
+    revision: u64,
 }
 
 impl PlaybackQueue {
@@ -115,6 +124,7 @@ impl PlaybackQueue {
             current: None,
             repeat: RepeatMode::Off,
             ids,
+            revision: 0,
         }
     }
 
@@ -147,6 +157,7 @@ impl PlaybackQueue {
             let entry = self.mint(track_id);
             self.manual.push_back(entry);
         }
+        self.revision += 1;
     }
 
     /// Add track ids to the front of the manual lane (play next), minting ids.
@@ -155,6 +166,7 @@ impl PlaybackQueue {
             let entry = self.mint(track_id);
             self.manual.push_front(entry);
         }
+        self.revision += 1;
     }
 
     /// Insert track ids at a position in the manual lane, minting ids.
@@ -164,12 +176,14 @@ impl PlaybackQueue {
             let entry = self.mint(track_id);
             self.manual.insert(pos + i, entry);
         }
+        self.revision += 1;
     }
 
     /// Clear the manual lane. The context (the release being played from) is
     /// left intact — matching "Clear" leaving "Continue Playing".
     pub fn clear(&mut self) {
         self.manual.clear();
+        self.revision += 1;
     }
 
     // -- Context ---------------------------------------------------------------
@@ -236,6 +250,7 @@ impl PlaybackQueue {
         let track = context.current().track_id.clone();
         self.current = Some(context.current().clone());
         self.context = Some(context);
+        self.revision += 1;
         track
     }
 
@@ -245,6 +260,7 @@ impl PlaybackQueue {
         self.manual.clear();
         self.context = None;
         self.current = Some(self.mint(track_id));
+        self.revision += 1;
     }
 
     /// Set the playing context to sequential or shuffled order while the playing
@@ -287,6 +303,7 @@ impl PlaybackQueue {
             cursor,
             traversal,
         });
+        self.revision += 1;
     }
 
     // -- Persistence -----------------------------------------------------------
@@ -341,6 +358,7 @@ impl PlaybackQueue {
         } else {
             self.current = None;
         }
+        self.revision += 1;
     }
 
     // -- id-based operations across both lanes ---------------------------------
@@ -383,6 +401,7 @@ impl PlaybackQueue {
             if self.current.as_ref().is_some_and(|c| c.id == removed.id) {
                 self.current = None;
             }
+            self.revision += 1;
         }
         removed
     }
@@ -414,6 +433,7 @@ impl PlaybackQueue {
                     .expect("reorder: located index in bounds");
                 let insert_at = before_insert_index(before_pos, from, self.manual.len());
                 self.manual.insert(insert_at, entry);
+                self.revision += 1;
             }
             Some(EntryLocation::Context(from)) => {
                 let ctx = self
@@ -440,6 +460,7 @@ impl PlaybackQueue {
                     .iter()
                     .position(|e| e.id == cursor_id)
                     .expect("reorder: the cursor entry is still present after reinsert");
+                self.revision += 1;
             }
             None => warn!("reorder: queue entry id not found: {}", id.0),
         }
@@ -458,6 +479,7 @@ impl PlaybackQueue {
                     .next_back()
                     .expect("locate reported a manual entry");
                 self.current = Some(entry.clone());
+                self.revision += 1;
                 Some(entry)
             }
             Some(EntryLocation::Context(pos)) => {
@@ -499,12 +521,16 @@ impl PlaybackQueue {
                 self.current = None;
             }
         }
+        self.revision += 1;
     }
 
     // -- Advance / retreat -----------------------------------------------------
 
     /// Move the context cursor to `cursor`, make that entry current, and return
-    /// its track id. The context is present and `cursor` is in range.
+    /// its track id. The context is present and `cursor` is in range. The single
+    /// leaf mutator behind every cursor movement (advance, previous, skip-to-context,
+    /// context-repeat loop), so it is the one place that bumps the revision for
+    /// all of them.
     fn play_context_at(&mut self, cursor: usize) -> String {
         let ctx = self
             .context
@@ -514,6 +540,7 @@ impl PlaybackQueue {
         let entry = ctx.current().clone();
         let track = entry.track_id.clone();
         self.current = Some(entry);
+        self.revision += 1;
         track
     }
 
@@ -566,6 +593,7 @@ impl PlaybackQueue {
         if let Some(entry) = self.manual.pop_front() {
             let track = entry.track_id.clone();
             self.current = Some(entry);
+            self.revision += 1;
             return Some(track);
         }
         let next = {
@@ -686,6 +714,12 @@ impl PlaybackQueue {
 
     pub fn current_track_id(&self) -> Option<&str> {
         self.current.as_ref().map(|e| e.track_id.as_str())
+    }
+
+    /// Monotonic counter bumped by every mutation that changes the projected
+    /// queue, never by a read. See the field doc for what it's for.
+    pub fn revision(&self) -> u64 {
+        self.revision
     }
 
     /// What the playing context plays from (a release or the library), or `None`
@@ -1588,6 +1622,84 @@ mod tests {
             q.current_track_id(),
             None,
             "removing the playing context entry clears current"
+        );
+    }
+
+    // -- revision ---------------------------------------------------------------
+
+    /// Every mutating op bumps the revision; reads never do.
+    #[test]
+    fn test_revision_bumps_on_mutations_not_reads() {
+        let mut q = queue();
+        assert_eq!(q.revision(), 0);
+
+        q.add_to_queue(rel(&["a", "b"]));
+        assert_eq!(q.revision(), 1, "add_to_queue bumps");
+
+        // Reads never bump.
+        let _ = q.upcoming();
+        let _ = q.front();
+        let _ = q.has_upcoming();
+        let _ = q.context_projection();
+        let _ = q.manual_entries();
+        assert_eq!(q.revision(), 1, "reads never bump");
+
+        let id = manual_ids(&q)[0].clone();
+        q.reorder(&id, None);
+        assert_eq!(q.revision(), 2, "reorder bumps");
+
+        q.remove(&id);
+        assert_eq!(q.revision(), 3, "remove bumps");
+
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3"]),
+            ContextStart::Index(0),
+        );
+        assert_eq!(q.revision(), 4, "play_release bumps");
+
+        q.next_entry();
+        assert_eq!(q.revision(), 5, "advancing to the next track bumps");
+
+        q.previous_action(1000);
+        assert_eq!(q.revision(), 6, "stepping back bumps");
+
+        let ctx_id = q.upcoming()[0].id.clone();
+        q.skip_to(&ctx_id);
+        assert_eq!(q.revision(), 7, "skip_to a context entry bumps");
+
+        q.set_shuffle(true, rel(&["t1", "t2", "t3"]), 7);
+        assert_eq!(q.revision(), 8, "set_shuffle bumps");
+
+        q.clear();
+        assert_eq!(q.revision(), 9, "clear bumps");
+    }
+
+    /// Unknown ids and other documented no-ops don't bump the revision.
+    #[test]
+    fn test_revision_unchanged_on_noops() {
+        let mut q = queue();
+        q.add_to_queue(rel(&["a"]));
+        let after_add = q.revision();
+
+        assert_eq!(q.remove(&QueueEntryId("nope".into())), None);
+        assert_eq!(q.revision(), after_add, "unknown remove id doesn't bump");
+
+        q.reorder(&QueueEntryId("nope".into()), None);
+        assert_eq!(
+            q.revision(),
+            after_add,
+            "unknown reorder source doesn't bump"
+        );
+
+        assert_eq!(q.skip_to(&QueueEntryId("nope".into())), None);
+        assert_eq!(q.revision(), after_add, "unknown skip_to id doesn't bump");
+
+        q.set_shuffle(true, rel(&["x"]), 1);
+        assert_eq!(
+            q.revision(),
+            after_add,
+            "set_shuffle with no playing context doesn't bump"
         );
     }
 

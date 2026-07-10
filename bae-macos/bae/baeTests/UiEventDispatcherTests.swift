@@ -194,10 +194,12 @@ struct UiEventDispatcherQueueTests {
                         shuffled: false,
                         upcoming: [
                             makeEntry(entryId: "upcoming-1", trackId: "track-2")
-                        ]
+                        ],
+                        upcomingTotal: 1
                     ),
                     hasNext: true,
-                    hasPrevious: false
+                    hasPrevious: false,
+                    revision: 1
                 )
             )
         )
@@ -233,7 +235,8 @@ struct UiEventDispatcherQueueTests {
             manual: [makeEntry(entryId: "manual-2", trackId: "track-3")],
             context: nil,
             hasNext: false,
-            hasPrevious: true
+            hasPrevious: true,
+            revision: 1
         )
         let appService = makeAppService(handle: handle)
         appService.registerCommonProjections()
@@ -439,7 +442,8 @@ private let handledEvents: [BridgeUiEvent] = [
             manual: [],
             context: nil,
             hasNext: false,
-            hasPrevious: false
+            hasPrevious: false,
+            revision: 1
         )
     ),
     .queueItemsAdded(count: 1),
