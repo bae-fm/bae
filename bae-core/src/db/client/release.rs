@@ -328,6 +328,28 @@ impl Database {
         .await
     }
 
+    /// Sum of `total_size` over every storage row matching `filter` — the
+    /// figure the storage-manager footer shows as "Total:", independent of
+    /// how many pages of the filtered list have loaded. Mirrors the filter
+    /// logic of `get_storage_page`/`get_storage_count`. A release with no
+    /// files contributes nothing via the inner join, matching a page row's
+    /// own `COALESCE(SUM(...), 0)` for `total_size`.
+    pub async fn get_storage_total_size(&self, filter: StorageFilter) -> Result<u64, DbError> {
+        let where_clause = storage_filter_where(filter);
+        let query = format!(
+            "SELECT COALESCE(SUM(rf.file_size), 0) \
+             FROM releases r JOIN release_files rf ON rf.release_id = r.id \
+             {where_clause}"
+        );
+
+        self.call(move |conn| {
+            conn.query_row(&query, [], |row| row.get::<_, i64>(0))
+                .map(|c| c as u64)
+                .map_err(DbError::from)
+        })
+        .await
+    }
+
     /// Paginated storage-page query. Joins releases × albums × (optional)
     /// primary-artist sort table; both halves of the returned row are the
     /// raw aggregates the resolver maps to `ReleaseSummary` / `AlbumSummary`.

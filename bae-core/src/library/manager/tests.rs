@@ -2024,6 +2024,125 @@ async fn storage_count_matches_filtered_page_total() {
     assert_eq!(local_page.rows[0].release.id, inserted_local.unwrap());
 }
 
+/// `get_storage_total_size` sums `total_size` over every storage row matching
+/// `filter` — the same universe `get_storage_page` pages over — independent of
+/// how many pages have loaded. For each filter, the aggregate must equal the
+/// sum of `total_size` over that filter's full (unpaginated) storage page.
+#[tokio::test]
+async fn storage_total_size_matches_page_total_size_sum() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+
+    // Three releases: one local, one remote-and-quiet, one remote-and-uploading
+    // (an "uploading" release stays remote — the cloud copy is still landing).
+    let album_local = create_test_album();
+    let album_remote = create_test_album();
+    let album_uploading = create_test_album();
+    let mut release_local = create_test_release(&album_local.id);
+    release_local.remote = false;
+    let release_remote = create_test_release(&album_remote.id);
+    let release_uploading = create_test_release(&album_uploading.id);
+
+    manager.database.insert_album(&album_local).await.unwrap();
+    manager.database.insert_album(&album_remote).await.unwrap();
+    manager
+        .database
+        .insert_album(&album_uploading)
+        .await
+        .unwrap();
+    manager
+        .database
+        .insert_release(&release_local)
+        .await
+        .unwrap();
+    manager
+        .database
+        .insert_release(&release_remote)
+        .await
+        .unwrap();
+    manager
+        .database
+        .insert_release(&release_uploading)
+        .await
+        .unwrap();
+
+    for (release_id, file_size) in [
+        (&release_local.id, 1_000i64),
+        (&release_remote.id, 100),
+        (&release_uploading.id, 10_000),
+    ] {
+        let file = DbFile {
+            id: format!("{release_id}-file"),
+            release_id: release_id.clone(),
+            original_filename: "a.flac".to_string(),
+            file_size,
+            content_type: crate::util::content_type::ContentType::Flac,
+            cloud_path: None,
+            created_at: Utc::now(),
+        };
+        manager.database.insert_file(&file).await.unwrap();
+    }
+    manager
+        .database
+        .add_cloud_outbox_upload(
+            &format!("{}-file", release_uploading.id),
+            "cloud-key",
+            None,
+            false,
+        )
+        .await
+        .unwrap();
+
+    for filter in [
+        StorageFilter::All,
+        StorageFilter::Local,
+        StorageFilter::Remote,
+        StorageFilter::Uploading,
+    ] {
+        let page = manager
+            .get_storage_page(&sort_by_album_title_asc(), filter, 0, 10)
+            .await
+            .unwrap();
+        let page_sum: i64 = page.rows.iter().map(|row| row.release.total_size).sum();
+
+        let aggregate = manager.get_storage_total_size(filter).await.unwrap();
+        assert_eq!(
+            aggregate, page_sum as u64,
+            "{filter:?}: aggregate must equal the page's own total_size sum"
+        );
+    }
+
+    // Concrete expectations, so a bug that moves the *same* wrong figure on
+    // both sides doesn't slip through.
+    assert_eq!(
+        manager
+            .get_storage_total_size(StorageFilter::All)
+            .await
+            .unwrap(),
+        11_100
+    );
+    assert_eq!(
+        manager
+            .get_storage_total_size(StorageFilter::Local)
+            .await
+            .unwrap(),
+        1_000
+    );
+    assert_eq!(
+        manager
+            .get_storage_total_size(StorageFilter::Remote)
+            .await
+            .unwrap(),
+        10_100
+    );
+    assert_eq!(
+        manager
+            .get_storage_total_size(StorageFilter::Uploading)
+            .await
+            .unwrap(),
+        10_000
+    );
+}
+
 /// Connect a real `SyncManager` over an in-memory cloud home (opaque,
 /// encrypted) so the manager's cloud read/write/transition paths run against
 /// it — the in-module counterpart of the integration tests' `setup_with_cloud`.

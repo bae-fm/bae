@@ -402,6 +402,7 @@
   <data name="storage.column.files" xml:space="preserve"><value>檔案</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>大小</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, other {# 個發行}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>總計：{size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>移除</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>從此電腦移除此資料庫及其已下載的檔案。雲端中的資料庫保持不變——您稍後可以從這裡還原它。</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>此資料庫尚未同步。移除它將永久刪除其目錄——專輯、元資料編輯和播放紀錄。您資料夾中的音訊檔案不會被刪除。</value></data>

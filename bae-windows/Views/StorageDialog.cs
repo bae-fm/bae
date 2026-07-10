@@ -395,10 +395,16 @@ internal sealed class StorageDialog
                 StyleTab(button, tab == activeTab);
             }
             RenderHeader();
-            // The per-release total-size sum isn't available without fetching
-            // every matching row (defeating the point of paging), so the footer
-            // now reports only the release count.
-            footer.Text = Loc.Chrome("storage.footer.releases", "count", checked((long)totalCount));
+            var releasesText = Loc.Chrome("storage.footer.releases", "count", checked((long)totalCount));
+            // The core aggregate sums file sizes over every release matching
+            // the tab, independent of how many pages have loaded. Shown only
+            // once fetched — absence, not a zero/partial stand-in, while a
+            // stale session drops the fetch.
+            var (sizeCurrent, totalSize) = await _session.RunForCurrentHandle(
+                handle => NativeBae.StorageTotalSize(handle, activeTab));
+            footer.Text = sizeCurrent
+                ? $"{releasesText} · {Loc.Chrome("storage.footer.total", "size", Loc.Bytes(totalSize))}"
+                : releasesText;
         }
 
         await LoadStorageRows();

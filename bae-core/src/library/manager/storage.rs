@@ -184,6 +184,14 @@ impl LibraryManager {
         let db_filter = to_db_storage_filter(filter);
         Ok(self.database.get_storage_count(db_filter).await?)
     }
+
+    /// Sum of `total_size` over every storage row matching `filter` — the
+    /// storage-manager footer's "Total:" figure, independent of how many
+    /// pages of the filtered list are loaded.
+    pub async fn get_storage_total_size(&self, filter: StorageFilter) -> Result<u64, LibraryError> {
+        let db_filter = to_db_storage_filter(filter);
+        Ok(self.database.get_storage_total_size(db_filter).await?)
+    }
 }
 
 /// Translate a UI-facing `StorageSort` to the DB-layer sort criterion.

@@ -291,6 +291,21 @@ impl AppHandle {
             .map_err(|e| BridgeError::database(format!("{e}")))
     }
 
+    /// Sum of `total_size` over every storage row matching `filter` — the
+    /// storage-manager footer's "Total:" figure, independent of how many
+    /// pages of the filtered list are loaded.
+    pub async fn storage_total_size(
+        &self,
+        filter: BridgeStorageFilter,
+    ) -> Result<u64, BridgeError> {
+        let core_filter = filter.into_core();
+        self.services
+            .library_manager()
+            .get_storage_total_size(core_filter)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))
+    }
+
     pub async fn search_library(&self, query: String) -> Result<BridgeSearchResults, BridgeError> {
         let results = self
             .services

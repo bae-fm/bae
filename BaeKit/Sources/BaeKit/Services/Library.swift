@@ -1,5 +1,10 @@
 import Foundation
 
+// One stored closure per read, each with a matching designated-init
+// parameter and assignment; its length tracks the number of Library reads,
+// not logical complexity — the same shape the `handle:` convenience init
+// below disables `function_body_length` for.
+// swiftlint:disable type_body_length
 /// Library reads — album/release lookups, pagination, search,
 /// storage-summary listing, prefetching release detail, resolving
 /// queue-input ids to flat track-id lists. The read side of bae-core's
@@ -35,6 +40,8 @@ public final class Library: Sendable, Observable {
     public let searchLibrary:
         @Sendable (_ query: String) async throws -> BridgeSearchResults
     public let storageCount:
+        @Sendable (_ filter: BridgeStorageFilter) async throws -> UInt64
+    public let storageTotalSize:
         @Sendable (_ filter: BridgeStorageFilter) async throws -> UInt64
     public let storagePage:
         @Sendable (
@@ -107,6 +114,11 @@ public final class Library: Sendable, Observable {
                 _ in
                 throw StubError.notImplemented
             },
+        storageTotalSize:
+            @escaping @Sendable (BridgeStorageFilter) async throws -> UInt64 = {
+                _ in
+                throw StubError.notImplemented
+            },
         storagePage:
             @escaping @Sendable (
                 BridgeStorageSort, BridgeStorageFilter, UInt64, UInt64
@@ -139,6 +151,7 @@ public final class Library: Sendable, Observable {
         self.getArtistDetail = getArtistDetail
         self.searchLibrary = searchLibrary
         self.storageCount = storageCount
+        self.storageTotalSize = storageTotalSize
         self.storagePage = storagePage
         self.findReleaseDetail = findReleaseDetail
         self.prefetchRelease = prefetchRelease
@@ -196,6 +209,9 @@ public final class Library: Sendable, Observable {
                 },
                 searchLibrary: { try await handle.searchLibrary(query: $0) },
                 storageCount: { try await handle.storageCount(filter: $0) },
+                storageTotalSize: {
+                    try await handle.storageTotalSize(filter: $0)
+                },
                 storagePage: {
                     try await handle.storagePage(
                         sort: $0,
@@ -221,10 +237,11 @@ public final class Library: Sendable, Observable {
         }
     #else
         // iOS has no desktop import/metadata-prefetch flow, so `prefetchRelease`
-        // is absent from its bindings; `getAlbumIndex`, `storageCount`, and
-        // `storagePage` back desktop-only surfaces (album-index scrolling, the
-        // Storage Manager) and go unused here. This wires only the reads iOS
-        // actually makes; the rest keep their throwing stub defaults.
+        // is absent from its bindings; `getAlbumIndex`, `storageCount`,
+        // `storageTotalSize`, and `storagePage` back desktop-only surfaces
+        // (album-index scrolling, the Storage Manager) and go unused here.
+        // This wires only the reads iOS actually makes; the rest keep their
+        // throwing stub defaults.
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
                 getAlbumCount: { try await handle.getAlbumCount() },
@@ -272,6 +289,7 @@ public final class Library: Sendable, Observable {
     // periphery:ignore
     public static let stub = Library()
 }
+// swiftlint:enable type_body_length
 
 /// Error raised by stub closures whose return type can't be defaulted
 /// to a trivial value (e.g. compound bridge records). Previews don't

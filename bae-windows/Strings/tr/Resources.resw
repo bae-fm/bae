@@ -402,6 +402,7 @@
   <data name="storage.column.files" xml:space="preserve"><value>Dosyalar</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>Boyut</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# yayın} other {# yayın}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>Toplam: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Kaldır</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>Bu kitaplığı ve indirilen dosyalarını bu bilgisayardan kaldırır. Buluttaki kitaplığınız olduğu gibi kalır — daha sonra buradan geri yükleyebilirsiniz.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Bu kitaplık eşzamanlanmamış. Kaldırmak, kataloğunu — albümleri, üst veri düzenlemelerini ve çalma geçmişini — kalıcı olarak siler. Klasörlerinizdeki ses dosyaları silinmez.</value></data>

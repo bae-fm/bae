@@ -39,6 +39,15 @@ struct StorageManagerView: View {
     private var list: StorageList?
     @State
     private var listRegistration: ProjectionRegistration?
+    /// Sum of `total_size` over every row the current filter matches — the
+    /// full-universe figure the core aggregate computes, not just the pages
+    /// loaded so far. `nil` until the first fetch for the current filter
+    /// resolves; the footer renders nothing while it's `nil` rather than a
+    /// zero/partial stand-in.
+    @State
+    private var totalSize: UInt64?
+    @State
+    private var totalSizeRegistration: ProjectionRegistration?
     @State
     private var rebuildTask: Task<Void, Never>?
     /// Runs row context-menu transitions; built lazily once the services are
@@ -74,7 +83,7 @@ struct StorageManagerView: View {
                     )
 
                     Divider()
-                    StorageFooter(list: list, libraryStore: libraryStore)
+                    StorageFooter(list: list, totalSize: totalSize)
                 }
             }
             else {
@@ -130,6 +139,7 @@ struct StorageManagerView: View {
 
     private func rebuildList() {
         rebuildTask?.cancel()
+        let filter = filter
         let newList = StorageList(
             pageSource: StoragePageSource(
                 library: library,
@@ -146,7 +156,20 @@ struct StorageManagerView: View {
                 uiStore.showError(error)
             },
         )
+        // The total-size figure is scoped to the same filter as the list and
+        // refreshes on the same `.albumList` invalidations that reload the
+        // list's rows, via its own `Projection` rather than piggybacking on
+        // `PaginatedList.invalidate()` (which only re-fetches the row count).
+        let totalSizeProjection = Projection<UInt64>(
+            domain: .albumList,
+            query: { [library] _ in
+                try await library.storageTotalSize(filter)
+            },
+            apply: { totalSize = $0 },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
         rebuildTask = Task {
+            async let totalSizeResult = library.storageTotalSize(filter)
             await newList.loadInitial()
             guard !Task.isCancelled else {
                 return
@@ -155,7 +178,19 @@ struct StorageManagerView: View {
                 newList,
                 domain: .albumList
             )
+            totalSizeRegistration = projectionRegistry.register(
+                totalSizeProjection
+            )
             list = newList
+            do {
+                totalSize = try await totalSizeResult
+            }
+            catch {
+                totalSize = nil
+                uiStore.showError(
+                    DisplayError(line: error.localizedDescription)
+                )
+            }
         }
     }
 }
@@ -164,30 +199,21 @@ struct StorageManagerView: View {
 
 private struct StorageFooter: View {
     let list: StorageList
-    let libraryStore: LibraryStore
-
-    /// Sum of sizes over rows whose ids are populated and whose release
-    /// is present in the store. Under-counts while pages are still
-    /// loading — this is a visible-data footer, not a correctness
-    /// contract. Pages fill in as the user scrolls.
-    private var loadedTotalSize: Int64 {
-        list.allLoadedIds.reduce(Int64(0)) { acc, id in
-            guard let release = libraryStore.releaseSummaries[id] else {
-                return acc
-            }
-            return acc + release.totalSize
-        }
-    }
+    /// The core aggregate over every row the current filter matches. `nil`
+    /// until fetched — rendered as absence, not a zero/partial stand-in.
+    let totalSize: UInt64?
 
     var body: some View {
         HStack {
             Text("\(list.totalCount) releases")
                 .foregroundStyle(.secondary)
             Spacer()
-            Text(
-                "Total: \(ByteCountFormatter.string(fromByteCount: loadedTotalSize, countStyle: .file))"
-            )
-            .foregroundStyle(.secondary)
+            if let totalSize {
+                Text(
+                    "Total: \(ByteCountFormatter.string(fromByteCount: Int64(totalSize), countStyle: .file))"
+                )
+                .foregroundStyle(.secondary)
+            }
         }
         .font(.callout)
         .padding(.horizontal)

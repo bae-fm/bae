@@ -402,6 +402,7 @@
   <data name="storage.column.files" xml:space="preserve"><value>Soubory</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>Velikost</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# vydání} few {# vydání} many {# vydání} other {# vydání}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>Celkem: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Odebrat</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>Odebere tuto knihovnu a její stažené soubory z tohoto počítače. Vaše knihovna v cloudu zůstane nedotčena — později ji můžete odsud obnovit.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Tato knihovna není synchronizována. Jejím odebráním trvale smažete její katalog — alba, úpravy metadat a historii přehrávání. Zvukové soubory ve vašich složkách smazány nebudou.</value></data>

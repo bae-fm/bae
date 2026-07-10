@@ -421,6 +421,12 @@ internal static class NativeBae
     internal static long StorageCount(AppHandle handle, StorageTab tab) =>
         checked((long)Await(handle.StorageCount(ToBridge(tab))));
 
+    // Sum of file sizes over every release matching a storage tab — the
+    // dialog's footer "Total:" figure, independent of how many pages of the
+    // tab's list have loaded.
+    internal static long StorageTotalSize(AppHandle handle, StorageTab tab) =>
+        checked((long)Await(handle.StorageTotalSize(ToBridge(tab))));
+
     // One page of storage rows for a tab, sorted server-side by the active
     // column — the dialog's incremental collection calls this per page instead
     // of fetching the whole library at once.

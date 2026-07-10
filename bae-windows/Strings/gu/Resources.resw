@@ -402,6 +402,7 @@
   <data name="storage.column.files" xml:space="preserve"><value>ફાઈલો</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>કદ</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# પ્રકાશન} other {# પ્રકાશનો}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>કુલ: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>દૂર કરો</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>આ લાઇબ્રેરી અને તેની ડાઉનલોડ કરેલી ફાઇલોને આ પીસી પરથી દૂર કરે છે. ક્લાઉડમાં તમારી લાઇબ્રેરી અકબંધ રહે છે — તમે પછીથી અહીંથી તેને પુનઃસ્થાપિત કરી શકો છો.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>આ લાઇબ્રેરી સિંક થયેલી નથી. તેને દૂર કરવાથી તેની સૂચિ — આલ્બમ્સ, મેટાડેટા ફેરફારો અને પ્લે ઇતિહાસ — કાયમ માટે ડિલીટ થઈ જશે. તમારા ફોલ્ડર્સમાંની ઓડિયો ફાઇલો ડિલીટ થશે નહીં.</value></data>

@@ -402,6 +402,7 @@
   <data name="storage.column.files" xml:space="preserve"><value>Tệp</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>Kích thước</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, other {# bản phát hành}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>Tổng: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Xóa</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>Xóa thư viện này và các tệp đã tải xuống của nó khỏi máy tính này. Thư viện của bạn trên đám mây vẫn còn nguyên vẹn — bạn có thể khôi phục từ đây sau.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>Thư viện này chưa được đồng bộ hóa. Xóa thư viện sẽ xóa vĩnh viễn danh mục của nó — album, chỉnh sửa siêu dữ liệu và lịch sử phát. Các tệp âm thanh trong thư mục của bạn sẽ không bị xóa.</value></data>

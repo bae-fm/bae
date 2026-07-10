@@ -402,6 +402,7 @@
   <data name="storage.column.files" xml:space="preserve"><value>Files</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>Size</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# release} other {# releases}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>Total: {size}</value></data>
   <data name="settings.remove.title" xml:space="preserve"><value>Remove</value></data>
   <data name="settings.remove.footer_synced" xml:space="preserve"><value>Removes this library and its downloaded files from this PC. Your library in the cloud is untouched — you can restore it here later.</value></data>
   <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>This library isn't synced. Removing it permanently deletes its catalog — albums, metadata edits, and play history. Audio files in your folders aren't deleted.</value></data>
