@@ -90,6 +90,12 @@ pub enum ImportError {
     #[error("watched-folder registry: {detail}")]
     Registry { detail: String },
 
+    /// A folder's OS-level filesystem watch could not be installed or
+    /// removed (missing path, permissions). An OS/user condition, not a
+    /// broken invariant.
+    #[error("folder watch failed: {detail}")]
+    Watch { detail: String },
+
     /// Config/keyring plumbing failed (Discogs key store/read).
     #[error("configuration error: {detail}")]
     Config { detail: String },

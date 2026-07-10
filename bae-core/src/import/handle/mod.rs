@@ -468,6 +468,9 @@ pub struct ImportServiceHandle {
     folder_registry: Arc<Mutex<ImportFolderRegistry>>,
     candidate_state: Arc<Mutex<ImportCandidateState>>,
     watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
+    /// Installs/uninstalls OS-level folder watches, atomic with the registry
+    /// mutation in `add_watched_folder`/`remove_watched_folder`.
+    folder_watcher: Arc<crate::import::service::FolderWatcher>,
     runtime_handle: tokio::runtime::Handle,
     cover_art_archive: CoverArtArchiveClient,
 }
@@ -506,11 +509,14 @@ pub enum ScanEvent {
     Finished,
 }
 
-/// Commands to the folder watcher. `Watch` starts watching a folder (idempotent)
-/// and scans it; `Unwatch` stops watching it.
+/// Commands to the folder-watch reconciliation task. OS watch installation
+/// itself happens synchronously in the handle (`FolderWatcher`, atomic with
+/// the registry mutation) before either of these is sent. `Rescan` re-scans a
+/// folder and reconciles its candidates; `Forget` drops the folder's
+/// last-emitted candidate keys.
 pub enum WatcherCommand {
-    Watch(std::path::PathBuf),
-    Unwatch(std::path::PathBuf),
+    Rescan(std::path::PathBuf),
+    Forget(std::path::PathBuf),
 }
 
 impl ImportServiceHandle {
@@ -523,6 +529,7 @@ impl ImportServiceHandle {
         event_tx: broadcast::Sender<ImportEvent>,
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
         candidate_state: Arc<Mutex<ImportCandidateState>>,
+        folder_watcher: Arc<crate::import::service::FolderWatcher>,
         cover_art_archive: CoverArtArchiveClient,
     ) -> Self {
         let progress_handle = ImportProgressHandle::new(event_tx.clone(), runtime_handle.clone());
@@ -534,6 +541,7 @@ impl ImportServiceHandle {
             folder_registry,
             candidate_state,
             watcher_tx,
+            folder_watcher,
             runtime_handle,
             cover_art_archive,
         }

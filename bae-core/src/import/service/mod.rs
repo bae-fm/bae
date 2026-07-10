@@ -17,21 +17,22 @@ use {
     crate::import::track_to_file_mapper::map_tracks_to_files,
     crate::import::types::{CoverSelection, DiscoveredFile, ImportPhase, PrepareStep, TrackFile},
     crate::import::ParsedWorkGraph,
-    notify::RecursiveMode,
-    notify_debouncer_full::{new_debouncer, DebounceEventResult},
+    notify_debouncer_full::DebounceEventResult,
     std::collections::{HashMap, HashSet},
     std::path::{Path, PathBuf},
     std::sync::{Arc, Mutex},
-    std::time::Duration,
 };
 
 use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 
 mod cover_image;
+mod folder_watcher;
 mod format_prep;
 mod progress;
 mod reconcile;
+
+pub(crate) use folder_watcher::FolderWatcher;
 
 use format_prep::resolve_file_content_type;
 
@@ -91,44 +92,32 @@ fn affected_roots(changed: &[&Path], roots: &[PathBuf]) -> Vec<PathBuf> {
 }
 
 impl ImportService {
-    /// The folder watcher. Owns a debouncing filesystem watcher and, per watched
-    /// folder, the set of candidate keys it last emitted. A `Watch` command
-    /// starts watching and scanning a folder, a debounced filesystem change
-    /// under a watched folder re-scans it, and `Unwatch` stops. Every re-scan
-    /// reconciles against the last known keys, emitting `FolderCandidate` for
-    /// what's on disk and `CandidateRemoved` for what's gone, so changes
-    /// propagate beyond the first scan.
+    /// The folder-watch reconciliation task. Per watched folder, tracks the
+    /// set of candidate keys it last emitted. A `Rescan` command re-scans a
+    /// folder (sent by the handle right after it installs the folder's OS
+    /// watch, and on every `scan_watched_folders` call); a debounced
+    /// filesystem change under a watched folder re-scans it too; `Forget`
+    /// drops the folder's last-emitted keys. Every re-scan reconciles against
+    /// the last known keys, emitting `FolderCandidate` for what's on disk and
+    /// `CandidateRemoved` for what's gone, so changes propagate beyond the
+    /// first scan.
+    ///
+    /// OS watch installation itself lives in `FolderWatcher`, owned by the
+    /// handle — this task only receives `fs_rx` batches from its callback.
+    /// The registry (not a task-local set) is the single authority on what's
+    /// watched: `affected_roots` resolves each filesystem-event batch against
+    /// it, so events from a watch left installed on a since-removed folder
+    /// match nothing and are ignored.
     fn start_watcher(
         runtime_handle: &tokio::runtime::Handle,
         mut cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
+        mut fs_rx: mpsc::UnboundedReceiver<DebounceEventResult>,
         event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: LibraryManager,
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
         candidate_state: Arc<Mutex<ImportCandidateState>>,
     ) {
         runtime_handle.spawn(async move {
-            let (fs_tx, mut fs_rx) = mpsc::unbounded_channel::<DebounceEventResult>();
-            let mut debouncer = match new_debouncer(
-                Duration::from_secs(1),
-                None,
-                move |result: DebounceEventResult| {
-                    // Runs on the debouncer's own thread; hand the batch to the
-                    // task. A send error means the task's receiver is gone (the
-                    // service is shutting down); the debouncer is dropped right
-                    // after, so this is benign but worth a line.
-                    if fs_tx.send(result).is_err() {
-                        warn!("folder watcher event dropped: task receiver gone");
-                    }
-                },
-            ) {
-                Ok(debouncer) => debouncer,
-                Err(e) => {
-                    error!("failed to start folder watcher: {e}");
-                    return;
-                }
-            };
-
-            let mut roots: Vec<PathBuf> = Vec::new();
             let mut last_keys: HashMap<PathBuf, HashSet<String>> = HashMap::new();
 
             loop {
@@ -136,15 +125,7 @@ impl ImportService {
                     cmd = cmd_rx.recv() => {
                         let Some(cmd) = cmd else { break };
                         match cmd {
-                            WatcherCommand::Watch(path) => {
-                                if !roots.contains(&path) {
-                                    if let Err(e) =
-                                        debouncer.watch(&path, RecursiveMode::Recursive)
-                                    {
-                                        warn!("failed to watch {}: {e}", path.display());
-                                    }
-                                    roots.push(path.clone());
-                                }
+                            WatcherCommand::Rescan(path) => {
                                 Self::rescan_and_reconcile(
                                     &path,
                                     &mut last_keys,
@@ -155,13 +136,8 @@ impl ImportService {
                                 )
                                 .await;
                             }
-                            WatcherCommand::Unwatch(path) => {
-                                if let Err(e) = debouncer.unwatch(&path) {
-                                    warn!("failed to unwatch {}: {e}", path.display());
-                                }
-                                roots.retain(|p| p != &path);
+                            WatcherCommand::Forget(path) => {
                                 last_keys.remove(&path);
-                                candidate_state.lock().unwrap().remove_root(&path);
                             }
                         }
                     }
@@ -178,6 +154,13 @@ impl ImportService {
                         let changed: Vec<&Path> = events
                             .iter()
                             .flat_map(|e| e.paths.iter().map(PathBuf::as_path))
+                            .collect();
+                        let roots: Vec<PathBuf> = folder_registry
+                            .lock()
+                            .unwrap()
+                            .watched_folders()
+                            .into_iter()
+                            .map(|folder| PathBuf::from(folder.path))
                             .collect();
                         for root in affected_roots(&changed, &roots) {
                             Self::rescan_and_reconcile(
@@ -346,6 +329,7 @@ impl ImportService {
     ) -> ImportServiceHandle {
         let (commands_tx, commands_rx) = mpsc::unbounded_channel();
         let (watcher_tx, watcher_rx) = mpsc::unbounded_channel();
+        let (fs_tx, fs_rx) = mpsc::unbounded_channel::<DebounceEventResult>();
         let (event_tx, _) = broadcast::channel(1024);
         let event_tx_for_worker = event_tx.clone();
         let library_manager_for_handle = library_manager.clone();
@@ -359,9 +343,14 @@ impl ImportService {
         )));
         let candidate_state = Arc::new(Mutex::new(ImportCandidateState::default()));
 
+        // Constructed before the watcher task spawns; it doesn't need the
+        // debouncer, only the `fs_rx` end of its event channel.
+        let folder_watcher = Arc::new(FolderWatcher::new(fs_tx));
+
         ImportService::start_watcher(
             &runtime_handle,
             watcher_rx,
+            fs_rx,
             event_tx.clone(),
             library_manager_for_handle.clone(),
             folder_registry.clone(),
@@ -403,6 +392,7 @@ impl ImportService {
             event_tx,
             folder_registry,
             candidate_state,
+            folder_watcher,
             cover_art_archive,
         )
     }

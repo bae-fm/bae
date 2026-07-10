@@ -40,6 +40,17 @@ struct ImportFixture {
 
 impl ImportFixture {
     async fn new() -> Self {
+        Self::new_with_seed(|_library_dir| {}).await
+    }
+
+    /// Build the fixture, running `seed` against the library dir after the DB
+    /// and config exist but before `ImportService::start` loads the
+    /// watched-folder registry from disk. Lets a test seed
+    /// `import_folders.yaml` with a folder the service has never itself
+    /// installed a watch for — e.g. one that existed when added but is gone
+    /// by the time the service starts, as when an external drive is
+    /// unplugged across an app restart.
+    async fn new_with_seed(seed: impl FnOnce(&LibraryDir)) -> Self {
         let temp = TempDir::new().unwrap();
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
@@ -61,6 +72,8 @@ impl ImportFixture {
             ids.clone(),
             tokio::runtime::Handle::current(),
         );
+
+        seed(&library_dir);
 
         let handle = ImportService::start(
             tokio::runtime::Handle::current(),
@@ -553,6 +566,57 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
             .iter()
             .any(|event| matches!(event, ScanEvent::FolderCandidate(_))),
         "an unwatched folder must not surface new candidates, got {after_unwatch:?}",
+    );
+}
+
+/// Watch installation is atomic with the registry mutation: a path that can't
+/// actually be watched (here, one that never existed) must not end up
+/// persisted as watched. Persisting an unwatchable folder while reporting
+/// success would strand it: install attempts are keyed on success, so nothing
+/// ever retries, and filesystem changes under it never propagate.
+#[tokio::test]
+#[serial]
+async fn add_watched_folder_fails_loud_on_nonexistent_path() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+
+    let missing = f.temp_path().join("does-not-exist");
+    let missing_key = missing.to_string_lossy().into_owned();
+
+    let result = f.handle.add_watched_folder(missing_key);
+    assert!(
+        result.is_err(),
+        "watching a nonexistent path must fail, not silently succeed"
+    );
+    assert!(
+        f.handle.watched_folders().is_empty(),
+        "a failed watch must not leave the folder in the persisted registry"
+    );
+}
+
+/// The registry can carry a folder the running service has never itself
+/// installed a watch for — e.g. an external drive that was watched, then
+/// unplugged, and the app restarted while it was still absent. Re-scanning on
+/// app start must fail loud instead of reporting success for a folder it
+/// couldn't actually watch.
+#[tokio::test]
+#[serial]
+async fn scan_watched_folders_fails_loud_on_missing_folder() {
+    support::tracing_init();
+    let f = ImportFixture::new_with_seed(|library_dir| {
+        let mut registry = bae_core::import::ImportFolderRegistry::load(library_dir);
+        let key = library_dir
+            .join("unplugged-drive")
+            .to_string_lossy()
+            .into_owned();
+        registry.add(library_dir, key).unwrap();
+    })
+    .await;
+
+    let result = f.handle.scan_watched_folders();
+    assert!(
+        result.is_err(),
+        "scanning a registry entry whose folder is missing must fail loud, not report success"
     );
 }
 
