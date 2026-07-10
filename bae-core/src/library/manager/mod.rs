@@ -60,6 +60,7 @@ use coven::CloudHome;
 use coven::CovenHandle;
 use coven::EncryptionService;
 use coven::IdRef;
+use coven::SyncLoopStatus;
 
 /// Library events can burst during imports and sync catch-up; lag is recoverable
 /// through UI invalidations, and this bound keeps ordinary bursts in order.
@@ -124,9 +125,11 @@ pub enum LibraryError {
     /// (`Configuration`) or an unreachable backend (`Transport`).
     #[error("Cloud home error: {0}")]
     CloudHome(#[from] coven::CloudHomeError),
-    /// Consumer-cloud OAuth sign-in failed.
+    /// Consumer-cloud OAuth sign-in failed. Carries coven's setup-error
+    /// message as a string: coven's `SetupError` type is not part of its
+    /// curated public API, so the sign-in call sites map it here by display.
     #[error("Cloud setup error: {0}")]
-    CloudSetup(#[from] coven::storage::cloud::setup::SetupError),
+    CloudSetup(String),
     /// A sync-manager connection or membership operation failed.
     #[error("Sync error: {0}")]
     Sync(#[from] coven::SyncError),
@@ -1008,71 +1011,86 @@ impl LibraryManager {
     /// Subscribes to sync loop status and emits granular library events
     /// for any entity changes from applied changesets.
     pub fn start(&self) {
-        if let Ok(mut rx) = self.handle.subscribe_sync_status() {
-            let lm = self.clone();
-            self.runtime_handle.spawn(async move {
-                while let Ok(status) = rx.recv().await {
-                    if let Some(row_changes) = status.row_changes {
+        let mut rx = self.handle.subscribe_sync_status();
+        let lm = self.clone();
+        self.runtime_handle.spawn(async move {
+            while let Ok(status) = rx.recv().await {
+                // Row changes ride only on a successful cycle that changed
+                // data; they are a refresh hint, so the entity events they
+                // drive are re-reads by primary key, not a trusted stream.
+                if let SyncLoopStatus::Succeeded(success) = &status {
+                    if let Some(row_changes) = &success.row_changes {
                         let changes =
-                            crate::library::sync_events::changes_from_row_changes(&row_changes);
+                            crate::library::sync_events::changes_from_row_changes(row_changes);
                         lm.emit_sync_entity_changes(changes).await;
                     }
-                    let mut emit_error = None;
-                    let mut emit_syncing = None;
-                    let mut emit_time = None;
-                    {
-                        let mut state = lm.sync_status.lock().unwrap();
-                        if status.error != state.error {
-                            state.error = status.error.clone();
-                            emit_error = Some(status.error.map(crate::ui::UiError::internal));
+                }
+                // Fold coven's sync-loop status enum onto bae's flat banner
+                // state: `Started` marks a cycle in progress; a terminal
+                // status ends it, clearing the error banner and recording
+                // the sync time on success, or setting the banner on
+                // failure. `error_update` is `None` when the status carries
+                // no verdict on the banner (a plain `Started`).
+                let syncing = matches!(status, SyncLoopStatus::Started);
+                let (error_update, last_sync_update): (Option<Option<String>>, Option<String>) =
+                    match &status {
+                        SyncLoopStatus::Started => (None, None),
+                        SyncLoopStatus::Succeeded(success) => {
+                            (Some(None), Some(success.last_sync_time.clone()))
                         }
-                        if status.syncing != state.syncing {
-                            state.syncing = status.syncing;
-                            emit_syncing = Some(status.syncing);
+                        SyncLoopStatus::Failed { error } => (Some(Some(error.clone())), None),
+                    };
+                let mut emit_error = None;
+                let mut emit_syncing = None;
+                let mut emit_time = None;
+                {
+                    let mut state = lm.sync_status.lock().unwrap();
+                    if let Some(error) = error_update {
+                        if error != state.error {
+                            state.error = error.clone();
+                            emit_error = Some(error.map(crate::ui::UiError::internal));
                         }
-                        if status.last_sync_time != state.last_sync_time_raw {
-                            match status.last_sync_time.as_deref() {
-                                Some(s) => match crate::util::time::rfc3339_to_epoch_millis(s) {
-                                    Ok(ms) => {
-                                        state.last_sync_time_raw = status.last_sync_time.clone();
-                                        state.last_sync_time = Some(ms);
-                                        emit_time = Some(state.last_sync_time);
-                                    }
-                                    Err(e) => {
-                                        let message =
-                                            format!("unparseable last_sync_time {s:?}: {e}");
-                                        warn!("{message}");
-                                        emit_error =
-                                            Some(Some(crate::ui::UiError::internal(message)));
-                                    }
-                                },
-                                None => {
-                                    state.last_sync_time_raw = None;
-                                    state.last_sync_time = None;
-                                    emit_time = Some(None);
+                    }
+                    if syncing != state.syncing {
+                        state.syncing = syncing;
+                        emit_syncing = Some(syncing);
+                    }
+                    if let Some(raw) = last_sync_update {
+                        if state.last_sync_time_raw.as_deref() != Some(raw.as_str()) {
+                            match crate::util::time::rfc3339_to_epoch_millis(&raw) {
+                                Ok(ms) => {
+                                    state.last_sync_time_raw = Some(raw);
+                                    state.last_sync_time = Some(ms);
+                                    emit_time = Some(state.last_sync_time);
+                                }
+                                Err(e) => {
+                                    let message =
+                                        format!("unparseable last_sync_time {raw:?}: {e}");
+                                    warn!("{message}");
+                                    emit_error = Some(Some(crate::ui::UiError::internal(message)));
                                 }
                             }
                         }
                     }
-                    if let Some(error) = emit_error {
-                        // Coven hands back an opaque error string (connectivity,
-                        // auth, storage); the UI shows a generic line plus this
-                        // as copyable, log-only detail. `None` clears the banner.
-                        lm.emit(LibraryEvent::SyncError { error });
-                    }
-                    if let Some(syncing) = emit_syncing {
-                        lm.emit(LibraryEvent::SyncingChanged { syncing });
-                    }
-                    if let Some(time) = emit_time {
-                        lm.emit(LibraryEvent::SyncTimeChanged { time });
-                    }
-                    // coven gives no per-item drain signal in the status,
-                    // so re-derive the outbox snapshot each cycle to catch
-                    // entries it uploaded or failed.
-                    lm.emit_outbox_changed().await;
                 }
-            });
-        }
+                if let Some(error) = emit_error {
+                    // Coven hands back an opaque error string (connectivity,
+                    // auth, storage); the UI shows a generic line plus this
+                    // as copyable, log-only detail. `None` clears the banner.
+                    lm.emit(LibraryEvent::SyncError { error });
+                }
+                if let Some(syncing) = emit_syncing {
+                    lm.emit(LibraryEvent::SyncingChanged { syncing });
+                }
+                if let Some(time) = emit_time {
+                    lm.emit(LibraryEvent::SyncTimeChanged { time });
+                }
+                // coven gives no per-item drain signal in the status,
+                // so re-derive the outbox snapshot each cycle to catch
+                // entries it uploaded or failed.
+                lm.emit_outbox_changed().await;
+            }
+        });
     }
 
     /// Subscribe to library events (albums changed, etc.)

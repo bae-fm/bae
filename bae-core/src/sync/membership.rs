@@ -91,7 +91,7 @@ pub fn generate_join_request(email: Option<String>) -> Result<JoinRequest, crate
 pub async fn fetch_account_email(
     provider: crate::config::CloudProvider,
     oauth_tokens: &coven::OAuthTokens,
-) -> Result<String, coven::oauth::OAuthError> {
+) -> Result<String, coven::OAuthError> {
     coven::fetch_account_email(provider, oauth_tokens).await
 }
 

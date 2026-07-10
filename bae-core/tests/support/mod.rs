@@ -466,7 +466,7 @@ impl coven::CloudHome for MockCloudHome {
     async fn revoke_access(
         &self,
         _revoke: coven::CloudAccessRevoke,
-    ) -> Result<coven::storage::cloud::RevokeOutcome, coven::CloudHomeError> {
-        Ok(coven::storage::cloud::RevokeOutcome::Unsupported)
+    ) -> Result<coven_core::storage::cloud::RevokeOutcome, coven::CloudHomeError> {
+        Ok(coven_core::storage::cloud::RevokeOutcome::Unsupported)
     }
 }

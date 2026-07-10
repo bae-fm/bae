@@ -143,9 +143,30 @@ async fn restore_from_code_config(
 /// selects on alongside the callback wait.
 #[cfg(feature = "oauth-providers")]
 static OAUTH_CANCEL_TX: Mutex<Option<tokio::sync::watch::Sender<bool>>> = Mutex::new(None);
+/// A pending host-driven OAuth exchange, keyed by request id between
+/// [`oauth_begin`] and [`oauth_complete`]. coven's `AuthorizeRequest` — which
+/// carries the PKCE verifier and state `oauth_complete` must feed back — is not
+/// part of coven's curated public API and lives in its `pub(crate)` oauth
+/// module, so the bridge can't name the type to store it. Instead it captures
+/// the request inside this closure (whose type it never names) that runs the
+/// exchange when the redirect comes back.
+#[cfg(feature = "oauth-providers")]
+type OAuthExchange = Box<
+    dyn FnOnce(
+            coven::CloudProvider, // provider
+            String,               // authorization code
+            String,               // callback state
+            String,               // redirect uri
+        ) -> std::pin::Pin<
+            Box<
+                dyn std::future::Future<Output = Result<coven::OAuthTokens, coven::OAuthError>>
+                    + Send,
+            >,
+        > + Send,
+>;
 #[cfg(feature = "oauth-providers")]
 static OAUTH_REQUESTS: std::sync::LazyLock<
-    Mutex<std::collections::HashMap<String, coven::oauth::AuthorizeRequest>>,
+    Mutex<std::collections::HashMap<String, OAuthExchange>>,
 > = std::sync::LazyLock::new(|| Mutex::new(std::collections::HashMap::new()));
 
 fn lock_bridge_mutex<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -334,25 +355,21 @@ pub fn restore_from_cloud(
     })
 }
 
-impl BridgeRestoreCodeInfo {
-    /// `RestoreCodeInfo` is coven's (external crate) type — exempt from the
-    /// exhaustive destructure — so its fields stay dotted reads.
-    fn from_core(info: coven::sync::restore_code::RestoreCodeInfo) -> Self {
-        BridgeRestoreCodeInfo {
-            library_id: info.library_id,
-            library_name: info.library_name,
-            cloud_provider: BridgeCloudProvider::from_core(&info.cloud_provider),
-            needs_oauth: info.needs_oauth,
-        }
-    }
-}
-
 /// Decode a restore code string and return info for UI preview.
+///
+/// coven's `RestoreCodeInfo` is not part of its curated public API, so the
+/// decoded value is consumed structurally here at its one call site rather
+/// than named in a conversion signature. Its fields stay dotted reads.
 #[uniffi::export]
 pub fn decode_restore_code(code: String) -> Result<BridgeRestoreCodeInfo, BridgeError> {
     let info = bae_core::sync::decode_restore_code_info(&code).map_err(BridgeError::config)?;
 
-    Ok(BridgeRestoreCodeInfo::from_core(info))
+    Ok(BridgeRestoreCodeInfo {
+        library_id: info.library_id,
+        library_name: info.library_name,
+        cloud_provider: BridgeCloudProvider::from_core(&info.cloud_provider),
+        needs_oauth: info.needs_oauth,
+    })
 }
 
 /// Restore a library from a restore code string.
@@ -735,8 +752,24 @@ pub fn oauth_begin(
     let req = coven::build_authorize_request_for_provider(core_provider, &redirect_uri)
         .map_err(|e| BridgeError::config(format!("OAuth begin failed: {e}")))?;
     let auth_url = req.auth_url.clone();
-    let request_id = coven::oauth::generate_code_verifier();
-    lock_bridge_mutex(&OAUTH_REQUESTS).insert(request_id.clone(), req);
+    // An opaque handle correlating this begin with its later complete; not a
+    // PKCE value (coven holds the real verifier inside `req`).
+    let request_id = coven::IdProvider::new_id(&coven::UuidProvider);
+    let exchange: OAuthExchange = Box::new(move |provider, code, state, redirect_uri| {
+        Box::pin(async move {
+            let clock = std::sync::Arc::new(coven::SystemClock);
+            coven::exchange_code_for_provider(
+                provider,
+                &code,
+                Some(&state),
+                &req,
+                &redirect_uri,
+                clock.as_ref(),
+            )
+            .await
+        })
+    });
+    lock_bridge_mutex(&OAUTH_REQUESTS).insert(request_id.clone(), exchange);
     Ok(BridgeOAuthRequest {
         auth_url,
         request_id,
@@ -756,23 +789,15 @@ pub fn oauth_complete(
     redirect_uri: String,
 ) -> Result<String, BridgeError> {
     let core_provider = provider.into_core();
-    let request = lock_bridge_mutex(&OAUTH_REQUESTS)
+    let exchange = lock_bridge_mutex(&OAUTH_REQUESTS)
         .remove(&request_id)
         .ok_or_else(|| {
             BridgeError::config("OAuth request not found or already used".to_string())
         })?;
     let tokens = on_worker(move || async move {
-        let clock = std::sync::Arc::new(coven::SystemClock);
-        coven::exchange_code_for_provider(
-            core_provider,
-            &code,
-            Some(&state),
-            &request,
-            &redirect_uri,
-            clock.as_ref(),
-        )
-        .await
-        .map_err(|e| BridgeError::config(format!("OAuth token exchange failed: {e}")))
+        exchange(core_provider, code, state, redirect_uri)
+            .await
+            .map_err(|e| BridgeError::config(format!("OAuth token exchange failed: {e}")))
     })?;
     serde_json::to_string(&tokens)
         .map_err(|e| BridgeError::internal(format!("Failed to serialize tokens: {e}")))

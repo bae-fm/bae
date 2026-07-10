@@ -764,13 +764,44 @@ fn unique_export_path(
     }
 }
 
+/// Reject a stored path fragment (`source_folder_name`, `original_filename`)
+/// that would escape the staging directory when joined onto it. bae owns this
+/// guard on its own export paths — coven's equivalent cloud-key validator is no
+/// longer part of its public API, and a local-filesystem-join guard is bae's
+/// concern, not coven's.
+///
+/// The structural rule is closed: every [`Component`] must be
+/// [`Component::Normal`]. That one condition subsumes an absolute path
+/// (`RootDir`), a Windows drive/UNC prefix (`Prefix`, e.g. `C:/evil` — this
+/// code is compiled for the Windows desktop, where `Path::join` onto a
+/// drive-absolute path *replaces* the base entirely), a `..` (`ParentDir`), and
+/// a `.` (`CurDir`). Empty, NUL, and backslash are rejected up front (a
+/// backslash is a separator on Windows and a literal character elsewhere, so
+/// it never belongs in one of these fragments).
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn validate_export_path(release_id: &str, label: &str, value: &str) -> Result<(), LibraryError> {
-    coven::library_dir::validate_cloud_path(value).map_err(|error| {
-        LibraryError::Import(format!(
-            "invalid export path for release {release_id} {label} {value:?}: {error}"
-        ))
-    })
+    use std::path::Component;
+    let reject = |reason: &str| {
+        Err(LibraryError::Import(format!(
+            "invalid export path for release {release_id} {label} {value:?}: {reason}"
+        )))
+    };
+    if value.is_empty() {
+        return reject("path is empty");
+    }
+    if value.contains('\0') {
+        return reject("path contains a NUL byte");
+    }
+    if value.contains('\\') {
+        return reject("path contains a backslash");
+    }
+    if Path::new(value)
+        .components()
+        .any(|component| !matches!(component, Component::Normal(_)))
+    {
+        return reject("path is absolute or contains a non-normal (.. / . / drive) component");
+    }
+    Ok(())
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -974,5 +1005,44 @@ mod tests {
         );
         assert!(!final_dir.join("prior.txt").exists());
         assert!(!temp.path().join(".album.replace-release-1").exists());
+    }
+
+    #[test]
+    fn validate_export_path_accepts_normal_relative_fragments() {
+        for ok in ["track.flac", "CD1/track.flac", "Disc 1/01 - Song.flac"] {
+            validate_export_path("r", "l", ok).unwrap_or_else(|e| panic!("{ok:?}: {e}"));
+        }
+    }
+
+    #[test]
+    fn validate_export_path_rejects_empty_nul_and_backslash() {
+        // `C:\evil` and any other backslash fragment is refused on every
+        // platform — a separator on Windows, a stray literal elsewhere.
+        for bad in ["", "a\0b", "CD1\\track.flac", r"C:\evil", r"..\evil"] {
+            validate_export_path("r", "l", bad).expect_err(bad);
+        }
+    }
+
+    #[test]
+    fn validate_export_path_rejects_absolute_and_traversal() {
+        // Non-`Normal` components: an absolute `RootDir`, a `..` `ParentDir`
+        // (leading or interior), and a leading `.` `CurDir` the old
+        // leading-`/` + `..` checks let through.
+        for bad in ["/etc/passwd", "..", "../evil", "a/../etc/passwd", "./evil"] {
+            validate_export_path("r", "l", bad).expect_err(bad);
+        }
+    }
+
+    // On Windows a drive-absolute (`C:/evil`) or UNC (`\\server\share`) value
+    // parses to a `Prefix`/`RootDir` component, and `Path::join` onto it would
+    // discard the staging directory entirely; the all-`Normal` rule rejects it.
+    // On Unix `C:` is just an ordinary directory name, so this case is
+    // Windows-specific and cannot run on the macOS/Linux CI host.
+    #[cfg(windows)]
+    #[test]
+    fn validate_export_path_rejects_windows_drive_and_unc() {
+        for bad in ["C:/evil", r"C:\evil", r"\\server\share\evil"] {
+            validate_export_path("r", "l", bad).expect_err(bad);
+        }
     }
 }

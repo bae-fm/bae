@@ -225,7 +225,30 @@ impl SyncController {
     /// device can no longer read new data. Records the rotated key's fingerprint
     /// in this device's config.
     pub(crate) async fn remove_member(&self, public_key_hex: &str) -> Result<(), LibraryError> {
-        let fingerprint = self.handle.remove_member(public_key_hex).await?;
+        // coven's `remove_member` future is `!Send`: internally it holds coven's
+        // keyring trait object (`dyn KeyPersistence`, which carries no `Sync`
+        // bound) across its awaits while it rotates and re-adopts the library
+        // key. uniffi's async bridge export requires the whole call chain to be
+        // `Send`, so this future can't be `.await`ed inline. Drive it to
+        // completion on a blocking-pool thread via a private current-thread
+        // runtime — the same block-on shape coven's own sync loop uses for its
+        // cloud work — and hand back only the `Send` fingerprint string.
+        let handle = self.handle.clone();
+        let public_key_hex = public_key_hex.to_string();
+        let fingerprint = tokio::task::spawn_blocking(move || -> Result<String, LibraryError> {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|e| {
+                    LibraryError::Internal(format!("failed to build member-removal runtime: {e}"))
+                })?
+                .block_on(handle.remove_member(&public_key_hex))
+                .map_err(LibraryError::from)
+        })
+        .await
+        .map_err(|e| {
+            LibraryError::Internal(format!("member-removal task failed to complete: {e}"))
+        })??;
         self.config_handle
             .record_encryption_key_fingerprint(fingerprint)?;
         Ok(())
@@ -305,7 +328,8 @@ impl SyncController {
             CloudProvider::GoogleDrive => {
                 let folder_id =
                     sign_in_google_drive(&self.key_service, &library_name, cancel_rx, clock)
-                        .await?;
+                        .await
+                        .map_err(|e| LibraryError::CloudSetup(e.to_string()))?;
                 self.config_handle.update(move |c| {
                     c.cloud_home.provider = Some(CloudProvider::GoogleDrive);
                     c.cloud_home.google_drive_folder_id = Some(folder_id);
@@ -314,7 +338,9 @@ impl SyncController {
             }
             CloudProvider::Dropbox => {
                 let folder_path =
-                    sign_in_dropbox(&self.key_service, &library_name, cancel_rx, clock).await?;
+                    sign_in_dropbox(&self.key_service, &library_name, cancel_rx, clock)
+                        .await
+                        .map_err(|e| LibraryError::CloudSetup(e.to_string()))?;
                 self.config_handle.update(move |c| {
                     c.cloud_home.provider = Some(CloudProvider::Dropbox);
                     c.cloud_home.dropbox_folder_path = Some(folder_path);
@@ -322,8 +348,9 @@ impl SyncController {
                 })?;
             }
             CloudProvider::OneDrive => {
-                let (drive_id, folder_id) =
-                    sign_in_onedrive(&self.key_service, cancel_rx, clock).await?;
+                let (drive_id, folder_id) = sign_in_onedrive(&self.key_service, cancel_rx, clock)
+                    .await
+                    .map_err(|e| LibraryError::CloudSetup(e.to_string()))?;
                 self.config_handle.update(move |c| {
                     c.cloud_home.provider = Some(CloudProvider::OneDrive);
                     c.cloud_home.onedrive_drive_id = Some(drive_id);

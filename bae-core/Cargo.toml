@@ -121,6 +121,10 @@ tokio = { version = "1.0", features = ["test-util"] }
 serial_test = "3.4.0"
 # coven's deterministic clock/id fakes for bae's tests (off in production builds).
 coven = { workspace = true, features = ["test-utils"] }
+# Only to name `RevokeOutcome` in the `MockCloudHome` test double's `CloudHome`
+# impl — the facade crate does not re-export that trait return type. See the
+# workspace-deps note. Test-only; production code uses the `coven` facade alone.
+coven-core = { workspace = true }
 
 [[test]]
 name = "test_playback_behavior"

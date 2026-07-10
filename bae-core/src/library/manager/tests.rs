@@ -53,6 +53,11 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
     let config_handle = Arc::new(ConfigHandle::new(config));
     crate::config::install_test_keyring();
     let key_service = KeyService::new(library_id.to_string());
+    // The default test home is opaque, whose blob keyspace shards under the
+    // uploading device's public key (`{namespace}/{uploader}/…`). Give the
+    // device its signing keypair up front — an opaque home always has one in
+    // production — so opaque-home cloud-key derivation resolves the uploader.
+    key_service.get_or_create_user_keypair().unwrap();
     let manager = LibraryManager::new(
         database,
         config_handle,
@@ -5260,7 +5265,7 @@ fn setup_failure_classes_map_to_distinct_categories() {
             C::Network,
         ),
         (
-            coven::storage::cloud::setup::SetupError("oauth denied".into()).into(),
+            LibraryError::CloudSetup("oauth denied".into()),
             C::Credentials,
         ),
         (
@@ -5279,13 +5284,9 @@ fn setup_failure_classes_map_to_distinct_categories() {
             coven::SyncError::CloudHome(coven::CloudHomeError::Transport("t".into())).into(),
             C::Network,
         ),
-        (
-            coven::SyncError::Membership(
-                coven::sync::membership_ops::MembershipOpsError::SelfInvite,
-            )
-            .into(),
-            C::Membership,
-        ),
+        // `SyncError::Membership` maps to `C::Membership` (see `sync_category`),
+        // but its payload `MembershipOpsError` is no longer part of coven's
+        // curated public API, so a host test can't fabricate that variant.
         (coven::SyncError::NotConfigured.into(), C::Internal),
         (
             LibraryError::Storage("pin ended without completion".into()),
