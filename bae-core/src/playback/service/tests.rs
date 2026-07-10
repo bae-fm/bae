@@ -1528,3 +1528,45 @@ async fn device_change_carries_a_queued_completion_forward() {
         "a queued Completion must survive a device-change rebuild so auto-advance still fires"
     );
 }
+
+/// A stale `AutoAdvance` — for a track that is no longer current because the user
+/// pressed Next first — must be dropped, not advance again (which would skip the
+/// track Next landed on). The completed track's id no longer matches the current
+/// track, so the advance is stale.
+#[tokio::test]
+async fn auto_advance_ignores_a_stale_track_id_after_a_manual_next() {
+    let (_home, mut service, _rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+    // The user already pressed Next: B is current and Playing. A stale
+    // AutoAdvance for the previously-completed A arrives afterward.
+    service.slot = active_slot(test_prepared_track("B", buffer), TrackPhase::Playing);
+
+    service.handle_auto_advance("A".to_string()).await;
+
+    assert_eq!(
+        service.slot.current_track_id(),
+        Some("B"),
+        "a stale AutoAdvance for a no-longer-current track must not advance"
+    );
+}
+
+/// A stale `AutoAdvance` whose track IS still current but is no longer in the
+/// `Completed` phase — because a seek after its completion reset the phase — must
+/// also be dropped, or the queued advance would abandon the seek the user just
+/// made.
+#[tokio::test]
+async fn auto_advance_ignores_a_matching_track_that_is_no_longer_completed() {
+    let (_home, mut service, _rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+    // A is current again and Playing (a seek after its completion moved the phase
+    // off Completed). The stale AutoAdvance for A must not advance.
+    service.slot = active_slot(test_prepared_track("A", buffer), TrackPhase::Playing);
+
+    service.handle_auto_advance("A".to_string()).await;
+
+    assert_eq!(
+        service.slot.current_track_id(),
+        Some("A"),
+        "AutoAdvance must only fire while the completed track is still Completed"
+    );
+}

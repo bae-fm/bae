@@ -192,8 +192,13 @@ pub(crate) enum PlaybackCommand {
     Stop,
     /// Manual next track (skip pregap)
     Next,
-    /// Auto-advance from track completion (play pregap)
-    AutoAdvance,
+    /// Auto-advance from the natural completion of `track_id` (play pregap). The
+    /// id is validated when handled: a user Next/Seek that reached the command
+    /// loop first already moved on, so a stale advance for a no-longer-current or
+    /// no-longer-Completed track is dropped rather than double-advancing.
+    AutoAdvance {
+        track_id: String,
+    },
     /// Internal: the in-core decoder for a load filled its ring buffer to the
     /// play threshold (or reached EOF). Sent from a watcher task awaiting the
     /// decoder's ready signal; the handler resolves the current track's phase to
@@ -1037,6 +1042,77 @@ impl PlaybackService {
         }
     }
 
+    /// Advance to the next track after `track_id` completed naturally (pregap
+    /// played). Dispatched from the `TrackCompleted` progress event.
+    ///
+    /// Only advances if `track_id` is still the current track AND still in the
+    /// `Completed` phase. `AutoAdvance` rides the command queue behind whatever
+    /// the user did, so a `Next` (a different track is now current) or a `Seek`
+    /// (the same track, but the seek reset its phase off `Completed`) that reached
+    /// the loop first already moved on — advancing again would skip the track
+    /// `Next` landed on, or abandon the `Seek`. Either mismatch drops the advance.
+    async fn handle_auto_advance(&mut self, track_id: String) {
+        let still_completed = matches!(
+            &self.slot,
+            PlaybackSlot::Active(cur)
+                if cur.prepared.track_info.track_id == track_id
+                    && matches!(cur.phase, TrackPhase::Completed)
+        );
+        if !still_completed {
+            debug!(
+                track_id,
+                "ignoring stale AutoAdvance: the completed track is no longer current-and-Completed"
+            );
+            return;
+        }
+        info!(
+            track_id,
+            "AutoAdvance command received (natural transition)"
+        );
+
+        match self.side_pause_for_queue_front().await {
+            Ok(Some(decision)) => {
+                self.pause_for_side_end(decision);
+                return;
+            }
+            Ok(None) => {}
+            Err(()) => {
+                self.stop().await;
+                return;
+            }
+        }
+
+        // If we have a preloaded track (and not in repeat-track mode), use it.
+        if self.playback_queue.repeat_mode() != RepeatMode::Track {
+            if let Some(preloaded_track_id) = self.next_track_id().map(|s| s.to_string()) {
+                // Natural transition, start playing.
+                self.advance_and_play_preloaded(&preloaded_track_id, true, PlayTarget::Playing)
+                    .await;
+                return;
+            }
+        }
+
+        // No preloaded track (or repeat-track mode), use PlaybackQueue decision logic.
+        match self.playback_queue.next_entry() {
+            NextEntry::RepeatCurrent(next_track) => {
+                info!("Repeat mode: track, replaying {}", next_track);
+                self.play_track(&next_track, TrackStart::Natural, PlayTarget::Playing)
+                    .await;
+            }
+            NextEntry::Play(next_track) => {
+                info!("Playing from queue: {}", next_track);
+                self.emit_queue_update();
+                self.play_track(&next_track, TrackStart::Natural, PlayTarget::Playing)
+                    .await;
+            }
+            NextEntry::Stop => {
+                info!("No next track available, stopping");
+                self.emit_queue_update();
+                self.stop().await;
+            }
+        }
+    }
+
     fn handle_position_event(&mut self, fmt: Arc<TrackFmt>, pos: std::time::Duration) {
         // Samples are flowing normally: whatever starvation episode was in
         // progress is over.
@@ -1278,7 +1354,10 @@ impl PlaybackService {
                             "Auto-advance: Track completed, sending AutoAdvance command: {}",
                             track_id
                         );
-                        dispatch_command(&command_tx_for_completion, PlaybackCommand::AutoAdvance);
+                        dispatch_command(
+                            &command_tx_for_completion,
+                            PlaybackCommand::AutoAdvance { track_id },
+                        );
                     }
                     // A mid-flight read failure cancelled the buffer; the decoder
                     // exits without TrackCompleted, so without this the UI would
@@ -1497,50 +1576,8 @@ impl PlaybackService {
                 PlaybackCommand::Next => {
                     self.handle_next().await;
                 }
-                PlaybackCommand::AutoAdvance => {
-                    info!("AutoAdvance command received (natural transition)");
-
-                    match self.side_pause_for_queue_front().await {
-                        Ok(Some(decision)) => {
-                            self.pause_for_side_end(decision);
-                            continue;
-                        }
-                        Ok(None) => {}
-                        Err(()) => {
-                            self.stop().await;
-                            continue;
-                        }
-                    }
-
-                    // If we have a preloaded track (and not in repeat-track mode), use it
-                    if self.playback_queue.repeat_mode() != RepeatMode::Track {
-                        if let Some(preloaded_track_id) =
-                            self.next_track_id().map(|s| s.to_string())
-                        {
-                            // natural transition, start playing
-                            self.advance_and_play_preloaded(&preloaded_track_id, true, PlayTarget::Playing)
-                                .await;
-                            continue;
-                        }
-                    }
-
-                    // No preloaded track (or repeat-track mode), use PlaybackQueue decision logic
-                    match self.playback_queue.next_entry() {
-                        NextEntry::RepeatCurrent(track_id) => {
-                            info!("Repeat mode: track, replaying {}", track_id);
-                            self.play_track(&track_id, TrackStart::Natural, PlayTarget::Playing).await;
-                        }
-                        NextEntry::Play(next_track) => {
-                            info!("Playing from queue: {}", next_track);
-                            self.emit_queue_update();
-                            self.play_track(&next_track, TrackStart::Natural, PlayTarget::Playing).await;
-                        }
-                        NextEntry::Stop => {
-                            info!("No next track available, stopping");
-                            self.emit_queue_update();
-                            self.stop().await;
-                        }
-                    }
+                PlaybackCommand::AutoAdvance { track_id } => {
+                    self.handle_auto_advance(track_id).await;
                 }
                 PlaybackCommand::TrackReady {
                     track_id,
