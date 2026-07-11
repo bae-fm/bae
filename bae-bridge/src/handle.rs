@@ -3201,7 +3201,7 @@ mod tests {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(error) => panic!("remove stale test library dir: {error}"),
         }
-        let library_dir = coven::LibraryDir::new(root.join("library"));
+        let library_dir = coven::StoreDir::new(root.join("library"));
         std::fs::create_dir_all(&*library_dir).expect("create test library dir");
         bae_core::config::install_test_keyring();
 

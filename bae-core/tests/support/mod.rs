@@ -127,7 +127,7 @@ pub fn tracing_init() {
 /// HTTP work. (coven's KeyService reads the keyring, not env vars.)
 #[allow(dead_code)]
 pub fn test_config_and_keys(
-    library_dir: &coven::LibraryDir,
+    library_dir: &coven::StoreDir,
 ) -> (
     std::sync::Arc<bae_core::config::ConfigHandle>,
     bae_core::keys::KeyService,
@@ -154,7 +154,7 @@ pub fn test_config_and_keys(
 }
 
 /// Set up a fresh library + LibraryManager using the real codepath
-/// (LibraryDir::create + active-library pointer + saved config.yaml). No sync
+/// (StoreDir::create + active-library pointer + saved config.yaml). No sync
 /// manager — tests configure sync themselves via connect_*/save_s3_config.
 #[allow(dead_code)]
 pub fn setup_fresh_library(
@@ -163,7 +163,7 @@ pub fn setup_fresh_library(
     let tmp = tempfile::TempDir::new().unwrap();
     let library_id = uuid::Uuid::new_v4().to_string();
     let device_id = uuid::Uuid::new_v4().to_string();
-    let library_dir = coven::LibraryDir::new(tmp.path().join("libraries").join(&library_id));
+    let library_dir = coven::StoreDir::new(tmp.path().join("libraries").join(&library_id));
     std::fs::create_dir_all(&*library_dir).expect("create library dir");
     let config = bae_core::config::Config::with_defaults(
         library_id.clone(),
@@ -174,7 +174,7 @@ pub fn setup_fresh_library(
     config.save_to_config_yaml().expect("save config");
     config.save_active_library().expect("save active library");
 
-    let db_path = config.library_dir.db_path();
+    let db_path = config.store_dir.db_path();
     let database = runtime
         .block_on(bae_core::db::Database::new_test(
             db_path.to_str().unwrap(),

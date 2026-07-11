@@ -1,8 +1,11 @@
 #![cfg(feature = "test-utils")]
 //! Tripwire: pure reads must run on coven's read-only companion connection
 //! (`CovenHandle::sql_read`), which attaches no changeset session — so coven's
-//! "journaled sql transaction produced no synced changes" warning never fires
-//! for a read. A read still left on the journaled `sql` path would trip it.
+//! "journaled sql transaction changed nothing" warning never fires for a read.
+//! coven now gates that warning on the transaction changing zero rows (a
+//! `total_changes` delta), not on an empty synced capture — so a device-local
+//! write on the plain `sql`/`call_sql` path is silent (it changes rows), and
+//! only a read left on `sql` trips it.
 //!
 //! This asserts the property rather than leaving it to a `RUST_LOG=warn` grep
 //! over the suite output. libtest captures each test's stdout and, for a
@@ -19,9 +22,9 @@ use std::sync::{Arc, Mutex};
 
 use bae_core::db::Database;
 
-/// The exact warning coven logs when a journaled `sql` transaction captured an
-/// empty changeset (coven-core `database.rs`).
-const TRIPWIRE: &str = "produced no synced changes";
+/// A substring of the warning coven logs when a journaled `sql` transaction
+/// changed zero rows (coven-core `database.rs`).
+const TRIPWIRE: &str = "changed nothing";
 
 #[derive(Clone)]
 struct SharedBuf(Arc<Mutex<Vec<u8>>>);
@@ -61,22 +64,34 @@ async fn pure_reads_run_off_the_sync_journal() {
             .count()
     };
 
-    // Positive control. A device-local write still runs on the journaled `sql`
-    // path (it IS a write), but `cloud_outbox` is not a synced table, so coven
-    // captures an empty changeset and fires the warning. This both proves the
-    // process-global subscriber actually observes coven's cross-thread warning
-    // and documents that such device-local writes trip it legitimately — they
-    // are writes, not misrouted reads, and cannot move to `sql_read`.
-    db.add_cloud_outbox_delete("tripwire/positive-control")
+    // Positive control: a read-only closure driven through the raw journaled
+    // `sql()` path. A `SELECT` changes zero rows, so coven fires the warning —
+    // exactly the case a misrouted read hits. This proves the process-global
+    // subscriber actually observes coven's cross-thread emit, so the negative
+    // assertions below are not vacuous.
+    db.handle()
+        .sql(|sql| {
+            sql.tx()
+                .query_row("SELECT 1", [], |_row| Ok(()))
+                .map_err(coven::CovenError::from)
+        })
         .await
         .unwrap();
     assert!(
         tripwire_hits() >= 1,
-        "expected a journaled device-local write to trip coven's warning, so \
-         the assertion below is not vacuous",
+        "expected a zero-change journaled sql() transaction to trip coven's \
+         warning, so the assertions below are not vacuous",
     );
 
     buf.lock().unwrap().clear();
+
+    // A device-local write on the plain journaled path must NOT warn under the
+    // new semantics: `add_cloud_outbox_delete` changes rows, so coven's
+    // zero-rows-changed check does not fire. This is why device-local writes
+    // (e.g. once-per-second playback_state) stay silent with no `sql_local`.
+    db.add_cloud_outbox_delete("tripwire/local-write")
+        .await
+        .unwrap();
 
     // The migrated reads — at least one per db/client file. Each must resolve
     // on coven's read-only companion connection, journaling nothing. Empty
@@ -98,7 +113,8 @@ async fn pure_reads_run_off_the_sync_journal() {
     assert_eq!(
         tripwire_hits(),
         0,
-        "a pure read still journals through `sql`; captured warnings:\n{}",
+        "a pure read still journals through `sql`, or a device-local write \
+         changed no rows; captured warnings:\n{}",
         String::from_utf8(buf.lock().unwrap().clone()).unwrap(),
     );
 }

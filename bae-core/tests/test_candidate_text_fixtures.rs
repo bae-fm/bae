@@ -246,7 +246,7 @@ async fn make_library_manager() -> (bae_core::library::LibraryManager, TempDir) 
     )
     .await
     .unwrap();
-    let library_dir = coven::LibraryDir::new(tmp.path());
+    let library_dir = coven::StoreDir::new(tmp.path());
     // Unique id per test so keyring entries don't collide in the shared
     // process-global mock store (see `install_test_keyring`).
     let library_id = format!("test-{}", uuid::Uuid::new_v4());

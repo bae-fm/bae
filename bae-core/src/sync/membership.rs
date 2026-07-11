@@ -130,8 +130,8 @@ pub fn decode_invite_code_info(code: &str) -> Result<InviteCodeInfo, coven::Join
     let info = coven::decode_invite_code_info(code)?;
     Ok(InviteCodeInfo {
         owner_fingerprint: pubkey_fingerprint(&info.owner_pubkey),
-        library_id: info.library_id,
-        library_name: info.library_name,
+        library_id: info.store_id,
+        library_name: info.store_name,
         owner_pubkey: info.owner_pubkey,
         cloud_provider: info.cloud_provider,
         needs_oauth: info.needs_oauth,

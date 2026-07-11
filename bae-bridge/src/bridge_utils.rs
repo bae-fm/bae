@@ -246,9 +246,9 @@ impl BridgeConfig {
         BridgeConfig {
             // `inner` is coven's config (external crate) — exempt from the
             // exhaustive destructure; these stay dotted reads.
-            library_id: inner.library_id.clone(),
-            library_name: inner.library_name.clone(),
-            library_path: inner.library_dir.to_string_lossy().to_string(),
+            library_id: inner.store_id.clone(),
+            library_name: inner.store_name.clone(),
+            library_path: inner.store_dir.to_string_lossy().to_string(),
             encryption_key_stored: inner.encryption_key_stored,
             encryption_key_fingerprint: inner.encryption_key_fingerprint.clone(),
             pause_between_sides: *pause_between_sides,

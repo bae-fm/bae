@@ -23,7 +23,7 @@ use bae_core::import::{
 };
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
-use coven::LibraryDir;
+use coven::StoreDir;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use tracing::info;
@@ -99,7 +99,7 @@ async fn import_single_m4a_fixture(
     )
     .await
     .expect("database");
-    let library_dir = LibraryDir::new(db_dir.clone());
+    let library_dir = StoreDir::new(db_dir.clone());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
@@ -333,7 +333,7 @@ async fn import_cue_alac_pair() {
     )
     .await
     .expect("database");
-    let library_dir = LibraryDir::new(db_dir.clone());
+    let library_dir = StoreDir::new(db_dir.clone());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),

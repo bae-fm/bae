@@ -6,7 +6,7 @@ use tempfile::TempDir;
 use uuid::Uuid;
 
 fn test_config_and_keys(
-    library_dir: &coven::LibraryDir,
+    library_dir: &coven::StoreDir,
 ) -> (
     std::sync::Arc<crate::config::ConfigHandle>,
     crate::keys::KeyService,
@@ -36,7 +36,7 @@ async fn setup_test_manager() -> (LibraryManager, TempDir) {
     )
     .await
     .unwrap();
-    let library_dir = coven::LibraryDir::new(temp_dir.path());
+    let library_dir = coven::StoreDir::new(temp_dir.path());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let manager = LibraryManager::new(
         database,

@@ -13,7 +13,7 @@ async fn setup_import_service() -> (ImportService, TempDir) {
     let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
         .await
         .unwrap();
-    let library_dir = coven::LibraryDir::new(temp_dir.path());
+    let library_dir = coven::StoreDir::new(temp_dir.path());
     let library_id = format!("test-{}", temp_dir.path().display());
     let config = Config::with_defaults(
         library_id.clone(),

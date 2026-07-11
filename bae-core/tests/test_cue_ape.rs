@@ -19,7 +19,7 @@ use bae_core::library::LibraryManager;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
 use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
-use coven::{EncryptionService, InMemoryCloudHome, LibraryDir};
+use coven::{EncryptionService, InMemoryCloudHome, StoreDir};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -138,7 +138,7 @@ async fn test_cue_ape_records_correct_durations() {
     )
     .await
     .expect("database");
-    let library_dir = LibraryDir::new(db_dir.clone());
+    let library_dir = StoreDir::new(db_dir.clone());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
@@ -323,7 +323,7 @@ async fn test_cue_ape_records_track_timing() {
     )
     .await
     .expect("database");
-    let library_dir = LibraryDir::new(db_dir.clone());
+    let library_dir = StoreDir::new(db_dir.clone());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
@@ -451,7 +451,7 @@ impl CueApeTestFixture {
             std::sync::Arc::new(coven::SystemClock),
         )
         .await?;
-        let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let library_manager = LibraryManager::new(
             database.clone(),
@@ -1443,7 +1443,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
         std::fs::write(dir.join("CDImage.cue"), cue_body).expect("write cue");
     }
 
-    let library_dir = LibraryDir::new(db_dir.clone());
+    let library_dir = StoreDir::new(db_dir.clone());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::open(
         config_handle,

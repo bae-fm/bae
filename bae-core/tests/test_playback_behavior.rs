@@ -12,7 +12,7 @@ use bae_core::playback::{
     PlaybackPauseReason, PlaybackProgress, PlaybackState, RepeatMode,
     SIDE_PAUSE_CASSETTE_MESSAGE_KEY, SIDE_PAUSE_VINYL_MESSAGE_KEY,
 };
-use coven::LibraryDir;
+use coven::StoreDir;
 use coven::{IdProvider, SequentialIdProvider};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -378,7 +378,7 @@ where
     )
     .await?;
     let database_arc = Arc::new(database.clone());
-    let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let runtime_handle = tokio::runtime::Handle::current();
     let library_manager = LibraryManager::new(
@@ -900,7 +900,7 @@ impl CueFlacTestFixture {
         )
         .await?;
         let database_arc = Arc::new(database.clone());
-        let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let library_manager = LibraryManager::new(
             (*database_arc).clone(),
@@ -3371,7 +3371,7 @@ impl HighSampleRateTestFixture {
         )
         .await?;
         let database_arc = Arc::new(database.clone());
-        let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let library_manager = LibraryManager::new(
             (*database_arc).clone(),
@@ -3825,7 +3825,7 @@ async fn test_real_library_cpu_usage() {
     )
     .await
     .expect("open db");
-    let library_dir = LibraryDir::new(&bae_dir);
+    let library_dir = StoreDir::new(&bae_dir);
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
@@ -4010,7 +4010,7 @@ async fn test_pause_seek_cue_flac() {
     )
     .await
     .expect("open db");
-    let library_dir = LibraryDir::new(&bae_dir);
+    let library_dir = StoreDir::new(&bae_dir);
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
@@ -4243,7 +4243,7 @@ async fn test_playing_seek_cue_flac() {
     )
     .await
     .expect("open db");
-    let library_dir = LibraryDir::new(&bae_dir);
+    let library_dir = StoreDir::new(&bae_dir);
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
@@ -4423,7 +4423,7 @@ async fn test_restore_populates_last_position_display() {
     .await
     .unwrap();
     let database_arc = Arc::new(database.clone());
-    let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         (*database_arc).clone(),
@@ -4524,7 +4524,7 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
     .await
     .unwrap();
     let database_arc = Arc::new(database.clone());
-    let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         (*database_arc).clone(),
@@ -4643,7 +4643,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     .await
     .unwrap();
     let database_arc = Arc::new(database.clone());
-    let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         (*database_arc).clone(),
@@ -4810,7 +4810,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
     .await
     .unwrap();
     let database_arc = Arc::new(database.clone());
-    let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         (*database_arc).clone(),
@@ -4869,7 +4869,7 @@ async fn empty_test_library() -> (LibraryManager, tokio::runtime::Handle, TempDi
     )
     .await
     .unwrap();
-    let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database,
@@ -5141,7 +5141,7 @@ impl CloudOnlyPlaybackFixture {
             std::sync::Arc::new(coven::SystemClock),
         )
         .await?;
-        let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let library_manager = LibraryManager::new(
             database,
@@ -5517,7 +5517,7 @@ impl MultiWindowPlayback {
         )
         .await
         .expect("open the cloned multi-window database");
-        let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let runtime_handle = tokio::runtime::Handle::current();
         let library_manager = LibraryManager::new(
@@ -6521,7 +6521,7 @@ impl RemoteMultiWindowPlayback {
             std::sync::Arc::new(coven::SystemClock),
         )
         .await?;
-        let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let library_manager = LibraryManager::new(
             database,

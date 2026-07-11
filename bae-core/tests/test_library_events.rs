@@ -7,7 +7,7 @@ use bae_core::db::{
 };
 use bae_core::library::{LibraryEvent, LibraryManager};
 use chrono::Utc;
-use coven::LibraryDir;
+use coven::StoreDir;
 use std::time::Duration;
 use tempfile::TempDir;
 use uuid::Uuid;
@@ -16,7 +16,7 @@ async fn setup() -> (LibraryManager, Database, TempDir) {
     tracing_init();
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
     let database = Database::new_test(
         db_path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),

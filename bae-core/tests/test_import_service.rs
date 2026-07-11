@@ -19,7 +19,7 @@ use bae_core::musicbrainz::{
 };
 use bae_core::sync::CloudCipher;
 use coven::EncryptionService;
-use coven::LibraryDir;
+use coven::StoreDir;
 use serial_test::serial;
 use std::fs;
 use std::path::Path;
@@ -50,7 +50,7 @@ impl ImportFixture {
     /// installed a watch for — e.g. one that existed when added but is gone
     /// by the time the service starts, as when an external drive is
     /// unplugged across an app restart.
-    async fn new_with_seed(seed: impl FnOnce(&LibraryDir)) -> Self {
+    async fn new_with_seed(seed: impl FnOnce(&StoreDir)) -> Self {
         let temp = TempDir::new().unwrap();
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
@@ -61,7 +61,7 @@ impl ImportFixture {
         )
         .await
         .unwrap();
-        let library_dir = LibraryDir::new(db_dir.clone());
+        let library_dir = StoreDir::new(db_dir.clone());
         let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
         let ids: Arc<dyn coven::IdProvider> = Arc::new(coven::UuidProvider);
         let library_manager = LibraryManager::new(
@@ -3135,7 +3135,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
     )
     .await
     .unwrap();
-    let library_dir = LibraryDir::new(db_dir.clone());
+    let library_dir = StoreDir::new(db_dir.clone());
     let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
     config_handle
         .update(|c| c.verify_decode_on_import = verify)

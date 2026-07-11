@@ -1001,8 +1001,8 @@ impl LibraryManager {
     /// Desktop-only: the import module that uses it is gated off iOS/Android,
     /// and playback reads blobs through coven's handle rather than this path.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn library_dir(&self) -> coven::LibraryDir {
-        self.config_handle.config().library_dir.clone()
+    pub(crate) fn library_dir(&self) -> coven::StoreDir {
+        self.config_handle.config().store_dir.clone()
     }
 
     /// Start background listeners (sync status → library events).

@@ -14,7 +14,7 @@ use bae_core::db::Database;
 use bae_core::import::{IdentityChoice, ImportCommand, StorageMode};
 use bae_core::library::LibraryManager;
 use coven::EncryptionService;
-use coven::LibraryDir;
+use coven::StoreDir;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -48,7 +48,7 @@ impl ExportFixture {
         )
         .await
         .unwrap();
-        let library_dir = LibraryDir::new(db_dir.clone());
+        let library_dir = StoreDir::new(db_dir.clone());
         let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
         let mgr = LibraryManager::new(
             db.clone(),

@@ -22,13 +22,13 @@ fn main() {
 
     eprintln!(
         "active library: {} ({}), dev_mode={dev_mode}",
-        config.library_name, config.library_id,
+        config.store_name, config.store_id,
     );
 
     // In dev mode bae's secrets are in `BAE_*` env vars; bridge them into the
     // keyring coven's KeyService reads. No-op in production.
-    bae_core::config::seed_dev_keyring(&config.library_id);
-    let key_service = coven::KeyService::new(config.library_id.clone());
+    bae_core::config::seed_dev_keyring(&config.store_id);
+    let key_service = coven::KeyService::new(config.store_id.clone());
 
     match coven::generate_restore_code(&config.to_coven(), &key_service) {
         Ok(code) => println!("{code}"),

@@ -19,7 +19,7 @@ use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
 use coven::EncryptionService;
-use coven::LibraryDir;
+use coven::StoreDir;
 use std::path::Path;
 use std::sync::Arc;
 use support::MockCloudHome;
@@ -50,7 +50,7 @@ async fn storage(mgr: &LibraryManager, release_id: &str) -> (ReleaseStorageState
 }
 
 async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
-    let library_dir = LibraryDir::new(tmp.path());
+    let library_dir = StoreDir::new(tmp.path());
     let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
     let mgr = LibraryManager::open(
         config_handle,

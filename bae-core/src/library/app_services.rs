@@ -168,7 +168,7 @@ mod tests {
     use crate::config::{Config, ConfigHandle};
     use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
     use crate::keys::KeyService;
-    use coven::LibraryDir;
+    use coven::StoreDir;
     use tempfile::TempDir;
 
     /// Build a real `AppServices` — library manager, actor-backed playback,
@@ -218,7 +218,7 @@ mod tests {
         let config = Config::with_defaults(
             library_id.clone(),
             "test-device".to_string(),
-            LibraryDir::new(temp_dir.path().to_path_buf()),
+            StoreDir::new(temp_dir.path().to_path_buf()),
             "Test Library".to_string(),
         );
         let config_handle = Arc::new(ConfigHandle::new(config));

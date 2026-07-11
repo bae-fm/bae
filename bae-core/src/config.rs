@@ -1,4 +1,4 @@
-use coven::LibraryDir;
+use coven::StoreDir;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::sync::watch;
@@ -181,10 +181,10 @@ impl Config {
     /// restore where coven produced the synced/cloud config.
     pub fn from_coven(c: coven::Config) -> Self {
         let mut cfg = Self::with_defaults(
-            c.library_id.clone(),
+            c.store_id.clone(),
             c.device_id.clone(),
-            c.library_dir.clone(),
-            c.library_name.clone(),
+            c.store_dir.clone(),
+            c.store_name.clone(),
         );
         cfg.inner = c;
         cfg.mcp = McpConfig::disabled_default();
@@ -283,13 +283,13 @@ pub struct ConfigYaml {
 impl ConfigYaml {
     /// Convert to a runtime Config. The caller resolves device_id (auto-generating
     /// if missing from YAML) and provides the library_dir.
-    fn into_config(self, device_id: String, library_dir: LibraryDir) -> Config {
+    fn into_config(self, device_id: String, library_dir: StoreDir) -> Config {
         Config {
             inner: coven::Config {
-                library_id: self.library_id,
+                store_id: self.library_id,
                 device_id,
-                library_dir,
-                library_name: self.library_name,
+                store_dir: library_dir,
+                store_name: self.library_name,
                 encryption_key_stored: self.encryption_key_stored,
                 encryption_key_fingerprint: self.encryption_key_fingerprint,
                 cloud_home: self.cloud_home,
@@ -311,8 +311,8 @@ impl ConfigYaml {
 impl From<&Config> for ConfigYaml {
     fn from(config: &Config) -> Self {
         Self {
-            library_id: config.library_id.clone(),
-            library_name: config.library_name.clone(),
+            library_id: config.store_id.clone(),
+            library_name: config.store_name.clone(),
             device_id: Some(config.device_id.clone()),
             discogs: config.discogs,
             encryption_key_stored: config.encryption_key_stored,
@@ -412,7 +412,7 @@ impl Config {
         library_path: PathBuf,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
-        Self::load_from_library_dir(LibraryDir::new(library_path), ids)
+        Self::load_from_library_dir(StoreDir::new(library_path), ids)
     }
 
     fn from_env(ids: &dyn coven::IdProvider) -> Result<Self, ConfigError> {
@@ -422,7 +422,7 @@ impl Config {
 
         // Overlay dev-specific env vars on top of the config.yaml values
         if let Some(path) = dev_env_secret("BAE_LIBRARY_PATH") {
-            config.library_dir = LibraryDir::new(PathBuf::from(path));
+            config.store_dir = StoreDir::new(PathBuf::from(path));
         }
 
         let encryption_key_hex = dev_env_secret("BAE_ENCRYPTION_KEY");
@@ -498,7 +498,7 @@ impl Config {
     }
 
     fn load_from_library_dir(
-        library_dir: LibraryDir,
+        library_dir: StoreDir,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
         let config_path = library_dir.config_path();
@@ -507,7 +507,7 @@ impl Config {
     }
 
     fn load_from_registered_library_dir(
-        library_dir: LibraryDir,
+        library_dir: StoreDir,
         expected_library_id: &str,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
@@ -523,7 +523,7 @@ impl Config {
 
     fn config_from_yaml(
         mut yaml_config: ConfigYaml,
-        library_dir: LibraryDir,
+        library_dir: StoreDir,
         config_path: &std::path::Path,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
@@ -551,7 +551,7 @@ impl Config {
         let app_dir = bae_dir()?;
         std::fs::create_dir_all(&app_dir)?;
         let pointer_path = app_dir.join("active-library");
-        write_atomic_io(&pointer_path, self.library_id.as_bytes())?;
+        write_atomic_io(&pointer_path, self.store_id.as_bytes())?;
         Ok(())
     }
 
@@ -561,14 +561,14 @@ impl Config {
     }
 
     fn write_config_yaml(&self) -> Result<(), ConfigWriteError> {
-        std::fs::create_dir_all(&*self.library_dir)
+        std::fs::create_dir_all(&*self.store_dir)
             .map_err(ConfigError::from)
             .map_err(ConfigWriteError::BeforeCommit)?;
         let yaml: ConfigYaml = self.into();
         let serialized = serde_yaml::to_string(&yaml)
             .map_err(|e| ConfigError::Serialization(e.to_string()))
             .map_err(ConfigWriteError::BeforeCommit)?;
-        write_atomic(&self.library_dir.config_path(), serialized.as_bytes()).map_err(|e| {
+        write_atomic(&self.store_dir.config_path(), serialized.as_bytes()).map_err(|e| {
             let committed = e.committed();
             let config_error = ConfigError::from(e.into_io());
             if committed {
@@ -583,7 +583,7 @@ impl Config {
     pub fn with_defaults(
         library_id: String,
         device_id: String,
-        library_dir: LibraryDir,
+        library_dir: StoreDir,
         library_name: String,
     ) -> Self {
         Self {
@@ -721,7 +721,7 @@ impl ConfigHandle {
                 "Library name cannot be empty".to_string(),
             ));
         }
-        self.update(|c| c.library_name = name.to_string())
+        self.update(|c| c.store_name = name.to_string())
     }
 }
 
@@ -752,12 +752,12 @@ pub(crate) fn registered_library_path(bae_dir: &std::path::Path, library_id: &st
     bae_dir.join("libraries").join(library_id)
 }
 
-fn registered_library_dir(bae_dir: &std::path::Path, library_id: &str) -> LibraryDir {
-    LibraryDir::new(registered_library_path(bae_dir, library_id))
+fn registered_library_dir(bae_dir: &std::path::Path, library_id: &str) -> StoreDir {
+    StoreDir::new(registered_library_path(bae_dir, library_id))
 }
 
 fn load_registered_config_yaml(
-    library_dir: &LibraryDir,
+    library_dir: &StoreDir,
     expected_library_id: &str,
 ) -> Result<ConfigYaml, ConfigError> {
     let yaml_config = Config::load_config_yaml(&library_dir.config_path())?;
@@ -788,10 +788,10 @@ fn read_active_library_id(bae_dir: &std::path::Path) -> Result<Option<String>, C
 }
 
 /// Find a library's directory by its UUID, scanning `~/.bae/libraries/` subdirectories.
-fn find_library_by_id(bae_dir: &std::path::Path, uuid: &str) -> Option<LibraryDir> {
+fn find_library_by_id(bae_dir: &std::path::Path, uuid: &str) -> Option<StoreDir> {
     for (path, yaml) in discover_all_library_paths(bae_dir) {
         if yaml.library_id == uuid {
-            return Some(LibraryDir::new(path));
+            return Some(StoreDir::new(path));
         }
     }
     None
@@ -889,7 +889,7 @@ mod tests {
         Config::with_defaults(
             library_id.to_string(),
             "test-device-id".to_string(),
-            LibraryDir::new(library_path),
+            StoreDir::new(library_path),
             "Test Library".to_string(),
         )
     }
@@ -1094,8 +1094,8 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(loaded.library_id, "external-lib-id");
-        assert_eq!(&*loaded.library_dir, library_path.as_path());
+        assert_eq!(loaded.store_id, "external-lib-id");
+        assert_eq!(&*loaded.store_dir, library_path.as_path());
     }
 
     #[test]
@@ -1107,7 +1107,7 @@ mod tests {
             .unwrap();
 
         let result = Config::load_from_registered_library_dir(
-            LibraryDir::new(library_path),
+            StoreDir::new(library_path),
             "expected-lib-id",
             &coven::SequentialIdProvider::new("device"),
         );
@@ -1130,8 +1130,8 @@ mod tests {
         let loaded =
             Config::load_from_bae_dir(bae_dir, &coven::SequentialIdProvider::new("device"))
                 .unwrap();
-        assert_eq!(loaded.library_id, library_id);
-        assert_eq!(&*loaded.library_dir, library_path.as_path());
+        assert_eq!(loaded.store_id, library_id);
+        assert_eq!(&*loaded.store_dir, library_path.as_path());
     }
 
     #[test]
@@ -1148,7 +1148,7 @@ mod tests {
         let loaded =
             Config::load_from_bae_dir(bae_dir, &coven::SequentialIdProvider::new("device"))
                 .unwrap();
-        assert_eq!(loaded.library_id, "auto-lib");
+        assert_eq!(loaded.store_id, "auto-lib");
     }
 
     #[test]
@@ -1318,7 +1318,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let library_path = tmp.path().to_path_buf();
         let mut config = make_test_config("lib-1", library_path.clone());
-        config.library_name = "My Music".to_string();
+        config.store_name = "My Music".to_string();
         config.save_to_config_yaml().unwrap();
 
         let yaml: ConfigYaml = serde_yaml::from_str(
@@ -1342,7 +1342,7 @@ mod tests {
 
         let lib2_path = libraries_dir.join("lib-2");
         let mut lib2 = make_test_config("lib-2", lib2_path.clone());
-        lib2.library_name = "Second Library".to_string();
+        lib2.store_name = "Second Library".to_string();
         lib2.encryption_key_fingerprint = Some("fingerprint-2".to_string());
         lib2.save_to_config_yaml().unwrap();
 
@@ -1406,7 +1406,7 @@ mod tests {
         let handle = ConfigHandle::new(config);
 
         handle.rename_library("New Name").unwrap();
-        assert_eq!(handle.config().library_name, "New Name");
+        assert_eq!(handle.config().store_name, "New Name");
         assert!(handle.rename_library("").is_err());
 
         let yaml: ConfigYaml = serde_yaml::from_str(
@@ -1461,7 +1461,7 @@ mod tests {
         }
 
         let rename = spawn_update(Arc::clone(&handle), Arc::clone(&start), |config| {
-            config.library_name = "Renamed Library".to_string();
+            config.store_name = "Renamed Library".to_string();
         });
         let playback = spawn_update(Arc::clone(&handle), Arc::clone(&start), |config| {
             config.pause_between_sides = true;
@@ -1472,7 +1472,7 @@ mod tests {
         playback.join().unwrap();
 
         let final_config = handle.config().clone();
-        assert_eq!(final_config.library_name, "Renamed Library");
+        assert_eq!(final_config.store_name, "Renamed Library");
         assert!(final_config.pause_between_sides);
 
         let yaml: ConfigYaml = serde_yaml::from_str(
@@ -1492,7 +1492,7 @@ mod tests {
         let mut coven_config = coven::Config::with_defaults(
             library_id.to_string(),
             "restored-device".to_string(),
-            LibraryDir::new(library_path.clone()),
+            StoreDir::new(library_path.clone()),
             "Test Library".to_string(),
         );
         coven_config.cloud_home.provider = Some(CloudProvider::CloudKit);
@@ -1501,8 +1501,8 @@ mod tests {
         coven_config.cloud_home.cloudkit_zone_name = Some("bae-library".to_string());
         let config = Config::from_coven(coven_config);
 
-        assert_eq!(config.library_id, library_id);
-        assert_eq!(config.library_name, "Test Library");
+        assert_eq!(config.store_id, library_id);
+        assert_eq!(config.store_name, "Test Library");
         assert_eq!(config.mcp, McpConfig::disabled_default());
         assert_eq!(
             config.cloud_home.cloudkit_share_url.as_deref(),

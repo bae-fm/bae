@@ -127,7 +127,7 @@ fn bootstrap_inner(
     let ids: IdRef = Arc::new(UuidProvider);
 
     let (config, save_active_library) = load_bootstrap_config(target, ids.as_ref())?;
-    let library_id = config.library_id.clone();
+    let library_id = config.store_id.clone();
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -144,8 +144,8 @@ fn bootstrap_inner(
     // Dev mode keeps bae's secrets in `BAE_*` env vars; coven's keyring-only
     // KeyService can't see those, so bridge them into the keyring it reads.
     // No-op in production.
-    crate::config::seed_dev_keyring(&config.library_id);
-    let key_service = KeyService::new(config.library_id.clone());
+    crate::config::seed_dev_keyring(&config.store_id);
+    let key_service = KeyService::new(config.store_id.clone());
 
     // Resolve the encryption service only when this library already has a key on
     // this device — a returning user with a configured provider. A local-only

@@ -17,7 +17,7 @@ use bae_core::app::bootstrap;
 use bae_core::config::{CloudProvider, Config};
 use bae_core::keys::KeyService;
 use bae_core::library::{create_library, unlock_library};
-use coven::{EncryptionService, LibraryDir, UuidProvider};
+use coven::{EncryptionService, StoreDir, UuidProvider};
 use serial_test::serial;
 use tempfile::TempDir;
 use uuid::Uuid;
@@ -46,8 +46,8 @@ fn fake_home() -> TempDir {
 /// own path helpers (`registered_library_path` / `registered_library_dir`) are
 /// `pub(crate)`, so an integration test can't reach them; the literal layout is
 /// duplicated here.
-fn registered_library_dir(home: &Path, id: &str) -> LibraryDir {
-    LibraryDir::new(home.join(".bae").join("libraries").join(id))
+fn registered_library_dir(home: &Path, id: &str) -> StoreDir {
+    StoreDir::new(home.join(".bae").join("libraries").join(id))
 }
 
 /// Write a fixture library under `~/.bae/libraries/<id>/` and return its id.
@@ -98,7 +98,7 @@ fn active_pointer() -> Option<String> {
 fn bootstrap_of_locked_library_leaves_active_pointer() {
     let home = fake_home();
     let a = create_library("Library A".into(), &UuidProvider).unwrap();
-    let a_id = a.library_id.clone();
+    let a_id = a.store_id.clone();
     let b_id = write_locked_library(home.path(), "Library B");
 
     let app = bootstrap(b_id, 200, true, None).expect("a locked open completes with sync deferred");
@@ -141,7 +141,7 @@ fn bootstrap_of_unlocked_library_advances_active_pointer() {
 fn bootstrap_that_fails_leaves_active_pointer() {
     let home = fake_home();
     let a = create_library("Library A".into(), &UuidProvider).unwrap();
-    let a_id = a.library_id.clone();
+    let a_id = a.store_id.clone();
     let b_id = write_plain_library(home.path(), "Library B");
 
     // A directory where the SQLite file belongs makes the DB open fail.
@@ -177,7 +177,7 @@ fn unlock_then_reopen_advances_active_pointer() {
     // Library B: create it, open it, and configure an opaque S3 home. save_s3_config
     // mints the encryption key and records its fingerprint.
     let b = create_library("Library B".into(), &UuidProvider).unwrap();
-    let b_id = b.library_id.clone();
+    let b_id = b.store_id.clone();
     let app = bootstrap(b_id.clone(), 200, true, None).expect("open the fresh library");
     app.runtime.block_on(s3.provision_bucket(&bucket));
     app.runtime

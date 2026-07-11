@@ -320,7 +320,7 @@ impl SyncController {
         // AbortOnDrop guard tears the listener task down.
         let (_cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
 
-        let library_name = self.config_handle.config().library_name.clone();
+        let library_name = self.config_handle.config().store_name.clone();
         let clock = clock.as_ref();
         // coven's sign-ins authorize, resolve the cloud folder, and save tokens to
         // the keyring, returning the folder identifiers; bae persists them here.

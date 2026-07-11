@@ -19,7 +19,7 @@ impl LibraryManager {
                 "Library name cannot be empty".to_string(),
             ));
         }
-        if library_id == self.config_handle.config().library_id {
+        if library_id == self.config_handle.config().store_id {
             self.config_handle.rename_library(name)?;
             return Ok(());
         }
@@ -48,8 +48,8 @@ impl LibraryManager {
     /// onboards) since the active pointer is gone.
     pub fn forget_library(&self) -> Result<(), LibraryError> {
         let config = self.config_handle.config();
-        let library_id = config.library_id.clone();
-        let bae_dir = registered_bae_dir(config.library_dir.as_ref(), &library_id)?;
+        let library_id = config.store_id.clone();
+        let bae_dir = registered_bae_dir(config.store_dir.as_ref(), &library_id)?;
         let library_dir = crate::config::registered_library_path(&bae_dir, &library_id);
         let active_pointer = bae_dir.join("active-library");
         let remove_active_pointer = active_pointer_matches_library(&active_pointer, &library_id)?;

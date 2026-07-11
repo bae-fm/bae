@@ -63,9 +63,9 @@ impl BridgeLibrary {
     /// dotted reads rather than an exhaustive destructure.
     fn from_core(config: &bae_core::config::Config) -> Result<Self, BridgeError> {
         local_library(
-            config.library_id.clone(),
-            config.library_name.clone(),
-            std::path::PathBuf::from(&*config.library_dir),
+            config.store_id.clone(),
+            config.store_name.clone(),
+            std::path::PathBuf::from(&*config.store_dir),
             config.cloud_home.provider.as_ref(),
             true,
         )
@@ -365,8 +365,8 @@ pub fn decode_restore_code(code: String) -> Result<BridgeRestoreCodeInfo, Bridge
     let info = bae_core::sync::decode_restore_code_info(&code).map_err(BridgeError::config)?;
 
     Ok(BridgeRestoreCodeInfo {
-        library_id: info.library_id,
-        library_name: info.library_name,
+        library_id: info.store_id,
+        library_name: info.store_name,
         cloud_provider: BridgeCloudProvider::from_core(&info.cloud_provider),
         needs_oauth: info.needs_oauth,
     })

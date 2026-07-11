@@ -15,7 +15,7 @@ use bae_core::import::{
 };
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
-use coven::LibraryDir;
+use coven::StoreDir;
 use std::path::Path;
 use std::{fs, path::PathBuf};
 use tempfile::TempDir;
@@ -83,7 +83,7 @@ async fn test_local_import() {
     )
     .await
     .expect("database");
-    let library_dir = LibraryDir::new(db_dir.clone());
+    let library_dir = StoreDir::new(db_dir.clone());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
@@ -229,7 +229,7 @@ async fn test_local_delete_preserves_files() {
     )
     .await
     .expect("database");
-    let library_dir = LibraryDir::new(db_dir.clone());
+    let library_dir = StoreDir::new(db_dir.clone());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
@@ -347,7 +347,7 @@ async fn run_import_with_cover_test() {
     )
     .await
     .expect("Failed to create database");
-    let library_dir = LibraryDir::new(db_dir.clone());
+    let library_dir = StoreDir::new(db_dir.clone());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
@@ -686,7 +686,7 @@ async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
     )
     .await
     .expect("Failed to create database");
-    let library_dir = LibraryDir::new(db_dir.clone());
+    let library_dir = StoreDir::new(db_dir.clone());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),
@@ -803,7 +803,7 @@ async fn test_local_import_not_in_temp_dir() {
     )
     .await
     .expect("create database");
-    let library_dir = LibraryDir::new(db_dir.clone());
+    let library_dir = StoreDir::new(db_dir.clone());
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database.clone(),

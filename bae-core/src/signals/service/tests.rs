@@ -102,7 +102,7 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
         crate::db::Database::new_test(tmp.path().join("test.db").to_str().unwrap(), clock.clone())
             .await
             .unwrap();
-    let library_dir = coven::LibraryDir::new(tmp.path());
+    let library_dir = coven::StoreDir::new(tmp.path());
     // Unique id per test so keyring entries don't collide in the shared
     // process-global mock store (see `install_test_keyring`).
     let library_id = format!("test-{}", uuid::Uuid::new_v4());

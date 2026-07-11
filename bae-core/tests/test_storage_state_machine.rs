@@ -28,7 +28,7 @@ use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
 use coven::EncryptionService;
-use coven::LibraryDir;
+use coven::StoreDir;
 use std::sync::Arc;
 use support::MockCloudHome;
 use tempfile::TempDir;
@@ -67,7 +67,7 @@ async fn setup_manager(
     Arc<MockCloudHome>,
     EncryptionService,
 ) {
-    let library_dir = LibraryDir::new(tmp.path());
+    let library_dir = StoreDir::new(tmp.path());
     let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
     let db_path = tmp.path().join("test.db");
     let db = Database::new_test(

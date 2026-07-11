@@ -6,7 +6,7 @@
 //! the import service loads the registry and scans each folder; the folders
 //! survive restart.
 
-use coven::LibraryDir;
+use coven::StoreDir;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::{debug, warn};
@@ -54,7 +54,7 @@ pub struct ImportFolderRegistry {
 }
 
 impl ImportFolderRegistry {
-    fn file_path(library_dir: &LibraryDir) -> PathBuf {
+    fn file_path(library_dir: &StoreDir) -> PathBuf {
         library_dir.join("import_folders.yaml")
     }
 
@@ -64,7 +64,7 @@ impl ImportFolderRegistry {
     /// folders and the registry rewrites cleanly on the next change. Returning
     /// the empty default here (with a log) keeps the policy in one place instead
     /// of every caller deciding how to recover.
-    pub fn load(library_dir: &LibraryDir) -> Self {
+    pub fn load(library_dir: &StoreDir) -> Self {
         let path = Self::file_path(library_dir);
         match std::fs::read_to_string(&path) {
             Ok(text) => match serde_yaml::from_str(&text) {
@@ -94,7 +94,7 @@ impl ImportFolderRegistry {
         }
     }
 
-    fn save(&self, library_dir: &LibraryDir) -> Result<(), crate::import::ImportError> {
+    fn save(&self, library_dir: &StoreDir) -> Result<(), crate::import::ImportError> {
         let path = Self::file_path(library_dir);
         let yaml =
             serde_yaml::to_string(self).map_err(|e| crate::import::ImportError::Registry {
@@ -120,7 +120,7 @@ impl ImportFolderRegistry {
     /// already present.
     pub fn add(
         &mut self,
-        library_dir: &LibraryDir,
+        library_dir: &StoreDir,
         path: String,
     ) -> Result<bool, crate::import::ImportError> {
         if self.folders.contains(&path) {
@@ -134,7 +134,7 @@ impl ImportFolderRegistry {
     /// Remove `path`, persisting on change. Returns `true` when it was present.
     pub fn remove(
         &mut self,
-        library_dir: &LibraryDir,
+        library_dir: &StoreDir,
         path: &str,
     ) -> Result<bool, crate::import::ImportError> {
         let before = self.folders.len();
@@ -156,7 +156,7 @@ impl ImportFolderRegistry {
     /// no-op (already in the requested state).
     pub fn set_skipped(
         &mut self,
-        library_dir: &LibraryDir,
+        library_dir: &StoreDir,
         path: String,
         skipped: bool,
     ) -> Result<bool, crate::import::ImportError> {
@@ -183,9 +183,9 @@ impl ImportFolderRegistry {
 mod tests {
     use super::*;
 
-    fn temp_library_dir() -> (tempfile::TempDir, LibraryDir) {
+    fn temp_library_dir() -> (tempfile::TempDir, StoreDir) {
         let dir = tempfile::tempdir().unwrap();
-        let library_dir = LibraryDir::new(dir.path().to_path_buf());
+        let library_dir = StoreDir::new(dir.path().to_path_buf());
         (dir, library_dir)
     }
 

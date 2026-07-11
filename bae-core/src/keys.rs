@@ -19,7 +19,7 @@ use coven::{keyring_service, read_keyring};
 
 /// A namespaced keyring account, matching coven's own `base:library_id` scheme.
 fn account(ks: &KeyService, base: &str) -> String {
-    format!("{}:{}", base, ks.library_id())
+    format!("{}:{}", base, ks.store_id())
 }
 
 fn map_keyring_error(e: keyring_core::Error) -> KeyError {

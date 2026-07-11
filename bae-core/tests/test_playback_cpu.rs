@@ -31,7 +31,7 @@ use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
-use coven::LibraryDir;
+use coven::StoreDir;
 use serial_test::serial;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -313,7 +313,7 @@ impl PlaybackTestFixture {
         )
         .await?;
         let database_arc = Arc::new(database.clone());
-        let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let library_manager = LibraryManager::new(
             (*database_arc).clone(),

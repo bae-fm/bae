@@ -28,7 +28,7 @@ pub use upload_throughput::UploadThroughput;
 
 use crate::config::{Config, ConfigError};
 use crate::keys::KeyService;
-use coven::LibraryDir;
+use coven::StoreDir;
 use coven::{EncryptionError, EncryptionService};
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -89,9 +89,9 @@ pub fn create_library(name: String, ids: &dyn coven::IdProvider) -> Result<Confi
     let bae_dir = home_dir.join(".bae");
     let library_id = ids.new_id();
 
-    // coven's LibraryDir::create returns coven's Config; bae's Config adds its own
+    // coven's StoreDir::create returns coven's Config; bae's Config adds its own
     // fields (Discogs), so build and persist the bae one here.
-    let library_dir = LibraryDir::new(crate::config::registered_library_path(
+    let library_dir = StoreDir::new(crate::config::registered_library_path(
         &bae_dir,
         &library_id,
     ));
@@ -300,13 +300,13 @@ async fn join_from_code_inner(
 
 fn restore_code_library_id(code: &str) -> Result<String, String> {
     crate::sync::decode_restore_code_info(code)
-        .map(|info| info.library_id)
+        .map(|info| info.store_id)
         .map_err(|e| e.to_string())
 }
 
 fn invite_code_library_id(code: &str) -> Result<String, String> {
     crate::sync::decode_invite_code_info(code)
-        .map(|info| info.library_id)
+        .map(|info| info.store_id)
         .map_err(|e| e.to_string())
 }
 
@@ -494,7 +494,7 @@ mod tests {
         let mut config = Config::with_defaults(
             library_id.to_string(),
             "device-id".to_string(),
-            LibraryDir::new(library_path),
+            StoreDir::new(library_path),
             "Library Name".to_string(),
         );
         config.encryption_key_fingerprint =

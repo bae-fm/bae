@@ -19,7 +19,7 @@ use bae_core::import::{
 };
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
-use coven::LibraryDir;
+use coven::StoreDir;
 use std::path::Path;
 use std::time::Duration;
 use tempfile::TempDir;
@@ -432,7 +432,7 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
     )
     .await
     .expect("database");
-    let library_dir = LibraryDir::new(db_dir);
+    let library_dir = StoreDir::new(db_dir);
     let (config_handle, key_service) = test_config_and_keys(&library_dir);
     let library_manager = LibraryManager::new(
         database,
@@ -503,7 +503,7 @@ impl CueFlacCaptureFixture {
             std::sync::Arc::new(coven::SystemClock),
         )
         .await?;
-        let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
         let library_manager = LibraryManager::new(
             database.clone(),

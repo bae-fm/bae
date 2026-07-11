@@ -521,7 +521,7 @@ struct ActiveMcpEndpoint {
 
 fn active_mcp_endpoint() -> Result<ActiveMcpEndpoint, CliError> {
     let config = active_config()?;
-    let token = key_service_token(&config.library_id)?;
+    let token = key_service_token(&config.store_id)?;
     let uri = format!("http://127.0.0.1:{}/mcp", config.mcp.port);
     let runtime = tokio::runtime::Runtime::new()
         .map_err(|e| CliError::Internal(format!("failed to create runtime: {e}")))?;
@@ -585,16 +585,16 @@ fn require_unlocked_for_headless(config: &Config) -> Result<(), CliError> {
     if !config.encryption_key_stored {
         return Ok(());
     }
-    let key_service = KeyService::new(config.library_id.clone());
+    let key_service = KeyService::new(config.store_id.clone());
     match key_service.get_encryption_key() {
         Ok(Some(_)) => Ok(()),
         Ok(None) => Err(CliError::Unavailable(format!(
             "library '{}' is locked; unlock it before running headless automation",
-            config.library_name
+            config.store_name
         ))),
         Err(e) => Err(CliError::Unavailable(format!(
             "failed to read encryption key for '{}': {e}",
-            config.library_name
+            config.store_name
         ))),
     }
 }
@@ -615,7 +615,7 @@ fn resolve_library_id(selector: &LibrarySelector) -> Result<String, CliError> {
 
 fn library_id_from_path(path: &Path) -> Result<String, CliError> {
     Config::load_from_library_path(path.to_path_buf(), &coven::UuidProvider)
-        .map(|config| config.library_id.clone())
+        .map(|config| config.store_id.clone())
         .map_err(|e| CliError::Config(e.to_string()))
 }
 

@@ -115,7 +115,7 @@ async fn seeded_library_manager(releases: &[(&str, &[&str])]) -> (TempDir, Libra
     let config = crate::config::Config::with_defaults(
         library_id.clone(),
         "test-device".to_string(),
-        coven::LibraryDir::new(home.path().join("library")),
+        coven::StoreDir::new(home.path().join("library")),
         "Test Library".to_string(),
     );
     crate::config::install_test_keyring();

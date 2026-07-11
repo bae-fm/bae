@@ -279,7 +279,7 @@ mod tests {
         use crate::library::LibraryManager;
         use crate::util::content_type::ContentType;
         use chrono::Utc;
-        use coven::LibraryDir;
+        use coven::StoreDir;
         use uuid::Uuid;
 
         let temp = tempfile::TempDir::new().unwrap();
@@ -302,7 +302,7 @@ mod tests {
         };
         database.insert_artist(&artist).await.unwrap();
 
-        let library_dir = LibraryDir::new(library_root.clone());
+        let library_dir = StoreDir::new(library_root.clone());
         let library_id = format!("test-{}", uuid::Uuid::new_v4());
         let config = Config::with_defaults(
             library_id.clone(),
@@ -400,7 +400,7 @@ mod tests {
         use crate::library::LibraryManager;
         use crate::util::content_type::ContentType;
         use chrono::Utc;
-        use coven::LibraryDir;
+        use coven::StoreDir;
         use std::sync::Arc;
         use uuid::Uuid;
 
@@ -444,7 +444,7 @@ mod tests {
         };
         database.insert_artist(&artist).await.unwrap();
 
-        let library_dir = LibraryDir::new(library_root.clone());
+        let library_dir = StoreDir::new(library_root.clone());
         // Unique id per test so keyring entries don't collide in the shared
         // process-global mock store (see `install_test_keyring`).
         let library_id = format!("test-{}", uuid::Uuid::new_v4());

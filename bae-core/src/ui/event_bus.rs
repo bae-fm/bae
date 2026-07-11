@@ -499,7 +499,7 @@ mod tests {
     use crate::config::{Config, ConfigHandle};
     use crate::db::Database;
     use crate::library::LibraryEvent;
-    use coven::LibraryDir;
+    use coven::StoreDir;
     use std::sync::Arc;
     use std::time::Duration;
     use tempfile::TempDir;
@@ -520,7 +520,7 @@ mod tests {
         runtime: &tokio::runtime::Runtime,
     ) -> (crate::library::LibraryManager, TempDir) {
         let tmp = TempDir::new().unwrap();
-        let library_dir = LibraryDir::new(tmp.path().join("lib"));
+        let library_dir = StoreDir::new(tmp.path().join("lib"));
         let database = runtime
             .block_on(Database::new_test(
                 tmp.path().join("test.db").to_str().unwrap(),
@@ -555,7 +555,7 @@ mod tests {
         let config = Config::with_defaults(
             "lib-1".to_string(),
             "device-1".to_string(),
-            LibraryDir::new(tmp.path().join("lib")),
+            StoreDir::new(tmp.path().join("lib")),
             "Test Library".to_string(),
         );
         config.save_to_config_yaml().expect("save config.yaml");

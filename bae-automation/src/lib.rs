@@ -934,9 +934,9 @@ impl Automation {
     pub fn config_get(&self) -> AutomationConfig {
         let config = self.services.library_manager().get_config();
         AutomationConfig {
-            library_id: config.library_id.clone(),
-            library_name: config.library_name.clone(),
-            library_path: config.library_dir.to_string_lossy().to_string(),
+            library_id: config.store_id.clone(),
+            library_name: config.store_name.clone(),
+            library_path: config.store_dir.to_string_lossy().to_string(),
             mcp: config.mcp.into(),
         }
     }

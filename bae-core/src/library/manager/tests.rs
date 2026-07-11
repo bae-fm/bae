@@ -11,7 +11,7 @@ use crate::util::content_type::ContentType;
 use chrono::Utc;
 #[cfg(feature = "test-utils")]
 use coven::InMemoryCloudHome;
-use coven::LibraryDir;
+use coven::StoreDir;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -43,7 +43,7 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
     };
     database.insert_artist(&artist).await.unwrap();
 
-    let library_dir = LibraryDir::new(temp_dir.path().to_path_buf());
+    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
     let config = Config::with_defaults(
         library_id.to_string(),
         "test-device".to_string(),
@@ -146,7 +146,7 @@ async fn setup_forget_library_manager_at(
     let config = Config::with_defaults(
         library_id.to_string(),
         "test-device".to_string(),
-        LibraryDir::new(library_dir.clone()),
+        StoreDir::new(library_dir.clone()),
         "Test Library".to_string(),
     );
     let config_handle = Arc::new(ConfigHandle::new(config));

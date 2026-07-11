@@ -977,14 +977,14 @@ impl Database {
             .parent()
             .filter(|parent| !parent.as_os_str().is_empty())
             .ok_or_else(|| DbError(format!("database path has no parent: {database_path}")))?;
-        let library_dir = coven::LibraryDir::new(library_root);
+        let library_dir = coven::StoreDir::new(library_root);
         let config = coven::Config::with_defaults(
             "test-library".to_string(),
             "test-device".to_string(),
             library_dir,
             "Test Library".to_string(),
         );
-        let key_service = coven::KeyService::new(config.library_id.clone());
+        let key_service = coven::KeyService::new(config.store_id.clone());
         Self::open(
             config,
             clock,
