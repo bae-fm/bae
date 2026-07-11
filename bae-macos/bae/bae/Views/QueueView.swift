@@ -29,13 +29,12 @@ struct QueueView: View {
     /// to the context section's header — shuffle is a property of the context.
     let onSetShuffle: (Bool) -> Void
 
-    // A drag can start in either section; the session is shared so the source
-    // row dims wherever it lives and both sections revert on the same cancel.
-    // (Hover and drop-insertion are positional, so each QueueSection still owns
-    // its own — a row index in one lane must not light up the same index in the
-    // other.)
+    // A drag can start in either section and target the other (a context row
+    // enqueues into the manual lane), so the coordinator is shared; hover and
+    // external-drop insertion stay per-section (positional — a row index in
+    // one lane must not light up the same index in the other).
     @State
-    private var dragSession = QueueDragSession()
+    private var dragCoordinator = QueueDragCoordinator()
 
     /// The manual lane ("Up Next"): explicitly enqueued tracks, drained first —
     /// always resolved in full, never windowed.
@@ -104,7 +103,8 @@ struct QueueView: View {
                             loadEpoch: 0,
                             loadRange: nil,
                             acceptsExternalDrops: true,
-                            dragSession: dragSession,
+                            laneId: .manual,
+                            coordinator: dragCoordinator,
                             queueRevision: playbackStore.revision,
                             onSkipTo: onSkipTo,
                             onRemove: onRemove,
@@ -112,6 +112,7 @@ struct QueueView: View {
                             onInsertTracks: onInsertTracks,
                             onSetShuffle: nil,
                         )
+                        .zIndex(dragCoordinator.isDragSource(.manual) ? 1 : 0)
 
                         if let context, context.upcomingTotal > 0 {
                             // The context tail is library-scaled and only
@@ -133,7 +134,8 @@ struct QueueView: View {
                                     )
                                 },
                                 acceptsExternalDrops: false,
-                                dragSession: dragSession,
+                                laneId: .context,
+                                coordinator: dragCoordinator,
                                 queueRevision: playbackStore.revision,
                                 onSkipTo: onSkipTo,
                                 onRemove: onRemove,
@@ -141,10 +143,19 @@ struct QueueView: View {
                                 onInsertTracks: onInsertTracks,
                                 onSetShuffle: onSetShuffle,
                             )
+                            .zIndex(
+                                dragCoordinator.isDragSource(.context) ? 1 : 0
+                            )
                         }
                     }
                 }
+                .coordinateSpace(name: "queuePane")
                 .background(Theme.background)
+                .onChange(of: manual.count, initial: true) {
+                    // Cross-lane gap math runs in the context section's
+                    // gesture, which can't see the manual section's props.
+                    dragCoordinator.manualGapCount = manual.count
+                }
             }
         }
         .background(Theme.surface)
@@ -225,123 +236,234 @@ struct QueueView: View {
     }
 }
 
-// MARK: - Drag session
+// MARK: - Drag coordinator
 
-/// The in-flight internal-reorder drag, shared across both `QueueSection`s.
-/// Reference-typed (not `@State` value fields) so the cancel watchdog below can
-/// mutate it from its polling task.
-///
-/// Neither `.onDrag` nor any `DropDelegate` reports a drag that ends WITHOUT a
-/// drop on one of our targets — Esc, or a release outside the pane. Hanging
-/// cleanup off the drag `NSItemProvider`'s release doesn't work either: the
-/// drag pasteboard can retain the provider until the NEXT drag begins, so a
-/// cancelled drag's ghost row would linger indefinitely. The one reliable,
-/// bounded signal left is the mouse button itself: while a session is live, a
-/// watchdog polls `NSEvent.pressedMouseButtons`; a few consecutive
-/// buttons-up ticks with no committed drop means the drag ended un-dropped —
-/// cancel. The debounce exists so an accepted drop's `performDrop` (dispatched
-/// within one runloop of release) always wins the race against the watchdog.
+/// Which queue lane a section renders.
+enum QueueLaneID {
+    case manual
+    case context
+}
+
+/// A lane's rows-region geometry in the pane coordinate space, captured off
+/// the live layout. `rowHeight` is the region height over the row count —
+/// rows are uniform by design (hover chrome toggles by opacity precisely so
+/// they never resize).
+private struct QueueLaneGeometry {
+    var rowsFrame: CGRect
+    var rowHeight: CGFloat
+}
+
+/// The in-flight reorder drag. Owned by the row's own `DragGesture` — no
+/// AppKit drag session, no floating drag image, no item providers: the row
+/// itself tracks the cursor, sibling rows shift around it continuously, and
+/// the gesture's `onEnded` is the one deterministic end-of-drag signal
+/// (releases, including outside the pane, always deliver it).
+private struct ActiveQueueDrag {
+    let lane: QueueLaneID
+    let entryId: String
+    let trackId: String
+    /// The dragged row's canonical index in its lane at drag start (display
+    /// order equals canonical order at that moment — no permutation is live).
+    let startSlot: Int
+    /// Cursor offset from the row's top at grab time, so the row keeps its
+    /// grip point under the cursor instead of snapping its top edge there.
+    let grabAnchorY: CGFloat
+    /// Cursor position, pane space. Updated continuously by the gesture.
+    var location: CGPoint
+}
+
+/// Shared drag state for both `QueueSection`s: the active gesture, each
+/// lane's measured geometry, and the post-commit hold. All display effects
+/// (sibling shifts, the dragged row's cursor tracking, the cross-lane
+/// insertion gap) are DERIVED from `active` + geometry per render — there is
+/// no stored permutation to go stale when the queue changes mid-drag.
 @MainActor
 @Observable
-final class QueueDragSession {
-    /// The dragged row's entry id while an internal drag is live, else `nil`.
-    /// Drives the source row's dimmed opacity and lets each drop delegate tell
-    /// an internal reorder from a foreign drag.
-    var draggedEntryId: String?
-    /// The dragged row's underlying track, for a cross-lane drop: a context row
-    /// released over the manual lane enqueues the track (the context instance
-    /// stays — the release's order isn't edited by promoting a track into
-    /// "Up Next").
-    var draggedTrackId: String?
-    /// Set by the row drop delegate when an internal reorder commits (which
-    /// also un-dims immediately — the drop's success is known synchronously
-    /// there). The watchdog reads it to decide: a committed move leaves the
-    /// live permutation on screen for the coming revision bump to clear (no
-    /// snap); anything else — Esc, drag-out, drop-on-chrome — reverts.
-    var committed = false
-    /// Bumped when a drag ends WITHOUT a commit, so each `QueueSection` animates
-    /// its live permutation back to canonical order. Separate from the revision
-    /// bump, which clears a committed permutation un-animated.
-    private(set) var cancelTick = 0
-    /// Identifies the current drag, so a superseded watchdog tick can never
-    /// revert or un-dim a newer drag.
-    private var sessionId = 0
-    private var watchdog: Task<Void, Never>?
+final class QueueDragCoordinator {
+    private var active: ActiveQueueDrag?
+    private var geometry: [QueueLaneID: QueueLaneGeometry] = [:]
+    /// A committed reorder's final display order, held per lane so the rows
+    /// stay put between the gesture ending and core's snapshot echoing the
+    /// same order back (the revision bump clears it — visually a no-op).
+    private var hold: [QueueLaneID: [Int]] = [:]
 
-    func begin(entryId: String, trackId: String) {
-        sessionId += 1
-        draggedEntryId = entryId
-        draggedTrackId = trackId
-        committed = false
+    var isDragging: Bool { active != nil }
 
-        let id = sessionId
-        watchdog?.cancel()
-        watchdog = Task { [weak self] in
-            // 3 consecutive buttons-up ticks ≈ 300ms after physical release:
-            // long past when an accepted drop's performDrop lands (same
-            // runloop-ish), short enough that a cancel's revert reads as part
-            // of AppKit's own slide-back animation. If the main thread is
-            // stalled long enough to reorder the two, the wrongly-reverted
-            // visuals still correct on the reorder's snapshot — core stays
-            // authoritative either way.
-            var releasedTicks = 0
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(100))
-                guard let self, self.sessionId == id,
-                    self.draggedEntryId != nil
-                else {
-                    return
-                }
-                if NSEvent.pressedMouseButtons == 0 {
-                    releasedTicks += 1
-                    if releasedTicks >= 3 {
-                        self.end(sessionId: id)
-                        return
-                    }
-                }
-                else {
-                    releasedTicks = 0
-                }
-            }
-        }
+    /// Whether `lane` hosts the live drag — its section must also win the
+    /// z-order between SECTIONS, or a row dragged across the boundary renders
+    /// underneath the sibling section's rows (zIndex only arbitrates among
+    /// siblings, and the sections are siblings of each other).
+    func isDragSource(_ lane: QueueLaneID) -> Bool {
+        active?.lane == lane
     }
 
-    /// The drag identified by `sessionId` ended un-dropped (the watchdog saw
-    /// the mouse released with no commit). Reverts the live permutation unless
-    /// a commit already claimed it. A no-op for a superseded session.
-    func end(sessionId: Int) {
-        guard sessionId == self.sessionId else {
+    /// The dragged entry while a drag is live in `lane`, else `nil`.
+    func draggedEntryId(in lane: QueueLaneID) -> String? {
+        guard let active, active.lane == lane else {
+            return nil
+        }
+        return active.entryId
+    }
+
+    func setGeometry(_ lane: QueueLaneID, rowsFrame: CGRect, rowCount: Int) {
+        guard rowCount > 0 else {
             return
         }
-        // Animated: the source row's un-dim (and, on the cancel path, the
-        // sections' permutation revert keyed off `cancelTick`) should fade in
-        // step with AppKit's own slide-back, not pop.
-        withAnimation(.snappy) {
-            if !committed {
-                cancelTick += 1
-            }
-            draggedEntryId = nil
-            draggedTrackId = nil
+        let geo = QueueLaneGeometry(
+            rowsFrame: rowsFrame,
+            rowHeight: rowsFrame.height / CGFloat(rowCount)
+        )
+        if geometry[lane]?.rowsFrame != geo.rowsFrame {
+            geometry[lane] = geo
         }
-        committed = false
-        watchdog?.cancel()
-        watchdog = nil
     }
 
-    /// A cross-lane drop committed (context row enqueued into the manual
-    /// lane). Core inserted a NEW manual entry — the source lane's own order
-    /// never changed — so unlike a same-lane commit, any live permutation in
-    /// the source section must revert (animated, via `cancelTick`), while the
-    /// insert itself arrives with the coming snapshot.
-    func endAsCrossLaneInsert() {
-        withAnimation(.snappy) {
-            cancelTick += 1
-            draggedEntryId = nil
-            draggedTrackId = nil
+    func begin(
+        lane: QueueLaneID,
+        entryId: String,
+        trackId: String,
+        startSlot: Int,
+        location: CGPoint
+    ) {
+        guard active == nil else {
+            return
         }
-        committed = false
-        watchdog?.cancel()
-        watchdog = nil
+        let rowTop: CGFloat
+        if let geo = geometry[lane] {
+            rowTop = geo.rowsFrame.minY + CGFloat(startSlot) * geo.rowHeight
+        }
+        else {
+            rowTop = location.y
+        }
+        active = ActiveQueueDrag(
+            lane: lane,
+            entryId: entryId,
+            trackId: trackId,
+            startSlot: startSlot,
+            grabAnchorY: location.y - rowTop,
+            location: location
+        )
+    }
+
+    func update(location: CGPoint) {
+        active?.location = location
+    }
+
+    /// The display slot the dragged row currently occupies in its own lane:
+    /// the slot under the cursor, clamped to the lane. Sibling rows shift
+    /// around it as this crosses row boundaries — continuously, not on
+    /// enter/leave events.
+    func gapSlot(count: Int) -> Int? {
+        guard let active, let geo = geometry[active.lane],
+            active.startSlot < count
+        else {
+            return nil
+        }
+        let rel =
+            (active.location.y - active.grabAnchorY + geo.rowHeight / 2
+                - geo.rowsFrame.minY) / geo.rowHeight
+        return min(max(Int(rel.rounded(.down)), 0), count - 1)
+    }
+
+    /// The lane's current display order (display slot → canonical index):
+    /// the live permutation while a drag is underway here, the held
+    /// post-commit order while core's echo is in flight, else canonical.
+    /// Derived against the CURRENT `count`, so a queue change mid-drag can
+    /// never leave a stale-length permutation — the drag simply falls back
+    /// to canonical if its start slot no longer exists.
+    func displayOrder(for lane: QueueLaneID, count: Int) -> [Int]? {
+        if let active, active.lane == lane {
+            guard let gap = gapSlot(count: count), gap != active.startSlot
+            else {
+                return nil
+            }
+            var order = Array(0..<count)
+            order.remove(at: active.startSlot)
+            order.insert(active.startSlot, at: gap)
+            return order
+        }
+        if let held = hold[lane], held.count == count {
+            return held
+        }
+        return nil
+    }
+
+    /// The dragged row's vertical offset from its current display slot, so it
+    /// tracks the cursor exactly while siblings animate around it.
+    func draggedRowOffset(displaySlot: Int) -> CGFloat {
+        guard let active, let geo = geometry[active.lane] else {
+            return 0
+        }
+        let slotTop =
+            geo.rowsFrame.minY + CGFloat(displaySlot) * geo.rowHeight
+        return active.location.y - active.grabAnchorY - slotTop
+    }
+
+    /// Where a context-row drag currently hovers in the MANUAL lane: the
+    /// between-row gap (0...count) its track would insert at, or `nil` when
+    /// the drag isn't a context row over the manual lane. The manual section
+    /// renders its insertion line here; releasing commits the enqueue.
+    func manualInsertGap(manualCount: Int) -> Int? {
+        guard let active, active.lane == .context,
+            let manual = geometry[.manual],
+            active.location.y < manual.rowsFrame.maxY
+        else {
+            return nil
+        }
+        let rel =
+            (active.location.y - manual.rowsFrame.minY) / manual.rowHeight
+        return min(max(Int(rel.rounded()), 0), manualCount)
+    }
+
+    /// End the drag, resolving what (if anything) to commit. The caller (the
+    /// source lane's section, which owns the command callbacks and `itemAt`)
+    /// executes the outcome; `reorder` holds the final order here until the
+    /// revision bump.
+    func finish(count: Int) -> Outcome {
+        guard let active else {
+            return .none
+        }
+        defer { self.active = nil }
+        if let gap = manualInsertGap(manualCount: manualGapCount) {
+            return .insertIntoManual(trackId: active.trackId, gap: gap)
+        }
+        guard let order = displayOrder(for: active.lane, count: count),
+            let gap = gapSlot(count: count)
+        else {
+            return .none
+        }
+        return .reorder(
+            entryId: active.entryId,
+            finalOrder: order,
+            gap: gap,
+            lane: active.lane
+        )
+    }
+
+    /// Keep a committed reorder's order on screen until core echoes it back.
+    func holdOrder(_ order: [Int], lane: QueueLaneID) {
+        hold[lane] = order
+    }
+
+    /// Core's snapshot landed for this lane's revision: the canonical order
+    /// now equals whatever was held, so dropping the hold is visually a no-op.
+    func clearHold(_ lane: QueueLaneID) {
+        hold[lane] = nil
+    }
+
+    /// The manual lane's row count, captured for cross-lane gap math (the
+    /// context section's gesture can't see the manual section's props).
+    var manualGapCount = 0
+
+    enum Outcome {
+        case none
+        case reorder(
+            entryId: String,
+            finalOrder: [Int],
+            gap: Int,
+            lane: QueueLaneID
+        )
+        case insertIntoManual(trackId: String, gap: Int)
     }
 }
 
@@ -389,9 +511,12 @@ private struct QueueSection: View {
     /// the manual lane, which is never windowed.
     let loadRange: ((_ offset: Int, _ limit: Int) async -> Void)?
     let acceptsExternalDrops: Bool
-    /// The shared in-flight drag: source-row identity for dimming, and the
-    /// `cancelTick` each section watches to revert on a cancelled drag.
-    let dragSession: QueueDragSession
+    /// Which lane this section renders — the drag coordinator's key for
+    /// geometry, permutations, and cross-lane targeting.
+    let laneId: QueueLaneID
+    /// The shared drag state: the active gesture, lane geometry, and the
+    /// post-commit hold. All row-shift effects derive from it per render.
+    let coordinator: QueueDragCoordinator
     /// The store's queue revision, independent of `loadEpoch` (which the manual
     /// lane fixes at 0). A change means core applied a mutation — including the
     /// reorder this lane just committed — so `liveOrder` is dropped: the
@@ -410,14 +535,6 @@ private struct QueueSection: View {
     private var hoveredIndex: Int?
     @State
     private var dropInsertIndex: Int?
-    /// Display position → source index, active only while an internal drag in
-    /// this lane is live. `nil` means canonical order. Read live by every row's
-    /// identity and content (`rowSlots`) and by the drop delegates that mutate
-    /// it as the drag crosses row boundaries; written back to canonical (`nil`)
-    /// on drop-commit (via `queueRevision`) or on cancel (via
-    /// `dragSession.cancelTick`).
-    @State
-    private var liveOrder: [Int]?
 
     /// Display slots 0..<count, each resolved to its source index (identity
     /// under `liveOrder`, or permuted while a drag is live) and an identity —
@@ -429,16 +546,9 @@ private struct QueueSection: View {
     /// would call `itemAt` for every index up front regardless of what's
     /// on screen.
     private var rowSlots: LazyMapCollection<Range<Int>, QueueRowSlot> {
-        // Use the live permutation only while it still matches `count`. A
-        // `QueueUpdated` landing mid-drag (a lane grows — sync from another
-        // device, Play Next — or shrinks) resizes `count` for the one body pass
-        // before `.onChange(of: queueRevision)` clears `liveOrder`. On grow,
-        // `liveOrder[displaySlot]` would read past the stale-short array's end;
-        // on shrink, its indices point past the new bounds and resolve to
-        // stale positions. A length mismatch falls back to canonical order for
-        // that pass — `sourceIndex == displaySlot`, in range, and any index the
-        // shorter data can't resolve renders a placeholder.
-        let order = liveOrder?.count == count ? liveOrder : nil
+        // Derived fresh against the CURRENT count on every render — a queue
+        // change mid-drag can't leave a stale-length permutation.
+        let order = coordinator.displayOrder(for: laneId, count: count)
         return (0..<count).lazy
             .map { displaySlot in
                 let sourceIndex = order?[displaySlot] ?? displaySlot
@@ -455,63 +565,89 @@ private struct QueueSection: View {
         VStack(spacing: 0) {
             sectionHeader
 
-            ForEach(rowSlots) { slot in
-                let item = itemAt(slot.sourceIndex)
-                VStack(spacing: 0) {
-                    // Only the manual lane ever sets `dropInsertIndex` (external
-                    // drops land there only) — an internal reorder moves rows
-                    // live instead of showing an insertion line, so the line is
-                    // omitted entirely on the context lane, which never uses it.
-                    if acceptsExternalDrops {
-                        insertionLine
-                            .opacity(
-                                dropInsertIndex == slot.displaySlot ? 1 : 0
-                            )
-                            .allowsHitTesting(false)
+            Group {
+                ForEach(rowSlots) { slot in
+                    let item = itemAt(slot.sourceIndex)
+                    let isDragged =
+                        item != nil
+                        && coordinator.draggedEntryId(in: laneId) == item?.id
+                    VStack(spacing: 0) {
+                        // The manual lane's insertion line serves both external
+                        // track drops and a context-row drag hovering here (a
+                        // cross-lane enqueue); the context lane never shows one.
+                        if acceptsExternalDrops {
+                            insertionLine
+                                .opacity(
+                                    insertGapForLine == slot.displaySlot ? 1 : 0
+                                )
+                                .allowsHitTesting(false)
+                        }
+                        queueRow(item, index: slot.displaySlot)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 2)
+                        Divider().padding(.leading, 62)
                     }
-                    queueRow(item, index: slot.displaySlot)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 4)
-                        .opacity(
-                            item != nil
-                                && dragSession.draggedEntryId == item?.id
-                                ? 0.3 : 1.0
+                    // The dragged row tracks the cursor exactly (offset from
+                    // whatever display slot it currently occupies), floats over
+                    // its siblings, and never animates — the siblings do, as
+                    // they shift around it.
+                    .offset(
+                        y: isDragged
+                            ? coordinator.draggedRowOffset(
+                                displaySlot: slot.displaySlot
+                            ) : 0
+                    )
+                    .zIndex(isDragged ? 1 : 0)
+                    .shadow(
+                        color: .black.opacity(isDragged ? 0.25 : 0),
+                        radius: 6,
+                        y: 2
+                    )
+                    .transaction { transaction in
+                        if isDragged {
+                            transaction.animation = nil
+                        }
+                    }
+                    .task(
+                        id: QueueRowLoadID(
+                            epoch: loadEpoch,
+                            index: slot.sourceIndex
                         )
-                    Divider().padding(.leading, 62)
-                }
-                .task(
-                    id: QueueRowLoadID(
-                        epoch: loadEpoch,
-                        index: slot.sourceIndex
-                    )
-                ) {
-                    guard item == nil, let loadRange else {
-                        return
+                    ) {
+                        guard item == nil, let loadRange else {
+                            return
+                        }
+                        let first = max(
+                            0,
+                            slot.sourceIndex - queueUpcomingLoadBatchSize / 2
+                        )
+                        let end = min(
+                            first + queueUpcomingLoadBatchSize,
+                            count
+                        )
+                        await loadRange(first, end - first)
                     }
-                    let first = max(
-                        0,
-                        slot.sourceIndex - queueUpcomingLoadBatchSize / 2
+                    .onDrop(
+                        of: [UTType.plainText],
+                        delegate: QueueDropDelegate(
+                            targetIndex: slot.displaySlot,
+                            acceptsExternalDrops: acceptsExternalDrops,
+                            dropInsertIndex: $dropInsertIndex,
+                            onInsertTracks: onInsertTracks,
+                        )
                     )
-                    let end = min(
-                        first + queueUpcomingLoadBatchSize,
-                        count
-                    )
-                    await loadRange(first, end - first)
                 }
-                .onDrop(
-                    of: [UTType.plainText],
-                    delegate: QueueDropDelegate(
-                        targetIndex: slot.displaySlot,
-                        targetLoaded: item != nil,
-                        count: count,
-                        itemAt: itemAt,
-                        acceptsExternalDrops: acceptsExternalDrops,
-                        dragSession: dragSession,
-                        liveOrder: $liveOrder,
-                        dropInsertIndex: $dropInsertIndex,
-                        onReorder: onReorder,
-                        onInsertTracks: onInsertTracks,
-                    )
+            }
+            // The rows region's frame in the pane space: the coordinator maps
+            // cursor positions onto row slots with it (height / count = the
+            // uniform row height).
+            .onGeometryChange(for: CGRect.self) { proxy in
+                proxy.frame(in: .named("queuePane"))
+            } action: { frame in
+                coordinator.setGeometry(
+                    laneId,
+                    rowsFrame: frame,
+                    rowCount: count
                 )
             }
             // The trailing drop line (insert at the lane's end) stays in the tree
@@ -519,55 +655,75 @@ private struct QueueSection: View {
             // lane only, for the same reason as the per-row line above.
             if acceptsExternalDrops {
                 insertionLine
-                    .opacity(dropInsertIndex == count ? 1 : 0)
+                    .opacity(insertGapForLine == count ? 1 : 0)
                     .allowsHitTesting(false)
             }
 
-            // Trailing drop zone for appending — only the manual lane appends
-            // external tracks; the context still accepts a reorder-to-end here.
+            // Trailing drop zone for appending external tracks — manual lane
+            // only; the context lane keeps a thin spacer between sections.
             Color.clear
                 .frame(height: acceptsExternalDrops ? 40 : 12)
                 .onDrop(
                     of: [UTType.plainText],
                     delegate: QueueDropDelegate(
                         targetIndex: count,
-                        targetLoaded: true,
-                        count: count,
-                        itemAt: itemAt,
                         acceptsExternalDrops: acceptsExternalDrops,
-                        dragSession: dragSession,
-                        liveOrder: $liveOrder,
                         dropInsertIndex: $dropInsertIndex,
-                        onReorder: onReorder,
                         onInsertTracks: onInsertTracks,
                     )
                 )
         }
-        // The drop just committed: core's next snapshot carries the same order
-        // already displayed, so dropping the permutation here is a no-op, not
-        // an animated snap.
+        // The reorder this lane committed just echoed back from core: the
+        // canonical order now equals the held one, so dropping the hold is a
+        // visual no-op, not a snap.
         .onChange(of: queueRevision) {
-            liveOrder = nil
-        }
-        // The drag ended without a commit (drop-on-chrome, drag-out, or Esc):
-        // the displayed order was never committed, so reverting it is a real,
-        // visible change — animate it.
-        .onChange(of: dragSession.cancelTick) {
-            guard liveOrder != nil else {
-                return
-            }
-            withAnimation(.snappy) {
-                liveOrder = nil
-            }
+            coordinator.clearHold(laneId)
         }
         // A drag started: drop the stored hover slot. `.onHover` won't fire
-        // again until the session ends, so without this the pre-drag value
-        // would resurface on whichever row holds that slot once the session's
-        // `draggedEntryId` clears.
-        .onChange(of: dragSession.draggedEntryId) {
-            if dragSession.draggedEntryId != nil {
+        // again until the gesture ends, so without this the pre-drag value
+        // would resurface on whichever row holds that slot afterwards.
+        .onChange(of: coordinator.isDragging) {
+            if coordinator.isDragging {
                 hoveredIndex = nil
             }
+        }
+    }
+
+    /// Where the manual lane's insertion line sits: an external album-card
+    /// drag's drop target, or a context-row drag hovering here (cross-lane
+    /// enqueue). `nil` hides it.
+    private var insertGapForLine: Int? {
+        guard acceptsExternalDrops else {
+            return nil
+        }
+        return dropInsertIndex
+            ?? coordinator.manualInsertGap(manualCount: count)
+    }
+
+    /// Resolve a finished drag in this lane: a same-lane reorder commits
+    /// `(entryId, beforeEntryId)` (refused when the anchor row after the drop
+    /// slot exists but isn't loaded — core pins by id, and there is none yet);
+    /// a context-row release over the manual lane enqueues the track there;
+    /// anything else settles back.
+    private func handleDragEnd() {
+        let outcome = coordinator.finish(count: count)
+        switch outcome {
+        case .none:
+            break
+        case .insertIntoManual(let trackId, let gap):
+            onInsertTracks([trackId], gap)
+        case .reorder(let entryId, let finalOrder, let gap, let lane):
+            if gap + 1 < finalOrder.count {
+                guard let beforeEntryId = itemAt(finalOrder[gap + 1])?.id
+                else {
+                    return
+                }
+                coordinator.holdOrder(finalOrder, lane: lane)
+                onReorder(entryId, beforeEntryId)
+                return
+            }
+            coordinator.holdOrder(finalOrder, lane: lane)
+            onReorder(entryId, nil)
         }
     }
 
@@ -617,27 +773,58 @@ private struct QueueSection: View {
             if let item {
                 QueueItemRow(
                     item: item,
-                    // Hover chrome is suppressed for the whole drag session:
-                    // `.onHover` doesn't fire while a drag is live, so the
-                    // pre-drag `hoveredIndex` goes stale — without the guard,
-                    // whatever row shuffles into that display slot wears the
-                    // remove/play chrome throughout the drag and at the drop.
+                    // Hover chrome is suppressed for the whole drag: the
+                    // pre-drag `hoveredIndex` goes stale once rows start
+                    // shuffling — without the guard, whatever row holds that
+                    // display slot wears the remove/play chrome mid-drag.
                     isHovered: hoveredIndex == index
-                        && dragSession.draggedEntryId == nil,
+                        && !coordinator.isDragging,
                     onHoverChanged: { hovering in
-                        guard dragSession.draggedEntryId == nil else {
+                        guard !coordinator.isDragging else {
                             return
                         }
                         hoveredIndex = hovering ? index : nil
                     },
-                    onDragStarted: {
-                        dragSession.begin(
-                            entryId: item.id,
-                            trackId: item.trackId
-                        )
-                    },
                     onSkipTo: onSkipTo,
                     onRemove: onRemove
+                )
+                // The reorder drag, in-process: the row follows the cursor,
+                // siblings shift continuously at slot boundaries, and
+                // `onEnded` is the one deterministic end-of-drag signal —
+                // no AppKit drag session, no floating drag image to linger
+                // after release. `minimumDistance` keeps clicks (skip,
+                // hover buttons, double-click) intact.
+                .gesture(
+                    DragGesture(
+                        minimumDistance: 4,
+                        coordinateSpace: .named("queuePane")
+                    )
+                    .onChanged { value in
+                        if coordinator.isDragging {
+                            withAnimation(
+                                .snappy(duration: 0.15, extraBounce: 0)
+                            ) {
+                                coordinator.update(location: value.location)
+                            }
+                        }
+                        else {
+                            // `index` is this row's display slot; a drag can
+                            // only begin from canonical order (no permutation
+                            // is live), so it is also the canonical slot.
+                            coordinator.begin(
+                                lane: laneId,
+                                entryId: item.id,
+                                trackId: item.trackId,
+                                startSlot: index,
+                                location: value.location
+                            )
+                        }
+                    }
+                    .onEnded { _ in
+                        withAnimation(.snappy(duration: 0.2, extraBounce: 0)) {
+                            handleDragEnd()
+                        }
+                    }
                 )
             }
             else {
@@ -658,10 +845,6 @@ private struct QueueItemRow: View {
     let item: QueueItem
     let isHovered: Bool
     let onHoverChanged: (Bool) -> Void
-    /// The section records this row as the drag's source (which also arms the
-    /// session's cancel watchdog); the `NSItemProvider` carrying `item.id` is
-    /// what the drop side reads back.
-    let onDragStarted: () -> Void
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
 
@@ -703,10 +886,6 @@ private struct QueueItemRow: View {
         }
         .contentShape(Rectangle())
         .onHover(perform: onHoverChanged)
-        .onDrag {
-            onDragStarted()
-            return NSItemProvider(object: item.id as NSString)
-        }
         .onTapGesture(count: 2) {
             onSkipTo(item.id)
         }
@@ -764,193 +943,32 @@ private struct QueuePlaceholderRow: View {
 
 // MARK: - Drop Delegate
 
+/// External album-card drops into the manual lane — the one drag interaction
+/// still on the OS drag machinery, because it genuinely crosses views (the
+/// library grid to this pane). Internal reorders and cross-lane enqueues are
+/// gesture-driven in `QueueSection` and never reach this delegate.
 private struct QueueDropDelegate: DropDelegate {
-    /// This row's display position — a slot in `liveOrder`, not the underlying
-    /// item's canonical index (`targetIndex == count` addresses the trailing
-    /// append zone, past the last row).
+    /// The insertion gap this target addresses (`targetIndex == count` is the
+    /// trailing append zone, past the last row).
     let targetIndex: Int
-    /// Whether the item currently displayed at `targetIndex` is loaded. An
-    /// internal reorder onto an unloaded row is rejected — `onReorder` needs
-    /// the target's own entry id (core reorders by id, not index), which isn't
-    /// known yet. In practice a row must be visible (and its load task already
-    /// running) to receive a drop at all, so this only ever excludes a brief
-    /// loading flash, not a real position. Always `true` for the trailing zone,
-    /// which has no row of its own to be unloaded. The same "needs a loaded
-    /// entry id to pin against" rule applies to the *anchor* row a committed
-    /// drop lands before — see `performDrop`, which refuses a drop whose
-    /// next-displayed row exists but hasn't loaded.
-    let targetLoaded: Bool
-    let count: Int
-    let itemAt: (Int) -> QueueItem?
-    /// Whether external (non-row) track drops are accepted into this lane. The
-    /// manual lane inserts them; the context lane ignores them (you can't add a
-    /// track into the release's own order) and only handles internal reorders.
+    /// Whether external track drops are accepted into this lane. The manual
+    /// lane inserts them; the context lane (the release's own order) refuses.
     let acceptsExternalDrops: Bool
-    /// The shared in-flight drag — its `draggedEntryId` identifies the source
-    /// row; `committed` is set here on a successful drop so the session-end
-    /// signal leaves the permutation for the revision bump instead of reverting.
-    let dragSession: QueueDragSession
-    /// The lane's live display-order permutation — see
-    /// `QueueSection.liveOrder`.
-    @Binding
-    var liveOrder: [Int]?
     @Binding
     var dropInsertIndex: Int?
-    /// Move the dragged entry to sit before `beforeEntryId`; `nil` = end.
-    let onReorder: (_ entryId: String, _ beforeEntryId: String?) -> Void
     let onInsertTracks: ([String], Int) -> Void
 
-    /// The dragged entry's canonical (source) index in this lane, or `nil` if
-    /// it isn't dragging from this lane. Resolved against `itemAt` (canonical
-    /// order), never against `liveOrder` — the entry's true position doesn't
-    /// change until core commits the reorder.
-    private var fromIndex: Int? {
-        guard let draggedId = dragSession.draggedEntryId else {
-            return nil
-        }
-        return (0..<count).first { itemAt($0)?.id == draggedId }
-    }
-
-    /// Whether this is an internal reorder within this lane (the dragged entry
-    /// is one of this lane's rows). A queue drag from the OTHER lane is a
-    /// cross-lane insert instead: dropping a context row on the manual lane
-    /// enqueues its track (`dragSession.draggedTrackId`) — the release's own
-    /// order can't take foreign rows, so the reverse direction stays forbidden.
-    private var isInternalDrag: Bool {
-        fromIndex != nil
-    }
-
-    /// A live queue drag that started in the other lane.
-    private var isCrossLaneDrag: Bool {
-        dragSession.draggedEntryId != nil && fromIndex == nil
-    }
-
-    /// The live permutation, but only while it still matches the current row
-    /// count. A `QueueUpdated` landing mid-drag resizes `count` for a beat
-    /// before `.onChange(of: queueRevision)` clears `liveOrder`; a stale-length
-    /// permutation would subscript out of range (lane grew) or address stale
-    /// positions (lane shrank), so any length mismatch reads as canonical order.
-    /// Mirrors the identical guard in `QueueSection.rowSlots`.
-    private var activeOrder: [Int]? {
-        guard let liveOrder, liveOrder.count == count else {
-            return nil
-        }
-        return liveOrder
-    }
-
     func dropEntered(info _: DropInfo) {
-        if let fromIndex {
-            // Internal reorder: live-move the dragged entry to this row's
-            // display position. A target that isn't loaded is a no-op — core
-            // reorders by id, and an unloaded row's id isn't known yet, so the
-            // permutation is left exactly as it was.
-            guard targetLoaded else {
-                return
-            }
-            var order = activeOrder ?? Array(0..<count)
-            guard let currentSlot = order.firstIndex(of: fromIndex),
-                currentSlot != targetIndex
-            else {
-                return
-            }
-            let moved = order.remove(at: currentSlot)
-            let insertAt =
-                targetIndex > currentSlot ? targetIndex - 1 : targetIndex
-            order.insert(moved, at: insertAt)
-            // Near-interactive: the default `.snappy` (~0.3s) is still mid-
-            // flight when a drop lands right after crossing a row boundary,
-            // and that residual slide reads as the drop lagging the release.
-            withAnimation(.snappy(duration: 0.15, extraBounce: 0)) {
-                liveOrder = order
-            }
-        }
-        else if acceptsExternalDrops {
-            // External drop into the manual lane: insertion line at the target.
+        if acceptsExternalDrops {
             dropInsertIndex = targetIndex
         }
     }
 
     func dropUpdated(info _: DropInfo) -> DropProposal? {
-        if isInternalDrag {
-            return DropProposal(
-                operation: targetLoaded ? .move : .forbidden
-            )
-        }
-        return DropProposal(
-            operation: acceptsExternalDrops ? .copy : .forbidden
-        )
+        DropProposal(operation: acceptsExternalDrops ? .copy : .forbidden)
     }
 
     func performDrop(info: DropInfo) -> Bool {
-        if let draggedId = dragSession.draggedEntryId, let fromIndex,
-            targetLoaded
-        {
-            // The drop commits exactly what dropEntered already put on screen:
-            // the dragged entry lands before whatever now sits right after it in
-            // the live order.
-            let order = activeOrder ?? Array(0..<count)
-            guard let slot = order.firstIndex(of: fromIndex), slot != fromIndex
-            else {
-                // Dropped back at its own slot (no rows crossed): the
-                // permutation already equals canonical, so there's nothing to
-                // commit. Leave `committed` false — the watchdog's revert is a
-                // visual no-op that also clears the stray identity
-                // permutation. Un-dim now (instantly, under the dissolving
-                // drag image): the drop is done.
-                dragSession.draggedEntryId = nil
-                return true
-            }
-
-            // The row after the dragged entry is the reorder's anchor. Nothing
-            // after it is a genuine lane end (commit `nil` = "to the end"). But
-            // a row that EXISTS yet isn't loaded has no entry id to pin before —
-            // and core reads a `nil` anchor as lane-end, so committing here
-            // would snap the entry to the bottom on the next snapshot (the same
-            // reason `targetLoaded` gates the drop target itself). Refuse it:
-            // skip `onReorder` and leave the session live with `committed`
-            // false — the watchdog sees the mouse released without a commit
-            // and reverts the permutation (and the dim) with animation.
-            if slot + 1 < order.count {
-                guard let beforeEntryId = itemAt(order[slot + 1])?.id else {
-                    return false
-                }
-                onReorder(draggedId, beforeEntryId)
-            }
-            else {
-                onReorder(draggedId, nil)
-            }
-
-            // Mark the session committed so the watchdog leaves `liveOrder` in
-            // place — it already equals what core will echo back in the next
-            // snapshot, and `QueueSection` drops it on that revision bump.
-            // Un-dim right here, INSTANTLY: the drop's success is known
-            // synchronously, AppKit's dissolving drag image sits exactly over
-            // the row, and a fade under it reads as the drop lagging the
-            // release. Nothing about the drag machinery (provider release,
-            // watchdog tick) is allowed to delay an accepted drop's settle.
-            dragSession.committed = true
-            dragSession.draggedEntryId = nil
-            return true
-        }
-
-        // A queue row dragged from the other lane: enqueue its track at this
-        // position (manual lane only — the context is the release's own order
-        // and takes no foreign rows). The context instance stays; core allows
-        // duplicate instances by design, so the track plays here AND when the
-        // context reaches it, matching how an album-card drop behaves.
-        if isCrossLaneDrag {
-            defer { dropInsertIndex = nil }
-            guard acceptsExternalDrops,
-                let trackId = dragSession.draggedTrackId
-            else {
-                return false
-            }
-            onInsertTracks([trackId], targetIndex)
-            dragSession.endAsCrossLaneInsert()
-            return true
-        }
-
-        // External drop: rejected unless this lane accepts external tracks.
         guard acceptsExternalDrops else {
             dropInsertIndex = nil
             return false
@@ -1003,12 +1021,7 @@ private struct QueueDropDelegate: DropDelegate {
     }
 
     func validateDrop(info: DropInfo) -> Bool {
-        // Accept internal drags from this lane; accept external plain-text drops
-        // only when this lane takes them.
-        if isInternalDrag {
-            return true
-        }
-        return acceptsExternalDrops
+        acceptsExternalDrops
             && info.hasItemsConforming(to: [UTType.plainText])
     }
 }
