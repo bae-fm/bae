@@ -276,10 +276,15 @@ final class QueueDragSession {
         guard sessionId == self.sessionId else {
             return
         }
-        if !committed {
-            cancelTick += 1
+        // Animated: the source row's un-dim (and, on the cancel path, the
+        // sections' permutation revert keyed off `cancelTick`) should fade in
+        // step with AppKit's own drag-image dissolve, not pop.
+        withAnimation(.snappy) {
+            if !committed {
+                cancelTick += 1
+            }
+            draggedEntryId = nil
         }
-        draggedEntryId = nil
         committed = false
     }
 }
@@ -522,6 +527,15 @@ private struct QueueSection: View {
                 liveOrder = nil
             }
         }
+        // A drag started: drop the stored hover slot. `.onHover` won't fire
+        // again until the session ends, so without this the pre-drag value
+        // would resurface on whichever row holds that slot once the session's
+        // `draggedEntryId` clears.
+        .onChange(of: dragSession.draggedEntryId) {
+            if dragSession.draggedEntryId != nil {
+                hoveredIndex = nil
+            }
+        }
     }
 
     private var sectionHeader: some View {
@@ -570,8 +584,19 @@ private struct QueueSection: View {
             if let item {
                 QueueItemRow(
                     item: item,
-                    isHovered: hoveredIndex == index,
-                    onHoverChanged: { hoveredIndex = $0 ? index : nil },
+                    // Hover chrome is suppressed for the whole drag session:
+                    // `.onHover` doesn't fire while a drag is live, so the
+                    // pre-drag `hoveredIndex` goes stale — without the guard,
+                    // whatever row shuffles into that display slot wears the
+                    // remove/play chrome throughout the drag and at the drop.
+                    isHovered: hoveredIndex == index
+                        && dragSession.draggedEntryId == nil,
+                    onHoverChanged: { hovering in
+                        guard dragSession.draggedEntryId == nil else {
+                            return
+                        }
+                        hoveredIndex = hovering ? index : nil
+                    },
                     onDragStarted: { dragSession.begin(entryId: item.id) },
                     // Runs from the drag token's `deinit`, off the main actor,
                     // for the drag whose `sessionId` this is — hop back before
