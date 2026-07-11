@@ -308,6 +308,11 @@ private struct SignalBadge: View {
         .onHover { hovering = $0 }
         .popover(isPresented: $hovering, arrowEdge: .bottom) {
             SignalBadgePopover(signal: signal)
+                // Chips sit above the popover, which grows downward — its
+                // visual anchor is its top edge. Exit stays instant, like a
+                // tooltip's.
+                .popoverEntrance(anchor: .top)
+                .background { PopoverBehavior() }
         }
     }
 

@@ -14,7 +14,6 @@ struct NowPlayingBarContainer: View {
     var playbackStore
     @Environment(UiStore.self)
     var uiStore
-    let onQueueInsertTracks: ([String], Int) -> Void
     let onDropToQueue: ([String]) -> Void
 
     var body: some View {
@@ -38,10 +37,6 @@ struct NowPlayingBarContainer: View {
             isMuted: playbackStore.isMuted,
             repeatMode: playbackStore.repeatMode,
             showQueue: $uiStore.showQueue,
-            queueIsActive: np.isActive,
-            queueNowPlayingTitle: track?.trackTitle,
-            queueNowPlayingArtist: track?.artistNames,
-            queueNowPlayingCover: cover,
             onPlayPause: { playback.togglePlayPause() },
             onNext: { playback.nextTrack() },
             onPrevious: { playback.previousTrack() },
@@ -52,14 +47,6 @@ struct NowPlayingBarContainer: View {
             onVolumeChange: { playback.setVolume($0) },
             onToggleMute: { playback.toggleMute() },
             onCycleRepeat: { playback.cycleRepeatMode() },
-            onQueueClear: { queue.clearQueue() },
-            onQueueSkipTo: { queue.skipToEntry($0) },
-            onQueueRemove: { queue.removeEntry($0) },
-            onQueueReorder: { entryId, beforeEntryId in
-                queue.reorderEntry(entryId, beforeEntryId)
-            },
-            onQueueInsertTracks: onQueueInsertTracks,
-            onQueueSetShuffle: { queue.setShuffle($0) },
             onDropToQueue: onDropToQueue,
             onNavigateToAlbum: {
                 if let albumId = track?.albumId {
@@ -71,27 +58,6 @@ struct NowPlayingBarContainer: View {
         )
         .sidePausePromptAlert()
     }
-}
-
-/// Patches SwiftUI's .popover to use .applicationDefined behavior so it
-/// stays open during drag operations. Dismiss via the queue button or X.
-private struct StablePopoverBehavior: NSViewRepresentable {
-    func makeNSView(context _: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async {
-            if let window = view.window,
-                let popover = ObjCExceptionGuard.value(
-                    forKey: "_popover",
-                    on: window
-                ) as? NSPopover
-            {
-                popover.behavior = .applicationDefined
-            }
-        }
-        return view
-    }
-
-    func updateNSView(_: NSView, context _: Context) {}
 }
 
 struct NowPlayingBar: View {
@@ -106,10 +72,6 @@ struct NowPlayingBar: View {
     let repeatMode: RepeatMode
     @Binding
     var showQueue: Bool
-    let queueIsActive: Bool
-    let queueNowPlayingTitle: String?
-    let queueNowPlayingArtist: String?
-    let queueNowPlayingCover: ImageContent?
     let onPlayPause: () -> Void
     let onNext: () -> Void
     let onPrevious: () -> Void
@@ -117,12 +79,6 @@ struct NowPlayingBar: View {
     let onVolumeChange: (Float) -> Void
     let onToggleMute: () -> Void
     let onCycleRepeat: () -> Void
-    let onQueueClear: () -> Void
-    let onQueueSkipTo: (String) -> Void
-    let onQueueRemove: (String) -> Void
-    let onQueueReorder: (String, String?) -> Void
-    let onQueueInsertTracks: ([String], Int) -> Void
-    let onQueueSetShuffle: (Bool) -> Void
     let onDropToQueue: ([String]) -> Void
     let onNavigateToAlbum: () -> Void
     let queueAddPublisher: AnyPublisher<Int, Never>
@@ -149,7 +105,7 @@ struct NowPlayingBar: View {
                 .frame(width: 180, alignment: .trailing)
         }
         .padding(.horizontal, 16)
-        .frame(height: 64)
+        .frame(height: 72)
         .background(Theme.surface)
     }
 
@@ -199,7 +155,9 @@ struct NowPlayingBar: View {
             HStack(spacing: 20) {
                 Button(action: onPrevious) {
                     Image(systemName: "backward.fill")
-                        .font(.body)
+                        .font(.title3)
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help("Previous track")
@@ -210,12 +168,15 @@ struct NowPlayingBar: View {
                     isLoading: isLoading,
                     glyphFont: .title2,
                     spinnerControlSize: .small,
+                    targetSize: 36,
                     onToggle: onPlayPause
                 )
 
                 Button(action: onNext) {
                     Image(systemName: "forward.fill")
-                        .font(.body)
+                        .font(.title3)
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help("Next track")
@@ -244,9 +205,11 @@ struct NowPlayingBar: View {
             Button(action: { showQueue.toggle() }) {
                 Image(systemName: "list.bullet")
                     .foregroundColor(showQueue ? .accentColor : .secondary)
+                    .frame(width: 30, height: 30)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .font(.body)
+            .font(.title3)
             .help("Queue")
             .accessibilityLabel("Queue")
             .padding(4)
@@ -272,23 +235,6 @@ struct NowPlayingBar: View {
             } isTargeted: { targeted in
                 queueButtonDropTargeted = targeted
             }
-            .popover(isPresented: $showQueue, arrowEdge: .bottom) {
-                QueueView(
-                    isActive: queueIsActive,
-                    nowPlayingTitle: queueNowPlayingTitle,
-                    nowPlayingArtist: queueNowPlayingArtist,
-                    nowPlayingCover: queueNowPlayingCover,
-                    onClose: { showQueue = false },
-                    onClear: { onQueueClear() },
-                    onSkipTo: { onQueueSkipTo($0) },
-                    onRemove: { onQueueRemove($0) },
-                    onReorder: { onQueueReorder($0, $1) },
-                    onInsertTracks: { onQueueInsertTracks($0, $1) },
-                    onSetShuffle: { onQueueSetShuffle($0) },
-                )
-                .frame(width: 350, height: 500)
-                .background { StablePopoverBehavior() }
-            }
             .overlay(alignment: .topTrailing) {
                 QueueAddBadge(displayedCount: $queueAddDisplayedCount)
                     .offset(x: 6, y: -6)
@@ -303,9 +249,11 @@ struct NowPlayingBar: View {
                     systemName: isMuted ? "speaker.slash.fill" : "speaker.fill"
                 )
                 .foregroundStyle(.secondary)
+                .frame(width: 30, height: 30)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .font(.body)
+            .font(.title3)
             .help(isMuted ? "Unmute" : "Mute")
             .accessibilityLabel(isMuted ? "Unmute" : "Mute")
 
@@ -323,20 +271,24 @@ struct NowPlayingBar: View {
 
     private var repeatButton: some View {
         Button(action: onCycleRepeat) {
-            switch repeatMode {
-            case .off:
-                Image(systemName: "repeat")
-                    .foregroundStyle(.secondary)
-            case .context:
-                Image(systemName: "repeat")
-                    .foregroundColor(.accentColor)
-            case .track:
-                Image(systemName: "repeat.1")
-                    .foregroundColor(.accentColor)
+            Group {
+                switch repeatMode {
+                case .off:
+                    Image(systemName: "repeat")
+                        .foregroundStyle(.secondary)
+                case .context:
+                    Image(systemName: "repeat")
+                        .foregroundColor(.accentColor)
+                case .track:
+                    Image(systemName: "repeat.1")
+                        .foregroundColor(.accentColor)
+                }
             }
+            .frame(width: 30, height: 30)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .font(.body)
+        .font(.title3)
         .help(repeatHelp)
         .accessibilityLabel(repeatHelp)
     }
@@ -380,7 +332,6 @@ private struct NowPlayingBarPreview: View {
     let isPlaying: Bool
     var isLoading: Bool = false
     let repeatMode: RepeatMode
-    let queueIsActive: Bool
 
     @State
     private var showQueue = false
@@ -401,10 +352,6 @@ private struct NowPlayingBarPreview: View {
             isMuted: isMuted,
             repeatMode: repeatMode,
             showQueue: $showQueue,
-            queueIsActive: queueIsActive,
-            queueNowPlayingTitle: trackTitle,
-            queueNowPlayingArtist: artistNames,
-            queueNowPlayingCover: nil,
             onPlayPause: {},
             onNext: {},
             onPrevious: {},
@@ -412,12 +359,6 @@ private struct NowPlayingBarPreview: View {
             onVolumeChange: { volume = $0 },
             onToggleMute: { isMuted.toggle() },
             onCycleRepeat: {},
-            onQueueClear: {},
-            onQueueSkipTo: { _ in },
-            onQueueRemove: { _ in },
-            onQueueReorder: { _, _ in },
-            onQueueInsertTracks: { _, _ in },
-            onQueueSetShuffle: { _ in },
             onDropToQueue: { _ in },
             onNavigateToAlbum: {},
             queueAddPublisher: Empty().eraseToAnyPublisher(),
@@ -432,7 +373,6 @@ private struct NowPlayingBarPreview: View {
         artistNames: PreviewData.nowPlayingArtist,
         isPlaying: true,
         repeatMode: .off,
-        queueIsActive: true,
     )
     .environment(MediaPaths.stub)
     .environment(PreviewData.queueStore(manualCount: 2))
@@ -445,7 +385,6 @@ private struct NowPlayingBarPreview: View {
         artistNames: PreviewData.nowPlayingArtist,
         isPlaying: false,
         repeatMode: .context,
-        queueIsActive: true,
     )
     .environment(MediaPaths.stub)
     .environment(PreviewData.queueStore(manualCount: 2, shuffled: true))
@@ -459,7 +398,6 @@ private struct NowPlayingBarPreview: View {
         isPlaying: true,
         isLoading: true,
         repeatMode: .off,
-        queueIsActive: true,
     )
     .environment(MediaPaths.stub)
     .environment(PreviewData.queueStore(manualCount: 5, context: nil))
@@ -472,7 +410,6 @@ private struct NowPlayingBarPreview: View {
         artistNames: nil,
         isPlaying: false,
         repeatMode: .off,
-        queueIsActive: false,
     )
     .environment(MediaPaths.stub)
     .environment(PreviewData.queueStore(manualCount: 0, context: nil))

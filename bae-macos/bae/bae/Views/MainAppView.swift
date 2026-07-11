@@ -51,12 +51,41 @@ struct MainAppView: View {
                 }
                 Divider()
                 NowPlayingBarContainer(
-                    onQueueInsertTracks: { ids, index in
-                        queueActions.insertInQueue(ids, at: index)
-                    },
                     onDropToQueue: { ids in queueActions.addToQueue(ids) },
                 )
             }
+
+            // Queue panel — floats above the now-playing bar, bottom right.
+            // In-window rather than a popover so its animations and dismissal
+            // are owned here (see QueuePanel). Springs from the bar edge.
+            Group {
+                if uiStore.showQueue {
+                    ZStack(alignment: .bottomTrailing) {
+                        // Click-away dismissal, popover-style: the catcher
+                        // absorbs the click that closes the panel.
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture { uiStore.showQueue = false }
+                        QueuePanel(
+                            onInsertTracks: { ids, index in
+                                queueActions.insertInQueue(ids, at: index)
+                            }
+                        )
+                        .padding(.trailing, 12)
+                        // Clear the 72pt bar plus a small gap.
+                        .padding(.bottom, 80)
+                        .transition(
+                            .scale(scale: 0.95, anchor: .bottomTrailing)
+                                .combined(with: .opacity)
+                                .combined(with: .offset(y: 10))
+                        )
+                    }
+                }
+            }
+            .animation(
+                .spring(duration: 0.24, bounce: 0.12),
+                value: uiStore.showQueue
+            )
 
             // Lightbox overlay
             if let cursor = uiStore.lightbox {

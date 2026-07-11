@@ -9,6 +9,12 @@ public struct PlayPauseControl: View {
     public let isLoading: Bool
     public let glyphFont: Font
     public let spinnerControlSize: ControlSize
+    /// A fixed footprint for BOTH states (glyph and loading spinner), so the
+    /// swap between them can't re-lay-out the surrounding transport row —
+    /// without it, a seek's loading flash makes the neighbor buttons jump.
+    /// Also pads the tappable region out past the glyph. `nil` keeps the
+    /// intrinsic sizes.
+    public let targetSize: CGFloat?
     public let onToggle: () -> Void
 
     public init(
@@ -16,12 +22,14 @@ public struct PlayPauseControl: View {
         isLoading: Bool,
         glyphFont: Font,
         spinnerControlSize: ControlSize,
+        targetSize: CGFloat? = nil,
         onToggle: @escaping () -> Void
     ) {
         self.isPlaying = isPlaying
         self.isLoading = isLoading
         self.glyphFont = glyphFont
         self.spinnerControlSize = spinnerControlSize
+        self.targetSize = targetSize
         self.onToggle = onToggle
     }
 
@@ -29,6 +37,7 @@ public struct PlayPauseControl: View {
         if isLoading {
             ProgressView()
                 .controlSize(spinnerControlSize)
+                .frame(width: targetSize, height: targetSize)
                 .help("Loading")
                 .accessibilityLabel("Loading")
         }
@@ -36,6 +45,8 @@ public struct PlayPauseControl: View {
             Button(action: onToggle) {
                 Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                     .font(glyphFont)
+                    .frame(width: targetSize, height: targetSize)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help(isPlaying ? "Pause" : "Play")
