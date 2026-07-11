@@ -124,15 +124,15 @@ pub fn tracing_init() {
 /// Create test config_handle + key_service for integration tests.
 /// Seeds a dummy Discogs key into the in-memory test keyring so the worker can
 /// build a `DiscogsClient` and consult the seeded LRU caches without doing real
-/// HTTP work. (coven's KeyService reads the keyring, not env vars.)
+/// HTTP work. (coven's StoreKeys reads the keyring, not env vars.)
 #[allow(dead_code)]
 pub fn test_config_and_keys(
     library_dir: &coven::StoreDir,
 ) -> (
     std::sync::Arc<bae_core::config::ConfigHandle>,
-    bae_core::keys::KeyService,
+    bae_core::keys::StoreKeys,
 ) {
-    use bae_core::keys::BaeKeyServiceExt;
+    use bae_core::keys::BaeStoreKeysExt;
     bae_core::config::install_test_keyring();
     // Unique id per test so keyring entries don't collide in the shared
     // process-global mock store (see `install_test_keyring`).
@@ -143,7 +143,7 @@ pub fn test_config_and_keys(
         library_dir.clone(),
         "Test Library".to_string(),
     );
-    let key_service = bae_core::keys::KeyService::new(library_id);
+    let key_service = bae_core::keys::StoreKeys::new(library_id);
     key_service
         .set_discogs_key("test-discogs-token")
         .expect("seed discogs key into test keyring");
@@ -182,13 +182,13 @@ pub fn setup_fresh_library(
         ))
         .expect("create database");
 
-    // coven's KeyService reads the keyring; seed the encryption key there so the
+    // coven's StoreKeys reads the keyring; seed the encryption key there so the
     // sync codepaths these tests exercise find it (instead of the OS keyring).
     // Namespace it under this library's unique id so the shared process-global
     // mock store (see `install_test_keyring`) can't collide across tests.
     bae_core::config::install_test_keyring();
     let enc_key_hex = hex::encode([42u8; 32]);
-    let key_service = bae_core::keys::KeyService::new(library_id);
+    let key_service = bae_core::keys::StoreKeys::new(library_id);
     key_service
         .set_encryption_key(&enc_key_hex)
         .expect("seed encryption key into test keyring");

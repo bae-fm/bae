@@ -538,7 +538,7 @@ mod tests {
         let manager = crate::library::LibraryManager::new(
             database,
             Arc::new(ConfigHandle::new(config)),
-            crate::keys::KeyService::new(library_id),
+            crate::keys::StoreKeys::new(library_id),
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidProvider),
             runtime.handle().clone(),

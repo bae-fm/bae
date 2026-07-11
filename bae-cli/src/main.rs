@@ -2,7 +2,7 @@ use bae_automation::{Automation, AutomationMetadataSource, AutomationTool};
 use bae_core::app::{bootstrap, bootstrap_library_path, BootstrapError, RunningApp};
 use bae_core::config::{init_keyring, Config};
 use bae_core::import::MetadataSource;
-use bae_core::keys::{BaeKeyServiceExt, KeyService};
+use bae_core::keys::{BaeStoreKeysExt, StoreKeys};
 use bae_mcp::{proxy_stdio, serve_stdio, McpClient};
 use clap::{Parser, Subcommand};
 use serde_json::{json, Value};
@@ -585,7 +585,7 @@ fn require_unlocked_for_headless(config: &Config) -> Result<(), CliError> {
     if !config.encryption_key_stored {
         return Ok(());
     }
-    let key_service = KeyService::new(config.store_id.clone());
+    let key_service = StoreKeys::new(config.store_id.clone());
     match key_service.get_encryption_key() {
         Ok(Some(_)) => Ok(()),
         Ok(None) => Err(CliError::Unavailable(format!(
@@ -620,7 +620,7 @@ fn library_id_from_path(path: &Path) -> Result<String, CliError> {
 }
 
 fn key_service_token(library_id: &str) -> Result<String, CliError> {
-    let service = KeyService::new(library_id.to_string());
+    let service = StoreKeys::new(library_id.to_string());
     service
         .get_mcp_token()
         .map_err(|e| CliError::Unavailable(e.to_string()))?

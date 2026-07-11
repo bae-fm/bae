@@ -52,12 +52,14 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
     );
     let config_handle = Arc::new(ConfigHandle::new(config));
     crate::config::install_test_keyring();
-    let key_service = KeyService::new(library_id.to_string());
+    let key_service = StoreKeys::new(library_id.to_string());
     // The default test home is opaque, whose blob keyspace shards under the
     // uploading device's public key (`{namespace}/{uploader}/…`). Give the
     // device its signing keypair up front — an opaque home always has one in
     // production — so opaque-home cloud-key derivation resolves the uploader.
-    key_service.get_or_create_user_keypair().unwrap();
+    // The signing identity is device-global, so it comes from `DeviceKeys`, not
+    // the store-scoped `key_service`.
+    crate::keys::DeviceKeys::get_or_create_user_keypair().unwrap();
     let manager = LibraryManager::new(
         database,
         config_handle,
@@ -151,7 +153,7 @@ async fn setup_forget_library_manager_at(
     );
     let config_handle = Arc::new(ConfigHandle::new(config));
     crate::config::install_test_keyring();
-    let key_service = KeyService::new(library_id.to_string());
+    let key_service = StoreKeys::new(library_id.to_string());
     LibraryManager::new(
         database,
         config_handle,

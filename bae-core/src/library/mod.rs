@@ -27,13 +27,12 @@ pub use upload_sessions::UploadSessions;
 pub use upload_throughput::UploadThroughput;
 
 use crate::config::{Config, ConfigError};
-use crate::keys::KeyService;
+use crate::keys::{DeviceKeys, StoreKeys};
 use coven::StoreDir;
 use coven::{EncryptionError, EncryptionService};
-use std::future::Future;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
-use tracing::{debug, warn};
+use tokio::sync::watch;
 
 pub use tokio_util::sync::CancellationToken;
 
@@ -46,12 +45,6 @@ pub enum RestoreFromCodeError {
     Cancelled,
     #[error("{0}")]
     Restore(String),
-}
-
-struct CodeOperationCancel {
-    token: CancellationToken,
-    library_dir: PathBuf,
-    library_dir_existed: bool,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -111,8 +104,57 @@ fn save_coven_library(coven_config: coven::Config) -> Result<Config, String> {
     Ok(config)
 }
 
+/// bae's on-disk layout for coven stores: libraries live under
+/// `<bae_dir>/libraries/<id>/store.db`, the same place `create_library` and
+/// discovery use. coven's default is `stores/<id>`, so join/restore are told
+/// bae's `libraries/` name here rather than landing in a directory bae never
+/// scans.
+fn library_layout(bae_dir: impl Into<std::path::PathBuf>) -> coven::StoreLayout {
+    coven::StoreLayout::new(bae_dir).stores_dirname("libraries")
+}
+
+/// Bridge bae's `CancellationToken` onto the `watch::Receiver<bool>` coven's
+/// join/restore take. Coven checks it at phase boundaries and, on cancel,
+/// removes the partial store directory it created — the same cleanup a failure
+/// gets — so bae no longer races the operation or cleans up residue itself. A
+/// `None` cancel yields a receiver whose sender is dropped, so it reads `false`
+/// forever (never cancels). The returned handle, when present, is aborted once
+/// the operation finishes so the bridge task doesn't linger.
+fn cancel_receiver(
+    cancel: Option<CancellationToken>,
+) -> (watch::Receiver<bool>, Option<tokio::task::JoinHandle<()>>) {
+    let (tx, rx) = watch::channel(false);
+    let handle = cancel.map(|token| {
+        tokio::spawn(async move {
+            token.cancelled().await;
+            let _ = tx.send(true);
+        })
+    });
+    (rx, handle)
+}
+
+/// Finish a code-driven join/restore: stop the cancel bridge, then map coven's
+/// outcome. `BootstrapError::Cancelled` (coven cancelled cooperatively at a phase
+/// boundary and already removed its partial store dir) becomes our `Cancelled`;
+/// any other error is `Failed`; success persists bae's wrapped `Config`.
+fn finish_code_operation(
+    result: Result<coven::Config, coven::BootstrapError>,
+    bridge: Option<tokio::task::JoinHandle<()>>,
+) -> Result<Config, LibraryCodeOperationError> {
+    if let Some(handle) = bridge {
+        handle.abort();
+    }
+    match result {
+        Ok(coven_config) => {
+            save_coven_library(coven_config).map_err(LibraryCodeOperationError::Failed)
+        }
+        Err(coven::BootstrapError::Cancelled) => Err(LibraryCodeOperationError::Cancelled),
+        Err(e) => Err(LibraryCodeOperationError::Failed(e.to_string())),
+    }
+}
+
 /// Restore a library from cloud storage into bae's app dir. Wraps coven's
-/// `restore_from_cloud`, supplying bae's app dir, clock, id source, and blob plan.
+/// `restore_from_cloud`, supplying bae's layout, clock, id source, and blob plan.
 pub async fn restore_from_cloud(
     library_id: &str,
     encryption_key_hex: &str,
@@ -121,16 +163,17 @@ pub async fn restore_from_cloud(
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
     let app_dir = crate::config::bae_dir().map_err(|e| e.to_string())?;
-    // The restoring device signs its control objects during restore with its own
-    // identity. Get-or-create the device keypair under the library being restored,
-    // mirroring the keyring identity coven imports on the restore-code path.
-    let keypair = KeyService::new(library_id.to_string())
-        .get_or_create_user_keypair()
-        .map_err(|e| e.to_string())?;
+    // The restoring device signs its control objects during restore with the
+    // device-global signing identity; get-or-create it so a fresh device has one.
+    // (The restore-code path imports the code's key instead; this is the
+    // caller-supplies-the-encryption-key path.)
+    let keypair = DeviceKeys::get_or_create_user_keypair().map_err(|e| e.to_string())?;
     // This restore-with-a-key path is for an opaque home: the caller supplies the
     // library key, so coven rebuilds the encrypted, obfuscated home from its
     // presence (`Some`). A browsable home has no key and restores through the
-    // restore-code path instead, where the absent `ek` selects it.
+    // restore-code path instead, where the absent `ek` selects it. This path is
+    // not cancellable, so it passes a never-firing cancel receiver.
+    let (cancel, _bridge) = cancel_receiver(None);
     let coven_config = crate::sync::restore_from_cloud(
         library_id,
         Some(encryption_key_hex),
@@ -139,10 +182,11 @@ pub async fn restore_from_cloud(
         &crate::migrations::all(),
         source,
         &keypair,
-        &app_dir,
+        &library_layout(app_dir),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         on_status,
+        &cancel,
     )
     .await
     .map_err(|e| e.to_string())?;
@@ -171,23 +215,6 @@ pub async fn restore_from_code_cancellable(
     restore_from_code_inner(code, oauth_tokens, cloudkit_ops, Some(cancel), on_status)
         .await
         .map_err(RestoreFromCodeError::from)
-}
-
-/// Remove the library directory a cancelled restore/join left partially built.
-/// Only called when the directory did not exist before the operation, so this
-/// never deletes a pre-existing library.
-fn remove_cancelled_library_dir(library_dir: &std::path::Path) {
-    match std::fs::remove_dir_all(library_dir) {
-        Ok(()) => {}
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => debug!(
-            path = %library_dir.display(),
-            "cancelled library directory already absent"
-        ),
-        Err(e) => warn!(
-            path = %library_dir.display(),
-            "failed to remove cancelled library directory: {e}"
-        ),
-    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -241,29 +268,23 @@ async fn restore_from_code_inner(
     cancel: Option<CancellationToken>,
     on_status: impl Fn(&str),
 ) -> Result<Config, LibraryCodeOperationError> {
-    run_library_code_operation(
+    let app_dir =
+        crate::config::bae_dir().map_err(|e| LibraryCodeOperationError::Failed(e.to_string()))?;
+    let (rx, bridge) = cancel_receiver(cancel);
+    let result = crate::sync::restore_from_code(
         code,
+        &crate::sync::synced_tables(),
+        &crate::migrations::all(),
         oauth_tokens,
         cloudkit_ops,
-        cancel,
+        &library_layout(app_dir),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         on_status,
-        restore_code_library_id,
-        |code, app_dir, synced_tables, migrations, oauth_tokens, cloudkit_ops, on_status| async move {
-            crate::sync::restore_from_code(
-                &code,
-                &synced_tables,
-                &migrations,
-                oauth_tokens,
-                cloudkit_ops,
-                &app_dir,
-                std::sync::Arc::new(coven::SystemClock),
-                std::sync::Arc::new(coven::UuidProvider),
-                on_status,
-            )
-            .await
-        },
+        &rx,
     )
-    .await
+    .await;
+    finish_code_operation(result, bridge)
 }
 
 async fn join_from_code_inner(
@@ -273,150 +294,23 @@ async fn join_from_code_inner(
     cancel: Option<CancellationToken>,
     on_status: impl Fn(&str),
 ) -> Result<Config, LibraryCodeOperationError> {
-    run_library_code_operation(
-        code,
-        oauth_tokens,
-        cloudkit_ops,
-        cancel,
-        on_status,
-        invite_code_library_id,
-        |code, app_dir, synced_tables, migrations, oauth_tokens, cloudkit_ops, on_status| async move {
-            crate::sync::join_from_invite_code(
-                &code,
-                &app_dir,
-                &synced_tables,
-                &migrations,
-                oauth_tokens,
-                cloudkit_ops,
-                std::sync::Arc::new(coven::SystemClock),
-                std::sync::Arc::new(coven::UuidProvider),
-                on_status,
-            )
-            .await
-        },
-    )
-    .await
-}
-
-fn restore_code_library_id(code: &str) -> Result<String, String> {
-    crate::sync::decode_restore_code_info(code)
-        .map(|info| info.store_id)
-        .map_err(|e| e.to_string())
-}
-
-fn invite_code_library_id(code: &str) -> Result<String, String> {
-    crate::sync::decode_invite_code_info(code)
-        .map(|info| info.store_id)
-        .map_err(|e| e.to_string())
-}
-
-async fn run_library_code_operation<Decode, Build, Operation, OperationError, OnStatus>(
-    code: &str,
-    oauth_tokens: Option<coven::OAuthTokens>,
-    cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
-    cancel: Option<CancellationToken>,
-    on_status: OnStatus,
-    decode_library_id: Decode,
-    build_operation: Build,
-) -> Result<Config, LibraryCodeOperationError>
-where
-    Decode: FnOnce(&str) -> Result<String, String>,
-    Build: FnOnce(
-        String,
-        PathBuf,
-        Vec<coven::SyncedTable>,
-        Vec<coven::Migration>,
-        Option<coven::OAuthTokens>,
-        Option<Arc<dyn coven::CloudKitOps>>,
-        OnStatus,
-    ) -> Operation,
-    Operation: Future<Output = Result<coven::Config, OperationError>>,
-    OperationError: ToString,
-    OnStatus: Fn(&str),
-{
     let app_dir =
         crate::config::bae_dir().map_err(|e| LibraryCodeOperationError::Failed(e.to_string()))?;
-    let cancel = prepare_code_operation_cancel(
+    let (rx, bridge) = cancel_receiver(cancel);
+    let result = crate::sync::join_from_invite_code(
         code,
-        &app_dir,
-        cancel,
-        decode_library_id,
-        LibraryCodeOperationError::Failed,
-    )?;
-    let synced_tables = crate::sync::synced_tables();
-    let migrations = crate::migrations::all();
-    let operation = build_operation(
-        code.to_string(),
-        app_dir,
-        synced_tables,
-        migrations,
+        &library_layout(app_dir),
+        &crate::sync::synced_tables(),
+        &crate::migrations::all(),
         oauth_tokens,
         cloudkit_ops,
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
         on_status,
-    );
-
-    run_code_operation(
-        operation,
-        cancel,
-        |error| LibraryCodeOperationError::Failed(error.to_string()),
-        LibraryCodeOperationError::Failed,
-        || LibraryCodeOperationError::Cancelled,
+        &rx,
     )
-    .await
-}
-
-fn prepare_code_operation_cancel<E>(
-    code: &str,
-    app_dir: &Path,
-    cancel: Option<CancellationToken>,
-    decode_library_id: impl FnOnce(&str) -> Result<String, String>,
-    error: impl Fn(String) -> E,
-) -> Result<Option<CodeOperationCancel>, E> {
-    let Some(token) = cancel else {
-        return Ok(None);
-    };
-
-    let library_id = decode_library_id(code).map_err(&error)?;
-    let library_dir = crate::config::registered_library_path(app_dir, &library_id);
-    let library_dir_existed = library_dir.try_exists().map_err(|e| error(e.to_string()))?;
-    Ok(Some(CodeOperationCancel {
-        token,
-        library_dir,
-        library_dir_existed,
-    }))
-}
-
-async fn run_code_operation<E, OpError, Operation>(
-    operation: Operation,
-    cancel: Option<CodeOperationCancel>,
-    operation_error: impl Fn(OpError) -> E,
-    save_error: impl Fn(String) -> E,
-    cancelled: impl Fn() -> E,
-) -> Result<Config, E>
-where
-    Operation: Future<Output = Result<coven::Config, OpError>>,
-{
-    let coven_config = if let Some(cancel) = cancel {
-        if cancel.token.is_cancelled() {
-            return Err(cancel_code_operation(cancel, cancelled));
-        }
-        tokio::pin!(operation);
-        tokio::select! {
-            result = &mut operation => result.map_err(operation_error)?,
-            _ = cancel.token.cancelled() => return Err(cancel_code_operation(cancel, cancelled)),
-        }
-    } else {
-        operation.await.map_err(operation_error)?
-    };
-
-    save_coven_library(coven_config).map_err(save_error)
-}
-
-fn cancel_code_operation<E>(cancel: CodeOperationCancel, error: impl FnOnce() -> E) -> E {
-    if !cancel.library_dir_existed {
-        remove_cancelled_library_dir(&cancel.library_dir);
-    }
-    error()
+    .await;
+    finish_code_operation(result, bridge)
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -470,7 +364,7 @@ fn unlock_library_in_dir(
     }
 
     // Save key to keyring
-    let key_service = KeyService::new(library_id.to_string());
+    let key_service = StoreKeys::new(library_id.to_string());
     key_service.set_encryption_key(key_hex)?;
 
     Ok(())
@@ -510,7 +404,7 @@ mod tests {
         )
         .unwrap();
 
-        let stored = KeyService::new(library_id.to_string())
+        let stored = StoreKeys::new(library_id.to_string())
             .get_encryption_key()
             .unwrap();
         assert_eq!(stored.as_deref(), Some(key_hex));

@@ -3179,7 +3179,7 @@ mod tests {
     };
     use bae_core::db::{DbArtist, DbComposerSummary, DbWork, DbWorkSummary};
     #[cfg(not(feature = "desktop"))]
-    use bae_core::keys::BaeKeyServiceExt;
+    use bae_core::keys::BaeStoreKeysExt;
     use std::sync::{Arc, Mutex};
 
     /// Records every delivered event so tests can assert on the stream.
@@ -3212,14 +3212,14 @@ mod tests {
             library_dir.clone(),
             "Test Library".to_string(),
         );
-        let key_service = bae_core::keys::KeyService::new(library_id.clone());
+        let key_service = bae_core::keys::StoreKeys::new(library_id.clone());
         key_service
             .set_discogs_key("test-discogs-token")
             .expect("seed test Discogs key");
         let database = bae_core::db::Database::open(
             config.to_coven(),
             Arc::new(coven::SystemClock),
-            coven::KeyService::new(library_id),
+            coven::StoreKeys::new(library_id),
             bae_core::sync::synced_tables(),
             None,
         )

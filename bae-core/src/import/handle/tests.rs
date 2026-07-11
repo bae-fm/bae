@@ -9,7 +9,7 @@ fn test_config_and_keys(
     library_dir: &coven::StoreDir,
 ) -> (
     std::sync::Arc<crate::config::ConfigHandle>,
-    crate::keys::KeyService,
+    crate::keys::StoreKeys,
 ) {
     // Unique id per test so keyring entries don't collide in the shared
     // process-global mock store (see `install_test_keyring`).
@@ -23,7 +23,7 @@ fn test_config_and_keys(
     crate::config::install_test_keyring();
     (
         std::sync::Arc::new(crate::config::ConfigHandle::new(config)),
-        crate::keys::KeyService::new(library_id),
+        crate::keys::StoreKeys::new(library_id),
     )
 }
 

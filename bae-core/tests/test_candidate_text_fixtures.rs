@@ -258,7 +258,7 @@ async fn make_library_manager() -> (bae_core::library::LibraryManager, TempDir) 
     );
     let config_handle = Arc::new(bae_core::config::ConfigHandle::new(config));
     bae_core::config::install_test_keyring();
-    let key_service = bae_core::keys::KeyService::new(library_id);
+    let key_service = bae_core::keys::StoreKeys::new(library_id);
     let manager = bae_core::library::LibraryManager::new(
         database,
         config_handle,

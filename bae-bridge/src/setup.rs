@@ -288,9 +288,14 @@ pub fn restore_from_cloud(
     source: BridgeRestoreSource,
 ) -> Result<BridgeLibrary, BridgeError> {
     use bae_core::sync::RestoreSource;
+    use coven::CloudHomeJoinInfo;
     let library_name = library_name.unwrap_or_else(bae_core::library_name::generate_library_name);
 
     on_worker(move || async move {
+        // `RestoreSource` is now `{ join_info, oauth_tokens, cloudkit_ops }`: the
+        // provider identity is a `CloudHomeJoinInfo`, and the OAuth/CloudKit
+        // extras a restore code can't carry ride alongside. Build the join info
+        // per provider and attach the matching extra.
         let core_source = match source {
             BridgeRestoreSource::S3 {
                 bucket,
@@ -298,33 +303,50 @@ pub fn restore_from_cloud(
                 endpoint,
                 access_key,
                 secret_key,
-            } => RestoreSource::S3 {
-                bucket,
-                region,
-                endpoint,
-                access_key,
-                secret_key,
+            } => RestoreSource {
+                // `BridgeRestoreSource::S3` carries no key_prefix, so restore over
+                // S3 reads from the bucket root — the behavior bae had before the
+                // field flowed through coven's join info.
+                join_info: CloudHomeJoinInfo::S3 {
+                    bucket,
+                    region,
+                    endpoint,
+                    access_key,
+                    secret_key,
+                    key_prefix: None,
+                },
+                oauth_tokens: None,
+                cloudkit_ops: None,
             },
             BridgeRestoreSource::CloudKit => {
                 let ops = get_cloudkit_ops()
                     .ok_or_else(|| BridgeError::internal("CloudKit driver not set".to_string()))?;
-                RestoreSource::CloudKit { ops }
+                RestoreSource {
+                    join_info: CloudHomeJoinInfo::CloudKit,
+                    oauth_tokens: None,
+                    cloudkit_ops: Some(ops),
+                }
             }
             BridgeRestoreSource::GoogleDrive {
                 folder_id,
                 oauth_token_json,
             } => {
                 let tokens = parse_oauth_tokens(&oauth_token_json)?;
-                RestoreSource::GoogleDrive { folder_id, tokens }
+                RestoreSource {
+                    join_info: CloudHomeJoinInfo::GoogleDrive { folder_id },
+                    oauth_tokens: Some(tokens),
+                    cloudkit_ops: None,
+                }
             }
             BridgeRestoreSource::Dropbox {
                 folder_path,
                 oauth_token_json,
             } => {
                 let tokens = parse_oauth_tokens(&oauth_token_json)?;
-                RestoreSource::Dropbox {
-                    folder_path,
-                    tokens,
+                RestoreSource {
+                    join_info: CloudHomeJoinInfo::Dropbox { folder_path },
+                    oauth_tokens: Some(tokens),
+                    cloudkit_ops: None,
                 }
             }
             BridgeRestoreSource::OneDrive {
@@ -333,10 +355,13 @@ pub fn restore_from_cloud(
                 oauth_token_json,
             } => {
                 let tokens = parse_oauth_tokens(&oauth_token_json)?;
-                RestoreSource::OneDrive {
-                    drive_id,
-                    folder_id,
-                    tokens,
+                RestoreSource {
+                    join_info: CloudHomeJoinInfo::OneDrive {
+                        drive_id,
+                        folder_id,
+                    },
+                    oauth_tokens: Some(tokens),
+                    cloudkit_ops: None,
                 }
             }
         };

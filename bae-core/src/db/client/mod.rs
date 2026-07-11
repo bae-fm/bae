@@ -949,7 +949,7 @@ impl Database {
     pub fn open(
         config: impl Into<coven::CovenConfig>,
         clock: ClockRef,
-        key_service: coven::KeyService,
+        key_service: coven::StoreKeys,
         synced_tables: Vec<coven::SyncedTable>,
         observer: Option<Arc<dyn coven::BlobTransitionObserver>>,
     ) -> Result<Self, DbError> {
@@ -984,7 +984,7 @@ impl Database {
             library_dir,
             "Test Library".to_string(),
         );
-        let key_service = coven::KeyService::new(config.store_id.clone());
+        let key_service = coven::StoreKeys::new(config.store_id.clone());
         Self::open(
             config,
             clock,

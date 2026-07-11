@@ -17,7 +17,7 @@ use tracing::{info, warn};
 
 use crate::config::{CloudProvider, ConfigHandle};
 use crate::db::Database;
-use crate::keys::KeyService;
+use crate::keys::StoreKeys;
 use crate::library::{LibraryError, LibraryEvent, OutboxSnapshot, UploadThroughput};
 use crate::sync::S3ConfigData;
 #[cfg(feature = "oauth-providers")]
@@ -35,7 +35,7 @@ use coven::EncryptionService;
 pub(crate) struct SyncController {
     handle: CovenHandle,
     config_handle: Arc<ConfigHandle>,
-    key_service: KeyService,
+    key_service: StoreKeys,
     event_tx: broadcast::Sender<LibraryEvent>,
     database: Database,
     /// `file_id`s whose upload is in flight right now, mapped to the live count
@@ -59,7 +59,7 @@ impl SyncController {
     pub(crate) fn new(
         handle: CovenHandle,
         config_handle: Arc<ConfigHandle>,
-        key_service: KeyService,
+        key_service: StoreKeys,
         event_tx: broadcast::Sender<LibraryEvent>,
         database: Database,
         outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,

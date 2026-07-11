@@ -15,7 +15,7 @@ use std::path::Path;
 
 use bae_core::app::bootstrap;
 use bae_core::config::{CloudProvider, Config};
-use bae_core::keys::KeyService;
+use bae_core::keys::StoreKeys;
 use bae_core::library::{create_library, unlock_library};
 use coven::{EncryptionService, StoreDir, UuidProvider};
 use serial_test::serial;
@@ -167,7 +167,7 @@ fn bootstrap_that_fails_leaves_active_pointer() {
 #[ignore]
 #[serial]
 fn unlock_then_reopen_advances_active_pointer() {
-    use bae_core::keys::BaeKeyServiceExt;
+    use bae_core::keys::BaeStoreKeysExt;
     use support::TestS3Endpoint;
 
     let _home = fake_home();
@@ -187,7 +187,7 @@ fn unlock_then_reopen_advances_active_pointer() {
                 .save_s3_config(s3.config(&bucket, None)),
         )
         .expect("configure the opaque S3 home");
-    let key_hex = KeyService::new(b_id.clone())
+    let key_hex = StoreKeys::new(b_id.clone())
         .get_encryption_key()
         .unwrap()
         .expect("save_s3_config minted an encryption key");
@@ -197,7 +197,7 @@ fn unlock_then_reopen_advances_active_pointer() {
     create_library("Library A".into(), &UuidProvider).unwrap();
 
     // Lock B (the "Lock Library" core call removes the key from the keyring).
-    KeyService::new(b_id.clone())
+    StoreKeys::new(b_id.clone())
         .forget_encryption_key()
         .expect("lock library B");
 

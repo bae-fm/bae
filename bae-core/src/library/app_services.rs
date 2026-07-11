@@ -167,7 +167,7 @@ mod tests {
     use super::*;
     use crate::config::{Config, ConfigHandle};
     use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
-    use crate::keys::KeyService;
+    use crate::keys::StoreKeys;
     use coven::StoreDir;
     use tempfile::TempDir;
 
@@ -223,7 +223,7 @@ mod tests {
         );
         let config_handle = Arc::new(ConfigHandle::new(config));
         crate::config::install_test_keyring();
-        let key_service = KeyService::new(library_id);
+        let key_service = StoreKeys::new(library_id);
         let manager = LibraryManager::new(
             database,
             config_handle,

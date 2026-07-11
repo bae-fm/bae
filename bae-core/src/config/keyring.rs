@@ -61,7 +61,7 @@ pub fn init_keyring() {
 
 /// Install an in-memory keyring store and set coven's keyring service for tests.
 ///
-/// coven's `KeyService` reads and writes the keyring instead of the environment,
+/// coven's `StoreKeys` reads and writes the keyring instead of the environment,
 /// and its getters panic unless the service is set. Tests don't run
 /// `init_keyring` (which would install the OS store and prompt), so this is the
 /// startup every test needing the keyring calls: an in-memory store stands in

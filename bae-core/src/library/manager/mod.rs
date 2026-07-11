@@ -46,8 +46,8 @@ use crate::db::{
     SortDirection as DbSortDirection, StorageFilter as DbStorageFilter,
     StorageSortCriterion as DbStorageSortCriterion, StorageSortField as DbStorageSortField,
 };
-use crate::keys::BaeKeyServiceExt;
-use crate::keys::KeyService;
+use crate::keys::BaeStoreKeysExt;
+use crate::keys::StoreKeys;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::library::export::ExportService;
 use crate::library::sync_controller::SyncController;
@@ -715,7 +715,7 @@ pub enum LibraryEvent {
 pub struct LibraryManager {
     database: Database,
     config_handle: Arc<ConfigHandle>,
-    key_service: KeyService,
+    key_service: StoreKeys,
     clock: ClockRef,
     ids: IdRef,
     runtime_handle: tokio::runtime::Handle,
@@ -771,7 +771,7 @@ impl LibraryManager {
     #[allow(clippy::too_many_arguments)]
     pub fn open(
         config_handle: Arc<ConfigHandle>,
-        key_service: KeyService,
+        key_service: StoreKeys,
         clock: ClockRef,
         ids: IdRef,
         runtime_handle: tokio::runtime::Handle,
@@ -850,7 +850,7 @@ impl LibraryManager {
     pub fn new(
         database: Database,
         config_handle: Arc<ConfigHandle>,
-        key_service: KeyService,
+        key_service: StoreKeys,
         clock: ClockRef,
         ids: IdRef,
         runtime_handle: tokio::runtime::Handle,

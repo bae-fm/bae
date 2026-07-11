@@ -122,7 +122,7 @@ async fn seeded_library_manager(releases: &[(&str, &[&str])]) -> (TempDir, Libra
     let manager = LibraryManager::new(
         database,
         Arc::new(crate::config::ConfigHandle::new(config)),
-        crate::keys::KeyService::new(library_id),
+        crate::keys::StoreKeys::new(library_id),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
         tokio::runtime::Handle::current(),

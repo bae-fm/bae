@@ -11,7 +11,7 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::config::{Config, ConfigHandle};
-use crate::keys::KeyService;
+use crate::keys::StoreKeys;
 use crate::library::AppServices;
 use crate::playback::PlaybackService;
 use crate::ui::UiEventBus;
@@ -142,10 +142,10 @@ fn bootstrap_inner(
     crate::audio_codec::init();
 
     // Dev mode keeps bae's secrets in `BAE_*` env vars; coven's keyring-only
-    // KeyService can't see those, so bridge them into the keyring it reads.
+    // StoreKeys can't see those, so bridge them into the keyring it reads.
     // No-op in production.
     crate::config::seed_dev_keyring(&config.store_id);
-    let key_service = KeyService::new(config.store_id.clone());
+    let key_service = StoreKeys::new(config.store_id.clone());
 
     // Resolve the encryption service only when this library already has a key on
     // this device — a returning user with a configured provider. A local-only

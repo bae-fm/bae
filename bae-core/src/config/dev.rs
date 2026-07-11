@@ -57,21 +57,21 @@ pub(super) fn dev_mode_enabled() -> bool {
 
 /// Bridge bae's dev-mode `BAE_*` env vars into coven's keyring for one library.
 ///
-/// coven's `KeyService` reads secrets from the keyring. In dev mode bae's secrets
+/// coven's `StoreKeys` reads secrets from the keyring. In dev mode bae's secrets
 /// live in env vars (`.env` / `BAE_ENCRYPTION_KEY` / `BAE_CLOUD_HOME_CREDENTIALS`
 /// / `BAE_DISCOGS_API_KEY`), so before coven reads them bae seeds each present
 /// env value into the keyring account coven reads from — through coven's own
-/// `KeyService` setters, not a hand-rolled keyring entry. Production is a no-op:
+/// `StoreKeys` setters, not a hand-rolled keyring entry. Production is a no-op:
 /// `is_dev_mode()` is false, so coven reads the OS keyring directly.
 ///
 /// Call once after the keyring store is installed (`init_keyring`) and the
-/// `library_id` is known, before constructing coven's `KeyService`.
+/// `library_id` is known, before constructing coven's `StoreKeys`.
 pub fn seed_dev_keyring(library_id: &str) {
     if !dev_mode_enabled() {
         return;
     }
 
-    let keys = coven::KeyService::new(library_id.to_string());
+    let keys = coven::StoreKeys::new(library_id.to_string());
 
     if let Some(key) = dev_env_secret("BAE_ENCRYPTION_KEY") {
         match keys.set_encryption_key(&key) {
@@ -91,9 +91,9 @@ pub fn seed_dev_keyring(library_id: &str) {
     }
 
     // bae's own Discogs API key — a bae-domain credential with no coven setter,
-    // written through bae's own keyring path (`BaeKeyServiceExt::set_discogs_key`).
+    // written through bae's own keyring path (`BaeStoreKeysExt::set_discogs_key`).
     if let Some(discogs) = dev_env_secret("BAE_DISCOGS_API_KEY") {
-        use crate::keys::BaeKeyServiceExt;
+        use crate::keys::BaeStoreKeysExt;
         match keys.set_discogs_key(&discogs) {
             Ok(()) => info!("dev: seeded discogs api key from env"),
             Err(e) => warn!("dev: failed to seed discogs api key: {e}"),
