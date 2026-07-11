@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS artists (
 
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL
-);
+) STRICT;
 
 -- Albums are aggregates over releases; identity lives on `release_identities`.
 CREATE TABLE IF NOT EXISTS albums (
@@ -29,10 +29,10 @@ CREATE TABLE IF NOT EXISTS albums (
     -- The release that supplies the album's cover art and is shown by default.
     -- When NULL, callers fall back to the first release.
     primary_release_id TEXT,
-    is_compilation BOOLEAN NOT NULL DEFAULT FALSE,
+    is_compilation INTEGER NOT NULL DEFAULT 0,
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS album_artists (
     id TEXT PRIMARY KEY,
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS album_artists (
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
     UNIQUE(album_id, artist_id)
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS releases (
     id TEXT PRIMARY KEY,
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS releases (
     -- in-place files are tracked by coven as external blob refs
     -- (`local_blob_refs`, coven's own device-local table), NOT here — they must
     -- not sync. A remote release's bytes live in coven's blob cache.
-    remote BOOLEAN NOT NULL,
+    remote INTEGER NOT NULL,
     source_folder_name TEXT,
     -- SHA-256 over the imported folder's categorized file structure (sorted
     -- relative paths + sizes). Location-independent content fingerprint: the
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS releases (
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE
-);
+) STRICT;
 
 -- The device-local truth that a local release's files are in place is owned by
 -- coven, not bae: a local release file is a coven *user-provided* blob, tracked
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS release_identities (
     created_at        TEXT NOT NULL,
     UNIQUE (release_id, source),
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS tracks (
     id TEXT PRIMARY KEY,
@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS tracks (
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS track_artists (
     id TEXT PRIMARY KEY,
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS track_artists (
     created_at TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS works (
     id TEXT PRIMARY KEY,
@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS works (
     work_type TEXT,
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS work_artists (
     id TEXT PRIMARY KEY,
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS work_artists (
     FOREIGN KEY (work_id) REFERENCES works (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
     UNIQUE(work_id, artist_id, position)
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS work_parts (
     id TEXT PRIMARY KEY,
@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS work_parts (
     FOREIGN KEY (parent_work_id) REFERENCES works (id) ON DELETE CASCADE,
     FOREIGN KEY (child_work_id) REFERENCES works (id) ON DELETE CASCADE,
     UNIQUE(parent_work_id, child_work_id)
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS track_works (
     id TEXT PRIMARY KEY,
@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS track_works (
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
     FOREIGN KEY (work_id) REFERENCES works (id) ON DELETE CASCADE,
     UNIQUE(track_id, work_id)
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS release_artist_roles (
     id TEXT PRIMARY KEY,
@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS release_artist_roles (
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
     UNIQUE(release_id, artist_id, position, source)
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS track_artist_roles (
     id TEXT PRIMARY KEY,
@@ -209,7 +209,7 @@ CREATE TABLE IF NOT EXISTS track_artist_roles (
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
     UNIQUE(track_id, artist_id, position, source)
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS release_files (
     id TEXT PRIMARY KEY,
@@ -227,7 +227,7 @@ CREATE TABLE IF NOT EXISTS release_files (
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
-);
+) STRICT;
 
 -- bits_per_sample is nullable: lossy codecs (MP3, AAC, etc.) don't expose a
 -- bit depth via FFmpeg, and substituting a default would store a fabricated
@@ -259,7 +259,7 @@ CREATE TABLE IF NOT EXISTS audio_formats (
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS audio_format_segments (
     id TEXT PRIMARY KEY,
@@ -276,7 +276,7 @@ CREATE TABLE IF NOT EXISTS audio_format_segments (
     UNIQUE (audio_format_id, segment_index),
     FOREIGN KEY (audio_format_id) REFERENCES audio_formats (id) ON DELETE CASCADE,
     FOREIGN KEY (file_id) REFERENCES release_files(id) ON DELETE CASCADE
-);
+) STRICT;
 
 -- Album covers — the one small grid image bae produces per release, 1:1 with a
 -- release (`id` IS the release id). A coven host-provided · CacheEager *asset*:
@@ -301,7 +301,7 @@ CREATE TABLE IF NOT EXISTS covers (
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (id) REFERENCES releases (id) ON DELETE CASCADE
-);
+) STRICT;
 
 -- Artist images — bae-produced, 1:1 with an artist (`id` IS the artist id). A
 -- coven host-provided · CacheEager *asset* of `artists`, same shape as `covers`.
@@ -321,7 +321,7 @@ CREATE TABLE IF NOT EXISTS artist_images (
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE
-);
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS release_metadata (
     id TEXT PRIMARY KEY,
