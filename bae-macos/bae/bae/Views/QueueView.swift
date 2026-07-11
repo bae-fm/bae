@@ -248,6 +248,11 @@ final class QueueDragSession {
     /// Drives the source row's dimmed opacity and lets each drop delegate tell
     /// an internal reorder from a foreign drag.
     var draggedEntryId: String?
+    /// The dragged row's underlying track, for a cross-lane drop: a context row
+    /// released over the manual lane enqueues the track (the context instance
+    /// stays — the release's order isn't edited by promoting a track into
+    /// "Up Next").
+    var draggedTrackId: String?
     /// Set by the row drop delegate when an internal reorder commits (which
     /// also un-dims immediately — the drop's success is known synchronously
     /// there). The watchdog reads it to decide: a committed move leaves the
@@ -263,9 +268,10 @@ final class QueueDragSession {
     private var sessionId = 0
     private var watchdog: Task<Void, Never>?
 
-    func begin(entryId: String) {
+    func begin(entryId: String, trackId: String) {
         sessionId += 1
         draggedEntryId = entryId
+        draggedTrackId = trackId
         committed = false
 
         let id = sessionId
@@ -315,6 +321,23 @@ final class QueueDragSession {
                 cancelTick += 1
             }
             draggedEntryId = nil
+            draggedTrackId = nil
+        }
+        committed = false
+        watchdog?.cancel()
+        watchdog = nil
+    }
+
+    /// A cross-lane drop committed (context row enqueued into the manual
+    /// lane). Core inserted a NEW manual entry — the source lane's own order
+    /// never changed — so unlike a same-lane commit, any live permutation in
+    /// the source section must revert (animated, via `cancelTick`), while the
+    /// insert itself arrives with the coming snapshot.
+    func endAsCrossLaneInsert() {
+        withAnimation(.snappy) {
+            cancelTick += 1
+            draggedEntryId = nil
+            draggedTrackId = nil
         }
         committed = false
         watchdog?.cancel()
@@ -607,7 +630,12 @@ private struct QueueSection: View {
                         }
                         hoveredIndex = hovering ? index : nil
                     },
-                    onDragStarted: { dragSession.begin(entryId: item.id) },
+                    onDragStarted: {
+                        dragSession.begin(
+                            entryId: item.id,
+                            trackId: item.trackId
+                        )
+                    },
                     onSkipTo: onSkipTo,
                     onRemove: onRemove
                 )
@@ -783,12 +811,18 @@ private struct QueueDropDelegate: DropDelegate {
         return (0..<count).first { itemAt($0)?.id == draggedId }
     }
 
-    /// Whether this is an internal reorder within this lane (the dragged entry is
-    /// one of this lane's rows). A drag from the other lane is neither an internal
-    /// reorder here nor a valid external track drop, so it is rejected (cross-lane
-    /// reorder is a core no-op anyway).
+    /// Whether this is an internal reorder within this lane (the dragged entry
+    /// is one of this lane's rows). A queue drag from the OTHER lane is a
+    /// cross-lane insert instead: dropping a context row on the manual lane
+    /// enqueues its track (`dragSession.draggedTrackId`) — the release's own
+    /// order can't take foreign rows, so the reverse direction stays forbidden.
     private var isInternalDrag: Bool {
         fromIndex != nil
+    }
+
+    /// A live queue drag that started in the other lane.
+    private var isCrossLaneDrag: Bool {
+        dragSession.draggedEntryId != nil && fromIndex == nil
     }
 
     /// The live permutation, but only while it still matches the current row
@@ -823,7 +857,10 @@ private struct QueueDropDelegate: DropDelegate {
             let insertAt =
                 targetIndex > currentSlot ? targetIndex - 1 : targetIndex
             order.insert(moved, at: insertAt)
-            withAnimation(.snappy) {
+            // Near-interactive: the default `.snappy` (~0.3s) is still mid-
+            // flight when a drop lands right after crossing a row boundary,
+            // and that residual slide reads as the drop lagging the release.
+            withAnimation(.snappy(duration: 0.15, extraBounce: 0)) {
                 liveOrder = order
             }
         }
@@ -858,10 +895,9 @@ private struct QueueDropDelegate: DropDelegate {
                 // permutation already equals canonical, so there's nothing to
                 // commit. Leave `committed` false — the watchdog's revert is a
                 // visual no-op that also clears the stray identity
-                // permutation. Un-dim now, though: the drop is done.
-                withAnimation(.snappy) {
-                    dragSession.draggedEntryId = nil
-                }
+                // permutation. Un-dim now (instantly, under the dissolving
+                // drag image): the drop is done.
+                dragSession.draggedEntryId = nil
                 return true
             }
 
@@ -887,13 +923,30 @@ private struct QueueDropDelegate: DropDelegate {
             // Mark the session committed so the watchdog leaves `liveOrder` in
             // place — it already equals what core will echo back in the next
             // snapshot, and `QueueSection` drops it on that revision bump.
-            // Un-dim right here: the drop's success is known synchronously,
-            // and nothing about the drag machinery (provider release, watchdog
-            // tick) is allowed to delay the visual settle of an accepted drop.
+            // Un-dim right here, INSTANTLY: the drop's success is known
+            // synchronously, AppKit's dissolving drag image sits exactly over
+            // the row, and a fade under it reads as the drop lagging the
+            // release. Nothing about the drag machinery (provider release,
+            // watchdog tick) is allowed to delay an accepted drop's settle.
             dragSession.committed = true
-            withAnimation(.snappy) {
-                dragSession.draggedEntryId = nil
+            dragSession.draggedEntryId = nil
+            return true
+        }
+
+        // A queue row dragged from the other lane: enqueue its track at this
+        // position (manual lane only — the context is the release's own order
+        // and takes no foreign rows). The context instance stays; core allows
+        // duplicate instances by design, so the track plays here AND when the
+        // context reaches it, matching how an album-card drop behaves.
+        if isCrossLaneDrag {
+            defer { dropInsertIndex = nil }
+            guard acceptsExternalDrops,
+                let trackId = dragSession.draggedTrackId
+            else {
+                return false
             }
+            onInsertTracks([trackId], targetIndex)
+            dragSession.endAsCrossLaneInsert()
             return true
         }
 

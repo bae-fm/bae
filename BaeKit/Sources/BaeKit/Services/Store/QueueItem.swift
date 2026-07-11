@@ -4,6 +4,10 @@ public struct QueueItem: Identifiable, Equatable, Sendable {
     /// Per-instance id: the same track queued twice yields two items with two
     /// ids, so the row identity is stable and unique even for duplicates.
     public let entryId: String
+    /// The underlying track — what a cross-lane drag enqueues (a context row
+    /// dropped into "Up Next" inserts the track; entry ids only ever address
+    /// their own lane's instance).
+    public let trackId: String
     public let title: String
     public let durationMs: Int64?
     public let albumTitle: String
@@ -17,6 +21,7 @@ public struct QueueItem: Identifiable, Equatable, Sendable {
 
     public init(bridge: BridgeQueueEntry) {
         entryId = bridge.entryId
+        trackId = bridge.trackId
         title = bridge.title
         durationMs = bridge.durationMs
         albumTitle = bridge.albumTitle
