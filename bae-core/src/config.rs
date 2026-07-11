@@ -1496,7 +1496,6 @@ mod tests {
             "Test Library".to_string(),
         );
         coven_config.cloud_home.provider = Some(CloudProvider::CloudKit);
-        coven_config.cloud_home.cloudkit_share_url = Some("https://icloud.com/share".to_string());
         coven_config.cloud_home.cloudkit_owner_name = Some("_owner".to_string());
         coven_config.cloud_home.cloudkit_zone_name = Some("bae-library".to_string());
         let config = Config::from_coven(coven_config);
@@ -1504,10 +1503,6 @@ mod tests {
         assert_eq!(config.store_id, library_id);
         assert_eq!(config.store_name, "Test Library");
         assert_eq!(config.mcp, McpConfig::disabled_default());
-        assert_eq!(
-            config.cloud_home.cloudkit_share_url.as_deref(),
-            Some("https://icloud.com/share")
-        );
         assert_eq!(
             config.cloud_home.cloudkit_owner_name.as_deref(),
             Some("_owner")
@@ -1525,10 +1520,6 @@ mod tests {
         .unwrap();
         assert_eq!(yaml.library_id, library_id);
         assert_eq!(yaml.mcp, McpConfig::disabled_default());
-        assert_eq!(
-            yaml.cloud_home.cloudkit_share_url.as_deref(),
-            Some("https://icloud.com/share")
-        );
         assert_eq!(
             yaml.cloud_home.cloudkit_owner_name.as_deref(),
             Some("_owner")

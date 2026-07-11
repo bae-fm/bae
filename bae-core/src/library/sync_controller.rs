@@ -377,7 +377,6 @@ impl SyncController {
         self.config_handle.update(move |c| {
             c.cloud_home.provider = Some(CloudProvider::CloudKit);
             c.cloud_home.storage = storage;
-            c.cloud_home.cloudkit_share_url = None;
             c.cloud_home.cloudkit_owner_name = None;
             c.cloud_home.cloudkit_zone_name = None;
         })?;

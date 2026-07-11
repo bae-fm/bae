@@ -14,7 +14,7 @@ resolver = "2"
 # coven: bae's data layer (local-first store + cloud sync). Pinned by rev here so
 # every crate that touches it (bae-core, and bae-bridge's CloudKit adapter, which
 # implements coven's CloudKitOps) resolves the same instance.
-coven = { git = "https://github.com/bae-fm/coven", rev = "12a09cb8aad337fee61805044b02a60bca79c1da" }
+coven = { git = "https://github.com/bae-fm/coven", rev = "c5c7802a6dc1e9266bca9396ca746efb20695721" }
 # coven-core: coven's inner engine crate, pinned to the SAME git rev so cargo
 # unifies it with coven's own transitive copy into one instance. bae reaches
 # coven only through the `coven` facade in production; the one exception is
@@ -22,7 +22,7 @@ coven = { git = "https://github.com/bae-fm/coven", rev = "12a09cb8aad337fee61805
 # trait and must name that trait's `RevokeOutcome` return type — a type the
 # facade's curated public API does not re-export. Test-scoped (dev-dependency)
 # so no production code depends on it.
-coven-core = { git = "https://github.com/bae-fm/coven", rev = "12a09cb8aad337fee61805044b02a60bca79c1da" }
+coven-core = { git = "https://github.com/bae-fm/coven", rev = "c5c7802a6dc1e9266bca9396ca746efb20695721" }
 # HTTP
 reqwest = { version = "0.13", default-features = false }
 # Logging
