@@ -202,7 +202,7 @@ struct QueueView: View {
     // MARK: - Now Playing
 
     private var nowPlayingSection: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             nowPlayingArt
                 .frame(width: 40, height: 40)
                 .clipShape(RoundedRectangle(cornerRadius: 3))
@@ -227,7 +227,7 @@ struct QueueView: View {
 
             Spacer()
         }
-        .padding(.horizontal)
+        .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
 
