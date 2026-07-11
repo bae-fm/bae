@@ -1,5 +1,5 @@
+import AppKit
 import BaeKit
-import ObjectiveC
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -228,14 +228,19 @@ struct QueueView: View {
 // MARK: - Drag session
 
 /// The in-flight internal-reorder drag, shared across both `QueueSection`s.
-/// Reference-typed (not `@State` value fields) for one reason: the drag's end —
-/// a drop, a drag out of the window, OR an Esc-cancel that never leaves the row
-/// it's hovering — has to reach `end()`, and only the `NSItemProvider`-lifetime
-/// token (`DragSessionToken`) below sees that last case. A `deinit` firing into
-/// a value-typed `@State` closure can't mutate the view; a shared object it can.
+/// Reference-typed (not `@State` value fields) so the cancel watchdog below can
+/// mutate it from its polling task.
 ///
-/// `@MainActor` so it's `Sendable` — the token's `deinit` runs on whatever
-/// thread releases the provider and hops back here to call `end()`.
+/// Neither `.onDrag` nor any `DropDelegate` reports a drag that ends WITHOUT a
+/// drop on one of our targets — Esc, or a release outside the pane. Hanging
+/// cleanup off the drag `NSItemProvider`'s release doesn't work either: the
+/// drag pasteboard can retain the provider until the NEXT drag begins, so a
+/// cancelled drag's ghost row would linger indefinitely. The one reliable,
+/// bounded signal left is the mouse button itself: while a session is live, a
+/// watchdog polls `NSEvent.pressedMouseButtons`; a few consecutive
+/// buttons-up ticks with no committed drop means the drag ended un-dropped —
+/// cancel. The debounce exists so an accepted drop's `performDrop` (dispatched
+/// within one runloop of release) always wins the race against the watchdog.
 @MainActor
 @Observable
 final class QueueDragSession {
@@ -243,42 +248,68 @@ final class QueueDragSession {
     /// Drives the source row's dimmed opacity and lets each drop delegate tell
     /// an internal reorder from a foreign drag.
     var draggedEntryId: String?
-    /// Set by the row drop delegate when an internal reorder actually commits.
-    /// The session-end signal reads it to decide: a committed move leaves the
+    /// Set by the row drop delegate when an internal reorder commits (which
+    /// also un-dims immediately — the drop's success is known synchronously
+    /// there). The watchdog reads it to decide: a committed move leaves the
     /// live permutation on screen for the coming revision bump to clear (no
-    /// snap); anything else — Esc, drag-out, drop-on-chrome — reverts it now.
+    /// snap); anything else — Esc, drag-out, drop-on-chrome — reverts.
     var committed = false
     /// Bumped when a drag ends WITHOUT a commit, so each `QueueSection` animates
     /// its live permutation back to canonical order. Separate from the revision
     /// bump, which clears a committed permutation un-animated.
     private(set) var cancelTick = 0
-    /// Identifies the current drag. A token's `deinit` is ARC-delayed, so a
-    /// finished drag's `end()` can fire AFTER the next drag has already begun;
-    /// each token carries the `sessionId` of its own drag and `end()` ignores
-    /// any that no longer matches, so a stale token can't revert or un-dim a
-    /// newer drag.
+    /// Identifies the current drag, so a superseded watchdog tick can never
+    /// revert or un-dim a newer drag.
     private var sessionId = 0
+    private var watchdog: Task<Void, Never>?
 
-    /// Start a drag; returns the id its session-end token must present to
-    /// `end(sessionId:)`.
-    func begin(entryId: String) -> Int {
+    func begin(entryId: String) {
         sessionId += 1
         draggedEntryId = entryId
         committed = false
-        return sessionId
+
+        let id = sessionId
+        watchdog?.cancel()
+        watchdog = Task { [weak self] in
+            // 3 consecutive buttons-up ticks ≈ 300ms after physical release:
+            // long past when an accepted drop's performDrop lands (same
+            // runloop-ish), short enough that a cancel's revert reads as part
+            // of AppKit's own slide-back animation. If the main thread is
+            // stalled long enough to reorder the two, the wrongly-reverted
+            // visuals still correct on the reorder's snapshot — core stays
+            // authoritative either way.
+            var releasedTicks = 0
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard let self, self.sessionId == id,
+                    self.draggedEntryId != nil
+                else {
+                    return
+                }
+                if NSEvent.pressedMouseButtons == 0 {
+                    releasedTicks += 1
+                    if releasedTicks >= 3 {
+                        self.end(sessionId: id)
+                        return
+                    }
+                }
+                else {
+                    releasedTicks = 0
+                }
+            }
+        }
     }
 
-    /// The drag identified by `sessionId` ended (signalled by its
-    /// `DragSessionToken.deinit`). Reverts the live permutation unless a commit
-    /// already claimed it. A no-op for a stale token whose drag was already
-    /// superseded by a newer one.
+    /// The drag identified by `sessionId` ended un-dropped (the watchdog saw
+    /// the mouse released with no commit). Reverts the live permutation unless
+    /// a commit already claimed it. A no-op for a superseded session.
     func end(sessionId: Int) {
         guard sessionId == self.sessionId else {
             return
         }
         // Animated: the source row's un-dim (and, on the cancel path, the
         // sections' permutation revert keyed off `cancelTick`) should fade in
-        // step with AppKit's own drag-image dissolve, not pop.
+        // step with AppKit's own slide-back, not pop.
         withAnimation(.snappy) {
             if !committed {
                 cancelTick += 1
@@ -286,31 +317,10 @@ final class QueueDragSession {
             draggedEntryId = nil
         }
         committed = false
+        watchdog?.cancel()
+        watchdog = nil
     }
 }
-
-/// Fires `onEnd` from its `deinit`. One is attached to each internal drag's
-/// `NSItemProvider` (as an associated object, so the provider owns it for the
-/// drag's lifetime); AppKit releases the provider when the drag session ends —
-/// by drop, by drag-out, or by Esc alike — which deinits this. That release is
-/// the only signal delivered for an Esc-cancel that never leaves the hovered
-/// row, which neither `.onDrag` nor any `DropDelegate` reports. Deinit timing is
-/// ARC-delayed; a slightly late revert beats a permutation that never reverts.
-private final class DragSessionToken {
-    private let onEnd: () -> Void
-
-    init(onEnd: @escaping () -> Void) {
-        self.onEnd = onEnd
-    }
-
-    deinit {
-        onEnd()
-    }
-}
-
-/// Associated-object key under which a drag's `DragSessionToken` is stashed on
-/// its `NSItemProvider`. Only its address is used; the value is never read.
-private nonisolated(unsafe) var queueDragTokenKey: UInt8 = 0
 
 // MARK: - Section
 
@@ -598,14 +608,6 @@ private struct QueueSection: View {
                         hoveredIndex = hovering ? index : nil
                     },
                     onDragStarted: { dragSession.begin(entryId: item.id) },
-                    // Runs from the drag token's `deinit`, off the main actor,
-                    // for the drag whose `sessionId` this is — hop back before
-                    // touching the main-actor session, which ignores a stale id.
-                    onDragEnded: { sessionId in
-                        Task { @MainActor in
-                            dragSession.end(sessionId: sessionId)
-                        }
-                    },
                     onSkipTo: onSkipTo,
                     onRemove: onRemove
                 )
@@ -628,15 +630,10 @@ private struct QueueItemRow: View {
     let item: QueueItem
     let isHovered: Bool
     let onHoverChanged: (Bool) -> Void
-    /// The section records this row as the drag's source and returns the drag's
-    /// `sessionId`; the `NSItemProvider` carrying `item.id` is what the drop side
-    /// reads back.
-    let onDragStarted: () -> Int
-    /// Fired from the drag `NSItemProvider`'s lifetime token when the session
-    /// ends — drop, drag-out, or Esc — so a cancel that never lands on a row
-    /// still reverts the live order. Carries the `sessionId` from
-    /// `onDragStarted` so a late-firing stale token is ignored.
-    let onDragEnded: (Int) -> Void
+    /// The section records this row as the drag's source (which also arms the
+    /// session's cancel watchdog); the `NSItemProvider` carrying `item.id` is
+    /// what the drop side reads back.
+    let onDragStarted: () -> Void
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
 
@@ -679,21 +676,8 @@ private struct QueueItemRow: View {
         .contentShape(Rectangle())
         .onHover(perform: onHoverChanged)
         .onDrag {
-            let sessionId = onDragStarted()
-            let provider = NSItemProvider(object: item.id as NSString)
-            // Own a session-end token for the provider's lifetime: AppKit
-            // releases the provider when the drag ends (any way it ends), the
-            // token deinits, and `onDragEnded` fires for this drag's session.
-            // This is the only signal for an Esc-cancel that never leaves the
-            // hovered row.
-            let token = DragSessionToken { onDragEnded(sessionId) }
-            objc_setAssociatedObject(
-                provider,
-                &queueDragTokenKey,
-                token,
-                .OBJC_ASSOCIATION_RETAIN
-            )
-            return provider
+            onDragStarted()
+            return NSItemProvider(object: item.id as NSString)
         }
         .onTapGesture(count: 2) {
             onSkipTo(item.id)
@@ -864,9 +848,6 @@ private struct QueueDropDelegate: DropDelegate {
         if let draggedId = dragSession.draggedEntryId, let fromIndex,
             targetLoaded
         {
-            // Un-dim the source row now, whatever this drop resolves to.
-            defer { dragSession.draggedEntryId = nil }
-
             // The drop commits exactly what dropEntered already put on screen:
             // the dragged entry lands before whatever now sits right after it in
             // the live order.
@@ -875,9 +856,12 @@ private struct QueueDropDelegate: DropDelegate {
             else {
                 // Dropped back at its own slot (no rows crossed): the
                 // permutation already equals canonical, so there's nothing to
-                // commit. Leave `committed` false — the session-end token
-                // reverts, a visual no-op that also clears the stray
-                // identity permutation.
+                // commit. Leave `committed` false — the watchdog's revert is a
+                // visual no-op that also clears the stray identity
+                // permutation. Un-dim now, though: the drop is done.
+                withAnimation(.snappy) {
+                    dragSession.draggedEntryId = nil
+                }
                 return true
             }
 
@@ -887,8 +871,9 @@ private struct QueueDropDelegate: DropDelegate {
             // and core reads a `nil` anchor as lane-end, so committing here
             // would snap the entry to the bottom on the next snapshot (the same
             // reason `targetLoaded` gates the drop target itself). Refuse it:
-            // skip `onReorder`, leave `committed` false so the token reverts the
-            // permutation, and report the drop as not accepted.
+            // skip `onReorder` and leave the session live with `committed`
+            // false — the watchdog sees the mouse released without a commit
+            // and reverts the permutation (and the dim) with animation.
             if slot + 1 < order.count {
                 guard let beforeEntryId = itemAt(order[slot + 1])?.id else {
                     return false
@@ -899,11 +884,16 @@ private struct QueueDropDelegate: DropDelegate {
                 onReorder(draggedId, nil)
             }
 
-            // Mark the session committed so the session-end token leaves
-            // `liveOrder` in place — it already equals what core will echo back
-            // in the next snapshot, and `QueueSection` drops it on that revision
-            // bump.
+            // Mark the session committed so the watchdog leaves `liveOrder` in
+            // place — it already equals what core will echo back in the next
+            // snapshot, and `QueueSection` drops it on that revision bump.
+            // Un-dim right here: the drop's success is known synchronously,
+            // and nothing about the drag machinery (provider release, watchdog
+            // tick) is allowed to delay the visual settle of an accepted drop.
             dragSession.committed = true
+            withAnimation(.snappy) {
+                dragSession.draggedEntryId = nil
+            }
             return true
         }
 
