@@ -604,7 +604,13 @@ private struct QueueSection: View {
         VStack(spacing: 0) {
             sectionHeader
 
-            Group {
+            // An explicit zero-spacing stack, NOT `Group`: a modified Group
+            // wraps its children in an implicit container with DEFAULT stack
+            // spacing — which put a phantom 8pt between every row (53pt pitch
+            // for 45pt rows), held collapse animations 8pt short until the
+            // unmount, and floated the perceived row border 8pt above each
+            // row's actual top edge.
+            VStack(spacing: 0) {
                 ForEach(rowSlots) { slot in
                     let item = itemAt(slot.sourceIndex)
                     let isDragged =
@@ -627,6 +633,23 @@ private struct QueueSection: View {
                             .frame(height: 1)
                             .padding(.leading, 62)
                     }
+                    // Optimistic removal: one linear curve drives the fade
+                    // and the collapse together. The content stays full-size,
+                    // pinned to the top — the bottom edge rises over it (a
+                    // top-aligned zero frame + clip), never squishing it. The
+                    // clip sits BEFORE the drag offset in the chain, so it
+                    // clips in the row's own space and cannot clip a dragged
+                    // row's translated rendering.
+                    // No scoped animation on the frame: the collapse rides
+                    // the withAnimation transaction from the remove action, so
+                    // every downstream layout shift (rows below, the whole
+                    // next section) animates in the SAME spring — a scoped
+                    // animation here moved only this row smoothly and let the
+                    // rest snap. The fade alone keeps its own linear curve.
+                    .frame(height: isRemoving ? 0 : nil, alignment: .top)
+                    .clipped()
+                    .opacity(isRemoving ? 0 : 1)
+                    .animation(.linear(duration: 0.25), value: isRemoving)
                     // The manual lane's insertion line serves both external
                     // track drops and a context-row drag hovering here (a
                     // cross-lane enqueue); the context lane never shows one.
@@ -673,21 +696,6 @@ private struct QueueSection: View {
                             transaction.animation = nil
                         }
                     }
-                    // Optimistic removal: the fade lands within a frame (the
-                    // "it reacted" signal), the height closes just behind it,
-                    // and the snapshot that arrives mid-animation already
-                    // lacks the row. No .clipped() — it would also clip the
-                    // drag-offset rendering to the row's slot, painting a
-                    // dragged row underneath everything it crosses; the fade
-                    // reaches zero long before the collapse could overflow
-                    // visibly.
-                    .frame(height: isRemoving ? 0 : nil)
-                    .animation(
-                        .snappy(duration: 0.16, extraBounce: 0),
-                        value: isRemoving
-                    )
-                    .opacity(isRemoving ? 0 : 1)
-                    .animation(.easeOut(duration: 0.07), value: isRemoving)
                     .task(
                         id: QueueRowLoadID(
                             epoch: loadEpoch,
@@ -767,7 +775,14 @@ private struct QueueSection: View {
         // visual no-op, not a snap.
         .onChange(of: queueRevision) {
             coordinator.clearHold(laneId)
-            removingEntryIds.removeAll()
+            // Drop only ids whose rows are GONE from the lane data. The
+            // snapshot and the revision arrive as separate observable
+            // updates, so clearing unconditionally can hit a pass where the
+            // row still exists — its zero frame snaps back to intrinsic for
+            // a frame (a visible end-of-collapse jump).
+            removingEntryIds = removingEntryIds.filter { id in
+                (0..<count).contains { itemAt($0)?.id == id }
+            }
         }
         // A drag started: drop the stored hover slot. `.onHover` won't fire
         // again until the gesture ends, so without this the pre-drag value
@@ -862,8 +877,12 @@ private struct QueueSection: View {
             Image(systemName: "shuffle")
                 .font(.caption2)
                 .foregroundStyle(shuffled ? Color.accentColor : .secondary)
+                // Same 28pt slot as the rows' X column, so the glyphs align
+                // vertically — and the same comfortable hit target.
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableIconButtonStyle())
         .help(shuffled ? "Turn off shuffle" : "Shuffle")
         .accessibilityLabel(shuffled ? "Turn off shuffle" : "Shuffle")
     }
@@ -895,10 +914,22 @@ private struct QueueSection: View {
                     },
                     onSkipTo: onSkipTo,
                     onRemove: { id in
-                        // No withAnimation: the row's own value-scoped
-                        // animations above split the fade from the collapse.
-                        removingEntryIds.insert(id)
-                        onRemove(id)
+                        // The exit animation owns the removal visually; the
+                        // command follows as it finishes (sent immediately,
+                        // core's echo lands in ~20ms, unmounts the row, and
+                        // truncates the exit to an imperceptible blink). The
+                        // global transaction is what carries the spring to
+                        // every row and section this collapse displaces.
+                        // Spring perceptual duration 0.2 settles well before
+                        // the 350ms command — an echo landing inside the
+                        // spring's tail truncates it into a visible end nudge.
+                        withAnimation(.spring(duration: 0.2)) {
+                            _ = removingEntryIds.insert(id)
+                        }
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(350))
+                            onRemove(id)
+                        }
                     }
                 )
                 // The reorder drag, in-process: the row follows the cursor,
@@ -959,6 +990,11 @@ private struct QueueItemRow: View {
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
 
+    /// The remove X's own hover, distinct from the row's: it backs the ring
+    /// that marks the control as live before any press.
+    @State
+    private var removeHovered = false
+
     var body: some View {
         HStack(spacing: 10) {
             artWithHoverOverlay
@@ -975,28 +1011,33 @@ private struct QueueItemRow: View {
 
             Spacer()
 
-            // Hover swaps the duration for a remove button. Both stay in the tree
-            // and toggle by opacity/hit-testing so the swap doesn't resize the row
-            // and re-lay-out the lane. (The trailing slot is the wider of the two,
-            // so neither toggle changes the row's intrinsic width.)
-            ZStack(alignment: .trailing) {
-                Text(item.durationLabel)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .opacity(isHovered ? 0 : 1)
-                Button(action: { onRemove(item.id) }) {
-                    Image(systemName: "xmark")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        // Same small glyph, comfortable click target.
-                        .frame(width: 28, height: 28)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableIconButtonStyle())
-                .help("Remove from queue")
-                .opacity(isHovered ? 1 : 0)
-                .allowsHitTesting(isHovered)
+            // Duration and the remove X coexist — no hover swap: the swap
+            // needed hover-state plumbing (and broke when rows slid under a
+            // stationary pointer) for no real estate gain.
+            Text(item.durationLabel)
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+            Button(action: { onRemove(item.id) }) {
+                Image(systemName: "xmark")
+                    .font(.caption)
+                    .foregroundStyle(removeHovered ? .primary : .secondary)
+                    // Faint at rest, bright on hover: always present and
+                    // hittable (a hover-revealed X can't reveal itself on a
+                    // row that slides under a stationary pointer), without
+                    // reading as a column of controls.
+                    .opacity(removeHovered ? 1 : 0.4)
+                    // Same small glyph, comfortable click target.
+                    .frame(width: 28, height: 28)
+                    .background(
+                        Circle()
+                            .fill(.white.opacity(removeHovered ? 0.12 : 0))
+                            .frame(width: 20, height: 20)
+                    )
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(PressableIconButtonStyle())
+            .onHover { removeHovered = $0 }
+            .help("Remove from queue")
         }
         .contentShape(Rectangle())
         .onHover(perform: onHoverChanged)

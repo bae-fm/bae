@@ -7,8 +7,11 @@ struct PressableIconButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(
+                // Inset from the label's (hit-target-sized) bounds: the ring
+                // marks the control, not the whole hitbox.
                 Circle()
                     .fill(.white.opacity(configuration.isPressed ? 0.18 : 0))
+                    .padding(4)
             )
             .scaleEffect(configuration.isPressed ? 0.78 : 1)
             // Press-down feedback is INSTANT (no animation on the way in —
