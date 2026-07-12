@@ -153,7 +153,9 @@ impl ImportCandidateState {
         }
     }
 
-    pub(super) fn remove_root(&mut self, root: &Path) {
+    /// Drop every candidate under `root` (and its runtime), returning the
+    /// removed candidate keys so the caller can announce them on the bus.
+    pub(super) fn remove_root(&mut self, root: &Path) -> Vec<String> {
         let root_key = root.to_string_lossy();
         let removed: Vec<String> = self
             .candidates
@@ -166,9 +168,10 @@ impl ImportCandidateState {
         self.candidates.retain(|_, candidate| {
             Self::candidate_watched_folder_path(candidate) != root_key.as_ref()
         });
-        for key in removed {
-            self.runtime.remove(&key);
+        for key in &removed {
+            self.runtime.remove(key);
         }
+        removed
     }
 
     pub(super) fn set_skipped(&mut self, key: &str, skipped: bool) {
@@ -475,9 +478,11 @@ pub enum ScanEvent {
     /// The reducer surfaces it under the Skipped tab with its reason. The key is
     /// the folder path, shared with `CandidateRemoved` for reconciliation.
     InvalidCandidate(InvalidCandidate),
-    /// A previously-emitted candidate no longer resolves on disk — the watcher
-    /// re-scanned its folder and the release is gone. The reducer removes it by
-    /// key (the key is the candidate's folder path).
+    /// A candidate is gone: the watcher re-scanned its folder and the release
+    /// no longer resolves on disk, or the folder it belonged to stopped being
+    /// watched (one event per candidate the folder held). The reducer removes
+    /// it by key (the key is the candidate's folder path); the extraction
+    /// service cancels the key's in-flight extraction on this event.
     CandidateRemoved {
         candidate_key: String,
     },

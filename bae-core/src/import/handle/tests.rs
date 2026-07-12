@@ -1202,3 +1202,145 @@ fn runtime_recorded_before_scan_survives_replace_root() {
         other => panic!("expected Importing, got {other:?}"),
     }
 }
+
+#[test]
+fn remove_root_returns_the_removed_candidate_keys() {
+    let mut state = ImportCandidateState::default();
+    state.replace_root(
+        Path::new("/watch/a"),
+        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
+        vec![invalid_candidate("/watch/a/bad", "/watch/a")],
+    );
+    state.replace_root(
+        Path::new("/watch/b"),
+        vec![folder_candidate("/watch/b/rel1", "/watch/b")],
+        Vec::new(),
+    );
+
+    let mut removed = state.remove_root(Path::new("/watch/a"));
+    removed.sort();
+    assert_eq!(
+        removed,
+        vec!["/watch/a/bad".to_string(), "/watch/a/rel1".to_string()]
+    );
+
+    // A second removal of the same root finds nothing left.
+    assert!(state.remove_root(Path::new("/watch/a")).is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn removing_a_watched_folder_cancels_in_flight_extraction() {
+    use crate::signals::{
+        ArtworkAnalysis, ArtworkAnalyzer, ExtractionService, ExtractionSource, TextSignal,
+    };
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::Duration;
+
+    // Local delayed OCR stub: counts `analyze` calls so the test can assert the
+    // pass stopped early, and sleeps each call so a cancel lands mid-pass.
+    struct DelayedAnalyzer {
+        calls: AtomicUsize,
+        delay: Duration,
+    }
+    impl ArtworkAnalyzer for DelayedAnalyzer {
+        fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            std::thread::sleep(self.delay);
+            ArtworkAnalysis {
+                barcodes: Vec::new(),
+                text_lines: vec!["Line".to_string()],
+            }
+        }
+    }
+
+    // Minimal on-disk release: one MP3 (satisfies the audio gate) and three
+    // JPEGs for the OCR pass to iterate.
+    fn minimal_mp3() -> Vec<u8> {
+        let mut v = Vec::with_capacity(32);
+        v.extend_from_slice(b"ID3");
+        v.resize(32, 0);
+        v
+    }
+    fn minimal_jpeg() -> Vec<u8> {
+        vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00]
+    }
+
+    let (manager, tmp) = setup_test_manager().await;
+    let root = tmp.path().join("watch-root");
+    std::fs::create_dir_all(&root).unwrap();
+    let release_folder = root.join("Artist Name - Album Title");
+    std::fs::create_dir_all(&release_folder).unwrap();
+    std::fs::write(release_folder.join("01 - Track.mp3"), minimal_mp3()).unwrap();
+    for img in ["p1.jpg", "p2.jpg", "p3.jpg"] {
+        std::fs::write(release_folder.join(img), minimal_jpeg()).unwrap();
+    }
+
+    let import_handle = crate::import::ImportService::start(
+        tokio::runtime::Handle::current(),
+        manager.clone(),
+        crate::import::cover_art::CoverArtArchiveClient::new(),
+    );
+    let extraction = ExtractionService::start(
+        tokio::runtime::Handle::current(),
+        import_handle.event_sender_for_test(),
+        std::sync::Arc::new(coven::SystemClock),
+        manager.clone(),
+    );
+    let analyzer = std::sync::Arc::new(DelayedAnalyzer {
+        calls: AtomicUsize::new(0),
+        delay: Duration::from_millis(200),
+    });
+    extraction.register_analyzer(analyzer.clone());
+
+    let mut events = import_handle.subscribe_events();
+    import_handle
+        .add_watched_folder(root.to_string_lossy().to_string())
+        .unwrap();
+
+    // Wait for the scan to surface the release as a candidate. Take the key
+    // from the emitted candidate's path (robust to path canonicalization).
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    let candidate_path = loop {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        let event = tokio::time::timeout(remaining, events.recv())
+            .await
+            .expect("timed out waiting for the folder candidate")
+            .expect("event channel closed");
+        if let ImportEvent::Scan(ScanEvent::FolderCandidate(candidate)) = event {
+            break candidate.path;
+        }
+    };
+    let key = candidate_path.to_string_lossy().to_string();
+
+    // Start extraction the way the bridge does, then remove the folder mid-OCR.
+    extraction.start(
+        key.clone(),
+        ExtractionSource::Folder(candidate_path.clone()),
+    );
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    import_handle
+        .remove_watched_folder(root.to_string_lossy().to_string())
+        .unwrap();
+
+    // Drain this key's SignalsUpdated until quiet: the cancelled run never settles.
+    loop {
+        match tokio::time::timeout(Duration::from_millis(500), events.recv()).await {
+            Ok(Ok(ImportEvent::SignalsUpdated {
+                candidate_key,
+                signals,
+            })) if candidate_key == key => {
+                assert!(
+                    !matches!(signals.text, TextSignal::Settled { .. }),
+                    "extraction for a removed folder must not settle, got {:?}",
+                    signals.text,
+                );
+            }
+            Ok(Ok(_)) => continue,
+            _ => break,
+        }
+    }
+    assert!(
+        analyzer.calls.load(Ordering::SeqCst) < 3,
+        "removing the folder must stop the OCR pass early",
+    );
+}

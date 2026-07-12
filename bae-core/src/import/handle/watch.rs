@@ -68,9 +68,10 @@ impl ImportServiceHandle {
     }
 
     /// Stop watching `path`: persist the removal, broadcast the new list, and
-    /// uninstall its OS watch. The reducer drops the folder's candidates by
-    /// reconciling against the list, so no per-candidate removal events are
-    /// needed here.
+    /// uninstall its OS watch. A `CandidateRemoved` is emitted for each of the
+    /// folder's candidates so the extraction service cancels their in-flight
+    /// work and bus consumers drop the keys; the reducer's folder-list
+    /// reconciliation still removes the rows either way.
     ///
     /// The registry removal is never rolled back on an uninstall failure — the
     /// user asked for the folder to stop being watched, and the registry
@@ -84,10 +85,17 @@ impl ImportServiceHandle {
         let folders = registry.watched_folders();
         drop(registry);
         if removed {
-            self.candidate_state
+            let removed_keys = self
+                .candidate_state
                 .lock()
                 .unwrap()
                 .remove_root(std::path::Path::new(&path));
+            for candidate_key in removed_keys {
+                send_event(
+                    &self.event_tx,
+                    ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }),
+                );
+            }
             send_event(
                 &self.event_tx,
                 ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }),
