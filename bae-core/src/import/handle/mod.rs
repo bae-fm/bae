@@ -635,42 +635,26 @@ pub(crate) async fn fetch_artist_images(
 /// an empty per-track list means "share the album artist" in the editor's
 /// convention.
 pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::ReleaseUserEdit {
-    let primary_artist_name = parsed
-        .artists
-        .iter()
-        .find(|a| a.id == parsed.album.artist_id)
-        .map(|a| a.name.clone())
-        .expect("primary artist id not found in ParsedAlbum.artists");
-
-    let mut album_artist_names = vec![primary_artist_name];
-    let mut junctions = parsed.album_artists.clone();
-    junctions.sort_by_key(|aa| aa.position);
-    for aa in &junctions {
-        if let Some(artist) = parsed.artists.iter().find(|a| a.id == aa.artist_id) {
-            album_artist_names.push(artist.name.clone());
-        }
-    }
+    // A ParsedAlbum is self-consistent by construction (the mapper builds its
+    // artists and junctions together), so a missing reference is a bug here, not
+    // a user-facing error.
+    let album_artist_names = crate::import::artist_names::album_artist_names(
+        &parsed.artists,
+        &parsed.album_artists,
+        &parsed.album.artist_id,
+    )
+    .expect("ParsedAlbum album_artists reference its own artists");
 
     let tracks = parsed
         .tracks
         .iter()
         .map(|t| {
-            let mut credits: Vec<&crate::db::DbTrackArtist> = parsed
-                .track_artists
-                .iter()
-                .filter(|ta| ta.track_id == t.id)
-                .collect();
-            credits.sort_by_key(|ta| ta.position);
-            let artist_names = credits
-                .iter()
-                .filter_map(|ta| {
-                    parsed
-                        .artists
-                        .iter()
-                        .find(|a| a.id == ta.artist_id)
-                        .map(|a| a.name.clone())
-                })
-                .collect();
+            let artist_names = crate::import::artist_names::track_artist_names(
+                &parsed.artists,
+                &parsed.track_artists,
+                &t.id,
+            )
+            .expect("ParsedAlbum track_artists reference its own artists");
             crate::import::TrackUserEdit {
                 title: t.title.clone(),
                 side: t.side,

@@ -1,4 +1,8 @@
 pub mod artist_image;
+// Gated with its two callers (`handle` and `service`), which the mobile builds
+// leave out — the import editor is desktop-only.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod artist_names;
 mod assemble;
 pub mod commit;
 pub mod cover_art;

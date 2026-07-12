@@ -1239,30 +1239,17 @@ fn apply_user_edit_to_seed(
 
     // The seed's album-artist names (primary at [0], junction rows by ascending
     // position), to compare against the edit's list.
-    let seeded_album_artist_names: Vec<String> = {
-        let mut names = Vec::new();
-        let primary = artists
-            .iter()
-            .find(|a| a.id == db_album.artist_id)
-            .map(|a| a.name.clone())
-            .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: "primary album artist missing from artists vec".to_string(),
-            })?;
-        names.push(primary);
-        let mut junction = album_artists.clone();
-        junction.sort_by_key(|aa| aa.position);
-        for aa in &junction {
-            let name = artists
-                .iter()
-                .find(|a| a.id == aa.artist_id)
-                .map(|a| a.name.clone())
-                .ok_or_else(|| crate::import::ImportError::Internal {
-                    detail: format!("album_artist references missing artist {}", aa.artist_id),
-                })?;
-            names.push(name);
-        }
-        names
-    };
+    // Must be the same projection parsed_album_to_user_edit fed the editor -- a
+    // difference here reads as a user edit and re-mints the artists without their
+    // source ids. See import::artist_names.
+    let seeded_album_artist_names = crate::import::artist_names::album_artist_names(
+        artists,
+        album_artists,
+        &db_album.artist_id,
+    )
+    .map_err(|missing| crate::import::ImportError::Internal {
+        detail: format!("album_artist references missing artist {}", missing.0),
+    })?;
 
     db_album.title = edit.album_title.clone();
     db_album.artist_id = ensure_artist(artists, &edit.album_artist_names[0]);
@@ -1302,23 +1289,11 @@ fn apply_user_edit_to_seed(
     // credit list matching the album's round-trips through the editor as empty —
     // so those compare equal. Anything else is a real change and rebuilds.
     for (track, t_edit) in db_tracks.iter().zip(edit.tracks.iter()) {
-        let mut seeded: Vec<&DbTrackArtist> = track_artists
-            .iter()
-            .filter(|ta| ta.track_id == track.id)
-            .collect();
-        seeded.sort_by_key(|ta| ta.position);
-        let seeded_names: Vec<String> = seeded
-            .iter()
-            .map(|ta| {
-                artists
-                    .iter()
-                    .find(|a| a.id == ta.artist_id)
-                    .map(|a| a.name.clone())
-                    .ok_or_else(|| crate::import::ImportError::Internal {
-                        detail: format!("track_artist references missing artist {}", ta.artist_id),
-                    })
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let seeded_names =
+            crate::import::artist_names::track_artist_names(artists, track_artists, &track.id)
+                .map_err(|missing| crate::import::ImportError::Internal {
+                    detail: format!("track_artist references missing artist {}", missing.0),
+                })?;
 
         let edit_names = &t_edit.artist_names;
         let unchanged = if edit_names.is_empty() {
