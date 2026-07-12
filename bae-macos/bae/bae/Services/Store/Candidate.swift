@@ -42,12 +42,10 @@ struct CandidateSearchState: Equatable {
         var isSearching: Bool = false
     }
 
-    var generalMb = TabResults()
-    var generalDiscogs = TabResults()
-    var catalogMb = TabResults()
-    var catalogDiscogs = TabResults()
-    var barcodeMb = TabResults()
-    var barcodeDiscogs = TabResults()
+    /// Results keyed by tab, then source. A missing key is a combination the
+    /// user hasn't searched yet — identical to `TabResults()`'s initial state.
+    private var resultsByTabSource: [SearchTab: [MetadataSource: TabResults]] =
+        [:]
 
     var searchArtist: String = ""
     var searchAlbum: String = ""
@@ -62,14 +60,7 @@ struct CandidateSearchState: Equatable {
     }
 
     func results(forTab tab: SearchTab, source: MetadataSource) -> TabResults {
-        switch (tab, source) {
-        case (.general, .musicBrainz): generalMb
-        case (.general, .discogs): generalDiscogs
-        case (.catalogNumber, .musicBrainz): catalogMb
-        case (.catalogNumber, .discogs): catalogDiscogs
-        case (.barcode, .musicBrainz): barcodeMb
-        case (.barcode, .discogs): barcodeDiscogs
-        }
+        resultsByTabSource[tab]?[source] ?? TabResults()
     }
 
     mutating func setResults(
@@ -77,14 +68,7 @@ struct CandidateSearchState: Equatable {
         forTab tab: SearchTab,
         source: MetadataSource
     ) {
-        switch (tab, source) {
-        case (.general, .musicBrainz): generalMb = state
-        case (.general, .discogs): generalDiscogs = state
-        case (.catalogNumber, .musicBrainz): catalogMb = state
-        case (.catalogNumber, .discogs): catalogDiscogs = state
-        case (.barcode, .musicBrainz): barcodeMb = state
-        case (.barcode, .discogs): barcodeDiscogs = state
-        }
+        resultsByTabSource[tab, default: [:]][source] = state
     }
 }
 
