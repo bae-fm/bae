@@ -1,9 +1,10 @@
+use crate::audio_codec::ProbeResult;
 use crate::cue_flac::CueSheet;
 use crate::db::DbTrack;
 use crate::import::folder_scanner::{
     AudioContent, CategorizedFiles, ScannedCueFlacPair, ScannedFile,
 };
-use crate::import::types::{CueAnalyzedAudioFile, CueAudioAnalysis, CueFlacAnalysis, TrackFile};
+use crate::import::types::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackFile};
 use crate::import::ImportError;
 use std::sync::Arc;
 use tracing::{debug, info, warn};
@@ -117,11 +118,11 @@ fn map_tracks_to_cue_flac(
     let mut analyzed_files = Vec::new();
     for file_reference in cue_sheet.audio_file_references() {
         let path = cue_dir.join(file_reference);
-        let analysis = analyze_cue_audio(&path)?;
+        let probe = analyze_cue_audio(&path)?;
         analyzed_files.push(CueAnalyzedAudioFile {
             file_reference: file_reference.to_string(),
             path,
-            analysis,
+            probe,
         });
     }
     ensure_cue_segment_formats_match(&analyzed_files)?;
@@ -138,7 +139,7 @@ fn map_tracks_to_cue_flac(
         // next-track boundary in the sheet, so its duration is derived from
         // the container's total duration minus its INDEX 01 start.
         db_track.duration_ms = cue_track.track_duration_ms().map(|d| d as i64).or_else(|| {
-            main_file_analysis(&pair_analysis, cue_track.file_reference.as_str())
+            main_file_probe(&pair_analysis, cue_track.file_reference.as_str())
                 .and_then(container_duration_ms)
                 .map(|total| total - cue_track.start_time_ms() as i64)
         });
@@ -156,28 +157,28 @@ fn map_tracks_to_cue_flac(
     Ok(mappings)
 }
 
-fn container_duration_ms(analysis: &CueAudioAnalysis) -> Option<i64> {
-    Some(analysis.probe.duration.as_millis() as i64)
+fn container_duration_ms(probe: &ProbeResult) -> Option<i64> {
+    Some(probe.duration.as_millis() as i64)
 }
 
-fn main_file_analysis<'a>(
+fn main_file_probe<'a>(
     cue_pair: &'a CueFlacAnalysis,
     file_reference: &str,
-) -> Option<&'a CueAudioAnalysis> {
+) -> Option<&'a ProbeResult> {
     cue_pair
         .audio_files
         .iter()
         .find(|file| file.file_reference == file_reference)
-        .map(|file| &file.analysis)
+        .map(|file| &file.probe)
 }
 
 fn ensure_cue_segment_formats_match(files: &[CueAnalyzedAudioFile]) -> Result<(), ImportError> {
     let Some(first) = files.first() else {
         return Ok(());
     };
-    let baseline = &first.analysis.probe;
+    let baseline = &first.probe;
     for file in &files[1..] {
-        let probe = &file.analysis.probe;
+        let probe = &file.probe;
         if probe.content_type != baseline.content_type
             || probe.sample_rate != baseline.sample_rate
             || probe.bits_per_sample != baseline.bits_per_sample
@@ -207,9 +208,7 @@ fn extract_duration_from_file(file_path: &std::path::Path) -> Option<i64> {
 }
 
 /// Probe a CUE-backed container through FFmpeg.
-pub(crate) fn analyze_cue_audio(
-    audio_path: &std::path::Path,
-) -> Result<CueAudioAnalysis, ImportError> {
+pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<ProbeResult, ImportError> {
     let path_str = audio_path
         .to_str()
         .ok_or_else(|| ImportError::TrackMapping {
@@ -226,7 +225,7 @@ pub(crate) fn analyze_cue_audio(
         | crate::util::content_type::ContentType::Alac
         | crate::util::content_type::ContentType::Pcm
         | crate::util::content_type::ContentType::WavPack
-        | crate::util::content_type::ContentType::Dsd => Ok(CueAudioAnalysis { probe }),
+        | crate::util::content_type::ContentType::Dsd => Ok(probe),
         other => Err(ImportError::TrackMapping {
             detail: format!(
                 "CUE audio expects FLAC, APE, ALAC, PCM, WavPack, or DSD, got {} in {:?}",
@@ -597,14 +596,12 @@ mod tests {
         CueAnalyzedAudioFile {
             file_reference: file_reference.to_string(),
             path: PathBuf::from(format!("/rip/{file_reference}")),
-            analysis: CueAudioAnalysis {
-                probe: crate::audio_codec::ProbeResult {
-                    content_type,
-                    duration: std::time::Duration::from_millis(1000),
-                    sample_rate,
-                    channels,
-                    bits_per_sample,
-                },
+            probe: crate::audio_codec::ProbeResult {
+                content_type,
+                duration: std::time::Duration::from_millis(1000),
+                sample_rate,
+                channels,
+                bits_per_sample,
             },
         }
     }

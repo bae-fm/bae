@@ -594,11 +594,6 @@ pub struct CueFlacAnalysis {
 pub struct CueAnalyzedAudioFile {
     pub file_reference: String,
     pub path: PathBuf,
-    pub analysis: CueAudioAnalysis,
-}
-
-#[derive(Debug)]
-pub struct CueAudioAnalysis {
     pub probe: ProbeResult,
 }
 

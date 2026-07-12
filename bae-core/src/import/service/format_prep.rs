@@ -9,8 +9,9 @@ use std::path::{Path, PathBuf};
 
 use tracing::warn;
 
+use crate::audio_codec::ProbeResult;
 use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole};
-use crate::import::types::{CueAudioAnalysis, CueFlacAnalysis, TrackFile};
+use crate::import::types::{CueFlacAnalysis, TrackFile};
 use crate::import::ImportError;
 use crate::util::content_type::ContentType;
 use crate::util::content_type_hint::ContentTypeHint;
@@ -128,15 +129,15 @@ fn cue_track_by_playable_index(
         })
 }
 
-fn cue_file_analysis<'a>(
+fn cue_file_probe<'a>(
     cue_pair: &'a CueFlacAnalysis,
     file_reference: &str,
-) -> Result<&'a CueAudioAnalysis, ImportError> {
+) -> Result<&'a ProbeResult, ImportError> {
     cue_pair
         .audio_files
         .iter()
         .find(|file| file.file_reference == file_reference)
-        .map(|file| &file.analysis)
+        .map(|file| &file.probe)
         .ok_or_else(|| ImportError::Internal {
             detail: format!("CUE references unprobed audio file: {file_reference}"),
         })
@@ -167,10 +168,8 @@ fn cue_backed_audio_format(
     let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
     let cue_path = cue_file_path(cue_pair, &cue_track.file_reference)?;
 
-    let fmt = cue_analysis_format(
-        cue_file_analysis(cue_pair, &cue_track.file_reference)?,
-        cue_path,
-    )?;
+    let probe = cue_file_probe(cue_pair, &cue_track.file_reference)?;
+    ensure_probe_audio_format(cue_path, probe)?;
     let audio_pregap_ms = cue_track
         .pregap_duration_ms()
         .filter(|&ms| ms > 0)
@@ -183,18 +182,18 @@ fn cue_backed_audio_format(
         .pregap_start_cue_frames()
         .map(|pregap| cue_track.start_cue_frames.saturating_sub(pregap))
         .filter(|&frames| frames > 0)
-        .map(|frames| (frames * fmt.sample_rate as u64 / 75) as i64);
+        .map(|frames| (frames * probe.sample_rate as u64 / 75) as i64);
     let generated_pregap_samples = cue_track
         .generated_pregap_frames()
         .filter(|&frames| frames > 0)
-        .map(|frames| (frames * fmt.sample_rate as u64 / 75) as i64);
+        .map(|frames| (frames * probe.sample_rate as u64 / 75) as i64);
 
     Ok(DbAudioFormat::new(
         db_track_id,
-        fmt.content_type,
-        fmt.sample_rate as i64,
-        fmt.bits_per_sample,
-        fmt.channels as i64,
+        probe.content_type.clone(),
+        probe.sample_rate as i64,
+        probe.bits_per_sample.map(|b| b as i64),
+        probe.channels as i64,
         id,
         now,
     )
@@ -226,30 +225,6 @@ fn standalone_probed_audio_format(
     ))
 }
 
-/// The audio format descriptor of a CUE-backed file, read once from its analysis
-/// and shared by every caller that needs any of these fields, so the per-codec
-/// extraction lives in one match instead of being repeated per field.
-struct CueAnalysisFormat {
-    content_type: ContentType,
-    sample_rate: u32,
-    bits_per_sample: Option<i64>,
-    channels: u32,
-}
-
-fn cue_analysis_format(
-    analysis: &CueAudioAnalysis,
-    path: &Path,
-) -> Result<CueAnalysisFormat, ImportError> {
-    let probe = &analysis.probe;
-    ensure_probe_audio_format(path, probe)?;
-    Ok(CueAnalysisFormat {
-        content_type: probe.content_type.clone(),
-        sample_rate: probe.sample_rate,
-        bits_per_sample: probe.bits_per_sample.map(|b| b as i64),
-        channels: probe.channels,
-    })
-}
-
 /// Byte each CUE track's audio *starts* on within the shared file: the byte the
 /// demuxer lands on when seeking to that track's `start_sample`, found via
 /// `seek_landing_bytes` (one open per file, no decode). `starts[i]` is track
@@ -267,22 +242,20 @@ fn cue_file_landing_bytes(
     file_path: &Path,
     cue_pair: &CueFlacAnalysis,
 ) -> Option<HashMap<u64, u64>> {
-    let analysis = cue_pair
+    let file = cue_pair
         .audio_files
         .iter()
         .find(|file| file.path == file_path)?;
-    let sample_rate = match cue_analysis_format(&analysis.analysis, file_path) {
-        Ok(fmt) => fmt.sample_rate,
-        Err(error) => {
-            warn!("Skipping CUE byte landing for unusable audio format: {error}");
-            return None;
-        }
-    };
+    if let Err(error) = ensure_probe_audio_format(file_path, &file.probe) {
+        warn!("Skipping CUE byte landing for unusable audio format: {error}");
+        return None;
+    }
+    let sample_rate = file.probe.sample_rate;
     let start_samples: Vec<u64> = cue_pair
         .cue_sheet
         .playable_tracks()
         .flat_map(|track| track.indexes.iter())
-        .filter(|index| index.file_reference == analysis.file_reference)
+        .filter(|index| index.file_reference == file.file_reference)
         .filter(|index| matches!(index.number, 0 | 1))
         .map(|index| index.frames * sample_rate as u64 / 75)
         .collect();
@@ -361,11 +334,9 @@ impl ImportService {
     ) -> Result<Vec<DbAudioSegment>, ImportError> {
         let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
         let main_path = cue_file_path(cue_pair, &cue_track.file_reference)?;
-        let fmt = cue_analysis_format(
-            cue_file_analysis(cue_pair, &cue_track.file_reference)?,
-            main_path,
-        )?;
-        let sample_rate = fmt.sample_rate as u64;
+        let probe = cue_file_probe(cue_pair, &cue_track.file_reference)?;
+        ensure_probe_audio_format(main_path, probe)?;
+        let sample_rate = probe.sample_rate as u64;
         let mut segments = Vec::new();
 
         if let crate::cue_flac::CuePregap::Audio(index) = &cue_track.pregap {
@@ -528,9 +499,7 @@ pub(super) struct BuiltAudioFormats {
 mod tests {
     use super::*;
     use crate::audio_codec::ProbeResult;
-    use crate::import::types::{
-        CueAnalyzedAudioFile, CueAudioAnalysis, CueFlacAnalysis, TrackFile,
-    };
+    use crate::import::types::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackFile};
     use std::sync::Arc;
 
     #[test]
@@ -635,14 +604,14 @@ FILE "Test Album.ape" WAVE
         .expect("write cue");
 
         let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
-        let analysis = crate::import::track_to_file_mapper::analyze_cue_audio(&audio_path)
+        let probe = crate::import::track_to_file_mapper::analyze_cue_audio(&audio_path)
             .expect("analyze ape");
         let cue_pair = Arc::new(CueFlacAnalysis {
             cue_sheet,
             audio_files: vec![CueAnalyzedAudioFile {
                 file_reference: "Test Album.ape".to_string(),
                 path: audio_path.clone(),
-                analysis,
+                probe,
             }],
         });
 
@@ -829,9 +798,7 @@ FILE "test.flac" WAVE
             audio_files: vec![CueAnalyzedAudioFile {
                 file_reference: "test.flac".to_string(),
                 path: audio_path,
-                analysis: CueAudioAnalysis {
-                    probe: probe_result(44_100, 0),
-                },
+                probe: probe_result(44_100, 0),
             }],
         };
         let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
@@ -883,14 +850,12 @@ FILE "test.ape" WAVE
             audio_files: vec![CueAnalyzedAudioFile {
                 file_reference: "test.ape".to_string(),
                 path: audio_path.clone(),
-                analysis: CueAudioAnalysis {
-                    probe: ProbeResult {
-                        content_type: ContentType::Ape,
-                        duration: std::time::Duration::from_secs(12 * 60),
-                        sample_rate: 75,
-                        bits_per_sample: Some(16),
-                        channels: 2,
-                    },
+                probe: ProbeResult {
+                    content_type: ContentType::Ape,
+                    duration: std::time::Duration::from_secs(12 * 60),
+                    sample_rate: 75,
+                    bits_per_sample: Some(16),
+                    channels: 2,
                 },
             }],
         });
