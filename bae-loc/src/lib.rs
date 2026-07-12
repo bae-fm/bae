@@ -14,6 +14,8 @@
 //! cross-check against the Rust message enums lives in bae-bridge, as the
 //! `loc_key_coverage` test module in `bae-bridge/src/types.rs`.
 
+#![deny(unreachable_pub, dead_code)]
+
 pub mod check;
 pub mod emit;
 pub mod mf1;
