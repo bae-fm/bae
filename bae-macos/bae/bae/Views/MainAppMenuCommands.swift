@@ -312,7 +312,7 @@ struct MainAppMenuCommands: Commands {
             .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
 
             Button("Mute") {
-                playback.toggleMute()
+                playback.setMuted(!playbackStore.isMuted)
             }
             .keyboardShortcut("m", modifiers: [.command, .option])
 

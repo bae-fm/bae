@@ -937,7 +937,7 @@ public sealed partial class MainWindow : Window
     {
         if (CurrentHandleOrNull() != null)
         {
-            WithCurrentHandle(NativeBae.ToggleMute);
+            WithCurrentHandle(handle => NativeBae.SetMuted(handle, !_playback.IsMuted));
         }
     }
 

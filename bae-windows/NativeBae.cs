@@ -773,7 +773,7 @@ internal static class NativeBae
 
     internal static void SetVolume(AppHandle handle, float volume) => handle.SetVolume(volume);
 
-    internal static void ToggleMute(AppHandle handle) => handle.ToggleMute();
+    internal static void SetMuted(AppHandle handle, bool muted) => handle.SetMuted(muted);
 
     internal static float GetVolume(AppHandle handle) => Await(handle.GetVolume());
 

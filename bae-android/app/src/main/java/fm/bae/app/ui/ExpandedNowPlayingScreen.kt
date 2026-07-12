@@ -262,7 +262,7 @@ private fun ExpandedVolumeRow(session: OpenLibrary) {
     // non-throwing; the resulting VolumeChanged/MuteChanged events drive the flows.
     var dragVolume by remember { mutableStateOf<Float?>(null) }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { session.appHandle.toggleMute() }) {
+        IconButton(onClick = { session.appHandle.setMuted(!isMuted) }) {
             Icon(
                 imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.Filled.VolumeUp,
                 contentDescription = stringResource(if (isMuted) R.string.unmute else R.string.mute),

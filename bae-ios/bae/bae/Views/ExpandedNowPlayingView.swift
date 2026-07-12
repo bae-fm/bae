@@ -144,7 +144,7 @@ struct ExpandedNowPlayingView: View {
     private var volume: some View {
         HStack(spacing: 12) {
             Button {
-                playback.toggleMute()
+                playback.setMuted(!playbackStore.isMuted)
             } label: {
                 Image(
                     systemName: playbackStore.isMuted

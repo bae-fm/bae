@@ -46,6 +46,10 @@ internal sealed class PlaybackStore
     // since-superseded revision is dropped rather than merged.
     public ulong Revision { get; private set; }
 
+    // The current mute state, for the mute button that must compute an absolute
+    // command target. Written by ApplyMute from the MuteChanged payload.
+    public bool IsMuted { get; private set; }
+
     public event Action<NowPlayingBarTrack>? NowPlayingChanged;
     public event Action? PlaybackStopped;
     public event Action? LoadingStarted;
@@ -116,7 +120,11 @@ internal sealed class PlaybackStore
 
     public void ApplyVolume(double volume) => VolumeChanged?.Invoke(volume);
 
-    public void ApplyMute(bool isMuted) => MuteChanged?.Invoke(isMuted);
+    public void ApplyMute(bool isMuted)
+    {
+        IsMuted = isMuted;
+        MuteChanged?.Invoke(isMuted);
+    }
 
     public void ApplyRepeat(BridgeRepeatMode mode) => RepeatChanged?.Invoke(mode);
 
@@ -169,6 +177,7 @@ internal sealed class PlaybackStore
         _queueManual = new List<BridgeQueueEntry>();
         _queueContext = null;
         Revision = 0;
+        IsMuted = false;
     }
 
     // Carry the current position forward only when the incoming track is the one

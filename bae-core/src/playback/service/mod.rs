@@ -274,8 +274,10 @@ pub(crate) enum PlaybackCommand {
     PreviewCompleted,
     /// Toggle between play and pause based on current audio state.
     TogglePlayPause,
-    /// Toggle mute. Core saves pre-mute volume, sets to 0 or restores.
-    ToggleMute,
+    /// Set mute to an absolute state. Muting saves the pre-mute volume and
+    /// drives output to 0; unmuting restores it. Setting the current state
+    /// changes nothing (a repeated dispatch lands in the same place).
+    SetMuted(bool),
     /// Query current volume. Response sent via oneshot.
     GetVolume(oneshot::Sender<f32>),
     /// Query the queue shape owned by the playback loop.
@@ -390,8 +392,8 @@ impl PlaybackHandle {
     pub fn set_volume(&self, volume: f32) {
         dispatch_command(&self.command_tx, PlaybackCommand::SetVolume(volume));
     }
-    pub fn toggle_mute(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::ToggleMute);
+    pub fn set_muted(&self, muted: bool) {
+        dispatch_command(&self.command_tx, PlaybackCommand::SetMuted(muted));
     }
     pub fn subscribe_progress(&self) -> tokio_mpsc::UnboundedReceiver<PlaybackProgress> {
         self.progress_handle.subscribe_all()
@@ -1715,20 +1717,11 @@ impl PlaybackService {
                         PlaybackProgress::VolumeChanged { volume },
                     );
                 }
-                PlaybackCommand::ToggleMute => {
-                    if self.is_muted {
-                        self.is_muted = false;
-                        let vol = self.pre_mute_volume;
-                        self.audio_output.set_volume(vol);
-                        emit_progress(
-                            &self.progress_tx,
-                            PlaybackProgress::VolumeChanged { volume: vol },
-                        );
-                        emit_progress(
-                            &self.progress_tx,
-                            PlaybackProgress::MuteChanged { is_muted: false },
-                        );
-                    } else {
+                PlaybackCommand::SetMuted(muted) => {
+                    if muted == self.is_muted {
+                        // Already in the requested state; nothing changes,
+                        // nothing emits.
+                    } else if muted {
                         self.pre_mute_volume = self.audio_output.get_volume();
                         self.is_muted = true;
                         self.audio_output.set_volume(0.0);
@@ -1739,6 +1732,18 @@ impl PlaybackService {
                         emit_progress(
                             &self.progress_tx,
                             PlaybackProgress::MuteChanged { is_muted: true },
+                        );
+                    } else {
+                        self.is_muted = false;
+                        let vol = self.pre_mute_volume;
+                        self.audio_output.set_volume(vol);
+                        emit_progress(
+                            &self.progress_tx,
+                            PlaybackProgress::VolumeChanged { volume: vol },
+                        );
+                        emit_progress(
+                            &self.progress_tx,
+                            PlaybackProgress::MuteChanged { is_muted: false },
                         );
                     }
                 }

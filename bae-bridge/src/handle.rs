@@ -389,8 +389,8 @@ impl AppHandle {
         self.services.playback().get_volume().await
     }
 
-    pub fn toggle_mute(&self) {
-        self.services.playback().toggle_mute();
+    pub fn set_muted(&self, muted: bool) {
+        self.services.playback().set_muted(muted);
     }
 
     pub fn preview_play(&self, path: String) {

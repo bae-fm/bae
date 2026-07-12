@@ -2635,23 +2635,29 @@ async fn cycle_repeat_mode_walks_off_context_track_off() {
 }
 
 #[tokio::test]
-async fn toggle_mute_round_trips_and_set_volume_clears_mute() {
+async fn set_muted_round_trips_and_set_volume_clears_mute() {
     let mut fixture = PlaybackTestFixture::new().await;
     fixture.playback_handle.set_volume(0.5);
 
-    fixture.playback_handle.toggle_mute();
+    fixture.playback_handle.set_muted(true);
     assert!(
         wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await,
-        "ToggleMute mutes"
+        "SetMuted(true) mutes"
     );
-    fixture.playback_handle.toggle_mute();
+
+    // A repeated set to the state already held emits nothing; the next
+    // MuteChanged is the unmute that follows. A toggle-shaped implementation
+    // would instead emit an unmute here and re-mute below, so the waited event
+    // would be `true`.
+    fixture.playback_handle.set_muted(true);
+    fixture.playback_handle.set_muted(false);
     assert!(
         !wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await,
-        "ToggleMute again unmutes"
+        "the repeated SetMuted(true) was a no-op; only SetMuted(false) emitted"
     );
 
     // Mute again, then a non-zero SetVolume clears the mute.
-    fixture.playback_handle.toggle_mute();
+    fixture.playback_handle.set_muted(true);
     assert!(
         wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await,
         "muted again"
