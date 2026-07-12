@@ -1084,11 +1084,7 @@ private struct TrackRowView: View {
         let isCurrentPlaying = isCurrent && isPlaying
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             ZStack {
-                Button(
-                    action: isCurrentPlaying
-                        ? onTogglePlayPause
-                        : (isCurrent ? onTogglePlayPause : onPlay)
-                ) {
+                Button(action: isCurrent ? onTogglePlayPause : onPlay) {
                     Image(
                         systemName: isCurrentPlaying
                             ? "pause.fill" : "play.fill"
