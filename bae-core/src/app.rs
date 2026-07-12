@@ -121,8 +121,8 @@ fn bootstrap_inner(
 ) -> Result<RunningApp, BootstrapError> {
     // Composition root for the injected wall clock + id source. Production wires
     // the real implementations; both are passed down to the data layer. Built
-    // before `Config::load` so the device-id auto-gen reads from the injected
-    // source too.
+    // before `load_bootstrap_config` so the device-id auto-gen reads from the
+    // injected source too.
     let clock: ClockRef = Arc::new(SystemClock);
     let ids: IdRef = Arc::new(UuidProvider);
 

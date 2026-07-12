@@ -5,7 +5,7 @@ use tracing::{info, warn};
 /// but non-UTF-8 (a misconfigured `.env`, warned and skipped so it isn't
 /// silently treated as absent), and present with a non-empty value (returned for
 /// seeding). An empty value is treated as absent.
-pub(super) fn dev_env_secret(var: &str) -> Option<String> {
+fn dev_env_secret(var: &str) -> Option<String> {
     match std::env::var(var) {
         Ok(value) if !value.is_empty() => Some(value),
         Ok(_) => None,
@@ -13,31 +13,6 @@ pub(super) fn dev_env_secret(var: &str) -> Option<String> {
         Err(std::env::VarError::NotUnicode(raw)) => {
             warn!("dev: ignoring non-UTF-8 {var}: {raw:?}");
             None
-        }
-    }
-}
-
-type CloudHomeS3Setter = fn(&mut coven::CloudHomeConfig, String);
-
-pub(super) fn overlay_cloud_home_s3_env(cloud_home: &mut coven::CloudHomeConfig) {
-    let overlays: [(&str, CloudHomeS3Setter); 4] = [
-        ("BAE_CLOUD_HOME_S3_BUCKET", |cloud_home, value| {
-            cloud_home.s3_bucket = Some(value)
-        }),
-        ("BAE_CLOUD_HOME_S3_REGION", |cloud_home, value| {
-            cloud_home.s3_region = Some(value)
-        }),
-        ("BAE_CLOUD_HOME_S3_ENDPOINT", |cloud_home, value| {
-            cloud_home.s3_endpoint = Some(value)
-        }),
-        ("BAE_CLOUD_HOME_S3_KEY_PREFIX", |cloud_home, value| {
-            cloud_home.s3_key_prefix = Some(value)
-        }),
-    ];
-
-    for (var, apply) in overlays {
-        if let Some(value) = dev_env_secret(var) {
-            apply(cloud_home, value);
         }
     }
 }

@@ -5,16 +5,29 @@
 //! The encryption key and Ed25519 signing key live in the data-protection
 //! keychain under the `*.fm.bae.desktop` access group, so the built binary must
 //! be code-signed into that group to read them. Run from a directory without a
-//! `.env` so it resolves the OS keyring (production mode), not env vars.
+//! `.env` so `seed_dev_keyring` leaves the OS keyring alone (production mode)
+//! rather than seeding it from `BAE_*` env vars.
 
 fn main() {
     bae_core::config::init_keyring();
 
+    let library_id = match bae_core::config::Config::active_library_id() {
+        Ok(Some(id)) => id,
+        Ok(None) => {
+            eprintln!("no active library: ~/.bae/active-library does not exist");
+            std::process::exit(1);
+        }
+        Err(e) => {
+            eprintln!("read active-library pointer failed: {e}");
+            std::process::exit(1);
+        }
+    };
+
     let ids = coven::UuidProvider;
-    let config = match bae_core::config::Config::load(&ids) {
+    let config = match bae_core::config::Config::load_registered_library(&library_id, &ids) {
         Ok(config) => config,
         Err(e) => {
-            tracing::error!("load config failed: {e}");
+            eprintln!("load config failed: {e}");
             std::process::exit(1);
         }
     };

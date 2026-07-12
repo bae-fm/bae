@@ -19,7 +19,7 @@ pub use keyring::init_keyring;
 pub use keyring::install_test_keyring;
 
 use atomic_write::{write_atomic, write_atomic_io};
-use dev::{dev_env_secret, dev_mode_enabled, overlay_cloud_home_s3_env};
+use dev::dev_mode_enabled;
 use export::{default_export_filename_template, default_export_presets};
 
 pub const MCP_DEFAULT_PORT: u16 = 47777;
@@ -381,16 +381,6 @@ impl std::ops::DerefMut for Config {
 }
 
 impl Config {
-    pub fn load(ids: &dyn coven::IdProvider) -> Result<Self, ConfigError> {
-        if dev_mode_enabled() {
-            info!("Dev mode activated — loading config.yaml with .env overrides");
-            Self::from_env(ids)
-        } else {
-            info!("Production mode - loading from config.yaml");
-            Self::from_config_file(ids)
-        }
-    }
-
     pub fn load_registered_library(
         library_id: &str,
         ids: &dyn coven::IdProvider,
@@ -404,79 +394,6 @@ impl Config {
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
         Self::load_from_library_dir(StoreDir::new(library_path), ids)
-    }
-
-    fn from_env(ids: &dyn coven::IdProvider) -> Result<Self, ConfigError> {
-        // Use the same active-library pointer file as production mode
-        let app_dir = bae_dir()?;
-        let mut config = Self::load_from_bae_dir(&app_dir, ids)?;
-
-        // Overlay dev-specific env vars on top of the config.yaml values
-        if let Some(path) = dev_env_secret("BAE_LIBRARY_PATH") {
-            config.store_dir = StoreDir::new(PathBuf::from(path));
-        }
-
-        let encryption_key_hex = dev_env_secret("BAE_ENCRYPTION_KEY");
-        if let Some(ref key) = encryption_key_hex {
-            // `from_env` is infallible — a malformed env var is a dev setup
-            // bug, not a runtime condition. Silently writing
-            // `encryption_key_stored = true` with no fingerprint would let any
-            // key later unlock the library (the fingerprint guard short-circuits
-            // on None), so surface the parse failure loudly.
-            let fingerprint = coven::EncryptionService::new(key)
-                .expect("BAE_ENCRYPTION_KEY is malformed")
-                .fingerprint();
-            config.encryption_key_stored = true;
-            config.encryption_key_fingerprint = Some(fingerprint);
-        }
-
-        if dev_env_secret("BAE_DISCOGS_API_KEY").is_some() {
-            // In dev mode, assume the env-provided key is valid
-            config.discogs = Some(DiscogsValidation::Valid);
-        }
-
-        overlay_cloud_home_s3_env(&mut config.cloud_home);
-
-        Ok(config)
-    }
-
-    fn from_config_file(ids: &dyn coven::IdProvider) -> Result<Self, ConfigError> {
-        let app_dir = bae_dir()?;
-        Self::load_from_bae_dir(&app_dir, ids)
-    }
-
-    fn load_from_bae_dir(
-        bae_dir: &std::path::Path,
-        ids: &dyn coven::IdProvider,
-    ) -> Result<Self, ConfigError> {
-        // Read active library UUID from pointer file
-        let pointer_file = bae_dir.join("active-library");
-        let active_id = read_active_library_id(bae_dir).map_err(|e| {
-            ConfigError::Config(format!(
-                "failed to read active-library pointer at {}: {e}",
-                pointer_file.display()
-            ))
-        })?;
-
-        let library_id = match active_id {
-            Some(id) => id,
-            None => {
-                // No pointer file — auto-select the first known library
-                let libraries = discover_all_library_paths(bae_dir);
-                match libraries.into_iter().next() {
-                    Some((_path, yaml)) => yaml.library_id,
-                    None => {
-                        return Err(ConfigError::Config(format!(
-                            "no active-library pointer at {} and no libraries found",
-                            pointer_file.display()
-                        )));
-                    }
-                }
-            }
-        };
-
-        Self::load_registered_library_from_bae_dir(bae_dir, &library_id, ids)
-            .map_err(|e| ConfigError::Config(format!("failed to load library config: {e}")))
     }
 
     pub(crate) fn load_registered_library_from_bae_dir(
@@ -1128,72 +1045,11 @@ mod tests {
     }
 
     #[test]
-    fn load_from_bae_dir_reads_pointer_and_config() {
+    fn read_active_library_id_errors_when_pointer_is_empty() {
         let tmp = TempDir::new().unwrap();
-        let bae_dir = tmp.path();
-        let library_id = "test-lib-id";
-        let library_path = bae_dir.join("libraries").join(library_id);
+        std::fs::write(tmp.path().join("active-library"), " \n").unwrap();
 
-        // Set up active-library pointer (UUID) + config.yaml
-        let config = make_test_config(library_id, library_path.clone());
-        config.save_to_config_yaml().unwrap();
-        std::fs::write(bae_dir.join("active-library"), library_id).unwrap();
-
-        let loaded =
-            Config::load_from_bae_dir(bae_dir, &coven::SequentialIdProvider::new("device"))
-                .unwrap();
-        assert_eq!(loaded.store_id, library_id);
-        assert_eq!(&*loaded.store_dir, library_path.as_path());
-    }
-
-    #[test]
-    fn load_from_bae_dir_auto_selects_first_library_without_pointer() {
-        let tmp = TempDir::new().unwrap();
-        let bae_dir = tmp.path();
-        let library_path = registered_library_path(bae_dir, "auto-lib");
-
-        // Create a library in libraries/ but no active-library pointer
-        make_test_config("auto-lib", library_path.clone())
-            .save_to_config_yaml()
-            .unwrap();
-
-        let loaded =
-            Config::load_from_bae_dir(bae_dir, &coven::SequentialIdProvider::new("device"))
-                .unwrap();
-        assert_eq!(loaded.store_id, "auto-lib");
-    }
-
-    #[test]
-    fn load_from_bae_dir_returns_active_pointer_read_error() {
-        let tmp = TempDir::new().unwrap();
-        let bae_dir = tmp.path();
-        let library_path = registered_library_path(bae_dir, "auto-lib");
-
-        make_test_config("auto-lib", library_path)
-            .save_to_config_yaml()
-            .unwrap();
-        std::fs::create_dir(bae_dir.join("active-library")).unwrap();
-
-        let err = Config::load_from_bae_dir(bae_dir, &coven::SequentialIdProvider::new("device"))
-            .unwrap_err();
-
-        assert!(matches!(err, ConfigError::Config(_)));
-        assert!(err.to_string().contains("active-library pointer"));
-    }
-
-    #[test]
-    fn load_from_bae_dir_returns_error_when_active_pointer_is_empty() {
-        let tmp = TempDir::new().unwrap();
-        let bae_dir = tmp.path();
-        let library_path = registered_library_path(bae_dir, "auto-lib");
-
-        make_test_config("auto-lib", library_path)
-            .save_to_config_yaml()
-            .unwrap();
-        std::fs::write(bae_dir.join("active-library"), " \n").unwrap();
-
-        let err = Config::load_from_bae_dir(bae_dir, &coven::SequentialIdProvider::new("device"))
-            .unwrap_err();
+        let err = read_active_library_id(tmp.path()).unwrap_err();
 
         assert!(matches!(err, ConfigError::Config(_)));
         assert!(err.to_string().contains("active-library pointer"));
@@ -1211,48 +1067,6 @@ mod tests {
         std::fs::create_dir(bae_dir.join("active-library")).unwrap();
 
         assert!(discover_libraries_from_bae_dir(bae_dir).is_err());
-    }
-
-    #[test]
-    fn load_from_bae_dir_errors_for_misplaced_library_id() {
-        let tmp = TempDir::new().unwrap();
-        let bae_dir = tmp.path();
-        let misplaced_path = registered_library_path(bae_dir, "other-dir");
-
-        make_test_config("target-lib", misplaced_path)
-            .save_to_config_yaml()
-            .unwrap();
-        std::fs::write(bae_dir.join("active-library"), "target-lib").unwrap();
-
-        let err = Config::load_from_bae_dir(bae_dir, &coven::SequentialIdProvider::new("device"))
-            .unwrap_err();
-
-        assert!(matches!(err, ConfigError::Config(_)));
-        assert!(err.to_string().contains("failed to load library config"));
-    }
-
-    #[test]
-    fn load_from_bae_dir_errors_without_pointer_or_libraries() {
-        let tmp = TempDir::new().unwrap();
-        let err =
-            Config::load_from_bae_dir(tmp.path(), &coven::SequentialIdProvider::new("device"))
-                .unwrap_err();
-
-        assert!(matches!(err, ConfigError::Config(_)));
-        assert!(err.to_string().contains("no libraries found"));
-    }
-
-    #[test]
-    fn load_from_bae_dir_errors_when_library_id_not_found() {
-        let tmp = TempDir::new().unwrap();
-        // Pointer to a UUID that doesn't exist anywhere
-        std::fs::write(tmp.path().join("active-library"), "nonexistent-uuid").unwrap();
-        let err =
-            Config::load_from_bae_dir(tmp.path(), &coven::SequentialIdProvider::new("device"))
-                .unwrap_err();
-
-        assert!(matches!(err, ConfigError::Config(_)));
-        assert!(err.to_string().contains("failed to load library config"));
     }
 
     /// A library dir whose name isn't valid UTF-8 can't round-trip through the
@@ -1292,37 +1106,6 @@ mod tests {
         let discovered = discover_all_library_paths(bae_dir);
         assert_eq!(discovered.len(), 1, "non-UTF-8 dir should be skipped");
         assert_eq!(discovered[0].1.library_id, "valid-lib");
-    }
-
-    #[test]
-    fn load_from_bae_dir_errors_when_dir_exists_but_no_config_yaml() {
-        let tmp = TempDir::new().unwrap();
-        let bae_dir = tmp.path();
-        let library_path = bae_dir.join("libraries").join("some-id");
-        std::fs::create_dir_all(&library_path).unwrap();
-        std::fs::write(bae_dir.join("active-library"), "some-id").unwrap();
-
-        let err = Config::load_from_bae_dir(bae_dir, &coven::SequentialIdProvider::new("device"))
-            .unwrap_err();
-
-        assert!(matches!(err, ConfigError::Config(_)));
-        assert!(err.to_string().contains("failed to load library config"));
-    }
-
-    #[test]
-    fn load_from_bae_dir_errors_on_unparseable_config() {
-        let tmp = TempDir::new().unwrap();
-        let bae_dir = tmp.path();
-        let library_path = bae_dir.join("libraries").join("some-id");
-        std::fs::create_dir_all(&library_path).unwrap();
-        std::fs::write(library_path.join("config.yaml"), "library_name: Test\n").unwrap();
-        std::fs::write(bae_dir.join("active-library"), "some-id").unwrap();
-
-        let err = Config::load_from_bae_dir(bae_dir, &coven::SequentialIdProvider::new("device"))
-            .unwrap_err();
-
-        assert!(matches!(err, ConfigError::Config(_)));
-        assert!(err.to_string().contains("failed to load library config"));
     }
 
     #[test]
