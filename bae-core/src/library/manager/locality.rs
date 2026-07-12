@@ -130,17 +130,17 @@ impl LibraryManager {
 
     // ── Download (pin) queue ─────────────────────────────────────────
     //
-    // Pinning routes through an in-memory serial queue instead of an ephemeral
+    // Pinning routes through an in-memory serial queue rather than an ephemeral
     // per-release task: one release downloads at a time, the rest wait, and the
-    // user can pause/cancel/retry. The queue is transient — on restart it's
-    // empty and any release that wasn't fully pinned stays cloud-only (a pin
-    // flips a release to pinned only after every file lands).
+    // user can pause/cancel/retry. The queue is transient — empty after a restart,
+    // and any release that wasn't fully pinned stays cloud-only, since a pin flips
+    // a release to pinned only once every file lands.
 
-    /// Enqueue releases to pin for offline. Skips ids already in the queue (any
-    /// state) or already pinned; for each new one, resolves its title /
-    /// file_count / total_size from its storage summary so the Downloads pane
-    /// can render the row without a re-query. Wakes the parked worker and emits
-    /// a fresh `DownloadQueueChanged`.
+    /// Enqueue releases to pin for offline. Skips ids already in the queue (in any
+    /// state) or already pinned; for each new one, resolves its title / file_count /
+    /// total_size from its storage summary so the Downloads pane can render the row
+    /// without a re-query. Wakes the parked worker and emits a fresh
+    /// `DownloadQueueChanged`.
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) {
         // One timestamp for the whole batch — read the clock once, not per row.
         let enqueued_at = self.clock.now().timestamp_millis();
@@ -163,10 +163,9 @@ impl LibraryManager {
             };
             if summary.storage_state == ReleaseStorageState::Local {
                 // Pinning keeps a *cloud* release offline; a local release is
-                // already fully on disk, so there is nothing to download. Callers
-                // that can't see storage state (the album grid's bulk pin) reach
-                // here with a mixed selection — skip the local ones instead of
-                // enqueueing a download that would only fail.
+                // already on disk, so there is nothing to download. Callers that
+                // can't see storage state (the album grid's bulk pin) arrive with a
+                // mixed selection, so skip rather than enqueue a doomed download.
                 debug!("enqueue_pins: {release_id} is local (nothing to pin), skipping");
                 continue;
             }
@@ -213,15 +212,11 @@ impl LibraryManager {
     /// is left behind — a partial never renames into place, so the release stays
     /// cloud-only). Emits a fresh snapshot.
     pub fn cancel_download(&self, release_id: &str) {
-        let was_active = self.download_queue.cancel(release_id);
-        if was_active {
-            // The aborted pin task closes its progress channel; the worker's
-            // drain sees the close and emits the terminal `ReleaseTransferEnded`
-            // that clears the inline storage-row bar, then sees the entry is
-            // gone and leaves the queue as-is. So we don't emit it here — and
-            // the worker re-parks on its own once the drain returns, so no wake
-            // is needed for the active case.
-        }
+        // An active entry needs no follow-up here: the aborted pin task closes its
+        // progress channel, and the worker's drain emits the terminal
+        // `ReleaseTransferEnded` that clears the inline storage-row bar, sees the
+        // entry is gone, leaves the queue alone, and re-parks itself.
+        self.download_queue.cancel(release_id);
         self.emit_download_queue_changed();
     }
 
@@ -321,7 +316,8 @@ impl LibraryManager {
         }
     }
 
-    /// Unpin a release: delete local copies, mark as cloud-only.
+    /// Unpin a release: coven moves its blobs out of `storage/pinned/` and into the
+    /// evictable cache, so they stay readable but become droppable.
     pub async fn unpin_release(&self, release_id: &str) -> Result<(), LibraryError> {
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.unpin_release(release_id.to_string());
