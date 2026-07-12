@@ -1,7 +1,13 @@
+// Shared integration-test helpers. Each of the 8 `tests/test_*.rs` binaries is
+// a separate crate that pulls this in via `mod support;` and uses a subset, so
+// helpers unused by a given binary read as dead. The module-level allow is the
+// standard resolution for that per-target false positive; every helper below
+// is exercised by at least one test target.
+#![allow(dead_code)]
+
 /// Convert a decode's full-range i32 PCM samples to the f32 shape emitted by
 /// streaming playback, for comparing a ground-truth decode against captured
 /// playback output.
-#[allow(dead_code)]
 pub fn samples_as_f32(decoded: &bae_core::audio_codec::DecodedAudio) -> Vec<f32> {
     let scale = i32::MAX as f32;
     decoded.samples.iter().map(|&s| s as f32 / scale).collect()
@@ -10,7 +16,6 @@ pub fn samples_as_f32(decoded: &bae_core::audio_codec::DecodedAudio) -> Vec<f32>
 /// Write one tagged FLAC into `dir` (copied from the test fixture) with the
 /// given `title`, so an Unknown-identity import can map it from file tags.
 /// Returns the on-disk bytes after tagging.
-#[allow(dead_code)]
 pub fn write_tagged_flac(dir: &std::path::Path, filename: &str, title: &str) -> Vec<u8> {
     use lofty::config::WriteOptions;
     use lofty::prelude::*;
@@ -42,7 +47,6 @@ pub fn write_tagged_flac(dir: &std::path::Path, filename: &str, title: &str) -> 
 /// synthetic test release. The worker's `prepare_release` →
 /// `client.get_release` chain hits the cache; the cross-reference call
 /// resolves to "no MB link" without touching the network.
-#[allow(dead_code)]
 pub fn seed_discogs_test_release(release: bae_core::discogs::DiscogsRelease) -> String {
     let id = release.id.clone();
     if let Some(ref master_id) = release.master_id {
@@ -69,7 +73,6 @@ fn import_terminal_ids(progress: &bae_core::import::ImportProgress) -> Option<(S
 /// import worker is finished, while remote completion waits for coven upload
 /// confirmation.
 /// Panics on failure.
-#[allow(dead_code)]
 pub async fn wait_for_import_complete(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
 ) -> (String, String) {
@@ -88,7 +91,6 @@ pub async fn wait_for_import_complete(
 ///
 /// Used by test fixtures that catch setup errors gracefully (e.g., returning
 /// early from a test when a fixture file fails validation).
-#[allow(dead_code)]
 pub async fn try_wait_for_import_complete(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
 ) -> Result<(String, String), String> {
@@ -103,7 +105,6 @@ pub async fn try_wait_for_import_complete(
     Err("Progress channel closed without completion".to_string())
 }
 
-#[allow(dead_code)]
 pub async fn read_cover_image_blob(
     db: &bae_core::db::Database,
     mgr: &bae_core::library::LibraryManager,
@@ -120,7 +121,6 @@ pub async fn read_cover_image_blob(
 }
 
 /// Initialize tracing for tests with proper test output handling
-#[allow(dead_code)]
 pub fn tracing_init() {
     let _ = tracing_subscriber::fmt()
         .with_test_writer()
@@ -134,7 +134,6 @@ pub fn tracing_init() {
 /// Seeds a dummy Discogs key into the in-memory test keyring so the worker can
 /// build a `DiscogsClient` and consult the seeded LRU caches without doing real
 /// HTTP work. (coven's StoreKeys reads the keyring, not env vars.)
-#[allow(dead_code)]
 pub fn test_config_and_keys(
     library_dir: &coven::StoreDir,
 ) -> (
@@ -165,7 +164,6 @@ pub fn test_config_and_keys(
 /// Set up a fresh library + LibraryManager using the real codepath
 /// (StoreDir::create + active-library pointer + saved config.yaml). No sync
 /// manager — tests configure sync themselves via connect_*/save_s3_config.
-#[allow(dead_code)]
 pub fn setup_fresh_library(
     runtime: &tokio::runtime::Runtime,
 ) -> (bae_core::library::LibraryManager, tempfile::TempDir) {
@@ -217,7 +215,6 @@ pub fn setup_fresh_library(
 /// Read a test env var with a default fallback. `NotPresent` silently uses
 /// the default (the intended path); `NotUnicode` panics so a misconfigured
 /// env var fails loudly instead of silently substituting bytes-as-default.
-#[allow(dead_code)]
 pub fn test_env(name: &str, default: &str) -> String {
     match std::env::var(name) {
         Ok(s) => s,
@@ -230,14 +227,12 @@ pub fn test_env(name: &str, default: &str) -> String {
 
 /// Test S3 endpoint + credentials. Defaults target a local minio at
 /// `localhost:19000` with creds `baetest`/`baetestpass`.
-#[allow(dead_code)]
 pub struct TestS3Endpoint {
     pub url: String,
     pub access_key: String,
     pub secret_key: String,
 }
 
-#[allow(dead_code)]
 impl TestS3Endpoint {
     pub fn from_env() -> Self {
         Self {
@@ -313,7 +308,6 @@ use bae_core::sync::S3ConfigData;
 /// keyed by cloud key; `read` returns them. `fail_writes` makes uploads error
 /// (to drive "upload fails" paths). Methods the tests don't exercise panic
 /// loudly so a wrong call site is obvious.
-#[allow(dead_code)]
 pub struct MockCloudHome {
     blobs: std::sync::Mutex<std::collections::HashMap<String, Vec<u8>>>,
     fail_writes: std::sync::atomic::AtomicBool,
@@ -324,7 +318,6 @@ pub struct MockCloudHome {
     full_reads: std::sync::atomic::AtomicUsize,
 }
 
-#[allow(dead_code)]
 impl MockCloudHome {
     pub fn new() -> Self {
         Self {
