@@ -549,19 +549,11 @@ pub async fn search_releases_with_params(
     info!("MusicBrainz: Searching with params: {:?}", params);
     info!("   Query: {}", query);
     let url = "https://musicbrainz.org/ws/2/release";
-    debug!(
-        "MusicBrainz API request: {}?query={}&limit=25&inc=recordings+artist-credits+release-groups+labels+media+url-rels+recording-level-rels+work-level-rels+work-rels+artist-rels",
-        url, query
-    );
+    debug!("MusicBrainz API request: {}?query={}&limit=25", url, query);
 
-    let request = http_client().get(url).query(&[
-        ("query", query.as_str()),
-        ("limit", "25"),
-        (
-            "inc",
-            "recordings+artist-credits+release-groups+labels+media+url-rels+recording-level-rels+work-level-rels+work-rels+artist-rels",
-        ),
-    ]);
+    let request = http_client()
+        .get(url)
+        .query(&[("query", query.as_str()), ("limit", "25")]);
     let response = match mb_get(request).await {
         Ok(response) => response,
         Err(MusicBrainzError::Provider { status: Some(404) }) => return Ok(Vec::new()),
