@@ -54,17 +54,23 @@ if [[ "$SKIP_RUST" == false ]]; then
 fi
 
 cd bae-ios/bae && xcodegen && cd ../..
+
+# Build into the same derived-data cache scripts/check.sh and iOS CI use, so
+# they share module caches and SourcePackages checkouts. Caveat: check.sh
+# builds with CODE_SIGNING_ALLOWED=NO while this script ad-hoc signs for the
+# simulator, so alternating the two invalidates some incremental state; the
+# bulk of the cache is still shared.
 xcodebuild -project bae-ios/bae/bae.xcodeproj \
     -scheme bae \
     -configuration Debug \
     -sdk iphonesimulator \
     -destination 'platform=iOS Simulator,name=iPhone 16' \
-    -derivedDataPath build/ios \
+    -derivedDataPath bae-ios/bae/.build/derivedData \
     PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
     PRODUCT_NAME="$PRODUCT_NAME" \
     build
 
 xcrun simctl boot "iPhone 16" 2>/dev/null || true
 open -a Simulator
-xcrun simctl install booted "build/ios/Build/Products/Debug-iphonesimulator/$PRODUCT_NAME.app"
+xcrun simctl install booted "bae-ios/bae/.build/derivedData/Build/Products/Debug-iphonesimulator/$PRODUCT_NAME.app"
 xcrun simctl launch booted "$BUNDLE_ID"
