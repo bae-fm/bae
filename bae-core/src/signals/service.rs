@@ -27,7 +27,7 @@ use super::dump::dump_scan;
 use super::fast_pass::{gather_non_ocr_sources, FastPass};
 use super::pool::Pool;
 use super::release::{resolve_release_artwork_paths, resolve_release_identity};
-use crate::import::ImportEvent;
+use crate::import::{ImportEvent, ScanEvent};
 use crate::library::LibraryManager;
 use crate::signals::{
     BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
@@ -62,7 +62,10 @@ struct ExtractionServiceInner {
     library_manager: LibraryManager,
     /// Per-candidate cancellation registry. `start` registers a new entry
     /// (cancelling any prior one for the key); tasks release their own entry
-    /// on the way out only when its generation still matches.
+    /// on the way out only when its generation still matches. `start` also
+    /// spawns a listener on `event_tx` that cancels a key's entry when a
+    /// `ScanEvent::CandidateRemoved` for it appears on the import bus, so a
+    /// removed candidate's in-flight OCR stops instead of running to completion.
     cancellation: CancellationRegistry,
 }
 
@@ -90,16 +93,37 @@ impl ExtractionService {
         clock: coven::ClockRef,
         library_manager: LibraryManager,
     ) -> ExtractionServiceHandle {
-        ExtractionServiceHandle {
-            inner: Arc::new(ExtractionServiceInner {
-                runtime_handle,
-                event_tx,
-                clock,
-                analyzer: Mutex::new(Arc::new(NoopAnalyzer) as Arc<dyn ArtworkAnalyzer>),
-                library_manager,
-                cancellation: CancellationRegistry::default(),
-            }),
-        }
+        let inner = Arc::new(ExtractionServiceInner {
+            runtime_handle,
+            event_tx,
+            clock,
+            analyzer: Mutex::new(Arc::new(NoopAnalyzer) as Arc<dyn ArtworkAnalyzer>),
+            library_manager,
+            cancellation: CancellationRegistry::default(),
+        });
+
+        // Subscribe before returning the handle: no extraction can start
+        // before this listener is receiving, so a removal that refers to an
+        // in-flight run is never missed. Cancel the key's registry entry when
+        // its candidate is removed from the import bus.
+        let mut removal_rx = inner.event_tx.subscribe();
+        let removal_inner = inner.clone();
+        inner.runtime_handle.spawn(async move {
+            loop {
+                match removal_rx.recv().await {
+                    Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key })) => {
+                        removal_inner.cancellation.cancel(&candidate_key);
+                    }
+                    Ok(_) => {}
+                    Err(broadcast::error::RecvError::Lagged(n)) => {
+                        warn!("signals: candidate-removal listener lagged by {n} import events; an extraction for a removed candidate may run to completion");
+                    }
+                    Err(broadcast::error::RecvError::Closed) => break,
+                }
+            }
+        });
+
+        ExtractionServiceHandle { inner }
     }
 }
 
@@ -123,6 +147,10 @@ impl ExtractionServiceHandle {
         });
     }
 
+    /// Cancel a candidate's in-flight extraction. Called by the bridge's
+    /// candidate teardown (the re-identify dismissal). Core-side candidate
+    /// removal cancels through the internal `CandidateRemoved` bus listener,
+    /// which uses the registry directly.
     pub fn cancel(&self, key: &str) {
         self.inner.cancellation.cancel(key);
     }

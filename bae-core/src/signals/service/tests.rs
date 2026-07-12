@@ -15,6 +15,7 @@ use tempfile::TempDir;
 struct StubAnalyzer {
     responses: StdMutex<HashMap<String, Vec<String>>>,
     delay: Option<Duration>,
+    calls: std::sync::atomic::AtomicUsize,
 }
 
 impl StubAnalyzer {
@@ -22,6 +23,7 @@ impl StubAnalyzer {
         Self {
             responses: StdMutex::new(HashMap::new()),
             delay: None,
+            calls: std::sync::atomic::AtomicUsize::new(0),
         }
     }
 
@@ -37,10 +39,17 @@ impl StubAnalyzer {
         self.delay = Some(delay);
         self
     }
+
+    /// Number of `analyze` calls so far — lets a test assert a cancelled OCR
+    /// pass stopped before analyzing every image.
+    fn calls(&self) -> usize {
+        self.calls.load(std::sync::atomic::Ordering::SeqCst)
+    }
 }
 
 impl ArtworkAnalyzer for StubAnalyzer {
     fn analyze(&self, path: &Path) -> ArtworkAnalysis {
+        self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         if let Some(delay) = self.delay {
             std::thread::sleep(delay);
         }
@@ -126,8 +135,11 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
 }
 
 /// Start a service and keep the library's temp dir alive for the test.
+/// Returns the bus sender too, so a test can inject import events (e.g. a
+/// `CandidateRemoved`) the service listens for.
 async fn make_service() -> (
     ExtractionServiceHandle,
+    broadcast::Sender<ImportEvent>,
     broadcast::Receiver<ImportEvent>,
     TempDir,
 ) {
@@ -135,11 +147,11 @@ async fn make_service() -> (
     let (library_manager, lib_tmp) = make_library_manager().await;
     let handle = ExtractionService::start(
         tokio::runtime::Handle::current(),
-        tx,
+        tx.clone(),
         Arc::new(coven::SystemClock),
         library_manager,
     );
-    (handle, rx, lib_tmp)
+    (handle, tx, rx, lib_tmp)
 }
 
 /// Minimal MP3 bytes — ID3v2 header. Enough for `is_valid_audio` to
@@ -205,7 +217,7 @@ async fn emits_fast_pass_then_ocr_then_settled() {
             .with("Cover.jpg", vec!["WPCR-80001".to_string()])
             .with("Back.jpg", vec!["Extra Line".to_string()]),
     );
-    let (handle, mut rx, _lib_tmp) = make_service().await;
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
     handle.start(
@@ -285,7 +297,7 @@ async fn no_artwork_still_emits_fast_pass_and_settled() {
     let folder = build_release(&tmp, "Artist Name - Album Title", &[], &[]);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (handle, mut rx, _lib_tmp) = make_service().await;
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
     handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
@@ -315,7 +327,7 @@ async fn missing_folder_settles_gracefully() {
     // service falls back to folder-name signals only. Here there's no
     // folder name to extract, so we still settle cleanly.
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (handle, mut rx, _lib_tmp) = make_service().await;
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
     handle.start(
@@ -334,12 +346,25 @@ async fn missing_folder_settles_gracefully() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
-    let (handle, rx, _lib_tmp) = make_service().await;
+    // Build the inner directly so there is genuinely no receiver: a started
+    // service always holds one (its own candidate-removal listener), so the
+    // no-subscriber state only exists before/after any listener — the app's
+    // shutdown case this warn guards.
+    let (tx, rx) = broadcast::channel(64);
     drop(rx);
+    let (library_manager, _lib_tmp) = make_library_manager().await;
+    let inner = ExtractionServiceInner {
+        runtime_handle: tokio::runtime::Handle::current(),
+        event_tx: tx,
+        clock: Arc::new(coven::SystemClock),
+        analyzer: std::sync::Mutex::new(Arc::new(NoopAnalyzer) as Arc<dyn ArtworkAnalyzer>),
+        library_manager,
+        cancellation: CancellationRegistry::default(),
+    };
 
     let logs = capture_warn_logs(|| {
         emit_signals(
-            &handle.inner,
+            &inner,
             "cand-1",
             Signals {
                 disc_id: DiscIdSignal::Absent { track_count: 0 },
@@ -377,7 +402,7 @@ async fn ocr_join_error_aborts_without_settled_snapshot() {
     let folder = build_release(&tmp, "Some Folder", &["cover.jpg"], &[]);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(PanicAnalyzer);
-    let (handle, mut rx, _lib_tmp) = make_service().await;
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
     handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
@@ -423,7 +448,7 @@ FILE "audio.flac" WAVE
     fs::write(folder.join("Album.cue"), cue).unwrap();
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (handle, mut rx, _lib_tmp) = make_service().await;
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
     handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
@@ -463,7 +488,7 @@ FILE \"audio.flac\" WAVE\n  \
     fs::write(folder.join("Album.cue"), cue).unwrap();
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (handle, mut rx, _lib_tmp) = make_service().await;
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
     handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
@@ -539,7 +564,7 @@ async fn text_files_feed_free_text() {
     );
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (handle, mut rx, _lib_tmp) = make_service().await;
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
     handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
@@ -574,7 +599,7 @@ async fn cancelled_ocr_run_does_not_settle() {
             .with("p3.jpg", vec!["Artist C".to_string()])
             .with_delay(Duration::from_millis(100)),
     );
-    let (handle, mut rx, _lib_tmp) = make_service().await;
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
     handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
@@ -600,6 +625,48 @@ async fn cancelled_ocr_run_does_not_settle() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn candidate_removed_event_cancels_in_flight_extraction() {
+    // Three images, 200ms of OCR each; a CandidateRemoved for the key lands
+    // during the first image. The service's bus listener cancels the run, so
+    // it never settles and the OCR pass stops before analyzing every image.
+    let tmp = TempDir::new().unwrap();
+    let folder = build_release(&tmp, "Some Folder", &["p1.jpg", "p2.jpg", "p3.jpg"], &[]);
+    let analyzer = Arc::new(
+        StubAnalyzer::new()
+            .with("p1.jpg", vec!["Line A".to_string()])
+            .with("p2.jpg", vec!["Line B".to_string()])
+            .with("p3.jpg", vec!["Line C".to_string()])
+            .with_delay(Duration::from_millis(200)),
+    );
+    let (handle, tx, mut rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(analyzer.clone());
+
+    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
+        candidate_key: "cand-1".to_string(),
+    }))
+    .unwrap();
+
+    // Drain until quiet: the cancelled run never reaches its Settled snapshot.
+    loop {
+        match tokio::time::timeout(Duration::from_millis(500), rx.recv()).await {
+            Ok(Ok(ImportEvent::SignalsUpdated { signals, .. })) => {
+                assert!(
+                    !matches!(signals.text, TextSignal::Settled { .. }),
+                    "extraction for a removed candidate must not settle, got {:?}",
+                    signals.text,
+                );
+            }
+            Ok(Ok(_)) => continue,
+            _ => break,
+        }
+    }
+    // The token check between images stops the pass before all images run.
+    assert!(analyzer.calls() < 3, "cancel must stop the OCR pass early");
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
     // Two `start` calls for the same key: the first is cancelled by the
     // second's insert. Cancelled runs don't settle; the completed run
@@ -613,7 +680,7 @@ async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
             .with("p1.jpg", vec!["Artist A".to_string()])
             .with_delay(Duration::from_millis(100)),
     );
-    let (handle, mut rx, _lib_tmp) = make_service().await;
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
     handle.start(
@@ -664,7 +731,7 @@ async fn three_starts_cancel_each_predecessor() {
             .with("p1.jpg", vec!["Artist A".to_string()])
             .with_delay(Duration::from_millis(200)),
     );
-    let (handle, mut rx, _lib_tmp) = make_service().await;
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
     handle.start(
