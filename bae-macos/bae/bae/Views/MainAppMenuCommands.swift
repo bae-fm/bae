@@ -153,15 +153,16 @@ struct LibraryModeCommandButtons: View {
 /// each setting the mode absolutely. The active mode carries a leading
 /// checkmark. The now-playing bar's single button cycles instead.
 struct RepeatModeMenuItems: View {
-    let current: RepeatMode
-    let onSelect: (RepeatMode) -> Void
+    let current: BridgeRepeatMode
+    let onSelect: (BridgeRepeatMode) -> Void
 
-    private static let items: [(mode: RepeatMode, title: LocalizedStringKey)] =
-        [
-            (.off, "Off"),
-            (.context, "All"),
-            (.track, "One"),
-        ]
+    private static let items:
+        [(mode: BridgeRepeatMode, title: LocalizedStringKey)] =
+            [
+                (.off, "Off"),
+                (.context, "All"),
+                (.track, "One"),
+            ]
 
     var body: some View {
         ForEach(Array(Self.items.enumerated()), id: \.offset) { _, item in

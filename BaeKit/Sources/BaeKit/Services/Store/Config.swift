@@ -1,33 +1,12 @@
 import Foundation
 
-// MARK: - DiscogsTokenStatus
-
-public enum DiscogsTokenStatus: Equatable {
-    case notConfigured
-    case valid
-    /// A key is stored but Discogs hasn't confirmed it yet (saved offline or
-    /// rate-limited). Used optimistically; re-checked when possible.
-    case unvalidated
-    /// Discogs returned 401 for the stored key. Not used until re-saved.
-    case rejected
-
-    public init(bridge: BridgeDiscogsTokenStatus) {
-        switch bridge {
-        case .notConfigured: self = .notConfigured
-        case .valid: self = .valid
-        case .unvalidated: self = .unvalidated
-        case .rejected: self = .rejected
-        }
-    }
-}
-
 // MARK: - Config
 
 public struct Config: Equatable {
     public let libraryId: String
     public let libraryName: String
     public let libraryPath: String
-    public let discogsTokenStatus: DiscogsTokenStatus
+    public let discogsTokenStatus: BridgeDiscogsTokenStatus
     /// Whether Discogs can be used as a metadata source. Core decides the policy
     /// (a stored key that isn't rejected); the UI reads this, not the status.
     public let discogsUsable: Bool
@@ -59,9 +38,7 @@ public struct Config: Equatable {
         libraryId = bridge.libraryId
         libraryName = bridge.libraryName
         libraryPath = bridge.libraryPath
-        discogsTokenStatus = DiscogsTokenStatus(
-            bridge: bridge.discogsTokenStatus
-        )
+        discogsTokenStatus = bridge.discogsTokenStatus
         discogsUsable = bridge.discogsUsable
         sync = bridge.sync
         pauseBetweenSides = bridge.pauseBetweenSides

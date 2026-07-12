@@ -172,7 +172,7 @@ public enum UiEventDispatcher {
             playbackStore.isMuted = isMuted
 
         case .repeatModeChanged(let mode):
-            playbackStore.repeatMode = RepeatMode(bridge: mode)
+            playbackStore.repeatMode = mode
 
         case .queueItemsAdded(let count):
             playbackStore.queueItemsAddedSubject.send(Int(count))

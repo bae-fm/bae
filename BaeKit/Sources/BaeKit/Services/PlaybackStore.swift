@@ -21,7 +21,7 @@ public class PlaybackStore {
 
     public var volume: Float = 1.0
     public var isMuted: Bool = false
-    public var repeatMode: RepeatMode = .off
+    public var repeatMode: BridgeRepeatMode = .off
     /// The manual lane ("Up Next") — explicitly enqueued tracks, drained first.
     public var manualQueue: [QueueItem] = []
     /// The context (the release being played from), or `nil` when nothing plays

@@ -145,7 +145,7 @@ struct DiscogsSettingsTab: View {
 struct DiscogsSettingsContent: View {
     @Binding
     var draft: String
-    let status: DiscogsTokenStatus
+    let status: BridgeDiscogsTokenStatus
     let isValidating: Bool
     let saveError: String?
     let readError: String?

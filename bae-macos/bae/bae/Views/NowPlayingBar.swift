@@ -69,7 +69,7 @@ struct NowPlayingBar: View {
     let durationMs: UInt64?
     let volume: Float
     let isMuted: Bool
-    let repeatMode: RepeatMode
+    let repeatMode: BridgeRepeatMode
     @Binding
     var showQueue: Bool
     let onPlayPause: () -> Void
@@ -331,7 +331,7 @@ private struct NowPlayingBarPreview: View {
     let artistNames: String?
     let isPlaying: Bool
     var isLoading: Bool = false
-    let repeatMode: RepeatMode
+    let repeatMode: BridgeRepeatMode
 
     @State
     private var showQueue = false
