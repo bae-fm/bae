@@ -156,6 +156,10 @@ impl Database {
 
     // ---- Local blob refs ----
 
+    /// Test-only: register a coven user-provided external ref directly.
+    /// Production registers refs inside the atomic import transaction
+    /// (`register_external_blob_on`).
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn register_external_blob(
         &self,
         blob_id: &str,
@@ -167,12 +171,6 @@ impl Database {
         let namespace = namespace.to_string();
         let path = path.to_path_buf();
         self.call(move |conn| register_external_blob_on(conn, &blob_id, &namespace, &path, size))
-            .await
-    }
-
-    pub async fn clear_external_blob(&self, blob_id: &str) -> Result<(), DbError> {
-        let blob_id = blob_id.to_string();
-        self.call(move |conn| clear_external_blob_on(conn, &blob_id))
             .await
     }
 
