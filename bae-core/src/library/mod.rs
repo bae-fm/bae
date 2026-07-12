@@ -114,23 +114,40 @@ fn library_layout(bae_dir: impl Into<std::path::PathBuf>) -> coven::StoreLayout 
 }
 
 /// Bridge bae's `CancellationToken` onto the `watch::Receiver<bool>` coven's
-/// join/restore take. Coven checks it at phase boundaries and, on cancel,
-/// removes the partial store directory it created — the same cleanup a failure
-/// gets — so bae no longer races the operation or cleans up residue itself. A
-/// `None` cancel yields a receiver whose sender is dropped, so it reads `false`
-/// forever (never cancels). The returned handle, when present, is aborted once
-/// the operation finishes so the bridge task doesn't linger.
+/// cancellable operations (join/restore, make-Local) poll at phase
+/// boundaries. The channel is seeded with the token's current state, so a
+/// token cancelled before the bridge task runs is observed immediately. The
+/// returned handle is aborted once the operation finishes so the bridge task
+/// doesn't linger.
+pub(crate) fn cancel_token_to_watch(
+    handle: &tokio::runtime::Handle,
+    token: CancellationToken,
+) -> (watch::Receiver<bool>, tokio::task::JoinHandle<()>) {
+    let (tx, rx) = watch::channel(token.is_cancelled());
+    let join = handle.spawn(async move {
+        token.cancelled().await;
+        if let Err(error) = tx.send(true) {
+            tracing::debug!(?error, "cancellation watch receiver already dropped");
+        }
+    });
+    (rx, join)
+}
+
+/// `None` yields a receiver whose sender is dropped, so it reads `false`
+/// forever (never cancels) and spawns no bridge task. Coven checks the
+/// receiver at phase boundaries and, on cancel, removes the partial store
+/// directory it created — the same cleanup a failure gets — so bae neither
+/// races the operation nor cleans up residue itself.
 fn cancel_receiver(
     cancel: Option<CancellationToken>,
 ) -> (watch::Receiver<bool>, Option<tokio::task::JoinHandle<()>>) {
-    let (tx, rx) = watch::channel(false);
-    let handle = cancel.map(|token| {
-        tokio::spawn(async move {
-            token.cancelled().await;
-            let _ = tx.send(true);
-        })
-    });
-    (rx, handle)
+    match cancel {
+        Some(token) => {
+            let (rx, join) = cancel_token_to_watch(&tokio::runtime::Handle::current(), token);
+            (rx, Some(join))
+        }
+        None => (watch::channel(false).1, None),
+    }
 }
 
 /// Finish a code-driven join/restore: stop the cancel bridge, then map coven's

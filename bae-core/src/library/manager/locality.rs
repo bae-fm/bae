@@ -44,7 +44,8 @@ impl LibraryManager {
         cancel: &crate::library::CancellationToken,
     ) -> Result<(), LibraryError> {
         let dest = self.make_local_dest(release_id, new_path).await?;
-        let (cancel_rx, bridge) = self.cancel_token_to_watch(cancel);
+        let (cancel_rx, bridge) =
+            crate::library::cancel_token_to_watch(&self.runtime_handle, cancel.clone());
         let result = self
             .handle
             .make_local("releases", release_id, &dest, &cancel_rx)
@@ -71,29 +72,6 @@ impl LibraryManager {
                 )
             })
             .collect())
-    }
-
-    /// Bridge bae's `CancellationToken` to the `watch::Receiver<bool>` coven's
-    /// make_local polls between blobs.
-    fn cancel_token_to_watch(
-        &self,
-        cancel: &crate::library::CancellationToken,
-    ) -> (
-        tokio::sync::watch::Receiver<bool>,
-        tokio::task::JoinHandle<()>,
-    ) {
-        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(cancel.is_cancelled());
-        let token = cancel.clone();
-        let handle = self.runtime_handle.spawn(async move {
-            token.cancelled().await;
-            if let Err(error) = cancel_tx.send(true) {
-                debug!(
-                    ?error,
-                    "make-local cancellation signal receiver already dropped"
-                );
-            }
-        });
-        (cancel_rx, handle)
     }
 
     /// Map a coven `make_local` result to bae's: a cancel before the commit is a
