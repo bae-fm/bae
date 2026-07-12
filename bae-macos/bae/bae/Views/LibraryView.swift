@@ -241,8 +241,10 @@ extension LibraryView {
                 }
                 else {
                     HSplitView {
-                        composerListView(composerList)
-                            .frame(minWidth: 260, idealWidth: 320)
+                        BrowseList(list: composerList) { index in
+                            composerRow(at: index, list: composerList)
+                        }
+                        .frame(minWidth: 260, idealWidth: 320)
                         composerDetailView
                             .frame(minWidth: 420)
                     }
@@ -271,8 +273,10 @@ extension LibraryView {
                 }
                 else {
                     HSplitView {
-                        artistListView(artistList)
-                            .frame(minWidth: 260, idealWidth: 320)
+                        BrowseList(list: artistList) { index in
+                            artistRow(at: index, list: artistList)
+                        }
+                        .frame(minWidth: 260, idealWidth: 320)
                         artistDetailView
                             .frame(minWidth: 420)
                     }
@@ -295,66 +299,12 @@ extension LibraryView {
         }
     }
 
-    private func composerListView(_ list: ComposerList) -> some View {
-        List {
-            ForEach(0..<list.totalCount, id: \.self) { index in
-                composerRow(at: index, list: list)
-                    .task(
-                        id: RowLoadID(
-                            epoch: list.loadEpoch,
-                            index: index
-                        )
-                    ) {
-                        let first = max(
-                            0,
-                            index - listLoadBatchSize / 2
-                        )
-                        let end = min(
-                            first + listLoadBatchSize,
-                            list.totalCount
-                        )
-                        await list.loadRange(
-                            offset: first,
-                            limit: end - first
-                        )
-                    }
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(Theme.background)
-    }
-
-    private func artistListView(_ list: ArtistList) -> some View {
-        List {
-            ForEach(0..<list.totalCount, id: \.self) { index in
-                artistRow(at: index, list: list)
-                    .task(
-                        id: RowLoadID(
-                            epoch: list.loadEpoch,
-                            index: index
-                        )
-                    ) {
-                        let first = max(0, index - listLoadBatchSize / 2)
-                        let end = min(
-                            first + listLoadBatchSize,
-                            list.totalCount
-                        )
-                        await list.loadRange(
-                            offset: first,
-                            limit: end - first
-                        )
-                    }
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(Theme.background)
-    }
-
     private func artistRow(at index: Int, list: ArtistList) -> some View {
         let id = list.idAt(index)
-        return ArtistListRow(
+        return BrowseListRow(
             id: id,
             isSelected: id != nil && session.selectedArtistId == id,
+            summaries: \.artistSummaries,
             select: { id in
                 session.selectArtist(id)
                 artistDetail = nil
@@ -382,9 +332,10 @@ extension LibraryView {
 
     private func composerRow(at index: Int, list: ComposerList) -> some View {
         let id = list.idAt(index)
-        return ComposerListRow(
+        return BrowseListRow(
             id: id,
             isSelected: id != nil && session.detailSelection.composerId == id,
+            summaries: \.composerSummaries,
             select: { id in
                 session.selectComposer(id)
                 composerPaneDetail = .empty
@@ -398,7 +349,7 @@ extension LibraryView {
                 if case .composer(let composerDetail, let loadedWorkDetail) =
                     composerPaneDetail
                 {
-                    ComposerDetailHeader(summary: composerDetail.composer)
+                    BrowseDetailHeader(summary: composerDetail.composer)
                     if !composerDetail.workGroups.isEmpty {
                         SectionHeader(title: String(localized: "Works"))
                         ForEach(composerDetail.workGroups) { group in
@@ -500,7 +451,7 @@ extension LibraryView {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 if let artistDetail {
-                    ArtistDetailHeader(summary: artistDetail.artist)
+                    BrowseDetailHeader(summary: artistDetail.artist)
                     LazyVGrid(
                         columns: [
                             GridItem(.adaptive(minimum: 140), spacing: 12)
@@ -644,16 +595,67 @@ extension LibraryView {
 
 extension BridgeComposerWorkGroup: Identifiable {}
 
-private struct ComposerListRow: View {
+/// The fields the composer and artist browse UIs render for a summary: the
+/// list row (36 pt) and the detail-pane header (72 pt) both show an image, a
+/// name, and a count line.
+private protocol BrowseSummaryDisplay {
+    var image: BridgeImageRef? { get }
+    var name: String { get }
+    var countText: String { get }
+}
+
+extension BridgeComposerSummary: BrowseSummaryDisplay {
+    fileprivate var countText: String {
+        "\(workCount) \(String(localized: "Works"))"
+    }
+}
+
+extension BridgeArtistSummary: BrowseSummaryDisplay {
+    fileprivate var countText: String {
+        "\(albumCount) \(String(localized: "Albums"))"
+    }
+}
+
+/// The composer/artist browser's master list: virtualized rows over a
+/// `PaginatedList`, each visible row batch-loading the window around it.
+private struct BrowseList<Row: Identifiable & Sendable, RowView: View>: View
+where Row.ID: Sendable {
+    let list: PaginatedList<Row>
+    let row: (Int) -> RowView
+
+    var body: some View {
+        List {
+            ForEach(0..<list.totalCount, id: \.self) { index in
+                row(index)
+                    .task(id: RowLoadID(epoch: list.loadEpoch, index: index)) {
+                        let first = max(0, index - listLoadBatchSize / 2)
+                        let end = min(
+                            first + listLoadBatchSize,
+                            list.totalCount
+                        )
+                        await list.loadRange(
+                            offset: first,
+                            limit: end - first
+                        )
+                    }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
+    }
+}
+
+private struct BrowseListRow<Summary: BrowseSummaryDisplay>: View {
     @Environment(LibraryStore.self)
     private var libraryStore
 
     let id: String?
     let isSelected: Bool
+    let summaries: KeyPath<LibraryStore, [String: Summary]>
     let select: (String) -> Void
 
     var body: some View {
-        let summary = id.flatMap { libraryStore.composerSummaries[$0] }
+        let summary = id.flatMap { libraryStore[keyPath: summaries][$0] }
         Button(action: {
             guard let id else {
                 return
@@ -664,7 +666,7 @@ private struct ComposerListRow: View {
                 SummaryRowPlaceholder()
                     .opacity(summary == nil ? 1 : 0)
                     .allowsHitTesting(summary == nil)
-                ComposerSummaryRow(summary: summary, isSelected: isSelected)
+                BrowseSummaryRow(summary: summary, isSelected: isSelected)
                     .opacity(summary == nil ? 0 : 1)
                     .allowsHitTesting(summary != nil)
             }
@@ -674,8 +676,8 @@ private struct ComposerListRow: View {
     }
 }
 
-private struct ComposerSummaryRow: View {
-    let summary: BridgeComposerSummary?
+private struct BrowseSummaryRow<Summary: BrowseSummaryDisplay>: View {
+    let summary: Summary?
     let isSelected: Bool
 
     var body: some View {
@@ -690,7 +692,7 @@ private struct ComposerSummaryRow: View {
                     foreground: .primary
                 )
                 OptionalLineText(
-                    text: workCountText,
+                    text: summary?.countText,
                     font: .caption,
                     foreground: .secondary
                 )
@@ -702,81 +704,6 @@ private struct ComposerSummaryRow: View {
             RoundedRectangle(cornerRadius: 6)
                 .fill(isSelected ? Color.accentColor.opacity(0.18) : .clear)
         )
-    }
-
-    private var workCountText: String? {
-        guard let summary else {
-            return nil
-        }
-        return "\(summary.workCount) \(String(localized: "Works"))"
-    }
-}
-
-private struct ArtistListRow: View {
-    @Environment(LibraryStore.self)
-    private var libraryStore
-
-    let id: String?
-    let isSelected: Bool
-    let select: (String) -> Void
-
-    var body: some View {
-        let summary = id.flatMap { libraryStore.artistSummaries[$0] }
-        Button(action: {
-            guard let id else {
-                return
-            }
-            select(id)
-        }) {
-            ZStack(alignment: .leading) {
-                SummaryRowPlaceholder()
-                    .opacity(summary == nil ? 1 : 0)
-                    .allowsHitTesting(summary == nil)
-                ArtistSummaryRow(summary: summary, isSelected: isSelected)
-                    .opacity(summary == nil ? 0 : 1)
-                    .allowsHitTesting(summary != nil)
-            }
-        }
-        .buttonStyle(.plain)
-        .disabled(summary == nil)
-    }
-}
-
-private struct ArtistSummaryRow: View {
-    let summary: BridgeArtistSummary?
-    let isSelected: Bool
-
-    var body: some View {
-        HStack(spacing: 12) {
-            ImageView(imageRef: summary?.image, pointSize: 36)
-                .frame(width: 36, height: 36)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            VStack(alignment: .leading, spacing: 3) {
-                OptionalLineText(
-                    text: summary?.name,
-                    font: .body,
-                    foreground: .primary
-                )
-                OptionalLineText(
-                    text: albumCountText,
-                    font: .caption,
-                    foreground: .secondary
-                )
-            }
-        }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(isSelected ? Color.accentColor.opacity(0.18) : .clear)
-        )
-    }
-
-    private var albumCountText: String? {
-        guard let summary else {
-            return nil
-        }
-        return "\(summary.albumCount) \(String(localized: "Albums"))"
     }
 }
 
@@ -824,8 +751,8 @@ private struct SummaryRowPlaceholder: View {
     }
 }
 
-private struct ComposerDetailHeader: View {
-    let summary: BridgeComposerSummary
+private struct BrowseDetailHeader<Summary: BrowseSummaryDisplay>: View {
+    let summary: Summary
 
     var body: some View {
         HStack(spacing: 16) {
@@ -836,27 +763,7 @@ private struct ComposerDetailHeader: View {
                 Text(summary.name)
                     .font(.title.bold())
                     .lineLimit(2)
-                Text("\(summary.workCount) \(String(localized: "Works"))")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-}
-
-private struct ArtistDetailHeader: View {
-    let summary: BridgeArtistSummary
-
-    var body: some View {
-        HStack(spacing: 16) {
-            ImageView(imageRef: summary.image, pointSize: 72)
-                .frame(width: 72, height: 72)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            VStack(alignment: .leading, spacing: 6) {
-                Text(summary.name)
-                    .font(.title.bold())
-                    .lineLimit(2)
-                Text("\(summary.albumCount) \(String(localized: "Albums"))")
+                Text(summary.countText)
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
