@@ -155,11 +155,6 @@ internal static class NativeBae
     internal static string FetchAccountEmail(string provider, string oauthTokenJson) => throw new InvalidOperationException();
 #endif
 
-    /// <summary>The catalog key for a channel count's word ("mono"/"stereo"), or
-    /// null for counts the UI renders as "{n}ch".</summary>
-    internal static string? AudioChannelsKey(long channels) =>
-        BaeBridgeMethods.BridgeAudioChannelsKey(channels);
-
     /// <summary>The catalog key for an import prepare-step wire tag, or null for
     /// an unknown tag.</summary>
     internal static string? PrepareStepKey(string step)
