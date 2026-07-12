@@ -8,9 +8,11 @@
 //! the `MessageFormat` NuGet); only Apple needs a conversion to its String
 //! Catalog (`.xcstrings`) shape, which this crate performs.
 //!
-//! This crate is the generator's library guts; the `loc-gen` binary in
-//! `bae-bridge` drives it and adds the completeness check against the Rust
-//! message enums.
+//! This crate is the generator's library guts; its own `loc-gen` binary
+//! (`src/bin/loc-gen.rs`) drives it — `check` validates the catalog's internal
+//! consistency, `emit` writes the native resource files. The completeness
+//! cross-check against the Rust message enums lives in bae-bridge, as the
+//! `loc_key_coverage` test module in `bae-bridge/src/types.rs`.
 
 pub mod check;
 pub mod emit;

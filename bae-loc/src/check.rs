@@ -7,8 +7,9 @@
 //! the build (the pre-commit hook), so the catalog can't drift into an invalid
 //! shape unnoticed.
 //!
-//! The cross-check between catalog ids and the Rust message enums lands with the
-//! first message-bearing bridge enum; this module is the catalog-only half.
+//! The cross-check between catalog ids and the Rust message enums is the
+//! `loc_key_coverage` test module in `bae-bridge/src/types.rs`; this module is
+//! the catalog-only half.
 
 use crate::mf1::{self, Node};
 use crate::{namespace_of, ArgType, Catalog};
