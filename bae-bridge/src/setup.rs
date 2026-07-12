@@ -92,18 +92,11 @@ use tracing::info;
 use bae_core::config::Config;
 use bae_core::library::{CancellationToken, JoinFromCodeError, RestoreFromCodeError};
 
+use crate::get_cloudkit_ops;
 use crate::types::{
     BridgeCloudProvider, BridgeError, BridgeInviteCodeInfo, BridgeJoinRequest,
     BridgeJoinRequestInfo, BridgeLibrary, BridgeRestoreCodeInfo, BridgeRestoreSource,
 };
-
-#[cfg(feature = "cloudkit")]
-use crate::cloudkit::get_cloudkit_ops;
-
-#[cfg(not(feature = "cloudkit"))]
-fn get_cloudkit_ops() -> Option<std::sync::Arc<dyn coven::CloudKitOps>> {
-    None
-}
 
 fn restore_error_to_bridge(error: RestoreFromCodeError) -> BridgeError {
     match error {

@@ -8,16 +8,9 @@ use bae_core::diagnostics::{
     DiagnosticsConfig, DiagnosticsError,
 };
 
+use crate::get_cloudkit_ops;
 use crate::handle::AppHandle;
 use crate::types::BridgeError;
-
-#[cfg(feature = "cloudkit")]
-use crate::cloudkit::get_cloudkit_ops;
-
-#[cfg(not(feature = "cloudkit"))]
-fn get_cloudkit_ops() -> Option<Arc<dyn coven::CloudKitOps>> {
-    None
-}
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeDiagnosticsConfig {
