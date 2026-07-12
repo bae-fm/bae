@@ -1,3 +1,5 @@
+#![deny(unreachable_pub, dead_code)]
+
 use std::sync::Arc;
 
 use bae_core::app::{bootstrap as bootstrap_core, BootstrapError, RunningApp};
