@@ -199,56 +199,58 @@ struct ImportSearchResultRow: View {
     }
 }
 
-// MARK: - Preview
+#if DEBUG
+    // MARK: - Preview
 
-#Preview("Pressing Rows") {
-    VStack(spacing: 2) {
-        ImportSearchResultRow(
-            result: BridgeMetadataResult(
-                source: .musicBrainz,
-                releaseId: "p-1",
-                year: 1992,
-                format: "CD",
-                label: "Label Name",
-                catalogNumber: "CAT 3922 CD",
-                country: "BE",
-            ),
-            isImporting: false,
-            libraryStatus: nil,
-            provenance: BridgeResultProvenance(
-                byDiscId: true,
-                byBarcode: false,
-                matchesCatalog: true
-            ),
-            isSelected: true,
-            onSelect: {},
-        )
-        ImportSearchResultRow(
-            result: BridgeMetadataResult(
-                source: .musicBrainz,
-                releaseId: "p-2",
-                year: 2012,
-                format: "2×Vinyl",
-                label: "Label Name",
-                catalogNumber: "CAT 92021 LP",
-                country: "UK",
-            ),
-            isImporting: false,
-            libraryStatus: BridgeLibraryStatus(
-                releaseId: "p-2",
-                releaseInLibrary: true,
-                albumInLibrary: true,
-                albumTitle: "Album Title",
-                albumId: "album-1",
-            ),
-            provenance: nil,
-            isSelected: false,
-            onSelect: {},
-        )
+    #Preview("Pressing Rows") {
+        VStack(spacing: 2) {
+            ImportSearchResultRow(
+                result: BridgeMetadataResult(
+                    source: .musicBrainz,
+                    releaseId: "p-1",
+                    year: 1992,
+                    format: "CD",
+                    label: "Label Name",
+                    catalogNumber: "CAT 3922 CD",
+                    country: "BE",
+                ),
+                isImporting: false,
+                libraryStatus: nil,
+                provenance: BridgeResultProvenance(
+                    byDiscId: true,
+                    byBarcode: false,
+                    matchesCatalog: true
+                ),
+                isSelected: true,
+                onSelect: {},
+            )
+            ImportSearchResultRow(
+                result: BridgeMetadataResult(
+                    source: .musicBrainz,
+                    releaseId: "p-2",
+                    year: 2012,
+                    format: "2×Vinyl",
+                    label: "Label Name",
+                    catalogNumber: "CAT 92021 LP",
+                    country: "UK",
+                ),
+                isImporting: false,
+                libraryStatus: BridgeLibraryStatus(
+                    releaseId: "p-2",
+                    releaseInLibrary: true,
+                    albumInLibrary: true,
+                    albumTitle: "Album Title",
+                    albumId: "album-1",
+                ),
+                provenance: nil,
+                isSelected: false,
+                onSelect: {},
+            )
+        }
+        .padding()
+        .frame(width: 520)
+        .windowBackground()
+        .environment(UiStore())
+        .environment(MediaPaths.stub)
     }
-    .padding()
-    .frame(width: 520)
-    .windowBackground()
-    .environment(UiStore())
-    .environment(MediaPaths.stub)
-}
+#endif

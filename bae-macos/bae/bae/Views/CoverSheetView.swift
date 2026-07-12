@@ -168,34 +168,36 @@ struct CoverSheetView: View {
     }
 }
 
-#Preview("Cover Sheet") {
-    CoverSheetView(
-        releaseImages: [
-            ReleaseImageOption(id: "file-1", name: "cover.jpg", path: nil),
-            ReleaseImageOption(id: "file-2", name: "back.jpg", path: nil),
-        ],
-        fetchRemoteCovers: { PreviewData.remoteCovers },
-        onSelectRemote: { _ in },
-        onSelectReleaseImage: { _ in },
-        onDone: {},
-    )
-    .frame(width: 500, height: 450)
-    .background(Theme.surface)
-    .environment(MediaPaths.stub)
-}
+#if DEBUG
+    #Preview("Cover Sheet") {
+        CoverSheetView(
+            releaseImages: [
+                ReleaseImageOption(id: "file-1", name: "cover.jpg", path: nil),
+                ReleaseImageOption(id: "file-2", name: "back.jpg", path: nil),
+            ],
+            fetchRemoteCovers: { PreviewData.remoteCovers },
+            onSelectRemote: { _ in },
+            onSelectReleaseImage: { _ in },
+            onDone: {},
+        )
+        .frame(width: 500, height: 450)
+        .background(Theme.surface)
+        .environment(MediaPaths.stub)
+    }
 
-#Preview("Cover Sheet Loading") {
-    CoverSheetView(
-        releaseImages: [],
-        fetchRemoteCovers: {
-            try await Task.sleep(for: .seconds(60))
-            return []
-        },
-        onSelectRemote: { _ in },
-        onSelectReleaseImage: { _ in },
-        onDone: {},
-    )
-    .frame(width: 500, height: 450)
-    .background(Theme.surface)
-    .environment(MediaPaths.stub)
-}
+    #Preview("Cover Sheet Loading") {
+        CoverSheetView(
+            releaseImages: [],
+            fetchRemoteCovers: {
+                try await Task.sleep(for: .seconds(60))
+                return []
+            },
+            onSelectRemote: { _ in },
+            onSelectReleaseImage: { _ in },
+            onDone: {},
+        )
+        .frame(width: 500, height: 450)
+        .background(Theme.surface)
+        .environment(MediaPaths.stub)
+    }
+#endif

@@ -422,20 +422,22 @@ private struct LiveTextOverlay: NSViewRepresentable {
     }
 }
 
-#Preview {
-    if let cursor = Cursor(items: [
-        LightboxItem(
-            id: "1",
-            label: "Front.jpg",
-            source: .local(path: "/tmp/fake/Front.jpg")
-        ),
-        LightboxItem(
-            id: "2",
-            label: "Back.jpg",
-            source: .local(path: "/tmp/fake/Back.jpg")
-        ),
-    ]) {
-        LightboxView(cursor: cursor, onUpdate: { _ in }, onDismiss: {})
-            .environment(MediaPaths.stub)
+#if DEBUG
+    #Preview {
+        if let cursor = Cursor(items: [
+            LightboxItem(
+                id: "1",
+                label: "Front.jpg",
+                source: .local(path: "/tmp/fake/Front.jpg")
+            ),
+            LightboxItem(
+                id: "2",
+                label: "Back.jpg",
+                source: .local(path: "/tmp/fake/Back.jpg")
+            ),
+        ]) {
+            LightboxView(cursor: cursor, onUpdate: { _ in }, onDismiss: {})
+                .environment(MediaPaths.stub)
+        }
     }
-}
+#endif

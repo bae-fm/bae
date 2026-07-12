@@ -264,60 +264,62 @@ struct DiscogsSettingsContent: View {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-#Preview("No key") {
-    DiscogsSettingsContent(
-        draft: .constant(""),
-        status: .notConfigured,
-        isValidating: false,
-        saveError: nil,
-        readError: nil,
-        onSave: {},
-        onRecheck: {},
-        onRemove: {},
-    )
-    .frame(width: 500, height: 320)
-}
+    #Preview("No key") {
+        DiscogsSettingsContent(
+            draft: .constant(""),
+            status: .notConfigured,
+            isValidating: false,
+            saveError: nil,
+            readError: nil,
+            onSave: {},
+            onRecheck: {},
+            onRemove: {},
+        )
+        .frame(width: 500, height: 320)
+    }
 
-#Preview("Valid") {
-    DiscogsSettingsContent(
-        draft: .constant("abcdef123456"),
-        status: .valid,
-        isValidating: false,
-        saveError: nil,
-        readError: nil,
-        onSave: {},
-        onRecheck: {},
-        onRemove: {},
-    )
-    .frame(width: 500, height: 320)
-}
+    #Preview("Valid") {
+        DiscogsSettingsContent(
+            draft: .constant("abcdef123456"),
+            status: .valid,
+            isValidating: false,
+            saveError: nil,
+            readError: nil,
+            onSave: {},
+            onRecheck: {},
+            onRemove: {},
+        )
+        .frame(width: 500, height: 320)
+    }
 
-#Preview("Unvalidated") {
-    DiscogsSettingsContent(
-        draft: .constant("abcdef123456"),
-        status: .unvalidated,
-        isValidating: false,
-        saveError: nil,
-        readError: nil,
-        onSave: {},
-        onRecheck: {},
-        onRemove: {},
-    )
-    .frame(width: 500, height: 320)
-}
+    #Preview("Unvalidated") {
+        DiscogsSettingsContent(
+            draft: .constant("abcdef123456"),
+            status: .unvalidated,
+            isValidating: false,
+            saveError: nil,
+            readError: nil,
+            onSave: {},
+            onRecheck: {},
+            onRemove: {},
+        )
+        .frame(width: 500, height: 320)
+    }
 
-#Preview("Rejected") {
-    DiscogsSettingsContent(
-        draft: .constant("bad-key"),
-        status: .rejected,
-        isValidating: false,
-        saveError: "Discogs rejected this key — check it and save again.",
-        readError: nil,
-        onSave: {},
-        onRecheck: {},
-        onRemove: {},
-    )
-    .frame(width: 500, height: 320)
-}
+    #Preview("Rejected") {
+        DiscogsSettingsContent(
+            draft: .constant("bad-key"),
+            status: .rejected,
+            isValidating: false,
+            saveError: "Discogs rejected this key — check it and save again.",
+            readError: nil,
+            onSave: {},
+            onRecheck: {},
+            onRemove: {},
+        )
+        .frame(width: 500, height: 320)
+    }
+#endif

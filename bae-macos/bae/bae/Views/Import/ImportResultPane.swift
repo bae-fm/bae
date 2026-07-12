@@ -46,203 +46,205 @@ struct ImportResultPane<Top: View, Pane: View>: View {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-#Preview("Confirming — results + docked detail") {
-    @Previewable
-    @State
-    var values = PreviewData.confirmEditValues
-    @Previewable
-    @State
-    var storageManaged = true
-    @Previewable
-    @State
-    var storagePinned = true
-    ImportResultPane(open: true, onClose: {}) {
-        ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-    } pane: {
-        ImportConfirmationPreview.make(
-            values: $values,
-            storageManaged: $storageManaged,
-            storagePinned: $storagePinned
-        )
-    }
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
-
-#Preview("Confirming — track-count warning") {
-    @Previewable
-    @State
-    var values = PreviewData.confirmEditValues
-    @Previewable
-    @State
-    var storageManaged = true
-    @Previewable
-    @State
-    var storagePinned = true
-    ImportResultPane(open: true, onClose: {}) {
-        ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-    } pane: {
-        ImportConfirmationPreview.make(
-            values: $values,
-            storageManaged: $storageManaged,
-            storagePinned: $storagePinned,
-            trackCountMismatch: true,
-            expectedTrackCount: 11
-        )
-    }
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
-
-#Preview("Confirming — metadata only") {
-    @Previewable
-    @State
-    var values = PreviewData.confirmEditValues
-    @Previewable
-    @State
-    var storageManaged = true
-    @Previewable
-    @State
-    var storagePinned = true
-    ImportResultPane(open: true, onClose: {}) {
-        ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-    } pane: {
-        ImportConfirmationPreview.make(
-            values: $values,
-            storageManaged: $storageManaged,
-            storagePinned: $storagePinned,
-            metadataOnly: true
-        )
-    }
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
-
-#Preview("Confirming — importing") {
-    @Previewable
-    @State
-    var values = PreviewData.confirmEditValues
-    @Previewable
-    @State
-    var storageManaged = true
-    @Previewable
-    @State
-    var storagePinned = true
-    ImportResultPane(open: true, onClose: {}) {
-        ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-    } pane: {
-        ImportConfirmationPreview.make(
-            values: $values,
-            storageManaged: $storageManaged,
-            storagePinned: $storagePinned,
-            importStatus: .importing(
-                progressPercent: 45,
-                step: .running(phase: .measuringLoudness)
-            ),
-            importing: true
-        )
-    }
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
-
-#Preview("Confirming — commit error") {
-    @Previewable
-    @State
-    var values = PreviewData.confirmEditValues
-    @Previewable
-    @State
-    var storageManaged = true
-    @Previewable
-    @State
-    var storagePinned = true
-    ImportResultPane(open: true, onClose: {}) {
-        ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-    } pane: {
-        ImportConfirmationPreview.make(
-            values: $values,
-            storageManaged: $storageManaged,
-            storagePinned: $storagePinned,
-            error: "Couldn't start import: invalid metadata."
-        )
-    }
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
-
-#Preview("Loading detail") {
-    ImportResultPane(open: true, onClose: {}) {
-        ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-    } pane: {
-        ProgressView("Loading release details...")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
-
-#Preview("Conflict — dock closed") {
-    ImportResultPane(open: false, onClose: {}) {
-        ImportSearchPane.preview(state: PreviewData.searchStateConflict)
-    } pane: {
-        EmptyView()
-    }
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
-
-#Preview("Confirming — already in library") {
-    @Previewable
-    @State
-    var values = PreviewData.confirmEditValues
-    @Previewable
-    @State
-    var storageManaged = true
-    @Previewable
-    @State
-    var storagePinned = true
-    ImportResultPane(open: true, onClose: {}) {
-        ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-    } pane: {
-        ImportConfirmationPreview.make(
-            values: $values,
-            storageManaged: $storageManaged,
-            storagePinned: $storagePinned,
-            libraryStatus: BridgeLibraryStatus(
-                releaseId: "rel-123",
-                releaseInLibrary: true,
-                albumInLibrary: true,
-                albumTitle: "Album Title",
-                albumId: "album-preview"
+    #Preview("Confirming — results + docked detail") {
+        @Previewable
+        @State
+        var values = PreviewData.confirmEditValues
+        @Previewable
+        @State
+        var storageManaged = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportResultPane(open: true, onClose: {}) {
+            ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+        } pane: {
+            ImportConfirmationPreview.make(
+                values: $values,
+                storageManaged: $storageManaged,
+                storagePinned: $storagePinned
             )
-        )
+        }
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
     }
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
 
-#Preview("Confirming — cover options") {
-    @Previewable
-    @State
-    var values = PreviewData.confirmEditValues
-    @Previewable
-    @State
-    var storageManaged = true
-    @Previewable
-    @State
-    var storagePinned = true
-    ImportResultPane(open: true, onClose: {}) {
-        ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-    } pane: {
-        ImportConfirmationPreview.make(
-            values: $values,
-            storageManaged: $storageManaged,
-            storagePinned: $storagePinned,
-            hasCoverOptions: true
-        )
+    #Preview("Confirming — track-count warning") {
+        @Previewable
+        @State
+        var values = PreviewData.confirmEditValues
+        @Previewable
+        @State
+        var storageManaged = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportResultPane(open: true, onClose: {}) {
+            ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+        } pane: {
+            ImportConfirmationPreview.make(
+                values: $values,
+                storageManaged: $storageManaged,
+                storagePinned: $storagePinned,
+                trackCountMismatch: true,
+                expectedTrackCount: 11
+            )
+        }
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
     }
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
+
+    #Preview("Confirming — metadata only") {
+        @Previewable
+        @State
+        var values = PreviewData.confirmEditValues
+        @Previewable
+        @State
+        var storageManaged = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportResultPane(open: true, onClose: {}) {
+            ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+        } pane: {
+            ImportConfirmationPreview.make(
+                values: $values,
+                storageManaged: $storageManaged,
+                storagePinned: $storagePinned,
+                metadataOnly: true
+            )
+        }
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Confirming — importing") {
+        @Previewable
+        @State
+        var values = PreviewData.confirmEditValues
+        @Previewable
+        @State
+        var storageManaged = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportResultPane(open: true, onClose: {}) {
+            ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+        } pane: {
+            ImportConfirmationPreview.make(
+                values: $values,
+                storageManaged: $storageManaged,
+                storagePinned: $storagePinned,
+                importStatus: .importing(
+                    progressPercent: 45,
+                    step: .running(phase: .measuringLoudness)
+                ),
+                importing: true
+            )
+        }
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Confirming — commit error") {
+        @Previewable
+        @State
+        var values = PreviewData.confirmEditValues
+        @Previewable
+        @State
+        var storageManaged = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportResultPane(open: true, onClose: {}) {
+            ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+        } pane: {
+            ImportConfirmationPreview.make(
+                values: $values,
+                storageManaged: $storageManaged,
+                storagePinned: $storagePinned,
+                error: "Couldn't start import: invalid metadata."
+            )
+        }
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Loading detail") {
+        ImportResultPane(open: true, onClose: {}) {
+            ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+        } pane: {
+            ProgressView("Loading release details...")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Conflict — dock closed") {
+        ImportResultPane(open: false, onClose: {}) {
+            ImportSearchPane.preview(state: PreviewData.searchStateConflict)
+        } pane: {
+            EmptyView()
+        }
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Confirming — already in library") {
+        @Previewable
+        @State
+        var values = PreviewData.confirmEditValues
+        @Previewable
+        @State
+        var storageManaged = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportResultPane(open: true, onClose: {}) {
+            ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+        } pane: {
+            ImportConfirmationPreview.make(
+                values: $values,
+                storageManaged: $storageManaged,
+                storagePinned: $storagePinned,
+                libraryStatus: BridgeLibraryStatus(
+                    releaseId: "rel-123",
+                    releaseInLibrary: true,
+                    albumInLibrary: true,
+                    albumTitle: "Album Title",
+                    albumId: "album-preview"
+                )
+            )
+        }
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Confirming — cover options") {
+        @Previewable
+        @State
+        var values = PreviewData.confirmEditValues
+        @Previewable
+        @State
+        var storageManaged = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportResultPane(open: true, onClose: {}) {
+            ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+        } pane: {
+            ImportConfirmationPreview.make(
+                values: $values,
+                storageManaged: $storageManaged,
+                storagePinned: $storagePinned,
+                hasCoverOptions: true
+            )
+        }
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
+    }
+#endif

@@ -194,12 +194,14 @@ struct EditMetadataSheet: View {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-#Preview("Edit Metadata") {
-    EditMetadataSheet(
-        initialForm: PreviewData.editMetadataSeed(trackCount: 2),
-        onSave: { _ in },
-        onCancel: {},
-    )
-}
+    #Preview("Edit Metadata") {
+        EditMetadataSheet(
+            initialForm: PreviewData.editMetadataSeed(trackCount: 2),
+            onSave: { _ in },
+            onCancel: {},
+        )
+    }
+#endif

@@ -839,94 +839,96 @@ struct DiscogsKeyPopover: View {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-extension ImportSearchPane {
-    /// Preview builder — fixes the form bindings and action callbacks to inert
-    /// defaults so a preview states only the result situation it exercises.
-    @MainActor
-    static func preview(
-        state: ImportSearchState,
-        searchArtist: String = "",
-        searchAlbum: String = "",
-    ) -> ImportSearchPane {
-        ImportSearchPane(
-            state: state,
-            activeTab: .constant(.general),
-            activeSource: .constant(.musicBrainz),
-            searchArtist: .constant(searchArtist),
-            searchAlbum: .constant(searchAlbum),
-            searchCatalog: .constant(""),
-            searchBarcode: .constant(""),
-            onSearch: {},
-            onOpenSettings: {},
-            onSearchManually: {},
-            onViewMatches: {},
-            onAddAsUnknown: {},
-            onToggleSignal: { _ in },
-            onRerun: {},
-            onSelect: { _ in },
-        )
-    }
-}
-
-#Preview("Main Pane - Exact Matches") {
-    ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-        .frame(width: 1212, height: 982)
-        .importPreviewEnvironment()
-}
-
-#Preview("Main Pane - Manual Search") {
-    ImportSearchPane.preview(
-        state: PreviewData.searchStateManual,
-        searchArtist: "Artist Name",
-        searchAlbum: "Album Title One",
-    )
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
-
-#Preview("Main Pane - Conflict") {
-    ImportSearchPane.preview(state: PreviewData.searchStateConflict)
-        .frame(width: 1212, height: 982)
-        .importPreviewEnvironment()
-}
-
-#Preview("Source Picker - Discogs Disabled") {
-    SourcePickerPreview(hasKey: false)
-        .frame(width: 500, height: 100)
-        .windowBackground()
-}
-
-private struct SourcePickerPreview: View {
-    let hasKey: Bool
-    @State
-    private var source: BridgeMetadataSource = .musicBrainz
-    @State
-    private var showPopover = false
-    @State
-    private var hoverTask: DispatchWorkItem?
-
-    var body: some View {
-        SourceSegmentedControl(
-            selection: $source,
-            discogsEnabled: hasKey,
-            showDiscogsInfo: $showPopover,
-            hoverTask: $hoverTask,
-        )
-        .frame(width: 200)
-        .overlay(alignment: .bottomTrailing) {
-            Color.clear
-                .frame(width: 100, height: 1)
-                .popover(isPresented: $showPopover, arrowEdge: .bottom) {
-                    DiscogsKeyPopover(
-                        isPresented: $showPopover,
-                        hoverTask: $hoverTask,
-                        onOpenSettings: {},
-                    )
-                }
-                .allowsHitTesting(false)
+    extension ImportSearchPane {
+        /// Preview builder — fixes the form bindings and action callbacks to inert
+        /// defaults so a preview states only the result situation it exercises.
+        @MainActor
+        static func preview(
+            state: ImportSearchState,
+            searchArtist: String = "",
+            searchAlbum: String = "",
+        ) -> ImportSearchPane {
+            ImportSearchPane(
+                state: state,
+                activeTab: .constant(.general),
+                activeSource: .constant(.musicBrainz),
+                searchArtist: .constant(searchArtist),
+                searchAlbum: .constant(searchAlbum),
+                searchCatalog: .constant(""),
+                searchBarcode: .constant(""),
+                onSearch: {},
+                onOpenSettings: {},
+                onSearchManually: {},
+                onViewMatches: {},
+                onAddAsUnknown: {},
+                onToggleSignal: { _ in },
+                onRerun: {},
+                onSelect: { _ in },
+            )
         }
-        .padding()
     }
-}
+
+    #Preview("Main Pane - Exact Matches") {
+        ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+            .frame(width: 1212, height: 982)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Main Pane - Manual Search") {
+        ImportSearchPane.preview(
+            state: PreviewData.searchStateManual,
+            searchArtist: "Artist Name",
+            searchAlbum: "Album Title One",
+        )
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Main Pane - Conflict") {
+        ImportSearchPane.preview(state: PreviewData.searchStateConflict)
+            .frame(width: 1212, height: 982)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Source Picker - Discogs Disabled") {
+        SourcePickerPreview(hasKey: false)
+            .frame(width: 500, height: 100)
+            .windowBackground()
+    }
+
+    private struct SourcePickerPreview: View {
+        let hasKey: Bool
+        @State
+        private var source: BridgeMetadataSource = .musicBrainz
+        @State
+        private var showPopover = false
+        @State
+        private var hoverTask: DispatchWorkItem?
+
+        var body: some View {
+            SourceSegmentedControl(
+                selection: $source,
+                discogsEnabled: hasKey,
+                showDiscogsInfo: $showPopover,
+                hoverTask: $hoverTask,
+            )
+            .frame(width: 200)
+            .overlay(alignment: .bottomTrailing) {
+                Color.clear
+                    .frame(width: 100, height: 1)
+                    .popover(isPresented: $showPopover, arrowEdge: .bottom) {
+                        DiscogsKeyPopover(
+                            isPresented: $showPopover,
+                            hoverTask: $hoverTask,
+                            onOpenSettings: {},
+                        )
+                    }
+                    .allowsHitTesting(false)
+            }
+            .padding()
+        }
+    }
+#endif

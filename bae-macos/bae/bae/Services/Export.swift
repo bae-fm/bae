@@ -54,6 +54,8 @@ final class Export: Sendable, Observable {
         )
     }
 
-    // periphery:ignore
-    static let stub = Export()
+    #if DEBUG
+        // periphery:ignore
+        static let stub = Export()
+    #endif
 }

@@ -468,17 +468,19 @@ private struct FieldChrome: ViewModifier {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-#Preview("Edit Metadata Form") {
-    @Previewable
-    @State
-    var form = PreviewData.editMetadataSeed(trackCount: 13)
-    ScrollView {
-        EditMetadataForm(form: $form)
-            .padding(20)
+    #Preview("Edit Metadata Form") {
+        @Previewable
+        @State
+        var form = PreviewData.editMetadataSeed(trackCount: 13)
+        ScrollView {
+            EditMetadataForm(form: $form)
+                .padding(20)
+        }
+        .frame(width: 640, height: 720)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
     }
-    .frame(width: 640, height: 720)
-    .background(Theme.background)
-    .preferredColorScheme(.dark)
-}
+#endif

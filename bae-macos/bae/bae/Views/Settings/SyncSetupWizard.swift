@@ -444,13 +444,15 @@ extension SyncSetupWizard {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-#Preview("Provider Selection") {
-    SyncSetupWizard(
-        onConnectS3: { _ in },
-        onConnectOAuth: { _, _ in },
-        onConnectCloudKit: { _ in },
-        onDone: {},
-    )
-}
+    #Preview("Provider Selection") {
+        SyncSetupWizard(
+            onConnectS3: { _ in },
+            onConnectOAuth: { _, _ in },
+            onConnectCloudKit: { _ in },
+            onDone: {},
+        )
+    }
+#endif

@@ -1184,54 +1184,56 @@ private struct QueueDropDelegate: DropDelegate {
     }
 }
 
-extension QueueView {
-    /// Preview builder — fixes the image resolver and the action callbacks
-    /// to inert defaults and injects `store` (queue state now flows through
-    /// `@Environment`, not by-value props) so a preview states only its queue.
-    @MainActor
-    static func preview(
-        isActive: Bool,
-        nowPlayingTitle: String?,
-        nowPlayingArtist: String?,
-        store: PlaybackStore
-    ) -> some View {
-        QueueView(
-            isActive: isActive,
-            nowPlayingTitle: nowPlayingTitle,
-            nowPlayingArtist: nowPlayingArtist,
-            nowPlayingCover: nil,
-            onClear: {},
-            onSkipTo: { _ in },
-            onRemove: { _ in },
-            onReorder: { _, _ in },
-            onInsertTracks: { _, _ in },
-            onSetShuffle: { _ in }
-        )
-        .environment(store)
-        .environment(Queue.stub)
+#if DEBUG
+    extension QueueView {
+        /// Preview builder — fixes the image resolver and the action callbacks
+        /// to inert defaults and injects `store` (queue state now flows through
+        /// `@Environment`, not by-value props) so a preview states only its queue.
+        @MainActor
+        static func preview(
+            isActive: Bool,
+            nowPlayingTitle: String?,
+            nowPlayingArtist: String?,
+            store: PlaybackStore
+        ) -> some View {
+            QueueView(
+                isActive: isActive,
+                nowPlayingTitle: nowPlayingTitle,
+                nowPlayingArtist: nowPlayingArtist,
+                nowPlayingCover: nil,
+                onClear: {},
+                onSkipTo: { _ in },
+                onRemove: { _ in },
+                onReorder: { _, _ in },
+                onInsertTracks: { _, _ in },
+                onSetShuffle: { _ in }
+            )
+            .environment(store)
+            .environment(Queue.stub)
+        }
     }
-}
 
-// MARK: - Previews
+    // MARK: - Previews
 
-#Preview("With items") {
-    QueueView.preview(
-        isActive: true,
-        nowPlayingTitle: PreviewData.nowPlayingTitle,
-        nowPlayingArtist: PreviewData.nowPlayingArtist,
-        store: PreviewData.queueStore(manualCount: 2, shuffled: true)
-    )
-    .frame(width: 350, height: 500)
-    .environment(MediaPaths.stub)
-}
+    #Preview("With items") {
+        QueueView.preview(
+            isActive: true,
+            nowPlayingTitle: PreviewData.nowPlayingTitle,
+            nowPlayingArtist: PreviewData.nowPlayingArtist,
+            store: PreviewData.queueStore(manualCount: 2, shuffled: true)
+        )
+        .frame(width: 350, height: 500)
+        .environment(MediaPaths.stub)
+    }
 
-#Preview("Empty") {
-    QueueView.preview(
-        isActive: false,
-        nowPlayingTitle: nil,
-        nowPlayingArtist: nil,
-        store: PreviewData.queueStore(manualCount: 0, context: nil)
-    )
-    .frame(width: 350, height: 400)
-    .environment(MediaPaths.stub)
-}
+    #Preview("Empty") {
+        QueueView.preview(
+            isActive: false,
+            nowPlayingTitle: nil,
+            nowPlayingArtist: nil,
+            store: PreviewData.queueStore(manualCount: 0, context: nil)
+        )
+        .frame(width: 350, height: 400)
+        .environment(MediaPaths.stub)
+    }
+#endif

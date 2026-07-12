@@ -262,20 +262,24 @@ struct AutomationSettingsContent: View {
     }
 }
 
-#Preview("Automation") {
-    AutomationSettingsContent(
-        automation: Automation(
-            setMcpServerConfig: { _, _ in },
-            getMcpServerStatus: { .running(url: "http://127.0.0.1:47777/mcp") },
-            getMcpToken: { "token" },
-            generateMcpToken: { "replacement-token" },
-            setMcpToken: { _ in }
-        ),
-        configStore: PreviewData.configStore,
-        copyToPasteboard: { _ in }
-    )
-    .frame(width: 500, height: 300)
-}
+#if DEBUG
+    #Preview("Automation") {
+        AutomationSettingsContent(
+            automation: Automation(
+                setMcpServerConfig: { _, _ in },
+                getMcpServerStatus: {
+                    .running(url: "http://127.0.0.1:47777/mcp")
+                },
+                getMcpToken: { "token" },
+                generateMcpToken: { "replacement-token" },
+                setMcpToken: { _ in }
+            ),
+            configStore: PreviewData.configStore,
+            copyToPasteboard: { _ in }
+        )
+        .frame(width: 500, height: 300)
+    }
+#endif
 
 extension BridgeMcpServerError {
     fileprivate var localizedSummary: String {

@@ -138,6 +138,8 @@ final class Importer: Sendable, Observable {
         )
     }
 
-    // periphery:ignore
-    static let stub = Importer()
+    #if DEBUG
+        // periphery:ignore
+        static let stub = Importer()
+    #endif
 }

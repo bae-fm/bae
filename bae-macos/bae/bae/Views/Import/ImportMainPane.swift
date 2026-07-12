@@ -31,95 +31,99 @@ struct ImportMainPane<RightPane: View>: View {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-#Preview("Auto-lookup in progress") {
-    ImportMainPane(
-        files: PreviewData.bridgeCandidateFiles,
-        onOpenGallery: { _ in },
-        onOpenDocument: { _, _ in },
-        onPreviewAudio: { _ in },
-        onError: { _ in },
-        previewState: .idle,
-    ) {
-        ImportResultPane(open: false, onClose: {}) {
-            ImportSearchPane.preview(
-                state: PreviewData.searchStateTriangulating
-            )
-        } pane: {
-            EmptyView()
+    #Preview("Auto-lookup in progress") {
+        ImportMainPane(
+            files: PreviewData.bridgeCandidateFiles,
+            onOpenGallery: { _ in },
+            onOpenDocument: { _, _ in },
+            onPreviewAudio: { _ in },
+            onError: { _ in },
+            previewState: .idle,
+        ) {
+            ImportResultPane(open: false, onClose: {}) {
+                ImportSearchPane.preview(
+                    state: PreviewData.searchStateTriangulating
+                )
+            } pane: {
+                EmptyView()
+            }
         }
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
     }
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
 
-#Preview("Manual search — no results") {
-    ImportMainPane(
-        files: PreviewData.bridgeCandidateFiles,
-        onOpenGallery: { _ in },
-        onOpenDocument: { _, _ in },
-        onPreviewAudio: { _ in },
-        onError: { _ in },
-        previewState: .idle,
-    ) {
-        ImportResultPane(open: false, onClose: {}) {
-            ImportSearchPane.preview(state: PreviewData.searchStateNotFound)
-        } pane: {
-            EmptyView()
+    #Preview("Manual search — no results") {
+        ImportMainPane(
+            files: PreviewData.bridgeCandidateFiles,
+            onOpenGallery: { _ in },
+            onOpenDocument: { _, _ in },
+            onPreviewAudio: { _ in },
+            onError: { _ in },
+            previewState: .idle,
+        ) {
+            ImportResultPane(open: false, onClose: {}) {
+                ImportSearchPane.preview(state: PreviewData.searchStateNotFound)
+            } pane: {
+                EmptyView()
+            }
         }
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
     }
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
 
-#Preview("Main pane — tracks, manual search") {
-    ImportMainPane(
-        files: PreviewData.candidateFilesTracks,
-        onOpenGallery: { _ in },
-        onOpenDocument: { _, _ in },
-        onPreviewAudio: { _ in },
-        onError: { _ in },
-        previewState: .idle,
-    ) {
-        ImportResultPane(open: false, onClose: {}) {
-            ImportSearchPane.preview(state: PreviewData.searchStateNotFound)
-        } pane: {
-            EmptyView()
+    #Preview("Main pane — tracks, manual search") {
+        ImportMainPane(
+            files: PreviewData.candidateFilesTracks,
+            onOpenGallery: { _ in },
+            onOpenDocument: { _, _ in },
+            onPreviewAudio: { _ in },
+            onError: { _ in },
+            previewState: .idle,
+        ) {
+            ImportResultPane(open: false, onClose: {}) {
+                ImportSearchPane.preview(state: PreviewData.searchStateNotFound)
+            } pane: {
+                EmptyView()
+            }
         }
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
     }
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
 
-#Preview("Main pane — confirming (tracks)") {
-    @Previewable
-    @State
-    var values = PreviewData.confirmEditValues
-    @Previewable
-    @State
-    var storageManaged = true
-    @Previewable
-    @State
-    var storagePinned = true
-    ImportMainPane(
-        files: PreviewData.candidateFilesTracks,
-        onOpenGallery: { _ in },
-        onOpenDocument: { _, _ in },
-        onPreviewAudio: { _ in },
-        onError: { _ in },
-        previewState: .idle,
-    ) {
-        ImportResultPane(open: true, onClose: {}) {
-            ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-        } pane: {
-            ImportConfirmationPreview.make(
-                values: $values,
-                storageManaged: $storageManaged,
-                storagePinned: $storagePinned
-            )
+    #Preview("Main pane — confirming (tracks)") {
+        @Previewable
+        @State
+        var values = PreviewData.confirmEditValues
+        @Previewable
+        @State
+        var storageManaged = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportMainPane(
+            files: PreviewData.candidateFilesTracks,
+            onOpenGallery: { _ in },
+            onOpenDocument: { _, _ in },
+            onPreviewAudio: { _ in },
+            onError: { _ in },
+            previewState: .idle,
+        ) {
+            ImportResultPane(open: true, onClose: {}) {
+                ImportSearchPane.preview(
+                    state: PreviewData.searchStateFoundExact
+                )
+            } pane: {
+                ImportConfirmationPreview.make(
+                    values: $values,
+                    storageManaged: $storageManaged,
+                    storagePinned: $storagePinned
+                )
+            }
         }
+        .frame(width: 1212, height: 982)
+        .importPreviewEnvironment()
     }
-    .frame(width: 1212, height: 982)
-    .importPreviewEnvironment()
-}
+#endif

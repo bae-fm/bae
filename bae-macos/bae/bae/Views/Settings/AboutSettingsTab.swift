@@ -33,10 +33,12 @@ struct AboutSettingsTab: View {
     }
 }
 
-#Preview("About") {
-    AboutSettingsTab(
-        canCheckForUpdates: true,
-        onCheckForUpdates: {},
-    )
-    .frame(width: 500, height: 300)
-}
+#if DEBUG
+    #Preview("About") {
+        AboutSettingsTab(
+            canCheckForUpdates: true,
+            onCheckForUpdates: {},
+        )
+        .frame(width: 500, height: 300)
+    }
+#endif

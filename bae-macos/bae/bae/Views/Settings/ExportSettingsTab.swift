@@ -404,10 +404,12 @@ extension BridgeExportPresetCodec {
     }
 }
 
-#Preview("Export Settings") {
-    ExportSettingsTab()
-        .environment(PreviewData.configStore)
-        .environment(Exports.stub)
-        .environment(UiStore())
-        .frame(width: 500, height: 500)
-}
+#if DEBUG
+    #Preview("Export Settings") {
+        ExportSettingsTab()
+            .environment(PreviewData.configStore)
+            .environment(Exports.stub)
+            .environment(UiStore())
+            .frame(width: 500, height: 500)
+    }
+#endif

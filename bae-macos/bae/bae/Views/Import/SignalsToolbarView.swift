@@ -542,181 +542,183 @@ private enum SignalBadgeStyle {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-#Preview("Both running") {
-    SignalsToolbarView(
-        toolbar: BridgeSignalsToolbar(signals: [
-            BridgeToolbarSignal(
-                kind: .discId,
-                role: .identity,
-                value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                origin: .discToc,
-                state: .lookingUp,
-                excluded: false
-            ),
-            BridgeToolbarSignal(
-                kind: .barcode,
-                role: .identity,
-                value: "0123456789012",
-                origin: .artwork,
-                state: .lookingUp,
-                excluded: false
-            ),
-            BridgeToolbarSignal(
-                kind: .catalog,
-                role: .filter,
-                value: "WPCR-80001",
-                origin: .folderName,
-                state: .confirms(count: 0),
-                excluded: false
-            ),
-        ]),
-        onToggle: { _ in },
-        onRerun: {},
-        onSearchManually: {},
-        onAddAsUnknown: {},
-    )
-    .frame(width: 720)
-    .windowBackground()
-}
+    #Preview("Both running") {
+        SignalsToolbarView(
+            toolbar: BridgeSignalsToolbar(signals: [
+                BridgeToolbarSignal(
+                    kind: .discId,
+                    role: .identity,
+                    value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
+                    origin: .discToc,
+                    state: .lookingUp,
+                    excluded: false
+                ),
+                BridgeToolbarSignal(
+                    kind: .barcode,
+                    role: .identity,
+                    value: "0123456789012",
+                    origin: .artwork,
+                    state: .lookingUp,
+                    excluded: false
+                ),
+                BridgeToolbarSignal(
+                    kind: .catalog,
+                    role: .filter,
+                    value: "WPCR-80001",
+                    origin: .folderName,
+                    state: .confirms(count: 0),
+                    excluded: false
+                ),
+            ]),
+            onToggle: { _ in },
+            onRerun: {},
+            onSearchManually: {},
+            onAddAsUnknown: {},
+        )
+        .frame(width: 720)
+        .windowBackground()
+    }
 
-#Preview("One settled, catalog confirms") {
-    SignalsToolbarView(
-        toolbar: BridgeSignalsToolbar(signals: [
-            BridgeToolbarSignal(
-                kind: .discId,
-                role: .identity,
-                value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                origin: .discToc,
-                state: .found(count: 3),
-                excluded: false
-            ),
-            BridgeToolbarSignal(
-                kind: .barcode,
-                role: .identity,
-                value: "0123456789012",
-                origin: .artwork,
-                state: .lookingUp,
-                excluded: false
-            ),
-            BridgeToolbarSignal(
-                kind: .catalog,
-                role: .filter,
-                value: "WPCR-80001",
-                origin: .folderName,
-                state: .confirms(count: 1),
-                excluded: false
-            ),
-            BridgeToolbarSignal(
-                kind: .catalog,
-                role: .filter,
-                value: "A2 16018",
-                origin: .textFile,
-                state: .confirms(count: 0),
-                excluded: false
-            ),
-        ]),
-        onToggle: { _ in },
-        onRerun: {},
-        onSearchManually: {},
-        onAddAsUnknown: {},
-    )
-    .frame(width: 720)
-    .windowBackground()
-}
+    #Preview("One settled, catalog confirms") {
+        SignalsToolbarView(
+            toolbar: BridgeSignalsToolbar(signals: [
+                BridgeToolbarSignal(
+                    kind: .discId,
+                    role: .identity,
+                    value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
+                    origin: .discToc,
+                    state: .found(count: 3),
+                    excluded: false
+                ),
+                BridgeToolbarSignal(
+                    kind: .barcode,
+                    role: .identity,
+                    value: "0123456789012",
+                    origin: .artwork,
+                    state: .lookingUp,
+                    excluded: false
+                ),
+                BridgeToolbarSignal(
+                    kind: .catalog,
+                    role: .filter,
+                    value: "WPCR-80001",
+                    origin: .folderName,
+                    state: .confirms(count: 1),
+                    excluded: false
+                ),
+                BridgeToolbarSignal(
+                    kind: .catalog,
+                    role: .filter,
+                    value: "A2 16018",
+                    origin: .textFile,
+                    state: .confirms(count: 0),
+                    excluded: false
+                ),
+            ]),
+            onToggle: { _ in },
+            onRerun: {},
+            onSearchManually: {},
+            onAddAsUnknown: {},
+        )
+        .frame(width: 720)
+        .windowBackground()
+    }
 
-#Preview("Barcode excluded") {
-    SignalsToolbarView(
-        toolbar: BridgeSignalsToolbar(signals: [
-            BridgeToolbarSignal(
-                kind: .discId,
-                role: .identity,
-                value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                origin: .discToc,
-                state: .found(count: 2),
-                excluded: false
-            ),
-            BridgeToolbarSignal(
-                kind: .barcode,
-                role: .identity,
-                value: "0123456789012",
-                origin: .artwork,
-                state: .found(count: 4),
-                excluded: true
-            ),
-            BridgeToolbarSignal(
-                kind: .catalog,
-                role: .filter,
-                value: "WPCR-80001",
-                origin: .folderName,
-                state: .confirms(count: 0),
-                excluded: false
-            ),
-        ]),
-        onToggle: { _ in },
-        onRerun: {},
-        onSearchManually: {},
-        onAddAsUnknown: {},
-    )
-    .frame(width: 720)
-    .windowBackground()
-}
+    #Preview("Barcode excluded") {
+        SignalsToolbarView(
+            toolbar: BridgeSignalsToolbar(signals: [
+                BridgeToolbarSignal(
+                    kind: .discId,
+                    role: .identity,
+                    value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
+                    origin: .discToc,
+                    state: .found(count: 2),
+                    excluded: false
+                ),
+                BridgeToolbarSignal(
+                    kind: .barcode,
+                    role: .identity,
+                    value: "0123456789012",
+                    origin: .artwork,
+                    state: .found(count: 4),
+                    excluded: true
+                ),
+                BridgeToolbarSignal(
+                    kind: .catalog,
+                    role: .filter,
+                    value: "WPCR-80001",
+                    origin: .folderName,
+                    state: .confirms(count: 0),
+                    excluded: false
+                ),
+            ]),
+            onToggle: { _ in },
+            onRerun: {},
+            onSearchManually: {},
+            onAddAsUnknown: {},
+        )
+        .frame(width: 720)
+        .windowBackground()
+    }
 
-#Preview("Conflict — both matched") {
-    SignalsToolbarView(
-        toolbar: BridgeSignalsToolbar(signals: [
-            BridgeToolbarSignal(
-                kind: .discId,
-                role: .identity,
-                value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                origin: .discToc,
-                state: .found(count: 2),
-                excluded: false
-            ),
-            BridgeToolbarSignal(
-                kind: .barcode,
-                role: .identity,
-                value: "5051961234567",
-                origin: .artwork,
-                state: .found(count: 3),
-                excluded: false
-            ),
-        ]),
-        onToggle: { _ in },
-        onRerun: {},
-        onSearchManually: {},
-        onAddAsUnknown: {},
-    )
-    .frame(width: 720)
-    .windowBackground()
-}
+    #Preview("Conflict — both matched") {
+        SignalsToolbarView(
+            toolbar: BridgeSignalsToolbar(signals: [
+                BridgeToolbarSignal(
+                    kind: .discId,
+                    role: .identity,
+                    value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
+                    origin: .discToc,
+                    state: .found(count: 2),
+                    excluded: false
+                ),
+                BridgeToolbarSignal(
+                    kind: .barcode,
+                    role: .identity,
+                    value: "5051961234567",
+                    origin: .artwork,
+                    state: .found(count: 3),
+                    excluded: false
+                ),
+            ]),
+            onToggle: { _ in },
+            onRerun: {},
+            onSearchManually: {},
+            onAddAsUnknown: {},
+        )
+        .frame(width: 720)
+        .windowBackground()
+    }
 
-#Preview("Skipped — no signals") {
-    SignalsToolbarView(
-        toolbar: BridgeSignalsToolbar(signals: [
-            BridgeToolbarSignal(
-                kind: .discId,
-                role: .identity,
-                value: nil,
-                origin: .discToc,
-                state: .skipped,
-                excluded: false
-            ),
-            BridgeToolbarSignal(
-                kind: .barcode,
-                role: .identity,
-                value: nil,
-                origin: .artwork,
-                state: .skipped,
-                excluded: false
-            ),
-        ]),
-        onToggle: { _ in },
-        onRerun: {},
-        onSearchManually: {},
-        onAddAsUnknown: nil,
-    )
-    .frame(width: 720)
-    .windowBackground()
-}
+    #Preview("Skipped — no signals") {
+        SignalsToolbarView(
+            toolbar: BridgeSignalsToolbar(signals: [
+                BridgeToolbarSignal(
+                    kind: .discId,
+                    role: .identity,
+                    value: nil,
+                    origin: .discToc,
+                    state: .skipped,
+                    excluded: false
+                ),
+                BridgeToolbarSignal(
+                    kind: .barcode,
+                    role: .identity,
+                    value: nil,
+                    origin: .artwork,
+                    state: .skipped,
+                    excluded: false
+                ),
+            ]),
+            onToggle: { _ in },
+            onRerun: {},
+            onSearchManually: {},
+            onAddAsUnknown: nil,
+        )
+        .frame(width: 720)
+        .windowBackground()
+    }
+#endif

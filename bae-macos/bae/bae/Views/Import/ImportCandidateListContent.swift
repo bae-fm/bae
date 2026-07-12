@@ -532,32 +532,34 @@ private struct InvalidCandidateRow: View {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-#Preview("Candidate List") {
-    let store = ImportStore()
-    store.watchedFolders = [
-        BridgeWatchedFolder(path: "/Music/Downloads", name: "Downloads"),
-        BridgeWatchedFolder(path: "/Volumes/Rips", name: "Rips"),
-    ]
-    for candidate in PreviewData.folderCandidates {
-        var copy = candidate
-        copy.importStatus = PreviewData.importStatuses[candidate.key]
-        store.folderCandidates[copy.key] = copy
+    #Preview("Candidate List") {
+        let store = ImportStore()
+        store.watchedFolders = [
+            BridgeWatchedFolder(path: "/Music/Downloads", name: "Downloads"),
+            BridgeWatchedFolder(path: "/Volumes/Rips", name: "Rips"),
+        ]
+        for candidate in PreviewData.folderCandidates {
+            var copy = candidate
+            copy.importStatus = PreviewData.importStatuses[candidate.key]
+            store.folderCandidates[copy.key] = copy
+        }
+        for invalid in PreviewData.invalidCandidates {
+            store.invalidCandidates[invalid.folderPath] = invalid
+        }
+        return ImportCandidateListContent(
+            importStore: store,
+            selectedKey: .constant(store.folderCandidates.keys.first),
+            isLikelyDupe: { $0 == "Album Title One" },
+            onAddFolder: {},
+            onRemoveFolder: { _ in },
+            onSkip: { _, _ in },
+        )
+        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(UiStore())
+        .frame(width: 280, height: 500)
+        .windowBackground()
     }
-    for invalid in PreviewData.invalidCandidates {
-        store.invalidCandidates[invalid.folderPath] = invalid
-    }
-    return ImportCandidateListContent(
-        importStore: store,
-        selectedKey: .constant(store.folderCandidates.keys.first),
-        isLikelyDupe: { $0 == "Album Title One" },
-        onAddFolder: {},
-        onRemoveFolder: { _ in },
-        onSkip: { _, _ in },
-    )
-    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-    .environment(UiStore())
-    .frame(width: 280, height: 500)
-    .windowBackground()
-}
+#endif

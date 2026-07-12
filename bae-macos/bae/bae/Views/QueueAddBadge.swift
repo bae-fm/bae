@@ -27,17 +27,19 @@ struct QueueAddBadge: View {
     }
 }
 
-#Preview("Single") {
-    QueueAddBadge(displayedCount: .constant(1))
-        .padding(20)
-}
+#if DEBUG
+    #Preview("Single") {
+        QueueAddBadge(displayedCount: .constant(1))
+            .padding(20)
+    }
 
-#Preview("Many") {
-    QueueAddBadge(displayedCount: .constant(12))
-        .padding(20)
-}
+    #Preview("Many") {
+        QueueAddBadge(displayedCount: .constant(12))
+            .padding(20)
+    }
 
-#Preview("Hidden") {
-    QueueAddBadge(displayedCount: .constant(nil))
-        .padding(20)
-}
+    #Preview("Hidden") {
+        QueueAddBadge(displayedCount: .constant(nil))
+            .padding(20)
+    }
+#endif

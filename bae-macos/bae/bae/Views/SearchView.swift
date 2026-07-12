@@ -184,34 +184,36 @@ struct SearchView: View {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-#Preview("With results") {
-    SearchView(
-        results: PreviewData.searchResults,
-        onSelectAlbum: { _ in },
-        onSelectComposer: { _ in },
-        onSelectWork: { _ in },
-    )
-    .frame(width: 600, height: 500)
-    .environment(MediaPaths.stub)
-}
+    #Preview("With results") {
+        SearchView(
+            results: PreviewData.searchResults,
+            onSelectAlbum: { _ in },
+            onSelectComposer: { _ in },
+            onSelectWork: { _ in },
+        )
+        .frame(width: 600, height: 500)
+        .environment(MediaPaths.stub)
+    }
 
-#Preview("No results") {
-    SearchView(
-        results: SearchResults(
-            bridge: BridgeSearchResults(
-                albums: [],
-                tracks: [],
-                composers: [],
-                works: []
+    #Preview("No results") {
+        SearchView(
+            results: SearchResults(
+                bridge: BridgeSearchResults(
+                    albums: [],
+                    tracks: [],
+                    composers: [],
+                    works: []
+                ),
+                query: "placeholder"
             ),
-            query: "placeholder"
-        ),
-        onSelectAlbum: { _ in },
-        onSelectComposer: { _ in },
-        onSelectWork: { _ in },
-    )
-    .frame(width: 600, height: 400)
-    .environment(MediaPaths.stub)
-}
+            onSelectAlbum: { _ in },
+            onSelectComposer: { _ in },
+            onSelectWork: { _ in },
+        )
+        .frame(width: 600, height: 400)
+        .environment(MediaPaths.stub)
+    }
+#endif

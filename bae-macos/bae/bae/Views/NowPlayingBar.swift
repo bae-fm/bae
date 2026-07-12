@@ -321,97 +321,99 @@ struct NowPlayingBar: View {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-/// Preview host that provides the state bindings NowPlayingBar needs.
-/// The playback position publisher defaults to `Empty()` — the NSView
-/// renders the duration clock from the static `durationMs` prop.
-private struct NowPlayingBarPreview: View {
-    let trackTitle: String?
-    let artistNames: String?
-    let isPlaying: Bool
-    var isLoading: Bool = false
-    let repeatMode: BridgeRepeatMode
+    /// Preview host that provides the state bindings NowPlayingBar needs.
+    /// The playback position publisher defaults to `Empty()` — the NSView
+    /// renders the duration clock from the static `durationMs` prop.
+    private struct NowPlayingBarPreview: View {
+        let trackTitle: String?
+        let artistNames: String?
+        let isPlaying: Bool
+        var isLoading: Bool = false
+        let repeatMode: BridgeRepeatMode
 
-    @State
-    private var showQueue = false
-    @State
-    private var volume: Float = 0.7
-    @State
-    private var isMuted = false
+        @State
+        private var showQueue = false
+        @State
+        private var volume: Float = 0.7
+        @State
+        private var isMuted = false
 
-    var body: some View {
-        NowPlayingBar(
-            trackTitle: trackTitle,
-            secondaryLine: artistNames,
-            cover: nil,
-            isPlaying: isPlaying,
-            isLoading: isLoading,
-            durationMs: 222_000,
-            volume: volume,
-            isMuted: isMuted,
-            repeatMode: repeatMode,
-            showQueue: $showQueue,
-            onPlayPause: {},
-            onNext: {},
-            onPrevious: {},
-            onSeek: { _ in },
-            onVolumeChange: { volume = $0 },
-            onToggleMute: { isMuted.toggle() },
-            onCycleRepeat: {},
-            onDropToQueue: { _ in },
-            onNavigateToAlbum: {},
-            queueAddPublisher: Empty().eraseToAnyPublisher(),
-        )
-        .frame(width: 1100)
+        var body: some View {
+            NowPlayingBar(
+                trackTitle: trackTitle,
+                secondaryLine: artistNames,
+                cover: nil,
+                isPlaying: isPlaying,
+                isLoading: isLoading,
+                durationMs: 222_000,
+                volume: volume,
+                isMuted: isMuted,
+                repeatMode: repeatMode,
+                showQueue: $showQueue,
+                onPlayPause: {},
+                onNext: {},
+                onPrevious: {},
+                onSeek: { _ in },
+                onVolumeChange: { volume = $0 },
+                onToggleMute: { isMuted.toggle() },
+                onCycleRepeat: {},
+                onDropToQueue: { _ in },
+                onNavigateToAlbum: {},
+                queueAddPublisher: Empty().eraseToAnyPublisher(),
+            )
+            .frame(width: 1100)
+        }
     }
-}
 
-#Preview("Playing") {
-    NowPlayingBarPreview(
-        trackTitle: PreviewData.nowPlayingTitle,
-        artistNames: PreviewData.nowPlayingArtist,
-        isPlaying: true,
-        repeatMode: .off,
-    )
-    .environment(MediaPaths.stub)
-    .environment(PreviewData.queueStore(manualCount: 2))
-    .environment(Queue.stub)
-}
+    #Preview("Playing") {
+        NowPlayingBarPreview(
+            trackTitle: PreviewData.nowPlayingTitle,
+            artistNames: PreviewData.nowPlayingArtist,
+            isPlaying: true,
+            repeatMode: .off,
+        )
+        .environment(MediaPaths.stub)
+        .environment(PreviewData.queueStore(manualCount: 2))
+        .environment(Queue.stub)
+    }
 
-#Preview("Paused — Repeat Context") {
-    NowPlayingBarPreview(
-        trackTitle: PreviewData.nowPlayingTitle,
-        artistNames: PreviewData.nowPlayingArtist,
-        isPlaying: false,
-        repeatMode: .context,
-    )
-    .environment(MediaPaths.stub)
-    .environment(PreviewData.queueStore(manualCount: 2, shuffled: true))
-    .environment(Queue.stub)
-}
+    #Preview("Paused — Repeat Context") {
+        NowPlayingBarPreview(
+            trackTitle: PreviewData.nowPlayingTitle,
+            artistNames: PreviewData.nowPlayingArtist,
+            isPlaying: false,
+            repeatMode: .context,
+        )
+        .environment(MediaPaths.stub)
+        .environment(PreviewData.queueStore(manualCount: 2, shuffled: true))
+        .environment(Queue.stub)
+    }
 
-#Preview("Loading") {
-    NowPlayingBarPreview(
-        trackTitle: PreviewData.nowPlayingTitle,
-        artistNames: PreviewData.nowPlayingArtist,
-        isPlaying: true,
-        isLoading: true,
-        repeatMode: .off,
-    )
-    .environment(MediaPaths.stub)
-    .environment(PreviewData.queueStore(manualCount: 5, context: nil))
-    .environment(Queue.stub)
-}
+    #Preview("Loading") {
+        NowPlayingBarPreview(
+            trackTitle: PreviewData.nowPlayingTitle,
+            artistNames: PreviewData.nowPlayingArtist,
+            isPlaying: true,
+            isLoading: true,
+            repeatMode: .off,
+        )
+        .environment(MediaPaths.stub)
+        .environment(PreviewData.queueStore(manualCount: 5, context: nil))
+        .environment(Queue.stub)
+    }
 
-#Preview("Empty") {
-    NowPlayingBarPreview(
-        trackTitle: nil,
-        artistNames: nil,
-        isPlaying: false,
-        repeatMode: .off,
-    )
-    .environment(MediaPaths.stub)
-    .environment(PreviewData.queueStore(manualCount: 0, context: nil))
-    .environment(Queue.stub)
-}
+    #Preview("Empty") {
+        NowPlayingBarPreview(
+            trackTitle: nil,
+            artistNames: nil,
+            isPlaying: false,
+            repeatMode: .off,
+        )
+        .environment(MediaPaths.stub)
+        .environment(PreviewData.queueStore(manualCount: 0, context: nil))
+        .environment(Queue.stub)
+    }
+#endif

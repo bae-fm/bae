@@ -567,81 +567,85 @@ struct CoverPickerView: View {
 
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-#Preview("Main Pane - Confirm") {
-    @Previewable
-    @State
-    var values = rawReleaseEditFromUserEdit(
-        edit: shapeUserEditFromReleaseDetail(
-            detail: PreviewData.releaseDetailBridge,
-            choice: .exact(
-                releaseId: PreviewData.releaseDetailBridge.releaseId,
-                source: PreviewData.releaseDetailBridge.source,
-            )
-        ),
-        trackIdPrefix: "import-track"
-    )
-    @Previewable
-    @State
-    var storageManaged = true
-    @Previewable
-    @State
-    var storagePinned = true
-    ImportConfirmationView(
-        values: $values,
-        storageManaged: $storageManaged,
-        storagePinned: $storagePinned,
-        trackCountMismatch: PreviewData.releaseDetailBridge.trackCountMismatch,
-        expectedTrackCount: PreviewData.releaseDetailBridge.trackCount,
-        libraryStatus: nil,
-        candidateKey: "preview-candidate",
-        importStatus: nil,
-        error: nil,
-        hasCoverOptions: false,
-        importing: false,
-        exactness: ImportExactnessChoice(
-            isMetadataOnly: false,
-            onSelect: { _ in }
-        ),
-        onConfirmImport: {},
-        onViewInLibrary: { _ in },
-        onEditCover: {},
-        coverContent: {
-            ZStack {
-                Theme.placeholder
-                Image(systemName: "photo")
-                    .foregroundStyle(.tertiary)
-            }
-            .frame(width: 80, height: 80)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-        },
-    )
-    .frame(width: 1212, height: 982)
-    .windowBackground()
-    .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-    .environment(
-        ConfigStore(
-            config: Config(
-                bridge: BridgeConfig(
-                    libraryId: "lib-preview",
-                    libraryName: "Preview Library",
-                    libraryPath: "/preview",
-                    encryptionKeyStored: false,
-                    encryptionKeyFingerprint: nil,
-                    pauseBetweenSides: false,
-                    exportLocation: .askEachTime,
-                    exportFilenameTemplate: PreviewData.exportFilenameTemplate,
-                    exportPresets: PreviewData.exportPresets,
-                    defaultTrackExportSelection: .original,
-                    defaultReleaseExportSelection: .original,
-                    mcp: BridgeMcpConfig(enabled: false, port: 47777),
-                    discogsTokenStatus: .notConfigured,
-                    discogsUsable: false,
-                    sync: nil
+    #Preview("Main Pane - Confirm") {
+        @Previewable
+        @State
+        var values = rawReleaseEditFromUserEdit(
+            edit: shapeUserEditFromReleaseDetail(
+                detail: PreviewData.releaseDetailBridge,
+                choice: .exact(
+                    releaseId: PreviewData.releaseDetailBridge.releaseId,
+                    source: PreviewData.releaseDetailBridge.source,
                 )
             ),
-            syncReady: false
+            trackIdPrefix: "import-track"
         )
-    )
-}
+        @Previewable
+        @State
+        var storageManaged = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportConfirmationView(
+            values: $values,
+            storageManaged: $storageManaged,
+            storagePinned: $storagePinned,
+            trackCountMismatch: PreviewData.releaseDetailBridge
+                .trackCountMismatch,
+            expectedTrackCount: PreviewData.releaseDetailBridge.trackCount,
+            libraryStatus: nil,
+            candidateKey: "preview-candidate",
+            importStatus: nil,
+            error: nil,
+            hasCoverOptions: false,
+            importing: false,
+            exactness: ImportExactnessChoice(
+                isMetadataOnly: false,
+                onSelect: { _ in }
+            ),
+            onConfirmImport: {},
+            onViewInLibrary: { _ in },
+            onEditCover: {},
+            coverContent: {
+                ZStack {
+                    Theme.placeholder
+                    Image(systemName: "photo")
+                        .foregroundStyle(.tertiary)
+                }
+                .frame(width: 80, height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            },
+        )
+        .frame(width: 1212, height: 982)
+        .windowBackground()
+        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(
+            ConfigStore(
+                config: Config(
+                    bridge: BridgeConfig(
+                        libraryId: "lib-preview",
+                        libraryName: "Preview Library",
+                        libraryPath: "/preview",
+                        encryptionKeyStored: false,
+                        encryptionKeyFingerprint: nil,
+                        pauseBetweenSides: false,
+                        exportLocation: .askEachTime,
+                        exportFilenameTemplate: PreviewData
+                            .exportFilenameTemplate,
+                        exportPresets: PreviewData.exportPresets,
+                        defaultTrackExportSelection: .original,
+                        defaultReleaseExportSelection: .original,
+                        mcp: BridgeMcpConfig(enabled: false, port: 47777),
+                        discogsTokenStatus: .notConfigured,
+                        discogsUsable: false,
+                        sync: nil
+                    )
+                ),
+                syncReady: false
+            )
+        )
+    }
+#endif

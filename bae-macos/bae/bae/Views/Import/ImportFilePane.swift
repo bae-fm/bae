@@ -375,46 +375,48 @@ extension View {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-#Preview("File Pane - CUE+FLAC") {
-    ImportFilePane(
-        files: PreviewData.bridgeCandidateFiles,
-        onOpenGallery: { _ in },
-        onOpenDocument: { _, _ in },
-        onPreviewAudio: { _ in },
-        onError: { _ in },
-        previewState: .idle,
-    )
-    .frame(width: 300, height: 500)
-    .windowBackground()
-    .environment(MediaPaths.stub)
-}
+    #Preview("File Pane - CUE+FLAC") {
+        ImportFilePane(
+            files: PreviewData.bridgeCandidateFiles,
+            onOpenGallery: { _ in },
+            onOpenDocument: { _, _ in },
+            onPreviewAudio: { _ in },
+            onError: { _ in },
+            previewState: .idle,
+        )
+        .frame(width: 300, height: 500)
+        .windowBackground()
+        .environment(MediaPaths.stub)
+    }
 
-#Preview("File Pane - Track Files") {
-    ImportFilePane(
-        files: PreviewData.candidateFilesTracks,
-        onOpenGallery: { _ in },
-        onOpenDocument: { _, _ in },
-        onPreviewAudio: { _ in },
-        onError: { _ in },
-        previewState: .playing(
-            path: "/tmp/fake/Track 3.flac",
-            durationMs: 195_000
-        ),
-    )
-    .frame(width: 300, height: 500)
-    .windowBackground()
-    .environment(MediaPaths.stub)
-}
+    #Preview("File Pane - Track Files") {
+        ImportFilePane(
+            files: PreviewData.candidateFilesTracks,
+            onOpenGallery: { _ in },
+            onOpenDocument: { _, _ in },
+            onPreviewAudio: { _ in },
+            onError: { _ in },
+            previewState: .playing(
+                path: "/tmp/fake/Track 3.flac",
+                durationMs: 195_000
+            ),
+        )
+        .frame(width: 300, height: 500)
+        .windowBackground()
+        .environment(MediaPaths.stub)
+    }
 
-#Preview("Document Viewer") {
-    DocumentViewerView(
-        name: "info.txt",
-        text:
-            "This is sample document content.\nLine 2 of the document.\nLine 3 with more text.",
-        onClose: {},
-    )
-    .frame(width: 600, height: 500)
-    .background(Theme.surface)
-}
+    #Preview("Document Viewer") {
+        DocumentViewerView(
+            name: "info.txt",
+            text:
+                "This is sample document content.\nLine 2 of the document.\nLine 3 with more text.",
+            onClose: {},
+        )
+        .frame(width: 600, height: 500)
+        .background(Theme.surface)
+    }
+#endif
