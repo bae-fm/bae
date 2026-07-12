@@ -1,3 +1,5 @@
+#![deny(unreachable_pub, dead_code)]
+
 use axum::body::Body;
 use axum::extract::State;
 use axum::http::header::{AUTHORIZATION, WWW_AUTHENTICATE};
