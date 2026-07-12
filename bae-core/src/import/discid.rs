@@ -724,7 +724,8 @@ mod tests {
         // enough to span the CUE's three 3-second tracks.
         let samples = vec![0i32; 44_100 * 9 * 2];
         let mp3_bytes =
-            crate::audio_codec::encode_to_mp3(&samples, 44_100, 2, &cancel).expect("encode mp3");
+            crate::audio_codec::encode_to_mp3_with_bitrate(&samples, 44_100, 2, 320, &cancel)
+                .expect("encode mp3");
         std::fs::write(&mp3_path, mp3_bytes).unwrap();
 
         let cue_body = "PERFORMER \"Artist Name\"\n\

@@ -1277,7 +1277,8 @@ mod tests {
         // valid MP3 the tag writer can attach to.
         let samples = vec![0i32; 44_100 / 2 * 2];
         let mp3_bytes =
-            crate::audio_codec::encode_to_mp3(&samples, 44_100, 2, &cancel).expect("encode mp3");
+            crate::audio_codec::encode_to_mp3_with_bitrate(&samples, 44_100, 2, 320, &cancel)
+                .expect("encode mp3");
 
         let temp = TempDir::new().unwrap();
         let mp3_path = temp.path().join("01.mp3");

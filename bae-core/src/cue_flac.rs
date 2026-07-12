@@ -96,15 +96,6 @@ impl CueTrack {
     }
 
     /// Where audio bytes begin, as sample position
-    pub fn audio_start_sample(&self, sample_rate: u32) -> u64 {
-        self.audio_start_cue_frames() * sample_rate as u64 / 75
-    }
-
-    /// End sample position (None for last track)
-    pub fn end_sample(&self, sample_rate: u32) -> Option<u64> {
-        self.end_cue_frames.map(|f| f * sample_rate as u64 / 75)
-    }
-
     /// INDEX 01 position in milliseconds (lossy, for UI display only)
     pub fn start_time_ms(&self) -> u64 {
         self.start_cue_frames * 1000 / 75
@@ -162,21 +153,6 @@ impl CueSheet {
         self.playable_tracks().count()
     }
 
-    pub fn file_references(&self) -> Vec<&str> {
-        let mut refs = Vec::new();
-        for track in &self.tracks {
-            for index in &track.indexes {
-                if !refs.contains(&index.file_reference.as_str()) {
-                    refs.push(index.file_reference.as_str());
-                }
-            }
-            if !refs.contains(&track.file_reference.as_str()) {
-                refs.push(track.file_reference.as_str());
-            }
-        }
-        refs
-    }
-
     pub fn audio_file_references(&self) -> Vec<&str> {
         let mut refs = Vec::new();
         for track in self.playable_tracks() {
@@ -202,12 +178,6 @@ impl CueSheet {
             .all(|t| t.file_reference == first)
             .then_some(first)
     }
-}
-/// Represents a CUE/FLAC pair found during import
-#[derive(Debug, Clone)]
-pub struct CueFlacPair {
-    pub audio_path: std::path::PathBuf,
-    pub cue_path: std::path::PathBuf,
 }
 
 #[derive(Debug)]
@@ -276,48 +246,6 @@ impl PendingCueTrack {
             end_cue_frames: None,
         })
     }
-}
-/// Detect CUE/FLAC pairs from a list of file paths (no filesystem traversal)
-pub fn detect_cue_flac_from_paths(
-    file_paths: &[std::path::PathBuf],
-) -> Result<Vec<CueFlacPair>, CueFlacError> {
-    let mut pairs = Vec::new();
-    let mut audio_files = Vec::new();
-    let mut cue_files = Vec::new();
-    for path in file_paths {
-        if let Some(extension) = path.extension() {
-            let ext_lower = extension.to_str().map(|s| s.to_lowercase());
-            match ext_lower.as_deref() {
-                Some("flac") | Some("ape") | Some("m4a") | Some("wav") | Some("aif")
-                | Some("aiff") | Some("aifc") | Some("wv") | Some("dsf") | Some("dff") => {
-                    audio_files.push(path.clone())
-                }
-                Some("cue") => cue_files.push(path.clone()),
-                _ => {}
-            }
-        }
-    }
-    for cue_path in cue_files {
-        let Some(cue_stem) = cue_path.file_stem().and_then(|s| s.to_str()) else {
-            tracing::warn!("CUE path has no UTF-8 stem, skipping: {:?}", cue_path);
-            continue;
-        };
-        let cue_dir = cue_path.parent();
-        for audio_path in &audio_files {
-            let Some(audio_stem) = audio_path.file_stem().and_then(|s| s.to_str()) else {
-                tracing::warn!("audio path has no UTF-8 stem, skipping: {:?}", audio_path);
-                continue;
-            };
-            if cue_stem == audio_stem && cue_dir == audio_path.parent() {
-                pairs.push(CueFlacPair {
-                    audio_path: audio_path.clone(),
-                    cue_path: cue_path.clone(),
-                });
-                break;
-            }
-        }
-    }
-    Ok(pairs)
 }
 /// Parse a CUE sheet file
 pub fn parse_cue_sheet(cue_path: &Path) -> Result<CueSheet, CueFlacError> {

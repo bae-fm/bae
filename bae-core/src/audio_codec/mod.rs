@@ -132,19 +132,6 @@ pub fn encode_to_flac(
     }
 }
 
-/// Encode PCM samples to MP3 format (320kbps CBR via libmp3lame).
-///
-/// Takes full-range interleaved i32 samples and returns the encoded MP3 data as bytes.
-/// Uses FFmpeg library with custom AVIO for in-memory encoding.
-pub fn encode_to_mp3(
-    samples: &[i32],
-    sample_rate: u32,
-    channels: u32,
-    cancel: &std::sync::atomic::AtomicBool,
-) -> Result<Vec<u8>, String> {
-    encode_to_mp3_with_bitrate(samples, sample_rate, channels, 320, cancel)
-}
-
 pub fn encode_to_mp3_with_bitrate(
     samples: &[i32],
     sample_rate: u32,
