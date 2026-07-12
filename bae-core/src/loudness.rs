@@ -81,20 +81,6 @@ impl LoudnessMeter {
     }
 }
 
-/// Measure one track's PCM in a single shot. `samples` is interleaved i32 as
-/// `decode_audio` returns it. Returns the measurement alongside the meter the
-/// album combine reuses; the import path streams via [`LoudnessMeter`] directly
-/// instead.
-pub fn measure_track(
-    samples: &[i32],
-    channels: u32,
-    sample_rate: u32,
-) -> Result<(EbuR128, Option<TrackLoudness>), String> {
-    let mut meter = LoudnessMeter::new(channels, sample_rate)?;
-    meter.add_chunk(samples)?;
-    meter.finish()
-}
-
 /// The track's true peak: the max linear true-peak across its channels. The
 /// crate already returns a linear ratio (1.0 = 0 dBTP), so it is stored as-is.
 fn max_true_peak(meter: &EbuR128, channels: u32) -> Result<f64, String> {
@@ -155,6 +141,21 @@ mod tests {
             out.push(s);
         }
         out
+    }
+
+    /// One-shot measurement over [`LoudnessMeter`]: feed all samples in a single
+    /// chunk and finish. Returns the measurement alongside the meter (the album
+    /// combine reuses it). Production streams chunks through `LoudnessMeter`
+    /// directly; this is the test convenience the chunked-vs-one-shot test
+    /// compares against.
+    fn measure_track(
+        samples: &[i32],
+        channels: u32,
+        sample_rate: u32,
+    ) -> Result<(EbuR128, Option<TrackLoudness>), String> {
+        let mut meter = LoudnessMeter::new(channels, sample_rate)?;
+        meter.add_chunk(samples)?;
+        meter.finish()
     }
 
     #[test]
