@@ -47,13 +47,7 @@ pub struct CueTrack {
     pub mode: CueTrackMode,
     pub title: Option<String>,
     pub performer: Option<String>,
-    pub composer: Option<String>,
-    pub songwriter: Option<String>,
-    /// 12-character International Standard Recording Code from `ISRC <code>`.
-    pub isrc: Option<String>,
-    pub flags: Vec<String>,
     pub indexes: Vec<CueIndex>,
-    pub postgap_frames: Option<u64>,
     /// Filename from the `FILE` directive that scopes this track. For
     /// single-FILE CUE sheets every track carries the same string; for
     /// multi-FILE sheets (one FILE per TRACK, the shape used by lossy-format
@@ -140,8 +134,6 @@ impl CueTrack {
 pub struct CueSheet {
     pub title: Option<String>,
     pub performer: Option<String>,
-    pub composer: Option<String>,
-    pub songwriter: Option<String>,
     /// Media catalog number from `CATALOG <13-digit>`. Typically the UPC/EAN
     /// barcode — a strong release identifier when matching against MusicBrainz.
     pub catalog: Option<String>,
@@ -214,14 +206,9 @@ struct PendingCueTrack {
     mode: CueTrackMode,
     title: Option<String>,
     performer: Option<String>,
-    composer: Option<String>,
-    songwriter: Option<String>,
-    isrc: Option<String>,
-    flags: Vec<String>,
     indexes: Vec<CueIndex>,
     pregap: Option<(u64, String)>,
     generated_pregap_frames: Option<u64>,
-    postgap_frames: Option<u64>,
     start: Option<(u64, String)>,
     file_reference: String,
 }
@@ -233,14 +220,9 @@ impl PendingCueTrack {
             mode,
             title: None,
             performer: None,
-            composer: None,
-            songwriter: None,
-            isrc: None,
-            flags: Vec::new(),
             indexes: Vec::new(),
             pregap: None,
             generated_pregap_frames: None,
-            postgap_frames: None,
             start: None,
             file_reference,
         }
@@ -285,12 +267,7 @@ impl PendingCueTrack {
             mode: self.mode,
             title: self.title,
             performer: self.performer,
-            composer: self.composer,
-            songwriter: self.songwriter,
-            isrc: self.isrc,
-            flags: self.flags,
             indexes: self.indexes,
-            postgap_frames: self.postgap_frames,
             file_reference,
             start_cue_frames,
             pregap,
@@ -391,8 +368,6 @@ impl CueFlacProcessor {
     fn parse_cue_content(input: &str) -> IResult<&str, CueSheet> {
         let mut title: Option<String> = None;
         let mut performer: Option<String> = None;
-        let mut composer: Option<String> = None;
-        let mut songwriter: Option<String> = None;
         let mut catalog: Option<String> = None;
         let mut date: Option<String> = None;
         let mut current_file: Option<String> = None;
@@ -435,8 +410,6 @@ impl CueFlacProcessor {
                         line,
                         &mut title,
                         &mut performer,
-                        &mut composer,
-                        &mut songwriter,
                         &mut catalog,
                         &mut date,
                     );
@@ -483,8 +456,6 @@ impl CueFlacProcessor {
             CueSheet {
                 title,
                 performer,
-                composer,
-                songwriter,
                 catalog,
                 date,
                 tracks,
@@ -496,8 +467,6 @@ impl CueFlacProcessor {
         line: &str,
         title: &mut Option<String>,
         performer: &mut Option<String>,
-        composer: &mut Option<String>,
-        songwriter: &mut Option<String>,
         catalog: &mut Option<String>,
         date: &mut Option<String>,
     ) {
@@ -520,16 +489,6 @@ impl CueFlacProcessor {
             Some(("PERFORMER", rest)) => {
                 if let Some(value) = Self::quoted_value(rest) {
                     *performer = Some(value.to_string());
-                }
-            }
-            Some(("COMPOSER", rest)) => {
-                if let Some(value) = Self::quoted_value(rest) {
-                    *composer = Some(value.to_string());
-                }
-            }
-            Some(("SONGWRITER", rest)) => {
-                if let Some(value) = Self::quoted_value(rest) {
-                    *songwriter = Some(value.to_string());
                 }
             }
             Some((keyword, _)) if Self::header_keyword_is_known_skipped(keyword) => {}
@@ -555,25 +514,6 @@ impl CueFlacProcessor {
                     track.performer = Some(value.to_string());
                 }
             }
-            Some(("COMPOSER", rest)) => {
-                if let Some(value) = Self::quoted_value(rest) {
-                    track.composer = Some(value.to_string());
-                }
-            }
-            Some(("SONGWRITER", rest)) => {
-                if let Some(value) = Self::quoted_value(rest) {
-                    track.songwriter = Some(value.to_string());
-                }
-            }
-            Some(("ISRC", rest)) => {
-                let code = rest.split_whitespace().next().ok_or_else(|| {
-                    nom::Err::Failure(nom::error::Error::new(
-                        input,
-                        nom::error::ErrorKind::TakeTill1,
-                    ))
-                })?;
-                track.isrc = Some(code.to_string());
-            }
             Some(("INDEX", rest)) => {
                 let (index_number, cue_frames) = Self::parse_index_values(input, rest)?;
                 track.indexes.push(CueIndex {
@@ -594,15 +534,6 @@ impl CueFlacProcessor {
                     nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
                 })?;
                 track.generated_pregap_frames = Some(cue_frames);
-            }
-            Some(("POSTGAP", rest)) => {
-                let (_, cue_frames) = Self::parse_time(rest).map_err(|_| {
-                    nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
-                })?;
-                track.postgap_frames = Some(cue_frames);
-            }
-            Some(("FLAGS", rest)) => {
-                track.flags = rest.split_whitespace().map(str::to_string).collect();
             }
             Some((keyword, _)) if Self::track_keyword_is_known_skipped(keyword) => {}
             _ => warn!(
@@ -675,6 +606,10 @@ impl CueFlacProcessor {
     fn track_keyword_is_known_skipped(keyword: &str) -> bool {
         const TRACK_BODY_SKIPPED: &[&str] = &[
             "FLAGS",
+            "COMPOSER",
+            "SONGWRITER",
+            "ISRC",
+            "POSTGAP",
             "CDTEXTFILE",
             "ARRANGER",
             "GENRE",

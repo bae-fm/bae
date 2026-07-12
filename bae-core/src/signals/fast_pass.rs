@@ -307,8 +307,6 @@ mod tests {
             cue_sheet: crate::cue_flac::CueSheet {
                 title: None,
                 performer: None,
-                composer: None,
-                songwriter: None,
                 catalog: None,
                 date: None,
                 tracks: Vec::new(),

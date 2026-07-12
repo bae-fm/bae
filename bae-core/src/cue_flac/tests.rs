@@ -346,36 +346,18 @@ FILE "x.flac" WAVE
 }
 
 #[test]
-fn parse_track_with_isrc_populates_field() {
-    let cue_content = r#"PERFORMER "Artist Name"
-TITLE "Album Title"
-FILE "Artist Name - Album Title.flac" WAVE
-  TRACK 01 AUDIO
-    TITLE "Track One"
-    PERFORMER "Artist Name"
-    ISRC GB000000000001
-    INDEX 01 00:00:00
-  TRACK 02 AUDIO
-    TITLE "Track Two"
-    PERFORMER "Artist Name"
-    ISRC GB000000000002
-    INDEX 01 03:45:00
-"#;
-    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
-    assert_eq!(sheet.tracks.len(), 2);
-    assert_eq!(sheet.tracks[0].isrc.as_deref(), Some("GB000000000001"));
-    assert_eq!(sheet.tracks[1].isrc.as_deref(), Some("GB000000000002"));
-}
-
-#[test]
 fn parse_track_silently_consumes_spec_known_commands() {
     let cue_content = r#"PERFORMER "Artist Name"
 TITLE "Album Title"
+COMPOSER "Release Composer"
+SONGWRITER "Release Songwriter"
 FILE "Artist Name - Album Title.flac" WAVE
   TRACK 01 AUDIO
     TITLE "Track One"
     PERFORMER "Artist Name"
+    COMPOSER "Composer Name"
     SONGWRITER "Songwriter Name"
+    ISRC GB000000000001
     FLAGS DCP
     PREGAP 00:02:00
     INDEX 01 00:00:00
@@ -469,31 +451,6 @@ FILE "Artist Name - Album Title.flac" WAVE
     assert_eq!(sheet.tracks[1].start_cue_frames, 3 * 60 * 75 + 45 * 75);
     assert_eq!(sheet.tracks[0].index(2).unwrap().frames, 90 * 75);
     assert_eq!(sheet.tracks[0].index(3).unwrap().frames, 135 * 75);
-}
-
-#[test]
-fn parse_track_captures_flags_postgap_composer_and_songwriter() {
-    let cue_content = r#"PERFORMER "Artist Name"
-TITLE "Album Title"
-COMPOSER "Release Composer"
-SONGWRITER "Release Songwriter"
-FILE "Album.flac" WAVE
-  TRACK 01 AUDIO
-    TITLE "Track One"
-    COMPOSER "Track Composer"
-    SONGWRITER "Track Songwriter"
-    FLAGS DCP PRE
-    INDEX 01 00:00:00
-    POSTGAP 00:01:00
-"#;
-    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
-    assert_eq!(sheet.composer.as_deref(), Some("Release Composer"));
-    assert_eq!(sheet.songwriter.as_deref(), Some("Release Songwriter"));
-    let track = &sheet.tracks[0];
-    assert_eq!(track.composer.as_deref(), Some("Track Composer"));
-    assert_eq!(track.songwriter.as_deref(), Some("Track Songwriter"));
-    assert_eq!(track.flags, vec!["DCP".to_string(), "PRE".to_string()]);
-    assert_eq!(track.postgap_frames, Some(75));
 }
 
 #[test]
