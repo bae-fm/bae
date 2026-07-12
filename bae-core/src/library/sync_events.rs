@@ -51,25 +51,6 @@ pub struct ChangesetEntityChanges {
     pub unresolved_track_ids: Vec<String>,
 }
 
-impl ChangesetEntityChanges {
-    pub fn empty() -> Self {
-        Self::default()
-    }
-
-    /// Merge another set of changes into this one.
-    pub fn merge(&mut self, other: ChangesetEntityChanges) {
-        self.album_events.extend(other.album_events);
-        self.release_events.extend(other.release_events);
-        self.unresolved_track_ids.extend(other.unresolved_track_ids);
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.album_events.is_empty()
-            && self.release_events.is_empty()
-            && self.unresolved_track_ids.is_empty()
-    }
-}
-
 /// Raw per-table change info collected from a changeset's row changes.
 #[derive(Debug, Default)]
 struct RawChanges {
