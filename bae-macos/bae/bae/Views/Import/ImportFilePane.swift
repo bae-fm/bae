@@ -4,7 +4,7 @@ import SwiftUI
 // MARK: - ImportFilePane
 
 struct ImportFilePane: View {
-    let files: CandidateFiles
+    let files: BridgeCandidateFiles
     let onOpenGallery: (Int) -> Void
     let onOpenDocument: (String, String) -> Void
     let onPreviewAudio: (String) -> Void
@@ -123,13 +123,16 @@ struct ImportFilePane: View {
 
 extension ImportFilePane {
     /// 1:1 thumbnail. Tap opens the gallery at this index.
-    fileprivate func artworkCell(_ file: ArtworkFile, index: Int)
+    fileprivate func artworkCell(_ file: BridgeArtworkFile, index: Int)
         -> some View
     {
         Color.clear
             .aspectRatio(1, contentMode: .fit)
             .overlay {
-                ImageView(source: .local(path: file.localPath), pointSize: 200)
+                ImageView(
+                    source: .local(path: file.file.localPath),
+                    pointSize: 200
+                )
             }
             .clipShape(RoundedRectangle(cornerRadius: 4))
             .contentShape(Rectangle())
@@ -144,7 +147,7 @@ extension ImportFilePane {
             )
     }
 
-    fileprivate func trackRow(_ file: FileInfo) -> some View {
+    fileprivate func trackRow(_ file: BridgeFileInfo) -> some View {
         let isPreviewing = previewingPath == file.localPath
         return Button {
             handleTap(file: file, kind: .audio)
@@ -160,7 +163,7 @@ extension ImportFilePane {
         .accentRail(isActive: isPreviewing)
     }
 
-    fileprivate func documentRow(_ file: FileInfo) -> some View {
+    fileprivate func documentRow(_ file: BridgeFileInfo) -> some View {
         Button {
             handleTap(file: file, kind: .document)
         } label: {
@@ -173,7 +176,7 @@ extension ImportFilePane {
         .buttonStyle(.plain)
     }
 
-    fileprivate func cueFlacPairRow(_ pair: CueFlacPair) -> some View {
+    fileprivate func cueFlacPairRow(_ pair: BridgeCueFlacPair) -> some View {
         let isPreviewingFlac = previewingPath == pair.flacLocalPath
 
         return VStack(spacing: 4) {
@@ -220,7 +223,7 @@ extension ImportFilePane {
         }
     }
 
-    fileprivate func cueFileRow(_ pair: CueFlacPair) -> some View {
+    fileprivate func cueFileRow(_ pair: BridgeCueFlacPair) -> some View {
         HStack {
             Button {
                 do {
@@ -255,7 +258,7 @@ extension ImportFilePane {
 
     fileprivate func fileRow(
         icon: String,
-        file: FileInfo,
+        file: BridgeFileInfo,
         highlighted: Bool = false,
     ) -> some View {
         let dirPrefix = file.dirPrefix
@@ -304,7 +307,7 @@ extension ImportFilePane {
 
     fileprivate enum FileKind { case audio, document }
 
-    fileprivate func handleTap(file: FileInfo, kind: FileKind) {
+    fileprivate func handleTap(file: BridgeFileInfo, kind: FileKind) {
         switch kind {
         case .audio: onPreviewAudio(file.localPath)
         case .document:
@@ -376,7 +379,7 @@ extension View {
 
 #Preview("File Pane - CUE+FLAC") {
     ImportFilePane(
-        files: PreviewData.candidateFiles,
+        files: PreviewData.bridgeCandidateFiles,
         onOpenGallery: { _ in },
         onOpenDocument: { _, _ in },
         onPreviewAudio: { _ in },

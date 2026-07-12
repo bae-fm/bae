@@ -1,9 +1,10 @@
+import BaeKit
 import SwiftUI
 
 /// The file pane + right pane layout used when a candidate is selected.
 /// ImportView uses this for its main content area.
 struct ImportMainPane<RightPane: View>: View {
-    let files: CandidateFiles
+    let files: BridgeCandidateFiles
     let onOpenGallery: (Int) -> Void
     let onOpenDocument: (String, String) -> Void
     let onPreviewAudio: (String) -> Void
@@ -34,7 +35,7 @@ struct ImportMainPane<RightPane: View>: View {
 
 #Preview("Auto-lookup in progress") {
     ImportMainPane(
-        files: PreviewData.candidateFiles,
+        files: PreviewData.bridgeCandidateFiles,
         onOpenGallery: { _ in },
         onOpenDocument: { _, _ in },
         onPreviewAudio: { _ in },
@@ -55,7 +56,7 @@ struct ImportMainPane<RightPane: View>: View {
 
 #Preview("Manual search — no results") {
     ImportMainPane(
-        files: PreviewData.candidateFiles,
+        files: PreviewData.bridgeCandidateFiles,
         onOpenGallery: { _ in },
         onOpenDocument: { _, _ in },
         onPreviewAudio: { _ in },

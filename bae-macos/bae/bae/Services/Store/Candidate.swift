@@ -87,7 +87,7 @@ struct Candidate: Equatable, Identifiable {
     let trackCount: UInt32?
 
     /// Dynamic — mutated by the import-candidate projection or by views.
-    var files: CandidateFiles
+    var files: BridgeCandidateFiles
     var identifyState: IdentifyState = .idle
     var importStatus: BridgeCandidateImportStatus?
     /// Whether the user manually skipped this candidate. Drives the import
@@ -157,7 +157,7 @@ struct Candidate: Equatable, Identifiable {
         key = bridge.folderPath
         displayName = bridge.sourceFolderName
         trackCount = bridge.trackCount
-        files = CandidateFiles(bridge: bridge.files)
+        files = bridge.files
         skipped = bridge.skipped
         isAdded = bridge.isAdded
     }
@@ -197,7 +197,13 @@ struct Candidate: Equatable, Identifiable {
         key = reIdentifyKey
         self.displayName = displayName
         self.trackCount = trackCount
-        files = .empty
+        // Re-identify candidates read their files from the DB, not the
+        // scanner's scan-event channel, so they start with an empty set.
+        files = BridgeCandidateFiles(
+            audio: .trackFiles(files: []),
+            artwork: [],
+            documents: []
+        )
     }
 
     /// Folder path if this is a folder candidate; nil otherwise.

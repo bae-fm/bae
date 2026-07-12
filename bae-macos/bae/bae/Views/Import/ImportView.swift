@@ -242,12 +242,12 @@ extension ImportView {
                 guard files.artwork.indices.contains(index) else {
                     return
                 }
-                let tappedPath = files.artwork[index].localPath
+                let tappedPath = files.artwork[index].file.localPath
                 let items = files.artwork.map { file in
                     LightboxItem(
-                        id: file.localPath,
-                        label: file.name,
-                        source: .local(path: file.localPath)
+                        id: file.file.localPath,
+                        label: file.file.name,
+                        source: .local(path: file.file.localPath)
                     )
                 }
                 uiStore.presentLightbox(items: items, preferring: tappedPath)

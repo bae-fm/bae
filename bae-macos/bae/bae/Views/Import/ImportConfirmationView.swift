@@ -421,7 +421,7 @@ struct CoverItem: Identifiable, Equatable {
 /// Presented as a sheet from the import confirmation view.
 struct CoverPickerView: View {
     let remoteCoverArts: [BridgeRemoteCover]
-    let localArtwork: [ArtworkFile]
+    let localArtwork: [BridgeArtworkFile]
     let selectedCover: BridgeCoverChoice?
     let onSelect: (BridgeCoverChoice) -> Void
     let onDone: () -> Void
@@ -445,7 +445,7 @@ struct CoverPickerView: View {
             result.append(
                 CoverItem(
                     coverChoice: file.coverChoice,
-                    label: file.name
+                    label: file.file.name
                 )
             )
         }

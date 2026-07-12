@@ -946,8 +946,6 @@ enum PreviewData {
         ],
     )
 
-    static let candidateFiles = CandidateFiles(bridge: bridgeCandidateFiles)
-
     static let releaseDetailBridge: BridgeReleaseDetail = {
         let tracks: [BridgeReleaseTrack] = (1...9)
             .map { i in
@@ -1033,44 +1031,42 @@ enum PreviewData {
 
     /// Per-track audio candidate (nine FLAC files) plus one cover image and two
     /// documents — the track-files counterpart to `candidateFiles` (CUE+FLAC).
-    static let candidateFilesTracks = CandidateFiles(
-        bridge: BridgeCandidateFiles(
-            audio: .trackFiles(
-                files: (1...9)
-                    .map { i in
-                        BridgeFileInfo(
-                            name: "Track \(i).flac",
-                            size: UInt64(35_000_000 + i * 2_000_000),
-                            dirPrefix: nil,
-                            fileName: "Track \(i).flac",
-                            localPath: "/tmp/fake/Track \(i).flac",
-                        )
-                    }
+    static let candidateFilesTracks = BridgeCandidateFiles(
+        audio: .trackFiles(
+            files: (1...9)
+                .map { i in
+                    BridgeFileInfo(
+                        name: "Track \(i).flac",
+                        size: UInt64(35_000_000 + i * 2_000_000),
+                        dirPrefix: nil,
+                        fileName: "Track \(i).flac",
+                        localPath: "/tmp/fake/Track \(i).flac",
+                    )
+                }
+        ),
+        artwork: [
+            previewArtworkFile(
+                name: "Front.png",
+                size: 2_500_000,
+                localPath: "/tmp/fake/Front.png"
+            )
+        ],
+        documents: [
+            BridgeFileInfo(
+                name: "info.log",
+                size: 6000,
+                dirPrefix: nil,
+                fileName: "info.log",
+                localPath: "/tmp/fake/info.log"
             ),
-            artwork: [
-                previewArtworkFile(
-                    name: "Front.png",
-                    size: 2_500_000,
-                    localPath: "/tmp/fake/Front.png"
-                )
-            ],
-            documents: [
-                BridgeFileInfo(
-                    name: "info.log",
-                    size: 6000,
-                    dirPrefix: nil,
-                    fileName: "info.log",
-                    localPath: "/tmp/fake/info.log"
-                ),
-                BridgeFileInfo(
-                    name: "notes.txt",
-                    size: 1200,
-                    dirPrefix: nil,
-                    fileName: "notes.txt",
-                    localPath: "/tmp/fake/notes.txt"
-                ),
-            ],
-        )
+            BridgeFileInfo(
+                name: "notes.txt",
+                size: 1200,
+                dirPrefix: nil,
+                fileName: "notes.txt",
+                localPath: "/tmp/fake/notes.txt"
+            ),
+        ],
     )
 
     // MARK: - Import search
