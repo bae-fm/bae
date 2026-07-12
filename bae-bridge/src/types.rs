@@ -3188,10 +3188,7 @@ impl BridgeMetadataResult {
     }
 }
 
-#[cfg(any(
-    feature = "desktop",
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeRemoteCover {
     pub(crate) fn from_core(c: bae_core::import::cover_art::RemoteCover) -> Self {
@@ -3210,10 +3207,7 @@ impl BridgeRemoteCover {
     }
 }
 
-#[cfg(any(
-    feature = "desktop",
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 fn bridge_remote_cover_selection(
     url: String,
@@ -3225,10 +3219,7 @@ fn bridge_remote_cover_selection(
     }
 }
 
-#[cfg(any(
-    feature = "desktop",
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 fn remote_cover_choice_to_bridge(
     selection: &BridgeRemoteCoverSelection,
