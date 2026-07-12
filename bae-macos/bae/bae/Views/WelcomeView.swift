@@ -1095,30 +1095,11 @@ extension WelcomeView {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-                if let qrImage = QRCode.image(from: generated.code) {
-                    Image(nsImage: qrImage)
-                        .interpolation(.none)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 160, height: 160)
-                }
-
-                Text(generated.code)
-                    .font(.system(.caption, design: .monospaced))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity)
-
-                // The approving device shows this same fingerprint; matching them
-                // confirms the right device is being added.
-                Text("This device: \(generated.fingerprint)")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-
-                Button("Copy code") {
-                    SystemActions.copyToPasteboard(generated.code)
-                }
+                CodeDisplay(
+                    code: generated.code,
+                    qrSize: 160,
+                    deviceFingerprint: generated.fingerprint
+                )
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 4)

@@ -174,24 +174,7 @@ struct ApproveDeviceSheet: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            if let qrImage = QRCode.image(from: code) {
-                Image(nsImage: qrImage)
-                    .interpolation(.none)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 180, height: 180)
-            }
-
-            Text(code)
-                .font(.system(.caption, design: .monospaced))
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity)
-
-            Button("Copy code") {
-                SystemActions.copyToPasteboard(code)
-            }
+            CodeDisplay(code: code, qrSize: 180)
             Spacer()
         }
         .padding()

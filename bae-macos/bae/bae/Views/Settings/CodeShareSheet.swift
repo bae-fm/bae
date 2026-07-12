@@ -36,24 +36,7 @@ struct CodeShareSheet: View {
                 VStack(spacing: 16) {
                     Spacer()
 
-                    if let qrImage = QRCode.image(from: code) {
-                        Image(nsImage: qrImage)
-                            .interpolation(.none)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 200, height: 200)
-                    }
-
-                    Text(code)
-                        .font(.system(.caption, design: .monospaced))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity)
-
-                    Button("Copy code") {
-                        SystemActions.copyToPasteboard(code)
-                    }
+                    CodeDisplay(code: code, qrSize: 200)
 
                     Text(
                         "Anyone with this code has full access to your library. Keep it secret. Use it only to restore on a new device when you have no other device available."
