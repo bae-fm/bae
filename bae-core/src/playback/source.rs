@@ -167,12 +167,6 @@ impl PlaybackSource {
         }
     }
 
-    /// Whether the current track's completion has already been reported. The
-    /// audio callback projects this into `DrainStatus::Completed`.
-    pub fn completion_reported(&self) -> bool {
-        self.completion_reported
-    }
-
     /// Cancel the current decoder and any staged next decoder.
     pub fn cancel(&self) {
         self.current.cancel();
@@ -531,17 +525,14 @@ mod tests {
             source.take_completion_event().is_none(),
             "track 1's completion is not reported twice"
         );
-        assert!(source.completion_reported());
 
         // Replace with track 2 over the SAME source; its completion reports fresh.
+        // That `replace` resets the completion latch is proven by track 2's
+        // take succeeding below — an unreset latch would swallow it.
         let (mut sink2, src2, _r2) = create_track_stream_pair(44100, 1);
         assert_eq!(sink2.push_samples(&[2.0]), 1);
         sink2.mark_finished();
         source.replace(src2, fmt("t2"));
-        assert!(
-            !source.completion_reported(),
-            "replace resets the completion latch"
-        );
 
         let mut out = [0.0f32; 8];
         assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 1);

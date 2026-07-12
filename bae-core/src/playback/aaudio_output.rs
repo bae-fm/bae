@@ -241,10 +241,6 @@ impl AudioOutput for AAudioOutput {
                     // Persistent output: a drained track idles the writer rather
                     // than ending it — the next track's source replace resumes it.
                     // The thread exits only on the stop flag (stream dropped).
-                    DrainStatus::Completed => {
-                        std::thread::sleep(std::time::Duration::from_millis(1));
-                        continue;
-                    }
                     DrainStatus::Idle => {
                         std::thread::sleep(std::time::Duration::from_millis(1));
                         continue;

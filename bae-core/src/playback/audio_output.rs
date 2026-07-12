@@ -95,7 +95,6 @@ impl AtomicF32 {
 pub(crate) enum DrainStatus {
     Idle,
     Samples { read: usize },
-    Completed,
 }
 
 #[cfg(feature = "test-utils")]
@@ -222,11 +221,7 @@ impl AudioDrain {
             if zero_unfilled {
                 buf.fill(0.0);
             }
-            return if source_guard.completion_reported() {
-                DrainStatus::Completed
-            } else {
-                DrainStatus::Idle
-            };
+            return DrainStatus::Idle;
         }
 
         if apply_gain {
@@ -526,15 +521,10 @@ where
             }
 
             match drain.drain_iteration(&mut buf, false, false, None) {
+                // Idle covers a drained track too: the output stream is persistent,
+                // so the thread keeps running until the source is replaced with the
+                // next track or the stream is dropped (the stop flag).
                 DrainStatus::Idle => {
-                    std::thread::sleep(std::time::Duration::from_millis(1));
-                    continue;
-                }
-                // A drained track does NOT end the capture thread: the output
-                // stream is persistent, so it keeps running (idle) until the
-                // source is replaced with the next track or the stream is dropped
-                // (the stop flag). Equivalent to Idle here by design.
-                DrainStatus::Completed => {
                     std::thread::sleep(std::time::Duration::from_millis(1));
                     continue;
                 }
@@ -814,14 +804,10 @@ impl AudioOutput for RealtimeProbeOutput {
                 }
 
                 match drain.drain_iteration(&mut buf, true, false, None) {
-                    DrainStatus::Idle => {
-                        std::thread::sleep(std::time::Duration::from_millis(1));
-                        continue;
-                    }
                     // Persistent output: a drained track idles rather than ending
                     // the probe thread, which exits only when the stream is dropped
                     // (the stop flag).
-                    DrainStatus::Completed => {
+                    DrainStatus::Idle => {
                         std::thread::sleep(std::time::Duration::from_millis(1));
                         continue;
                     }
