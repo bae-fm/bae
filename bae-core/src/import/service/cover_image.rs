@@ -3,7 +3,7 @@
 //! Builds the `DbLibraryImage` record (and its bytes) for a local cover,
 //! ranking folder images so `cover`/`front` wins when the user made no pick.
 
-use crate::import::types::DiscoveredFile;
+use crate::import::folder_scanner::ScannedFile;
 use crate::util::content_type_hint::ContentTypeHint;
 
 use super::format_prep::resolve_file_content_type;
@@ -19,13 +19,13 @@ impl ImportService {
     pub(super) fn build_cover_image_record(
         &self,
         release_id: &str,
-        discovered_files: &[DiscoveredFile],
+        discovered_files: &[ScannedFile],
         selected_cover_path: Option<&str>,
     ) -> Result<Option<(crate::db::DbLibraryImage, Vec<u8>)>, crate::import::ImportError> {
         use crate::db::{DbLibraryImage, LibraryImageType};
         use crate::import::ImportError;
 
-        let mut image_files: Vec<(&DiscoveredFile, &str)> = Vec::new();
+        let mut image_files: Vec<(&ScannedFile, &str)> = Vec::new();
         for f in discovered_files {
             if ContentTypeHint::path_is_raster_image(&f.path) {
                 image_files.push((f, f.relative_path.as_str()));

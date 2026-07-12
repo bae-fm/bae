@@ -597,22 +597,6 @@ pub struct CueAnalyzedAudioFile {
     pub probe: ProbeResult,
 }
 
-/// A file discovered during folder scan.
-///
-/// `path` is the absolute location on disk — used for reading bytes.
-/// `relative_path` is the file's identity within the release (e.g. `CD1/CDImage.ape`)
-/// — used as the HashMap key throughout the import pipeline and as
-/// `DbFile.original_filename`. Two files may share a bare filename; they never
-/// share a relative_path within one release.
-// Only the desktop import pipeline (folder scan → commit) constructs these.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Clone, Debug)]
-pub struct DiscoveredFile {
-    pub path: PathBuf,
-    pub relative_path: String,
-    pub size: u64,
-}
-
 /// Import command sent to the service worker.
 ///
 /// Carries only identifiers, not payloads. For `IdentityChoice::Exact`

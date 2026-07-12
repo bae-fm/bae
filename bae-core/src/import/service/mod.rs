@@ -12,10 +12,10 @@ use {
     },
     crate::import::folder_registry::ImportFolderRegistry,
     crate::import::folder_scanner::{
-        scan_for_candidates_with_callback, FolderScanError, InvalidCandidate, ScanItem,
+        scan_for_candidates_with_callback, FolderScanError, InvalidCandidate, ScanItem, ScannedFile,
     },
     crate::import::track_to_file_mapper::map_tracks_to_files,
-    crate::import::types::{CoverSelection, DiscoveredFile, ImportPhase, PrepareStep, TrackFile},
+    crate::import::types::{CoverSelection, ImportPhase, PrepareStep, TrackFile},
     crate::import::ParsedWorkGraph,
     notify_debouncer_full::DebounceEventResult,
     std::collections::{HashMap, HashSet},
@@ -619,7 +619,7 @@ impl ImportService {
         // `categorized` set. Flatten it into the discovered-files list
         // the downstream pipeline consumes.
         emit_preparing(PrepareStep::DiscoveringFiles);
-        let discovered_files = crate::import::handle::categorized_to_discovered_files(&categorized);
+        let discovered_files = crate::import::handle::flatten_categorized_files(&categorized);
 
         step_times.push(("discover_files", last_step_start.elapsed()));
         last_step_start = std::time::Instant::now();
@@ -796,7 +796,7 @@ impl ImportService {
         storage_mode: &StorageMode,
         pin: bool,
         prepared: &mut PreparedMetadata,
-        discovered_files: &[DiscoveredFile],
+        discovered_files: &[ScannedFile],
         tracks_to_files: &[TrackFile],
         selected_cover_path: Option<&str>,
         import_id: &str,

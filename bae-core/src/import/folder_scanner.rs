@@ -30,7 +30,10 @@ const PARTIAL_MARKER_EXTENSIONS: &[&str] = &["part", "crdownload", "download", "
 pub struct ScannedFile {
     /// Absolute filesystem path. A scanned file is always on disk.
     pub path: PathBuf,
-    /// Relative path from release root (for display)
+    /// The file's identity within the release (e.g. `CD1/CDImage.ape`) — used
+    /// as the HashMap key throughout the import pipeline and as
+    /// `DbFile.original_filename`. Two files may share a bare filename; they
+    /// never share a relative_path within one release.
     pub relative_path: String,
     /// File size in bytes
     pub size: u64,

@@ -126,16 +126,8 @@ async fn explicit_bmp_cover_is_selected() {
     std::fs::write(&bmp, b"bmp bytes").unwrap();
     std::fs::write(&jpg, b"jpg bytes").unwrap();
     let discovered = vec![
-        DiscoveredFile {
-            path: bmp.clone(),
-            relative_path: "cover.bmp".to_string(),
-            size: 9,
-        },
-        DiscoveredFile {
-            path: jpg,
-            relative_path: "front.jpg".to_string(),
-            size: 9,
-        },
+        ScannedFile::new(bmp.clone(), "cover.bmp".to_string(), 9),
+        ScannedFile::new(jpg, "front.jpg".to_string(), 9),
     ];
 
     let (image, bytes) = service
@@ -156,11 +148,7 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
     let (service, tmp) = setup_import_service().await;
     let fallback = tmp.path().join("front.jpg");
     std::fs::write(&fallback, b"jpg bytes").unwrap();
-    let discovered = vec![DiscoveredFile {
-        path: fallback,
-        relative_path: "front.jpg".to_string(),
-        size: 9,
-    }];
+    let discovered = vec![ScannedFile::new(fallback, "front.jpg".to_string(), 9)];
 
     let err = service
         .build_cover_image_record("release-1", &discovered, Some("cover.bmp"))
@@ -288,11 +276,7 @@ async fn unreadable_selected_cover_is_an_error() {
     let cover = tmp.path().join("cover.jpg");
     std::fs::write(&cover, b"jpg bytes").unwrap();
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o000)).unwrap();
-    let discovered = vec![DiscoveredFile {
-        path: cover.clone(),
-        relative_path: "cover.jpg".to_string(),
-        size: 9,
-    }];
+    let discovered = vec![ScannedFile::new(cover.clone(), "cover.jpg".to_string(), 9)];
 
     let result = service.build_cover_image_record("release-1", &discovered, Some("cover.jpg"));
 

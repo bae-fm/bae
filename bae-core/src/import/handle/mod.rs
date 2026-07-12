@@ -3,7 +3,7 @@ use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::folder_registry::{ImportFolderRegistry, WatchedFolder};
 use crate::import::folder_scanner::{FolderCandidate, InvalidCandidate};
 use crate::import::types::{
-    DiscoveredFile, ImportCommand, ImportProgress, ImportStep, MetadataSource, StorageMode,
+    ImportCommand, ImportProgress, ImportStep, MetadataSource, StorageMode,
 };
 use crate::library::LibraryManager;
 use std::collections::HashMap;
@@ -847,42 +847,27 @@ pub fn categorized_audio_paths(
     paths
 }
 
-/// Flatten a `CategorizedFiles` into the `DiscoveredFile` list the downstream
+/// Flatten a `CategorizedFiles` into the flat file list the downstream
 /// import pipeline consumes for progress tracking and byte accounting.
 /// Ordering mirrors the scan's structured output: audio first (pairs before
 /// per-track, in natural sort within each), then artwork, then documents.
-pub(crate) fn categorized_to_discovered_files(
+pub(crate) fn flatten_categorized_files(
     categorized: &crate::import::folder_scanner::CategorizedFiles,
-) -> Vec<DiscoveredFile> {
+) -> Vec<crate::import::folder_scanner::ScannedFile> {
     use crate::import::folder_scanner::AudioContent;
-    let mut files: Vec<DiscoveredFile> = Vec::new();
-    let push = |files: &mut Vec<DiscoveredFile>, f: &crate::import::folder_scanner::ScannedFile| {
-        files.push(DiscoveredFile {
-            path: f.path.clone(),
-            relative_path: f.relative_path.clone(),
-            size: f.size,
-        });
-    };
+    let mut files = Vec::new();
     match &categorized.audio {
         AudioContent::CueFlacPairs { pairs, .. } => {
             for pair in pairs {
-                push(&mut files, &pair.cue_file);
-                for audio_file in &pair.audio_files {
-                    push(&mut files, audio_file);
-                }
+                files.push(pair.cue_file.clone());
+                files.extend(pair.audio_files.iter().cloned());
             }
         }
         AudioContent::TrackFiles { tracks, .. } => {
-            for f in tracks {
-                push(&mut files, f);
-            }
+            files.extend(tracks.iter().cloned());
         }
     }
-    for f in &categorized.artwork {
-        push(&mut files, f);
-    }
-    for f in &categorized.documents {
-        push(&mut files, f);
-    }
+    files.extend(categorized.artwork.iter().cloned());
+    files.extend(categorized.documents.iter().cloned());
     files
 }
