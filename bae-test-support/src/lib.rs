@@ -236,8 +236,6 @@ pub struct MockCloudHome {
     /// How many of the next `read_range` calls error before serving real bytes.
     /// Drives the pin-retry test: a transient stall must not fail the pin.
     fail_next_range_reads: std::sync::atomic::AtomicUsize,
-    /// Count of `read` (full-object) calls — a chunked pin must issue none.
-    full_reads: std::sync::atomic::AtomicUsize,
 }
 
 impl MockCloudHome {
@@ -246,15 +244,7 @@ impl MockCloudHome {
             blobs: std::sync::Mutex::new(std::collections::HashMap::new()),
             fail_writes: std::sync::atomic::AtomicBool::new(false),
             fail_next_range_reads: std::sync::atomic::AtomicUsize::new(0),
-            full_reads: std::sync::atomic::AtomicUsize::new(0),
         }
-    }
-
-    pub fn failing() -> Self {
-        let m = Self::new();
-        m.fail_writes
-            .store(true, std::sync::atomic::Ordering::SeqCst);
-        m
     }
 
     /// Arm `write` to fail, so a test can connect over a working home (its sync
@@ -271,27 +261,9 @@ impl MockCloudHome {
             .store(n, std::sync::atomic::Ordering::SeqCst);
     }
 
-    /// How many full-object `read` calls have been issued.
-    pub fn full_read_count(&self) -> usize {
-        self.full_reads.load(std::sync::atomic::Ordering::SeqCst)
-    }
-
-    /// Seed a blob directly (e.g. an encrypted file for a CloudOnly read).
-    pub fn put(&self, key: &str, data: Vec<u8>) {
-        self.blobs.lock().unwrap().insert(key.to_string(), data);
-    }
-
-    pub fn contains(&self, key: &str) -> bool {
-        self.blobs.lock().unwrap().contains_key(key)
-    }
-
     /// Drop a blob (e.g. to drive a missing-blob read failure).
     pub fn remove(&self, key: &str) {
         self.blobs.lock().unwrap().remove(key);
-    }
-
-    pub fn key_count(&self) -> usize {
-        self.blobs.lock().unwrap().len()
     }
 }
 
@@ -320,8 +292,6 @@ impl coven::CloudHome for MockCloudHome {
     }
 
     async fn read(&self, key: &str) -> Result<Vec<u8>, coven::CloudHomeError> {
-        self.full_reads
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         self.blobs
             .lock()
             .unwrap()
