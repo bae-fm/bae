@@ -26,7 +26,6 @@ Tabelle completamente locali, mai dichiarate a coven:
 - **`playback_state`**: traccia corrente, posizione, coda, volume, ordine casuale e ripetizione. La riproduzione è un fatto del dispositivo.
 - **`imports`**: tracciamento delle operazioni di importazione.
 - **`release_metadata`**: JSON grezzo archiviato da MusicBrainz e Discogs, conservato per reinterpretazioni future.
-- **`attribution_names`**: nomi di visualizzazione per chiavi membro.
 
 Ogni tabella sincronizzata porta una colonna `_updated_at` di clock logico ibrido, il registro con cui l'unione campo per campo di coven ordina le modifiche concorrenti; un test impone che l'insieme sincronizzato e l'insieme con clock siano esattamente uguali.
 

@@ -98,8 +98,8 @@ pub const ARTIST_IMAGES_CACHE_BUDGET: u64 = 256 * 1024 * 1024; // 256 MiB
 /// read), so bae does not hand-maintain a blob source.
 ///
 /// Deliberately excluded:
-///   - local-only tables (`release_metadata`, `imports`, `attribution_names`)
-///     — no `_updated_at`. coven's own bookkeeping tables (`sync_state`,
+///   - local-only tables (`release_metadata`, `imports`) — no `_updated_at`.
+///     coven's own bookkeeping tables (`sync_state`,
 ///     `sync_cursors`, `cloud_outbox`) live outside bae's migration entirely.
 ///
 /// Passed to [`coven::Coven::builder`], which attaches the capture session to

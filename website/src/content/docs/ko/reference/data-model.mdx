@@ -26,7 +26,6 @@ schema에서 동기화되는 중심부는 다음과 같습니다.
 - **`playback_state`**: 현재 트랙, 위치, 대기열, 볼륨, 셔플과 반복입니다. 재생은 기기의 사실입니다.
 - **`imports`**: 가져오기 작업 추적입니다.
 - **`release_metadata`**: MusicBrainz와 Discogs에서 받은 raw JSON 보관본입니다. 나중에 다시 해석하기 위해 보관합니다.
-- **`attribution_names`**: member key의 표시 이름입니다.
 
 모든 synced table은 `_updated_at` hybrid-logical-clock column을 가집니다. coven이 동시 편집을 필드별로 병합할 때 이 register로 순서를 정합니다. 테스트는 synced set과 clock-carrying set이 정확히 같은지 확인합니다.
 

@@ -26,7 +26,6 @@ schema का समन्वयित केंद्र:
 - **`playback_state`**: मौजूदा ट्रैक, स्थिति, कतार, volume, shuffle और repeat। प्लेबैक उपकरण की अवस्था है।
 - **`imports`**: आयात प्रक्रिया पर नजर।
 - **`release_metadata`**: MusicBrainz और Discogs से archived raw JSON, आगे फिर समझने के लिए रखा गया।
-- **`attribution_names`**: सदस्य कुंजियों के display names।
 
 हर समन्वयित तालिका में `_updated_at` hybrid-logical-clock column होता है, वही register जिससे coven का फ़ील्ड-by-फ़ील्ड merge साथ-साथ हुए edits को क्रम देता है; test यह लागू करता है कि समन्वयित set और clock रखने वाला set बिल्कुल समान हों।
 

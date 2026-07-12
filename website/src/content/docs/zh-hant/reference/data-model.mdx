@@ -26,7 +26,6 @@ Schema 中會同步的核心：
 - **`playback_state`**：目前曲目、位置、佇列、音量、隨機播放與重複播放。播放是裝置事實。
 - **`imports`**：匯入操作追蹤。
 - **`release_metadata`**：從 MusicBrainz 與 Discogs 封存的原始 JSON，供未來重新解讀。
-- **`attribution_names`**：成員金鑰的顯示名稱。
 
 每個同步表都帶有 `_updated_at` hybrid-logical-clock 欄位，也就是 coven 逐欄合併並行編輯時排序的 register；測試會強制同步表集合與帶有 clock 的表集合完全相等。
 

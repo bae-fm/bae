@@ -26,7 +26,6 @@ Các bảng hoàn toàn cục bộ, không bao giờ khai báo cho coven:
 - **`playback_state`**: track hiện tại, vị trí, hàng đợi, âm lượng, phát ngẫu nhiên và lặp lại. Phát lại là sự kiện của thiết bị.
 - **`imports`**: theo dõi thao tác nhập.
 - **`release_metadata`**: JSON thô đã lưu trữ từ MusicBrainz và Discogs, giữ cho diễn giải lại sau này.
-- **`attribution_names`**: tên hiển thị cho khóa thành viên.
 
 Mọi bảng đồng bộ mang cột `_updated_at` hybrid-logical-clock, thanh ghi mà merge theo từng trường của coven dùng để sắp thứ tự chỉnh sửa đồng thời; một test bảo đảm tập bảng đồng bộ và tập bảng mang đồng hồ là bằng nhau chính xác.
 

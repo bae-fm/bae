@@ -366,11 +366,6 @@ CREATE INDEX IF NOT EXISTS idx_audio_format_segments_format_id ON audio_format_s
 CREATE INDEX IF NOT EXISTS idx_imports_status ON imports (status);
 CREATE INDEX IF NOT EXISTS idx_imports_release_id ON imports (release_id);
 
-CREATE TABLE IF NOT EXISTS attribution_names (
-    pubkey_hex TEXT PRIMARY KEY,
-    display_name TEXT NOT NULL
-);
-
 -- Device-local playback queue, restored after a restart on the same device.
 -- NOT synced: no `_updated_at` and absent from `synced_tables()`, the same
 -- device-local convention as coven's own bookkeeping tables. A single row

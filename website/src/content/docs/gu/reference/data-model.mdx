@@ -26,7 +26,6 @@ Schema નું synced heart:
 - **`playback_state`**: current track, position, queue, volume, shuffle અને repeat. Playback device fact છે.
 - **`imports`**: import operation tracking.
 - **`release_metadata`**: MusicBrainz અને Discogs માંથી archived raw JSON, future re-interpretation માટે kept.
-- **`attribution_names`**: member keys માટે display names.
 
 દરેક synced table `_updated_at` hybrid-logical-clock column ધરાવે છે, register જેનાથી coven concurrent edits ને field-by-field merge order કરે છે; test enforce કરે છે કે synced set અને clock-carrying set exactly equal છે.
 

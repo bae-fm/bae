@@ -26,7 +26,6 @@ Tamamen yerel tablolar, coven'e asla bildirilmez:
 - **`playback_state`**: geçerli parça, konum, kuyruk, ses seviyesi, shuffle ve repeat. Çalma bir aygıt gerçeğidir.
 - **`imports`**: içe aktarma işlemi takibi.
 - **`release_metadata`**: MusicBrainz ve Discogs'tan arşivlenmiş ham JSON; gelecekte yeniden yorumlama için tutulur.
-- **`attribution_names`**: üye anahtarları için görüntü adları.
 
 Her eşzamanlanan tablo bir `_updated_at` hybrid-logical-clock sütunu taşır; coven'in alan alan birleştirmesi eşzamanlı düzenlemeleri bu register ile sıralar. Bir test, eşzamanlanan küme ile saat taşıyan kümenin tam olarak eşit olduğunu denetler.
 

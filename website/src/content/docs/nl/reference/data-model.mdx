@@ -26,7 +26,6 @@ Volledig lokale tabellen, nooit aan coven gedeclareerd:
 - **`playback_state`**: huidige track, positie, wachtrij, volume, shuffle en repeat. Afspelen is een apparaatfeit.
 - **`imports`**: tracking van importbewerkingen.
 - **`release_metadata`**: gearchiveerde ruwe JSON van MusicBrainz en Discogs, bewaard voor latere herinterpretatie.
-- **`attribution_names`**: displaynamen voor ledensleutels.
 
 Elke gesynchroniseerde tabel draagt een `_updated_at` hybrid-logical-clock-kolom, het register waarmee coven gelijktijdige bewerkingen veld voor veld ordent; een test dwingt af dat de gesynchroniseerde set en de klokdragende set exact gelijk zijn.
 

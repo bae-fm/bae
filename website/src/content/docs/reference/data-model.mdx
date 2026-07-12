@@ -26,7 +26,6 @@ Fully local tables, never declared to coven:
 - **`playback_state`**: current track, position, queue, volume, shuffle and repeat. Playback is a device fact.
 - **`imports`**: import operation tracking.
 - **`release_metadata`**: archived raw JSON from MusicBrainz and Discogs, kept for future re-interpretation.
-- **`attribution_names`**: display names for member keys.
 
 Every synced table carries an `_updated_at` hybrid-logical-clock column, the register coven's field-by-field merge orders concurrent edits by; a test enforces that the synced set and the clock-carrying set are exactly equal.
 

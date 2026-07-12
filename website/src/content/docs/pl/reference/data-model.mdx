@@ -26,7 +26,6 @@ Tabele w pełni lokalne, nigdy niedeklarowane do coven:
 - **`playback_state`**: bieżący utwór, pozycja, kolejka, głośność, losowanie i powtarzanie. Odtwarzanie jest faktem urządzenia.
 - **`imports`**: śledzenie operacji importu.
 - **`release_metadata`**: zarchiwizowany surowy JSON z MusicBrainz i Discogs, zachowany do przyszłej ponownej interpretacji.
-- **`attribution_names`**: nazwy wyświetlane dla kluczy członków.
 
 Każda synchronizowana tabela niesie kolumnę `_updated_at` z hybrydowym zegarem logicznym, rejestr, według którego coven porządkuje równoległe edycje pole po polu; test wymusza, że zestaw synchronizowany i zestaw niosący zegar są dokładnie równe.
 

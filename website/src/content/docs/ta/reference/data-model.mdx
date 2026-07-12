@@ -26,7 +26,6 @@ schema வின் synced heart:
 - **`playback_state`**: தற்போதைய பாதை, நிலை, வரிசை, volume, shuffle and repeat. Playback என்பது சாதனம் fact.
 - **`imports`**: இறக்குமதி operation tracking.
 - **`release_metadata`**: MusicBrainz மற்றும் Discogs இலிருந்து archived raw JSON, எதிர்கால re-interpretation க்கு.
-- **`attribution_names`**: உறுப்பினர் விசைகள் க்கான display names.
 
 ஒவ்வொரு synced அட்டவணை உம் `_updated_at` hybrid-logical-clock column கொண்டிருக்கும்; concurrent edits ஐ coven புலம்-by-புலம் merge செய்ய அதுவே register. synced set மற்றும் clock-carrying set துல்லியமாக equal என்பதைக் test enforce செய்கிறது.
 

@@ -26,7 +26,6 @@ Schema యొక్క సమకాలీకరించే గుండె:
 - **`playback_state`**: ప్రస్తుత పాట, స్థానం, వరుస, శబ్ద పరిమాణం, shuffle మరియు repeat. వినిపింపు పరికర విషయం.
 - **`imports`**: దిగుమతి చర్యల గమనిక.
 - **`release_metadata`**: MusicBrainz మరియు Discogs నుంచి archived raw JSON, భవిష్యత్తులో మళ్లీ అర్థం చేసుకోవడానికి ఉంచబడుతుంది.
-- **`attribution_names`**: సభ్యుడు కీలు కోసం display names.
 
 ప్రతి సమకాలీకరించిన పట్టిక `_updated_at` hybrid-logical-clock column మోస్తుంది, ఒకేసారి వచ్చిన సవరణలను క్షేత్రం-by-క్షేత్రం కలుపుతప్పుడు coven order చేసే register అదే; సమకాలీకరించే సమూహం మరియు clock మోసే సమూహం ఖచ్చితంగా సమానమని test enforce చేస్తుంది.
 

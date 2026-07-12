@@ -26,7 +26,6 @@ bae-এর তালিকা সাধারণ SQLite, [coven](https://coven.b
 - **`playback_state`**: current track, position, queue, volume, shuffle ও repeat। Playback একটি device fact।
 - **`imports`**: ইম্পোর্টের কাজ tracking।
 - **`release_metadata`**: MusicBrainz ও Discogs থেকে archived raw JSON, ভবিষ্যৎ re-interpretation-এর জন্য রাখা।
-- **`attribution_names`**: member key-এর display name।
 
 প্রতিটি সিঙ্ক হওয়া table `_updated_at` hybrid-logical-clock column বহন করে, যেটি coven-এর field-by-field merge concurrent edit order করতে ব্যবহার করে; একটি test নিশ্চিত করে synced set এবং clock-carrying set ঠিক এক।
 
