@@ -11,7 +11,7 @@ use crate::support::{
     seed_discogs_test_release, test_config_and_keys, tracing_init, wait_for_import_complete,
 };
 use bae_core::audio_codec::{decode_audio, probe_audio_from_path};
-use bae_core::cue_flac::CueFlacProcessor;
+use bae_core::cue_flac::parse_cue_sheet;
 use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::discid::compute_discid_from_categorized;
@@ -469,8 +469,7 @@ const EXPECTED_CUE_ALAC_DISC_ID: &str = "RGsIqQtOzlx_LdxgsE0wIvFi8h4-";
 // misreads the fixture, both tests would drift together without this.
 #[test]
 fn cue_alac_cue_sheet_has_three_tracks() {
-    let sheet =
-        CueFlacProcessor::parse_cue_sheet(&fixture_dir().join("cue-alac.cue")).expect("parse cue");
+    let sheet = parse_cue_sheet(&fixture_dir().join("cue-alac.cue")).expect("parse cue");
     assert_eq!(sheet.tracks.len(), 3);
     // INDEX 01 is in CUE frames (1/75s). The three tracks start at 0, 3s, 6s.
     assert_eq!(sheet.tracks[0].start_cue_frames, 0);

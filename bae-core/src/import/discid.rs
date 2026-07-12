@@ -325,7 +325,7 @@ pub fn compute_discid_from_paths(
     }
 
     for cue_path in cue_paths {
-        let sheet = match crate::cue_flac::CueFlacProcessor::parse_cue_sheet(cue_path) {
+        let sheet = match crate::cue_flac::parse_cue_sheet(cue_path) {
             Ok(s) => s,
             Err(e) => {
                 debug!("Skipping unparseable CUE {:?}: {}", cue_path, e);

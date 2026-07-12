@@ -634,8 +634,7 @@ FILE "Test Album.ape" WAVE
         )
         .expect("write cue");
 
-        let cue_sheet =
-            crate::cue_flac::CueFlacProcessor::parse_cue_sheet(&cue_path).expect("parse cue");
+        let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
         let analysis = crate::import::track_to_file_mapper::analyze_cue_audio(&audio_path)
             .expect("analyze ape");
         let cue_pair = Arc::new(CueFlacAnalysis {
@@ -824,8 +823,7 @@ FILE "test.flac" WAVE
 "#,
         )
         .expect("write cue");
-        let cue_sheet =
-            crate::cue_flac::CueFlacProcessor::parse_cue_sheet(&cue_path).expect("parse cue");
+        let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
         let cue_pair = CueFlacAnalysis {
             cue_sheet,
             audio_files: vec![CueAnalyzedAudioFile {
@@ -879,8 +877,7 @@ FILE "test.ape" WAVE
         )
         .expect("write cue");
 
-        let cue_sheet =
-            crate::cue_flac::CueFlacProcessor::parse_cue_sheet(&cue_path).expect("parse cue");
+        let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
         let cue_pair = Arc::new(CueFlacAnalysis {
             cue_sheet,
             audio_files: vec![CueAnalyzedAudioFile {

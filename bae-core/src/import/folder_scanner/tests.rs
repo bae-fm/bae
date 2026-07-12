@@ -135,7 +135,7 @@ fn test_cue_parser_counts_audio_tracks_and_captures_file_reference() {
     let content = "FILE \"album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 01 05:00:00\n  TRACK 03 AUDIO\n    INDEX 01 10:00:00\n";
     std::fs::write(&cue, content).unwrap();
 
-    let sheet = CueFlacProcessor::parse_cue_sheet(&cue).unwrap();
+    let sheet = parse_cue_sheet(&cue).unwrap();
     assert_eq!(sheet.single_file(), Some("album.flac"));
     assert_eq!(sheet.tracks.len(), 3);
 }
@@ -149,7 +149,7 @@ fn test_cue_parser_tolerates_missing_performer_title() {
     let content = "FILE \"dummy.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n";
     std::fs::write(&cue, content).unwrap();
 
-    let sheet = CueFlacProcessor::parse_cue_sheet(&cue).unwrap();
+    let sheet = parse_cue_sheet(&cue).unwrap();
     assert!(sheet.title.is_none());
     assert!(sheet.performer.is_none());
     assert_eq!(sheet.single_file(), Some("dummy.flac"));
@@ -163,7 +163,7 @@ fn test_cue_parser_stops_at_data_track() {
     let content = "FILE \"album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 MODE1/2048\n    INDEX 01 05:00:00\n";
     std::fs::write(&cue, content).unwrap();
 
-    let sheet = CueFlacProcessor::parse_cue_sheet(&cue).unwrap();
+    let sheet = parse_cue_sheet(&cue).unwrap();
     assert_eq!(sheet.tracks.len(), 2);
     assert_eq!(sheet.playable_track_count(), 1);
     assert!(matches!(
@@ -1473,7 +1473,7 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
         FileKind::CueFor { n_tracks, .. }
         | FileKind::CueUnquoted { n_tracks, .. }
         | FileKind::NonPairingCue { n_tracks, .. } => {
-            let sheet = CueFlacProcessor::parse_cue_sheet(path).unwrap_or_else(|e| {
+            let sheet = parse_cue_sheet(path).unwrap_or_else(|e| {
                 panic!(
                     "fixture builder bug: CUE at {:?} fails parse: {:?}",
                     path, e,
@@ -1492,7 +1492,7 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
             n_tracks,
             file_reference,
         } => {
-            let sheet = CueFlacProcessor::parse_cue_sheet(path).unwrap_or_else(|e| {
+            let sheet = parse_cue_sheet(path).unwrap_or_else(|e| {
                 panic!(
                     "fixture builder bug: headerless CUE at {:?} fails parse: {:?}",
                     path, e,

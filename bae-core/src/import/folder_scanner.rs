@@ -7,7 +7,7 @@
 //!
 //! The detection logic runs over a `FileTree` built once from the filesystem.
 use super::file_validation;
-use crate::cue_flac::CueFlacProcessor;
+use crate::cue_flac::parse_cue_sheet;
 use crate::util::content_type_hint::ContentTypeHint;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -829,7 +829,7 @@ fn categorize_files_from_tree(
     // candidate leaf; the watched root scan keeps walking siblings.
     let mut parsed_cues: HashMap<PathBuf, crate::cue_flac::CueSheet> = HashMap::new();
     for cue in &all_cue {
-        match CueFlacProcessor::parse_cue_sheet(&cue.path) {
+        match parse_cue_sheet(&cue.path) {
             Ok(sheet) => {
                 parsed_cues.insert(cue.path.clone(), sheet);
             }
