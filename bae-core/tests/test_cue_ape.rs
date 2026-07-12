@@ -20,7 +20,7 @@ use bae_core::playback::{PlaybackProgress, PlaybackState};
 use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use bae_test_support as support;
-use coven::{EncryptionService, InMemoryCloudHome, StoreDir};
+use coven::{EncryptionService, StoreDir};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -1062,7 +1062,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
     if storage_mode == StorageMode::Remote {
         library_manager
             .connect_test_cloud_home(
-                Arc::new(InMemoryCloudHome::new()),
+                Arc::new(support::MockCloudHome::new()),
                 CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
             )
             .await
