@@ -214,7 +214,7 @@ struct ImportSearchPane: View {
     private struct FoundResult {
         let group: ReleaseGroup
         let statuses: [String: BridgeLibraryStatus]
-        let provenance: [String: ResultProvenance]
+        let provenance: [String: BridgeResultProvenance]
     }
 
     /// The auto-identified release group, its library statuses, and per-row

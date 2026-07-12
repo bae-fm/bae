@@ -1,88 +1,6 @@
 import BaeKit
 import Foundation
 
-/// Which signal(s) backed a terminal `Found` state. Drives source-specific
-/// banner copy.
-enum IdentifySource: Equatable {
-    case discid
-    case barcode
-    /// Both signals contributed to the result via intersection.
-    case combined
-
-    init(bridge: BridgeIdentifySource) {
-        switch bridge {
-        case .discid: self = .discid
-        case .barcode: self = .barcode
-        case .combined: self = .combined
-        }
-    }
-}
-
-/// Per-signal disc-ID progress inside `Triangulating`.
-enum DiscidProgress: Equatable {
-    case computing
-    case lookingUp
-    case done(nResults: UInt32)
-    case skipped
-    case failed(failure: BridgeLookupFailure)
-
-    init(bridge: BridgeDiscidProgress) {
-        switch bridge {
-        case .computing: self = .computing
-        case .lookingUp: self = .lookingUp
-        case .done(let n): self = .done(nResults: n)
-        case .skipped: self = .skipped
-        case .failed(let failure):
-            self = .failed(failure: failure)
-        }
-    }
-}
-
-/// Per-signal barcode progress inside `Triangulating`.
-enum BarcodeProgress: Equatable {
-    case scanning
-    case lookingUp(current: String, position: UInt32, total: UInt32)
-    case done(nResults: UInt32)
-    case failed(failure: BridgeLookupFailure)
-    case skipped
-
-    init(bridge: BridgeBarcodeProgress) {
-        switch bridge {
-        case .scanning: self = .scanning
-        case .lookingUp(let current, let position, let total):
-            self = .lookingUp(
-                current: current,
-                position: position,
-                total: total,
-            )
-        case .done(let n): self = .done(nResults: n)
-        case .failed(let failure):
-            self = .failed(failure: failure)
-        case .skipped: self = .skipped
-        }
-    }
-}
-
-/// Which signals produced or confirmed one result, for the per-row badges.
-/// Mirrors `bae_core::identify::ResultProvenance`.
-struct ResultProvenance: Equatable {
-    let byDiscId: Bool
-    let byBarcode: Bool
-    let matchesCatalog: Bool
-
-    init(byDiscId: Bool, byBarcode: Bool, matchesCatalog: Bool) {
-        self.byDiscId = byDiscId
-        self.byBarcode = byBarcode
-        self.matchesCatalog = matchesCatalog
-    }
-
-    init(bridge: BridgeResultProvenance) {
-        byDiscId = bridge.byDiscId
-        byBarcode = bridge.byBarcode
-        matchesCatalog = bridge.matchesCatalog
-    }
-}
-
 /// Mirror of `bae_core::identify::IdentifyState`. The import-candidate
 /// projection assigns one of these onto a candidate on every refresh; the UI
 /// switches on the variant to render banners and match lists.
@@ -92,14 +10,17 @@ enum IdentifyState: Equatable {
     /// show side-by-side pipes ("Computing disc-id ✓ · Looking up barcode
     /// 2 of 3..."). The pipeline transitions to a terminal state once
     /// both pipes settle.
-    case triangulating(discid: DiscidProgress, barcode: BarcodeProgress)
+    case triangulating(
+        discid: BridgeDiscidProgress,
+        barcode: BridgeBarcodeProgress
+    )
     case found(
         group: ReleaseGroup,
         libraryStatuses: [String: BridgeLibraryStatus],
         trackCount: UInt32,
-        source: IdentifySource,
+        source: BridgeIdentifySource,
         /// Per-pressing provenance keyed by release id — the per-row badges.
-        provenance: [String: ResultProvenance],
+        provenance: [String: BridgeResultProvenance],
     )
     /// Signals disagreed: empty intersection or multi-group result. The
     /// conflict surface presents the per-signal sections so the user can
@@ -123,10 +44,7 @@ enum IdentifyState: Equatable {
         switch bridge {
         case .idle: self = .idle
         case .triangulating(let discid, let barcode):
-            self = .triangulating(
-                discid: DiscidProgress(bridge: discid),
-                barcode: BarcodeProgress(bridge: barcode),
-            )
+            self = .triangulating(discid: discid, barcode: barcode)
         case .found(
             let group,
             let libraryStatuses,
@@ -138,10 +56,8 @@ enum IdentifyState: Equatable {
                 group: ReleaseGroup(bridge: group),
                 libraryStatuses: libraryStatuses,
                 trackCount: trackCount,
-                source: IdentifySource(bridge: source),
-                provenance: provenance.mapValues(
-                    ResultProvenance.init(bridge:)
-                ),
+                source: source,
+                provenance: provenance,
             )
         case .conflict(
             let discidResults,

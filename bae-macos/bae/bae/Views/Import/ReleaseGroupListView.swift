@@ -11,7 +11,7 @@ struct ReleaseGroupListView: View {
     let libraryStatuses: [String: BridgeLibraryStatus]
     /// Per-release provenance keyed by release id, for the signal badges.
     /// Empty for manual-search results (no auto-identify signals).
-    var provenance: [String: ResultProvenance] = [:]
+    var provenance: [String: BridgeResultProvenance] = [:]
     /// Release id of the pressing whose confirm pane is open, if any.
     let selectedReleaseId: String?
     let onSelect: (BridgeMetadataResult) -> Void

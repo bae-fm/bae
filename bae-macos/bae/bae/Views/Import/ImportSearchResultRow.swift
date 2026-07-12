@@ -17,7 +17,7 @@ struct ImportSearchResultRow: View {
     let libraryStatus: BridgeLibraryStatus?
     /// Which signals produced/confirmed this result, for the badge row. `nil`
     /// for manual-search results (no auto-identify signals).
-    var provenance: ResultProvenance?
+    var provenance: BridgeResultProvenance?
     let isSelected: Bool
     let onSelect: () -> Void
 
@@ -215,7 +215,7 @@ struct ImportSearchResultRow: View {
             ),
             isImporting: false,
             libraryStatus: nil,
-            provenance: ResultProvenance(
+            provenance: BridgeResultProvenance(
                 byDiscId: true,
                 byBarcode: false,
                 matchesCatalog: true

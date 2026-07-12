@@ -1111,18 +1111,19 @@ enum PreviewData {
         )
     )
 
-    static let searchProvenanceExact: [String: ResultProvenance] = Dictionary(
-        uniqueKeysWithValues: exactPressings.map {
-            (
-                $0.releaseId,
-                ResultProvenance(
-                    byDiscId: true,
-                    byBarcode: false,
-                    matchesCatalog: true
+    static let searchProvenanceExact: [String: BridgeResultProvenance] =
+        Dictionary(
+            uniqueKeysWithValues: exactPressings.map {
+                (
+                    $0.releaseId,
+                    BridgeResultProvenance(
+                        byDiscId: true,
+                        byBarcode: false,
+                        matchesCatalog: true
+                    )
                 )
-            )
-        }
-    )
+            }
+        )
 
     /// Two distinct release groups — the manual-search results state.
     static let searchGroupsManual: [ReleaseGroup] = [
