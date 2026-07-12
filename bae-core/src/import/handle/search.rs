@@ -12,12 +12,12 @@ impl SearchQuery {
                 artist,
                 album,
                 source: MetadataSource::MusicBrainz,
-            } => ProviderSearchParams::MusicBrainz(mb_general_params(artist, album, None, None)),
+            } => ProviderSearchParams::MusicBrainz(mb_general_params(artist, album)),
             SearchQuery::General {
                 artist,
                 album,
                 source: MetadataSource::Discogs,
-            } => ProviderSearchParams::Discogs(discogs_general_params(artist, album, None, None)),
+            } => ProviderSearchParams::Discogs(discogs_general_params(artist, album)),
             SearchQuery::CatalogNumber {
                 catalog_number,
                 source: MetadataSource::MusicBrainz,
@@ -50,17 +50,10 @@ impl SearchQuery {
     }
 }
 
-fn mb_general_params(
-    artist: String,
-    album: String,
-    year: Option<String>,
-    label: Option<String>,
-) -> crate::musicbrainz::ReleaseSearchParams {
+fn mb_general_params(artist: String, album: String) -> crate::musicbrainz::ReleaseSearchParams {
     crate::musicbrainz::ReleaseSearchParams {
         artist: Some(artist),
         album: Some(album),
-        year,
-        label,
         ..Default::default()
     }
 }
@@ -68,14 +61,10 @@ fn mb_general_params(
 fn discogs_general_params(
     artist: String,
     album: String,
-    year: Option<String>,
-    label: Option<String>,
 ) -> crate::discogs::client::DiscogsSearchParams {
     crate::discogs::client::DiscogsSearchParams {
         artist: Some(artist),
         release_title: Some(album),
-        year,
-        label,
         ..Default::default()
     }
 }
@@ -150,36 +139,6 @@ impl ImportServiceHandle {
         let groups = crate::import::release_group::group_results(results);
 
         Ok(GroupedSearchResults { groups, statuses })
-    }
-
-    pub async fn search_discogs(
-        &self,
-        artist: String,
-        album: String,
-        year: Option<String>,
-        label: Option<String>,
-    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
-        let client = self.discogs_client()?;
-        crate::import::search::search_discogs(
-            &client,
-            discogs_general_params(artist, album, year, label),
-        )
-        .await
-        .map_err(Into::into)
-    }
-
-    pub async fn search_musicbrainz(
-        &self,
-        artist: String,
-        album: String,
-        year: Option<String>,
-        label: Option<String>,
-    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
-        crate::import::search::search_mb(
-            &self.cover_art_archive,
-            mb_general_params(artist, album, year, label),
-        )
-        .await
     }
 
     /// Fetch available remote cover art options for a release.
