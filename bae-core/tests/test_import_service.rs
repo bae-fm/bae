@@ -383,9 +383,9 @@ async fn folder_scan_produces_candidates() {
 /// The watcher reconciles a folder against the candidates it last emitted: a new
 /// release folder appears as a candidate, and a deleted one emits
 /// `CandidateRemoved`. Driven by `scan_watched_folders` re-triggers (plus the
-/// watcher's own debounced FS reconciles) over a fixed window, so it doesn't
-/// hinge on filesystem-event timing — both paths reconcile to the same on-disk
-/// truth, so `contains` assertions hold regardless of how many fire.
+/// watcher's own debounced FS reconciles), so it doesn't hinge on
+/// filesystem-event timing — both paths reconcile to the same on-disk truth, so
+/// each step waits for its expected candidate event regardless of how many fire.
 #[tokio::test]
 #[serial]
 async fn watcher_reconciles_added_and_removed_candidates() {
@@ -403,12 +403,18 @@ async fn watcher_reconciles_added_and_removed_candidates() {
         .add_watched_folder(collection.to_string_lossy().into_owned())
         .unwrap();
 
-    let first = collect_scan_events(&mut scan_rx).await;
+    let first = scan_batch_until(&mut scan_rx, "the first album's candidate", |e| {
+        matches!(e, ScanEvent::FolderCandidate(c) if c.path.to_str() == Some(album1_key.as_str()))
+    })
+    .await;
     assert!(
         first.added.contains(&album1_key),
         "initial scan should surface the first album"
     );
-    assert!(first.removed.is_empty());
+    assert!(
+        first.removed.is_empty(),
+        "the initial scan of a fresh folder removes nothing"
+    );
 
     // A new release folder appears on disk; re-scan surfaces it.
     let album2 = collection.join("Artist - Second Album");
@@ -417,7 +423,10 @@ async fn watcher_reconciles_added_and_removed_candidates() {
     let album2_key = album2.to_string_lossy().into_owned();
     f.handle.scan_watched_folders().unwrap();
 
-    let second = collect_scan_events(&mut scan_rx).await;
+    let second = scan_batch_until(&mut scan_rx, "the newly-added folder's candidate", |e| {
+        matches!(e, ScanEvent::FolderCandidate(c) if c.path.to_str() == Some(album2_key.as_str()))
+    })
+    .await;
     assert!(
         second.added.contains(&album2_key),
         "the newly-added folder should surface as a candidate"
@@ -427,7 +436,10 @@ async fn watcher_reconciles_added_and_removed_candidates() {
     fs::remove_dir_all(&album1).unwrap();
     f.handle.scan_watched_folders().unwrap();
 
-    let third = collect_scan_events(&mut scan_rx).await;
+    let third = scan_batch_until(&mut scan_rx, "the deleted folder's candidate removal", |e| {
+        matches!(e, ScanEvent::CandidateRemoved { candidate_key } if candidate_key == &album1_key)
+    })
+    .await;
     assert!(
         third.removed.contains(&album1_key),
         "the deleted folder's candidate should be removed"
@@ -439,35 +451,71 @@ struct ScanBatch {
     removed: Vec<String>,
 }
 
-/// Drain scan events over a fixed window, collecting candidate paths added and
-/// candidate keys removed. A fixed window (rather than stopping at the first
-/// `Finished`) absorbs the watcher's debounced FS reconcile landing alongside an
-/// explicit re-scan.
-async fn collect_scan_events(
+/// Drain scan events until one matching `done` arrives, collecting the candidate
+/// paths added and candidate keys removed along the way. Event-driven: returns
+/// the instant the awaited event lands, and fails loud if it never does within a
+/// bounded deadline. Positive assertions read the returned batch. (The watcher's
+/// debounced FS reconcile can land alongside an explicit re-scan; both reconcile
+/// to the same on-disk truth, so the batch is stable however many fire.)
+async fn scan_batch_until(
     rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
+    what: &str,
+    mut done: impl FnMut(&ScanEvent) -> bool,
 ) -> ScanBatch {
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(10);
     let mut added = Vec::new();
     let mut removed = Vec::new();
-    while tokio::time::Instant::now() < deadline {
+    loop {
+        if tokio::time::Instant::now() >= deadline {
+            panic!("timed out after 10s waiting for {what}");
+        }
         match tokio::time::timeout(std::time::Duration::from_millis(100), rx.recv()).await {
-            Ok(Some(ScanEvent::FolderCandidate(c))) => {
-                added.push(c.path.to_string_lossy().into_owned());
+            Ok(Some(event)) => {
+                let finished = done(&event);
+                match &event {
+                    ScanEvent::FolderCandidate(c) => {
+                        added.push(c.path.to_string_lossy().into_owned())
+                    }
+                    ScanEvent::CandidateRemoved { candidate_key } => {
+                        removed.push(candidate_key.clone())
+                    }
+                    _ => {}
+                }
+                if finished {
+                    return ScanBatch { added, removed };
+                }
             }
-            Ok(Some(ScanEvent::CandidateRemoved { candidate_key })) => {
-                removed.push(candidate_key);
-            }
-            Ok(Some(_)) => {}
-            Ok(None) => break,
+            Ok(None) => panic!("scan channel closed before {what}"),
             Err(_) => {}
         }
     }
-    ScanBatch { added, removed }
 }
 
-/// Collect every scan event that arrives within a fixed window. Used by the
-/// watcher-handle tests below, which assert a specific event variant fired
-/// (`WatchedFoldersChanged`, `CandidateSkipChanged`) after a handle call.
+/// Wait for a single scan event matching `pred`, failing loud if none arrives
+/// within a bounded deadline — the event-driven form of a fixed positive window.
+async fn wait_for_scan_event(
+    rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
+    what: &str,
+    mut pred: impl FnMut(&ScanEvent) -> bool,
+) {
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        if tokio::time::Instant::now() >= deadline {
+            panic!("timed out after 10s waiting for {what}");
+        }
+        match tokio::time::timeout(std::time::Duration::from_millis(100), rx.recv()).await {
+            Ok(Some(event)) if pred(&event) => return,
+            Ok(Some(_)) => {}
+            Ok(None) => panic!("scan channel closed before {what}"),
+            Err(_) => {}
+        }
+    }
+}
+
+/// Collect every scan event that arrives within a fixed window. For the
+/// negative assertions below — that after a handle call NO event of some kind
+/// arrives (an unwatched folder surfaces no candidate; a redundant skip
+/// re-broadcasts nothing) — where a window is the assertion, not overhead.
 async fn drain_scan_events(
     rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
     window: std::time::Duration,
@@ -504,7 +552,10 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     let mut scan_rx = f.handle.subscribe_folder_scan_events();
     f.handle.add_watched_folder(collection_key.clone()).unwrap();
 
-    let batch = collect_scan_events(&mut scan_rx).await;
+    let batch = scan_batch_until(&mut scan_rx, "the album candidate", |e| {
+        matches!(e, ScanEvent::FolderCandidate(c) if c.path.to_str() == Some(album_key.as_str()))
+    })
+    .await;
     assert!(
         batch.added.contains(&album_key),
         "initial scan should surface the album candidate"
@@ -543,14 +594,12 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     );
 
     // The shortened (now empty) list is broadcast.
-    let events = drain_scan_events(&mut scan_rx, std::time::Duration::from_secs(2)).await;
-    assert!(
-        events.iter().any(|event| matches!(
-            event,
-            ScanEvent::WatchedFoldersChanged { folders } if folders.is_empty()
-        )),
-        "remove should broadcast the shortened folder list, got {events:?}",
-    );
+    wait_for_scan_event(
+        &mut scan_rx,
+        "the shortened folder-list broadcast",
+        |event| matches!(event, ScanEvent::WatchedFoldersChanged { folders } if folders.is_empty()),
+    )
+    .await;
 
     // The watcher actually stopped: a new release folder appearing under the
     // now-unwatched root produces no scan activity (the reconcile that would
@@ -637,7 +686,10 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     f.handle
         .add_watched_folder(collection.to_string_lossy().into_owned())
         .unwrap();
-    let batch = collect_scan_events(&mut scan_rx).await;
+    let batch = scan_batch_until(&mut scan_rx, "the album candidate", |e| {
+        matches!(e, ScanEvent::FolderCandidate(c) if c.path.to_str() == Some(album_key.as_str()))
+    })
+    .await;
     assert!(batch.added.contains(&album_key));
 
     let skipped_of = |f: &ImportFixture| {
@@ -656,15 +708,18 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
         .set_candidate_skipped(album_key.clone(), true)
         .unwrap();
     assert!(skipped_of(&f), "skip flag flips in the reducer");
-    let events = drain_scan_events(&mut scan_rx, std::time::Duration::from_secs(1)).await;
-    assert!(
-        events.iter().any(|event| matches!(
-            event,
-            ScanEvent::CandidateSkipChanged { candidate_key, skipped }
-                if candidate_key == &album_key && *skipped
-        )),
-        "skip should broadcast CandidateSkipChanged, got {events:?}",
-    );
+    wait_for_scan_event(
+        &mut scan_rx,
+        "the CandidateSkipChanged broadcast",
+        |event| {
+            matches!(
+                event,
+                ScanEvent::CandidateSkipChanged { candidate_key, skipped }
+                    if candidate_key == &album_key && *skipped
+            )
+        },
+    )
+    .await;
 
     // A redundant skip=true request is a no-op: no event, flag unchanged.
     f.handle
