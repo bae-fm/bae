@@ -54,6 +54,30 @@ jobs:
         cargo clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings
         cargo clippy -p bae-bridge -- -D warnings
 
+    - name: Dead-code (bae-core lib only)
+      # Default features, no --tests, no --all-targets, no test-utils: the one
+      # config that compiles bae-core's production code without also compiling
+      # the #[cfg(test)] unit tests that keep some pub(crate) items looking
+      # used. A production item reached only by those tests is dead weight in
+      # the shipping library.
+      run: RUSTFLAGS="-D warnings" cargo check -p bae-core
+
+    - name: Check for new #[allow(dead_code)]
+      # Banned outside the shared integration-test support module (the one
+      # place the per-target dead-code false positive -- each of bae-core's 8
+      # `tests/test_*.rs` binaries is a separate crate that uses only a subset
+      # of tests/support/mod.rs -- is unavoidable).
+      run: |
+        offenders=$(grep -rn --include='*.rs' 'allow(dead_code)' \
+          bae-core bae-bridge bae-cli bae-mcp bae-automation bae-desktop bae-loc \
+          third-party \
+          | grep -v 'bae-core/tests/support/mod.rs' || true)
+        if [ -n "$offenders" ]; then
+          echo "New #[allow(dead_code)] is banned (delete the code or #[cfg]-restrict it):"
+          echo "$offenders"
+          exit 1
+        fi
+
     - name: Run localization + bridge tests
       run: |
         cargo test -p bae-loc

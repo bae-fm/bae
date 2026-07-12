@@ -182,6 +182,31 @@ check "clippy (bae-core --features oauth-providers)" \
 check "clippy (bae-bridge --features oauth-providers,cloudkit)" \
   cargo clippy -p bae-bridge --features oauth-providers,cloudkit -- -D warnings
 
+# Default features, no --tests, no --all-targets, no test-utils: the one
+# config that compiles bae-core's production code without also compiling the
+# #[cfg(test)] unit tests that keep some pub(crate) items looking used. A
+# production item reached only by those tests is dead weight in the shipping
+# library; RUSTFLAGS="-D warnings" promotes the crate's #![deny(dead_code)]
+# to a hard failure here.
+check "dead_code (bae-core lib only)" \
+  env RUSTFLAGS="-D warnings" cargo check -p bae-core
+
+# Ban new #[allow(dead_code)] outside the shared integration-test support
+# module (the one place the per-target dead-code false positive -- each of
+# bae-core's 8 `tests/test_*.rs` binaries is a separate crate that uses only
+# a subset of tests/support/mod.rs -- is unavoidable).
+check "no new #[allow(dead_code)]" bash -c '
+  offenders=$(grep -rn --include="*.rs" "allow(dead_code)" \
+    bae-core bae-bridge bae-cli bae-mcp bae-automation bae-desktop bae-loc \
+    third-party \
+    | grep -v "bae-core/tests/support/mod.rs" || true)
+  if [ -n "$offenders" ]; then
+    echo "New #[allow(dead_code)] is banned (delete the code or #[cfg]-restrict it):"
+    echo "$offenders"
+    exit 1
+  fi
+'
+
 check "cargo machete" cargo machete
 check "cargo deny" cargo deny check
 
