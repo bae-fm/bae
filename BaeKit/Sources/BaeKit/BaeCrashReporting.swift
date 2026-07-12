@@ -18,11 +18,11 @@ public enum BaeCrashReporting {
     }
 
     private static func config() -> CrashReportingConfig? {
-        guard edition == "bae",
-            let dsn = infoString("BaeSentryDsn"),
-            let environment = infoString("BaeEnvironment"),
-            let appVersion = infoString("CFBundleShortVersionString"),
-            let gitCommit = infoString("BaeGitCommit")
+        guard BuildInfo.edition == "bae",
+            let dsn = BuildInfo.infoString("BaeSentryDsn"),
+            let environment = BuildInfo.infoString("BaeEnvironment"),
+            let appVersion = BuildInfo.infoString("CFBundleShortVersionString"),
+            let gitCommit = BuildInfo.infoString("BaeGitCommit")
         else {
             return nil
         }
@@ -30,28 +30,9 @@ public enum BaeCrashReporting {
             dsn: dsn,
             environment: environment,
             releaseName: "bae@\(appVersion)+\(gitCommit)",
-            edition: edition,
+            edition: BuildInfo.edition,
             gitCommit: gitCommit
         )
-    }
-
-    private static var edition: String {
-        #if BAE_OAUTH_PROVIDERS
-            "bae"
-        #else
-            "baeium"
-        #endif
-    }
-
-    private static func infoString(_ key: String) -> String? {
-        guard let value = Bundle.main.infoDictionary?[key] as? String else {
-            return nil
-        }
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty || trimmed.hasPrefix("$(") {
-            return nil
-        }
-        return trimmed
     }
 }
 
