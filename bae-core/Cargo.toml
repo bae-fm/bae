@@ -24,10 +24,6 @@ uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 sha2 = "0.10"
 hex = "0.4"
-aws-config = { version = "1.8", default-features = false, features = ["credentials-process", "rt-tokio", "sso"] }
-aws-sdk-s3 = { version = "1.122", default-features = false, features = ["rt-tokio", "sigv4a"] }
-aws-credential-types = "1.2"
-aws-smithy-http-client = { version = "1.1", default-features = false, features = ["default-client", "rustls-ring"] }
 async-trait = "0.1"
 dirs = "5.0"
 axum = "0.7"
