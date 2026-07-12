@@ -2370,6 +2370,7 @@ async fn playback_error_reason_for_file(
 /// connected, reports `SyncDisconnected` — the reconnect-sync state — not a
 /// generic diagnostic. coven raises `NoCloudHome` for the cloud miss; the
 /// classifier keys it.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn remote_read_with_sync_disconnected_reports_sync_disconnected() {
     use crate::ui::PlaybackErrorReason;
@@ -2402,6 +2403,7 @@ async fn remote_read_with_sync_disconnected_reports_sync_disconnected() {
 /// queued reports `UploadPending` — wait for the upload — because a
 /// `cloud_outbox` upload row for the file explains the missing source. coven
 /// raises `ExternalMissing`; the outbox check keys it.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn pending_upload_with_missing_source_reports_upload_pending() {
     use crate::ui::PlaybackErrorReason;
