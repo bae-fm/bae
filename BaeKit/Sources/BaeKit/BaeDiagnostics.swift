@@ -25,8 +25,7 @@ public enum BaeDiagnostics {
     public static func log(
         level: BridgeDiagnosticLevel,
         target: String,
-        message: String,
-        fields: [BridgeDiagnosticField]? = nil
+        message: String
     ) {
         Task { @MainActor in
             guard let diagnostics else { return }
@@ -35,7 +34,7 @@ public enum BaeDiagnostics {
                     level: level,
                     target: target,
                     message: message,
-                    fields: fields ?? []
+                    fields: []
                 )
             }
             catch {

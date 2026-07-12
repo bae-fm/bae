@@ -25,11 +25,7 @@ public struct BaeLogger: Sendable {
         log(message, level: .error)
     }
 
-    private func log(
-        _ message: String,
-        level: BridgeDiagnosticLevel,
-        fields: [BridgeDiagnosticField]? = nil
-    ) {
+    private func log(_ message: String, level: BridgeDiagnosticLevel) {
         switch level {
         case .trace, .debug:
             osLog.debug("\(message)")
@@ -40,12 +36,7 @@ public struct BaeLogger: Sendable {
         case .error:
             osLog.error("\(message)")
         }
-        BaeDiagnostics.log(
-            level: level,
-            target: target,
-            message: message,
-            fields: fields
-        )
+        BaeDiagnostics.log(level: level, target: target, message: message)
     }
 }
 
