@@ -13,7 +13,6 @@ use crate::import::parse_year;
 use crate::import::types::MetadataSource;
 use crate::import::ImportError;
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
-use crate::retry::retry_with_backoff;
 use crate::signals::LookupFailure;
 
 /// A unified metadata search result from either MusicBrainz or Discogs.
@@ -222,10 +221,7 @@ pub async fn search_mb(
     cover_art_archive: &CoverArtArchiveClient,
     params: ReleaseSearchParams,
 ) -> Result<Vec<MetadataResult>, ImportError> {
-    let releases = retry_with_backoff(3, "MusicBrainz search", || {
-        musicbrainz::search_releases_with_params(&params)
-    })
-    .await?;
+    let releases = musicbrainz::search_releases_with_params(&params).await?;
 
     Ok(musicbrainz_releases_to_metadata(cover_art_archive, releases).await)
 }
@@ -264,10 +260,7 @@ pub async fn lookup_by_discid(
     cover_art_archive: &CoverArtArchiveClient,
     discid: &str,
 ) -> Result<DiscIdResult, LookupFailure> {
-    let result = retry_with_backoff(3, "MusicBrainz DiscID lookup", || {
-        musicbrainz::lookup_by_discid(discid)
-    })
-    .await;
+    let result = musicbrainz::lookup_by_discid(discid).await;
 
     match result {
         Ok(releases) => {

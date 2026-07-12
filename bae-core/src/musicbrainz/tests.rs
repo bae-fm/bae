@@ -291,3 +291,32 @@ async fn test_fetch_mb_xref_release_without_group_still_returns_response() {
     assert_eq!(pairs.len(), 1);
     assert_eq!(pairs[0].0, "musicbrainz");
 }
+
+/// The retry policy exists because the old one retried everything. A NotFound is
+/// the ordinary answer for a disc MusicBrainz doesn't have, and each extra
+/// attempt pays another rate-limit wait (1s) plus a round trip; "at least one
+/// search field" is raised before any request is even built.
+#[test]
+fn only_transient_musicbrainz_failures_are_retried() {
+    assert!(should_retry_mb(&MusicBrainzError::Timeout));
+    assert!(should_retry_mb(&MusicBrainzError::Network(
+        "refused".into()
+    )));
+    assert!(should_retry_mb(&MusicBrainzError::Provider {
+        status: Some(503)
+    }));
+    assert!(should_retry_mb(&MusicBrainzError::Provider {
+        status: Some(429)
+    }));
+
+    assert!(!should_retry_mb(&MusicBrainzError::NotFound("disc".into())));
+    assert!(!should_retry_mb(&MusicBrainzError::Provider {
+        status: Some(404)
+    }));
+    assert!(!should_retry_mb(&MusicBrainzError::Provider {
+        status: Some(400)
+    }));
+    assert!(!should_retry_mb(&MusicBrainzError::Other(
+        "At least one search field must be provided".into()
+    )));
+}

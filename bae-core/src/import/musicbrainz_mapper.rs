@@ -160,10 +160,7 @@ pub async fn fetch_mb_response(
     release_id: &str,
 ) -> Result<(MbReleaseResponse, Option<String>, Vec<(String, String)>), ImportError> {
     let (response, discogs_url, raw_json) =
-        crate::retry::retry_with_backoff(3, "MusicBrainz release fetch", || {
-            crate::musicbrainz::lookup_release_by_id(release_id)
-        })
-        .await?;
+        crate::musicbrainz::lookup_release_by_id(release_id).await?;
 
     let mut metadata_pairs = vec![(MetadataSource::MusicBrainz.as_str().to_string(), raw_json)];
 

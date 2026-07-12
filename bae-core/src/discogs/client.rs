@@ -90,10 +90,6 @@ fn should_retry_discogs(error: &DiscogsError) -> bool {
     matches!(error, DiscogsError::RateLimit | DiscogsError::Request(_))
 }
 
-fn discogs_retry_delay(attempt: u32) -> Duration {
-    Duration::from_millis(500 * u64::from(attempt))
-}
-
 /// Discogs search response wrapper
 #[derive(Debug, Deserialize)]
 struct SearchResponse {
@@ -427,7 +423,7 @@ impl DiscogsClient {
             DISCOGS_RETRY_ATTEMPTS,
             "Discogs token validation",
             should_retry_discogs,
-            discogs_retry_delay,
+            crate::retry::linear_backoff,
             || async {
                 self.send(self.get(&url).query(&query_params))
                     .await
@@ -475,7 +471,7 @@ impl DiscogsClient {
             DISCOGS_RETRY_ATTEMPTS,
             "Discogs search",
             should_retry_discogs,
-            discogs_retry_delay,
+            crate::retry::linear_backoff,
             || async {
                 let response = self
                     .send(self.get(&url).query(&query_params))
@@ -532,7 +528,7 @@ impl DiscogsClient {
             DISCOGS_RETRY_ATTEMPTS,
             "Discogs release fetch",
             should_retry_discogs,
-            discogs_retry_delay,
+            crate::retry::linear_backoff,
             || async {
                 let response = self.send(self.get(&url)).await?;
                 let raw_json = response.text().await.map_err(DiscogsError::Request)?;
@@ -567,7 +563,7 @@ impl DiscogsClient {
             DISCOGS_RETRY_ATTEMPTS,
             "Discogs master fetch",
             should_retry_discogs,
-            discogs_retry_delay,
+            crate::retry::linear_backoff,
             || async {
                 let response = self.send(self.get(&url)).await?;
                 let raw_json = response.text().await.map_err(DiscogsError::Request)?;
@@ -594,7 +590,7 @@ impl DiscogsClient {
             DISCOGS_RETRY_ATTEMPTS,
             "Discogs artist fetch",
             should_retry_discogs,
-            discogs_retry_delay,
+            crate::retry::linear_backoff,
             || async {
                 let response = match self.send(self.get(&url)).await {
                     Ok(response) => response,

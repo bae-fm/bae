@@ -30,10 +30,38 @@ fn http_client() -> &'static reqwest::Client {
 /// Rate limiter ensuring at least 1 second between MusicBrainz API requests.
 static RATE_LIMITER: RateLimiter = RateLimiter::new(Duration::from_secs(1));
 
+/// Retry only what a retry can fix. A `NotFound` is MusicBrainz's answer, not a
+/// fault — and it is the ordinary answer for a disc MusicBrainz doesn't have, so
+/// retrying it buys three round trips and three rate-limit waits to re-learn it.
+/// `Other` is local (URL construction, JSON parse, a missing search field): no
+/// request was ever made, or the same bytes will parse the same way.
+fn should_retry_mb(error: &MusicBrainzError) -> bool {
+    match error {
+        MusicBrainzError::Network(_) | MusicBrainzError::Timeout => true,
+        MusicBrainzError::Provider { status } => {
+            matches!(status, Some(429) | Some(500..=599) | None)
+        }
+        MusicBrainzError::NotFound(_) | MusicBrainzError::Other(_) => false,
+    }
+}
+
+/// The MusicBrainz client owns its retry policy, as the Discogs one does — a
+/// caller should not have to know which of this client's failures are worth
+/// repeating.
+async fn mb_retry<F, Fut, T>(label: &str, f: F) -> Result<T, MusicBrainzError>
+where
+    F: Fn() -> Fut,
+    Fut: std::future::Future<Output = Result<T, MusicBrainzError>>,
+{
+    crate::retry::retry_with_backoff_if(3, label, should_retry_mb, crate::retry::linear_backoff, f)
+        .await
+}
+
 async fn mb_get(request: reqwest::RequestBuilder) -> Result<reqwest::Response, MusicBrainzError> {
     RATE_LIMITER.wait().await;
     let response = request
         .header("Accept", "application/json")
+        .timeout(crate::util::http::API_TIMEOUT)
         .send()
         .await
         .map_err(MusicBrainzError::from_reqwest)?;
@@ -160,8 +188,15 @@ impl MusicBrainzError {
 // API functions
 // ============================================================================
 
-/// Lookup releases by MusicBrainz DiscID
+/// Lookup releases by MusicBrainz DiscID.
 pub async fn lookup_by_discid(discid: &str) -> Result<Vec<MbReleaseResponse>, MusicBrainzError> {
+    mb_retry("MusicBrainz DiscID lookup", || {
+        lookup_by_discid_once(discid)
+    })
+    .await
+}
+
+async fn lookup_by_discid_once(discid: &str) -> Result<Vec<MbReleaseResponse>, MusicBrainzError> {
     info!("MusicBrainz: Looking up DiscID '{}'", discid);
     let base_url = reqwest::Url::parse("https://musicbrainz.org/ws/2/discid/")
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse base URL: {}", e)))?;
@@ -228,6 +263,15 @@ async fn fetch_release_group_with_relations(
 /// release-group fallback fetch when the release relations don't carry
 /// Discogs URLs.
 pub async fn lookup_release_by_id(
+    release_id: &str,
+) -> Result<(MbReleaseResponse, Option<String>, String), MusicBrainzError> {
+    mb_retry("MusicBrainz release fetch", || {
+        lookup_release_by_id_once(release_id)
+    })
+    .await
+}
+
+async fn lookup_release_by_id_once(
     release_id: &str,
 ) -> Result<(MbReleaseResponse, Option<String>, String), MusicBrainzError> {
     if let Some(hit) = RELEASE_CACHE.get_cloned(release_id) {
@@ -540,11 +584,21 @@ impl QueryValueFormat {
 pub async fn search_releases_with_params(
     params: &ReleaseSearchParams,
 ) -> Result<Vec<SearchRelease>, MusicBrainzError> {
+    // Not inside the retry: no request is made, so repeating it cannot help.
     if !params.has_any_field() {
         return Err(MusicBrainzError::Other(
             "At least one search field must be provided".to_string(),
         ));
     }
+    mb_retry("MusicBrainz search", || {
+        search_releases_with_params_once(params)
+    })
+    .await
+}
+
+async fn search_releases_with_params_once(
+    params: &ReleaseSearchParams,
+) -> Result<Vec<SearchRelease>, MusicBrainzError> {
     let query = params.build_query();
     info!("MusicBrainz: Searching with params: {:?}", params);
     info!("   Query: {}", query);
