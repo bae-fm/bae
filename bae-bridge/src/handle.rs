@@ -3258,7 +3258,6 @@ mod tests {
             let extraction = bae_core::signals::ExtractionService::start(
                 runtime.handle().clone(),
                 import.event_sender_for_test(),
-                Arc::new(coven::SystemClock),
                 manager.clone(),
             );
             bae_core::library::AppServices::new(manager, playback, import, identify, extraction)

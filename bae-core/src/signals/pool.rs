@@ -34,7 +34,6 @@ pub(super) struct Pool {
 pub(super) struct Classification {
     pub(super) catalogs: Vec<SourcedValue>,
     pub(super) free_text: Vec<String>,
-    pub(super) ranked_clusters: Vec<Cluster>,
 }
 
 impl Pool {
@@ -93,7 +92,6 @@ impl Pool {
         Classification {
             catalogs,
             free_text,
-            ranked_clusters: ranked,
         }
     }
 }

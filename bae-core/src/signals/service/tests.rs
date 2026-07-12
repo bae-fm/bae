@@ -149,7 +149,6 @@ async fn make_service() -> (
     let handle = ExtractionService::start(
         tokio::runtime::Handle::current(),
         tx.clone(),
-        Arc::new(coven::SystemClock),
         library_manager,
     );
     (handle, tx, rx, lib_tmp)
@@ -357,7 +356,6 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
     let inner = ExtractionServiceInner {
         runtime_handle: tokio::runtime::Handle::current(),
         event_tx: tx,
-        clock: Arc::new(coven::SystemClock),
         analyzer: std::sync::Mutex::new(Arc::new(NoopAnalyzer) as Arc<dyn ArtworkAnalyzer>),
         library_manager,
         cancellation: CancellationRegistry::default(),

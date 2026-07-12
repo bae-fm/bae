@@ -37,7 +37,6 @@ mod candidate_text;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod disc_id;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod dump;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod fast_pass;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -23,7 +23,6 @@
 use super::analyzer::{ArtworkAnalysis, ArtworkAnalyzer, NoopAnalyzer};
 use super::cancellation::CancellationRegistry;
 use super::candidate_text::{Source, SourcedLine};
-use super::dump::dump_scan;
 use super::fast_pass::{gather_non_ocr_sources, FastPass};
 use super::pool::Pool;
 use super::release::{resolve_release_artwork_paths, resolve_release_identity};
@@ -37,7 +36,7 @@ use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, warn};
+use tracing::{error, warn};
 
 /// Where a candidate's signals come from: a folder on disk, or an existing
 /// library release being re-identified.
@@ -56,7 +55,6 @@ pub struct ExtractionServiceHandle {
 struct ExtractionServiceInner {
     runtime_handle: tokio::runtime::Handle,
     event_tx: broadcast::Sender<ImportEvent>,
-    clock: coven::ClockRef,
     analyzer: Mutex<Arc<dyn ArtworkAnalyzer>>,
     /// Resolves a release's library files for the `Release` re-identify path.
     library_manager: LibraryManager,
@@ -90,13 +88,11 @@ impl ExtractionService {
     pub fn start(
         runtime_handle: tokio::runtime::Handle,
         event_tx: broadcast::Sender<ImportEvent>,
-        clock: coven::ClockRef,
         library_manager: LibraryManager,
     ) -> ExtractionServiceHandle {
         let inner = Arc::new(ExtractionServiceInner {
             runtime_handle,
             event_tx,
-            clock,
             analyzer: Mutex::new(Arc::new(NoopAnalyzer) as Arc<dyn ArtworkAnalyzer>),
             library_manager,
             cancellation: CancellationRegistry::default(),
@@ -204,7 +200,6 @@ async fn run_extraction(
                     barcodes: fast.cue_barcodes,
                     pool,
                     artwork_paths: fast.artwork_paths,
-                    dump_folder: Some(folder),
                 },
             )
             .await;
@@ -256,7 +251,6 @@ async fn run_extraction(
                     barcodes: Vec::new(),
                     pool: Pool::default(),
                     artwork_paths,
-                    dump_folder: None,
                 },
             )
             .await;
@@ -299,18 +293,15 @@ where
     }
 }
 
-/// Everything a candidate's source yields for the streaming pass to consume:
-/// the settled disc ID, the CUE barcodes, the text pool, the artwork images to
-/// OCR, and the diagnostic dump folder. A folder scan and a release re-identify
-/// each build one of these, differing only in which fields are populated.
+/// Everything a candidate's source yields for the streaming pass to consume: the
+/// settled disc ID, the CUE barcodes, the text pool, and the artwork images to
+/// OCR. A folder scan and a release re-identify each build one of these,
+/// differing only in which fields are populated.
 struct ExtractionInputs {
     disc_id: DiscIdSignal,
     barcodes: Vec<SourcedValue>,
     pool: Pool,
     artwork_paths: Vec<PathBuf>,
-    /// `Some` for folder sources — the diagnostic corpus dump runs after the
-    /// final emit; `None` for a release re-identify, which has no folder.
-    dump_folder: Option<PathBuf>,
 }
 
 /// Stream `Signals` over the artwork OCR pass: emit the fast-pass snapshot,
@@ -327,7 +318,6 @@ async fn stream_extraction(
         mut barcodes,
         mut pool,
         artwork_paths,
-        dump_folder,
     } = inputs;
     let has_artwork = !artwork_paths.is_empty();
 
@@ -420,13 +410,8 @@ async fn stream_extraction(
 
     // Final settled snapshot.
     let classification = pool.classify();
-    let catalogs = classification.catalogs;
-    let free_text = classification.free_text;
-    let ranked_clusters = classification.ranked_clusters;
     let barcode = if has_artwork || !barcodes.is_empty() {
-        BarcodeSignal::Settled {
-            codes: barcodes.clone(),
-        }
+        BarcodeSignal::Settled { codes: barcodes }
     } else {
         BarcodeSignal::Absent
     };
@@ -437,32 +422,11 @@ async fn stream_extraction(
             disc_id,
             barcode,
             text: TextSignal::Settled {
-                catalogs: catalogs.clone(),
-                free_text: free_text.clone(),
+                catalogs: classification.catalogs,
+                free_text: classification.free_text,
             },
         },
     );
-
-    // Diagnostic dump runs after the final emit — the UI already has its
-    // final state, so a slow filesystem write doesn't delay completion.
-    if let Some(folder) = dump_folder {
-        let dump_now = inner.clock.now();
-        let dump_key = key;
-        let dump_pool = pool;
-        tokio::task::spawn_blocking(move || {
-            if let Err(e) = dump_scan(
-                &dump_key,
-                &folder,
-                &dump_pool,
-                &ranked_clusters,
-                &catalogs,
-                &free_text,
-                dump_now,
-            ) {
-                debug!("signals: dump failed for {dump_key:?}: {e}");
-            }
-        });
-    }
 }
 
 fn emit_failed_ocr_signals(

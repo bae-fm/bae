@@ -286,7 +286,6 @@ fn bootstrap_inner(
         let extraction_handle = crate::signals::ExtractionService::start(
             runtime.handle().clone(),
             import_handle.event_tx.clone(),
-            clock,
             library_manager.clone(),
         );
 

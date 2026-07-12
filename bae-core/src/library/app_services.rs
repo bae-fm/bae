@@ -267,7 +267,6 @@ mod tests {
             let extraction = crate::signals::ExtractionService::start(
                 tokio::runtime::Handle::current(),
                 import.event_sender_for_test(),
-                Arc::new(coven::SystemClock),
                 manager.clone(),
             );
             AppServices::new(manager, playback, import, identify, extraction)

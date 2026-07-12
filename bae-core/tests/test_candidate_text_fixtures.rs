@@ -267,12 +267,8 @@ async fn drive_fixture(
 ) -> (Vec<String>, Vec<String>) {
     let (tx, mut rx) = broadcast::channel::<ImportEvent>(128);
     let (library_manager, _lib_tmp) = make_library_manager().await;
-    let handle: ExtractionServiceHandle = ExtractionService::start(
-        tokio::runtime::Handle::current(),
-        tx,
-        std::sync::Arc::new(coven::SystemClock),
-        library_manager,
-    );
+    let handle: ExtractionServiceHandle =
+        ExtractionService::start(tokio::runtime::Handle::current(), tx, library_manager);
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(FixtureAnalyzer::new(ocr_map));
     handle.register_analyzer(analyzer);
 

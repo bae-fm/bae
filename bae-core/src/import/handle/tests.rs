@@ -1284,7 +1284,6 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     let extraction = ExtractionService::start(
         tokio::runtime::Handle::current(),
         import_handle.event_sender_for_test(),
-        std::sync::Arc::new(coven::SystemClock),
         manager.clone(),
     );
     let analyzer = std::sync::Arc::new(DelayedAnalyzer {
