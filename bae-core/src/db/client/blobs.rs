@@ -104,25 +104,6 @@ impl Database {
         Ok(self.cover_versions(&ids).await?.remove(release_id))
     }
 
-    /// Delete a host-provided image row by its subject id, from the table its type
-    /// selects. (The row is also cascade-deleted with its subject; this is the
-    /// explicit path, e.g. replacing a cover.)
-    pub async fn delete_library_image(
-        &self,
-        id: &str,
-        image_type: &LibraryImageType,
-    ) -> Result<(), DbError> {
-        let id = id.to_string();
-        let table = image_table(image_type);
-        let sql = format!("DELETE FROM {table} WHERE id = ?");
-        self.call(move |conn| {
-            conn.execute(&sql, params![id])
-                .map(|_| ())
-                .map_err(DbError::from)
-        })
-        .await
-    }
-
     // ---- Readable cloud paths (browsable homes) ----
 
     /// Run a cloud-key resolver, but only on a browsable home: an opaque home

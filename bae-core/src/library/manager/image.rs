@@ -74,16 +74,6 @@ impl LibraryManager {
         Ok(self.database.find_library_image(id, image_type).await?)
     }
 
-    /// Delete a library image by ID and type
-    pub async fn delete_library_image(
-        &self,
-        id: &str,
-        image_type: &LibraryImageType,
-    ) -> Result<(), LibraryError> {
-        self.database.delete_library_image(id, image_type).await?;
-        Ok(())
-    }
-
     /// Change the cover art for an album's release.
     ///
     /// `ReleaseImage`: reads an image file already in the library (by file ID),

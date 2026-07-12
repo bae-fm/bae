@@ -16,59 +16,6 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Get artist by Discogs ID (for deduplication)
-    pub async fn get_artist_by_discogs_id(
-        &self,
-        discogs_artist_id: &str,
-    ) -> Result<Option<DbArtist>, LibraryError> {
-        Ok(self
-            .database
-            .get_artist_by_discogs_id(discogs_artist_id)
-            .await?)
-    }
-
-    /// Get artist by MusicBrainz ID (for deduplication)
-    pub async fn get_artist_by_mb_id(&self, mb_id: &str) -> Result<Option<DbArtist>, LibraryError> {
-        Ok(self.database.get_artist_by_mb_id(mb_id).await?)
-    }
-
-    /// Get artist by name (case-insensitive, first match)
-    pub async fn get_artist_by_name(&self, name: &str) -> Result<Option<DbArtist>, LibraryError> {
-        Ok(self.database.get_artist_by_name(name).await?)
-    }
-
-    /// Fill in NULL external IDs on an existing artist (never overwrites)
-    pub async fn update_artist_external_ids(
-        &self,
-        id: &str,
-        discogs_id: Option<&str>,
-        mb_id: Option<&str>,
-        sort_name: Option<&str>,
-    ) -> Result<(), LibraryError> {
-        Ok(self
-            .database
-            .update_artist_external_ids(id, discogs_id, mb_id, sort_name)
-            .await?)
-    }
-
-    /// Insert album-artist relationship
-    pub async fn insert_album_artist(
-        &self,
-        album_artist: &DbAlbumArtist,
-    ) -> Result<(), LibraryError> {
-        self.database.insert_album_artist(album_artist).await?;
-        Ok(())
-    }
-
-    /// Insert track-artist relationship
-    pub async fn insert_track_artist(
-        &self,
-        track_artist: &DbTrackArtist,
-    ) -> Result<(), LibraryError> {
-        self.database.insert_track_artist(track_artist).await?;
-        Ok(())
-    }
-
     /// Get artists for an album
     pub async fn get_artists_for_album(
         &self,

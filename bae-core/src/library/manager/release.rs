@@ -587,19 +587,6 @@ impl LibraryManager {
         Ok(())
     }
 
-    pub async fn get_release_storage_summaries(
-        &self,
-    ) -> Result<Vec<ReleaseStorageSummary>, LibraryError> {
-        let raws = self.database.get_release_storage_summaries().await?;
-        let has_cloud_home = self.has_cloud_home();
-        let mut out = Vec::with_capacity(raws.len());
-        for raw in raws {
-            let pinned = self.release_pinned(raw.any_file_id.as_deref()).await?;
-            out.push(ReleaseStorageSummary::from_raw(raw, has_cloud_home, pinned));
-        }
-        Ok(out)
-    }
-
     /// The storage summary for a single release, or `None` if it doesn't exist.
     /// The download queue reads this at enqueue time for the release's title /
     /// file count / total size and to skip an already-pinned release.

@@ -2,7 +2,8 @@ use super::track::playback_info_from_track_release;
 use super::*;
 use crate::config::Config;
 use crate::db::{
-    DbAlbum, DbFile, DbLibraryImage, DbRelease, DbTrackWork, DbWork, LibraryImageType,
+    DbAlbum, DbAlbumArtist, DbFile, DbLibraryImage, DbRelease, DbTrackWork, DbWork,
+    LibraryImageType,
 };
 use crate::import::MetadataSource;
 #[cfg(feature = "test-utils")]

@@ -156,11 +156,6 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Get all active (non-complete, non-failed) imports
-    pub async fn get_active_imports(&self) -> Result<Vec<DbImport>, LibraryError> {
-        Ok(self.database.get_active_imports().await?)
-    }
-
     /// Delete an import record (used by UI to dismiss stuck imports)
     pub async fn delete_import(&self, id: &str) -> Result<(), LibraryError> {
         Ok(self.database.delete_import(id).await?)
