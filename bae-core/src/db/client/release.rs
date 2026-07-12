@@ -342,7 +342,7 @@ impl Database {
              {where_clause}"
         );
 
-        self.call(move |conn| {
+        self.read(move |conn| {
             conn.query_row(&query, [], |row| row.get::<_, i64>(0))
                 .map(|c| c as u64)
                 .map_err(DbError::from)
