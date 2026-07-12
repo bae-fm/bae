@@ -1406,7 +1406,7 @@ fn row_to_audio_segment(row: &Row) -> coven::rusqlite::Result<DbAudioSegment> {
 fn row_to_import(row: &Row) -> coven::rusqlite::Result<DbImport> {
     let status_str: String = row.get("status")?;
     let status = match status_str.as_str() {
-        "importing" | "preparing" => ImportOperationStatus::Importing,
+        "importing" => ImportOperationStatus::Importing,
         "complete" => ImportOperationStatus::Complete,
         "failed" => ImportOperationStatus::Failed,
         other => {

@@ -1278,17 +1278,15 @@ impl Database {
     }
     /// Get all active (non-complete, non-failed) imports
     pub async fn get_active_imports(&self) -> Result<Vec<DbImport>, DbError> {
-        self
-            .read(move |conn| {
-                let mut stmt = conn
-                    .prepare(
-                        "SELECT * FROM imports WHERE status IN ('preparing', 'importing') ORDER BY created_at DESC",
-                    )?;
-                let rows = stmt.query_map([], row_to_import)?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
-            })
-            .await
+        self.read(move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT * FROM imports WHERE status = 'importing' ORDER BY created_at DESC",
+            )?;
+            let rows = stmt.query_map([], row_to_import)?;
+            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                .map_err(DbError::from)
+        })
+        .await
     }
     /// Update import status
     pub async fn update_import_status(

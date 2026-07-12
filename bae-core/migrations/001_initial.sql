@@ -334,7 +334,7 @@ CREATE TABLE IF NOT EXISTS release_metadata (
 
 CREATE TABLE IF NOT EXISTS imports (
     id TEXT PRIMARY KEY,
-    status TEXT NOT NULL DEFAULT 'preparing',
+    status TEXT NOT NULL,
     release_id TEXT REFERENCES releases(id),
     album_title TEXT NOT NULL,
     artist_name TEXT NOT NULL,

@@ -6,14 +6,14 @@
 //!
 //! The imports table provides:
 //! - A stable ID for progress subscriptions before release exists
-//! - Status tracking (preparing -> importing -> complete/failed)
+//! - Status tracking (importing -> complete/failed)
 //! - Display info (album title, artist) during the prepare phase
 //! - Link to release_id after phase 0 completes
 //!
 //! Key scenarios tested:
-//! - Normal import lifecycle (preparing -> importing -> complete)
+//! - Normal import lifecycle (importing -> complete)
 //! - Failed imports (error handling)
-//! - Stuck imports (preparing with no release_id)
+//! - Stuck imports (importing with no release_id)
 //! - Clearing/dismissing imports from the UI
 //! - App restart loading active imports from DB
 
@@ -147,15 +147,14 @@ async fn test_import_lifecycle_failure() {
     );
 }
 
-/// Test that get_active_imports returns both preparing and importing status.
+/// Test that get_active_imports excludes complete and failed imports.
 #[tokio::test]
-async fn test_get_active_imports_includes_preparing_and_importing() {
+async fn test_get_active_imports_excludes_complete_and_failed() {
     tracing_init();
     let (db, _temp) = create_test_db().await;
 
-    // Create one in preparing state
     let import1 = DbImport::new(
-        "import-preparing",
+        "import-active-1",
         "Album 1",
         "Artist 1",
         "/path/1",
@@ -163,18 +162,14 @@ async fn test_get_active_imports_includes_preparing_and_importing() {
     );
     db.insert_import(&import1).await.unwrap();
 
-    // Create one in importing state
     let import2 = DbImport::new(
-        "import-importing",
+        "import-active-2",
         "Album 2",
         "Artist 2",
         "/path/2",
         chrono::Utc::now(),
     );
     db.insert_import(&import2).await.unwrap();
-    db.update_import_status("import-importing", ImportOperationStatus::Importing)
-        .await
-        .unwrap();
 
     // Create one complete (should NOT appear)
     let import3 = DbImport::new(
@@ -206,8 +201,8 @@ async fn test_get_active_imports_includes_preparing_and_importing() {
     assert_eq!(active.len(), 2);
 
     let ids: Vec<&str> = active.iter().map(|i| i.id.as_str()).collect();
-    assert!(ids.contains(&"import-preparing"));
-    assert!(ids.contains(&"import-importing"));
+    assert!(ids.contains(&"import-active-1"));
+    assert!(ids.contains(&"import-active-2"));
 }
 
 /// Test that deleting an import removes it from the database.
