@@ -256,7 +256,7 @@ fn bootstrap_inner(
             cover_art_archive.clone(),
         );
 
-        let identify_handle = crate::identify::IdentifyService::start(
+        let identify_handle = crate::identify::IdentifyServiceHandle::new(
             library_manager.clone(),
             runtime.handle().clone(),
             import_handle.event_tx.clone(),

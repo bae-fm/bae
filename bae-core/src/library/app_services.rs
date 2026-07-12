@@ -248,7 +248,7 @@ mod tests {
                 manager.clone(),
                 cover_art.clone(),
             );
-            let identify = crate::identify::IdentifyService::start(
+            let identify = crate::identify::IdentifyServiceHandle::new(
                 manager.clone(),
                 tokio::runtime::Handle::current(),
                 import.event_sender_for_test(),

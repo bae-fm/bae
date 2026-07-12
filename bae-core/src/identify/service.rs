@@ -1,6 +1,6 @@
 //! Stateful identify driver. Wraps the pure reducer with I/O, runtime, and
-//! per-candidate cancellation. One `IdentifyService` per app; each candidate
-//! runs in its own spawned driver task.
+//! per-candidate cancellation. One `IdentifyServiceHandle` per app; each
+//! candidate runs in its own spawned driver task.
 
 use super::annotate_with_library_status;
 use super::barcode::lookup_barcode;
@@ -67,11 +67,10 @@ struct CandidateDriver {
     inbox: mpsc::UnboundedSender<IdentifyEvent>,
 }
 
-/// Builder / entry point for constructing and running the service.
-pub struct IdentifyService;
-
-impl IdentifyService {
-    pub fn start(
+impl IdentifyServiceHandle {
+    /// Construct the app's identify service. One per app; each candidate runs
+    /// in its own spawned driver task.
+    pub fn new(
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
         event_tx: broadcast::Sender<ImportEvent>,
@@ -87,9 +86,7 @@ impl IdentifyService {
             }),
         }
     }
-}
 
-impl IdentifyServiceHandle {
     /// Start identifying `key`. Fire-and-forget — events emit through the
     /// import event channel as `ImportEvent::IdentifyStateChanged`. Identify
     /// consumes the `Signals` the extraction service streams, so the caller

@@ -6,10 +6,11 @@
 //! `Found`, `Conflict`, or `NotFoundAnywhere`, carrying per-result provenance.
 //!
 //! The state machine is a pure reducer (`state::step`); the service
-//! (`service::IdentifyService`) relays `SignalsUpdated` from the extraction
-//! service into the reducer and interprets its side effects (the MB/Discogs
-//! disc-ID and barcode lookups), feeding results back in. Scanning, OCR, and
-//! disc-ID derivation belong to `crate::signals`, not here.
+//! (`service::IdentifyServiceHandle`) relays `SignalsUpdated` from the
+//! extraction service into the reducer and interprets its side effects (the
+//! MB/Discogs disc-ID and barcode lookups), feeding results back in.
+//! Scanning, OCR, and disc-ID derivation belong to `crate::signals`, not
+//! here.
 //!
 //! All events flow through the existing `ImportEvent` broadcast channel via
 //! `ImportEvent::IdentifyStateChanged`. Consumers see one event per state
@@ -26,7 +27,7 @@ pub mod toolbar;
 
 pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer, NoopAnalyzer};
 pub use combine::{GroupKey, ResultProvenance};
-pub use service::{IdentifyService, IdentifyServiceHandle};
+pub use service::IdentifyServiceHandle;
 pub use state::{
     BarcodeProgress, DiscidProgress, ExcludedSignal, IdentifyEvent, IdentifySource, IdentifyState,
 };

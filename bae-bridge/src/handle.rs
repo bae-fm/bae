@@ -3248,7 +3248,7 @@ mod tests {
                 manager.clone(),
                 cover_art.clone(),
             );
-            let identify = bae_core::identify::IdentifyService::start(
+            let identify = bae_core::identify::IdentifyServiceHandle::new(
                 manager.clone(),
                 runtime.handle().clone(),
                 import.event_sender_for_test(),
