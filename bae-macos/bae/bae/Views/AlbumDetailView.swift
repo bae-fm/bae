@@ -445,14 +445,7 @@ extension AlbumDetailView {
     /// queue and surfaces in the Storage Manager's Exporting pane.
     private func exportRelease(releaseId: String) {
         guard
-            let target = ExportTarget.resolveRelease(
-                configStore.config.exportLocation,
-                choices: ExportFormatChoice.releaseChoices(
-                    presets: configStore.config.exportPresets
-                ),
-                defaultSelection: configStore.config
-                    .defaultReleaseExportSelection
-            )
+            let target = ExportTarget.resolveRelease(config: configStore.config)
         else {
             return
         }

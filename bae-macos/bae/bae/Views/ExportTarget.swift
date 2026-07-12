@@ -39,32 +39,29 @@ struct ReleaseExportTarget {
     let selection: BridgeExportSelection
 }
 
-/// Resolves the destination directory for a release export from the
-/// export-location setting: a fixed folder returns straight away; "ask each
-/// time" opens one `NSOpenPanel`. Returns `nil` when the user picks no folder,
-/// so the caller enqueues nothing. Shared by every export-trigger call site.
+/// Resolves the destination directory and format for a release export from the
+/// current config: the format choices come from the export presets, the default
+/// selection and export-location setting from the config. A fixed location
+/// returns straight away; "ask each time" opens one `NSOpenPanel`. Returns `nil`
+/// when the user picks no folder, so the caller enqueues nothing. Shared by
+/// every export-trigger call site.
 enum ExportTarget {
     @MainActor
-    static func resolveRelease(
-        _ location: BridgeExportLocation,
-        choices: [ExportFormatChoice],
-        defaultSelection: BridgeExportSelection
-    ) -> ReleaseExportTarget? {
-        precondition(
-            !choices.isEmpty,
-            "release export choices must include Original"
+    static func resolveRelease(config: Config) -> ReleaseExportTarget? {
+        let choices = ExportFormatChoice.releaseChoices(
+            presets: config.exportPresets
         )
         guard
             let selectedIndex = selectedFormatIndex(
                 choices: choices,
-                defaultSelection: defaultSelection
+                defaultSelection: config.defaultReleaseExportSelection
             )
         else {
             showDefaultFormatUnavailableAlert()
             return nil
         }
 
-        switch location {
+        switch config.exportLocation {
         case .fixed(let dir):
             guard
                 let selection = resolveReleaseSelection(
