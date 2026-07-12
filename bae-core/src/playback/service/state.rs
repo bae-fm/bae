@@ -7,13 +7,9 @@ impl PlaybackService {
         self.slot.current_track_id()
     }
 
-    /// Compute the display values for `position_ms` on the current track,
-    /// write them to `last_position_display`, and emit a `Seeked` progress event.
-    ///
-    /// This is the single sink for non-tick position updates (seek, restore,
-    /// pause/resume refresh). Writing the Arc without emitting would leave the
-    /// NSView stale; emitting without writing the Arc would leave late-mounting
-    /// views without a cached value to query. Always go through this helper.
+    /// Compute the display values for `position_ms` on the current track and
+    /// emit a `Seeked` progress event. The single emitter for non-tick position
+    /// updates (seek, restore, pause/resume refresh).
     pub(super) fn emit_position_display(&self, position_ms: u64, track_id: String) {
         let PlaybackSlot::Active(cur) = &self.slot else {
             return;
@@ -25,8 +21,6 @@ impl PlaybackService {
             crate::playback::format::adjust_for_pregap(position_ms, raw_dur_ms, pregap_ms);
         let progress =
             crate::playback::format::compute_progress(position_ms, raw_dur_ms, pregap_ms);
-
-        *self.last_position_display.lock().unwrap() = Some(progress);
 
         emit_progress(
             &self.progress_tx,
@@ -170,9 +164,6 @@ impl PlaybackService {
     /// (a fresh start), never half-populated. Only once all fetches succeed does
     /// the commit run, and the commit is infallible — `parsed` is already
     /// fully-valid, so no field needs defaulting.
-    ///
-    /// StateChanged emissions are suppressed because the UI isn't ready yet;
-    /// display state is written to the shared Arc for the UI to query later.
     pub(super) async fn restore(&mut self, parsed: PersistedPlayback) {
         info!(
             "Restoring playback state: track={:?}",
@@ -303,8 +294,9 @@ impl PlaybackService {
             self.play_track(&track_id, start, PlayTarget::Paused(PausePhase::Manual))
                 .await;
 
-            // Emit the position we restored to so late-mounting views can read it
-            // on mount. `None` means none was captured — the track's start (0).
+            // Emit the position we restored to as a `Seeked` so progress subscribers
+            // can position their display. `None` means none was captured — the
+            // track's start (0).
             let restored_pos = parsed.position_ms.unwrap_or(0);
             self.emit_position_display(restored_pos, track_id);
         }

@@ -9,8 +9,7 @@ use tracing::warn;
 ///
 /// Carries **identity** (path) and **metadata** (duration) only. Position
 /// data flows exclusively through `PlaybackProgress::PreviewPositionUpdate`
-/// events so there is one sink for position, not two. Unlike main playback,
-/// preview has no restore-on-launch case, so no late-mount cache is needed.
+/// events so there is one sink for position, not two.
 #[derive(Debug, Clone)]
 pub enum PreviewState {
     Idle,

@@ -340,7 +340,6 @@ async fn await_shutdown_ack(rx: oneshot::Receiver<()>) {
 pub struct PlaybackHandle {
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     progress_handle: PlaybackProgressHandle,
-    last_position_display: std::sync::Arc<std::sync::Mutex<Option<f64>>>,
 }
 impl PlaybackHandle {
     pub fn play(&self, track_id: String) {
@@ -483,12 +482,6 @@ impl PlaybackHandle {
         let _ = rx.await;
     }
 
-    /// Read the most recent position display progress. Used by late-mounting
-    /// views (e.g. the progress NSView after startup restore) to populate
-    /// themselves immediately instead of waiting for the next position tick.
-    pub fn get_last_position_display(&self) -> Option<f64> {
-        *self.last_position_display.lock().unwrap()
-    }
     pub fn skip_to_entry(&self, entry_id: QueueEntryId) {
         dispatch_command(&self.command_tx, PlaybackCommand::SkipTo(entry_id));
     }
@@ -946,9 +939,6 @@ pub struct PlaybackService {
     position_update_interval_ms: u32,
     /// Cached full-file buffers keyed by release file id.
     shared_file_buffers: HashMap<String, SharedSparseBuffer>,
-    /// Shared with PlaybackHandle. Written on every position tick and by
-    /// `emit_position_display`; read by late-mounting views.
-    last_position_display: Arc<std::sync::Mutex<Option<f64>>>,
     /// Prioritizes byte fetches across tracks: the current track's reader fetches
     /// immediately, a next-track preload's reader yields to it. Shared into every
     /// reader; the current track is designated foreground via
@@ -1147,7 +1137,6 @@ impl PlaybackService {
         let raw_pos_ms = actual_pos.as_millis() as u64;
         let progress =
             crate::playback::format::compute_progress(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
-        *self.last_position_display.lock().unwrap() = Some(progress);
         let (adjusted_pos_ms, adjusted_dur_ms) =
             crate::playback::format::adjust_for_pregap(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
         emit_progress(
@@ -1395,11 +1384,9 @@ impl PlaybackService {
         let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
         let progress_handle = PlaybackProgressHandle::new(progress_rx, runtime_handle.clone());
-        let last_position_display = Arc::new(std::sync::Mutex::new(None));
         let handle = PlaybackHandle {
             command_tx: command_tx.clone(),
             progress_handle: progress_handle.clone(),
-            last_position_display: last_position_display.clone(),
         };
         let command_tx_for_completion = command_tx.clone();
         let progress_handle_for_completion = progress_handle.clone();
@@ -1475,7 +1462,6 @@ impl PlaybackService {
                     pre_mute_volume: 1.0,
                     position_update_interval_ms,
                     shared_file_buffers: HashMap::new(),
-                    last_position_display,
                     fetch_arbiter: FetchArbiter::new(),
                     starvation_episode: None,
                     last_position_persist: None,

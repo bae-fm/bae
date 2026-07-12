@@ -168,7 +168,6 @@ async fn seeded_playback_service(
         pre_mute_volume: 1.0,
         position_update_interval_ms: 50,
         shared_file_buffers: HashMap::new(),
-        last_position_display: Arc::new(std::sync::Mutex::new(None)),
         fetch_arbiter: FetchArbiter::new(),
         starvation_episode: None,
         last_position_persist: None,

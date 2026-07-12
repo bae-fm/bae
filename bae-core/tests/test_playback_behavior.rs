@@ -4386,29 +4386,20 @@ async fn test_playing_seek_cue_flac() {
     eprintln!("✅ Test passed: seek while playing works correctly");
 }
 
-/// Restoring playback state on service start must populate the late-mount
-/// display cache via `emit_position_display`, so the progress NSView created
-/// after launch can read it on mount.
+/// Restoring playback state on service start must emit the restored position
+/// as a `Seeked` progress event, since the restored track comes up Paused and
+/// no position ticks will fire to put a position on screen otherwise.
 ///
-/// Regression test for the main-playback dual-sink fix: if someone removes
-/// the unconditional emission at the end of `restore()` or wraps it in a
-/// condition that skips the zero/near-zero case, the cache stays `None` and
-/// late-mounting NSViews have nothing to read. This test specifically uses
-/// `position_ms = 0` so the internal `seek()` call (which has its own
-/// `emit_position_display`) is skipped, forcing the test to rely entirely
-/// on the tail emission in `restore()`.
-///
-/// The cache is checked instead of a progress event because the event is
-/// emitted from a background thread that races with the test's subscription.
-/// The cache, by contrast, is an `Arc<Mutex<Option<_>>>` that persists
-/// regardless of who's subscribed.
+/// This test specifically uses `position_ms = 0` so the internal `seek()`
+/// call (which has its own `emit_position_display`) is skipped, forcing the
+/// test to rely entirely on the tail emission in `restore()`.
 ///
 /// We do NOT reuse `PlaybackTestFixture` here because its playback service is
 /// spawned on a background thread that may not finish initializing before the
 /// test writes the snapshot, causing the fixture's service to consume the
 /// snapshot instead of the test's new service.
 #[tokio::test]
-async fn test_restore_populates_last_position_display() {
+async fn test_restore_emits_seeked_at_saved_position() {
     tracing_init();
 
     // Build a library + import tracks, but do NOT start a playback service.
@@ -4478,24 +4469,15 @@ async fn test_restore_populates_last_position_display() {
     // Start the playback service — restore() runs on the audio thread before
     // run() and calls emit_position_display at its tail.
     let (handle, _capture_rx) = start_capture_service(library_manager, runtime_handle);
+    let mut progress_rx = handle.subscribe_progress();
 
-    // Poll the cache: restore() runs asynchronously on a spawned thread, so
-    // we can't assume it has completed immediately.
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut display = None;
-    while Instant::now() < deadline {
-        if let Some(d) = handle.get_last_position_display() {
-            display = Some(d);
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
-
-    assert!(
-        display.is_some(),
-        "last_position_display should be populated after restore — the tail \
-         emit in restore() exists specifically so late-mounting NSViews can \
-         read a value on mount"
+    let landed = wait_for_seeked_on(&mut progress_rx, Duration::from_secs(20)).await;
+    assert_eq!(
+        landed,
+        Some(0),
+        "restore() must emit a Seeked at the restored position — the tail \
+         emit is how a progress display learns the resume point (the restored \
+         track comes up Paused, so no position ticks fire)"
     );
 
     handle.stop();
@@ -4952,17 +4934,17 @@ async fn test_restore_drops_deleted_context_keeps_manual() {
 
     let (handle, _capture_rx) =
         start_capture_service(lib.library_manager.clone(), lib.runtime_handle);
+    let mut progress_rx = handle.subscribe_progress();
 
-    // Restore committed once the current (manual) track populates the late-mount
-    // display cache.
-    let deadline = Instant::now() + Duration::from_secs(5);
-    while Instant::now() < deadline && handle.get_last_position_display().is_none() {
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
-    assert!(
-        handle.get_last_position_display().is_some(),
-        "the surviving manual track should restore as current"
-    );
+    // Restore committed once the surviving manual track surfaces as the
+    // restored (Paused) current track.
+    wait_for_state_on(
+        &mut progress_rx,
+        |s| matches!(s, PlaybackState::Paused { track_info, .. } if track_info.track_id == track_id),
+        Duration::from_secs(20),
+    )
+    .await
+    .expect("the surviving manual track should restore as current");
 
     // Force the restored queue to re-persist, then read it back: the dropped
     // context is gone and the manual track survived.
@@ -4994,7 +4976,7 @@ async fn test_restore_drops_deleted_context_keeps_manual() {
 
 /// A corrupt resume cache (here, manual lane that is not valid JSON) is discarded
 /// by the boundary parse: the service starts with an empty queue and never
-/// panics. The position cache stays `None` because no current track restored.
+/// panics. No playback state surfaces because no current track restored.
 #[tokio::test]
 async fn test_restore_corrupt_row_starts_fresh() {
     let lib = restore_test_library().await;
@@ -5015,13 +4997,18 @@ async fn test_restore_corrupt_row_starts_fresh() {
         .unwrap();
 
     let (handle, _capture_rx) = start_capture_service(lib.library_manager, lib.runtime_handle);
+    let mut progress_rx = handle.subscribe_progress();
 
-    // Give restore time to run (and to NOT crash). A discarded cache restores no
-    // current track, so the display cache stays empty.
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    // A discarded resume cache restores nothing: no playback state may surface.
+    let restored = wait_for_state_on(&mut progress_rx, |_| true, Duration::from_millis(500)).await;
     assert!(
-        handle.get_last_position_display().is_none(),
-        "a discarded resume cache leaves nothing playing (fresh start)"
+        restored.is_none(),
+        "a discarded resume cache leaves nothing playing (fresh start), got {restored:?}"
+    );
+    let queue = handle.queue_projection().await.expect("queue projection");
+    assert!(
+        queue.manual.is_empty() && queue.context.is_none(),
+        "a discarded resume cache starts with an empty queue"
     );
 
     handle.stop();
@@ -6168,7 +6155,7 @@ async fn seek_preserves_staged_next_over_sparse_buffer() {
     );
 }
 
-/// Multi-window port of `test_restore_populates_last_position_display` over
+/// Multi-window port of `test_restore_emits_seeked_at_saved_position` over
 /// the shared-buffer resume path: persist mid-track, restart the service, and
 /// confirm the restored track resumes and streams from the saved position
 /// rather than starving on a stale/cancelled buffer.
@@ -6273,10 +6260,6 @@ async fn restore_off_starts_with_nothing_in_playback_and_keeps_the_row() {
     assert!(
         queue.manual.is_empty() && queue.context.is_none(),
         "restore-off starts with an empty queue"
-    );
-    assert!(
-        handle.get_last_position_display().is_none(),
-        "restore-off leaves no restored position display"
     );
 
     // The row survives the skipped restore, so turning the preference on
