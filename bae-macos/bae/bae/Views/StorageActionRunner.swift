@@ -136,17 +136,24 @@ final class StorageActionRunner {
         }
     }
 
-    private func unmanage(releaseIds: [String]) {
+    /// Prompt for the folder an unmanaged release's files move into. Returns
+    /// the chosen directory path, or nil when the user cancels the panel.
+    static func promptUnmanageDestination() -> String? {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
         panel.prompt = String(localized: "Move Here")
-
         guard panel.runModal() == .OK, let url = panel.url else {
+            return nil
+        }
+        return url.path(percentEncoded: false)
+    }
+
+    private func unmanage(releaseIds: [String]) {
+        guard let newPath = Self.promptUnmanageDestination() else {
             return
         }
-        let newPath = url.path(percentEncoded: false)
         runEach(releaseIds, String(localized: "move out of library")) {
             releaseId in
             try await self.releaseEditor.unmanageRelease(releaseId, newPath)

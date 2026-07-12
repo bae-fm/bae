@@ -567,17 +567,11 @@ extension AlbumDetailView {
     }
 
     private func unmanageRelease(releaseId: String) {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.prompt = String(localized: "Move Here")
-
-        guard panel.runModal() == .OK, let url = panel.url else {
+        guard
+            let newPath = StorageActionRunner.promptUnmanageDestination()
+        else {
             return
         }
-        let newPath = url.path(percentEncoded: false)
-
         let releaseEditor = releaseEditor
         runStorageTransition(releaseId: releaseId) {
             try await releaseEditor.unmanageRelease(releaseId, newPath)
