@@ -16,8 +16,8 @@ use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
 use bae_test_support as support;
 use coven::StoreDir;
+use std::fs;
 use std::path::Path;
-use std::{fs, path::PathBuf};
 use tempfile::TempDir;
 use tracing::info;
 
@@ -645,130 +645,6 @@ fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
             flac_template.clone()
         })
         .collect()
-}
-
-/// Test with a real album - run with:
-/// REAL_ALBUM_PATH="/path/to/album" REAL_RELEASE_ID="discogs-id" cargo test --test test_storage --features test-utils test_real_album -- --ignored --nocapture
-#[tokio::test]
-#[ignore]
-async fn test_real_album() {
-    tracing_init();
-    let real_album_path = std::env::var("REAL_ALBUM_PATH")
-        .map(PathBuf::from)
-        .expect("Set REAL_ALBUM_PATH env var to run this test");
-    if !real_album_path.exists() {
-        panic!("Real album path does not exist: {:?}", real_album_path);
-    }
-    let release_id = std::env::var("REAL_RELEASE_ID")
-        .expect("Set REAL_RELEASE_ID env var to a Discogs release ID");
-    run_real_album_test(real_album_path, release_id).await;
-}
-
-async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
-    info!("\n\n========== Testing REAL ALBUM ==========\n");
-    let temp_root = TempDir::new().expect("Failed to create temp root");
-    let db_dir = temp_root.path().join("db");
-    fs::create_dir_all(&db_dir).expect("Failed to create db dir");
-    let entries: Vec<_> = fs::read_dir(&album_dir)
-        .expect("Failed to read album dir")
-        .filter_map(|e| e.ok())
-        .collect();
-    info!("Album contains {} entries:", entries.len());
-    for entry in &entries {
-        info!("  - {:?}", entry.file_name());
-    }
-    let db_file = db_dir.join("test.db");
-    let database = Database::new_test(
-        db_file.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-    )
-    .await
-    .expect("Failed to create database");
-    let library_dir = StoreDir::new(db_dir.clone());
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
-    let library_manager = LibraryManager::new(
-        database.clone(),
-        config_handle,
-        key_service,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        tokio::runtime::Handle::current(),
-    );
-    let runtime_handle = tokio::runtime::Handle::current();
-    // Use the real API resolver since this test exercises real Discogs data
-    let import_handle = ImportService::start(
-        runtime_handle,
-        library_manager.clone(),
-        bae_core::import::cover_art::CoverArtArchiveClient::new(),
-    );
-    let import_id = import_handle
-        .start_import(
-            "test",
-            album_dir.clone(),
-            None,
-            StorageMode::Local,
-            false,
-            IdentityChoice::Exact {
-                release_ref: MetadataRef::new(discogs_release_id.clone(), MetadataSource::Discogs),
-            },
-            None,
-        )
-        .expect("start import");
-    let mut progress_rx = import_handle.subscribe_import(import_id);
-    let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
-    info!("\n--- Verifying database state ---");
-    let release = database
-        .find_release_by_id(&release_id)
-        .await
-        .expect("Failed to get release")
-        .expect("release should exist");
-    let files = library_manager
-        .get_files_for_release(&release_id)
-        .await
-        .expect("Failed to get files");
-    let local_path = match files.first() {
-        Some(f) => library_manager
-            .file_local_path(&f.id)
-            .await
-            .expect("query external ref"),
-        None => None,
-    };
-    info!("remote: {}, local_path: {:?}", release.remote, local_path);
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("Failed to get tracks");
-    info!("\nTracks ({}):", tracks.len());
-    for track in &tracks {
-        info!(
-            "  - [{}] '{}'",
-            track.track_number.unwrap_or(0),
-            track.title,
-        );
-        let audio_format = library_manager
-            .get_audio_format_by_track_id(&track.id)
-            .await
-            .expect("Failed to get audio format");
-        if let Some(af) = audio_format {
-            info!("    audio_format: {}", af.content_type);
-        } else {
-            info!("    audio_format: None");
-        }
-    }
-    let files = library_manager
-        .get_files_for_release(&release_id)
-        .await
-        .expect("Failed to get files");
-    info!("\nFiles ({}):", files.len());
-    for file in &files {
-        info!("  - '{}'", file.original_filename);
-    }
-    let cover = library_manager
-        .get_library_image(&release_id, &LibraryImageType::Cover)
-        .await
-        .expect("Failed to get cover");
-    assert!(cover.is_some(), "Should have a cover in the covers table");
-    info!("Cover library_image record exists");
 }
 
 /// A local (local-only) import records `local_path` at the folder the
