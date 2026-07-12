@@ -13,7 +13,7 @@ enum ImportConfirmationPreview {
         storagePinned: Binding<Bool>,
         trackCountMismatch: Bool = false,
         expectedTrackCount: UInt32 = 9,
-        libraryStatus: LibraryStatus? = nil,
+        libraryStatus: BridgeLibraryStatus? = nil,
         importStatus: BridgeCandidateImportStatus? = nil,
         error: String? = nil,
         hasCoverOptions: Bool = false,

@@ -174,8 +174,7 @@ enum ImportSearchFlow {
                 source: resultSource
             )
             for status in response.statuses {
-                candidate.libraryStatuses[status.releaseId] =
-                    LibraryStatus(bridge: status)
+                candidate.libraryStatuses[status.releaseId] = status
             }
             candidate.searchTask = nil
         }
@@ -659,7 +658,7 @@ extension ImportSearchFlow {
         let uiStore: UiStore
         let trackCountMismatch: Bool
         let expectedTrackCount: UInt32
-        let libraryStatus: LibraryStatus?
+        let libraryStatus: BridgeLibraryStatus?
         let remoteCoverArts: [BridgeRemoteCover]
         let hasCoverOptions: Bool
         let storageManaged: Binding<Bool>

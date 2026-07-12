@@ -210,14 +210,12 @@ struct ImportResultPane<Top: View, Pane: View>: View {
             values: $values,
             storageManaged: $storageManaged,
             storagePinned: $storagePinned,
-            libraryStatus: LibraryStatus(
-                bridge: BridgeLibraryStatus(
-                    releaseId: "rel-123",
-                    releaseInLibrary: true,
-                    albumInLibrary: true,
-                    albumTitle: "Album Title",
-                    albumId: "album-preview"
-                )
+            libraryStatus: BridgeLibraryStatus(
+                releaseId: "rel-123",
+                releaseInLibrary: true,
+                albumInLibrary: true,
+                albumTitle: "Album Title",
+                albumId: "album-preview"
             )
         )
     }

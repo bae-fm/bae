@@ -168,7 +168,7 @@ struct ImportSearchState {
     let isSearching: Bool
     let hasSearched: Bool
     let isImporting: Bool
-    let libraryStatuses: [String: LibraryStatus]
+    let libraryStatuses: [String: BridgeLibraryStatus]
     let discogsEnabled: Bool
     let signals: Signals?
     /// The interactive signals toolbar — the pre-shaped badge list. Empty until
@@ -213,7 +213,7 @@ struct ImportSearchPane: View {
 
     private struct FoundResult {
         let group: ReleaseGroup
-        let statuses: [String: LibraryStatus]
+        let statuses: [String: BridgeLibraryStatus]
         let provenance: [String: ResultProvenance]
     }
 
@@ -483,9 +483,9 @@ extension ImportSearchPane {
     /// barcode value (for the section subtitles).
     struct ConflictResults {
         let discidResults: [MetadataResult]
-        let discidLibraryStatuses: [String: LibraryStatus]
+        let discidLibraryStatuses: [String: BridgeLibraryStatus]
         let barcodeResults: [MetadataResult]
-        let barcodeLibraryStatuses: [String: LibraryStatus]
+        let barcodeLibraryStatuses: [String: BridgeLibraryStatus]
         let discidSourceLabel: String?
         let matchedBarcode: String?
     }
@@ -590,7 +590,7 @@ extension ImportSearchPane {
         title: LocalizedStringKey,
         subtitle: AttributedString,
         results: [MetadataResult],
-        libraryStatuses: [String: LibraryStatus],
+        libraryStatuses: [String: BridgeLibraryStatus],
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {

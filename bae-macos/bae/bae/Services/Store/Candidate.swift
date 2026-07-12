@@ -108,7 +108,7 @@ struct Candidate: Equatable, Identifiable {
     var releaseDetail: ImportReleaseDetail? {
         releaseDetailBridge.map(ImportReleaseDetail.init(bridge:))
     }
-    var libraryStatuses: [String: LibraryStatus] = [:]
+    var libraryStatuses: [String: BridgeLibraryStatus] = [:]
     var mode: CandidateMode = .identifying
     var error: String?
     var selectedCover: BridgeCoverChoice?
@@ -223,7 +223,7 @@ struct Candidate: Equatable, Identifiable {
     /// identify states. An absent status renders as "not in your library",
     /// so removal is the invalidation.
     mutating func removeLibraryStatuses(
-        where shouldRemove: (String, LibraryStatus) -> Bool
+        where shouldRemove: (String, BridgeLibraryStatus) -> Bool
     ) {
         libraryStatuses = libraryStatuses.filter {
             !shouldRemove($0.key, $0.value)

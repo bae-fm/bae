@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// Scrollable list of release-group cards, each with its pressing rows hanging
@@ -7,7 +8,7 @@ import SwiftUI
 struct ReleaseGroupListView: View {
     let groups: [ReleaseGroup]
     let isImporting: Bool
-    let libraryStatuses: [String: LibraryStatus]
+    let libraryStatuses: [String: BridgeLibraryStatus]
     /// Per-release provenance keyed by release id, for the signal badges.
     /// Empty for manual-search results (no auto-identify signals).
     var provenance: [String: ResultProvenance] = [:]

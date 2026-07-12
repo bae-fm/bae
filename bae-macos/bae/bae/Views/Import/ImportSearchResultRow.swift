@@ -14,7 +14,7 @@ import SwiftUI
 struct ImportSearchResultRow: View {
     let result: MetadataResult
     let isImporting: Bool
-    let libraryStatus: LibraryStatus?
+    let libraryStatus: BridgeLibraryStatus?
     /// Which signals produced/confirmed this result, for the badge row. `nil`
     /// for manual-search results (no auto-identify signals).
     var provenance: ResultProvenance?
@@ -238,14 +238,12 @@ struct ImportSearchResultRow: View {
                 )
             ),
             isImporting: false,
-            libraryStatus: LibraryStatus(
-                bridge: BridgeLibraryStatus(
-                    releaseId: "p-2",
-                    releaseInLibrary: true,
-                    albumInLibrary: true,
-                    albumTitle: "Album Title",
-                    albumId: "album-1",
-                )
+            libraryStatus: BridgeLibraryStatus(
+                releaseId: "p-2",
+                releaseInLibrary: true,
+                albumInLibrary: true,
+                albumTitle: "Album Title",
+                albumId: "album-1",
             ),
             provenance: nil,
             isSelected: false,

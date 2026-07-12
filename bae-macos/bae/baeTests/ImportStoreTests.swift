@@ -12,15 +12,13 @@ private func makeCandidate(_ key: String) -> Candidate {
     )
 }
 
-private func makeStatus(albumId: String) -> LibraryStatus {
-    LibraryStatus(
-        bridge: BridgeLibraryStatus(
-            releaseId: "unused",
-            releaseInLibrary: true,
-            albumInLibrary: true,
-            albumTitle: "Album Title",
-            albumId: albumId
-        )
+private func makeStatus(albumId: String) -> BridgeLibraryStatus {
+    BridgeLibraryStatus(
+        releaseId: "unused",
+        releaseInLibrary: true,
+        albumInLibrary: true,
+        albumTitle: "Album Title",
+        albumId: albumId
     )
 }
 

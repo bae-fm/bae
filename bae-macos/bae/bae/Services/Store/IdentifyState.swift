@@ -95,7 +95,7 @@ enum IdentifyState: Equatable {
     case triangulating(discid: DiscidProgress, barcode: BarcodeProgress)
     case found(
         group: ReleaseGroup,
-        libraryStatuses: [String: LibraryStatus],
+        libraryStatuses: [String: BridgeLibraryStatus],
         trackCount: UInt32,
         source: IdentifySource,
         /// Per-pressing provenance keyed by release id — the per-row badges.
@@ -106,9 +106,9 @@ enum IdentifyState: Equatable {
     /// pick a section, exclude a signal, or fall back to manual search.
     case conflict(
         discidResults: [MetadataResult],
-        discidLibraryStatuses: [String: LibraryStatus],
+        discidLibraryStatuses: [String: BridgeLibraryStatus],
         barcodeResults: [MetadataResult],
-        barcodeLibraryStatuses: [String: LibraryStatus],
+        barcodeLibraryStatuses: [String: BridgeLibraryStatus],
         discidSourceLabel: String?,
         matchedBarcode: String?,
         trackCount: UInt32,
@@ -136,9 +136,7 @@ enum IdentifyState: Equatable {
         ):
             self = .found(
                 group: ReleaseGroup(bridge: group),
-                libraryStatuses: libraryStatuses.mapValues(
-                    LibraryStatus.init(bridge:)
-                ),
+                libraryStatuses: libraryStatuses,
                 trackCount: trackCount,
                 source: IdentifySource(bridge: source),
                 provenance: provenance.mapValues(
@@ -156,15 +154,11 @@ enum IdentifyState: Equatable {
         ):
             self = .conflict(
                 discidResults: discidResults.map(MetadataResult.init(bridge:)),
-                discidLibraryStatuses: discidLibraryStatuses.mapValues(
-                    LibraryStatus.init(bridge:),
-                ),
+                discidLibraryStatuses: discidLibraryStatuses,
                 barcodeResults: barcodeResults.map(
                     MetadataResult.init(bridge:)
                 ),
-                barcodeLibraryStatuses: barcodeLibraryStatuses.mapValues(
-                    LibraryStatus.init(bridge:),
-                ),
+                barcodeLibraryStatuses: barcodeLibraryStatuses,
                 discidSourceLabel: discidSourceLabel,
                 matchedBarcode: matchedBarcode,
                 trackCount: trackCount,
@@ -180,11 +174,11 @@ enum IdentifyState: Equatable {
     /// removal those entries are stale and an absent entry renders as "not
     /// in your library".
     mutating func removeLibraryStatuses(
-        where shouldRemove: (String, LibraryStatus) -> Bool
+        where shouldRemove: (String, BridgeLibraryStatus) -> Bool
     ) {
         func kept(
-            _ statuses: [String: LibraryStatus]
-        ) -> [String: LibraryStatus] {
+            _ statuses: [String: BridgeLibraryStatus]
+        ) -> [String: BridgeLibraryStatus] {
             statuses.filter { !shouldRemove($0.key, $0.value) }
         }
         switch self {

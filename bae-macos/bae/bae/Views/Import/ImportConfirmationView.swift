@@ -47,7 +47,7 @@ struct ImportConfirmationView<CoverContent: View>: View {
     var storagePinned: Bool
     let trackCountMismatch: Bool
     let expectedTrackCount: UInt32
-    let libraryStatus: LibraryStatus?
+    let libraryStatus: BridgeLibraryStatus?
     /// The candidate this pane confirms — routes the high-frequency loudness
     /// ticks to the leaf bar during the measuring-loudness phase.
     let candidateKey: String
