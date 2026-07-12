@@ -302,22 +302,23 @@ struct LightboxView: View {
             .shadow(color: .black.opacity(0.5), radius: 20)
     }
 
-    private func goPrevious() {
-        var next = cursor
-        next.goToPrevious()
-        onUpdate(next)
-    }
-
-    private func goNext() {
-        var next = cursor
-        next.goToNext()
-        onUpdate(next)
-    }
 }
 
 // MARK: - Overlay chrome
 
 extension LightboxView {
+    fileprivate func goPrevious() {
+        var next = cursor
+        next.goToPrevious()
+        onUpdate(next)
+    }
+
+    fileprivate func goNext() {
+        var next = cursor
+        next.goToNext()
+        onUpdate(next)
+    }
+
     fileprivate var labelView: some View {
         Text(cursor.current.label)
             .font(.callout)

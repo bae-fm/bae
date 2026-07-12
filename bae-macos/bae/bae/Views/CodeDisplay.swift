@@ -10,7 +10,13 @@ struct CodeDisplay: View {
     /// This device's public-key fingerprint, rendered between the code and
     /// the copy button. The approving device shows the same fingerprint;
     /// matching them confirms the right device is being added.
-    var deviceFingerprint: String? = nil
+    let deviceFingerprint: String?
+
+    init(code: String, qrSize: CGFloat, deviceFingerprint: String? = nil) {
+        self.code = code
+        self.qrSize = qrSize
+        self.deviceFingerprint = deviceFingerprint
+    }
 
     var body: some View {
         if let qrImage = QRCode.image(from: code) {
