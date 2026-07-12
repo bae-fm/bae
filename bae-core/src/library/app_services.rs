@@ -33,12 +33,6 @@ impl std::fmt::Debug for AppServices {
     }
 }
 
-impl PartialEq for AppServices {
-    fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.inner, &other.inner)
-    }
-}
-
 impl AppServices {
     pub fn new(
         manager: LibraryManager,
