@@ -11,8 +11,8 @@
 // unchanged. `CloudCipher` is what a test hands to `connect_sync_with_test_home`;
 // blob-key derivation is coven's, reached through `CovenHandle::blob_cloud_key`.
 pub use coven::{
-    decode_invite_code_info, decode_restore_code_info, join_from_invite_code, restore_from_cloud,
-    restore_from_code, CloudCipher, RestoreSource,
+    decode_restore_code_info, join_from_invite_code, restore_from_cloud, restore_from_code,
+    CloudCipher, RestoreSource,
 };
 
 // bae's blob-transition observer: UI bookkeeping for coven's upload drain and
