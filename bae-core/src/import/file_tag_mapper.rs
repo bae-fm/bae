@@ -601,8 +601,6 @@ mod tests {
             file_reference: "image.flac".to_string(),
             start_cue_frames: 0,
             pregap: CuePregap::None,
-            pregap_cue_frames: None,
-            generated_pregap_frames: None,
             end_cue_frames: None,
         };
         let sheet = CueSheet {
@@ -659,8 +657,6 @@ mod tests {
             file_reference: "image.flac".to_string(),
             start_cue_frames: 0,
             pregap: CuePregap::None,
-            pregap_cue_frames: None,
-            generated_pregap_frames: None,
             end_cue_frames: None,
         }
     }

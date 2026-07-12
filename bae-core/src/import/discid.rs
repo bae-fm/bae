@@ -554,8 +554,6 @@ mod tests {
                     file_reference: "Album.flac".to_string(),
                     start_cue_frames: 0,
                     pregap: CuePregap::None,
-                    pregap_cue_frames: None,
-                    generated_pregap_frames: None,
                     end_cue_frames: Some(3 * 60 * 75),
                 },
                 CueTrack {
@@ -571,8 +569,6 @@ mod tests {
                     file_reference: "Album.flac".to_string(),
                     start_cue_frames: 3 * 60 * 75,
                     pregap: CuePregap::None,
-                    pregap_cue_frames: None,
-                    generated_pregap_frames: None,
                     end_cue_frames: Some(6 * 60 * 75),
                 },
                 CueTrack {
@@ -588,8 +584,6 @@ mod tests {
                     file_reference: "Album.flac".to_string(),
                     start_cue_frames: 6 * 60 * 75,
                     pregap: CuePregap::None,
-                    pregap_cue_frames: None,
-                    generated_pregap_frames: None,
                     end_cue_frames: None,
                 },
             ],
@@ -627,8 +621,6 @@ mod tests {
                 file_reference: "disc-image.bin".to_string(),
                 start_cue_frames,
                 pregap: CuePregap::None,
-                pregap_cue_frames: None,
-                generated_pregap_frames: None,
                 end_cue_frames: None,
             }
         }
@@ -819,8 +811,6 @@ mod tests {
             file_reference: file_reference.to_string(),
             start_cue_frames: 0,
             pregap: CuePregap::None,
-            pregap_cue_frames: None,
-            generated_pregap_frames: None,
             end_cue_frames: None,
         }
     }

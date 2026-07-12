@@ -113,7 +113,10 @@ FILE "03.wav" WAVE
     assert_eq!(track2.file_reference, "02.wav");
     assert_eq!(track2.index(0).unwrap().file_reference, "01.wav");
     assert_eq!(track2.index(1).unwrap().file_reference, "02.wav");
-    assert_eq!(track2.pregap_cue_frames, Some((2 * 60 + 55) * 75 + 33));
+    assert_eq!(
+        track2.pregap_start_cue_frames(),
+        Some((2 * 60 + 55) * 75 + 33)
+    );
 }
 
 #[test]
@@ -222,10 +225,10 @@ FILE "Artist Name - Album Title.flac" WAVE
     assert_eq!(cue_sheet.tracks.len(), 3);
     assert_eq!(cue_sheet.tracks[0].title.as_deref(), Some("Track One"));
     // Track 1 has pregap at 00:00:00, INDEX 01 at 00:00:37
-    assert_eq!(cue_sheet.tracks[0].pregap_cue_frames, Some(0));
+    assert_eq!(cue_sheet.tracks[0].pregap_start_cue_frames(), Some(0));
     assert_eq!(cue_sheet.tracks[0].start_cue_frames, 37);
     // Track 2 has pregap
-    assert!(cue_sheet.tracks[1].pregap_cue_frames.is_some());
+    assert!(cue_sheet.tracks[1].pregap_start_cue_frames().is_some());
 }
 
 #[test]
@@ -514,7 +517,7 @@ FILE "Test Artist - Test Album.flac" WAVE
 
     // Track 1 should end at track 2's pregap (INDEX 00), not INDEX 01
     let track1_end_ms = cue_sheet.tracks[0].end_time_ms().unwrap();
-    let track2_pregap_frames = cue_sheet.tracks[1].pregap_cue_frames.unwrap();
+    let track2_pregap_frames = cue_sheet.tracks[1].pregap_start_cue_frames().unwrap();
     let track2_start_frames = cue_sheet.tracks[1].start_cue_frames;
 
     // Verify pregap was parsed correctly (INDEX 00 = 2:46:00 = 12450 CUE frames)
@@ -549,7 +552,7 @@ FILE "test.flac" WAVE
     let (_, cue_sheet) = result.unwrap();
 
     let track2 = &cue_sheet.tracks[1];
-    let pregap_frames = track2.pregap_cue_frames.unwrap();
+    let pregap_frames = track2.pregap_start_cue_frames().unwrap();
     let start_frames = track2.start_cue_frames;
 
     // Pregap duration should be 3 seconds (3:03 - 3:00 = 225 CUE frames = 3s)

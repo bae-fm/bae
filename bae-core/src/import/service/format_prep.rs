@@ -180,12 +180,12 @@ fn cue_backed_audio_format(
         .filter(|&ms| ms > 0)
         .map(|ms| ms as i64);
     let audio_pregap_samples = cue_track
-        .pregap_cue_frames
+        .pregap_start_cue_frames()
         .map(|pregap| cue_track.start_cue_frames.saturating_sub(pregap))
         .filter(|&frames| frames > 0)
         .map(|frames| (frames * fmt.sample_rate as u64 / 75) as i64);
     let generated_pregap_samples = cue_track
-        .generated_pregap_frames
+        .generated_pregap_frames()
         .filter(|&frames| frames > 0)
         .map(|frames| (frames * fmt.sample_rate as u64 / 75) as i64);
 

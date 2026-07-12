@@ -58,10 +58,6 @@ pub struct CueTrack {
     pub start_cue_frames: u64,
     /// Pregap source for this track.
     pub pregap: CuePregap,
-    /// INDEX 00 position in CUE frames (pregap start)
-    pub pregap_cue_frames: Option<u64>,
-    /// Generated silent pregap from a CUE `PREGAP` directive, in CUE frames.
-    pub generated_pregap_frames: Option<u64>,
     /// Next track's boundary in CUE frames (None for last track)
     pub end_cue_frames: Option<u64>,
 }
@@ -80,6 +76,23 @@ impl CueTrack {
         match &self.pregap {
             CuePregap::Audio(index) => index.frames,
             CuePregap::None | CuePregap::Silence { .. } => self.start_cue_frames,
+        }
+    }
+
+    /// INDEX 00 position in CUE frames when the pregap is real audio in the
+    /// container; `None` for no pregap or a generated (`PREGAP` directive) one.
+    pub fn pregap_start_cue_frames(&self) -> Option<u64> {
+        match &self.pregap {
+            CuePregap::Audio(index) => Some(index.frames),
+            CuePregap::None | CuePregap::Silence { .. } => None,
+        }
+    }
+
+    /// Silent pregap length in CUE frames from a `PREGAP` directive.
+    pub fn generated_pregap_frames(&self) -> Option<u64> {
+        match self.pregap {
+            CuePregap::Silence { frames } => Some(frames),
+            CuePregap::None | CuePregap::Audio(_) => None,
         }
     }
 
@@ -117,15 +130,13 @@ impl CueTrack {
     /// Pregap duration in ms; `None` when the track has no pregap (no INDEX 00,
     /// or the bogus-pregap corrector cleared it).
     pub fn pregap_duration_ms(&self) -> Option<u64> {
-        self.pregap_cue_frames
+        self.pregap_start_cue_frames()
             .map(|pregap| self.start_time_ms().saturating_sub(pregap * 1000 / 75))
     }
 
     pub fn generated_pregap_duration_ms(&self) -> Option<u64> {
-        match self.pregap {
-            CuePregap::Silence { frames } => Some(frames * 1000 / 75),
-            CuePregap::None | CuePregap::Audio(_) => None,
-        }
+        self.generated_pregap_frames()
+            .map(|frames| frames * 1000 / 75)
     }
 }
 
@@ -254,14 +265,6 @@ impl PendingCueTrack {
             (None, Some(frames)) => CuePregap::Silence { frames },
             (None, None) => CuePregap::None,
         };
-        let pregap_cue_frames = match &pregap {
-            CuePregap::Audio(index) => Some(index.frames),
-            CuePregap::None | CuePregap::Silence { .. } => None,
-        };
-        let generated_pregap_frames = match pregap {
-            CuePregap::Silence { frames } => Some(frames),
-            CuePregap::None | CuePregap::Audio(_) => None,
-        };
         Ok(CueTrack {
             number: self.number,
             mode: self.mode,
@@ -271,8 +274,6 @@ impl PendingCueTrack {
             file_reference,
             start_cue_frames,
             pregap,
-            pregap_cue_frames,
-            generated_pregap_frames,
             end_cue_frames: None,
         })
     }
@@ -431,12 +432,13 @@ impl CueFlacProcessor {
         // previous track's INDEX 01. Remove them so every downstream boundary
         // reader sees the same corrected shape.
         for i in 1..tracks.len() {
-            if let Some(pregap) = tracks[i].pregap_cue_frames {
-                if pregap <= tracks[i - 1].start_cue_frames {
-                    tracks[i].pregap_cue_frames = None;
-                    tracks[i].pregap = CuePregap::None;
-                    tracks[i].indexes.retain(|index| index.number != 0);
-                }
+            let bogus = match &tracks[i].pregap {
+                CuePregap::Audio(index) => index.frames <= tracks[i - 1].start_cue_frames,
+                CuePregap::None | CuePregap::Silence { .. } => false,
+            };
+            if bogus {
+                tracks[i].pregap = CuePregap::None;
+                tracks[i].indexes.retain(|index| index.number != 0);
             }
         }
         for i in 0..tracks.len() {
