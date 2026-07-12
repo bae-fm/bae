@@ -684,14 +684,14 @@ private struct OutboxTotalProgress: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            ProgressView(value: snapshot.transferFraction)
+            ProgressView(value: snapshot.total.fraction)
                 .progressViewStyle(.linear)
                 // Dim the bar while paused so the visual matches the "Paused"
                 // chip in the band above — paused-but-mid-progress reads as
                 // active otherwise.
                 .opacity(snapshot.paused ? 0.4 : 1)
             HStack(spacing: 8) {
-                Text(snapshot.transferProgressText)
+                Text(snapshot.total.bytesText)
                     .font(.caption)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
