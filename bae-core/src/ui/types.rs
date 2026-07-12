@@ -251,5 +251,4 @@ pub enum UiBusEvent {
     Error {
         error: UiError,
     },
-    ErrorCleared,
 }

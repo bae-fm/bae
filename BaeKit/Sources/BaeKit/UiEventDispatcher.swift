@@ -47,9 +47,6 @@ public enum UiEventDispatcher {
         case .error(let error):
             appService.showError(DisplayError(error))
 
-        case .errorCleared:
-            appService.clearError()
-
         case .releaseTransferProgress, .releaseTransferEnded:
             // Neither Apple app renders a per-transfer indicator today; consume
             // the event here rather than leaving it for the platform tail.

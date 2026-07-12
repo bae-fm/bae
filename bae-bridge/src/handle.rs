@@ -2398,7 +2398,6 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
         UiBusEvent::Error { error } => Some(BridgeUiEvent::Error {
             error: crate::types::BridgeError::from_core(error),
         }),
-        UiBusEvent::ErrorCleared => Some(BridgeUiEvent::ErrorCleared),
     }
 }
 

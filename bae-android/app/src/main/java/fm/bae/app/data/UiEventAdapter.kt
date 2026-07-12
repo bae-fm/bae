@@ -173,10 +173,6 @@ object UiEventAdapter {
                 stores.config.showError(errors.line(event.error))
             }
 
-            BridgeUiEvent.ErrorCleared -> {
-                stores.config.clearError()
-            }
-
             else -> {
                 return false
             }
@@ -211,7 +207,6 @@ object UiEventAdapter {
             is BridgeUiEvent.MuteChanged,
             is BridgeUiEvent.QueueItemsAdded,
             is BridgeUiEvent.Error,
-            BridgeUiEvent.ErrorCleared,
             -> {
                 error("handled event reached obsolete-event path: ${event::class.simpleName}")
             }

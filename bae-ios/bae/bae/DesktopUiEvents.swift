@@ -19,7 +19,7 @@ enum DesktopUiEvents {
             .playbackPlaying, .playbackPaused, .playbackProgress,
             .playbackSeeked, .volumeChanged, .muteChanged, .repeatModeChanged,
             .queueUpdated, .queueItemsAdded, .releaseTransferProgress,
-            .releaseTransferEnded, .error, .errorCleared:
+            .releaseTransferEnded, .error:
             preconditionFailure("Unhandled UI event \(event)")
         }
     }

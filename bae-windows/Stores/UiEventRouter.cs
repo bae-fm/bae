@@ -96,9 +96,6 @@ internal sealed class UiEventRouter
             case BridgeUiEvent.Error error:
                 _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.title"), BridgeDisplay.LocalizedLine(error.ErrorValue));
                 break;
-            case BridgeUiEvent.ErrorCleared:
-                _shell.ClearBanner();
-                break;
             case BridgeUiEvent.Invalidated invalidated:
                 _projections.Invalidate(invalidated.Invalidation);
                 break;

@@ -42,7 +42,7 @@ class ConfigStore(
     private val _syncError = MutableStateFlow<String?>(null)
     val syncError: StateFlow<String?> = _syncError.asStateFlow()
 
-    /** Transient app-level error surfaced by `Error` / `ErrorCleared` events. */
+    /** Transient app-level error surfaced by `Error` events. */
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
@@ -61,9 +61,5 @@ class ConfigStore(
 
     fun showError(message: String) {
         _error.value = message
-    }
-
-    fun clearError() {
-        _error.value = null
     }
 }

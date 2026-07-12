@@ -99,19 +99,6 @@ open class AppService: @unchecked Sendable, Observable {
         #endif
     }
 
-    /// Clear the platform's error surface. Mirrors `showError`: iOS clears the
-    /// shared `ConfigStore` banner; macOS overrides this to clear its global
-    /// alert (`UiStore`).
-    open func clearError() {
-        #if os(iOS)
-            configStore.clearError()
-        #else
-            preconditionFailure(
-                "macOS AppService must override clearError to route through UiStore"
-            )
-        #endif
-    }
-
     /// Mirror a queue snapshot into the playback store and refresh the
     /// media-control next/previous availability.
     public func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {

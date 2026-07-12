@@ -88,10 +88,6 @@ final class AppService: BaeKit.AppService {
         uiStore.showError(error)
     }
 
-    override func clearError() {
-        uiStore.clearError()
-    }
-
     /// Wire the live `AppHandle` into the stores: register the common and
     /// desktop projections, subscribe to Rust UI events, register the artwork
     /// analyzer, set up macOS media remote-control bindings, start watching

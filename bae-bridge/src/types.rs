@@ -1661,7 +1661,6 @@ pub enum BridgeUiEvent {
     Error {
         error: BridgeError,
     },
-    ErrorCleared,
 }
 
 /// The dominant activity of a slice of the upload queue (a release's uploads,

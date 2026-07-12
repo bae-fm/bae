@@ -301,20 +301,6 @@ struct UiEventDispatcherErrorTests {
 
         #expect(appService.uiStore.lastError != nil)
     }
-
-    @Test("errorCleared reaches uiStore.clearError through the new seam")
-    func errorClearedReachesUiStore() {
-        let appService = makeAppService()
-        appService.uiStore.showError(DisplayError(line: "boom"))
-        let sink = UiEventDispatcher.makeSink(
-            appService: appService,
-            onUnhandled: DesktopUiEvents.apply
-        )
-
-        sink(.errorCleared)
-
-        #expect(appService.uiStore.lastError == nil)
-    }
 }
 
 @MainActor
@@ -450,7 +436,6 @@ private let handledEvents: [BridgeUiEvent] = [
     .releaseTransferProgress(releaseId: "r1", action: .pin),
     .releaseTransferEnded(releaseId: "r1"),
     .error(error: .Diagnostic(category: .internal, detail: "boom")),
-    .errorCleared,
 ]
 
 // MARK: - Test doubles
