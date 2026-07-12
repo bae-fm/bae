@@ -1196,6 +1196,16 @@ impl AppHandle {
             .start(candidate_key, ExtractionSource::Release { release_id });
     }
 
+    /// Stop a candidate's identify pipeline: cancels the identify driver and
+    /// the in-flight signal extraction (artwork OCR) for `candidate_key`. The
+    /// inverse of `auto_identify_folder` / `auto_identify_release`; a no-op for
+    /// a key with nothing running. Called when the UI tears the candidate down
+    /// (the re-identify sheet closing).
+    pub fn cancel_auto_identify(&self, candidate_key: String) {
+        self.services.identify().cancel(&candidate_key);
+        self.services.extraction().cancel(&candidate_key);
+    }
+
     /// Toggle a signal in a candidate's toolbar — include or exclude it from
     /// triangulation. The identify driver flips the signal and re-combines
     /// over the surviving signals, emitting the resulting state through the

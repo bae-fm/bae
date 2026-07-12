@@ -667,6 +667,9 @@ internal static class NativeBae
     internal static void AutoIdentifyRelease(AppHandle handle, string candidateKey, string releaseId) =>
         handle.AutoIdentifyRelease(candidateKey, releaseId);
 
+    internal static void CancelAutoIdentify(AppHandle handle, string candidateKey) =>
+        handle.CancelAutoIdentify(candidateKey);
+
     /// <summary>
     /// The live identify-pipeline state for a re-identify candidate key: the
     /// localizable row status, the found pressings, and the signals-toolbar

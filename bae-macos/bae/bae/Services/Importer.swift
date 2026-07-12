@@ -20,6 +20,8 @@ final class Importer: Sendable, Observable {
         @Sendable (_ candidateKey: String, _ folderPath: String) -> Void
     let autoIdentifyRelease:
         @Sendable (_ candidateKey: String, _ releaseId: String) -> Void
+    /// Stop a candidate's identify pipeline (driver + in-flight artwork OCR).
+    let cancelAutoIdentify: @Sendable (_ candidateKey: String) -> Void
     let searchForCandidate:
         @Sendable (_ query: BridgeSearchQuery) async throws ->
             BridgeCandidateSearchResults
@@ -59,6 +61,7 @@ final class Importer: Sendable, Observable {
             _,
             _ in
         },
+        cancelAutoIdentify: @escaping @Sendable (String) -> Void = { _ in },
         searchForCandidate:
             @escaping @Sendable (BridgeSearchQuery) async throws ->
             BridgeCandidateSearchResults = { _ in throw StubError.notImplemented
@@ -87,6 +90,7 @@ final class Importer: Sendable, Observable {
         self.scanWatchedFolders = scanWatchedFolders
         self.autoIdentifyFolder = autoIdentifyFolder
         self.autoIdentifyRelease = autoIdentifyRelease
+        self.cancelAutoIdentify = cancelAutoIdentify
         self.searchForCandidate = searchForCandidate
         self.toggleSignalForCandidate = toggleSignalForCandidate
         self.rerunIdentifyForCandidate = rerunIdentifyForCandidate
@@ -108,6 +112,9 @@ final class Importer: Sendable, Observable {
             },
             autoIdentifyRelease: {
                 handle.autoIdentifyRelease(candidateKey: $0, releaseId: $1)
+            },
+            cancelAutoIdentify: {
+                handle.cancelAutoIdentify(candidateKey: $0)
             },
             searchForCandidate: {
                 try await handle.searchForCandidate(query: $0)

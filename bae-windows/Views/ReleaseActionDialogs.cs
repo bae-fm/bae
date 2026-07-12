@@ -517,6 +517,9 @@ internal sealed class ReleaseActionDialogs
         finally
         {
             registration.Dispose();
+            // Stop the identify driver and any in-flight artwork OCR for this
+            // candidate; the dialog is the only consumer of its results.
+            _session.WithCurrentHandle(handle => NativeBae.CancelAutoIdentify(handle, key));
         }
 
         // A Primary result means a source-backed commit succeeded (the error
