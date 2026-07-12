@@ -330,27 +330,7 @@ impl StreamPipeline {
             Err(_) => warn!("playback source lock poisoned during seek teardown; skipping cancel"),
         }
 
-        // Cancel this decoder's AVIO reads via its token.
-        self.cancel_token.store(true, Ordering::Release);
-
-        // Wake any readers blocked on the condvar so they can check the token.
-        for buffer in buffers {
-            buffer.wake_readers();
-        }
-
-        // Wait for the decoder thread to exit. Surface a thread panic as an error
-        // (decoder bug, real signal); tokio join failures (panic in the
-        // spawn_blocking wrapper itself, runtime shutdown) get a warn.
-        let handle = self.decoder_handle;
-        match tokio::task::spawn_blocking(move || handle.join()).await {
-            Ok(Ok(())) => {}
-            Ok(Err(panic)) => {
-                error!("Decoder thread panicked during seek teardown: {:?}", panic);
-            }
-            Err(e) => {
-                warn!("spawn_blocking failed while joining decoder thread: {e}");
-            }
-        }
+        cancel_and_join_decoder(&self.cancel_token, buffers, self.decoder_handle).await;
     }
 
     /// Build a pipeline over a caller-supplied `source` with stub parts (a no-op
@@ -363,6 +343,34 @@ impl StreamPipeline {
             source,
             decoder_handle: std::thread::spawn(|| {}),
             cancel_token: Arc::new(AtomicBool::new(false)),
+        }
+    }
+}
+
+/// Cancel a decoder and wait for its thread to exit: set its AVIO cancel
+/// token, wake the given byte buffers so a read-blocked decoder observes the
+/// token, and join the thread off the async runtime. The buffers are left
+/// uncancelled (the caller retains them across the seek). The decoder's sink
+/// must already be cancelled by the caller (`PlaybackSource::replace` /
+/// `cancel`), so a decoder parked writing a full ring also unparks. Surfaces
+/// a thread panic as an error (decoder bug, real signal); tokio join failures
+/// (panic in the spawn_blocking wrapper itself, runtime shutdown) get a warn.
+pub(crate) async fn cancel_and_join_decoder(
+    cancel_token: &AtomicBool,
+    buffers: &[SharedSparseBuffer],
+    handle: std::thread::JoinHandle<()>,
+) {
+    cancel_token.store(true, Ordering::Release);
+    for buffer in buffers {
+        buffer.wake_readers();
+    }
+    match tokio::task::spawn_blocking(move || handle.join()).await {
+        Ok(Ok(())) => {}
+        Ok(Err(panic)) => {
+            error!("Decoder thread panicked during seek teardown: {:?}", panic);
+        }
+        Err(e) => {
+            warn!("spawn_blocking failed while joining decoder thread: {e}");
         }
     }
 }

@@ -138,25 +138,14 @@ impl PlaybackService {
         }
 
         // Now cancel + join the old decoder so the reused byte buffers are free and
-        // the old thread is gone. `replace` already cancelled its sink; setting its
-        // token and waking the buffers unblocks a read-blocked decoder. Surface a
-        // thread panic as an error; a tokio join failure as a warn.
-        old_decoder
-            .cancel_token
-            .store(true, std::sync::atomic::Ordering::Release);
-        for buffer in &old_buffers {
-            buffer.wake_readers();
-        }
-        let old_handle = old_decoder.handle;
-        match tokio::task::spawn_blocking(move || old_handle.join()).await {
-            Ok(Ok(())) => {}
-            Ok(Err(panic)) => {
-                error!("Decoder thread panicked during seek teardown: {:?}", panic);
-            }
-            Err(e) => {
-                warn!("spawn_blocking failed while joining decoder thread: {e}");
-            }
-        }
+        // the old thread is gone. `replace` already cancelled its sink, so
+        // `cancel_and_join_decoder`'s token + buffer wake reaches it wherever it is
+        // parked.
+        let TrackDecoder {
+            handle: old_handle,
+            cancel_token: old_cancel_token,
+        } = old_decoder;
+        cancel_and_join_decoder(&old_cancel_token, &old_buffers, old_handle).await;
 
         // Reassemble the current track. The phase stays Loading (with this seek's
         // generation and target) until the ready-watcher's TrackReady resolves it.

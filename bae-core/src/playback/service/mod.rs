@@ -12,9 +12,9 @@
 //!
 //! ## Seek Flow
 //!
-//! 1. Cancel old streaming source (makes callback output silence) and the old
-//!    decoder's token; wake the byte buffers' readers so a read-blocked decoder
-//!    observes the token, and join the decoder (`shutdown_for_seek`)
+//! 1. Cancel old streaming source (makes callback output silence), then set the
+//!    old decoder's token, wake the byte buffers' readers so a read-blocked
+//!    decoder observes the token, and join the decoder (`cancel_and_join_decoder`)
 //! 2. The byte buffers stay alive and cached — the rebuilt decoder reuses them
 //! 3. Spawn new decoder on the same buffers with `seek_to` (FFmpeg-level seek)
 //! 4. Build a fresh stream over it; the phase stays Loading until the
@@ -72,8 +72,8 @@ mod starvation;
 mod state;
 
 use crate::playback::stream_pipeline::{
-    log_stream_diagnostic, report_dropped_audio_events, spawn_decoder, DecodeFailureReport,
-    DecoderStart, SegmentDecodeParams, StreamDecodeParams,
+    cancel_and_join_decoder, log_stream_diagnostic, report_dropped_audio_events, spawn_decoder,
+    DecodeFailureReport, DecoderStart, SegmentDecodeParams, StreamDecodeParams,
 };
 use output::OutputStream;
 use slot::{
