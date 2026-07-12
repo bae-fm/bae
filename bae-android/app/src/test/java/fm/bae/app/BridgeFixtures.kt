@@ -57,7 +57,6 @@ object BridgeFixtures {
             id = id,
             albumId = albumId,
             displayName = "Release",
-            releaseName = null,
             year = null,
             format = null,
             label = null,

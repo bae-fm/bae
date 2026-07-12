@@ -44,7 +44,6 @@ private func makeBridgeRelease(
         id: id,
         albumId: albumId,
         displayName: displayName,
-        releaseName: nil,
         year: 2024,
         format: format,
         label: nil,

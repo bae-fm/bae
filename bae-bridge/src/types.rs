@@ -269,7 +269,6 @@ pub struct BridgeRelease {
     pub id: String,
     pub album_id: String,
     pub display_name: String,
-    pub release_name: Option<String>,
     pub year: Option<i32>,
     pub format: Option<String>,
     pub label: Option<String>,

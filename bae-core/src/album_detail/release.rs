@@ -108,10 +108,6 @@ pub struct ReleaseDetail {
     /// Human-readable name for picker UI: the stored `release_name`, or
     /// "$year $format", or "Release $N" fallback.
     pub display_name: String,
-    /// Raw `release_name` from the release row, preserved for wire
-    /// compatibility with `BridgeRelease.release_name`. Consumers should
-    /// prefer `display_name` for display.
-    pub release_name: Option<String>,
     pub year: Option<i32>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
@@ -366,7 +362,6 @@ impl ReleaseDetail {
         ReleaseDetail {
             summary,
             display_name,
-            release_name: release.release_name,
             year: release.pressing.year,
             label: release.pressing.label,
             catalog_number: release.pressing.catalog_number,

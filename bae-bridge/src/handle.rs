@@ -2485,7 +2485,6 @@ impl BridgeRelease {
         let bae_core::album_detail::ReleaseDetail {
             summary,
             display_name,
-            release_name,
             year,
             label,
             catalog_number,
@@ -2516,7 +2515,6 @@ impl BridgeRelease {
             id,
             album_id,
             display_name,
-            release_name,
             year,
             format,
             label,

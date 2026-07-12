@@ -609,7 +609,6 @@ pub enum AutomationImportProgress {
 pub struct AutomationRelease {
     pub summary: AutomationReleaseSummary,
     pub display_name: String,
-    pub release_name: Option<String>,
     pub year: Option<i32>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
@@ -2546,7 +2545,6 @@ fn automation_release(release: ReleaseDetail) -> AutomationRelease {
     AutomationRelease {
         summary: automation_release_summary(release.summary),
         display_name: release.display_name,
-        release_name: release.release_name,
         year: release.year,
         label: release.label,
         catalog_number: release.catalog_number,
