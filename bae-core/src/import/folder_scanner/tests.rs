@@ -3118,11 +3118,10 @@ fn single_weird_sibling_prevents_multidisc_classification() {
     assert!(top.iter().any(|p| p == "Album/Bonus Tracks"));
 }
 
-/// L2.11 — CUE lacking PERFORMER/TITLE is rejected by the nom parser,
-/// but the scanner's line-based summary still extracts the declared
-/// track count. When that count exceeds on-disk audio and the CUE
-/// stem doesn't pair with any FLAC, the mismatch guard rejects the
-/// candidate.
+/// L2.11 — a CUE lacking PERFORMER/TITLE still parses; the scanner
+/// extracts the declared track count. When that count exceeds on-disk
+/// audio and the CUE stem doesn't pair with any FLAC, the mismatch
+/// guard rejects the candidate.
 #[test]
 fn cue_no_header_track_count_mismatch_rejects_release() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);

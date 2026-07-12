@@ -8,7 +8,7 @@ fn test_parse_time() {
         ("60:35:00", (60 * 60 + 35) * 75),
     ];
     for (input, expected) in cases {
-        let (_, cue_frames) = CueFlacProcessor::parse_time(input).unwrap();
+        let cue_frames = CueFlacProcessor::parse_time(input).unwrap();
         assert_eq!(cue_frames, expected, "input: {input}");
     }
 }
@@ -32,7 +32,7 @@ FILE "03 - Track Three.m4a" WAVE
     TITLE "Track Three"
     INDEX 01 00:00:00
 "#;
-    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    let sheet = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
     assert_eq!(sheet.tracks.len(), 3);
     assert_eq!(sheet.tracks[0].file_reference, "01 - Track One.m4a");
     assert_eq!(sheet.tracks[1].file_reference, "02 - Track Two.m4a");
@@ -52,7 +52,7 @@ FILE "Album.flac" WAVE
   TRACK 03 AUDIO
     INDEX 01 07:30:00
 "#;
-    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    let sheet = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
     assert_eq!(sheet.tracks.len(), 3);
     for track in &sheet.tracks {
         assert_eq!(track.file_reference, "Album.flac");
@@ -77,7 +77,7 @@ FILE "02.m4a" WAVE
     PERFORMER "Artist Name"
     INDEX 01 00:00:00
 "#;
-    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    let sheet = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
     assert_eq!(sheet.tracks.len(), 2);
     assert_eq!(sheet.tracks[0].title.as_deref(), Some("Track One"));
     assert_eq!(sheet.tracks[0].file_reference, "01.m4a");
@@ -107,7 +107,7 @@ FILE "02.wav" WAVE
 FILE "03.wav" WAVE
     INDEX 01 00:00:00
 "#;
-    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    let sheet = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
     assert_eq!(sheet.tracks.len(), 3);
     let track2 = &sheet.tracks[1];
     assert_eq!(track2.file_reference, "02.wav");
@@ -121,10 +121,8 @@ FILE "03.wav" WAVE
 
 #[test]
 fn parse_second_track_without_index_01_propagates_failure() {
-    // When a track body lacks INDEX 01, the body-loop's error arm must
-    // propagate `Err::Failure` instead of treating it as a loop
-    // terminator — otherwise the parse returns `Ok` with whatever
-    // tracks accumulated so far and the remainder is silently dropped.
+    // A track body missing INDEX 01 must fail the whole parse, not silently
+    // truncate the track list to whatever accumulated before it.
     let cue_content = r#"PERFORMER "Artist Name"
 TITLE "Album Title"
 FILE "Album.flac" WAVE
@@ -136,8 +134,8 @@ FILE "Album.flac" WAVE
 "#;
     let err = CueFlacProcessor::parse_cue_content(cue_content).unwrap_err();
     assert!(
-        matches!(err, nom::Err::Failure(_)),
-        "expected Failure when a track body lacks INDEX 01, got {err:?}",
+        matches!(&err, CueFlacError::CueParsing(msg) if msg.contains("INDEX 01")),
+        "expected an INDEX 01 parse error when a track body lacks INDEX 01, got {err:?}",
     );
 }
 
@@ -154,8 +152,8 @@ TITLE "Album Title"
 "#;
     let err = CueFlacProcessor::parse_cue_content(cue_content).unwrap_err();
     assert!(
-        matches!(err, nom::Err::Failure(_)),
-        "expected Failure for TRACK before FILE, got {err:?}",
+        matches!(&err, CueFlacError::CueParsing(msg) if msg.contains("FILE")),
+        "expected a FILE parse error for TRACK before FILE, got {err:?}",
     );
 }
 
@@ -175,7 +173,7 @@ FILE "test.flac" WAVE
 "#;
     let result = CueFlacProcessor::parse_cue_content(cue_content);
     assert!(result.is_ok());
-    let (_, cue_sheet) = result.unwrap();
+    let cue_sheet = result.unwrap();
     assert_eq!(cue_sheet.title.as_deref(), Some("Test Album"));
     assert_eq!(cue_sheet.performer.as_deref(), Some("Test Artist"));
     assert_eq!(cue_sheet.tracks.len(), 2);
@@ -219,7 +217,7 @@ FILE "Artist Name - Album Title.flac" WAVE
         "Failed to parse CUE with CATALOG line: {:?}",
         result.err()
     );
-    let (_, cue_sheet) = result.unwrap();
+    let cue_sheet = result.unwrap();
     assert_eq!(cue_sheet.title.as_deref(), Some("Album Title"));
     assert_eq!(cue_sheet.performer.as_deref(), Some("Artist Name"));
     assert_eq!(cue_sheet.tracks.len(), 3);
@@ -250,7 +248,7 @@ FILE "Artist Name - Album Title.flac" WAVE
 "#;
     let result = CueFlacProcessor::parse_cue_content(cue_content);
     assert!(result.is_ok());
-    let (_, cue_sheet) = result.unwrap();
+    let cue_sheet = result.unwrap();
     assert_eq!(cue_sheet.title.as_deref(), Some("Album Title"));
     assert_eq!(cue_sheet.performer.as_deref(), Some("Artist Name"));
     assert_eq!(cue_sheet.tracks.len(), 2);
@@ -262,7 +260,7 @@ fn test_parse_cue_sheet_with_windows_line_endings() {
     let cue_content = "REM GENRE \"Genre Name\"\r\nPERFORMER \"Test Artist\"\r\nTITLE \"Test Album\"\r\nFILE \"test.flac\" WAVE\r\n  TRACK 01 AUDIO\r\n    TITLE \"Track 1\"\r\n    PERFORMER \"Test Artist\"\r\n    INDEX 01 00:00:00\r\n";
     let result = CueFlacProcessor::parse_cue_content(cue_content);
     assert!(result.is_ok());
-    let (_, cue_sheet) = result.unwrap();
+    let cue_sheet = result.unwrap();
     assert_eq!(cue_sheet.title.as_deref(), Some("Test Album"));
     assert_eq!(cue_sheet.performer.as_deref(), Some("Test Artist"));
     assert_eq!(cue_sheet.tracks.len(), 1);
@@ -287,7 +285,7 @@ FILE "test.flac" WAVE
 "#;
     let result = CueFlacProcessor::parse_cue_content(cue_content);
     assert!(result.is_ok());
-    let (_, cue_sheet) = result.unwrap();
+    let cue_sheet = result.unwrap();
     assert_eq!(cue_sheet.tracks[0].end_time_ms(), Some(3 * 60 * 1000));
     assert_eq!(cue_sheet.tracks[1].end_time_ms(), Some(6 * 60 * 1000));
     assert_eq!(cue_sheet.tracks[2].end_time_ms(), None);
@@ -306,7 +304,7 @@ FILE "test.flac" WAVE
 "#;
     let result = CueFlacProcessor::parse_cue_content(cue_content);
     assert!(result.is_ok());
-    let (_, cue_sheet) = result.unwrap();
+    let cue_sheet = result.unwrap();
     assert_eq!(cue_sheet.tracks.len(), 2);
     assert_eq!(cue_sheet.tracks[0].performer, None);
     assert_eq!(cue_sheet.tracks[1].performer, None);
@@ -324,7 +322,7 @@ FILE "Artist Name - Album Title.flac" WAVE
   TRACK 01 AUDIO
     INDEX 01 00:00:00
 "#;
-    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    let sheet = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
     assert_eq!(sheet.catalog.as_deref(), Some("0123456789012"));
     assert_eq!(sheet.date.as_deref(), Some("2001"));
 }
@@ -341,7 +339,7 @@ FILE "x.flac" WAVE
   TRACK 01 AUDIO
     INDEX 01 00:00:00
 "#;
-    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    let sheet = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
     assert_eq!(sheet.date.as_deref(), Some("2000 / 2004"));
     // REM GENRE, REM DISCID, and unknown REM keywords are silently consumed;
     // only the identification fields the parser captures are populated.
@@ -370,7 +368,7 @@ FILE "Artist Name - Album Title.flac" WAVE
     FLAGS PRE 4CH
     INDEX 01 03:45:00
 "#;
-    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    let sheet = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
     assert_eq!(sheet.tracks.len(), 2);
     assert_eq!(sheet.tracks[0].title.as_deref(), Some("Track One"));
     assert_eq!(sheet.tracks[1].title.as_deref(), Some("Track Two"));
@@ -390,7 +388,7 @@ FILE "Artist Name - Album Title.flac" WAVE
     VENDOR_EXTENSION whatever
     INDEX 01 03:45:00
 "#;
-    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    let sheet = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
     assert_eq!(sheet.tracks.len(), 2);
     assert_eq!(sheet.tracks[0].title.as_deref(), Some("Track One"));
     assert_eq!(sheet.tracks[1].title.as_deref(), Some("Track Two"));
@@ -448,7 +446,7 @@ FILE "Artist Name - Album Title.flac" WAVE
     TITLE "Track Two"
     INDEX 01 03:45:00
 "#;
-    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    let sheet = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
     assert_eq!(sheet.tracks.len(), 2);
     assert_eq!(sheet.tracks[0].start_cue_frames, 0);
     assert_eq!(sheet.tracks[1].start_cue_frames, 3 * 60 * 75 + 45 * 75);
@@ -467,7 +465,7 @@ FILE "Album.flac" WAVE
   TRACK 02 AUDIO
     INDEX 01 00:00:00
 "#;
-    let (_, sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    let sheet = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
     assert_eq!(sheet.tracks.len(), 2);
     assert!(!sheet.tracks[0].is_playable_audio());
     assert_eq!(sheet.playable_track_count(), 1);
@@ -489,7 +487,7 @@ FILE "test.flac" WAVE
 "#;
     let result = CueFlacProcessor::parse_cue_content(cue_content);
     assert!(result.is_ok());
-    let (_, cue_sheet) = result.unwrap();
+    let cue_sheet = result.unwrap();
     assert_eq!(cue_sheet.tracks.len(), 2, "Should parse 2 tracks");
 }
 
@@ -513,7 +511,7 @@ FILE "Test Artist - Test Album.flac" WAVE
 "#;
     let result = CueFlacProcessor::parse_cue_content(cue_content);
     assert!(result.is_ok());
-    let (_, cue_sheet) = result.unwrap();
+    let cue_sheet = result.unwrap();
 
     // Track 1 should end at track 2's pregap (INDEX 00), not INDEX 01
     let track1_end_ms = cue_sheet.tracks[0].end_time_ms().unwrap();
@@ -549,7 +547,7 @@ FILE "test.flac" WAVE
 "#;
     let result = CueFlacProcessor::parse_cue_content(cue_content);
     assert!(result.is_ok());
-    let (_, cue_sheet) = result.unwrap();
+    let cue_sheet = result.unwrap();
 
     let track2 = &cue_sheet.tracks[1];
     let pregap_frames = track2.pregap_start_cue_frames().unwrap();
@@ -583,7 +581,7 @@ FILE "test.flac" WAVE
 "#;
     let result = CueFlacProcessor::parse_cue_content(cue_content);
     assert!(result.is_ok());
-    let (_, cue_sheet) = result.unwrap();
+    let cue_sheet = result.unwrap();
 
     // Track 2 should end at track 3's start (no pregap on track 3)
     let track2_end_frames = cue_sheet.tracks[1].end_cue_frames.unwrap();
@@ -614,7 +612,7 @@ FILE "test.flac" WAVE
     TITLE "Track 3"
     INDEX 01 09:31:00
 "#;
-    let (_, cue_sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    let cue_sheet = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
 
     // Track 1: no pregap
     let track1 = &cue_sheet.tracks[0];
@@ -666,7 +664,7 @@ FILE "Test Artist - Test Album.flac" WAVE
         result.is_ok(),
         "Should parse CUE with REM between TITLE and FILE"
     );
-    let (_, cue_sheet) = result.unwrap();
+    let cue_sheet = result.unwrap();
     assert_eq!(cue_sheet.title.as_deref(), Some("Test Album"));
     assert_eq!(cue_sheet.performer.as_deref(), Some("Test Artist"));
     assert_eq!(cue_sheet.tracks.len(), 3, "Should parse 3 tracks");
@@ -708,7 +706,7 @@ FILE "test.ape" WAVE
     INDEX 00 05:05:00
     INDEX 01 11:01:30
 "#;
-    let (_, cue_sheet) = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
+    let cue_sheet = CueFlacProcessor::parse_cue_content(cue_content).unwrap();
 
     // Track 1: end should be track 2's start (no pregap on track 2)
     let track1 = &cue_sheet.tracks[0];

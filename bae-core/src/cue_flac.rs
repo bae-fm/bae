@@ -1,4 +1,3 @@
-use nom::IResult;
 use std::path::Path;
 use thiserror::Error;
 use tracing::warn;
@@ -239,22 +238,22 @@ impl PendingCueTrack {
         }
     }
 
-    fn finish(self, input: &str) -> Result<CueTrack, nom::Err<nom::error::Error<&str>>> {
+    fn finish(self) -> Result<CueTrack, CueFlacError> {
         let (start_cue_frames, file_reference) = match self.start {
             Some(start) => start,
             None if !self.mode.is_audio() => (0, self.file_reference.clone()),
             None => {
-                return Err(nom::Err::Failure(nom::error::Error::new(
-                    input,
-                    nom::error::ErrorKind::Tag,
+                return Err(CueFlacError::CueParsing(format!(
+                    "TRACK {} has no INDEX 01",
+                    self.number
                 )));
             }
         };
         let pregap = match (self.pregap, self.generated_pregap_frames) {
             (Some(_), Some(_)) => {
-                return Err(nom::Err::Failure(nom::error::Error::new(
-                    input,
-                    nom::error::ErrorKind::Tag,
+                return Err(CueFlacError::CueParsing(format!(
+                    "TRACK {} has both INDEX 00 and PREGAP",
+                    self.number
                 )));
             }
             (Some((frames, pregap_file_reference)), None) => CuePregap::Audio(CueIndex {
@@ -340,13 +339,7 @@ impl CueFlacProcessor {
                 );
                 e
             })?;
-        match Self::parse_cue_content(&content) {
-            Ok((_, cue_sheet)) => Ok(cue_sheet),
-            Err(e) => Err(CueFlacError::CueParsing(format!(
-                "Failed to parse CUE: {}",
-                e
-            ))),
-        }
+        Self::parse_cue_content(&content)
     }
     /// Parse CUE sheet content.
     ///
@@ -366,7 +359,7 @@ impl CueFlacProcessor {
     /// shape) from multi-FILE (one FILE per TRACK, common in lossy-format
     /// rips). Malformed entries — TRACK before any FILE, or a TRACK body
     /// that lacks INDEX 01 — are a parse error.
-    fn parse_cue_content(input: &str) -> IResult<&str, CueSheet> {
+    fn parse_cue_content(input: &str) -> Result<CueSheet, CueFlacError> {
         let mut title: Option<String> = None;
         let mut performer: Option<String> = None;
         let mut catalog: Option<String> = None;
@@ -384,10 +377,12 @@ impl CueFlacProcessor {
             let track_directive = Self::parse_track_directive(line)?;
             if let Some((number, mode)) = track_directive {
                 if let Some(track) = current_track.take() {
-                    tracks.push(track.finish(input)?);
+                    tracks.push(track.finish()?);
                 }
                 let Some(file_reference) = current_file.clone() else {
-                    return Self::failure(input, nom::error::ErrorKind::Tag);
+                    return Err(CueFlacError::CueParsing(format!(
+                        "TRACK before any FILE: {line:?}"
+                    )));
                 };
                 current_track = Some(PendingCueTrack::new(number, mode, file_reference));
                 continue;
@@ -404,7 +399,7 @@ impl CueFlacProcessor {
                     let file_reference = current_file
                         .as_deref()
                         .expect("CUE TRACK parsing starts only after FILE is known");
-                    Self::apply_track_line(input, line, track, file_reference)?;
+                    Self::apply_track_line(line, track, file_reference)?;
                 }
                 None => {
                     Self::apply_header_line(
@@ -419,13 +414,12 @@ impl CueFlacProcessor {
         }
 
         if let Some(track) = current_track {
-            tracks.push(track.finish(input)?);
+            tracks.push(track.finish()?);
         }
         if tracks.is_empty() {
-            return Err(nom::Err::Failure(nom::error::Error::new(
-                input,
-                nom::error::ErrorKind::Many1,
-            )));
+            return Err(CueFlacError::CueParsing(
+                "CUE sheet contains no tracks".into(),
+            ));
         }
 
         // Some rippers write bogus INDEX 00 values that are before the
@@ -453,16 +447,13 @@ impl CueFlacProcessor {
                     .map(|index| index.frames);
             }
         }
-        Ok((
-            "",
-            CueSheet {
-                title,
-                performer,
-                catalog,
-                date,
-                tracks,
-            },
-        ))
+        Ok(CueSheet {
+            title,
+            performer,
+            catalog,
+            date,
+            tracks,
+        })
     }
 
     fn apply_header_line(
@@ -498,12 +489,11 @@ impl CueFlacProcessor {
         }
     }
 
-    fn apply_track_line<'a>(
-        input: &'a str,
+    fn apply_track_line(
         line: &str,
         track: &mut PendingCueTrack,
         current_file: &str,
-    ) -> Result<(), nom::Err<nom::error::Error<&'a str>>> {
+    ) -> Result<(), CueFlacError> {
         match Self::keyword_and_rest(line) {
             Some(("REM", _)) => {}
             Some(("TITLE", rest)) => {
@@ -517,7 +507,7 @@ impl CueFlacProcessor {
                 }
             }
             Some(("INDEX", rest)) => {
-                let (index_number, cue_frames) = Self::parse_index_values(input, rest)?;
+                let (index_number, cue_frames) = Self::parse_index_values(line, rest)?;
                 track.indexes.push(CueIndex {
                     number: index_number,
                     frames: cue_frames,
@@ -532,10 +522,7 @@ impl CueFlacProcessor {
                 }
             }
             Some(("PREGAP", rest)) => {
-                let (_, cue_frames) = Self::parse_time(rest).map_err(|_| {
-                    nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
-                })?;
-                track.generated_pregap_frames = Some(cue_frames);
+                track.generated_pregap_frames = Some(Self::parse_time(rest)?);
             }
             Some((keyword, _)) if Self::track_keyword_is_known_skipped(keyword) => {}
             _ => warn!(
@@ -546,17 +533,15 @@ impl CueFlacProcessor {
         Ok(())
     }
 
-    fn parse_track_directive(
-        input: &str,
-    ) -> Result<Option<(u32, CueTrackMode)>, nom::Err<nom::error::Error<&str>>> {
-        let Some(("TRACK", rest)) = Self::keyword_and_rest(input) else {
+    fn parse_track_directive(line: &str) -> Result<Option<(u32, CueTrackMode)>, CueFlacError> {
+        let Some(("TRACK", rest)) = Self::keyword_and_rest(line) else {
             return Ok(None);
         };
         let mut parts = rest.split_whitespace();
-        let number = Self::parse_u32_token(input, parts.next())?;
-        let mode = parts.next().ok_or_else(|| {
-            nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Tag))
-        })?;
+        let number = Self::parse_u32_token(line, parts.next())?;
+        let mode = parts
+            .next()
+            .ok_or_else(|| CueFlacError::CueParsing(format!("TRACK line has no mode: {line:?}")))?;
         let mode = if mode == "AUDIO" {
             CueTrackMode::Audio
         } else {
@@ -565,42 +550,28 @@ impl CueFlacProcessor {
         Ok(Some((number, mode)))
     }
 
-    fn parse_file_directive(
-        input: &str,
-    ) -> Result<Option<String>, nom::Err<nom::error::Error<&str>>> {
-        let Some(("FILE", rest)) = Self::keyword_and_rest(input) else {
+    fn parse_file_directive(line: &str) -> Result<Option<String>, CueFlacError> {
+        let Some(("FILE", rest)) = Self::keyword_and_rest(line) else {
             return Ok(None);
         };
-        Ok(Some(Self::parse_file_name_value(input, rest)?))
+        Ok(Some(Self::parse_file_name_value(line, rest)?))
     }
 
-    fn parse_index_values<'a>(
-        input: &'a str,
-        rest: &str,
-    ) -> Result<(u32, u64), nom::Err<nom::error::Error<&'a str>>> {
+    fn parse_index_values(line: &str, rest: &str) -> Result<(u32, u64), CueFlacError> {
         let mut parts = rest.split_whitespace();
-        let index_number = Self::parse_u32_token(input, parts.next())?;
-        let time = parts.next().ok_or_else(|| {
-            nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
-        })?;
-        let (_, cue_frames) = Self::parse_time(time).map_err(|_| {
-            nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
-        })?;
+        let index_number = Self::parse_u32_token(line, parts.next())?;
+        let time = parts
+            .next()
+            .ok_or_else(|| CueFlacError::CueParsing(format!("malformed INDEX line: {line:?}")))?;
+        let cue_frames = Self::parse_time(time)?;
         Ok((index_number, cue_frames))
     }
 
-    fn parse_u32_token<'a>(
-        input: &'a str,
-        token: Option<&str>,
-    ) -> Result<u32, nom::Err<nom::error::Error<&'a str>>> {
+    fn parse_u32_token(line: &str, token: Option<&str>) -> Result<u32, CueFlacError> {
         token
-            .ok_or_else(|| {
-                nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
-            })?
+            .ok_or_else(|| CueFlacError::CueParsing(format!("missing number in line: {line:?}")))?
             .parse::<u32>()
-            .map_err(|_| {
-                nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
-            })
+            .map_err(|_| CueFlacError::CueParsing(format!("invalid number in line: {line:?}")))
     }
 
     /// Spec-known commands valid inside a TRACK body that we don't store.
@@ -669,64 +640,47 @@ impl CueFlacProcessor {
         }
     }
 
-    fn parse_file_name_value<'a>(
-        input: &'a str,
-        rest: &str,
-    ) -> Result<String, nom::Err<nom::error::Error<&'a str>>> {
+    fn parse_file_name_value(line: &str, rest: &str) -> Result<String, CueFlacError> {
         let rest = rest.trim_start();
         if let Some(value) = Self::quoted_value(rest) {
             return Ok(value.trim().to_string());
         }
-        let name = rest.split_whitespace().next().ok_or_else(|| {
-            nom::Err::Failure(nom::error::Error::new(
-                input,
-                nom::error::ErrorKind::TakeTill1,
-            ))
-        })?;
+        let name = rest
+            .split_whitespace()
+            .next()
+            .ok_or_else(|| CueFlacError::CueParsing(format!("FILE line has no name: {line:?}")))?;
         Ok(name.to_string())
     }
 
-    /// Parse time in MM:SS:FF format and return total CUE frames (1/75th second).
-    fn parse_time(input: &str) -> IResult<&str, u64> {
+    /// Parse time in MM:SS:FF format and return total CUE frames (1/75th
+    /// second). The frames field parses leading ASCII digits and ignores any
+    /// trailer.
+    fn parse_time(input: &str) -> Result<u64, CueFlacError> {
         let mut parts = input.splitn(3, ':');
         let minutes = Self::parse_u64_time_field(input, parts.next())?;
         let seconds = Self::parse_u64_time_field(input, parts.next())?;
-        let frames_and_rest = parts.next().ok_or_else(|| {
-            nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
-        })?;
+        let frames_and_rest = parts
+            .next()
+            .ok_or_else(|| CueFlacError::CueParsing(format!("invalid CUE time {input:?}")))?;
         let frame_end = frames_and_rest
             .find(|c: char| !c.is_ascii_digit())
             .unwrap_or(frames_and_rest.len());
         if frame_end == 0 {
-            return Self::error(input, nom::error::ErrorKind::Digit);
+            return Err(CueFlacError::CueParsing(format!(
+                "invalid CUE time {input:?}"
+            )));
         }
-        let frames = frames_and_rest[..frame_end].parse::<u64>().map_err(|_| {
-            nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
-        })?;
-        let total_cue_frames = (minutes * 60 + seconds) * 75 + frames;
-        Ok((&frames_and_rest[frame_end..], total_cue_frames))
-    }
-
-    fn parse_u64_time_field<'a>(
-        input: &'a str,
-        token: Option<&str>,
-    ) -> Result<u64, nom::Err<nom::error::Error<&'a str>>> {
-        token
-            .ok_or_else(|| {
-                nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
-            })?
+        let frames = frames_and_rest[..frame_end]
             .parse::<u64>()
-            .map_err(|_| {
-                nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
-            })
+            .map_err(|_| CueFlacError::CueParsing(format!("invalid CUE time {input:?}")))?;
+        Ok((minutes * 60 + seconds) * 75 + frames)
     }
 
-    fn error<T>(input: &str, kind: nom::error::ErrorKind) -> IResult<&str, T> {
-        Err(nom::Err::Error(nom::error::Error::new(input, kind)))
-    }
-
-    fn failure<T>(input: &str, kind: nom::error::ErrorKind) -> IResult<&str, T> {
-        Err(nom::Err::Failure(nom::error::Error::new(input, kind)))
+    fn parse_u64_time_field(input: &str, token: Option<&str>) -> Result<u64, CueFlacError> {
+        token
+            .ok_or_else(|| CueFlacError::CueParsing(format!("invalid CUE time {input:?}")))?
+            .parse::<u64>()
+            .map_err(|_| CueFlacError::CueParsing(format!("invalid CUE time {input:?}")))
     }
 }
 #[cfg(test)]
