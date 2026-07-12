@@ -5,7 +5,7 @@
 //! ALAC/AAC bytes (generated once with Homebrew ffmpeg, checked into
 //! `test-fixtures/alac/`). Nothing is mocked: every assertion runs through
 //! the same code paths production uses.
-mod support;
+use bae_test_support as support;
 
 use crate::support::{
     seed_discogs_test_release, test_config_and_keys, tracing_init, wait_for_import_complete,

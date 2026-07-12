@@ -1,5 +1,4 @@
 #![cfg(feature = "test-utils")]
-mod support;
 use bae_core::db::{
     AlbumSortCriterion, AlbumSortField, Database, DbAlbum, DbArtist, SortDirection,
 };

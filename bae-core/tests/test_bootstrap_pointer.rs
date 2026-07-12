@@ -9,7 +9,7 @@
 //! run in their own process and `#[serial]` to keep the env mutation from
 //! racing sibling tests in this binary.
 
-mod support;
+use bae_test_support as support;
 
 use std::path::Path;
 

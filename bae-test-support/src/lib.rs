@@ -1,9 +1,22 @@
-// Shared integration-test helpers. Each of the 8 `tests/test_*.rs` binaries is
-// a separate crate that pulls this in via `mod support;` and uses a subset, so
-// helpers unused by a given binary read as dead. The module-level allow is the
-// standard resolution for that per-target false positive; every helper below
-// is exercised by at least one test target.
-#![allow(dead_code)]
+//! Helpers shared by bae-core's integration tests.
+//!
+//! Every `bae-core/tests/*.rs` binary is its own crate and reaches these through
+//! `use bae_test_support as support;`. Keeping them in a library — rather than a
+//! `mod support;` file textually recompiled into each binary — is what lets
+//! `dead_code` and `unreachable_pub` stay armed here: the helpers are this
+//! crate's public API, so neither lint has to be silenced for the binaries that
+//! happen not to call a given one.
+
+use bae_core::sync::S3ConfigData;
+
+/// The FLAC fixture tree lives in bae-core, so it is reached relative to the
+/// workspace root — `CARGO_MANIFEST_DIR` here is this crate, not bae-core.
+fn bae_core_fixtures() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("bae-test-support sits one level under the workspace root")
+        .join("bae-core/tests/fixtures")
+}
 
 /// Convert a decode's full-range i32 PCM samples to the f32 shape emitted by
 /// streaming playback, for comparing a ground-truth decode against captured
@@ -21,8 +34,7 @@ pub fn write_tagged_flac(dir: &std::path::Path, filename: &str, title: &str) -> 
     use lofty::prelude::*;
     use lofty::tag::{Tag, TagType};
 
-    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/flac/01 Test Track 1.flac");
+    let fixture = bae_core_fixtures().join("flac/01 Test Track 1.flac");
     let flac = std::fs::read(&fixture).expect("FLAC fixture missing");
 
     let dest = dir.join(filename);
@@ -296,9 +308,6 @@ impl TestS3Endpoint {
             .expect("provision bucket");
     }
 }
-
-#[allow(unused_imports)]
-use bae_core::sync::S3ConfigData;
 
 // ---------------------------------------------------------------------------
 // MockCloudHome

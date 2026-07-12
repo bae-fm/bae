@@ -1,8 +1,8 @@
 #![cfg(feature = "test-utils")]
-mod support;
 use crate::support::{test_config_and_keys, tracing_init};
 use bae_core::db::{Database, DbAlbum, DbRelease, DbTrack, Pressing, ReleaseMetadataSource};
 use bae_core::library::LibraryManager;
+use bae_test_support as support;
 use chrono::Utc;
 use coven::StoreDir;
 use tempfile::TempDir;

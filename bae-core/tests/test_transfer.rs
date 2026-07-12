@@ -9,7 +9,7 @@
 //! seams (`coven_make_remote` + the upload drain via `drain_uploads_for_test`,
 //! `coven_make_local`) over a `SyncManager` connected to an injected cloud home.
 
-mod support;
+use bae_test_support as support;
 
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::db::{Database, DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource};

@@ -822,6 +822,7 @@ dependencies = [
  "aws-sdk-s3",
  "aws-smithy-http-client",
  "axum 0.7.9",
+ "bae-test-support",
  "chardetng",
  "chrono",
  "coreaudio-sys",
@@ -901,6 +902,26 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+]
+
+[[package]]
+name = "bae-test-support"
+version = "0.0.0-dev"
+dependencies = [
+ "async-trait",
+ "aws-config",
+ "aws-credential-types",
+ "aws-sdk-s3",
+ "aws-smithy-http-client",
+ "bae-core",
+ "coven",
+ "coven-core",
+ "hex",
+ "lofty",
+ "tempfile",
+ "tokio",
+ "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]

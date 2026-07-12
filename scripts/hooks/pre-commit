@@ -3,7 +3,8 @@
 set -e
 
 # Dependency graph (update when crate dependencies change):
-#   bae-core: no local deps
+#   bae-core: no local deps; dev-depends on bae-test-support (its tests)
+#   bae-test-support: depends on bae-core
 #   bae-bridge: depends on bae-core
 #   bae-macos: depends on bae-bridge (Swift native app)
 
@@ -85,8 +86,9 @@ run_check "cargo fmt" cargo fmt --all || {
 }
 restage_and_fail_if_changed "cargo fmt"
 
-# bae-core checks
-if has_changes_in "bae-core"; then
+# bae-core checks. bae-test-support compiles into bae-core's integration tests,
+# so a change there has to re-run them even when bae-core itself is untouched.
+if has_changes_in "bae-core" || has_changes_in "bae-test-support"; then
     cd bae-core
 
     run_check "clippy lib (bae-core)" cargo clippy --lib -- -D warnings -A unexpected_cfgs -A deprecated || {
@@ -99,6 +101,12 @@ if has_changes_in "bae-core"; then
     }
 
     cd ..
+
+    # The run above builds bae-test-support as a dependency, which enforces the
+    # workspace's rustc denies on it but does not run clippy's own lints there.
+    run_check "clippy (bae-test-support)" cargo clippy -p bae-test-support -- -D warnings -A unexpected_cfgs -A deprecated || {
+        exit 1
+    }
 fi
 
 # bae-bridge checks (depends on bae-core)

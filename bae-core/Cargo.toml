@@ -116,6 +116,10 @@ ffmpeg-next = { version = "8.1", default-features = false, features = ["codec", 
 ffmpeg-sys-next = { version = "8.1", default-features = false, features = ["avcodec", "avformat", "swresample"] }
 
 [dev-dependencies]
+# Shared integration-test helpers. A real crate rather than a `tests/support`
+# include so they compile once and `dead_code` stays armed on them; the cycle
+# back to bae-core is dev-only, which Cargo allows.
+bae-test-support = { path = "../bae-test-support" }
 tokio = { version = "1.0", features = ["test-util"] }
 serial_test = "3.4.0"
 # coven's deterministic clock/id fakes for bae's tests (off in production builds).
@@ -175,7 +179,5 @@ oauth-providers = ["coven/oauth-providers"]
 # re-exported clock/id fakes (FixedClock, …).
 test-utils = ["coven/test-utils"]
 
-[lints.clippy]
-too_many_arguments = "allow"
-new_without_default = "allow"
-large_enum_variant = "allow"
+[lints]
+workspace = true

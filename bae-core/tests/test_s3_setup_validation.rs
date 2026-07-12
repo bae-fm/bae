@@ -7,7 +7,7 @@
 //! Marked `#[ignore]` so `cargo test` skips them; run with
 //! `cargo test --test test_s3_setup_validation -- --ignored` when minio is up.
 
-mod support;
+use bae_test_support as support;
 
 use bae_core::config::CloudProvider;
 use bae_core::ui::UiErrorCategory;

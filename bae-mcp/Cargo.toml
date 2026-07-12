@@ -20,5 +20,5 @@ tokio = { version = "1", features = ["net", "sync", "rt", "macros"] }
 tokio-util = "0.7"
 tracing = { workspace = true }
 
-[lints.clippy]
-large_enum_variant = "allow"
+[lints]
+workspace = true

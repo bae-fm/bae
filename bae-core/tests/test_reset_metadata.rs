@@ -3,7 +3,7 @@
 //! re-runs the seeding projection from the cached source data and returns the
 //! projected `ReleaseUserEdit` shape — without writing the DB or touching
 //! identity / metadata-source columns.
-mod support;
+use bae_test_support as support;
 
 use crate::support::{test_config_and_keys, tracing_init};
 use bae_core::db::{

@@ -6,7 +6,6 @@
 //! - Record per-track timing (track_start_ms / track_end_ms)
 //! - Store correct per-track durations (NOT the full file duration)
 //! - Enable playback of individual tracks via full-file decode with seek/stop
-mod support;
 use crate::support::{
     samples_as_f32, seed_discogs_test_release, test_config_and_keys, tracing_init,
     wait_for_import_complete,
@@ -20,6 +19,7 @@ use bae_core::library::LibraryManager;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
 use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
+use bae_test_support as support;
 use coven::{EncryptionService, InMemoryCloudHome, StoreDir};
 use std::path::Path;
 use std::sync::Arc;

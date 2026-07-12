@@ -5,7 +5,7 @@
 //! bytes are downloaded from the cloud home and decrypted with the release's
 //! item key — the same verified read pin and unmanage use.
 
-mod support;
+use bae_test_support as support;
 
 use bae_core::config::{
     ExportBitDepth, ExportPregapPlacement, ExportPreset, ExportPresetCodec, ExportSelection,

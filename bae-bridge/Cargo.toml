@@ -55,8 +55,5 @@ oauth-providers = ["bae-core/oauth-providers", "coven/oauth-providers"]
 cloudkit = []
 desktop = ["dep:bae-desktop"]
 
-[lints.clippy]
-large_enum_variant = "allow"
-
-[lints.rust]
-unexpected_cfgs = "allow"
+[lints]
+workspace = true

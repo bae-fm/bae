@@ -19,7 +19,7 @@
 //! own gate tests (a `covers`/`artist_images` asset rides its subject's gate and
 //! never keeps it alive).
 
-mod support;
+use bae_test_support as support;
 
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::db::{Database, DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource};

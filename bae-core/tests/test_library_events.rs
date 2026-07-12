@@ -1,5 +1,5 @@
 #![cfg(feature = "test-utils")]
-mod support;
+use bae_test_support as support;
 
 use crate::support::{test_config_and_keys, tracing_init};
 use bae_core::db::{

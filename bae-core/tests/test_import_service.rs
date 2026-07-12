@@ -4,7 +4,7 @@
 //! Tests the real ImportService through its public handle API:
 //! scan → import. All through real infrastructure.
 
-mod support;
+use bae_test_support as support;
 
 use bae_core::db::{Database, LibraryImageType};
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};

@@ -10,3 +10,6 @@ bae-core = { path = "../bae-core" }
 bae-mcp = { path = "../bae-mcp" }
 tokio = { version = "1", features = ["rt", "sync"] }
 tracing = { workspace = true }
+
+[lints]
+workspace = true

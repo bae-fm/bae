@@ -16,3 +16,6 @@ path = "src/bin/loc-gen.rs"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 toml = "1.1.2"
+
+[lints]
+workspace = true

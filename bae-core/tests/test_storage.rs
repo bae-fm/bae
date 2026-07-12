@@ -5,7 +5,6 @@
 //! - Import with cover selection: verifies cover, audio formats, progress events
 //! - Local import: files stay in original location
 //! - Local delete preserves files on disk
-mod support;
 use crate::support::{seed_discogs_test_release, test_config_and_keys, wait_for_import_complete};
 use bae_core::db::{Database, LibraryImageType};
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
@@ -15,6 +14,7 @@ use bae_core::import::{
 };
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
+use bae_test_support as support;
 use coven::StoreDir;
 use std::path::Path;
 use std::{fs, path::PathBuf};

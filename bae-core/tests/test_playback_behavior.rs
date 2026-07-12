@@ -1,5 +1,4 @@
 #![cfg(feature = "test-utils")]
-mod support;
 use crate::support::{
     samples_as_f32, seed_discogs_test_release, test_config_and_keys, tracing_init,
     try_wait_for_import_complete, wait_for_import_complete,
@@ -12,6 +11,7 @@ use bae_core::playback::{
     PlaybackPauseReason, PlaybackProgress, PlaybackState, RepeatMode,
     SIDE_PAUSE_CASSETTE_MESSAGE_KEY, SIDE_PAUSE_VINYL_MESSAGE_KEY,
 };
+use bae_test_support as support;
 use coven::StoreDir;
 use coven::{IdProvider, SequentialIdProvider};
 use std::sync::Arc;

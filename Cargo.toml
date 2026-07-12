@@ -7,8 +7,29 @@ members = [
     "bae-desktop",
     "bae-loc",
     "bae-mcp",
+    "bae-test-support",
 ]
 resolver = "2"
+
+# One lint config for the whole workspace; every crate takes it verbatim via
+# `[lints] workspace = true`. Cargo does not let a crate inherit this table and
+# override part of it, which is the point: a lint decision is made once, here,
+# and applies everywhere.
+[workspace.lints.rust]
+# Every `pub` not reachable from its crate's own root must be `pub(crate)` (or
+# narrower). This keeps `dead_code` armed on internal items — `pub` silences
+# that lint unconditionally, so an unreachable `pub` item can rot unused and
+# unnoticed. Fix by narrowing visibility, never by widening it to escape the
+# lint.
+unreachable_pub = "deny"
+dead_code = "deny"
+# uniffi's generated scaffolding emits cfgs cargo does not know about.
+unexpected_cfgs = "allow"
+
+[workspace.lints.clippy]
+too_many_arguments = "allow"
+new_without_default = "allow"
+large_enum_variant = "allow"
 
 [workspace.dependencies]
 # coven: bae's data layer (local-first store + cloud sync). Pinned by rev here so
