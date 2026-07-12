@@ -6,6 +6,7 @@
 
 use crate::playback::progress::{emit_progress, PlaybackProgress};
 use crate::playback::sparse_buffer::{ReaderDemand, SharedSparseBuffer, SparseStreamingBuffer};
+use crate::playback::PlaybackError;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Instant;
@@ -133,8 +134,7 @@ impl LocalReader {
 fn fail_audio_read(
     progress_tx: &tokio_mpsc::UnboundedSender<PlaybackProgress>,
     buffer: &SharedSparseBuffer,
-    log_message: String,
-    message: String,
+    error: PlaybackError,
 ) {
     // A buffer that is already cancelled means teardown ran before this read
     // returned: the user switched away while a reader was parked in an in-flight
@@ -142,14 +142,14 @@ fn fail_audio_read(
     // returns belongs to the abandoned track. Emitting PlaybackError here would
     // halt the track the user just started, so suppress it and exit cancelled.
     if buffer.is_cancelled() {
-        debug!("ignoring read failure on a cancelled buffer: {log_message}");
+        debug!("ignoring read failure on a cancelled buffer: {error}");
         return;
     }
-    error!("{}", log_message);
+    error!("audio read failed: {error}");
     emit_progress(
         progress_tx,
         PlaybackProgress::PlaybackError {
-            reason: crate::ui::PlaybackErrorReason::internal(message),
+            reason: error.into_ui_reason(),
         },
     );
     buffer.cancel();
@@ -161,12 +161,11 @@ fn fail_audio_read(
 fn report_fill_failure(
     progress_tx: &tokio_mpsc::UnboundedSender<PlaybackProgress>,
     buffer: &Weak<SparseStreamingBuffer>,
-    log_message: String,
-    message: String,
+    error: PlaybackError,
 ) {
     match buffer.upgrade() {
-        Some(buf) => fail_audio_read(progress_tx, &buf, log_message, message),
-        None => debug!("ignoring fill failure on a dropped buffer: {log_message}"),
+        Some(buf) => fail_audio_read(progress_tx, &buf, error),
+        None => debug!("ignoring fill failure on a dropped buffer: {error}"),
     }
 }
 
@@ -195,8 +194,11 @@ impl AudioDataReader for LocalReader {
             let file = match tokio::fs::File::open(&path).await {
                 Ok(f) => f,
                 Err(e) => {
-                    let message = format!("Failed to open file {path}: {e}");
-                    report_fill_failure(&progress_tx, &buffer, message.clone(), message);
+                    report_fill_failure(
+                        &progress_tx,
+                        &buffer,
+                        PlaybackError::io(format!("Failed to open file {path}: {e}")),
+                    );
                     return;
                 }
             };
@@ -206,23 +208,27 @@ impl AudioDataReader for LocalReader {
 
             let result = fill_buffer_on_demand(buffer.clone(), wake, |src_off, len| {
                 let file = &file;
+                let path = &path;
                 async move {
                     let mut f = file.lock().await;
                     f.seek(std::io::SeekFrom::Start(src_off))
                         .await
-                        .map_err(|e| format!("seek to {src_off}: {e}"))?;
+                        .map_err(|e| {
+                            PlaybackError::io(format!("Failed to seek {path} to {src_off}: {e}"))
+                        })?;
                     let mut buf = vec![0u8; len as usize];
-                    f.read_exact(&mut buf)
-                        .await
-                        .map_err(|e| format!("read {len} at {src_off}: {e}"))?;
+                    f.read_exact(&mut buf).await.map_err(|e| {
+                        PlaybackError::io(format!(
+                            "Failed to read {len} bytes at {src_off} from {path}: {e}"
+                        ))
+                    })?;
                     Ok(buf)
                 }
             })
             .await;
 
             if let Err(e) = result {
-                let message = format!("Read error in file {path}: {e}");
-                report_fill_failure(&progress_tx, &buffer, message.clone(), message);
+                report_fill_failure(&progress_tx, &buffer, e);
             }
         });
     }
@@ -371,7 +377,7 @@ impl AudioDataReader for CovenBlobReader {
                                 if foreground { "playing" } else { "preload" },
                                 fetch_started.elapsed().as_millis(),
                             );
-                            return Err(e.to_string());
+                            return Err(PlaybackError::internal(format!("Blob read failed: {e}")));
                         }
                     };
                     let total =
@@ -387,13 +393,7 @@ impl AudioDataReader for CovenBlobReader {
             .await;
 
             if let Err(e) = result {
-                let error = e.to_string();
-                report_fill_failure(
-                    &progress_tx,
-                    &buffer,
-                    format!("Blob read failed: {error}"),
-                    error,
-                );
+                report_fill_failure(&progress_tx, &buffer, e);
             }
         });
     }
@@ -520,10 +520,10 @@ async fn fill_buffer_on_demand<F, Fut>(
     buffer: Weak<SparseStreamingBuffer>,
     wake: Arc<Notify>,
     fetch: F,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>>
+) -> Result<(), PlaybackError>
 where
     F: Fn(u64, u64) -> Fut,
-    Fut: std::future::Future<Output = Result<Vec<u8>, String>>,
+    Fut: std::future::Future<Output = Result<Vec<u8>, PlaybackError>>,
 {
     // The file size is fixed at the buffer's construction.
     let total = match buffer.upgrade() {
@@ -573,16 +573,13 @@ where
         };
 
         let window = CLOUD_STREAM_READ_SIZE.min(gap_end - gap_start);
-        let data = fetch(gap_start, window)
-            .await
-            .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { e.into() })?;
+        let data = fetch(gap_start, window).await?;
 
         if data.len() != window as usize {
-            return Err(format!(
+            return Err(PlaybackError::internal(format!(
                 "Source read returned {} bytes for requested {window} at {gap_start}",
                 data.len()
-            )
-            .into());
+            )));
         }
 
         // Re-acquire to store the window; if the buffer vanished during the
@@ -1274,7 +1271,7 @@ mod tests {
         )
         .await;
         assert!(
-            error.contains("Read error in file"),
+            error.contains("Failed to read"),
             "expected read failure, got: {error}"
         );
     }
