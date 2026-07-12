@@ -656,36 +656,34 @@ impl DiscogsClient {
     }
 }
 
-/// Fetch the Discogs cross-reference for an MB release. Given the
-/// `ExternalUrls` parsed from MB's url-rels, fetches the linked Discogs
-/// release and (if it has a master) the master too. Returns the
-/// `DiscogsRelease` plus the raw JSON pairs to append to the caller's
-/// `release_metadata` collection.
+/// Fetch the Discogs cross-reference for an MB release. Given the Discogs
+/// release URL parsed from MB's url-rels, fetches the linked Discogs release
+/// and (if it has a master) the master too. Returns the `DiscogsRelease` plus
+/// the raw JSON pairs to append to the caller's `release_metadata`
+/// collection.
 ///
 /// A fetch that fails with `InvalidApiKey` marks the stored key `Rejected` via
 /// the client's validation observer; the cross-ref doesn't abort the import on
 /// auth failure — it returns `None` and the UI surfaces the bad-key state.
 ///
-/// Returns `None` if there's no Discogs URL in the MB url-rels, the URL
-/// doesn't parse to a numeric release ID, or the Discogs release fetch
-/// fails. A successful release fetch with a failing master fetch returns
-/// `Some` with just the release pair — the master is best-effort.
+/// Returns `None` if the URL doesn't parse to a numeric release ID, or the
+/// Discogs release fetch fails. A successful release fetch with a failing
+/// master fetch returns `Some` with just the release pair — the master is
+/// best-effort.
 pub async fn fetch_discogs_xref(
     client: &DiscogsClient,
-    external_urls: &crate::musicbrainz::ExternalUrls,
+    discogs_url: &str,
 ) -> Option<(DiscogsRelease, Vec<(String, String)>)> {
-    let discogs_url = external_urls.discogs_release_url.as_ref()?;
-    let id =
-        match crate::import::musicbrainz_mapper::extract_discogs_release_id(discogs_url.as_str()) {
-            Some(id) => id,
-            None => {
-                tracing::warn!(
-                    "Could not extract Discogs release ID from URL: {}",
-                    discogs_url
-                );
-                return None;
-            }
-        };
+    let id = match crate::import::musicbrainz_mapper::extract_discogs_release_id(discogs_url) {
+        Some(id) => id,
+        None => {
+            tracing::warn!(
+                "Could not extract Discogs release ID from URL: {}",
+                discogs_url
+            );
+            return None;
+        }
+    };
 
     tracing::info!(
         "Found Discogs release URL: {}, fetching release {}",

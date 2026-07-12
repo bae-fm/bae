@@ -270,7 +270,7 @@ pub async fn lookup_by_discid(
     .await;
 
     match result {
-        Ok((releases, _external_urls)) => {
+        Ok(releases) => {
             if releases.is_empty() {
                 return Ok(DiscIdResult::NoMatches);
             }
@@ -411,18 +411,19 @@ pub async fn commit_mb_release(
     release_id: &str,
     discogs_client: Option<&DiscogsClient>,
 ) -> Result<crate::import::folder_scanner::PreparedRelease, ImportError> {
-    let (response, external_urls, mut metadata_pairs) =
+    let (response, discogs_url, mut metadata_pairs) =
         crate::import::musicbrainz_mapper::fetch_mb_response(release_id).await?;
-    let discogs_release = if let Some(client) = discogs_client {
-        match crate::discogs::client::fetch_discogs_xref(client, &external_urls).await {
-            Some((release, pairs)) => {
-                metadata_pairs.extend(pairs);
-                Some(release)
+    let discogs_release = match (discogs_client, discogs_url.as_deref()) {
+        (Some(client), Some(url)) => {
+            match crate::discogs::client::fetch_discogs_xref(client, url).await {
+                Some((release, pairs)) => {
+                    metadata_pairs.extend(pairs);
+                    Some(release)
+                }
+                None => None,
             }
-            None => None,
         }
-    } else {
-        None
+        _ => None,
     };
     let parsed = crate::import::musicbrainz_mapper::map_mb_response_to_db(
         &response,

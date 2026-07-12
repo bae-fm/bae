@@ -147,7 +147,7 @@ fn test_mb_release_response_track_count() {
 }
 
 #[test]
-fn test_extract_urls_from_relations() {
+fn first_discogs_release_url_skips_master_urls_and_missing_urls() {
     let relations = vec![
         MbRelation {
             url: Some(MbUrlResource {
@@ -167,15 +167,9 @@ fn test_extract_urls_from_relations() {
         },
     ];
 
-    let mut urls = ExternalUrls {
-        discogs_release_url: None,
-    };
-
-    extract_urls_from_relations(&relations, &mut urls);
-
     assert_eq!(
-        urls.discogs_release_url.as_deref(),
-        Some("https://www.discogs.com/release/67890")
+        first_discogs_release_url(&relations),
+        Some("https://www.discogs.com/release/67890".to_string())
     );
 }
 
@@ -284,27 +278,20 @@ fn make_mb_response(id: &str, release_group_id: Option<&str>) -> MbReleaseRespon
     }
 }
 
-fn empty_external_urls() -> ExternalUrls {
-    ExternalUrls {
-        discogs_release_url: None,
-    }
-}
-
 #[test]
 fn release_group_fallback_error_is_logged_with_group_id() {
-    let mut urls = empty_external_urls();
+    let mut result = None;
 
     let logs = crate::test_logs::capture_warn_logs(|| {
-        merge_release_group_external_urls(
+        result = Some(release_group_discogs_url(
             "rg-error",
             Err(MusicBrainzError::Other("transient fetch".to_string())),
-            &mut urls,
-        );
+        ));
     });
 
     assert!(logs.contains("rg-error"));
     assert!(logs.contains("transient fetch"));
-    assert!(urls.discogs_release_url.is_none());
+    assert!(result.expect("closure ran").is_none());
 }
 
 #[tokio::test]
@@ -318,7 +305,7 @@ async fn test_fetch_mb_xref_with_backlink_returns_response_and_metadata() {
         mb_release_id,
         (
             make_mb_response(mb_release_id, Some(mb_group_id)),
-            empty_external_urls(),
+            None,
             r#"{"id":"mb-release-hit-1"}"#.to_string(),
         ),
     );
@@ -366,7 +353,7 @@ async fn test_fetch_mb_xref_release_without_group_still_returns_response() {
         mb_release_id,
         (
             make_mb_response(mb_release_id, None),
-            empty_external_urls(),
+            None,
             r#"{"id":"mb-release-no-rg"}"#.to_string(),
         ),
     );

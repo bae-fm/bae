@@ -4549,12 +4549,6 @@ fn make_mb_release_for_re_identify(
     }
 }
 
-fn empty_mb_external_urls() -> crate::musicbrainz::ExternalUrls {
-    crate::musicbrainz::ExternalUrls {
-        discogs_release_url: None,
-    }
-}
-
 /// Insert `n` plain track rows for a release. Mirrors the row shape
 /// `prepared.parsed.tracks` would produce so the track-count check
 /// in `re_identify_release` accepts the picked release.
@@ -4616,10 +4610,7 @@ async fn re_identify_release_exact_writes_cache() {
     let new_group_id = "exact-re-identify-mb-group-new";
     let new_response = make_mb_release_for_re_identify(new_release_id, new_group_id, 3);
     let new_raw_json = r#"{"id":"exact-re-identify-mb-rel-new"}"#.to_string();
-    seed_release_cache(
-        new_release_id,
-        (new_response, empty_mb_external_urls(), new_raw_json.clone()),
-    );
+    seed_release_cache(new_release_id, (new_response, None, new_raw_json.clone()));
     seed_release_group_json_cache(
         new_group_id,
         r#"{"id":"exact-re-identify-mb-group-new"}"#.to_string(),
@@ -4706,10 +4697,7 @@ async fn re_identify_release_approximate_writes_cache() {
     let new_group_id = "approx-re-identify-mb-group-new";
     let new_response = make_mb_release_for_re_identify(new_release_id, new_group_id, 4);
     let new_raw_json = r#"{"id":"approx-re-identify-mb-rel-new"}"#.to_string();
-    seed_release_cache(
-        new_release_id,
-        (new_response, empty_mb_external_urls(), new_raw_json.clone()),
-    );
+    seed_release_cache(new_release_id, (new_response, None, new_raw_json.clone()));
     seed_release_group_json_cache(
         new_group_id,
         r#"{"id":"approx-re-identify-mb-group-new"}"#.to_string(),
@@ -4795,7 +4783,7 @@ async fn re_identify_release_rejects_track_count_mismatch() {
         new_release_id,
         (
             new_response,
-            empty_mb_external_urls(),
+            None,
             r#"{"id":"mismatch-re-identify-mb-rel-new"}"#.to_string(),
         ),
     );
@@ -4862,7 +4850,7 @@ async fn re_identify_release_followed_by_reset_succeeds() {
             new_release_id,
             (
                 new_response,
-                empty_mb_external_urls(),
+                None,
                 r#"{"id":"reset-re-identify-mb-rel-new","title":"Album Title","date":"2024-01-01","artist-credit":[{"name":"Artist Name","artist":{"id":"mb-artist-1","name":"Artist Name","sort-name":"Artist Name"}}],"release-group":{"id":"reset-re-identify-mb-group-new"},"media":[{"format":"CD","tracks":[{"position":1,"number":"1","title":"Track 1"},{"position":2,"number":"2","title":"Track 2"}]}]}"#.to_string(),
             ),
         );

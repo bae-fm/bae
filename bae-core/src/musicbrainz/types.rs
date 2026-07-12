@@ -1,8 +1,8 @@
 //! MusicBrainz API response shapes.
 //!
-//! The `serde`-derived structs the client deserializes responses into,
-//! `ExternalUrls`, and the relation-to-URL extraction helper. The request
-//! and caching logic that produces these lives in the parent module.
+//! The `serde`-derived structs the client deserializes responses into, and
+//! the relation-to-URL extraction helper. The request and caching logic that
+//! produces these lives in the parent module.
 
 use serde::{Deserialize, Serialize};
 
@@ -137,23 +137,16 @@ pub struct MbReleaseResponse {
 }
 
 impl MbReleaseResponse {
-    /// Extract ExternalUrls from release relations and release-group relations
-    pub(super) fn extract_external_urls(&self) -> ExternalUrls {
-        let mut urls = ExternalUrls {
-            discogs_release_url: None,
-        };
-
-        // Extract from release-level relations
-        extract_urls_from_relations(&self.relations, &mut urls);
-
-        // Extract from release-group relations (if present inline)
-        if let Some(rg) = &self.release_group {
-            if let Some(rg_relations) = &rg.relations {
-                extract_urls_from_relations(rg_relations, &mut urls);
-            }
-        }
-
-        urls
+    /// The Discogs release URL from this release's url-rels, falling back to
+    /// the inline release-group relations when the release-level ones carry
+    /// none.
+    pub(super) fn discogs_release_url(&self) -> Option<String> {
+        first_discogs_release_url(&self.relations).or_else(|| {
+            self.release_group
+                .as_ref()
+                .and_then(|rg| rg.relations.as_deref())
+                .and_then(first_discogs_release_url)
+        })
     }
 
     /// Count total tracks across all media
@@ -219,25 +212,11 @@ pub(super) struct UrlLookupRelease {
     pub(super) id: Option<String>,
 }
 
-/// Extract external URLs from a list of relations into the target struct
-pub(super) fn extract_urls_from_relations(relations: &[MbRelation], urls: &mut ExternalUrls) {
-    for relation in relations {
-        let Some(url_obj) = &relation.url else {
-            continue;
-        };
-        let Some(resource) = &url_obj.resource else {
-            continue;
-        };
-
-        if resource.contains("discogs.com/release/") && urls.discogs_release_url.is_none() {
-            urls.discogs_release_url = Some(resource.clone());
-            break;
-        }
-    }
-}
-
-/// External URLs extracted from MusicBrainz relationships
-#[derive(Debug, Clone)]
-pub struct ExternalUrls {
-    pub discogs_release_url: Option<String>,
+/// The first Discogs release URL among a set of MB relations, if any.
+pub(super) fn first_discogs_release_url(relations: &[MbRelation]) -> Option<String> {
+    relations
+        .iter()
+        .filter_map(|r| r.url.as_ref()?.resource.as_deref())
+        .find(|resource| resource.contains("discogs.com/release/"))
+        .map(str::to_string)
 }

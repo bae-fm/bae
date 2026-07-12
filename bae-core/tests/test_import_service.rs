@@ -14,8 +14,8 @@ use bae_core::import::{
 };
 use bae_core::library::LibraryManager;
 use bae_core::musicbrainz::{
-    ExternalUrls, MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbRelation,
-    MbReleaseGroupRef, MbReleaseResponse, MbTrack, MbWork,
+    MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbRelation, MbReleaseGroupRef,
+    MbReleaseResponse, MbTrack, MbWork,
 };
 use bae_core::sync::CloudCipher;
 use coven::EncryptionService;
@@ -1648,16 +1648,7 @@ fn seed_mb_release_with_works(
         }],
         relations: vec![],
     };
-    bae_core::musicbrainz::seed_release_cache(
-        mb_release_id,
-        (
-            response,
-            ExternalUrls {
-                discogs_release_url: None,
-            },
-            "{}".to_string(),
-        ),
-    );
+    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, "{}".to_string()));
     bae_core::musicbrainz::seed_release_group_json_cache(mb_group_id, "{}".to_string());
     mb_release_id.to_string()
 }
@@ -2375,15 +2366,13 @@ fn seed_mb_with_discogs_xref(
         }],
         relations: vec![],
     };
-    let external_urls = ExternalUrls {
-        discogs_release_url: Some(format!(
-            "https://www.discogs.com/release/{}",
-            discogs_release_id
-        )),
-    };
+    let discogs_url = Some(format!(
+        "https://www.discogs.com/release/{}",
+        discogs_release_id
+    ));
     bae_core::musicbrainz::seed_release_cache(
         mb_release_id,
-        (response, external_urls, "{}".to_string()),
+        (response, discogs_url, "{}".to_string()),
     );
     bae_core::musicbrainz::seed_release_group_json_cache(mb_group_id, "{}".to_string());
     mb_release_id.to_string()
@@ -2554,9 +2543,7 @@ async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
                 media: vec![],
                 relations: vec![],
             },
-            ExternalUrls {
-                discogs_release_url: None,
-            },
+            None,
             "{}".to_string(),
         ),
     );

@@ -72,12 +72,12 @@ async fn mb_get(request: reqwest::RequestBuilder) -> Result<reqwest::Response, M
     }
 }
 
-type ReleaseCacheValue = (MbReleaseResponse, ExternalUrls, String);
+type ReleaseCacheValue = (MbReleaseResponse, Option<String>, String);
 
-/// In-memory cache for `release/{id}` lookups. Stores the parsed
-/// response, extracted URLs, and raw JSON so callers that need any of
-/// the three can hit warm cache. Mutex is `std::sync::Mutex` since the
-/// guard is dropped before any await.
+/// In-memory cache for `release/{id}` lookups. Stores the parsed response,
+/// the Discogs release URL from its url-rels (if any), and raw JSON so
+/// callers that need any of the three can hit warm cache. Mutex is
+/// `std::sync::Mutex` since the guard is dropped before any await.
 static RELEASE_CACHE: SessionCache<ReleaseCacheValue> =
     SessionCache::new("MusicBrainz release cache");
 
@@ -109,7 +109,7 @@ pub fn seed_discogs_url_lookup(discogs_release_id: &str, mb_release_id: Option<S
 /// tests can pass an empty string when the archival content isn't
 /// being asserted on.
 #[cfg(any(test, feature = "test-utils"))]
-pub fn seed_release_cache(release_id: &str, value: (MbReleaseResponse, ExternalUrls, String)) {
+pub fn seed_release_cache(release_id: &str, value: (MbReleaseResponse, Option<String>, String)) {
     RELEASE_CACHE.put(release_id, value);
 }
 
@@ -174,9 +174,7 @@ impl MusicBrainzError {
 // ============================================================================
 
 /// Lookup releases by MusicBrainz DiscID
-pub async fn lookup_by_discid(
-    discid: &str,
-) -> Result<(Vec<MbReleaseResponse>, ExternalUrls), MusicBrainzError> {
+pub async fn lookup_by_discid(discid: &str) -> Result<Vec<MbReleaseResponse>, MusicBrainzError> {
     info!("MusicBrainz: Looking up DiscID '{}'", discid);
     let base_url = reqwest::Url::parse("https://musicbrainz.org/ws/2/discid/")
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse base URL: {}", e)))?;
@@ -202,17 +200,6 @@ pub async fn lookup_by_discid(
         .await
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
 
-    let mut external_urls = ExternalUrls {
-        discogs_release_url: None,
-    };
-
-    for release in &disc_response.releases {
-        if external_urls.discogs_release_url.is_some() {
-            break;
-        }
-        extract_urls_from_relations(&release.relations, &mut external_urls);
-    }
-
     if disc_response.releases.is_empty() {
         return Err(MusicBrainzError::NotFound(discid.to_string()));
     }
@@ -225,11 +212,7 @@ pub async fn lookup_by_discid(
         discid
     );
 
-    if external_urls.discogs_release_url.is_some() {
-        info!("  Found Discogs URL in relationships");
-    }
-
-    Ok((releases, external_urls))
+    Ok(releases)
 }
 
 /// Fetch a release-group with its URL relationships
@@ -252,13 +235,14 @@ async fn fetch_release_group_with_relations(
 
 /// Lookup a specific release by MusicBrainz release ID.
 ///
-/// Returns the parsed response, extracted ExternalUrls, and the raw JSON text
-/// (for archival in release_metadata). Hits a session-wide LRU cache of size
-/// 25; cache miss does the network round-trip + a release-group fallback
-/// fetch when the release relations don't carry Discogs URLs.
+/// Returns the parsed response, the Discogs release URL (if any), and the raw
+/// JSON text (for archival in release_metadata). Hits a session-wide LRU
+/// cache of size 25; cache miss does the network round-trip + a
+/// release-group fallback fetch when the release relations don't carry
+/// Discogs URLs.
 pub async fn lookup_release_by_id(
     release_id: &str,
-) -> Result<(MbReleaseResponse, ExternalUrls, String), MusicBrainzError> {
+) -> Result<(MbReleaseResponse, Option<String>, String), MusicBrainzError> {
     if let Some(hit) = RELEASE_CACHE.get_cloned(release_id) {
         debug!("MusicBrainz release cache hit for {}", release_id);
         return Ok(hit);
@@ -287,7 +271,7 @@ pub async fn lookup_release_by_id(
     let mb_response: MbReleaseResponse = serde_json::from_str(&raw_json)
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
 
-    let mut external_urls = mb_response.extract_external_urls();
+    let mut discogs_url = mb_response.discogs_release_url();
 
     debug!(
         "MusicBrainz release response: {} ({} relations), release_id: {}",
@@ -296,12 +280,12 @@ pub async fn lookup_release_by_id(
         release_id
     );
 
-    if let Some(resource) = &external_urls.discogs_release_url {
+    if let Some(resource) = &discogs_url {
         info!("Found Discogs release URL: {}", resource);
     }
 
     // If release-group relations weren't included inline, fetch them separately
-    if external_urls.discogs_release_url.is_none() {
+    if discogs_url.is_none() {
         let has_rg_relations = mb_response
             .release_group
             .as_ref()
@@ -314,36 +298,35 @@ pub async fn lookup_release_by_id(
                     rg_id
                 );
 
-                merge_release_group_external_urls(
+                discogs_url = release_group_discogs_url(
                     rg_id,
                     fetch_release_group_with_relations(rg_id).await,
-                    &mut external_urls,
                 );
             }
         }
     }
 
-    let value = (mb_response, external_urls, raw_json);
+    let value = (mb_response, discogs_url, raw_json);
     RELEASE_CACHE.put(release_id, value.clone());
 
     Ok(value)
 }
 
-fn merge_release_group_external_urls(
+fn release_group_discogs_url(
     rg_id: &str,
     result: Result<ReleaseGroupResponse, MusicBrainzError>,
-    external_urls: &mut ExternalUrls,
-) {
+) -> Option<String> {
     match result {
         Ok(rg_response) => {
-            extract_urls_from_relations(&rg_response.relations, external_urls);
-
-            if let Some(resource) = &external_urls.discogs_release_url {
+            let url = first_discogs_release_url(&rg_response.relations);
+            if let Some(resource) = &url {
                 info!("Found Discogs release URL on release-group: {}", resource);
             }
+            url
         }
         Err(e) => {
             warn!("Failed to fetch MusicBrainz release-group {rg_id}: {e}");
+            None
         }
     }
 }
@@ -470,7 +453,7 @@ pub async fn fetch_mb_xref(
         }
     };
 
-    let (response, _urls, raw_json) = match lookup_release_by_id(&mb_release_id).await {
+    let (response, _discogs_url, raw_json) = match lookup_release_by_id(&mb_release_id).await {
         Ok(value) => value,
         Err(e) => {
             warn!("Failed to fetch linked MB release {}: {e}", mb_release_id);

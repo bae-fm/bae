@@ -23,8 +23,7 @@ use crate::db::{is_various_artists, Pressing, ReleaseMetadataSource};
 use crate::import::types::ReleaseIdentity;
 use crate::import::{ImportError, MetadataSource};
 use crate::musicbrainz::{
-    fetch_release_group_json, ExternalUrls, MbArtistRef, MbMedium, MbRelation, MbReleaseResponse,
-    MbWork,
+    fetch_release_group_json, MbArtistRef, MbMedium, MbRelation, MbReleaseResponse, MbWork,
 };
 use coven::Clock;
 use coven::IdProvider;
@@ -150,17 +149,17 @@ fn mb_work_ref(work: &MbWork, converted: &mut HashSet<String>) -> WorkGraphRef {
 }
 
 /// Fetch a MusicBrainz release. Pure MB: no Discogs client, no cross-ref.
-/// Returns the parsed response, the url-rels we'll need for cross-referencing
-/// later, and the raw JSON pairs (release + release-group) for archival in
-/// `release_metadata`.
+/// Returns the parsed response, the Discogs release URL from MB's url-rels
+/// (if any), for cross-referencing later, and the raw JSON pairs (release +
+/// release-group) for archival in `release_metadata`.
 ///
 /// Cross-referencing into Discogs is a separate step — see
 /// `crate::discogs::client::enrich_with_discogs_xref`. The split keeps
 /// prefetch's API discogs-free; only commit composes both.
 pub async fn fetch_mb_response(
     release_id: &str,
-) -> Result<(MbReleaseResponse, ExternalUrls, Vec<(String, String)>), ImportError> {
-    let (response, external_urls, raw_json) =
+) -> Result<(MbReleaseResponse, Option<String>, Vec<(String, String)>), ImportError> {
+    let (response, discogs_url, raw_json) =
         crate::retry::retry_with_backoff(3, "MusicBrainz release fetch", || {
             crate::musicbrainz::lookup_release_by_id(release_id)
         })
@@ -181,7 +180,7 @@ pub async fn fetch_mb_response(
         }
     }
 
-    Ok((response, external_urls, metadata_pairs))
+    Ok((response, discogs_url, metadata_pairs))
 }
 
 /// Vinyl/cassette side assignment for one medium, shared by the DB mapper and
