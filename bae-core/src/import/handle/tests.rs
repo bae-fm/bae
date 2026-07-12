@@ -727,22 +727,19 @@ fn track_artist(artist_id: &str) -> crate::db::DbTrackArtist {
     }
 }
 
-fn album_artist(artist_id: &str) -> crate::db::DbAlbumArtist {
-    crate::db::DbAlbumArtist {
-        id: Uuid::new_v4().to_string(),
-        album_id: "album-1".to_string(),
-        artist_id: artist_id.to_string(),
-        position: 2,
-        created_at: Utc::now(),
-    }
-}
-
 #[test]
-fn remap_track_artists_rewrites_id_and_preserves_the_rest() {
+fn remap_artist_links_rewrites_id_and_preserves_the_rest() {
     let ta = track_artist("parsed-1");
     let map = std::collections::HashMap::from([("parsed-1".to_string(), "db-1".to_string())]);
 
-    let remapped = remap_track_artists(std::slice::from_ref(&ta), &map).unwrap();
+    let remapped = remap_artist_links(
+        std::slice::from_ref(&ta),
+        &map,
+        "track artist",
+        |ta| &ta.artist_id,
+        |ta, artist_id| ta.artist_id = artist_id,
+    )
+    .unwrap();
     assert_eq!(remapped.len(), 1);
     assert_eq!(remapped[0].artist_id, "db-1");
     // Everything other than the remapped artist id carries through.
@@ -752,36 +749,18 @@ fn remap_track_artists_rewrites_id_and_preserves_the_rest() {
 }
 
 #[test]
-fn remap_track_artists_errors_on_unmapped_id() {
+fn remap_artist_links_errors_on_unmapped_id() {
     let ta = track_artist("orphan-track-artist");
-    let err = remap_track_artists(std::slice::from_ref(&ta), &std::collections::HashMap::new())
-        .unwrap_err();
+    let err = remap_artist_links(
+        std::slice::from_ref(&ta),
+        &std::collections::HashMap::new(),
+        "track artist",
+        |ta| &ta.artist_id,
+        |ta, artist_id| ta.artist_id = artist_id,
+    )
+    .unwrap_err();
     assert!(
         matches!(&err, crate::import::ImportError::Internal { detail } if detail.contains("orphan-track-artist")),
-        "error should name the unmapped id: {err}"
-    );
-}
-
-#[test]
-fn remap_album_artists_rewrites_id_and_preserves_the_rest() {
-    let aa = album_artist("parsed-2");
-    let map = std::collections::HashMap::from([("parsed-2".to_string(), "db-2".to_string())]);
-
-    let remapped = remap_album_artists(std::slice::from_ref(&aa), &map).unwrap();
-    assert_eq!(remapped.len(), 1);
-    assert_eq!(remapped[0].artist_id, "db-2");
-    assert_eq!(remapped[0].id, aa.id);
-    assert_eq!(remapped[0].album_id, "album-1");
-    assert_eq!(remapped[0].position, 2);
-}
-
-#[test]
-fn remap_album_artists_errors_on_unmapped_id() {
-    let aa = album_artist("orphan-album-artist");
-    let err = remap_album_artists(std::slice::from_ref(&aa), &std::collections::HashMap::new())
-        .unwrap_err();
-    assert!(
-        matches!(&err, crate::import::ImportError::Internal { detail } if detail.contains("orphan-album-artist")),
         "error should name the unmapped id: {err}"
     );
 }

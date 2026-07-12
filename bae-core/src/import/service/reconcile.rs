@@ -9,9 +9,7 @@ use std::collections::HashMap;
 
 use super::{apply_identity_choice, apply_user_edit_to_seed, ImportService, PreparedMetadata};
 use crate::db::DbImport;
-use crate::import::handle::{
-    fetch_artist_images, remap_album_artists, remap_artist_links, remap_track_artists,
-};
+use crate::import::handle::{fetch_artist_images, remap_artist_links};
 use crate::import::ParsedWorkGraph;
 
 impl ImportService {
@@ -162,9 +160,21 @@ impl ImportService {
             .clone();
         db_album.artist_id = remapped_primary_artist_id;
 
-        let remapped_track_artists = remap_track_artists(&track_artists, &artist_id_map)?;
+        let remapped_track_artists = remap_artist_links(
+            &track_artists,
+            &artist_id_map,
+            "track artist",
+            |ta| &ta.artist_id,
+            |ta, artist_id| ta.artist_id = artist_id,
+        )?;
         let remapped_album_artists = if existing_album_id.is_none() {
-            remap_album_artists(&album_artists, &artist_id_map)?
+            remap_artist_links(
+                &album_artists,
+                &artist_id_map,
+                "album artist",
+                |aa| &aa.artist_id,
+                |aa, artist_id| aa.artist_id = artist_id,
+            )?
         } else {
             vec![]
         };

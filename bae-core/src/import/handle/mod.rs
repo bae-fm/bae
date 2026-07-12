@@ -561,6 +561,11 @@ impl ImportServiceHandle {
     }
 }
 
+/// Remap parsed (temporary) artist IDs to their actual DB IDs.
+///
+/// A `ParsedAlbum`'s artist-link rows reference artist IDs generated during
+/// parsing; reconcile may have resolved those to existing DB artists.
+/// `label` names the link kind in the unmapped-ID error.
 pub fn remap_artist_links<T: Clone>(
     links: &[T],
     artist_id_map: &HashMap<String, String>,
@@ -582,38 +587,6 @@ pub fn remap_artist_links<T: Clone>(
             Ok(remapped)
         })
         .collect()
-}
-
-/// Remap track artist IDs from the parsed (temporary) artist IDs to the actual DB IDs.
-///
-/// The ParsedAlbum's track_artists reference artist IDs generated during parsing, but
-/// reconcile may have resolved them to existing DB artists. This function
-/// applies the same ID mapping used for album_artists.
-pub fn remap_track_artists(
-    track_artists: &[crate::db::DbTrackArtist],
-    artist_id_map: &HashMap<String, String>,
-) -> Result<Vec<crate::db::DbTrackArtist>, crate::import::ImportError> {
-    remap_artist_links(
-        track_artists,
-        artist_id_map,
-        "track artist",
-        |ta| &ta.artist_id,
-        |ta, artist_id| ta.artist_id = artist_id,
-    )
-}
-
-/// Remap album artist IDs from the parsed (temporary) artist IDs to the actual DB IDs.
-pub fn remap_album_artists(
-    album_artists: &[crate::db::DbAlbumArtist],
-    artist_id_map: &HashMap<String, String>,
-) -> Result<Vec<crate::db::DbAlbumArtist>, crate::import::ImportError> {
-    remap_artist_links(
-        album_artists,
-        artist_id_map,
-        "album artist",
-        |aa| &aa.artist_id,
-        |aa, artist_id| aa.artist_id = artist_id,
-    )
 }
 
 /// Fetch artist images for artists that have a Discogs ID but no image yet.
